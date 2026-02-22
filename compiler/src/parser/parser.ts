@@ -79,10 +79,9 @@ export class Parser {
     const params = this.parameterList();
     this.consume(TokenType.RPAREN, 'Expected ")" after parameters');
 
-    let returnType: AST.Type | null = null;
-    if (this.match(TokenType.ARROW)) {
-      returnType = this.type();
-    }
+    // Return type annotation is MANDATORY (canonical form)
+    this.consume(TokenType.ARROW, `Expected "→" after parameters for function "${name}". Return type annotations are required (canonical form).`);
+    const returnType = this.type();
 
     // Optional = before body (dense format can omit it)
     this.match(TokenType.EQUAL);
@@ -109,10 +108,9 @@ export class Parser {
       const start = this.peek();
       const name = this.consume(TokenType.IDENTIFIER, 'Expected parameter name').value;
 
-      let typeAnnotation: AST.Type | null = null;
-      if (this.match(TokenType.COLON)) {
-        typeAnnotation = this.type();
-      }
+      // Type annotation is MANDATORY (canonical form)
+      this.consume(TokenType.COLON, `Expected ":" after parameter "${name}". Type annotations are required (canonical form).`);
+      const typeAnnotation = this.type();
 
       params.push({
         name,
@@ -251,10 +249,9 @@ export class Parser {
     const start = this.previous();
     const name = this.consume(TokenType.IDENTIFIER, 'Expected constant name').value;
 
-    let typeAnnotation: AST.Type | null = null;
-    if (this.match(TokenType.COLON)) {
-      typeAnnotation = this.type();
-    }
+    // Type annotation is MANDATORY (canonical form)
+    this.consume(TokenType.COLON, `Expected ":" after constant "${name}". Type annotations are required (canonical form).`);
+    const typeAnnotation = this.type();
 
     this.consume(TokenType.EQUAL, 'Expected "="');
     const value = this.expression();
@@ -770,17 +767,16 @@ export class Parser {
     const start = this.previous();
     const params: AST.Param[] = [];
 
-    // Parse params: λx→ or λ(x,y)→
+    // Parse params: λ(x:T,y:U)→R  (type annotations MANDATORY)
     if (this.check(TokenType.LPAREN)) {
       this.advance();
       if (!this.check(TokenType.RPAREN)) {
         do {
           const pStart = this.peek();
           const name = this.consume(TokenType.IDENTIFIER, 'Expected parameter').value;
-          let typeAnnotation: AST.Type | null = null;
-          if (this.match(TokenType.COLON)) {
-            typeAnnotation = this.type();
-          }
+          // Type annotation is MANDATORY (canonical form)
+          this.consume(TokenType.COLON, `Expected ":" after lambda parameter "${name}". Type annotations are required (canonical form).`);
+          const typeAnnotation = this.type();
           params.push({
             name,
             typeAnnotation,
@@ -790,20 +786,31 @@ export class Parser {
       }
       this.consume(TokenType.RPAREN, 'Expected ")"');
     } else if (this.check(TokenType.IDENTIFIER)) {
+      const pStart = this.peek();
       const name = this.advance().value;
+      // Single parameter lambda also requires type annotation
+      this.consume(TokenType.COLON, `Expected ":" after lambda parameter "${name}". Type annotations are required (canonical form).`);
+      const typeAnnotation = this.type();
       params.push({
         name,
-        typeAnnotation: null,
-        location: this.makeLocation(this.previous(), this.previous()),
+        typeAnnotation,
+        location: this.makeLocation(pStart, this.previous()),
       });
     }
 
-    this.consume(TokenType.ARROW, 'Expected "→"');
+    // Return type annotation is MANDATORY (canonical form)
+    this.consume(TokenType.ARROW, 'Expected "→" after lambda parameters. Return type annotations are required (canonical form).');
+    const returnType = this.type();
+
+    // Consume "=" before body (optional in some formats)
+    this.match(TokenType.EQUAL);
+
     const body = this.expression();
 
     return {
       type: 'LambdaExpr',
       params,
+      returnType,
       body,
       location: this.makeLocation(start, this.previous()),
     };

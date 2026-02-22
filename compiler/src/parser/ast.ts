@@ -215,6 +215,7 @@ export interface IdentifierExpr {
 export interface LambdaExpr {
   type: 'LambdaExpr';
   params: Param[];
+  returnType: Type;  // Mandatory (canonical form)
   body: Expr;
   location: SourceLocation;
 }

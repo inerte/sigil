@@ -88,11 +88,14 @@ test_should_fail "src/test-tailrec/test11-nested-list.mint" "collection-type par
 test_should_fail "src/test-tailrec/test13-boolean-match-blocked.mint" "Non-canonical pattern matching"
 test_should_fail "src/test-tailrec/test14-tuple-boolean-blocked.mint" "tuple of boolean expressions"
 test_should_fail "src/test-tailrec/test18-factorial-acc-blocked.mint" "accumulator-passing style"
+test_should_fail "src/test-tailrec/test19-list-accumulator.mint" "multiple collection parameters"
 
 echo ""
 echo "Tests that should be ALLOWED:"
 echo "─────────────────────────────────────────────────────────"
 
+test_should_pass "examples/list-reverse.mint"
+test_should_pass "examples/list-length.mint"
 test_should_pass "src/test-tailrec/test7-record-one-field-ok.mint"
 test_should_pass "src/test-tailrec/test12-valid-canonical.mint"
 test_should_pass "src/test-tailrec/test15-canonical-value-match.mint"

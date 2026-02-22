@@ -92,22 +92,73 @@ function validateRecursiveFunctions(program: AST.Program): void {
       }
     }
 
-    // Check 2: ALL parameters must be primitive types (not collections)
-    // This closes the loophole: state:[ℤ] or multi-field records encode multiple values
-    for (const param of decl.params) {
-      if (param.typeAnnotation && isCollectionType(param.typeAnnotation, typeMap)) {
+    // Check 2: Collection parameters - distinguish structural recursion from accumulator
+    // Find collection-type parameters
+    const collectionParams: {index: number, param: AST.Param}[] = [];
+    for (let i = 0; i < decl.params.length; i++) {
+      const typeAnnotation = decl.params[i].typeAnnotation;
+      if (typeAnnotation && isCollectionType(typeAnnotation, typeMap)) {
+        collectionParams.push({index: i, param: decl.params[i]});
+      }
+    }
+
+    // If multiple collection params, likely accumulator pattern
+    if (collectionParams.length > 1) {
+      throw new CanonicalError(
+        `Recursive function '${decl.name}' has multiple collection parameters.\n` +
+        `This pattern can encode accumulator-passing style.\n` +
+        `\n` +
+        `Use single collection parameter with structural recursion instead:\n` +
+        `  λreverse(lst:[T])→[T]≡lst{[]→[]|[x,.xs]→reverse(xs)++[x]}\n` +
+        `\n` +
+        `Mint enforces ONE way: structural recursion for collections.`,
+        decl.location
+      );
+    }
+
+    // Single collection param - check if structural recursion or accumulator pattern
+    if (collectionParams.length === 1) {
+      const collectionParam = collectionParams[0];
+
+      // If there are other (non-collection) parameters alongside the collection,
+      // this is likely accumulator pattern (collection + accumulators)
+      if (decl.params.length > 1) {
         throw new CanonicalError(
-          `Recursive function '${decl.name}' has a collection-type parameter.\n` +
-          `Parameter type: ${formatType(param.typeAnnotation)}\n` +
+          `Recursive function '${decl.name}' has collection parameter plus additional parameters.\n` +
+          `This pattern enables accumulator-passing style (tail-call optimization).\n` +
           `\n` +
-          `Recursive functions must have PRIMITIVE parameters (ℤ, 𝕊, 𝔹, etc).\n` +
-          `Collection types (lists, tuples, records) can encode multiple values,\n` +
-          `which enables accumulator-style tail recursion.\n` +
+          `Example of what's blocked:\n` +
+          `  λfold_sum(xs:[T],acc:ℤ,count:ℤ)→ℤ≡xs{...}\n` +
+          `  - Collection parameter: xs\n` +
+          `  - Accumulator parameters: acc, count\n` +
           `\n` +
-          `Example canonical form:\n` +
-          `  λ${decl.name}(n:ℤ)→ℤ≡n{0→1|n→n*${decl.name}(n-1)}\n` +
+          `Use pure structural recursion instead (single parameter only):\n` +
+          `  λsum(xs:[T])→ℤ≡xs{[]→0|[x,.rest]→x+sum(rest)}\n` +
+          `  λlength(xs:[T])→ℤ≡xs{[]→0|[_,.rest]→1+length(rest)}\n` +
           `\n` +
-          `Mint enforces ONE way to write recursive functions.`,
+          `Mint enforces ONE way: structural recursion with single collection parameter.`,
+          decl.location
+        );
+      }
+
+      if (!isStructuralRecursion(decl, collectionParam)) {
+        throw new CanonicalError(
+          `Recursive function '${decl.name}' has collection parameter but doesn't use structural recursion.\n` +
+          `Parameter: ${collectionParam.param.name}${collectionParam.param.typeAnnotation ? ':' + formatType(collectionParam.param.typeAnnotation) : ''}\n` +
+          `\n` +
+          `Structural recursion (ALLOWED):\n` +
+          `  λreverse(lst:[T])→[T]≡lst{[]→[]|[x,.xs]→reverse(xs)++[x]}\n` +
+          `  - Pattern matches on the collection\n` +
+          `  - Destructures into pieces ([x,.xs])\n` +
+          `  - Recurses on smaller piece (xs)\n` +
+          `  - Single collection parameter only\n` +
+          `\n` +
+          `Blocked patterns:\n` +
+          `  λfactorial(state:[ℤ])→ℤ≡state{[n,acc]→factorial([n-1,n*acc])}\n` +
+          `  - Uses list to encode multiple values\n` +
+          `  - Pattern [n,acc] extracts state, not structure\n` +
+          `\n` +
+          `Mint enforces ONE way: structural recursion for collections.`,
           decl.location
         );
       }
@@ -795,4 +846,144 @@ function containsParamReference(expr: AST.Expr, paramNames: Set<string>): boolea
            containsParamReference(expr.right, paramNames);
   }
   return false;
+}
+
+/**
+ * Check if a function uses structural recursion on a collection parameter
+ *
+ * Structural recursion (ALLOWED):
+ *   - Pattern matches on collection: ≡lst{[]→...|[x,.xs]→...}
+ *   - Destructures into smaller pieces: [x,.xs]
+ *   - Recursive calls use the smaller pieces: xs (not lst)
+ *
+ * Accumulator pattern (BLOCKED):
+ *   - Multiple params with one being collection accumulator
+ *   - Collection passed unchanged or grown
+ */
+function isStructuralRecursion(
+  decl: AST.FunctionDecl,
+  collectionParam: {index: number, param: AST.Param}
+): boolean {
+  const paramName = collectionParam.param.name;
+
+  // Find match expression that matches on the collection parameter
+  const matchExpr = findPatternMatchOnParam(decl.body, paramName);
+
+  if (!matchExpr) {
+    // No pattern match on collection - not structural recursion
+    return false;
+  }
+
+  // Check if any pattern arm destructures the collection
+  const hasDestructuring = matchExpr.arms.some(arm =>
+    isDestructuringPattern(arm.pattern)
+  );
+
+  if (!hasDestructuring) {
+    // Pattern match exists but no destructuring - not structural
+    return false;
+  }
+
+  // Check if list patterns are encoding state rather than structure
+  // E.g., [n,acc] or [[n,acc]] - fixed-size patterns that extract values
+  for (const arm of matchExpr.arms) {
+    if (arm.pattern.type === 'ListPattern') {
+      // If all elements are identifier patterns (no rest), it's encoding state
+      if (arm.pattern.patterns.length >= 2 && !arm.pattern.rest) {
+        // Pattern like [n, acc] or [x, y, z] - encoding multiple values, not structure
+        return false;
+      }
+
+      // Check for nested list patterns that encode state: [[n,acc]]
+      if (arm.pattern.patterns.length === 1 && arm.pattern.patterns[0].type === 'ListPattern') {
+        const innerPattern = arm.pattern.patterns[0] as AST.ListPattern;
+        if (innerPattern.patterns.length >= 2 && !innerPattern.rest) {
+          // Pattern like [[n, acc]] - nested encoding of multiple values
+          return false;
+        }
+      }
+    }
+  }
+
+  // Check that recursive calls use smaller pieces from destructuring
+  const recursiveCalls = findRecursiveCalls(decl.body, decl.name);
+
+  for (const call of recursiveCalls) {
+    // Get the argument passed for the collection parameter position
+    const collectionArg = call.args[collectionParam.index];
+
+    // Check if this argument is a reference to a destructured piece
+    // (like 'xs' from pattern [x,.xs]) or the original parameter unchanged
+    if (collectionArg.type === 'IdentifierExpr' &&
+        collectionArg.name === paramName) {
+      // Passing the original parameter unchanged - not structural!
+      return false;
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Find a match expression that matches on the given parameter
+ */
+function findPatternMatchOnParam(expr: AST.Expr, paramName: string): AST.MatchExpr | null {
+  if (expr.type === 'MatchExpr') {
+    // Check if scrutinee is the parameter
+    if (expr.scrutinee.type === 'IdentifierExpr' && expr.scrutinee.name === paramName) {
+      return expr;
+    }
+  }
+
+  // Recursively search in sub-expressions
+  switch (expr.type) {
+    case 'LambdaExpr':
+      return findPatternMatchOnParam(expr.body, paramName);
+    case 'LetExpr':
+      return findPatternMatchOnParam(expr.body, paramName) ||
+             findPatternMatchOnParam(expr.value, paramName);
+    case 'IfExpr':
+      return findPatternMatchOnParam(expr.thenBranch, paramName) ||
+             (expr.elseBranch ? findPatternMatchOnParam(expr.elseBranch, paramName) : null);
+    case 'MatchExpr':
+      // Check scrutinee first
+      if (expr.scrutinee.type === 'IdentifierExpr' && expr.scrutinee.name === paramName) {
+        return expr;
+      }
+      // Check in match arms
+      for (const arm of expr.arms) {
+        const found = findPatternMatchOnParam(arm.body, paramName);
+        if (found) return found;
+      }
+      return null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Check if a pattern destructures a collection
+ * Examples: [x,.xs], [x,y,.rest], {field1, field2}
+ */
+function isDestructuringPattern(pattern: AST.Pattern): boolean {
+  switch (pattern.type) {
+    case 'ListPattern':
+      // List patterns with at least one element or rest are destructuring
+      return pattern.patterns.length > 0 || pattern.rest !== null;
+
+    case 'RecordPattern':
+      // Record patterns with fields are destructuring
+      return pattern.fields.length > 0;
+
+    case 'ConstructorPattern':
+      // Constructor patterns with fields are destructuring
+      return pattern.patterns.length > 0;
+
+    case 'TuplePattern':
+      // Tuple patterns are destructuring
+      return pattern.patterns.length > 0;
+
+    default:
+      return false;
+  }
 }

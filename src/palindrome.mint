@@ -1,8 +1,8 @@
-λreverse(s:𝕊,acc:𝕊)→𝕊≡s{
-  ""→acc|
-  s→reverse(s.tail(),s.head()+acc)
+λreverse(lst:[ℤ])→[ℤ]≡lst{
+  []→[]|
+  [x,.xs]→reverse(xs)++[x]
 }
 
-λis_palindrome(s:𝕊)→𝔹=s=reverse(s,"")
+λisPalindrome(lst:[ℤ])→𝔹=lst=reverse(lst)
 
-λmain()→𝕊="racecar is palindrome: "+is_palindrome("racecar")+" | hello is palindrome: "+is_palindrome("hello")
+λmain()→𝔹=isPalindrome([1,2,3,2,1])

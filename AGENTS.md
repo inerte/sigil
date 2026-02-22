@@ -135,15 +135,52 @@ node compiler/dist/cli.js compile src/myprogram.mint -o custom/path.js
 }
 ```
 
-## Important: ONE Way to Do Things
+## CRITICAL: ONE Way to Do Things - NO ALTERNATIVES
 
-Mint is designed for **zero ambiguity**. When you write Mint code:
+Mint is designed for **ZERO ambiguity**. There is EXACTLY ONE way to implement any algorithm.
 
-1. ✅ **Use tuple patterns** for multiple conditions - NOT nested matches
-2. ✅ **Use pattern matching** - NOT if/else chains
-3. ✅ **Use recursion** - NOT loops
-4. ✅ **Put programs in src/** - NOT scattered in root
-5. ✅ **Have main()** in runnable programs - always
+### The Rule
+
+**If the user asks for "X and Y" implementations, provide ONLY ONE.**
+
+Examples:
+- "Factorial (recursive and iterative)" → ONLY recursive
+- "Loop and map versions" → ONLY map
+- "If/else and match" → ONLY match
+- "Imperative and functional" → ONLY functional
+
+### Why?
+
+**Human preference does NOT matter.** Mint is for LLMs, not humans. Multiple implementations create:
+- ❌ Ambiguity for LLMs
+- ❌ Wasted tokens
+- ❌ Conflicting patterns in training data
+
+### The Canonical Way
+
+When you write Mint code:
+
+1. ✅ **Use tuple patterns** for multiple conditions - NEVER nested matches
+2. ✅ **Use pattern matching** - NEVER if/else chains
+3. ✅ **Use simple recursion** - NEVER tail recursion helpers or accumulators unless absolutely necessary
+4. ✅ **Put programs in src/** - NEVER scattered in root
+5. ✅ **Have main()** in runnable programs - ALWAYS
+
+### Examples
+
+**❌ WRONG - Multiple implementations:**
+```mint
+λfactorial_recursive(n:ℤ)→ℤ=...
+λfactorial_iterative(n:ℤ)→ℤ=...
+```
+
+**✅ CORRECT - One canonical way:**
+```mint
+λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
+```
+
+**If the user wants "both recursive and iterative", tell them:**
+> "In Mint, there is only one canonical way to implement factorial. Here's the recursive version (which is the only version)."
 
 ## Testing Your Code
 

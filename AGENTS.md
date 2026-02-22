@@ -1,5 +1,32 @@
 # Claude Code Instructions for Mint Programming Language
 
+## Language Philosophy: Canonical Forms Only
+
+Mint is a **canonicalization-enforced** language. Every algorithm has exactly ONE valid representation.
+
+**Blocked Techniques (Compile-Time Errors):**
+- Tail-call optimization (TCO)
+- Accumulator-passing style
+- Continuation-passing style (CPS)
+- Trampolines
+- Y combinator / Fixed-point combinators
+- Mutual recursion / Co-recursion
+- Helper functions / Auxiliary functions
+- Closure-based state encoding
+- Boolean pattern matching (when value matching works)
+- Multi-field records as recursive parameters
+- Collection types (lists, tuples, maps) as recursive parameters
+
+**Enforced Techniques (Only Valid Forms):**
+- Primitive recursion (direct recursive calls)
+- Direct style (no continuations)
+- Value-based pattern matching
+- Single primitive parameter for recursive functions
+- Self-contained function definitions
+- Syntactic uniqueness (one syntax per semantic meaning)
+
+This ensures **zero ambiguity** for LLM code generation and training data quality.
+
 ## Project Structure
 
 ```
@@ -135,11 +162,17 @@ node compiler/dist/cli.js compile src/myprogram.mint -o custom/path.js
 }
 ```
 
-## CRITICAL: ONE Way to Do Things - COMPILER ENFORCED
+## CRITICAL: Canonical Form Enforcement - COMPILER ENFORCED
 
-Mint is designed for **ZERO ambiguity**. There is EXACTLY ONE way to implement any algorithm.
+Mint enforces **canonical forms** for all code. Every algorithm has exactly ONE syntactically valid representation.
 
-**THIS IS ENFORCED BY THE COMPILER** - not just a suggestion.
+**Computer Science Terms:**
+- **Canonical form**: Unique normal form for equivalent programs
+- **Syntactic uniqueness**: One syntax per semantic meaning
+- **Deterministic code synthesis**: Eliminates ambiguity in code generation
+- **Normalization**: Reducing programs to standard form
+
+**THIS IS ENFORCED BY STATIC ANALYSIS** at compile-time - not just a suggestion.
 
 ### The Rule
 
@@ -153,11 +186,15 @@ Examples:
 
 ### Compiler-Enforced Rules
 
-The Mint compiler will **reject** code that violates these rules:
+The Mint compiler uses **static analysis** to reject non-canonical code:
 
-#### Rule 1: Recursive functions can have ONLY ONE parameter
+#### Rule 1: Recursive functions can have ONLY ONE primitive parameter
 
-**Why:** Prevents accumulator-style tail recursion (which is an alternative way)
+**Why:** Blocks accumulator-passing style and tail-call optimization patterns
+
+**CS Terms:**
+- Blocks: Tail recursion, accumulator-passing style, iterative encodings
+- Enforces: Primitive recursion, direct style
 
 ```mint
 ✅ COMPILES:
@@ -170,9 +207,14 @@ Error: Recursive function 'factorial' has 2 parameters.
        Recursive functions must have exactly ONE parameter.
 ```
 
-#### Rule 2: No helper functions
+#### Rule 2: No auxiliary functions
 
-**Why:** Helper functions enable alternative implementations (like tail-recursion wrappers)
+**Why:** Auxiliary functions enable alternative implementations via function composition
+
+**CS Terms:**
+- Blocks: Helper functions, auxiliary functions, wrapper patterns
+- Detects: Call graph analysis for single-caller detection
+- Enforces: Self-contained function definitions
 
 ```mint
 ✅ COMPILES - single function:
@@ -187,22 +229,65 @@ Error: Function 'helper' is only called by 'factorial'.
        Helper functions are not allowed.
 ```
 
-### Why?
+#### Rule 3: Canonical pattern matching only
 
-**Human preference does NOT matter.** Mint is for LLMs, not humans. Multiple implementations create:
-- ❌ Ambiguity for LLMs
-- ❌ Wasted tokens
-- ❌ Conflicting patterns in training data
+**Why:** Syntactic variations pollute training data
 
-### The Canonical Way
+**CS Terms:**
+- Blocks: Boolean pattern matching when value matching possible
+- Blocks: Syntactic alternatives for identical semantics
+- Enforces: Most direct pattern matching form
+- Uses: AST analysis to detect pattern redundancy
 
-When you write Mint code:
+### Why Canonical Forms?
 
-1. ✅ **Use tuple patterns** for multiple conditions - NEVER nested matches
-2. ✅ **Use pattern matching** - NEVER if/else chains
-3. ✅ **Use simple recursion** - NEVER tail recursion helpers or accumulators unless absolutely necessary
-4. ✅ **Put programs in src/** - NEVER scattered in root
-5. ✅ **Have main()** in runnable programs - ALWAYS
+**Human preference does NOT matter.** Mint optimizes for machine learning, not human ergonomics.
+
+**Training Data Quality:**
+- ❌ Syntactic ambiguity → inconsistent code generation
+- ❌ Multiple representations → wasted model capacity
+- ❌ Algorithmic alternatives → conflicting patterns in training
+- ✅ Canonical forms → deterministic, unambiguous synthesis
+
+**CS Foundation:**
+Like λ-calculus normal forms or term rewriting canonical forms, Mint ensures each semantic concept has exactly one syntactic representation.
+
+### What Mint Supports (and Blocks)
+
+**Recursion:**
+- ✅ DO: Primitive recursion (direct recursive calls)
+- ❌ BLOCKED: Tail-call optimization
+- ❌ BLOCKED: Accumulator-passing style
+- ❌ BLOCKED: Continuation-passing style (CPS)
+- ❌ BLOCKED: Trampolines
+- ❌ BLOCKED: Y combinator / fixed-point combinators
+- ❌ BLOCKED: Mutual recursion
+
+**Functions:**
+- ✅ DO: Direct style (one function per algorithm)
+- ❌ BLOCKED: Helper functions / auxiliary functions
+- ❌ BLOCKED: Function composition for control flow
+- ❌ BLOCKED: Closure-based state encoding
+
+**Pattern Matching:**
+- ✅ DO: Direct value matching (`≡n{0→...|n→...}`)
+- ✅ DO: Tuple patterns for complex conditions (`≡(x>0,y>0){...}`)
+- ❌ BLOCKED: Boolean matching when value matching works
+- ❌ BLOCKED: Syntactic alternatives (multiple ways to write same match)
+
+**Data Structures:**
+- ✅ DO: Primitive types (ℤ, 𝕊, 𝔹, 𝕌)
+- ✅ DO: Single-field records (not encoding multiple values)
+- ❌ BLOCKED: Multi-field records for recursive state
+- ❌ BLOCKED: Lists/tuples as recursive parameters
+- ❌ BLOCKED: Closure-based state
+
+**Code Organization:**
+- ✅ DO: Self-contained functions
+- ✅ DO: Programs in `src/`
+- ✅ DO: `main()` as entry point
+- ❌ BLOCKED: Helper function patterns
+- ❌ BLOCKED: Files scattered in root
 
 ### Examples
 
@@ -218,7 +303,13 @@ When you write Mint code:
 ```
 
 **If the user wants "both recursive and iterative", tell them:**
-> "In Mint, there is only one canonical way to implement factorial. Here's the recursive version (which is the only version)."
+> "Mint does NOT support tail-call optimization or accumulator-passing style. There is only primitive recursion (the canonical form)."
+
+**If the user wants "helper functions", tell them:**
+> "Mint does NOT support auxiliary functions. Each function must be self-contained."
+
+**If the user wants "boolean matching", tell them:**
+> "Mint requires direct value matching when possible. Boolean pattern matching is only allowed for complex conditions."
 
 ## Testing Your Code
 

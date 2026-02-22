@@ -194,7 +194,10 @@ export type Expr =
   | TupleExpr
   | FieldAccessExpr
   | IndexExpr
-  | PipelineExpr;
+  | PipelineExpr
+  | MapExpr
+  | FilterExpr
+  | FoldExpr;
 
 export interface LiteralExpr {
   type: 'LiteralExpr';
@@ -324,6 +327,29 @@ export interface PipelineExpr {
   left: Expr;
   operator: '|>' | '>>' | '<<';
   right: Expr;
+  location: SourceLocation;
+}
+
+// Built-in list operations (language constructs, not functions)
+export interface MapExpr {
+  type: 'MapExpr';
+  list: Expr;
+  fn: Expr;
+  location: SourceLocation;
+}
+
+export interface FilterExpr {
+  type: 'FilterExpr';
+  list: Expr;
+  predicate: Expr;
+  location: SourceLocation;
+}
+
+export interface FoldExpr {
+  type: 'FoldExpr';
+  list: Expr;
+  fn: Expr;
+  init: Expr;
   location: SourceLocation;
 }
 

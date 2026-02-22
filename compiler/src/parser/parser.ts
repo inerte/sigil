@@ -424,10 +424,10 @@ export class Parser {
   }
 
   private pipeline(): AST.Expr {
-    let expr = this.logical();
+    let expr = this.listOperations();
 
     while (this.match(TokenType.PIPE)) {
-      const right = this.logical();
+      const right = this.listOperations();
       expr = {
         type: 'PipelineExpr',
         left: expr,
@@ -435,6 +435,54 @@ export class Parser {
         right,
         location: this.makeLocation(expr.location.start, this.previous().end),
       };
+    }
+
+    return expr;
+  }
+
+  private listOperations(): AST.Expr {
+    let expr = this.logical();
+
+    // Built-in list operations (language constructs, not functions)
+    // Parse left-to-right: [1,2,3] ⊳ λx→x>0 ↦ λx→x*2 ⊕ λ(a,x)→a+x ⊕ 0
+    while (true) {
+      const start = expr.location.start;
+
+      if (this.match(TokenType.MAP)) {
+        // [1,2,3] ↦ λx→x*2
+        const fn = this.logical();
+        expr = {
+          type: 'MapExpr',
+          list: expr,
+          fn,
+          location: this.makeLocation(start, this.previous().end),
+        };
+      } else if (this.match(TokenType.FILTER)) {
+        // [1,2,3] ⊳ λx→x>1
+        const predicate = this.logical();
+        expr = {
+          type: 'FilterExpr',
+          list: expr,
+          predicate,
+          location: this.makeLocation(start, this.previous().end),
+        };
+      } else if (this.match(TokenType.FOLD)) {
+        // [1,2,3] ⊕ λ(acc,x)→acc+x ⊕ 0
+        // First operand is the folding function (parse at same level to avoid consuming next ⊕)
+        const fn = this.logical();
+        // Second ⊕ with the initial value
+        this.consume(TokenType.FOLD, 'Expected "⊕" before initial value');
+        const init = this.logical();
+        expr = {
+          type: 'FoldExpr',
+          list: expr,
+          fn,
+          init,
+          location: this.makeLocation(start, this.previous().end),
+        };
+      } else {
+        break;
+      }
     }
 
     return expr;
@@ -687,8 +735,7 @@ export class Parser {
     }
 
     // Let binding: l x=value;body
-    if (this.checkIdentifier('l')) {
-      this.advance();
+    if (this.match(TokenType.LET)) {
       return this.letExpr();
     }
 

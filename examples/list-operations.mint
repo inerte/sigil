@@ -1,3 +1,17 @@
-λmap[T,U](fn:λ(T)→U,list:[T])→[U]≡list{[]→[]|[x,.xs]→[fn(x),.map(fn,xs)]}
-λfilter[T](pred:λ(T)→𝔹,list:[T])→[T]≡list{[]→[]|[x,.xs]→≡pred(x){⊤→[x,.filter(pred,xs)]|⊥→filter(pred,xs)}}
-λreduce[T,U](fn:λ(U,T)→U,init:U,list:[T])→U≡list{[]→init|[x,.xs]→reduce(fn,fn(init,x),xs)}
+// Built-in list operations demonstration
+
+// Map: [1,2,3] ↦ λx→x*2
+λdouble_all(xs:[ℤ])→[ℤ]=xs↦λx→x*2
+
+// Filter: [1,2,3,4,5] ⊳ λx→x>2
+λkeep_large(xs:[ℤ])→[ℤ]=xs⊳λx→x>2
+
+// Fold: [1,2,3] ⊕ λ(acc,x)→acc+x ⊕ 0
+λsum(xs:[ℤ])→ℤ=xs⊕(λ(acc,x)→acc+x)⊕0
+
+// Chaining: filter, then map
+λfilter_then_map(xs:[ℤ])→[ℤ]=(xs⊳λx→x>0)↦λx→x*x
+
+λmain()→ℤ=
+  l nums=[1,2,3,4,5];
+  sum(nums)

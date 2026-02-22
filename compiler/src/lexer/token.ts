@@ -60,6 +60,11 @@ export enum TokenType {
 
   APPEND = 'APPEND',           // ++
 
+  // List operations (built-in language constructs)
+  MAP = 'MAP',                 // ↦
+  FILTER = 'FILTER',           // ⊳
+  FOLD = 'FOLD',               // ⊕
+
   // Delimiters
   LPAREN = 'LPAREN',           // (
   RPAREN = 'RPAREN',           // )

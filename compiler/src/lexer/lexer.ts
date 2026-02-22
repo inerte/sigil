@@ -200,6 +200,17 @@ export class Lexer {
         this.addToken(TokenType.NOT, '¬', start);
         break;
 
+      // List operations (built-in)
+      case '↦':
+        this.addToken(TokenType.MAP, '↦', start);
+        break;
+      case '⊳':
+        this.addToken(TokenType.FILTER, '⊳', start);
+        break;
+      case '⊕':
+        this.addToken(TokenType.FOLD, '⊕', start);
+        break;
+
       // Unicode keywords
       case 'λ':
         this.addToken(TokenType.LAMBDA, 'λ', start);

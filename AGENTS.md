@@ -135,9 +135,11 @@ node compiler/dist/cli.js compile src/myprogram.mint -o custom/path.js
 }
 ```
 
-## CRITICAL: ONE Way to Do Things - NO ALTERNATIVES
+## CRITICAL: ONE Way to Do Things - COMPILER ENFORCED
 
 Mint is designed for **ZERO ambiguity**. There is EXACTLY ONE way to implement any algorithm.
+
+**THIS IS ENFORCED BY THE COMPILER** - not just a suggestion.
 
 ### The Rule
 
@@ -148,6 +150,42 @@ Examples:
 - "Loop and map versions" → ONLY map
 - "If/else and match" → ONLY match
 - "Imperative and functional" → ONLY functional
+
+### Compiler-Enforced Rules
+
+The Mint compiler will **reject** code that violates these rules:
+
+#### Rule 1: Recursive functions can have ONLY ONE parameter
+
+**Why:** Prevents accumulator-style tail recursion (which is an alternative way)
+
+```mint
+✅ COMPILES:
+λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
+
+❌ COMPILE ERROR - 2 parameters:
+λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}
+
+Error: Recursive function 'factorial' has 2 parameters.
+       Recursive functions must have exactly ONE parameter.
+```
+
+#### Rule 2: No helper functions
+
+**Why:** Helper functions enable alternative implementations (like tail-recursion wrappers)
+
+```mint
+✅ COMPILES - single function:
+λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
+λmain()→ℤ=factorial(5)
+
+❌ COMPILE ERROR - helper pattern:
+λhelper(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→helper(n-1,n*acc)}
+λfactorial(n:ℤ)→ℤ=helper(n,1)
+
+Error: Function 'helper' is only called by 'factorial'.
+       Helper functions are not allowed.
+```
 
 ### Why?
 

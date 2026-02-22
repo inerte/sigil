@@ -11,6 +11,7 @@ import { tokenize } from './lexer/lexer.js';
 import { tokenToString } from './lexer/token.js';
 import { parse } from './parser/parser.js';
 import { compile } from './codegen/javascript.js';
+import { validateCanonicalForm } from './validator/canonical.js';
 
 function main() {
   const args = process.argv.slice(2);
@@ -167,6 +168,10 @@ function compileCommand(args: string[]) {
     const source = readFileSync(filename, 'utf-8');
     const tokens = tokenize(source);
     const ast = parse(tokens);
+
+    // Validate canonical form (enforces ONE way)
+    validateCanonicalForm(ast);
+
     const jsCode = compile(ast);
 
     // Ensure output directory exists
@@ -205,6 +210,10 @@ function runCommand(args: string[]) {
     const source = readFileSync(filename, 'utf-8');
     const tokens = tokenize(source);
     const ast = parse(tokens);
+
+    // Validate canonical form (enforces ONE way)
+    validateCanonicalForm(ast);
+
     const jsCode = compile(ast);
 
     // Ensure .local exists

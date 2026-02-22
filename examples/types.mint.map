@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "file": "types.mint",
+  "generated_by": "claude-opus-4.6",
+  "generated_at": "2026-02-21T10:00:00Z",
+  "mappings": {
+    "Option": {
+      "range": [0, 27],
+      "summary": "Represents an optional value that may or may not exist",
+      "explanation": "Option[T] is a sum type with two variants:\n- Some(T): Contains a value of type T\n- None: Represents absence of a value\n\nThis is Mint's safe alternative to null/undefined. All optional values must be explicitly handled.",
+      "type": "∀T.type",
+      "examples": [
+        "Some(5) : Option[ℤ]",
+        "None : Option[𝕊]",
+        "≡maybe_value{Some(v)→v|None→0}"
+      ],
+      "related": ["Result"],
+      "metadata": {
+        "kind": "sum_type",
+        "variants": ["Some", "None"]
+      }
+    },
+    "Result": {
+      "range": [28, 55],
+      "summary": "Represents a computation that may succeed or fail",
+      "explanation": "Result[T,E] is a sum type for error handling:\n- Ok(T): Successful result containing value of type T\n- Err(E): Error case containing error of type E\n\nMint uses Result instead of exceptions for explicit error handling.",
+      "type": "∀T,E.type",
+      "examples": [
+        "Ok(42) : Result[ℤ,𝕊]",
+        "Err(\"Division by zero\") : Result[ℤ,𝕊]",
+        "≡result{Ok(v)→v|Err(e)→panic(e)}"
+      ],
+      "related": ["Option"],
+      "metadata": {
+        "kind": "sum_type",
+        "variants": ["Ok", "Err"]
+      }
+    },
+    "User": {
+      "range": [56, 95],
+      "summary": "Represents a user account",
+      "explanation": "User is a product type (record) with fields:\n- id: Unique integer identifier\n- name: User's display name\n- email: User's email address\n- active: Whether the account is active",
+      "type": "type",
+      "examples": [
+        "{id:1,name:\"Alice\",email:\"alice@example.com\",active:⊤}",
+        "user.name (* Access name field *)"
+      ],
+      "metadata": {
+        "kind": "product_type",
+        "fields": ["id", "name", "email", "active"]
+      }
+    },
+    "Color": {
+      "range": [96, 120],
+      "summary": "Represents RGB colors",
+      "explanation": "Color is an enumeration with three variants:\n- Red: Red color\n- Green: Green color\n- Blue: Blue color\n\nSimple sum type without associated data.",
+      "type": "type",
+      "examples": [
+        "Red : Color",
+        "≡color{Red→\"#FF0000\"|Green→\"#00FF00\"|Blue→\"#0000FF\"}"
+      ],
+      "metadata": {
+        "kind": "sum_type",
+        "variants": ["Red", "Green", "Blue"]
+      }
+    },
+    "Tree": {
+      "range": [121, 167],
+      "summary": "Binary tree data structure",
+      "explanation": "Tree[T] is a recursive sum type representing a binary tree:\n- Leaf(T): Leaf node containing a value\n- Node(Tree[T], T, Tree[T]): Internal node with left subtree, value, and right subtree\n\nThis is a classic recursive algebraic data type.",
+      "type": "∀T.type",
+      "examples": [
+        "Leaf(5) : Tree[ℤ]",
+        "Node(Leaf(1),2,Leaf(3)) : Tree[ℤ]"
+      ],
+      "metadata": {
+        "kind": "sum_type",
+        "variants": ["Leaf", "Node"],
+        "recursive": true
+      }
+    }
+  },
+  "metadata": {
+    "intent": "Common algebraic data type definitions",
+    "category": "data_structure",
+    "tested": false
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "name": "mint-lang",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Mint - A machine-first programming language optimized for AI code generation",
+  "private": true,
+  "workspaces": [
+    "compiler",
+    "tools/*"
+  ],
+  "scripts": {
+    "build": "pnpm --filter @mint-lang/compiler build",
+    "test": "pnpm -r test",
+    "lex": "node compiler/dist/cli.js lex"
+  },
+  "packageManager": "pnpm@9.0.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/mint-lang"
+  },
+  "keywords": [
+    "programming-language",
+    "compiler",
+    "ai-first",
+    "machine-first",
+    "functional-programming",
+    "type-inference",
+    "llm-optimized"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {}
+}

@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "file": "fibonacci.mint",
+  "generated_by": "claude-opus-4.6",
+  "generated_at": "2026-02-21T10:00:00Z",
+  "mappings": {
+    "fibonacci": {
+      "range": [0, 67],
+      "summary": "Computes the nth Fibonacci number recursively",
+      "explanation": "This function calculates Fibonacci numbers using the classic recursive approach. Base cases return 0 for n=0 and 1 for n=1. For other values, it sums the previous two Fibonacci numbers.\n\nThe Fibonacci sequence: 0, 1, 1, 2, 3, 5, 8, 13, ...",
+      "type": "λ(ℤ)→ℤ",
+      "complexity": "O(2^n) time, O(n) space",
+      "warnings": [
+        "Inefficient for large n due to exponential time complexity",
+        "No memoization - recalculates same values repeatedly",
+        "Consider iterative or memoized version for n > 30"
+      ],
+      "examples": [
+        "fibonacci(0) = 0",
+        "fibonacci(1) = 1",
+        "fibonacci(5) = 5",
+        "fibonacci(10) = 55"
+      ],
+      "related": ["factorial"],
+      "metadata": {
+        "pure": true,
+        "recursive": true,
+        "tail_recursive": false
+      }
+    },
+    "match_arm_0": {
+      "range": [22, 26],
+      "summary": "Base case: F(0) = 0",
+      "explanation": "When n is 0, return 0 as the first Fibonacci number"
+    },
+    "match_arm_1": {
+      "range": [27, 31],
+      "summary": "Base case: F(1) = 1",
+      "explanation": "When n is 1, return 1 as the second Fibonacci number"
+    },
+    "match_arm_2": {
+      "range": [32, 67],
+      "summary": "Recursive case: F(n) = F(n-1) + F(n-2)",
+      "explanation": "For any other n, compute by adding the two previous Fibonacci numbers. This creates a binary tree of recursive calls."
+    }
+  },
+  "metadata": {
+    "intent": "Classic recursive Fibonacci implementation for educational purposes",
+    "category": "pure_function",
+    "tested": true,
+    "performance_profile": "exponential_time"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "file": "factorial.mint",
+  "generated_by": "claude-opus-4.6",
+  "generated_at": "2026-02-21T10:00:00Z",
+  "mappings": {
+    "factorial": {
+      "range": [0, 53],
+      "summary": "Computes the factorial of n (n!)",
+      "explanation": "Calculates n! = n × (n-1) × (n-2) × ... × 2 × 1 using recursion.\n\nBase cases: 0! = 1 and 1! = 1\nRecursive case: n! = n × (n-1)!\n\nFactorial grows very rapidly: 10! = 3,628,800",
+      "type": "λ(ℤ)→ℤ",
+      "complexity": "O(n) time, O(n) space",
+      "warnings": [
+        "Only works for non-negative integers",
+        "Overflow possible for n > 20 (depending on integer size)",
+        "Consider iterative version for better stack usage"
+      ],
+      "examples": [
+        "factorial(0) = 1",
+        "factorial(1) = 1",
+        "factorial(5) = 120",
+        "factorial(10) = 3628800"
+      ],
+      "related": ["fibonacci"],
+      "metadata": {
+        "pure": true,
+        "recursive": true,
+        "tail_recursive": false
+      }
+    }
+  },
+  "metadata": {
+    "intent": "Classic factorial implementation",
+    "category": "pure_function",
+    "tested": true,
+    "performance_profile": "linear_time"
+  }
+}

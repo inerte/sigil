@@ -1,0 +1,72 @@
+{
+  "version": 1,
+  "file": "list-operations.mint",
+  "generated_by": "claude-opus-4.6",
+  "generated_at": "2026-02-21T10:00:00Z",
+  "mappings": {
+    "map": {
+      "range": [0, 77],
+      "summary": "Transforms each element of a list using a function",
+      "explanation": "Applies function fn to each element of the input list, returning a new list with the transformed values.\n\nThis is a fundamental higher-order function in functional programming. It preserves list structure while transforming values.",
+      "type": "∀T,U.λ(λ(T)→U,[T])→[U]",
+      "complexity": "O(n) time, O(n) space",
+      "warnings": [],
+      "examples": [
+        "map(λx→x*2,[1,2,3]) = [2,4,6]",
+        "map(λs→length(s),[\"hi\",\"hello\"]) = [2,5]",
+        "map(λx→x,[1,2,3]) = [1,2,3] (identity)"
+      ],
+      "related": ["filter", "reduce"],
+      "metadata": {
+        "pure": true,
+        "recursive": true,
+        "hof": true
+      }
+    },
+    "filter": {
+      "range": [78, 186],
+      "summary": "Keeps only elements that satisfy a predicate",
+      "explanation": "Returns a new list containing only elements where pred(x) returns true.\n\nIf predicate is true for element x, include it in result. Otherwise, skip it.",
+      "type": "∀T.λ(λ(T)→𝔹,[T])→[T]",
+      "complexity": "O(n) time, O(n) space",
+      "warnings": [],
+      "examples": [
+        "filter(λx→x>0,[1,-2,3,-4,5]) = [1,3,5]",
+        "filter(λx→x%2=0,[1,2,3,4,5,6]) = [2,4,6]",
+        "filter(λx→⊤,[1,2,3]) = [1,2,3] (keeps all)"
+      ],
+      "related": ["map", "reduce"],
+      "metadata": {
+        "pure": true,
+        "recursive": true,
+        "hof": true
+      }
+    },
+    "reduce": {
+      "range": [187, 272],
+      "summary": "Combines all elements of a list into a single value",
+      "explanation": "Reduces a list to a single value by repeatedly applying function fn.\n\nStarts with init value, then for each element x:\naccumulator = fn(accumulator, x)\n\nAlso known as 'fold' or 'accumulate' in other languages.",
+      "type": "∀T,U.λ(λ(U,T)→U,U,[T])→U",
+      "complexity": "O(n) time, O(n) space",
+      "warnings": [],
+      "examples": [
+        "reduce(λ(acc,x)→acc+x,0,[1,2,3,4]) = 10",
+        "reduce(λ(acc,x)→acc*x,1,[2,3,4]) = 24",
+        "reduce(λ(acc,x)→[x,.acc],[],[1,2,3]) = [3,2,1] (reverse)"
+      ],
+      "related": ["map", "filter"],
+      "metadata": {
+        "pure": true,
+        "recursive": true,
+        "hof": true,
+        "tail_recursive": true
+      }
+    }
+  },
+  "metadata": {
+    "intent": "Core higher-order list processing functions",
+    "category": "pure_function",
+    "tested": true,
+    "performance_profile": "linear_time"
+  }
+}

@@ -1,0 +1,417 @@
+(* Mint Programming Language - Formal Grammar (EBNF) *)
+(* Version: 1.0.0 *)
+(* Last Updated: 2026-02-21 *)
+
+(* ============================================================================ *)
+(* DESIGN PRINCIPLE: Exactly ONE way to write each construct                   *)
+(* - No optional syntax                                                         *)
+(* - No syntactic sugar                                                         *)
+(* - Canonical formatting enforced at parse time                                *)
+(* ============================================================================ *)
+
+(* ============================================================================ *)
+(* PROGRAM STRUCTURE                                                            *)
+(* ============================================================================ *)
+
+Program = { TopLevelDecl } ;
+
+TopLevelDecl = FunctionDecl
+             | TypeDecl
+             | ImportDecl
+             | ConstDecl ;
+
+(* ============================================================================ *)
+(* IMPORTS                                                                      *)
+(* ============================================================================ *)
+
+ImportDecl = "i" , ModulePath , [ "{" , ImportList , "}" ] ;
+ModulePath = Identifier , { "/" , Identifier } ;
+ImportList = Identifier , { "," , Identifier } ;
+
+(* Example: i std/io{print,read} *)
+
+(* ============================================================================ *)
+(* TYPE DECLARATIONS                                                            *)
+(* ============================================================================ *)
+
+TypeDecl = "t" , TypeName , [ TypeParams ] , "=" , TypeDef ;
+
+TypeName = UpperIdentifier ;
+TypeParams = "[" , TypeParam , { "," , TypeParam } , "]" ;
+TypeParam = UpperIdentifier ;
+
+TypeDef = SumType | ProductType | TypeAlias ;
+
+(* Sum Types (tagged unions) *)
+SumType = Variant , { "|" , Variant } ;
+Variant = UpperIdentifier , [ "(" , TypeList , ")" ] ;
+
+(* Product Types (records/structs) *)
+ProductType = "{" , FieldList , "}" ;
+FieldList = Field , { "," , Field } ;
+Field = Identifier , ":" , Type ;
+
+(* Type Aliases *)
+TypeAlias = Type ;
+
+(* Examples:
+   t Option[T]=Some(T)|None
+   t Result[T,E]=Ok(T)|Err(E)
+   t User={id:ℤ,name:𝕊,email:𝕊}
+*)
+
+(* ============================================================================ *)
+(* TYPE EXPRESSIONS                                                             *)
+(* ============================================================================ *)
+
+Type = PrimitiveType
+     | ListType
+     | MapType
+     | FunctionType
+     | TypeConstructor
+     | TypeVariable ;
+
+PrimitiveType = "ℤ"     (* Int *)
+              | "ℝ"     (* Float *)
+              | "𝔹"     (* Bool *)
+              | "𝕊"     (* String *)
+              | "ℂ"     (* Char *)
+              | "𝕌"     (* Unit *)
+              ;
+
+(* Shorthand aliases (deprecated in favor of Unicode) *)
+(* I = Int, F = Float, B = Bool, S = String, C = Char, U = Unit *)
+
+ListType = "[" , Type , "]" ;
+MapType = "{" , Type , ":" , Type , "}" ;
+FunctionType = "λ(" , [ TypeList ] , ")" , "→" , Type ;
+TypeConstructor = TypeName , [ "[" , TypeList , "]" ] ;
+TypeVariable = UpperIdentifier ;
+TypeList = Type , { "," , Type } ;
+
+(* Examples:
+   [ℤ]               List of integers
+   {𝕊:ℤ}             Map from string to int
+   λ(ℤ,ℤ)→ℤ          Function taking two ints, returning int
+   Option[𝕊]         Type constructor application
+*)
+
+(* ============================================================================ *)
+(* FUNCTION DECLARATIONS                                                        *)
+(* ============================================================================ *)
+
+FunctionDecl = "λ" , Identifier , "(" , [ ParamList ] , ")" , [ "→" , Type ] , "=" , Expr ;
+
+ParamList = Param , { "," , Param } ;
+Param = Identifier , [ ":" , Type ] ;
+
+(* Examples:
+   λadd(x:ℤ,y:ℤ)→ℤ=x+y
+   λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
+*)
+
+(* ============================================================================ *)
+(* CONSTANT DECLARATIONS                                                        *)
+(* ============================================================================ *)
+
+ConstDecl = "c" , Identifier , [ ":" , Type ] , "=" , Expr ;
+
+(* Example: c PI:ℝ=3.14159 *)
+
+(* ============================================================================ *)
+(* EXPRESSIONS                                                                  *)
+(* ============================================================================ *)
+
+Expr = MatchExpr
+     | LetExpr
+     | LambdaExpr
+     | IfExpr
+     | BinaryExpr
+     | UnaryExpr
+     | ApplicationExpr
+     | PrimaryExpr ;
+
+(* ============================================================================ *)
+(* PATTERN MATCHING (Primary Control Flow)                                     *)
+(* ============================================================================ *)
+
+MatchExpr = "≡" , Expr , "{" , MatchArm , { "|" , MatchArm } , "}" ;
+MatchArm = Pattern , "→" , Expr ;
+
+Pattern = LiteralPattern
+        | VariablePattern
+        | WildcardPattern
+        | ConstructorPattern
+        | ListPattern
+        | RecordPattern ;
+
+LiteralPattern = Literal ;
+VariablePattern = Identifier ;
+WildcardPattern = "_" ;
+ConstructorPattern = UpperIdentifier , [ "(" , PatternList , ")" ] ;
+ListPattern = "[" , [ PatternList ] , "]" | "[" , Pattern , "," , ".." , Identifier , "]" ;
+RecordPattern = "{" , FieldPatternList , "}" ;
+
+PatternList = Pattern , { "," , Pattern } ;
+FieldPatternList = FieldPattern , { "," , FieldPattern } ;
+FieldPattern = Identifier , [ ":" , Pattern ] ;
+
+(* Examples:
+   ≡x{0→"zero"|1→"one"|_→"many"}
+   ≡option{Some(v)→v|None→0}
+   ≡list{[]→0|[x,..]→x}
+*)
+
+(* ============================================================================ *)
+(* LET BINDINGS                                                                 *)
+(* ============================================================================ *)
+
+LetExpr = "l" , Pattern , "=" , Expr , ";" , Expr ;
+
+(* Example: l x=5;x+10 *)
+
+(* ============================================================================ *)
+(* LAMBDA EXPRESSIONS                                                           *)
+(* ============================================================================ *)
+
+LambdaExpr = "λ" , [ ParamList ] , "→" , Expr ;
+
+(* Example: λx→x*2 *)
+
+(* ============================================================================ *)
+(* IF EXPRESSIONS (Syntactic Sugar for Match on Bool)                          *)
+(* ============================================================================ *)
+
+IfExpr = "≡" , Expr , "{" , "⊤" , "→" , Expr , "|" , "⊥" , "→" , Expr , "}" ;
+
+(* Note: Could be removed in favor of pure match, keeping for convenience *)
+(* Example: ≡x>0{⊤→"positive"|⊥→"not positive"} *)
+
+(* ============================================================================ *)
+(* BINARY EXPRESSIONS                                                           *)
+(* ============================================================================ *)
+
+BinaryExpr = Expr , BinaryOp , Expr ;
+
+BinaryOp = ArithOp | CompOp | LogicOp | PipeOp ;
+
+ArithOp = "+" | "-" | "*" | "/" | "%" | "^" ;
+CompOp = "=" | "≠" | "<" | ">" | "≤" | "≥" ;
+LogicOp = "∧" | "∨" ;
+PipeOp = "|>" | ">>" | "<<" ;
+
+(* Operator Precedence (highest to lowest):
+   1. ^ (power)
+   2. * / % (multiplication, division, modulo)
+   3. + - (addition, subtraction)
+   4. = ≠ < > ≤ ≥ (comparison)
+   5. ∧ (logical and)
+   6. ∨ (logical or)
+   7. |> >> << (pipelines and composition)
+*)
+
+(* ============================================================================ *)
+(* UNARY EXPRESSIONS                                                            *)
+(* ============================================================================ *)
+
+UnaryExpr = UnaryOp , Expr ;
+UnaryOp = "-" | "¬" ;
+
+(* Examples: -5, ¬true *)
+
+(* ============================================================================ *)
+(* FUNCTION APPLICATION                                                         *)
+(* ============================================================================ *)
+
+ApplicationExpr = Expr , "(" , [ ExprList ] , ")" ;
+ExprList = Expr , { "," , Expr } ;
+
+(* Example: fibonacci(5) *)
+
+(* ============================================================================ *)
+(* PRIMARY EXPRESSIONS                                                          *)
+(* ============================================================================ *)
+
+PrimaryExpr = Literal
+            | Identifier
+            | ListLiteral
+            | RecordLiteral
+            | TupleLiteral
+            | "(" , Expr , ")" ;
+
+(* ============================================================================ *)
+(* LITERALS                                                                     *)
+(* ============================================================================ *)
+
+Literal = IntLiteral
+        | FloatLiteral
+        | BoolLiteral
+        | StringLiteral
+        | CharLiteral
+        | UnitLiteral ;
+
+IntLiteral = [ "-" ] , Digit , { Digit } ;
+FloatLiteral = [ "-" ] , Digit , { Digit } , "." , Digit , { Digit } ;
+BoolLiteral = "⊤" | "⊥" ;
+StringLiteral = '"' , { StringChar } , '"' ;
+CharLiteral = "'" , Char , "'" ;
+UnitLiteral = "()" ;
+
+(* ============================================================================ *)
+(* COLLECTION LITERALS                                                          *)
+(* ============================================================================ *)
+
+ListLiteral = "[" , [ ExprList ] , "]" ;
+RecordLiteral = "{" , FieldValueList , "}" ;
+TupleLiteral = "(" , Expr , "," , ExprList , ")" ;
+
+FieldValueList = FieldValue , { "," , FieldValue } ;
+FieldValue = Identifier , ":" , Expr ;
+
+(* Examples:
+   [1,2,3]
+   {id:42,name:"Alice",active:⊤}
+   (1,"hello",⊤)
+*)
+
+(* ============================================================================ *)
+(* IDENTIFIERS AND TOKENS                                                       *)
+(* ============================================================================ *)
+
+Identifier = LowerLetter , { Letter | Digit | "_" } ;
+UpperIdentifier = UpperLetter , { Letter | Digit | "_" } ;
+
+LowerLetter = "a" | "b" | "c" | "d" | "e" | "f" | "g" | "h" | "i" | "j" | "k" | "l" | "m"
+            | "n" | "o" | "p" | "q" | "r" | "s" | "t" | "u" | "v" | "w" | "x" | "y" | "z" ;
+
+UpperLetter = "A" | "B" | "C" | "D" | "E" | "F" | "G" | "H" | "I" | "J" | "K" | "L" | "M"
+            | "N" | "O" | "P" | "Q" | "R" | "S" | "T" | "U" | "V" | "W" | "X" | "Y" | "Z" ;
+
+Letter = LowerLetter | UpperLetter ;
+Digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+StringChar = ? any Unicode character except '"' and '\' ? | EscapeSeq ;
+Char = ? any Unicode character except "'" and '\' ? | EscapeSeq ;
+EscapeSeq = "\" , ( "n" | "t" | "r" | "\" | '"' | "'" ) ;
+
+(* ============================================================================ *)
+(* WHITESPACE AND COMMENTS                                                      *)
+(* ============================================================================ *)
+
+(* Whitespace: Space characters are significant only for token separation      *)
+(* Newlines: No significance (unlike Python)                                    *)
+(* Indentation: No significance (unlike Haskell)                                *)
+
+Comment = "//" , { ? any character except newline ? } , Newline ;
+
+(* ============================================================================ *)
+(* FORMATTING RULES (ENFORCED AT PARSE TIME)                                   *)
+(* ============================================================================ *)
+
+(* CANONICAL FORMATTING RULES:
+   1. NO spaces around operators: x+y not x + y
+   2. NO spaces in function calls: f(x,y) not f(x, y)
+   3. SINGLE space after commas in parameter lists: f(x,y) → f(x, y)
+   4. SINGLE space after ":" in type annotations: x:ℤ not x : ℤ
+   5. NO trailing whitespace on any line
+   6. EXACTLY one newline at EOF
+   7. Maximum one blank line between declarations
+   8. NO line length limit (machines don't care)
+
+   Violations of these rules result in PARSE ERROR, not warnings.
+*)
+
+(* ============================================================================ *)
+(* STANDARD LIBRARY PRELUDE (Auto-imported)                                    *)
+(* ============================================================================ *)
+
+(* The following types and functions are automatically available:
+
+   Types:
+   - Option[T] = Some(T) | None
+   - Result[T,E] = Ok(T) | Err(E)
+   - List[T]
+   - Map[K,V]
+   - Set[T]
+
+   Functions:
+   - map: λmap[T,U](fn:λ(T)→U,list:[T])→[U]
+   - filter: λfilter[T](pred:λ(T)→𝔹,list:[T])→[T]
+   - reduce: λreduce[T,U](fn:λ(U,T)→U,init:U,list:[T])→U
+   - print: λprint(value:𝕊)→𝕌!IO
+   - panic: λpanic(msg:𝕊)→∅
+
+   See stdlib/prelude.mint for full prelude.
+*)
+
+(* ============================================================================ *)
+(* UNICODE SYMBOLS REFERENCE                                                    *)
+(* ============================================================================ *)
+
+(* Keywords:
+   λ  - lambda (function)
+   →  - arrow (returns, maps-to)
+   ≡  - equivalent (pattern match)
+
+   Types:
+   ℤ  - integers (Z from number theory)
+   ℝ  - reals (R from number theory)
+   𝔹  - booleans (B double-struck)
+   𝕊  - strings (S double-struck)
+   ℂ  - characters (C from complex numbers, repurposed)
+   𝕌  - unit (U double-struck)
+
+   Operators:
+   ≠  - not equal
+   ≤  - less than or equal
+   ≥  - greater than or equal
+   ∧  - logical and
+   ∨  - logical or
+   ¬  - logical not
+   ∈  - element of (for iteration)
+   ⊤  - true (top)
+   ⊥  - false (bottom)
+   ∅  - empty/never (empty set)
+
+   Composition:
+   |> - pipe forward
+   >> - compose forward
+   << - compose backward
+*)
+
+(* ============================================================================ *)
+(* EFFECT SYSTEM (Future Extension)                                            *)
+(* ============================================================================ *)
+
+(* Functions can be annotated with effects:
+   λread_file(path:𝕊)→Result[𝕊,IoError]!IO
+
+   Effect syntax: !EffectName
+   Multiple effects: !IO!Async!Network
+
+   Pure functions have no effect annotation (default)
+*)
+
+(* ============================================================================ *)
+(* EXAMPLES                                                                     *)
+(* ============================================================================ *)
+
+(* Example 1: Fibonacci *)
+(* λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)} *)
+
+(* Example 2: Map function *)
+(* λmap[T,U](fn:λ(T)→U,list:[T])→[U]≡list{[]→[]|[x,.xs]→[fn(x),.map(fn,xs)]} *)
+
+(* Example 3: HTTP handler *)
+(* λhandle(req:Request)→Response!Error≡req.path{"/users"→get_users(req)|"/health"→Ok(Response{status:200,body:"OK"})|_→Err(Error{code:404,msg:"Not found"})} *)
+
+(* Example 4: Type definitions *)
+(* t Option[T]=Some(T)|None *)
+(* t Result[T,E]=Ok(T)|Err(E) *)
+(* t User={id:ℤ,name:𝕊,email:𝕊,active:𝔹} *)
+
+(* Example 5: Pipeline *)
+(* λprocess_users(users:[User])→[𝕊]=users|>filter(λu→u.active)|>map(λu→u.name) *)
+
+(* ============================================================================ *)
+(* END OF GRAMMAR                                                               *)
+(* ============================================================================ *)

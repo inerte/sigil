@@ -1,0 +1,89 @@
+{
+  "version": 1,
+  "file": "http-handler.mint",
+  "generated_by": "claude-opus-4.6",
+  "generated_at": "2026-02-21T10:00:00Z",
+  "mappings": {
+    "Request": {
+      "range": [0, 42],
+      "summary": "HTTP request type",
+      "explanation": "Represents an incoming HTTP request with:\n- path: URL path (e.g., '/users')\n- method: HTTP method (e.g., 'GET', 'POST')\n- body: Request body content",
+      "type": "type",
+      "metadata": {
+        "kind": "product_type",
+        "fields": ["path", "method", "body"]
+      }
+    },
+    "Response": {
+      "range": [43, 95],
+      "summary": "HTTP response type",
+      "explanation": "Represents an HTTP response with:\n- status: HTTP status code (200, 404, 500, etc.)\n- body: Response body content\n- headers: Map of header name to value",
+      "type": "type",
+      "metadata": {
+        "kind": "product_type",
+        "fields": ["status", "body", "headers"]
+      }
+    },
+    "Error": {
+      "range": [96, 121],
+      "summary": "HTTP error type",
+      "explanation": "Represents an HTTP error with:\n- code: Error code (usually matches HTTP status)\n- msg: Human-readable error message",
+      "type": "type",
+      "metadata": {
+        "kind": "product_type",
+        "fields": ["code", "msg"]
+      }
+    },
+    "handle_request": {
+      "range": [123, 299],
+      "summary": "Routes HTTP requests to appropriate handlers",
+      "explanation": "Main HTTP router that dispatches requests based on path:\n\n- /users: Delegates to get_users for user list\n- /health: Returns 200 OK for health checks\n- Other paths: Returns 404 Not Found\n\nReturns Result type to handle both success and error cases.",
+      "type": "λ(Request)→Result[Response,Error]",
+      "complexity": "O(1) time",
+      "warnings": [
+        "No authentication - all routes are public",
+        "No request validation",
+        "Limited error handling",
+        "No CORS headers"
+      ],
+      "examples": [
+        "handle_request({path:\"/users\",method:\"GET\",body:\"\"}) → Ok({status:200,...})",
+        "handle_request({path:\"/health\",method:\"GET\",body:\"\"}) → Ok({status:200,body:\"OK\",...})",
+        "handle_request({path:\"/unknown\",method:\"GET\",body:\"\"}) → Err({code:404,...})"
+      ],
+      "related": ["get_users", "Request", "Response", "Error"],
+      "metadata": {
+        "category": "api_endpoint",
+        "routes": ["/users", "/health"],
+        "effects": []
+      }
+    },
+    "get_users": {
+      "range": [301, 446],
+      "summary": "Returns list of all users",
+      "explanation": "Handler for GET /users endpoint. Returns a hardcoded list of users as JSON.\n\nIn production, this would query a database. Currently returns mock data for demonstration.",
+      "type": "λ(Request)→Result[Response,Error]",
+      "complexity": "O(1) time",
+      "warnings": [
+        "Returns hardcoded data - not connected to database",
+        "No pagination - would fail with large user lists",
+        "No filtering or sorting options"
+      ],
+      "examples": [
+        "get_users({path:\"/users\",method:\"GET\",body:\"\"}) → Ok({status:200,body:\"[...]\",headers:{...}})"
+      ],
+      "related": ["handle_request"],
+      "metadata": {
+        "category": "api_endpoint",
+        "http_method": "GET",
+        "mock": true
+      }
+    }
+  },
+  "metadata": {
+    "intent": "Simple HTTP request handler demonstrating routing and response construction",
+    "category": "api_endpoint",
+    "tested": false,
+    "performance_profile": "constant_time"
+  }
+}

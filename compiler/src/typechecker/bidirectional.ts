@@ -219,7 +219,17 @@ function synthesizeBinary(env: TypeEnvironment, expr: AST.BinaryExpr): Inference
   const op = expr.operator;
 
   // Arithmetic operators: ℤ → ℤ → ℤ
+  // Exception: + can also do string concatenation with coercion
   if (['+', '-', '*', '/', '%'].includes(op)) {
+    // Special case: + with string operands does concatenation with coercion
+    if (op === '+' && (leftType.kind === 'primitive' && leftType.name === 'String' ||
+                        rightType.kind === 'primitive' && rightType.name === 'String')) {
+      // At least one operand is a string, so this is string concatenation
+      // The other operand will be coerced to string (handled by codegen)
+      return { kind: 'primitive', name: 'String' };
+    }
+
+    // Otherwise, require both operands to be integers
     check(env, expr.left, { kind: 'primitive', name: 'Int' });
     check(env, expr.right, { kind: 'primitive', name: 'Int' });
     return { kind: 'primitive', name: 'Int' };

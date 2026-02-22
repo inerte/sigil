@@ -27,6 +27,39 @@ Mint is a **canonicalization-enforced** language. Every algorithm has exactly ON
 
 This ensures **zero ambiguity** for LLM code generation and training data quality.
 
+## Type System: Bidirectional Type Checking
+
+**Paradigm:** Bidirectional type checking (not Hindley-Milner)
+
+**Why bidirectional?**
+- Mint requires **mandatory type annotations everywhere** (canonical forms)
+- Hindley-Milner's strength is type inference with minimal annotations
+- Bidirectional is simpler and better suited for mandatory annotations
+- Better error messages: "expected X, got Y" with precise source locations
+- More extensible: natural framework for polymorphism, refinement types, effects
+
+**Type Annotations Required:**
+```mint
+✅ CORRECT (only valid form):
+λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
+
+❌ SYNTAX ERROR (missing annotations):
+λfactorial(n)=...        # Missing parameter type
+λfactorial(n:ℤ)=...      # Missing return type
+λfactorial(n)→ℤ=...      # Missing parameter type
+```
+
+**How it works:**
+- **Synthesis mode (⇒)**: Infer type from expression structure
+- **Checking mode (⇐)**: Verify expression matches expected type
+- System alternates between modes based on available information
+
+**Benefits:**
+- Zero syntactic ambiguity (ONE way to write types)
+- Clear error messages with precise locations
+- Canonical forms enforced by parser and type checker
+- Simpler implementation than Hindley-Milner for our use case
+
 ## Project Structure
 
 ```

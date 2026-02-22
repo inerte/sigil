@@ -55,7 +55,7 @@ If 93% of code is AI-generated (2026 stats), why optimize for the 7%?
 1. **Token Density**: `λ` instead of `function` - machines don't need verbosity
 2. **Zero Ambiguity**: Exactly ONE way to write anything - LLMs hallucinate less
 3. **Perfect Formatting**: Code won't compile if not canonically formatted
-4. **Strong Types**: Hindley-Milner inference + borrow checker prevent errors
+4. **Strong Types**: Bidirectional type checking with mandatory annotations
 5. **Context Efficiency**: 2× more code fits in context windows
 
 ### How Humans Interact
@@ -77,14 +77,16 @@ Developers interact via the **AI Interpretation Layer**:
 - No syntactic sugar creating multiple representations
 - Single import style, single function definition, single loop construct
 
-### 2. Strong, Inferred Types
-**"Types are mandatory but invisible"**
+### 2. Strong, Checked Types
+**"Types are mandatory and checked bidirectionally"**
 
-- Hindley-Milner type inference (like Haskell, OCaml, F#)
-- No dynamic typing, no `any` type, no type coercion
+- Bidirectional type checking (synthesis ⇒ and checking ⇐ modes)
+- Type annotations required on all function signatures (canonical form)
+- No dynamic typing, no `any` type, controlled coercion
 - Algebraic data types (sum + product types)
-- Effect system for tracking side effects
+- Effect system for tracking side effects (planned)
 - Compile-time guarantees prevent runtime type errors
+- Better error messages than Hindley-Milner: "expected ℤ, got 𝕊"
 
 ### 3. Enforced Canonical Formatting
 **"Unformatted code is a syntax error"**
@@ -255,12 +257,16 @@ The **AI Interpretation Layer** provides:
 - ✅ Comprehensive test suite (18 tests)
 - ✅ Pattern matching validation
 - ✅ Multi-parameter recursion (GCD, binary search, nth, power, Hanoi - no accumulators)
-- ✅ Type checker (Hindley-Milner with full pattern matching support)
+- ✅ Type checker (Bidirectional with mandatory annotations) - ✓ COMPLETED (2026-02-22)
+  - Bidirectional synthesis (⇒) and checking (⇐) modes
+  - Mandatory type annotations on all function signatures
+  - Pattern matching with exhaustiveness checking
+  - List operations (↦, ⊳, ⊕) as language constructs
+  - Better error messages with precise source locations
 
 ### In Progress
-- 🔄 Type system specification
+- 🔄 Type system specification (update for bidirectional)
 - 🔄 Semantic map format
-- 🔄 Type checker with inference
 
 ### Upcoming
 - ⏳ Borrow checker

@@ -250,10 +250,12 @@ The **AI Interpretation Layer** provides:
 - ✅ Lexer/Parser implementation
 - ✅ JavaScript code generator
 - ✅ Built-in list operations (↦ ⊳ ⊕)
-- ✅ Canonical form enforcement (100% - all loopholes blocked)
+- ✅ Canonical form enforcement (refined - blocks accumulator patterns, allows legitimate multi-param)
+- ✅ Parameter classification via static analysis (structural, query, accumulator)
 - ✅ Comprehensive test suite (18 tests)
 - ✅ Pattern matching validation
-- ✅ Multi-parameter recursion (for legitimate algorithms like GCD)
+- ✅ Multi-parameter recursion (GCD, binary search, nth, power, Hanoi - no accumulators)
+- ✅ Type checker (Hindley-Milner with full pattern matching support)
 
 ### In Progress
 - 🔄 Type system specification

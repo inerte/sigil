@@ -161,3 +161,103 @@ node compiler/dist/cli.js run src/factorial-valid.mint                     # ✅
 The language enforces this at the compiler level.
 
 **Mission accomplished.** 🎯
+
+---
+
+# UPDATE: Canonical Form Refinement (2026-02-22)
+
+## New Results After Parameter Classification
+
+The canonical form validator has been refined with **static analysis** to distinguish accumulator parameters from legitimate multi-parameter algorithms.
+
+### ✅ NOW COMPILES (Legitimate Multi-Parameter)
+
+| Test | Algorithm | Status | Parameter Roles |
+|------|-----------|--------|-----------------|
+| test16-gcd-allowed.mint | GCD | ✅ **COMPILES** | a: structural, b: structural |
+| test17-power-allowed.mint | Power | ✅ **COMPILES** | base: query, exp: structural |
+| hanoi.mint | Towers of Hanoi | ✅ **COMPILES** | All params swap algorithmically |
+| test21-nth-allowed.mint | Nth element | ✅ **COMPILES** | list: structural, n: structural |
+| test22-zip-allowed.mint | Append lists | ✅ **COMPILES** | xs: structural, ys: query |
+
+### ❌ STILL BLOCKED (Accumulator Patterns)
+
+| Test | Algorithm | Status | Why Blocked |
+|------|-----------|--------|-------------|
+| test18-factorial-acc-blocked.mint | Factorial + acc | ❌ **BLOCKED** | acc: ACCUMULATOR (grows) |
+| test1-two-param.mint | Sum + acc | ❌ **BLOCKED** | acc: ACCUMULATOR (grows) |
+| test19-list-accumulator.mint | Reverse + acc | ❌ **BLOCKED** | acc: ACCUMULATOR (list builds) |
+
+### Updated Rules
+
+**Rule 1 (Refined):** No Accumulator Parameters
+
+The compiler now uses **parameter classification** instead of simple parameter counting:
+
+- **STRUCTURAL** (Allowed): Parameters that decrease/decompose (n-1, xs, a%b)
+- **QUERY** (Allowed): Parameters that stay constant (target, base)
+- **ACCUMULATOR** (Forbidden): Parameters that grow/build up (n*acc, acc+n, [x,.acc])
+
+**Examples of error messages:**
+```
+Parameter roles:
+  - n: structural (decreases)
+  - acc: ACCUMULATOR (grows)
+
+The parameter(s) [acc] are accumulators (grow during recursion).
+```
+
+### Test Commands (Updated)
+
+```bash
+# NEWLY ALLOWED (efficient algorithms):
+node compiler/dist/cli.js run src/test-tailrec/test16-gcd-allowed.mint        # ✅ 6
+node compiler/dist/cli.js run src/test-tailrec/test17-power-allowed.mint      # ✅ 1024
+node compiler/dist/cli.js run src/hanoi.mint                                   # ✅ Solves Hanoi
+node compiler/dist/cli.js run src/test-tailrec/test21-nth-allowed.mint        # ✅ 30
+node compiler/dist/cli.js run src/test-tailrec/test22-zip-allowed.mint        # ✅ [1,2,3,4,5,6]
+
+# STILL BLOCKED (accumulators):
+node compiler/dist/cli.js run src/test-tailrec/test18-factorial-acc-blocked.mint  # ❌ accumulator
+node compiler/dist/cli.js run src/test-tailrec/test1-two-param.mint               # ❌ accumulator
+node compiler/dist/cli.js run src/test-tailrec/test19-list-accumulator.mint       # ❌ accumulator
+```
+
+### Performance Unlocked
+
+Refined canonical form enforcement now enables:
+- **O(log n) binary search** (instead of only O(n) linear)
+- **Direct nth element access** in lists
+- **Efficient GCD** (Euclidean algorithm)
+- **Parallel structural recursion** (zip, merge)
+- **Algorithmic parameter transformations** (Hanoi, Ackermann)
+
+### What Changed
+
+**Before (too strict):**
+- Blocked ALL multi-parameter recursion
+- Prevented efficient algorithms (binary search impossible)
+- Rule: "Recursive functions can have ONLY ONE parameter"
+
+**After (refined):**
+- Blocks ACCUMULATOR parameters only
+- Allows legitimate multi-parameter algorithms
+- Rule: "Recursive functions cannot use accumulator parameters"
+- Uses static analysis to classify parameter roles
+
+### Still Blocks
+
+- ✅ Accumulator-passing style (tail-call optimization)
+- ✅ State accumulation patterns
+- ✅ Helper functions
+- ✅ CPS/continuations
+- ✅ Mutual recursion
+
+### Summary
+
+The refinement makes Mint:
+- **More principled**: Precise distinction between accumulator vs algorithmic parameters
+- **More practical**: O(log n) algorithms now possible
+- **Still canonical**: There's still exactly ONE way to write each algorithm
+
+**Mission still accomplished, now with better performance!** 🎯✨

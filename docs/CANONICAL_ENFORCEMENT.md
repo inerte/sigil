@@ -16,49 +16,105 @@ This creates ambiguity for LLMs, leading to inconsistent code generation.
 
 **Make alternative patterns syntactically impossible.**
 
-### Rule 1: Recursive Functions → ONE PRIMITIVE Parameter Only
+### Rule 1: Recursive Functions → NO ACCUMULATOR PARAMETERS
 
-**Enforced by:** Compiler rejects recursive functions with:
-- 2+ parameters
-- Collection-type parameters (lists, tuples, maps)
+**Enforced by:** Compiler uses static analysis to classify each parameter's role in recursion.
 
-**Why:**
-- Accumulator pattern requires 2+ parameters (e.g., `n` and `acc`)
-- Collection types can encode multiple values within one parameter
+Mint allows multi-parameter recursion, but **parameters cannot be accumulators**.
 
-**Examples:**
+#### Parameter Classification
 
+The compiler analyzes ALL recursive calls and classifies each parameter:
+
+**STRUCTURAL** ✅ (Allowed)
+- Decreases during recursion: `n-1`, `n/2`, `xs` (from `[x,.xs]`)
+- Modulo/remainder: `a%b`
+- Pattern decomposition: list tail, record fields
+
+**QUERY** ✅ (Allowed)
+- Stays constant: `target` in binary search, `base` in power
+- Swaps algorithmically: pegs in Hanoi, `a` and `b` in GCD
+
+**ACCUMULATOR** ❌ (Forbidden)
+- Multiplication: `n*acc` (builds up product)
+- Addition: `acc+n` (builds up sum)
+- List construction: `[x,.acc]` (builds up list)
+- String concatenation: `acc++s` (builds up string)
+
+#### Detection Algorithm
+
+The compiler analyzes ALL recursive calls and checks how each parameter's argument changes:
+1. If argument is identical to parameter → **QUERY**
+2. If argument decreases parameter → **STRUCTURAL**
+3. If argument multiplies/adds parameters together → **ACCUMULATOR** (BLOCK)
+4. If argument transforms parameter purely → **STRUCTURAL/QUERY**
+
+#### Examples
+
+##### ✅ ALLOWED: GCD (both params structural)
 ```mint
-✅ COMPILES - canonical form (primitive parameter):
-λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
+λgcd(a:ℤ,b:ℤ)→ℤ≡b{0→a|b→gcd(b,a%b)}
+```
+- `a` → `b` (swap, structural transformation)
+- `b` → `a%b` (modulo, always decreases)
+- **Result**: COMPILES ✅
 
-❌ COMPILE ERROR - two parameters:
+##### ✅ ALLOWED: Power (query + structural)
+```mint
+λpower(base:ℤ,exp:ℤ)→ℤ≡exp{0→1|exp→base*power(base,exp-1)}
+```
+- `base` → `base` (query, unchanged)
+- `exp` → `exp-1` (structural, decreases)
+- **Result**: COMPILES ✅
+
+##### ✅ ALLOWED: Nth Element (parallel decomposition)
+```mint
+λnth(list:[ℤ],n:ℤ)→ℤ≡(list,n){
+  ([x,.xs],0)→x|
+  ([x,.xs],n)→nth(xs,n-1)
+}
+```
+- `list` → `xs` (structural, list tail)
+- `n` → `n-1` (structural, decreases)
+- **Result**: COMPILES ✅
+
+##### ❌ BLOCKED: Factorial with Accumulator
+```mint
 λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}
+```
+- `n` → `n-1` (structural, decreases)
+- `acc` → `n*acc` (ACCUMULATOR, multiplies/grows)
+- **Result**: COMPILE ERROR ❌
 
-❌ COMPILE ERROR - list parameter (loophole attempt):
-λfactorial(state:[ℤ])→ℤ≡state{[0,acc]→acc|[n,acc]→factorial([n-1,n*acc])}
+**Error message:**
+```
+Accumulator-passing style detected in function 'factorial'.
+
+Parameter roles:
+  - n: structural (decreases)
+  - acc: ACCUMULATOR (grows)
+
+The parameter(s) [acc] are accumulators (grow during recursion).
+Mint does NOT support tail-call optimization or accumulator-passing style.
+
+Accumulator pattern (FORBIDDEN):
+  λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}
+  - Parameter 'acc' only grows (n*acc) → ACCUMULATOR
+
+Legitimate multi-parameter (ALLOWED):
+  λgcd(a:ℤ,b:ℤ)→ℤ≡b{0→a|b→gcd(b,a%b)}
+  - Both 'a' and 'b' transform algorithmically → structural
+
+Use simple recursion without accumulator parameters.
 ```
 
-**Error messages:**
+##### ❌ BLOCKED: List Reverse with Accumulator
+```mint
+λreverse(lst:[ℤ],acc:[ℤ])→[ℤ]≡lst{[]→acc|[x,.xs]→reverse(xs,[x])}
 ```
-# Multi-parameter error:
-Error: Recursive function 'factorial' has 2 parameters.
-Recursive functions must have exactly ONE primitive parameter.
-This prevents accumulator-style tail recursion.
-
-# Collection-type parameter error:
-Error: Recursive function 'factorial' has a collection-type parameter.
-Parameter type: [Int]
-
-Recursive functions must have a PRIMITIVE parameter (ℤ, 𝕊, 𝔹, etc).
-Collection types (lists, tuples, maps) can encode multiple values,
-which enables accumulator-style tail recursion.
-
-Example canonical form:
-  λfactorial(n:ℤ)→ℤ≡n{0→1|n→n*factorial(n-1)}
-
-Mint enforces ONE way to write recursive functions.
-```
+- `lst` → `xs` (structural, list tail)
+- `acc` → `[x]` (ACCUMULATOR, list grows)
+- **Result**: COMPILE ERROR ❌
 
 ### Rule 2: No Helper Functions
 

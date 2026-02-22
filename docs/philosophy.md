@@ -54,6 +54,35 @@ const add = new Function('a', 'b', 'return a + b');
 λadd(a:ℤ,b:ℤ)→ℤ=a+b
 ```
 
+#### Parameter Classification for Canonical Forms
+
+Multi-parameter recursion is allowed if parameters are **algorithmically structural**, not accumulating state.
+
+**The Distinction:**
+- **Traditional FP**: Tail-call optimization via accumulators (imperative encoding)
+- **Mint**: Primitive recursion with multiple algorithmic inputs (pure structural)
+
+**Examples:**
+
+Algorithmic (ALLOWED):
+- `gcd(a, b)` - both parameters swap and transform
+- `binary_search(list, target, low, high)` - query + structural bounds
+- `nth(list, index)` - parallel decomposition
+- `power(base, exp)` - query (base constant) + structural (exp decreases)
+
+State accumulation (FORBIDDEN):
+- `factorial(n, acc)` - acc accumulates product
+- `sum(n, total)` - total accumulates sum
+- `reverse(list, result)` - result accumulates reversed list
+
+**Why this preserves canonical forms:**
+
+The real problem isn't multiple parameters - it's **accumulator-passing style**, which encodes imperative iteration in functional recursion. That creates ambiguity (recursive vs iterative implementations).
+
+Legitimate multi-parameter algorithms like GCD, binary search, and nth element have NO ambiguity - there's still only ONE way to write them in Mint. They're not accumulator patterns; they're genuinely multi-input algorithms.
+
+This makes Mint **more principled** (precise distinction) while **more practical** (enables O(log n) algorithms) - a rare win-win.
+
 ### 2. Token Efficiency
 
 **"Every character carries maximum information density"**

@@ -185,7 +185,7 @@ list⊕fn⊕init         # Fold: ⊕ (reduce with fn starting from init)
   n→n*factorial(n-1)
 }
 
-# Multi-parameter algorithms (ALLOWED when both params transform)
+# Multi-parameter algorithms (ALLOWED when all params are structural or query)
 λgcd(a:ℤ,b:ℤ)→ℤ≡b{
   0→a|
   b→gcd(b,a%b)
@@ -196,6 +196,16 @@ list⊕fn⊕init         # Fold: ⊕ (reduce with fn starting from init)
   exp→base*power(base,exp-1)
 }
 ```
+
+**Why these are allowed:**
+- **GCD**: Both `a` and `b` transform algorithmically (swap and modulo) - **STRUCTURAL**
+- **Power**: `base` is query (constant), `exp` decreases - **QUERY + STRUCTURAL**
+
+**Contrast with forbidden patterns:**
+- `λfactorial(n:ℤ,acc:ℤ)` - `acc` is **ACCUMULATOR** (only multiplies, builds up product)
+- `λsum(n:ℤ,acc:ℤ)` - `acc` is **ACCUMULATOR** (only adds, builds up sum)
+
+The key distinction: parameters must be **algorithmically structural** (decompose/transform) or **query** (constant), not **accumulating state** (tail-call optimization).
 
 ## CRITICAL: Canonical Form Enforcement - COMPILER ENFORCED
 
@@ -223,23 +233,44 @@ Examples:
 
 The Mint compiler uses **static analysis** to reject non-canonical code:
 
-#### Rule 1: Recursive functions can have ONLY ONE primitive parameter
+#### Rule 1: Recursive functions cannot use accumulator parameters
 
-**Why:** Blocks accumulator-passing style and tail-call optimization patterns
+**Accumulator parameters are FORBIDDEN** (parameters that only grow/accumulate during recursion).
+
+**Why:** Accumulator-passing style is tail-call optimization, which Mint blocks to enforce canonical forms.
+
+**Allowed:** Multi-parameter recursion where ALL parameters are:
+- **STRUCTURAL**: Decrease/decompose during recursion (n-1, xs from [x,.xs], a%b)
+- **QUERY**: Stay constant or swap algorithmically (target in binary search, pegs in Hanoi)
+
+**Forbidden:** Parameters that only accumulate/build up state:
+- Multiplication accumulator: `factorial(n-1, n*acc)` where acc only grows
+- Addition accumulator: `sum(n-1, acc+n)` where acc only increases
+- List accumulator: `reverse(xs, [x,.acc])` where acc builds up result
 
 **CS Terms:**
 - Blocks: Tail recursion, accumulator-passing style, iterative encodings
-- Enforces: Primitive recursion, direct style
+- Allows: Primitive recursion with multiple algorithmic inputs, structural recursion
+- Enforces: One canonical form per algorithm
 
 ```mint
-✅ COMPILES:
+✅ COMPILES - single parameter:
 λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
 
-❌ COMPILE ERROR - 2 parameters:
+✅ COMPILES - multi-param algorithmic (both transform):
+λgcd(a:ℤ,b:ℤ)→ℤ≡b{0→a|b→gcd(b,a%b)}
+
+✅ COMPILES - query + structural:
+λpower(base:ℤ,exp:ℤ)→ℤ≡exp{0→1|exp→base*power(base,exp-1)}
+
+❌ COMPILE ERROR - accumulator parameter:
 λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}
 
-Error: Recursive function 'factorial' has 2 parameters.
-       Recursive functions must have exactly ONE parameter.
+Error: Accumulator-passing style detected in function 'factorial'.
+       Parameter roles:
+         - n: structural (decreases)
+         - acc: ACCUMULATOR (grows)
+       The parameter(s) [acc] are accumulators (grow during recursion).
 ```
 
 #### Rule 2: No auxiliary functions

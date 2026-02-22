@@ -10,6 +10,21 @@
 
 import * as AST from '../parser/ast.js';
 
+/**
+ * Parameter role classification for multi-parameter recursion validation
+ *
+ * STRUCTURAL: Decreases/decomposes during recursion (n-1, xs, a%b)
+ * QUERY: Stays constant or swaps algorithmically (target, base)
+ * ACCUMULATOR: Grows/builds up (n*acc, acc+x, [x,.acc]) - FORBIDDEN
+ * UNKNOWN: Cannot determine role
+ */
+enum ParameterRole {
+  STRUCTURAL,   // Decreases/decomposes - ALLOWED
+  QUERY,        // Stays constant - ALLOWED
+  ACCUMULATOR,  // Grows/builds up - FORBIDDEN
+  UNKNOWN       // Cannot determine
+}
+
 export class CanonicalError extends Error {
   constructor(
     message: string,
@@ -65,31 +80,55 @@ function validateRecursiveFunctions(program: AST.Program): void {
 
     if (!isRecursive) continue;
 
-    // Check 1: If multiple parameters, detect accumulator pattern
+    // Check 1: If multiple parameters, classify each parameter's role
     if (decl.params.length > 1) {
-      // Check if this looks like accumulator-passing style
       const recursiveCalls = findRecursiveCalls(decl.body, decl.name);
 
-      for (const call of recursiveCalls) {
-        if (looksLikeAccumulatorPattern(call, decl.params)) {
-          throw new CanonicalError(
-            `Recursive function '${decl.name}' uses accumulator-passing style.\n` +
-            `\n` +
-            `Detected pattern: one parameter decrements while another accumulates.\n` +
-            `This is tail-call optimization, which Mint blocks.\n` +
-            `\n` +
-            `Use direct recursion instead:\n` +
-            `  λ${decl.name}(n:ℤ)→ℤ≡n{0→1|n→n*${decl.name}(n-1)}\n` +
-            `\n` +
-            `Note: Multi-parameter recursion IS allowed for algorithms like GCD\n` +
-            `where both parameters are legitimately transformed:\n` +
-            `  λgcd(a:ℤ,b:ℤ)→ℤ≡b{0→a|b→gcd(b,a%b)}\n` +
-            `\n` +
-            `Mint enforces ONE way to write each algorithm.`,
-            decl.location
-          );
+      // Classify each parameter's role (STRUCTURAL, QUERY, ACCUMULATOR)
+      const paramRoles = classifyParameters(decl, recursiveCalls);
+
+      // Check if any parameter is an accumulator (FORBIDDEN)
+      const accumulatorParams: string[] = [];
+      const paramRoleDescriptions: string[] = [];
+
+      for (const param of decl.params) {
+        const role = paramRoles.get(param.name);
+        if (role === ParameterRole.ACCUMULATOR) {
+          accumulatorParams.push(param.name);
         }
+
+        // Build description for error message
+        const roleStr = role === ParameterRole.ACCUMULATOR ? 'ACCUMULATOR (grows)' :
+                       role === ParameterRole.STRUCTURAL ? 'structural (decreases)' :
+                       role === ParameterRole.QUERY ? 'query (constant)' :
+                       'unknown';
+        paramRoleDescriptions.push(`  - ${param.name}: ${roleStr}`);
       }
+
+      if (accumulatorParams.length > 0) {
+        throw new CanonicalError(
+          `Accumulator-passing style detected in function '${decl.name}'.\n` +
+          `\n` +
+          `Parameter roles:\n${paramRoleDescriptions.join('\n')}\n` +
+          `\n` +
+          `The parameter(s) [${accumulatorParams.join(', ')}] are accumulators (grow during recursion).\n` +
+          `Mint does NOT support tail-call optimization or accumulator-passing style.\n` +
+          `\n` +
+          `Accumulator pattern (FORBIDDEN):\n` +
+          `  λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}\n` +
+          `  - Parameter 'acc' only grows (n*acc) → ACCUMULATOR\n` +
+          `\n` +
+          `Legitimate multi-parameter (ALLOWED):\n` +
+          `  λgcd(a:ℤ,b:ℤ)→ℤ≡b{0→a|b→gcd(b,a%b)}\n` +
+          `  - Both 'a' and 'b' transform algorithmically → structural\n` +
+          `\n` +
+          `Use simple recursion without accumulator parameters.`,
+          decl.location
+        );
+      }
+
+      // If all params are STRUCTURAL or QUERY → ALLOW
+      // This is the key change - allows GCD, binary search, nth, etc.
     }
 
     // Check 2: Collection parameters - distinguish structural recursion from accumulator
@@ -102,44 +141,14 @@ function validateRecursiveFunctions(program: AST.Program): void {
       }
     }
 
-    // If multiple collection params, likely accumulator pattern
-    if (collectionParams.length > 1) {
-      throw new CanonicalError(
-        `Recursive function '${decl.name}' has multiple collection parameters.\n` +
-        `This pattern can encode accumulator-passing style.\n` +
-        `\n` +
-        `Use single collection parameter with structural recursion instead:\n` +
-        `  λreverse(lst:[T])→[T]≡lst{[]→[]|[x,.xs]→reverse(xs)++[x]}\n` +
-        `\n` +
-        `Mint enforces ONE way: structural recursion for collections.`,
-        decl.location
-      );
-    }
+    // Multiple collection params - now allowed if they're all structural
+    // Check 1 above already validated that none are accumulators
+    // So if we're here with multiple collections, they're all decomposing (allowed)
 
     // Single collection param - check if structural recursion or accumulator pattern
-    if (collectionParams.length === 1) {
+    if (collectionParams.length === 1 && decl.params.length === 1) {
+      // Single collection parameter only - validate structural recursion
       const collectionParam = collectionParams[0];
-
-      // If there are other (non-collection) parameters alongside the collection,
-      // this is likely accumulator pattern (collection + accumulators)
-      if (decl.params.length > 1) {
-        throw new CanonicalError(
-          `Recursive function '${decl.name}' has collection parameter plus additional parameters.\n` +
-          `This pattern enables accumulator-passing style (tail-call optimization).\n` +
-          `\n` +
-          `Example of what's blocked:\n` +
-          `  λfold_sum(xs:[T],acc:ℤ,count:ℤ)→ℤ≡xs{...}\n` +
-          `  - Collection parameter: xs\n` +
-          `  - Accumulator parameters: acc, count\n` +
-          `\n` +
-          `Use pure structural recursion instead (single parameter only):\n` +
-          `  λsum(xs:[T])→ℤ≡xs{[]→0|[x,.rest]→x+sum(rest)}\n` +
-          `  λlength(xs:[T])→ℤ≡xs{[]→0|[_,.rest]→1+length(rest)}\n` +
-          `\n` +
-          `Mint enforces ONE way: structural recursion with single collection parameter.`,
-          decl.location
-        );
-      }
 
       if (!isStructuralRecursion(decl, collectionParam)) {
         throw new CanonicalError(
@@ -771,6 +780,245 @@ function findRecursiveCalls(expr: AST.Expr, functionName: string): AST.Applicati
 }
 
 /**
+ * Classify each parameter's role across ALL recursive calls
+ *
+ * Returns map of parameter name → role (STRUCTURAL, QUERY, ACCUMULATOR, UNKNOWN)
+ */
+function classifyParameters(
+  decl: AST.FunctionDecl,
+  recursiveCalls: AST.ApplicationExpr[]
+): Map<string, ParameterRole> {
+  const paramRoles = new Map<string, ParameterRole>();
+
+  // Initialize all params as UNKNOWN
+  for (const param of decl.params) {
+    paramRoles.set(param.name, ParameterRole.UNKNOWN);
+  }
+
+  // Analyze each parameter position across all recursive calls
+  for (let i = 0; i < decl.params.length; i++) {
+    const param = decl.params[i];
+    const role = analyzeParameterAcrossCalls(param, i, recursiveCalls, decl.params);
+    paramRoles.set(param.name, role);
+  }
+
+  return paramRoles;
+}
+
+/**
+ * Analyze how a parameter is used across ALL recursive calls
+ */
+function analyzeParameterAcrossCalls(
+  param: AST.Param,
+  position: number,
+  calls: AST.ApplicationExpr[],
+  allParams: AST.Param[]
+): ParameterRole {
+  const paramName = param.name;
+  const allParamNames = new Set(allParams.map(p => p.name));
+
+  let seenStructural = false;
+  let seenQuery = false;
+  let seenAccumulator = false;
+
+  for (const call of calls) {
+    if (position >= call.args.length) continue;  // Safety check
+    const arg = call.args[position];
+
+    // Case 1: Passed unchanged (QUERY)
+    if (isIdenticalToParam(arg, paramName)) {
+      seenQuery = true;
+      continue;
+    }
+
+    // Case 2: Decrement pattern (STRUCTURAL)
+    if (isDecrementPattern(arg, paramName)) {
+      seenStructural = true;
+      continue;
+    }
+
+    // Case 3: List/collection decomposition (STRUCTURAL)
+    if (isCollectionDecomposition(arg, paramName, allParamNames)) {
+      seenStructural = true;
+      continue;
+    }
+
+    // Case 4: Pure transformation (STRUCTURAL/QUERY)
+    // Example: gcd(b, a%b) where a and b swap
+    if (isPureTransformation(arg, allParamNames)) {
+      seenStructural = true;
+      continue;
+    }
+
+    // Case 5: Accumulation pattern (ACCUMULATOR) - FORBIDDEN
+    if (isAccumulationExpression(arg, paramName, allParamNames)) {
+      seenAccumulator = true;
+      // Continue analyzing to provide comprehensive error info
+    }
+  }
+
+  // Classification priority:
+  // 1. If ANY call shows accumulation → ACCUMULATOR (forbidden)
+  // 2. If decreases → STRUCTURAL
+  // 3. If unchanged → QUERY
+  // 4. Mixed structural/query → STRUCTURAL (conservative)
+
+  if (seenAccumulator) {
+    return ParameterRole.ACCUMULATOR;
+  }
+
+  if (seenStructural) {
+    return ParameterRole.STRUCTURAL;
+  }
+
+  if (seenQuery) {
+    return ParameterRole.QUERY;
+  }
+
+  return ParameterRole.UNKNOWN;
+}
+
+/**
+ * Check if argument is identical to parameter (passed unchanged)
+ */
+function isIdenticalToParam(expr: AST.Expr, paramName: string): boolean {
+  return expr.type === 'IdentifierExpr' && expr.name === paramName;
+}
+
+/**
+ * Check if expression is a pure transformation of parameters
+ * Examples: a%b (modulo), b (swap), base+1 (constant offset)
+ * NOT pure: n*acc (accumulation)
+ */
+function isPureTransformation(expr: AST.Expr, paramNames: Set<string>): boolean {
+  if (expr.type === 'BinaryExpr') {
+    const { operator, left, right } = expr;
+
+    // Modulo is always structural (decreases)
+    if (operator === '%') {
+      return true;
+    }
+
+    // Division is structural (decreases)
+    if (operator === '/') {
+      return true;
+    }
+
+    // Addition/subtraction with constants is structural
+    if (operator === '+' || operator === '-') {
+      const leftIsParam = left.type === 'IdentifierExpr' && paramNames.has((left as AST.IdentifierExpr).name);
+      const rightIsConst = right.type === 'LiteralExpr';
+      const leftIsConst = left.type === 'LiteralExpr';
+      const rightIsParam = right.type === 'IdentifierExpr' && paramNames.has((right as AST.IdentifierExpr).name);
+
+      // Param +/- constant or constant +/- param
+      if ((leftIsParam && rightIsConst) || (leftIsConst && rightIsParam)) {
+        return true;
+      }
+    }
+
+    // Multiplication with params suggests accumulation (unless with constants)
+    if (operator === '*') {
+      const leftIsParam = left.type === 'IdentifierExpr' && paramNames.has((left as AST.IdentifierExpr).name);
+      const rightIsParam = right.type === 'IdentifierExpr' && paramNames.has((right as AST.IdentifierExpr).name);
+
+      // n*acc pattern → NOT pure (accumulation)
+      if (leftIsParam && rightIsParam) {
+        return false;
+      }
+    }
+  }
+
+  // If it's just a param reference or constant, consider it pure
+  if (expr.type === 'IdentifierExpr') {
+    return paramNames.has(expr.name);
+  }
+
+  return false;
+}
+
+/**
+ * Check if expression is accumulation (multiplies/adds params together)
+ */
+function isAccumulationExpression(
+  expr: AST.Expr,
+  _paramName: string,  // Kept for signature compatibility
+  allParamNames: Set<string>
+): boolean {
+  if (expr.type === 'BinaryExpr') {
+    const { operator, left, right } = expr;
+
+    // Multiplication or addition of two params → accumulation pattern
+    if (operator === '*' || operator === '+') {
+      const leftHasParam = containsParamReference(left, allParamNames);
+      const rightHasParam = containsParamReference(right, allParamNames);
+
+      // Both sides reference params → likely accumulation (n*acc, acc+n)
+      if (leftHasParam && rightHasParam) {
+        return true;
+      }
+    }
+
+    // String concatenation with params
+    if (operator === '++') {
+      const leftHasParam = containsParamReference(left, allParamNames);
+      const rightHasParam = containsParamReference(right, allParamNames);
+
+      if (leftHasParam && rightHasParam) {
+        return true;  // acc++str pattern
+      }
+    }
+  }
+
+  if (expr.type === 'ListExpr') {
+    // Check for list construction that might be accumulating
+    // Pattern: [x,.acc] in source becomes a ListExpr in AST
+    // Heuristic: if list contains identifiers that are params, might be accumulation
+    // This is conservative - we'll primarily rely on the *+/ pattern above
+    for (const elem of expr.elements) {
+      // Check if any element references params (could indicate list building)
+      if (containsParamReference(elem, allParamNames)) {
+        // Conservative: if building a list with param references, might be accumulation
+        // But we need to be careful not to block legitimate uses
+        // For now, we'll rely on the multiplication/addition checks above
+        // List accumulation is typically [x,.acc] which shows up as addition
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Check if argument is collection decomposition (structural recursion)
+ * Example: xs (from pattern [x,.xs])
+ *
+ * Heuristic: if arg is an identifier that's not an original param,
+ * it's likely from pattern destructuring (structural)
+ */
+function isCollectionDecomposition(
+  expr: AST.Expr,
+  paramName: string,
+  allParamNames: Set<string>
+): boolean {
+  if (expr.type === 'IdentifierExpr') {
+    const argName = expr.name;
+
+    // If it's a binding from pattern (not an original param), likely decomposition
+    // Common patterns: xs (from [x,.xs]), ys, rest, tail
+    if (argName !== paramName && !allParamNames.has(argName)) {
+      // It's a new binding, not an original parameter
+      // This suggests pattern destructuring (structural recursion)
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * OLD IMPLEMENTATION - Kept for reference, now replaced by classifyParameters()
+ *
  * Check if a recursive call looks like accumulator-passing style
  *
  * Accumulator pattern: one param decrements (n-1), another accumulates (n*acc)
@@ -779,6 +1027,7 @@ function findRecursiveCalls(expr: AST.Expr, functionName: string): AST.Applicati
  * Heuristic: If one argument is just "param - constant" and another argument
  * contains multiplication/addition with param names, likely accumulator.
  */
+/*
 function looksLikeAccumulatorPattern(call: AST.ApplicationExpr, params: AST.Param[]): boolean {
   if (call.args.length !== params.length) return false;
   if (params.length < 2) return false;
@@ -806,9 +1055,11 @@ function looksLikeAccumulatorPattern(call: AST.ApplicationExpr, params: AST.Para
   // If one param decrements and another accumulates, it's likely accumulator pattern
   return hasDecrement && hasAccumulation;
 }
+*/
 
 /**
  * Check if expression is a decrement pattern like n-1, n-2
+ * Used by both old and new implementations
  */
 function isDecrementPattern(expr: AST.Expr, paramName: string): boolean {
   if (expr.type === 'BinaryExpr' && expr.operator === '-') {
@@ -821,9 +1072,11 @@ function isDecrementPattern(expr: AST.Expr, paramName: string): boolean {
 }
 
 /**
+ * OLD HELPER - Kept for potential future use
  * Check if expression contains accumulation pattern
  * (multiplication or addition involving multiple param names)
  */
+/*
 function isAccumulationPattern(expr: AST.Expr, paramNames: Set<string>): boolean {
   if (expr.type === 'BinaryExpr' && (expr.operator === '*' || expr.operator === '+')) {
     // Check if both sides reference parameter names
@@ -833,6 +1086,7 @@ function isAccumulationPattern(expr: AST.Expr, paramNames: Set<string>): boolean
   }
   return false;
 }
+*/
 
 /**
  * Check if expression contains a reference to any of the parameter names

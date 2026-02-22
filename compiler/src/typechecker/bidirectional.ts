@@ -13,6 +13,7 @@ import { InferenceType, astTypeToInferenceType } from './types.js';
 import { TypeEnvironment } from './environment.js';
 import { TypeError, formatType } from './errors.js';
 import * as AST from '../parser/ast.js';
+import { checkProgramMutability, MutabilityError } from '../mutability/index.js';
 
 /**
  * Synthesize (infer) type from expression
@@ -786,6 +787,16 @@ export function typeCheck(program: AST.Program, _source: string): Map<string, In
       checkConstDecl(env, decl, types);
     }
     // TypeDecl doesn't need runtime checking
+  }
+
+  // Third pass: Check mutability constraints
+  try {
+    checkProgramMutability(program);
+  } catch (error) {
+    if (error instanceof MutabilityError && _source) {
+      console.error(error.format(_source));
+    }
+    throw error;
   }
 
   return types;

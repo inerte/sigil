@@ -29,11 +29,13 @@ export function validateCanonicalForm(program: AST.Program): void {
 }
 
 /**
- * Rule 1: Recursive functions must have exactly ONE parameter
+ * Rule 1: Recursive functions must have exactly ONE PRIMITIVE parameter
  *
  * This makes accumulator-style tail recursion impossible:
- * ❌ λfactorial(n:ℤ,acc:ℤ)→ℤ=... (2 parameters - rejected)
- * ✅ λfactorial(n:ℤ)→ℤ=...       (1 parameter - allowed)
+ * ❌ λfactorial(n:ℤ,acc:ℤ)→ℤ=...       (2 parameters - rejected)
+ * ❌ λfactorial(state:[ℤ])→ℤ=...       (list parameter - rejected)
+ * ❌ λfactorial(state:(ℤ,ℤ))→ℤ=...     (tuple parameter - rejected)
+ * ✅ λfactorial(n:ℤ)→ℤ=...             (1 primitive parameter - allowed)
  */
 function validateRecursiveFunctions(program: AST.Program): void {
   for (const decl of program.declarations) {
@@ -42,10 +44,13 @@ function validateRecursiveFunctions(program: AST.Program): void {
     // Check if function is recursive (calls itself)
     const isRecursive = containsRecursiveCall(decl.body, decl.name);
 
-    if (isRecursive && decl.params.length > 1) {
+    if (!isRecursive) continue;
+
+    // Check 1: No multiple parameters
+    if (decl.params.length > 1) {
       throw new CanonicalError(
         `Recursive function '${decl.name}' has ${decl.params.length} parameters.\n` +
-        `Recursive functions must have exactly ONE parameter.\n` +
+        `Recursive functions must have exactly ONE primitive parameter.\n` +
         `This prevents accumulator-style tail recursion.\n` +
         `\n` +
         `Example canonical form:\n` +
@@ -54,6 +59,28 @@ function validateRecursiveFunctions(program: AST.Program): void {
         `Mint enforces ONE way to write recursive functions.`,
         decl.location
       );
+    }
+
+    // Check 2: Parameter must be primitive type (not collection)
+    // This closes the loophole: state:[ℤ] encodes multiple values
+    if (decl.params.length === 1) {
+      const param = decl.params[0];
+      if (param.typeAnnotation && isCollectionType(param.typeAnnotation)) {
+        throw new CanonicalError(
+          `Recursive function '${decl.name}' has a collection-type parameter.\n` +
+          `Parameter type: ${formatType(param.typeAnnotation)}\n` +
+          `\n` +
+          `Recursive functions must have a PRIMITIVE parameter (ℤ, 𝕊, 𝔹, etc).\n` +
+          `Collection types (lists, tuples, records) can encode multiple values,\n` +
+          `which enables accumulator-style tail recursion.\n` +
+          `\n` +
+          `Example canonical form:\n` +
+          `  λ${decl.name}(n:ℤ)→ℤ≡n{0→1|n→n*${decl.name}(n-1)}\n` +
+          `\n` +
+          `Mint enforces ONE way to write recursive functions.`,
+          decl.location
+        );
+      }
     }
   }
 }
@@ -275,4 +302,58 @@ function getFunctionLocation(program: AST.Program, functionName: string): AST.So
     }
   }
   return undefined;
+}
+
+/**
+ * Check if a type is a collection type (can encode multiple values)
+ *
+ * Collection types enable the accumulator pattern loophole:
+ * - Lists: [ℤ] can hold [n, acc]
+ * - Tuples: (ℤ,ℤ) directly encodes (n, acc)
+ * - Maps: {ℤ:ℤ} can encode multiple key-value pairs
+ */
+function isCollectionType(type: AST.Type): boolean {
+  switch (type.type) {
+    case 'ListType':
+    case 'TupleType':
+    case 'MapType':
+      return true;
+
+    case 'TypeConstructor':
+      // User-defined types might be collections
+      // For now, allow them (conservative approach)
+      return false;
+
+    case 'PrimitiveType':
+    case 'TypeVariable':
+    case 'FunctionType':
+      return false;
+
+    default:
+      return false;
+  }
+}
+
+/**
+ * Format a type for error messages
+ */
+function formatType(type: AST.Type): string {
+  switch (type.type) {
+    case 'PrimitiveType':
+      return type.name;
+    case 'ListType':
+      return `[${formatType(type.elementType)}]`;
+    case 'TupleType':
+      return `(tuple)`;
+    case 'MapType':
+      return `{${formatType(type.keyType)}:${formatType(type.valueType)}}`;
+    case 'TypeVariable':
+      return type.name;
+    case 'TypeConstructor':
+      return type.name;
+    case 'FunctionType':
+      return `function`;
+    default:
+      return 'unknown';
+  }
 }

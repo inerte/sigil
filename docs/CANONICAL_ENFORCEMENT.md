@@ -16,27 +16,43 @@ This creates ambiguity for LLMs, leading to inconsistent code generation.
 
 **Make alternative patterns syntactically impossible.**
 
-### Rule 1: Recursive Functions → ONE Parameter Only
+### Rule 1: Recursive Functions → ONE PRIMITIVE Parameter Only
 
-**Enforced by:** Compiler rejects recursive functions with 2+ parameters
+**Enforced by:** Compiler rejects recursive functions with:
+- 2+ parameters
+- Collection-type parameters (lists, tuples, maps)
 
-**Why:** Accumulator pattern requires 2+ parameters (e.g., `n` and `acc`)
+**Why:**
+- Accumulator pattern requires 2+ parameters (e.g., `n` and `acc`)
+- Collection types can encode multiple values within one parameter
 
-**Example:**
+**Examples:**
 
 ```mint
-✅ COMPILES - canonical form:
+✅ COMPILES - canonical form (primitive parameter):
 λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
 
-❌ COMPILE ERROR:
+❌ COMPILE ERROR - two parameters:
 λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}
+
+❌ COMPILE ERROR - list parameter (loophole attempt):
+λfactorial(state:[ℤ])→ℤ≡state{[0,acc]→acc|[n,acc]→factorial([n-1,n*acc])}
 ```
 
-**Error message:**
+**Error messages:**
 ```
+# Multi-parameter error:
 Error: Recursive function 'factorial' has 2 parameters.
-Recursive functions must have exactly ONE parameter.
+Recursive functions must have exactly ONE primitive parameter.
 This prevents accumulator-style tail recursion.
+
+# Collection-type parameter error:
+Error: Recursive function 'factorial' has a collection-type parameter.
+Parameter type: [Int]
+
+Recursive functions must have a PRIMITIVE parameter (ℤ, 𝕊, 𝔹, etc).
+Collection types (lists, tuples, maps) can encode multiple values,
+which enables accumulator-style tail recursion.
 
 Example canonical form:
   λfactorial(n:ℤ)→ℤ≡n{0→1|n→n*factorial(n-1)}

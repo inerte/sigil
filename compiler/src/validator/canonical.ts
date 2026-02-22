@@ -29,6 +29,19 @@ export function validateCanonicalForm(program: AST.Program): void {
 }
 
 /**
+ * Build a map of type names to their definitions for lookup
+ */
+function buildTypeDefinitionMap(program: AST.Program): Map<string, AST.TypeDef> {
+  const typeMap = new Map<string, AST.TypeDef>();
+  for (const decl of program.declarations) {
+    if (decl.type === 'TypeDecl') {
+      typeMap.set(decl.name, decl.definition);
+    }
+  }
+  return typeMap;
+}
+
+/**
  * Rule 1: Recursive functions must have exactly ONE PRIMITIVE parameter
  *
  * This makes accumulator-style tail recursion impossible:
@@ -38,6 +51,9 @@ export function validateCanonicalForm(program: AST.Program): void {
  * ✅ λfactorial(n:ℤ)→ℤ=...             (1 primitive parameter - allowed)
  */
 function validateRecursiveFunctions(program: AST.Program): void {
+  // Build type definition map for resolving user-defined types
+  const typeMap = buildTypeDefinitionMap(program);
+
   for (const decl of program.declarations) {
     if (decl.type !== 'FunctionDecl') continue;
 
@@ -65,7 +81,7 @@ function validateRecursiveFunctions(program: AST.Program): void {
     // This closes the loophole: state:[ℤ] encodes multiple values
     if (decl.params.length === 1) {
       const param = decl.params[0];
-      if (param.typeAnnotation && isCollectionType(param.typeAnnotation)) {
+      if (param.typeAnnotation && isCollectionType(param.typeAnnotation, typeMap)) {
         throw new CanonicalError(
           `Recursive function '${decl.name}' has a collection-type parameter.\n` +
           `Parameter type: ${formatType(param.typeAnnotation)}\n` +
@@ -331,8 +347,9 @@ function getFunctionLocation(program: AST.Program, functionName: string): AST.So
  * - Lists: [ℤ] can hold [n, acc]
  * - Tuples: (ℤ,ℤ) directly encodes (n, acc)
  * - Maps: {ℤ:ℤ} can encode multiple key-value pairs
+ * - Records: {n:ℤ,acc:ℤ} directly encodes multiple values (LOOPHOLE CLOSED!)
  */
-function isCollectionType(type: AST.Type): boolean {
+function isCollectionType(type: AST.Type, typeMap: Map<string, AST.TypeDef>): boolean {
   switch (type.type) {
     case 'ListType':
     case 'TupleType':
@@ -340,12 +357,20 @@ function isCollectionType(type: AST.Type): boolean {
       return true;
 
     case 'TypeConstructor':
-      // User-defined types might be collections
-      // For now, allow them (conservative approach)
+    case 'TypeVariable':
+      // Resolve user-defined types to check if they're record types
+      // Note: Parser treats `State` as TypeVariable when used without args (State)
+      // and as TypeConstructor when used with args (State[T])
+      const typeDef = typeMap.get(type.name);
+      if (typeDef && typeDef.type === 'ProductType') {
+        // Record types with multiple fields can encode multiple values
+        // This closes the loophole: t State={n:ℤ,acc:ℤ}
+        return typeDef.fields.length > 1;
+      }
+      // Type aliases and sum types are OK (they don't encode multiple values directly)
       return false;
 
     case 'PrimitiveType':
-    case 'TypeVariable':
     case 'FunctionType':
       return false;
 

@@ -4,11 +4,7 @@
    Part of Mint standard library - canonical implementations only.
 ⟧
 
-⟦ Helper: Get length of list (duplicated until module imports work) ⟧
-λlen(xs:[ℤ])→ℤ≡xs{
-  []→0|
-  [x,.rest]→1+len(rest)
-}
+i stdlib/list_utils
 
 ⟦ Check if list is sorted in ascending order ⟧
 λsorted_asc(xs:[ℤ])→𝔹≡xs{
@@ -44,7 +40,7 @@
 λin_bounds(idx:ℤ,xs:[ℤ])→𝔹=in_bounds_helper(idx,xs)
 
 λin_bounds_helper(idx:ℤ,xs:[ℤ])→𝔹≡(idx≥0){
-  ⊤→idx<len(xs)|
+  ⊤→idx<stdlib/list_utils.len(xs)|
   ⊥→⊥
 }
 

@@ -9,6 +9,11 @@ import * as AST from '../parser/ast.js';
 export class JavaScriptGenerator {
   private indent = 0;
   private output: string[] = [];
+  private sourceFile?: string;
+
+  constructor(sourceFile?: string) {
+    this.sourceFile = sourceFile;
+  }
 
   generate(program: AST.Program): string {
     this.output = [];
@@ -67,14 +72,30 @@ export class JavaScriptGenerator {
   }
 
   private generateImport(importDecl: AST.ImportDecl): void {
-    const path = importDecl.modulePath.join('/');
-    if (importDecl.imports === null) {
-      // import all
-      this.emit(`import * as ${importDecl.modulePath[importDecl.modulePath.length - 1]} from './${path}.js';`);
-    } else {
-      const imports = importDecl.imports.join(', ');
-      this.emit(`import { ${imports} } from './${path}.js';`);
+    const modulePath = importDecl.modulePath.join('/');
+
+    // Convert slash to underscore for JavaScript identifier
+    // stdlib/list_utils → stdlib_list_utils
+    const jsName = importDecl.modulePath.join('_');
+
+    // Compute relative import path
+    // If source is stdlib/list_predicates.mint importing stdlib/list_utils,
+    // both are in same dir, so use ./list_utils.js not ./stdlib/list_utils.js
+    let importPath = modulePath;
+    if (this.sourceFile) {
+      const sourceDir = this.sourceFile.split('/').slice(0, -1); // ['stdlib']
+      const importDir = importDecl.modulePath.slice(0, -1); // ['stdlib']
+
+      if (sourceDir.join('/') === importDir.join('/')) {
+        // Same directory - use just filename
+        importPath = importDecl.modulePath[importDecl.modulePath.length - 1];
+      }
     }
+
+    // Always use namespace import (import * as name)
+    // Works exactly like FFI: i stdlib/list_utils → import * as stdlib_list_utils
+    // Use as: stdlib/list_utils.len(xs) → stdlib_list_utils.len(xs)
+    this.emit(`import * as ${jsName} from './${importPath}.js';`);
   }
 
   private generateExtern(externDecl: AST.ExternDecl): void {
@@ -466,7 +487,7 @@ export class JavaScriptGenerator {
 /**
  * Compile a Mint program to JavaScript
  */
-export function compile(program: AST.Program): string {
-  const generator = new JavaScriptGenerator();
+export function compile(program: AST.Program, sourceFile?: string): string {
+  const generator = new JavaScriptGenerator(sourceFile);
   return generator.generate(program);
 }

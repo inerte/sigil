@@ -100,7 +100,7 @@ export interface TypeAlias {
 export interface ImportDecl {
   type: 'ImportDecl';
   modulePath: string[];
-  imports: string[] | null; // null = import all
+  // No selective imports - works like FFI (use as namespace.member)
   location: SourceLocation;
 }
 

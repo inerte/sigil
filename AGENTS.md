@@ -321,39 +321,51 @@ node compiler/dist/cli.js compile src/myprogram.mint -o custom/path.js
 
 Mint includes a standard library with common utility functions and predicates.
 
+**Import modules (like FFI):**
+```mint
+i stdlib/list_predicates
+i stdlib/numeric_predicates
+i stdlib/list_utils
+```
+
 **List predicates:**
 ```mint
-i stdlib/list_predicates{sorted_asc,all,any,contains}
-
-sorted_asc([1,2,3])           # Check if sorted ascending
-all(is_positive,[1,2,3])      # Check if all elements satisfy predicate
-any(is_even,[1,3,5])          # Check if any element satisfies predicate
-contains(3,[1,2,3,4])         # Check if element in list
+stdlib/list_predicates.sorted_asc([1,2,3])           # Check if sorted ascending
+stdlib/list_predicates.all(is_positive,[1,2,3])      # Check if all elements satisfy predicate
+stdlib/list_predicates.any(is_even,[1,3,5])          # Check if any element satisfies predicate
+stdlib/list_predicates.contains(3,[1,2,3,4])         # Check if element in list
 ```
 
 **Numeric predicates:**
 ```mint
-i stdlib/numeric_predicates{is_positive,is_even,is_prime}
+stdlib/numeric_predicates.is_positive(5)             # Check if > 0
+stdlib/numeric_predicates.is_even(4)                 # Check if divisible by 2
+stdlib/numeric_predicates.is_prime(7)                # Check if prime number
+stdlib/numeric_predicates.in_range(5,1,10)           # Check if in range [min,max]
+```
 
-is_positive(5)                # Check if > 0
-is_even(4)                    # Check if divisible by 2
-is_prime(7)                   # Check if prime number
-in_range(5,1,10)              # Check if in range [min,max]
+**List utilities:**
+```mint
+stdlib/list_utils.len([1,2,3])                       # Get list length
+stdlib/list_utils.head([1,2,3])                      # Get first element
+stdlib/list_utils.tail([1,2,3])                      # Get all but first
 ```
 
 **Common patterns:**
 ```mint
+i stdlib/numeric_predicates
+
 # Validation
-λprocess(x:ℤ)→𝕊≡is_positive(x){
+λprocess(x:ℤ)→𝕊≡stdlib/numeric_predicates.is_positive(x){
   ⊥→"Error: Must be positive"|
   ⊤→"Processing..."
 }
 
 # Filtering
-λget_primes(xs:[ℤ])→[ℤ]=xs⊳is_prime
+λget_primes(xs:[ℤ])→[ℤ]=xs⊳stdlib/numeric_predicates.is_prime
 
 # Preconditions
-λbinary_search(xs:[ℤ],target:ℤ)→ℤ≡sorted_asc(xs){
+λbinary_search(xs:[ℤ],target:ℤ)→ℤ≡stdlib/list_predicates.sorted_asc(xs){
   ⊥→-1|
   ⊤→search_impl(...)
 }

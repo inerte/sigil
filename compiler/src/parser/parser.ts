@@ -279,25 +279,16 @@ export class Parser {
     const start = this.previous();
     const modulePath: string[] = [];
 
-    // Parse module path (e.g., std/io/file)
+    // Parse module path: i stdlib/list_utils
+    // Works exactly like FFI: i module/path (NO selective imports)
+    // Use as: stdlib/list_utils.len(xs)
     do {
       modulePath.push(this.consume(TokenType.IDENTIFIER, 'Expected module name').value);
     } while (this.match(TokenType.SLASH));
 
-    // Optional import list
-    let imports: string[] | null = null;
-    if (this.match(TokenType.LBRACE)) {
-      imports = [];
-      do {
-        imports.push(this.consume(TokenType.IDENTIFIER, 'Expected import name').value);
-      } while (this.match(TokenType.COMMA));
-      this.consume(TokenType.RBRACE, 'Expected "}"');
-    }
-
     return {
       type: 'ImportDecl',
       modulePath,
-      imports,
       location: this.makeLocation(start, this.previous()),
     };
   }

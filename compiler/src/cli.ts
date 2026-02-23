@@ -192,7 +192,7 @@ async function compileCommand(args: string[]) {
       console.log();
     }
 
-    const jsCode = compile(ast);
+    const jsCode = compile(ast, filename);
 
     // Validate externals BEFORE writing file (link-time validation)
     await validateExterns(ast);
@@ -249,7 +249,7 @@ async function runCommand(args: string[]) {
     // Type check (should always happen!)
     typeCheck(ast, source);
 
-    const jsCode = compile(ast);
+    const jsCode = compile(ast, filename);
 
     // Validate externals BEFORE writing file (link-time validation)
     await validateExterns(ast);

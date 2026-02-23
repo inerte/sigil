@@ -811,8 +811,8 @@ export function typeCheck(program: AST.Program, _source: string): Map<string, In
   const env = TypeEnvironment.createInitialEnvironment();
   const types = new Map<string, InferenceType>();
 
-  // First pass: Add all function declarations and extern namespaces to environment
-  // (for mutual recursion support and FFI)
+  // First pass: Add all function declarations, extern namespaces, and imports to environment
+  // (for mutual recursion support, FFI, and module imports)
   for (const decl of program.declarations) {
     if (decl.type === 'FunctionDecl') {
       const params = decl.params.map(p => astTypeToInferenceType(p.typeAnnotation!));
@@ -827,6 +827,13 @@ export function typeCheck(program: AST.Program, _source: string): Map<string, In
     } else if (decl.type === 'ExternDecl') {
       // Register namespace as "any" type (trust mode)
       // Member validation happens at link-time, not type-check time
+      const namespaceName = decl.modulePath.join('/');
+      const anyType: InferenceType = { kind: 'any' };
+      env.bind(namespaceName, anyType);
+    } else if (decl.type === 'ImportDecl') {
+      // Register import namespace just like extern (trust mode)
+      // Use as: stdlib/list_utils.len(xs)
+      // Type checking happens within the imported module
       const namespaceName = decl.modulePath.join('/');
       const anyType: InferenceType = { kind: 'any' };
       env.bind(namespaceName, anyType);

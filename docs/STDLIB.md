@@ -20,16 +20,19 @@ The Mint standard library provides core utility functions and predicates for com
 ## Import Syntax
 
 ```mint
-⟦ Import specific functions from a module ⟧
-i stdlib/list_predicates{sorted_asc,contains,in_bounds}
-i stdlib/numeric_predicates{is_even,is_prime}
-i stdlib/list_utils{len,head,tail}
+⟦ Import modules (works like FFI - no selective imports) ⟧
+i stdlib/list_predicates
+i stdlib/numeric_predicates
+i stdlib/list_utils
 
-⟦ Use imported functions ⟧
-λmain()→𝕌=console.log(sorted_asc([1,2,3]) ++ " " ++ len([1,2,3]))
+⟦ Use with fully qualified names ⟧
+λmain()→𝕌=console.log(
+  stdlib/list_predicates.sorted_asc([1,2,3]) ++ " " ++
+  stdlib/list_utils.len([1,2,3])
+)
 ```
 
-**Note:** Module import system has known issues. For now, predicates can be used directly within the same file.
+**Design:** Imports work exactly like FFI (`e module/path`). No selective imports, always use fully qualified names. This prevents name collisions and makes code explicit.
 
 ## List Predicates
 
@@ -426,13 +429,11 @@ All predicates have explicit type signatures:
 
 ## Limitations & Known Issues
 
-### Module Imports Not Working
+### ~~Module Imports Not Working~~ ✅ FIXED
 
-**Issue:** Imports don't currently register in the typechecker.
+**Issue:** ~~Imports don't currently register in the typechecker.~~
 
-**Workaround:** Define predicates in the same file or copy/paste for now.
-
-**Status:** Tracked for fixing.
+**Resolution:** Module imports now fully working. Use like FFI: `i stdlib/module` then `stdlib/module.function()`.
 
 ### ~~Missing Unicode Operators~~ ✅ FIXED
 

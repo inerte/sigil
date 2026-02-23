@@ -10,9 +10,10 @@ The Mint standard library provides core utility functions and predicates for com
 - ✅ List predicates (validation, checking) - `stdlib/list_predicates`
 - ✅ Numeric predicates (range checking, properties) - `stdlib/numeric_predicates`
 - ✅ List utilities (len, head, tail) - `stdlib/list_utils`
+- ✅ Sum types (Option, Result) - `stdlib/option`, `stdlib/result`
 
 **Not yet implemented:**
-- ⏳ Option/Result predicates (requires sum types)
+- ⏳ Option/Result utility functions (requires generic type inference)
 - ⏳ String operations
 - ⏳ I/O operations
 - ⏳ JSON parsing/serialization
@@ -441,22 +442,84 @@ All predicates have explicit type signatures:
 
 **Resolution:** Unicode operators now fully supported in typechecker. Predicates updated to use cleaner Unicode syntax.
 
-## Future Additions
+## Sum Types
 
-### Option Type Predicates
+**Modules:** `stdlib/option`, `stdlib/result`
 
-When `Option[T]` sum type is added:
+### Option[T]
+
+Represents an optional value - either `Some(T)` or `None`.
+
 ```mint
-λis_some[T](opt:Option[T])→𝔹
-λis_none[T](opt:Option[T])→𝔹
+i stdlib/option
+
+t Option[T]=Some(T)|None
 ```
 
-### Result Type Predicates
-
-When `Result[T,E]` sum type is added:
+**Type declaration:**
 ```mint
-λis_ok[T,E](res:Result[T,E])→𝔹
-λis_err[T,E](res:Result[T,E])→𝔹
+t Option[T]=Some(T)|None
+```
+
+**Usage:**
+```mint
+⟦ Pattern matching on Option ⟧
+λgetOrDefault(opt:Option,default:ℤ)→ℤ≡opt{
+  Some(x)→x|
+  None→default
+}
+
+⟦ Safe division returning Option ⟧
+λdivide(a:ℤ,b:ℤ)→Option≡b{
+  0→None()|
+  b→Some(a/b)
+}
+```
+
+**Note:** Generic utility functions like `map[T,U](opt,fn)` not yet available due to incomplete generic type inference.
+
+### Result[T,E]
+
+Represents success (`Ok(T)`) or failure (`Err(E)`).
+
+```mint
+i stdlib/result
+
+t Result[T,E]=Ok(T)|Err(E)
+```
+
+**Type declaration:**
+```mint
+t Result[T,E]=Ok(T)|Err(E)
+```
+
+**Usage:**
+```mint
+⟦ Pattern matching on Result ⟧
+λprocessResult(res:Result)→𝕊≡res{
+  Ok(value)→"Success: "+value|
+  Err(msg)→"Error: "+msg
+}
+
+⟦ Safe parsing returning Result ⟧
+λparsePositive(s:𝕊)→Result≡validInput(s){
+  ⊤→Ok(parseInt(s))|
+  ⊥→Err("invalid input")
+}
+```
+
+**See also:** `examples/sum-types-demo.mint` for comprehensive examples.
+
+## Future Additions
+
+### Option/Result Utility Functions
+
+When generic type inference is complete:
+```mint
+λmap[T,U](opt:Option[T],fn:λ(T)→U)→Option[U]
+λunwrap_or[T](opt:Option[T],default:T)→T
+λmap[T,U,E](res:Result[T,E],fn:λ(T)→U)→Result[U,E]
+λunwrap[T,E](res:Result[T,E])→T
 ```
 
 ### String Predicates

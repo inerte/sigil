@@ -250,6 +250,175 @@ Type rules:
 Γ ⊢ list⊕fn⊕init ⇒ R
 ```
 
+## Sum Types (Algebraic Data Types)
+
+Mint supports sum types (also called tagged unions or algebraic data types) for type-safe value representation.
+
+### Syntax
+
+```mint
+# Simple enum (no type parameters)
+t Color=Red|Green|Blue
+
+# Generic Option type
+t Option[T]=Some(T)|None
+
+# Generic Result type
+t Result[T,E]=Ok(T)|Err(E)
+
+# Multiple fields
+t Tree[T]=Leaf(T)|Branch(Tree[T],Tree[T])
+```
+
+### Type Declaration
+
+Sum types are declared with `t TypeName=Variant1|Variant2|...`:
+- Type name must be uppercase
+- Variant names must be uppercase
+- Variants can have zero or more fields
+- Type parameters use `[T,U,...]` syntax
+
+### Constructor Calls
+
+Constructors are functions that create sum type values:
+
+```mint
+# Nullary constructors (no fields) - require ()
+λgetRed()→Color=Red()
+λgetGreen()→Color=Green()
+
+# Constructors with fields
+λsomeValue()→Option=Some(42)
+λnoValue()→Option=None()
+
+# Multiple fields
+λokResult()→Result=Ok(100)
+λerrResult()→Result=Err("file not found")
+```
+
+**Important:** Even nullary constructors (like `Red`, `None`) require `()` to be called.
+
+### Pattern Matching
+
+Sum types are deconstructed using pattern matching:
+
+```mint
+# Match on simple enum
+λcolorToInt(color:Color)→ℤ≡color{
+  Red→1|
+  Green→2|
+  Blue→3
+}
+
+# Extract values from constructors
+λprocessOption(opt:Option)→ℤ≡opt{
+  Some(x)→x|
+  None→0
+}
+
+# Nested patterns
+λprocessResult(res:Result)→𝕊≡res{
+  Ok(value)→"Success: "+value|
+  Err(msg)→"Error: "+msg
+}
+```
+
+### Type Checking Rules
+
+Constructor pattern matching is type-checked with environment lookup:
+
+```
+Γ ⊢ scrutinee ⇒ Constructor(TypeName, [])
+Constructor ∈ Γ
+Γ ⊢ Constructor ⇒ (T₁,...,Tₙ) → Constructor(TypeName, [])
+Γ, x₁:T₁,...,xₙ:Tₙ ⊢ body ⇒ R
+────────────────────────────────────────────────
+Γ ⊢ Constructor(x₁,...,xₙ)→body : R  (Constructor-Pattern)
+```
+
+The type checker:
+1. Looks up constructor in environment
+2. Verifies constructor returns the scrutinee type
+3. Binds pattern variables to constructor parameter types
+4. Type checks the arm body with extended environment
+
+### Code Generation
+
+Sum types compile to JavaScript objects with `__tag` and `__fields`:
+
+```javascript
+// t Color=Red|Green|Blue compiles to:
+export function Red() {
+  return { __tag: "Red", __fields: [] };
+}
+export function Green() {
+  return { __tag: "Green", __fields: [] };
+}
+export function Blue() {
+  return { __tag: "Blue", __fields: [] };
+}
+
+// Pattern matching compiles to:
+// ≡color{Red→1|...} becomes:
+switch(color.__tag) {
+  case "Red": return 1;
+  // ...
+}
+```
+
+### Standard Library Types
+
+The standard library provides two essential sum types:
+
+**Option[T]** - Represents optional values:
+```mint
+t Option[T]=Some(T)|None
+
+# Usage
+λdivide(a:ℤ,b:ℤ)→Option≡b{
+  0→None()|
+  b→Some(a/b)
+}
+```
+
+**Result[T,E]** - Represents success or failure:
+```mint
+t Result[T,E]=Ok(T)|Err(E)
+
+# Usage
+λparseInt(s:𝕊)→Result≡validInput(s){
+  ⊤→Ok(parseInt(s))|
+  ⊥→Err("invalid input")
+}
+```
+
+### Current Limitations
+
+**Phase 1** (Implemented):
+- Sum type declarations with `t Name=V1|V2`
+- Constructor function generation
+- Pattern matching with type checking
+- Generic type declarations (`Option[T]`, `Result[T,E]`)
+
+**Limitations:**
+- Generic type inference incomplete (type parameters use `any`)
+- No generic utility functions yet (e.g., `map[T,U](opt,fn)` not supported)
+- Nullary constructors require explicit `()` calls
+
+**Future improvements:**
+- Full generic type inference
+- Type parameter constraints
+- Generic utility functions in stdlib
+- Exhaustiveness checking for pattern matches
+
+### Examples
+
+See `examples/sum-types-demo.mint` for comprehensive examples including:
+- Simple enums (Color)
+- Generic Option and Result types
+- Pattern matching techniques
+- Practical use cases
+
 ## String Coercion
 
 The `+` operator has special handling for string concatenation:

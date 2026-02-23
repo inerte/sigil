@@ -556,6 +556,43 @@ axios.get("https://api.example.com")
 - `⊤` - true
 - `⊥` - false
 
+### Sum Types (Algebraic Data Types)
+```mint
+⟦ Type declarations ⟧
+t Color=Red|Green|Blue              # Simple enum
+t Option[T]=Some(T)|None            # Generic optional value
+t Result[T,E]=Ok(T)|Err(E)          # Generic success/failure
+
+⟦ Constructor calls (always use parentheses) ⟧
+Red()                               # Nullary constructor
+Some(42)                            # Constructor with value
+Ok(100)                             # Success value
+Err("not found")                    # Error value
+
+⟦ Pattern matching ⟧
+λprocessColor(c:Color)→ℤ≡c{
+  Red→1|
+  Green→2|
+  Blue→3
+}
+
+λprocessOption(opt:Option)→ℤ≡opt{
+  Some(x)→x|                        # Extract value from Some
+  None→0                            # Default for None
+}
+
+λprocessResult(res:Result)→𝕊≡res{
+  Ok(value)→"Success: "+value|
+  Err(msg)→"Error: "+msg
+}
+```
+
+**Standard library sum types:**
+- `Option[T]` - in `stdlib/option.mint`
+- `Result[T,E]` - in `stdlib/result.mint`
+
+See `examples/sum-types-demo.mint` for comprehensive examples.
+
 ### Lists
 ```mint
 [1,2,3]              # List literal

@@ -13,7 +13,7 @@ import {
   Connection,
   Diagnostic,
   DiagnosticSeverity,
-} from 'vscode-languageserver/node';
+} from 'vscode-languageserver/node.js';
 
 import { MintError } from './types.js';
 

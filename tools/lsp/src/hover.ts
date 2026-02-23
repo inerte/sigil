@@ -12,13 +12,13 @@ import { readFileSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
-import { TextDocuments } from 'vscode-languageserver/node';
+import { TextDocuments } from 'vscode-languageserver/node.js';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   Hover,
   HoverParams,
   MarkupKind,
-} from 'vscode-languageserver/node';
+} from 'vscode-languageserver/node.js';
 
 import { SemanticMap, Mapping } from './types.js';
 

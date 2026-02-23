@@ -7,13 +7,13 @@
  * - Hierarchical structure
  */
 
-import { TextDocuments } from 'vscode-languageserver/node';
+import { TextDocuments } from 'vscode-languageserver/node.js';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   DocumentSymbol,
   DocumentSymbolParams,
   SymbolKind,
-} from 'vscode-languageserver/node';
+} from 'vscode-languageserver/node.js';
 
 /**
  * Handle document symbol requests

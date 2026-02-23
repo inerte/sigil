@@ -10,13 +10,13 @@
  * - ↦ ⊳ ⊕ (map, filter, fold)
  */
 
-import { TextDocuments } from 'vscode-languageserver/node';
+import { TextDocuments } from 'vscode-languageserver/node.js';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import {
   CompletionItem,
   CompletionItemKind,
   CompletionParams,
-} from 'vscode-languageserver/node';
+} from 'vscode-languageserver/node.js';
 
 /**
  * Unicode symbol completions

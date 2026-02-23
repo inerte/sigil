@@ -2,7 +2,7 @@
   "version": 1,
   "file": "factorial.mint",
   "generated_by": "mintc@0.1.0",
-  "generated_at": "2026-02-23T05:16:57.927Z",
+  "generated_at": "2026-02-23T05:24:40.399Z",
   "mappings": {
     "factorial": {
       "range": [

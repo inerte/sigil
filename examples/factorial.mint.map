@@ -13,7 +13,8 @@
       "warnings": [
         "Only works for non-negative integers",
         "Overflow possible for n > 20 (depending on integer size)",
-        "Consider iterative version for better stack usage"
+        "O(n) stack depth is inherent to Mint's canonical primitive recursion",
+        "Not suitable for extremely large n due to stack limitations"
       ],
       "examples": [
         "factorial(0) = 1",
@@ -25,7 +26,7 @@
       "metadata": {
         "pure": true,
         "recursive": true,
-        "tail_recursive": false
+        "recursion_style": "primitive"
       }
     }
   },

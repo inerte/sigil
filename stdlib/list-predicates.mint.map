@@ -1,0 +1,253 @@
+{
+  "version": 1,
+  "file": "list-predicates.mint",
+  "generated_by": "mintc@0.1.0",
+  "generated_at": "2026-02-23T19:44:22.929Z",
+  "mappings": {
+    "sorted_asc": {
+      "range": [
+        204,
+        285
+      ],
+      "summary": "Function: sorted_asc",
+      "explanation": "Function with 1 parameter(s), returns 𝔹",
+      "type": "λ([ℤ])→𝔹"
+    },
+    "sorted_asc_arm_0": {
+      "range": [
+        232,
+        236
+      ],
+      "summary": "Match arm: []",
+      "explanation": "Pattern matches []"
+    },
+    "sorted_asc_arm_1": {
+      "range": [
+        240,
+        245
+      ],
+      "summary": "Match arm: [_]",
+      "explanation": "Pattern matches [_]"
+    },
+    "sorted_asc_arm_2": {
+      "range": [
+        249,
+        283
+      ],
+      "summary": "Match arm: [a]",
+      "explanation": "Pattern matches [a]"
+    },
+    "sorted_asc_check": {
+      "range": [
+        287,
+        402
+      ],
+      "summary": "Function: sorted_asc_check",
+      "explanation": "Function with 2 parameter(s), returns 𝔹",
+      "type": "λ(ℤ,[ℤ])→𝔹"
+    },
+    "sorted_asc_check_arm_0": {
+      "range": [
+        328,
+        332
+      ],
+      "summary": "Match arm: []",
+      "explanation": "Pattern matches []"
+    },
+    "sorted_asc_check_arm_1": {
+      "range": [
+        336,
+        400
+      ],
+      "summary": "Match arm: [b]",
+      "explanation": "Pattern matches [b]"
+    },
+    "sorted_desc": {
+      "range": [
+        452,
+        535
+      ],
+      "summary": "Function: sorted_desc",
+      "explanation": "Function with 1 parameter(s), returns 𝔹",
+      "type": "λ([ℤ])→𝔹"
+    },
+    "sorted_desc_arm_0": {
+      "range": [
+        481,
+        485
+      ],
+      "summary": "Match arm: []",
+      "explanation": "Pattern matches []"
+    },
+    "sorted_desc_arm_1": {
+      "range": [
+        489,
+        494
+      ],
+      "summary": "Match arm: [_]",
+      "explanation": "Pattern matches [_]"
+    },
+    "sorted_desc_arm_2": {
+      "range": [
+        498,
+        533
+      ],
+      "summary": "Match arm: [a]",
+      "explanation": "Pattern matches [a]"
+    },
+    "sorted_desc_check": {
+      "range": [
+        537,
+        654
+      ],
+      "summary": "Function: sorted_desc_check",
+      "explanation": "Function with 2 parameter(s), returns 𝔹",
+      "type": "λ(ℤ,[ℤ])→𝔹"
+    },
+    "sorted_desc_check_arm_0": {
+      "range": [
+        579,
+        583
+      ],
+      "summary": "Match arm: []",
+      "explanation": "Pattern matches []"
+    },
+    "sorted_desc_check_arm_1": {
+      "range": [
+        587,
+        652
+      ],
+      "summary": "Match arm: [b]",
+      "explanation": "Pattern matches [b]"
+    },
+    "is_empty": {
+      "range": [
+        766,
+        805
+      ],
+      "summary": "Function: is_empty",
+      "explanation": "Function with 1 parameter(s), returns 𝔹",
+      "type": "λ([ℤ])→𝔹"
+    },
+    "is_empty_arm_0": {
+      "range": [
+        792,
+        796
+      ],
+      "summary": "Match arm: []",
+      "explanation": "Pattern matches []"
+    },
+    "is_empty_arm_1": {
+      "range": [
+        800,
+        803
+      ],
+      "summary": "Match arm: _",
+      "explanation": "Pattern matches _"
+    },
+    "is_non_empty": {
+      "range": [
+        838,
+        881
+      ],
+      "summary": "Function: is_non_empty",
+      "explanation": "Function with 1 parameter(s), returns 𝔹",
+      "type": "λ([ℤ])→𝔹"
+    },
+    "is_non_empty_arm_0": {
+      "range": [
+        868,
+        872
+      ],
+      "summary": "Match arm: []",
+      "explanation": "Pattern matches []"
+    },
+    "is_non_empty_arm_1": {
+      "range": [
+        876,
+        879
+      ],
+      "summary": "Match arm: _",
+      "explanation": "Pattern matches _"
+    },
+    "all": {
+      "range": [
+        927,
+        1023
+      ],
+      "summary": "Function: all",
+      "explanation": "Function with 2 parameter(s), returns 𝔹",
+      "type": "λ(λ(ℤ)→𝔹,[ℤ])→𝔹"
+    },
+    "all_arm_0": {
+      "range": [
+        960,
+        964
+      ],
+      "summary": "Match arm: []",
+      "explanation": "Pattern matches []"
+    },
+    "all_arm_1": {
+      "range": [
+        968,
+        1021
+      ],
+      "summary": "Match arm: [x]",
+      "explanation": "Pattern matches [x]"
+    },
+    "any": {
+      "range": [
+        1070,
+        1166
+      ],
+      "summary": "Function: any",
+      "explanation": "Function with 2 parameter(s), returns 𝔹",
+      "type": "λ(λ(ℤ)→𝔹,[ℤ])→𝔹"
+    },
+    "any_arm_0": {
+      "range": [
+        1103,
+        1107
+      ],
+      "summary": "Match arm: []",
+      "explanation": "Pattern matches []"
+    },
+    "any_arm_1": {
+      "range": [
+        1111,
+        1164
+      ],
+      "summary": "Match arm: [x]",
+      "explanation": "Pattern matches [x]"
+    },
+    "contains": {
+      "range": [
+        1200,
+        1302
+      ],
+      "summary": "Function: contains",
+      "explanation": "Function with 2 parameter(s), returns 𝔹",
+      "type": "λ(ℤ,[ℤ])→𝔹"
+    },
+    "contains_arm_0": {
+      "range": [
+        1233,
+        1237
+      ],
+      "summary": "Match arm: []",
+      "explanation": "Pattern matches []"
+    },
+    "contains_arm_1": {
+      "range": [
+        1241,
+        1300
+      ],
+      "summary": "Match arm: [x]",
+      "explanation": "Pattern matches [x]"
+    }
+  },
+  "metadata": {
+    "category": "unknown",
+    "tested": false
+  }
+}

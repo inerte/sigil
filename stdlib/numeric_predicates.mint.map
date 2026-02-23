@@ -1,0 +1,158 @@
+{
+  "version": 1,
+  "file": "numeric_predicates.mint",
+  "generated_by": "mintc@0.1.0",
+  "generated_at": "2026-02-23T19:45:58.330Z",
+  "mappings": {
+    "is_positive": {
+      "range": [
+        195,
+        218
+      ],
+      "summary": "Function: is_positive",
+      "explanation": "Function with 1 parameter(s), returns 𝔹",
+      "type": "λ(ℤ)→𝔹"
+    },
+    "is_negative": {
+      "range": [
+        251,
+        274
+      ],
+      "summary": "Function: is_negative",
+      "explanation": "Function with 1 parameter(s), returns 𝔹",
+      "type": "λ(ℤ)→𝔹"
+    },
+    "is_zero": {
+      "range": [
+        303,
+        322
+      ],
+      "summary": "Function: is_zero",
+      "explanation": "Function with 1 parameter(s), returns 𝔹",
+      "type": "λ(ℤ)→𝔹"
+    },
+    "is_non_negative": {
+      "range": [
+        364,
+        394
+      ],
+      "summary": "Function: is_non_negative",
+      "explanation": "Function with 1 parameter(s), returns 𝔹",
+      "type": "λ(ℤ)→𝔹"
+    },
+    "is_even": {
+      "range": [
+        423,
+        446
+      ],
+      "summary": "Function: is_even",
+      "explanation": "Function with 1 parameter(s), returns 𝔹",
+      "type": "λ(ℤ)→𝔹"
+    },
+    "is_odd": {
+      "range": [
+        474,
+        502
+      ],
+      "summary": "Function: is_odd",
+      "explanation": "Function with 1 parameter(s), returns 𝔹",
+      "type": "λ(ℤ)→𝔹"
+    },
+    "in_range": {
+      "range": [
+        558,
+        613
+      ],
+      "summary": "Function: in_range",
+      "explanation": "Function with 3 parameter(s), returns 𝔹",
+      "type": "λ(ℤ,ℤ,ℤ)→𝔹"
+    },
+    "in_range_helper": {
+      "range": [
+        615,
+        681
+      ],
+      "summary": "Function: in_range_helper",
+      "explanation": "Function with 3 parameter(s), returns 𝔹",
+      "type": "λ(ℤ,ℤ,ℤ)→𝔹"
+    },
+    "in_range_helper_arm_0": {
+      "range": [
+        662,
+        665
+      ],
+      "summary": "Match arm: true",
+      "explanation": "Pattern matches true"
+    },
+    "in_range_helper_arm_1": {
+      "range": [
+        669,
+        679
+      ],
+      "summary": "Match arm: false",
+      "explanation": "Pattern matches false"
+    },
+    "is_prime": {
+      "range": [
+        711,
+        771
+      ],
+      "summary": "Function: is_prime",
+      "explanation": "Function with 1 parameter(s), returns 𝔹",
+      "type": "λ(ℤ)→𝔹"
+    },
+    "is_prime_arm_0": {
+      "range": [
+        733,
+        736
+      ],
+      "summary": "Match arm: 0",
+      "explanation": "Pattern matches 0"
+    },
+    "is_prime_arm_1": {
+      "range": [
+        740,
+        743
+      ],
+      "summary": "Match arm: 1",
+      "explanation": "Pattern matches 1"
+    },
+    "is_prime_arm_2": {
+      "range": [
+        747,
+        769
+      ],
+      "summary": "Match arm: n",
+      "explanation": "Pattern matches n"
+    },
+    "is_prime_helper": {
+      "range": [
+        812,
+        943
+      ],
+      "summary": "Function: is_prime_helper",
+      "explanation": "Function with 2 parameter(s), returns 𝔹",
+      "type": "λ(ℤ,ℤ)→𝔹"
+    },
+    "is_prime_helper_arm_0": {
+      "range": [
+        869,
+        872
+      ],
+      "summary": "Match arm: true",
+      "explanation": "Pattern matches true"
+    },
+    "is_prime_helper_arm_1": {
+      "range": [
+        876,
+        941
+      ],
+      "summary": "Match arm: false",
+      "explanation": "Pattern matches false"
+    }
+  },
+  "metadata": {
+    "category": "unknown",
+    "tested": false
+  }
+}

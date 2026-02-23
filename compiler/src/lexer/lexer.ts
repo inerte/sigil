@@ -414,6 +414,7 @@ export class Lexer {
     switch (text) {
       case 't': return TokenType.TYPE;
       case 'i': return TokenType.IMPORT;
+      case 'e': return TokenType.EXTERN;
       case 'l': return TokenType.LET;
       case 'c': return TokenType.CONST;
       case 'mut': return TokenType.MUT;

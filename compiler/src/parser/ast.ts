@@ -38,7 +38,8 @@ export type Declaration =
   | TypeDecl
   | ImportDecl
   | ConstDecl
-  | TestDecl;
+  | TestDecl
+  | ExternDecl;
 
 export interface FunctionDecl {
   type: 'FunctionDecl';
@@ -115,6 +116,12 @@ export interface TestDecl {
   type: 'TestDecl';
   description: string;
   body: Expr;
+  location: SourceLocation;
+}
+
+export interface ExternDecl {
+  type: 'ExternDecl';
+  modulePath: string[];          // ['fs', 'promises'] or ['axios']
   location: SourceLocation;
 }
 
@@ -198,7 +205,8 @@ export type Expr =
   | PipelineExpr
   | MapExpr
   | FilterExpr
-  | FoldExpr;
+  | FoldExpr
+  | MemberAccessExpr;
 
 export interface LiteralExpr {
   type: 'LiteralExpr';
@@ -352,6 +360,13 @@ export interface FoldExpr {
   list: Expr;
   fn: Expr;
   init: Expr;
+  location: SourceLocation;
+}
+
+export interface MemberAccessExpr {
+  type: 'MemberAccessExpr';
+  namespace: string[];           // ['fs', 'promises'] or ['axios']
+  member: string;                // 'readFile' or 'get'
   location: SourceLocation;
 }
 

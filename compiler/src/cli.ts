@@ -12,11 +12,12 @@ import { tokenToString } from './lexer/token.js';
 import { parse } from './parser/parser.js';
 import { compile } from './codegen/javascript.js';
 import { validateCanonicalForm } from './validator/canonical.js';
+import { validateExterns } from './validator/extern-validator.js';
 import { typeCheck } from './typechecker/index.js';
 import { formatType } from './typechecker/errors.js';
 import { generateSemanticMap, enhanceWithClaude } from './mapgen/index.js';
 
-function main() {
+async function main() {
   const args = process.argv.slice(2);
 
   if (args.length === 0) {
@@ -41,10 +42,10 @@ function main() {
       parseCommand(args.slice(1));
       break;
     case 'compile':
-      compileCommand(args.slice(1));
+      await compileCommand(args.slice(1));
       break;
     case 'run':
-      runCommand(args.slice(1));
+      await runCommand(args.slice(1));
       break;
     case 'help':
       console.log('Mint Compiler v0.1.0');
@@ -149,7 +150,7 @@ function getSmartOutputPath(inputFile: string): string {
   return `.local/${inputFile.replace(/\.mint$/, '.js')}`;
 }
 
-function compileCommand(args: string[]) {
+async function compileCommand(args: string[]) {
   if (args.length === 0) {
     console.error('Usage: mintc compile <file> [-o output.js]');
     process.exit(1);
@@ -193,6 +194,9 @@ function compileCommand(args: string[]) {
 
     const jsCode = compile(ast);
 
+    // Validate externals BEFORE writing file (link-time validation)
+    await validateExterns(ast);
+
     // Ensure output directory exists
     const outputDir = dirname(outputFile);
     if (outputDir !== '.') {
@@ -222,7 +226,7 @@ function compileCommand(args: string[]) {
   }
 }
 
-function runCommand(args: string[]) {
+async function runCommand(args: string[]) {
   if (args.length === 0) {
     console.error('Usage: mintc run <file>');
     process.exit(1);
@@ -242,7 +246,13 @@ function runCommand(args: string[]) {
     // Validate canonical form (enforces ONE way)
     validateCanonicalForm(ast);
 
+    // Type check (should always happen!)
+    typeCheck(ast, source);
+
     const jsCode = compile(ast);
+
+    // Validate externals BEFORE writing file (link-time validation)
+    await validateExterns(ast);
 
     // Ensure .local exists
     mkdirSync('.local', { recursive: true });

@@ -123,6 +123,9 @@ export function formatType(type: InferenceType): string {
       const args = type.typeArgs.map(formatType).join(', ');
       return `${type.name}[${args}]`;
     }
+
+    case 'any':
+      return 'any';
   }
 }
 

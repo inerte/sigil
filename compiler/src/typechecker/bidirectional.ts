@@ -51,6 +51,9 @@ function synthesize(env: TypeEnvironment, expr: AST.Expr): InferenceType {
     case 'FieldAccessExpr':
       return synthesizeFieldAccess(env, expr);
 
+    case 'MemberAccessExpr':
+      return synthesizeMemberAccess(env, expr);
+
     // List operations (language constructs)
     case 'MapExpr':
       return synthesizeMap(env, expr);
@@ -83,6 +86,11 @@ function synthesize(env: TypeEnvironment, expr: AST.Expr): InferenceType {
  * Throws TypeError if expression doesn't match
  */
 function check(env: TypeEnvironment, expr: AST.Expr, expectedType: InferenceType): void {
+  // Special case: checking against 'any' type always succeeds (FFI trust mode)
+  if (expectedType.kind === 'any') {
+    return;
+  }
+
   switch (expr.type) {
     case 'LambdaExpr':
       checkLambda(env, expr, expectedType);
@@ -95,6 +103,12 @@ function check(env: TypeEnvironment, expr: AST.Expr, expectedType: InferenceType
     // For most expressions: synthesize then verify equality
     default:
       const actualType = synthesize(env, expr);
+
+      // Special case: 'any' type matches anything (FFI trust mode)
+      if (actualType.kind === 'any') {
+        return;
+      }
+
       if (!typesEqual(actualType, expectedType)) {
         throw new TypeError(
           `Type mismatch: expected ${formatType(expectedType)}, got ${formatType(actualType)}`,
@@ -187,6 +201,12 @@ function synthesizeIdentifier(env: TypeEnvironment, expr: AST.IdentifierExpr): I
 
 function synthesizeApplication(env: TypeEnvironment, expr: AST.ApplicationExpr): InferenceType {
   const fnType = synthesize(env, expr.func);
+
+  // Special case: applying 'any' type (FFI function call)
+  // No type checking - trust mode, validated at link-time
+  if (fnType.kind === 'any') {
+    return { kind: 'any' };
+  }
 
   if (fnType.kind !== 'function') {
     throw new TypeError(
@@ -354,6 +374,13 @@ function synthesizeRecord(env: TypeEnvironment, expr: AST.RecordExpr): Inference
 function synthesizeFieldAccess(env: TypeEnvironment, expr: AST.FieldAccessExpr): InferenceType {
   const objType = synthesize(env, expr.object);
 
+  // Special case: field access on 'any' type (FFI namespace)
+  // This happens when accessing extern namespace members like console.log
+  if (objType.kind === 'any') {
+    // Return any type - member validation happens at link-time
+    return { kind: 'any' };
+  }
+
   if (objType.kind !== 'record') {
     throw new TypeError(
       `Cannot access field on non-record type ${formatType(objType)}`,
@@ -371,6 +398,24 @@ function synthesizeFieldAccess(env: TypeEnvironment, expr: AST.FieldAccessExpr):
 
   return fieldType;
 }
+
+function synthesizeMemberAccess(env: TypeEnvironment, expr: AST.MemberAccessExpr): InferenceType {
+  const namespaceName = expr.namespace.join('/');
+
+  // Check namespace exists (should be registered from extern declaration)
+  const namespaceType = env.lookup(namespaceName);
+  if (!namespaceType) {
+    throw new TypeError(
+      `Unknown namespace '${namespaceName}'. Did you forget 'e ${namespaceName}'?`,
+      expr.location
+    );
+  }
+
+  // Return any type for member access
+  // Actual validation happens at link-time (extern-validator.ts)
+  return { kind: 'any' };
+}
+
 function synthesizeMap(env: TypeEnvironment, expr: AST.MapExpr): InferenceType {
   const listType = synthesize(env, expr.list);
 
@@ -763,8 +808,8 @@ export function typeCheck(program: AST.Program, _source: string): Map<string, In
   const env = TypeEnvironment.createInitialEnvironment();
   const types = new Map<string, InferenceType>();
 
-  // First pass: Add all function declarations to environment
-  // (for mutual recursion support)
+  // First pass: Add all function declarations and extern namespaces to environment
+  // (for mutual recursion support and FFI)
   for (const decl of program.declarations) {
     if (decl.type === 'FunctionDecl') {
       const params = decl.params.map(p => astTypeToInferenceType(p.typeAnnotation!));
@@ -776,6 +821,12 @@ export function typeCheck(program: AST.Program, _source: string): Map<string, In
       };
       env.bind(decl.name, funcType);
       types.set(decl.name, funcType);
+    } else if (decl.type === 'ExternDecl') {
+      // Register namespace as "any" type (trust mode)
+      // Member validation happens at link-time, not type-check time
+      const namespaceName = decl.modulePath.join('/');
+      const anyType: InferenceType = { kind: 'any' };
+      env.bind(namespaceName, anyType);
     }
   }
 

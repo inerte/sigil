@@ -53,6 +53,11 @@ export class Parser {
       return this.importDeclaration();
     }
 
+    // Extern declaration: e module/path
+    if (this.match(TokenType.EXTERN)) {
+      return this.externDeclaration();
+    }
+
     // Test declaration: test "description" { ... }
     if (this.checkIdentifier('test')) {
       this.advance();
@@ -293,6 +298,26 @@ export class Parser {
       type: 'ImportDecl',
       modulePath,
       imports,
+      location: this.makeLocation(start, this.previous()),
+    };
+  }
+
+  private externDeclaration(): AST.ExternDecl {
+    const start = this.previous();
+    const modulePath: string[] = [];
+
+    // Parse module path (e.g., fs/promises, axios, lodash)
+    // Syntax: extern module/path/name
+    modulePath.push(this.consume(TokenType.IDENTIFIER, 'Expected module name').value);
+
+    // Handle path separators: fs/promises
+    while (this.match(TokenType.SLASH)) {
+      modulePath.push(this.consume(TokenType.IDENTIFIER, 'Expected path segment').value);
+    }
+
+    return {
+      type: 'ExternDecl',
+      modulePath,
       location: this.makeLocation(start, this.previous()),
     };
   }
@@ -756,12 +781,40 @@ export class Parser {
       return this.tupleOrGrouped(start);
     }
 
-    // Identifier
+    // Identifier or Member Access (namespace.member)
     if (this.match(TokenType.IDENTIFIER, TokenType.UPPER_IDENTIFIER)) {
+      const identStart = this.previous();
+      const firstSegment = identStart.value;
+
+      // Check if this is a namespace path (e.g., fs/promises.readFile)
+      if (this.check(TokenType.SLASH)) {
+        // Parse full namespace path
+        const namespace: string[] = [firstSegment];
+
+        while (this.match(TokenType.SLASH)) {
+          namespace.push(this.consume(TokenType.IDENTIFIER, 'Expected identifier after "/"').value);
+        }
+
+        // If followed by dot, it's member access
+        if (this.match(TokenType.DOT)) {
+          const member = this.consume(TokenType.IDENTIFIER, 'Expected member name after "."').value;
+          return {
+            type: 'MemberAccessExpr',
+            namespace,
+            member,
+            location: this.makeLocation(identStart, this.previous()),
+          };
+        }
+
+        // Otherwise, error - namespace path without member access
+        throw this.error(`Namespace path "${namespace.join('/')}" must be followed by ".member". Did you mean to access a member?`);
+      }
+
+      // Just a regular identifier
       return {
         type: 'IdentifierExpr',
-        name: this.previous().value,
-        location: this.makeLocation(this.previous(), this.previous()),
+        name: firstSegment,
+        location: this.makeLocation(identStart, identStart),
       };
     }
 

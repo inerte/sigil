@@ -26,7 +26,8 @@ export type InferenceType =
   | TList
   | TTuple
   | TRecord
-  | TConstructor;
+  | TConstructor
+  | TAny;
 
 export interface TPrimitive {
   kind: 'primitive';
@@ -67,6 +68,11 @@ export interface TConstructor {
   kind: 'constructor';
   name: string;                  // e.g., "Option", "Result", "Maybe"
   typeArgs: InferenceType[];     // Generic type arguments
+}
+
+export interface TAny {
+  kind: 'any';
+  // Used for FFI namespaces - trust mode, validated at link-time
 }
 
 // ============================================================================
@@ -170,6 +176,10 @@ export function applySubst(subst: Substitution, type: InferenceType): InferenceT
         name: type.name,
         typeArgs: type.typeArgs.map(arg => applySubst(subst, arg))
       };
+
+    case 'any':
+      // Any type is not affected by substitution
+      return type;
   }
 }
 
@@ -272,6 +282,10 @@ export function collectFreeVars(
       for (const arg of type.typeArgs) {
         collectFreeVars(arg, freeVars, boundVars);
       }
+      return freeVars;
+
+    case 'any':
+      // Any type has no free variables
       return freeVars;
   }
 }
@@ -399,5 +413,9 @@ export function typesEqual(t1: InferenceType, t2: InferenceType): boolean {
       }
       return true;
     }
+
+    case 'any':
+      // Any is equal to any
+      return true;
   }
 }

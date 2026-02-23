@@ -23,6 +23,7 @@ export enum TokenType {
   // Declaration keywords
   TYPE = 'TYPE',               // t
   IMPORT = 'IMPORT',           // i
+  EXTERN = 'EXTERN',           // e
   LET = 'LET',                 // l
   CONST = 'CONST',             // c
   MUT = 'MUT',                 // mut

@@ -38,6 +38,9 @@ export class JavaScriptGenerator {
       case 'ImportDecl':
         this.generateImport(decl);
         break;
+      case 'ExternDecl':
+        this.generateExtern(decl);
+        break;
       case 'TestDecl':
         this.generateTest(decl);
         break;
@@ -72,6 +75,18 @@ export class JavaScriptGenerator {
       const imports = importDecl.imports.join(', ');
       this.emit(`import { ${imports} } from './${path}.js';`);
     }
+  }
+
+  private generateExtern(externDecl: AST.ExternDecl): void {
+    const modulePath = externDecl.modulePath.join('/');
+
+    // Convert slash to underscore for JavaScript identifier
+    // fs/promises → fs_promises, axios → axios
+    const jsName = externDecl.modulePath.join('_');
+
+    // Always use namespace import (import * as name)
+    // This matches our namespace.member usage in Mint
+    this.emit(`import * as ${jsName} from '${modulePath}';`);
   }
 
   private generateTest(test: AST.TestDecl): void {
@@ -112,6 +127,8 @@ export class JavaScriptGenerator {
         return this.generateTuple(expr);
       case 'FieldAccessExpr':
         return this.generateFieldAccess(expr);
+      case 'MemberAccessExpr':
+        return this.generateMemberAccess(expr);
       case 'IndexExpr':
         return this.generateIndex(expr);
       case 'PipelineExpr':
@@ -378,6 +395,15 @@ export class JavaScriptGenerator {
   private generateFieldAccess(access: AST.FieldAccessExpr): string {
     const object = this.generateExpression(access.object);
     return `${object}.${access.field}`;
+  }
+
+  private generateMemberAccess(access: AST.MemberAccessExpr): string {
+    // Convert namespace path to JavaScript identifier
+    // fs/promises → fs_promises, axios → axios
+    const jsNamespace = access.namespace.join('_');
+
+    // Generate: namespace.member
+    return `${jsNamespace}.${access.member}`;
   }
 
   private generateIndex(index: AST.IndexExpr): string {

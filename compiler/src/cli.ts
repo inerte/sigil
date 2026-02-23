@@ -14,6 +14,7 @@ import { compile } from './codegen/javascript.js';
 import { validateCanonicalForm } from './validator/canonical.js';
 import { typeCheck } from './typechecker/index.js';
 import { formatType } from './typechecker/errors.js';
+import { generateSemanticMap, enhanceWithClaude } from './mapgen/index.js';
 
 function main() {
   const args = process.argv.slice(2);
@@ -201,6 +202,15 @@ function compileCommand(args: string[]) {
     writeFileSync(outputFile, jsCode, 'utf-8');
 
     console.log(`✓ Compiled ${filename} → ${outputFile}`);
+
+    // Generate semantic map
+    const mapFile = filename.replace('.mint', '.mint.map');
+    generateSemanticMap(ast, types, source, mapFile);
+    console.log(`✓ Generated basic semantic map → ${mapFile}`);
+
+    // Enhance with Claude Code CLI
+    enhanceWithClaude(filename, mapFile);
+    console.log(`✓ Enhanced semantic map with AI documentation`);
   } catch (error) {
     if (error instanceof Error) {
       console.error(`Error: ${error.message}`);

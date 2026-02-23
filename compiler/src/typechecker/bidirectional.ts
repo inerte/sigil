@@ -257,14 +257,16 @@ function synthesizeBinary(env: TypeEnvironment, expr: AST.BinaryExpr): Inference
   }
 
   // Comparison operators: ℤ → ℤ → 𝔹
-  if (['<', '>', '<=', '>='].includes(op)) {
+  // Support both ASCII (<= >=) and Unicode (≤ ≥) forms
+  if (['<', '>', '<=', '>=', '≤', '≥'].includes(op)) {
     check(env, expr.left, { kind: 'primitive', name: 'Int' });
     check(env, expr.right, { kind: 'primitive', name: 'Int' });
     return { kind: 'primitive', name: 'Bool' };
   }
 
   // Equality operators: T → T → 𝔹 (polymorphic)
-  if (['=', '!='].includes(op)) {
+  // Support both ASCII (!= ) and Unicode (≠) forms
+  if (['=', '!=', '≠'].includes(op)) {
     if (!typesEqual(leftType, rightType)) {
       throw new TypeError(
         `Cannot compare ${formatType(leftType)} with ${formatType(rightType)}`,
@@ -275,7 +277,8 @@ function synthesizeBinary(env: TypeEnvironment, expr: AST.BinaryExpr): Inference
   }
 
   // Logical operators: 𝔹 → 𝔹 → 𝔹
-  if (['&&', '||'].includes(op)) {
+  // Support both ASCII (&& ||) and Unicode (∧ ∨) forms
+  if (['&&', '||', '∧', '∨'].includes(op)) {
     check(env, expr.left, { kind: 'primitive', name: 'Bool' });
     check(env, expr.right, { kind: 'primitive', name: 'Bool' });
     return { kind: 'primitive', name: 'Bool' };

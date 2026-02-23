@@ -14,7 +14,7 @@
 λis_zero(x:ℤ)→𝔹=x=0
 
 ⟦ Check if value is non-negative (≥0) ⟧
-λis_non_negative(x:ℤ)→𝔹=¬(x<0)
+λis_non_negative(x:ℤ)→𝔹=x≥0
 
 ⟦ Check if value is even ⟧
 λis_even(x:ℤ)→𝔹=(x%2)=0
@@ -25,9 +25,9 @@
 ⟦ Check if value is in range [min, max] (inclusive) ⟧
 λin_range(x:ℤ,min:ℤ,max:ℤ)→𝔹=in_range_helper(x,min,max)
 
-λin_range_helper(x:ℤ,min:ℤ,max:ℤ)→𝔹≡(x<min){
-  ⊤→⊥|
-  ⊥→¬(x>max)
+λin_range_helper(x:ℤ,min:ℤ,max:ℤ)→𝔹≡(x≥min){
+  ⊤→x≤max|
+  ⊥→⊥
 }
 
 ⟦ Check if value is prime ⟧
@@ -40,8 +40,8 @@
 ⟦ Helper function for prime checking ⟧
 λis_prime_helper(n:ℤ,divisor:ℤ)→𝔹≡(divisor*divisor>n){
   ⊤→⊤|
-  ⊥→≡(n%divisor=0){
-    ⊤→⊥|
-    ⊥→is_prime_helper(n,divisor+1)
+  ⊥→≡(n%divisor≠0){
+    ⊤→is_prime_helper(n,divisor+1)|
+    ⊥→⊥
   }
 }

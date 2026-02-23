@@ -13,9 +13,9 @@
 
 λsorted_asc_check(prev:ℤ,xs:[ℤ])→𝔹≡xs{
   []→⊤|
-  [b,.rest]→≡(prev>b){
-    ⊤→⊥|
-    ⊥→sorted_asc_check(b,rest)
+  [b,.rest]→≡(prev≤b){
+    ⊤→sorted_asc_check(b,rest)|
+    ⊥→⊥
   }
 }
 
@@ -28,9 +28,9 @@
 
 λsorted_desc_check(prev:ℤ,xs:[ℤ])→𝔹≡xs{
   []→⊤|
-  [b,.rest]→≡(prev<b){
-    ⊤→⊥|
-    ⊥→sorted_desc_check(b,rest)
+  [b,.rest]→≡(prev≥b){
+    ⊤→sorted_desc_check(b,rest)|
+    ⊥→⊥
   }
 }
 

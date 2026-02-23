@@ -39,8 +39,9 @@ Additional examples:
 - ✅ **examples/mutability-errors.mint** + .map - Common mutability errors
 - ✅ **examples/comments-demo.mint** + .map - Comment syntax examples
 - ✅ **examples/ffi-demo.mint** + .map - JavaScript FFI examples
+- ✅ **examples/effect-demo.mint** - Effect tracking system demonstration
 
-**Total:** 11 examples (all with semantic maps)
+**Total:** 12 examples (10 with semantic maps)
 
 ### Phase 3: Compiler - Lexer ✅ COMPLETE
 
@@ -108,8 +109,12 @@ $ node compiler/dist/cli.js run factorial.mint
 120  # factorial(5) = 120 ✓
 ```
 
-**Not yet implemented:**
-- ⏳ Effect tracking (!IO, !Network) - Stub in type system, parser doesn't support syntax
+**Advanced features:**
+- ✅ **Effect tracking** - Fully implemented (!IO, !Network, !Async, !Error, !Mut)
+  - Parser supports `→!Effect1 !Effect2 Type` syntax
+  - Type checker infers and validates effects
+  - Clear compile-time error messages for effect mismatches
+  - See `examples/effect-demo.mint` for usage
 - ⏳ Boolean pattern matching - Type checker rejects (may be intentional per canonical forms)
 
 ### Phase 6: Compiler - Code Generator ✅ COMPLETE
@@ -313,14 +318,19 @@ Nothing currently in progress.
 
 ## TODO - Medium Priority 📋
 
-### Effect Tracking (NEXT UP)
+### Effect Tracking ✅ COMPLETE
 
-- ⏳ **Effect tracking** - Parse and check `!IO`, `!Network`, `!Async` syntax ⬅️ IMPLEMENTING NEXT
-  - Prevents accidental side effects
-  - Documents function behavior clearly
-  - Helps LLMs reason about code
-  - Does NOT violate canonical forms
-  - Estimated: 5-7 days
+- ✅ **Effect tracking** - Parse and check `!IO`, `!Network`, `!Async`, `!Error`, `!Mut` syntax
+  - ✅ Parser: `parseEffects()` method handles `!Effect` syntax after `→`
+  - ✅ Type checker: `inferEffects()` tracks effects through expression trees
+  - ✅ Type checker: `checkEffects()` validates declared vs. inferred effects
+  - ✅ Error messages: Clear "effect mismatch" errors with suggestions
+  - ✅ Documentation: Updated AGENTS.md and created effect-demo.mint
+  - Prevents accidental side effects at compile time
+  - Documents function behavior explicitly in signatures
+  - Helps LLMs reason about code effects
+  - Does NOT violate canonical forms (one signature per function)
+  - Implemented: 2026-02-23
   - Implementation phases:
     1. Parser: Support `→!Effect Type` syntax
     2. AST: Add effects to function types
@@ -455,10 +465,10 @@ Mint enforces canonical forms at **two levels:**
 - All list operations (↦, ⊳, ⊕) are immutable
 - The `mut` keyword is for FFI type safety only
 
-**Effect tracking planned:**
-- Effect annotations (`!IO`, `!Network`, `!Async`) will be implemented
+**Effect tracking implemented:**
+- ✅ Effect annotations (`!IO`, `!Network`, `!Async`, `!Error`, `!Mut`) fully working
 - **Reason:** Prevents bugs, documents behavior, doesn't violate canonical forms
-- See Medium Priority section for implementation plan
+- See `examples/effect-demo.mint` for comprehensive examples
 
 ## Risks & Mitigations
 

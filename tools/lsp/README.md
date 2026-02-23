@@ -74,13 +74,26 @@ The LSP server communicates via stdin/stdout using the LSP protocol.
 
 **Manual test:**
 ```bash
-node dist/server.js
+node dist/server.js --stdio
 ```
 
-The server will wait for LSP messages on stdin.
+The server will start and wait for LSP messages on stdin.
+
+**Note:** The `--stdio` flag is required to tell the server to use stdin/stdout for communication.
 
 **With an LSP client:**
-Configure your editor to use `/path/to/tools/lsp/dist/server.js` as the Mint language server.
+Configure your editor to use:
+```
+node /path/to/tools/lsp/dist/server.js --stdio
+```
+
+Or in editor config:
+```json
+{
+  "command": "node",
+  "args": ["/path/to/tools/lsp/dist/server.js", "--stdio"]
+}
+```
 
 ## VS Code Extension
 

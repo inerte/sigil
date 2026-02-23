@@ -7,7 +7,7 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js --stdio"
   },
   "dependencies": {
     "vscode-languageserver": "^9.0.1",

@@ -7,8 +7,9 @@ The Mint standard library provides core utility functions and predicates for com
 ## Current Status
 
 **Implemented:**
-- ✅ List predicates (validation, checking)
-- ✅ Numeric predicates (range checking, properties)
+- ✅ List predicates (validation, checking) - `stdlib/list_predicates`
+- ✅ Numeric predicates (range checking, properties) - `stdlib/numeric_predicates`
+- ✅ List utilities (len, head, tail) - `stdlib/list_utils`
 
 **Not yet implemented:**
 - ⏳ Option/Result predicates (requires sum types)
@@ -20,11 +21,12 @@ The Mint standard library provides core utility functions and predicates for com
 
 ```mint
 ⟦ Import specific functions from a module ⟧
-i stdlib/list_predicates{sorted_asc,contains}
+i stdlib/list_predicates{sorted_asc,contains,in_bounds}
 i stdlib/numeric_predicates{is_even,is_prime}
+i stdlib/list_utils{len,head,tail}
 
 ⟦ Use imported functions ⟧
-λmain()→𝕌=console.log(sorted_asc([1,2,3]))
+λmain()→𝕌=console.log(sorted_asc([1,2,3]) ++ " " ++ len([1,2,3]))
 ```
 
 **Note:** Module import system has known issues. For now, predicates can be used directly within the same file.
@@ -143,6 +145,82 @@ contains(1,[])                ⟦ → ⊥ ⟧
 ```
 
 **Use case:** Membership testing.
+
+### in_bounds
+
+Check if an index is valid for a list (in range [0, len-1]).
+
+```mint
+λin_bounds(idx:ℤ,xs:[ℤ])→𝔹
+```
+
+**Examples:**
+```mint
+in_bounds(0,[1,2,3])          ⟦ → ⊤ ⟧
+in_bounds(2,[1,2,3])          ⟦ → ⊤ ⟧
+in_bounds(3,[1,2,3])          ⟦ → ⊥ (out of bounds) ⟧
+in_bounds(-1,[1,2,3])         ⟦ → ⊥ (negative index) ⟧
+in_bounds(0,[])               ⟦ → ⊥ (empty list) ⟧
+```
+
+**Use case:** Validate array/list access before indexing. Prevents out-of-bounds errors.
+
+**Implementation:** Uses `len()` function to check bounds.
+
+## List Utilities
+
+**Module:** `stdlib/list_utils`
+
+### len
+
+Get the length of a list.
+
+```mint
+λlen(xs:[ℤ])→ℤ
+```
+
+**Examples:**
+```mint
+len([1,2,3])               ⟦ → 3 ⟧
+len([])                    ⟦ → 0 ⟧
+len([42])                  ⟦ → 1 ⟧
+```
+
+**Algorithm:** Recursive counting with primitive recursion.
+
+**Complexity:** O(n) time, O(n) space (call stack).
+
+### head
+
+Get the first element of a list.
+
+```mint
+λhead(xs:[ℤ])→ℤ
+```
+
+**Examples:**
+```mint
+head([1,2,3])              ⟦ → 1 ⟧
+head([42])                 ⟦ → 42 ⟧
+```
+
+**Warning:** Unsafe - crashes on empty list. Check with `is_non_empty` first.
+
+### tail
+
+Get all elements except the first.
+
+```mint
+λtail(xs:[ℤ])→[ℤ]
+```
+
+**Examples:**
+```mint
+tail([1,2,3])              ⟦ → [2,3] ⟧
+tail([42])                 ⟦ → [] ⟧
+```
+
+**Warning:** Unsafe - crashes on empty list. Check with `is_non_empty` first.
 
 ## Numeric Predicates
 
@@ -356,19 +434,11 @@ All predicates have explicit type signatures:
 
 **Status:** Tracked for fixing.
 
-### Missing Unicode Operators
+### ~~Missing Unicode Operators~~ ✅ FIXED
 
-**Issue:** Typechecker doesn't support ≤, ≥, ≠, ∧, ∨.
+**Issue:** ~~Typechecker doesn't support ≤, ≥, ≠, ∧, ∨.~~
 
-**Impact:** Had to work around using combinations of <, >, =, ¬.
-
-**Status:** Tracked for fixing.
-
-### No len() Function Yet
-
-**Impact:** `in_bounds(idx,xs)` predicate commented out until `len()` is implemented.
-
-**Workaround:** Use manual bounds checking for now.
+**Resolution:** Unicode operators now fully supported in typechecker. Predicates updated to use cleaner Unicode syntax.
 
 ## Future Additions
 

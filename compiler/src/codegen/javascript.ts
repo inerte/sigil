@@ -33,8 +33,7 @@ export class JavaScriptGenerator {
         this.generateFunction(decl);
         break;
       case 'TypeDecl':
-        // Type declarations are erased in JavaScript
-        this.emit(`// type ${decl.name} (erased)`);
+        this.generateTypeDecl(decl);
         break;
       case 'ConstDecl':
         this.generateConst(decl);
@@ -63,6 +62,29 @@ export class JavaScriptGenerator {
 
     this.indent--;
     this.emit('}');
+  }
+
+  private generateTypeDecl(decl: AST.TypeDecl): void {
+    // Generate constructor functions for sum types
+    if (decl.definition.type === 'SumType') {
+      this.emit(`// type ${decl.name}${decl.typeParams.length > 0 ? `[${decl.typeParams.join(',')}]` : ''}`);
+
+      for (const variant of decl.definition.variants) {
+        // Generate constructor function
+        // Example: Some(x) → { __tag: "Some", __fields: [x] }
+        const paramNames = variant.types.map((_, i) => `_${i}`);
+        const params = paramNames.join(', ');
+
+        this.emit(`export function ${variant.name}(${params}) {`);
+        this.indent++;
+        this.emit(`return { __tag: "${variant.name}", __fields: [${params}] };`);
+        this.indent--;
+        this.emit('}');
+      }
+    } else {
+      // Product types and type aliases are erased for now
+      this.emit(`// type ${decl.name} (erased)`);
+    }
   }
 
   private generateConst(constDecl: AST.ConstDecl): void {

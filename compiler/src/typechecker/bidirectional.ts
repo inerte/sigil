@@ -317,7 +317,7 @@ function synthesizeMatch(env: TypeEnvironment, expr: AST.MatchExpr): InferenceTy
   const armTypes: InferenceType[] = [];
   for (const arm of expr.arms) {
     // Check pattern against scrutinee type, get bindings
-    const bindings = checkPatternAndGetBindings(arm.pattern, scrutineeType);
+    const bindings = checkPatternAndGetBindings(env, arm.pattern, scrutineeType);
 
     // Extend environment with bindings
     const armEnv = env.extend(bindings);
@@ -619,7 +619,7 @@ function synthesizeLet(env: TypeEnvironment, expr: AST.LetExpr): InferenceType {
 
   // Check pattern and get bindings
   const bindings = new Map<string, InferenceType>();
-  checkPattern(expr.pattern, valueType, bindings);
+  checkPattern(env, expr.pattern, valueType, bindings);
 
   // Extend environment and synthesize body
   const bodyEnv = env.extend(bindings);
@@ -688,17 +688,19 @@ function checkLiteral(expr: AST.LiteralExpr, expectedType: InferenceType): void 
 // ============================================================================
 
 function checkPatternAndGetBindings(
+  env: TypeEnvironment,
   pattern: AST.Pattern,
   scrutineeType: InferenceType
 ): Map<string, InferenceType> {
   const bindings = new Map<string, InferenceType>();
 
-  checkPattern(pattern, scrutineeType, bindings);
+  checkPattern(env, pattern, scrutineeType, bindings);
 
   return bindings;
 }
 
 function checkPattern(
+  env: TypeEnvironment,
   pattern: AST.Pattern,
   scrutineeType: InferenceType,
   bindings: Map<string, InferenceType>
@@ -738,7 +740,7 @@ function checkPattern(
       // Check each element pattern
       for (const elem of pattern.patterns) {
         // Regular pattern gets element type
-        checkPattern(elem, scrutineeType.elementType, bindings);
+        checkPattern(env, elem, scrutineeType.elementType, bindings);
       }
 
       // Handle rest pattern if present
@@ -763,7 +765,7 @@ function checkPattern(
       }
 
       for (let i = 0; i < pattern.patterns.length; i++) {
-        checkPattern(pattern.patterns[i], scrutineeType.types[i], bindings);
+        checkPattern(env, pattern.patterns[i], scrutineeType.types[i], bindings);
       }
       return;
 
@@ -775,24 +777,43 @@ function checkPattern(
         );
       }
 
-      if (pattern.name !== scrutineeType.name) {
+      // Look up the constructor in the environment
+      const constructorType = env.lookup(pattern.name);
+      if (!constructorType) {
         throw new TypeError(
-          `Constructor pattern '${pattern.name}' doesn't match type '${scrutineeType.name}'`,
+          `Unknown constructor '${pattern.name}'`,
           pattern.location
         );
       }
 
-      // Check argument patterns
-      if (pattern.patterns && scrutineeType.typeArgs.length > 0) {
-        if (pattern.patterns.length !== scrutineeType.typeArgs.length) {
+      // Constructor should be a function type
+      if (constructorType.kind !== 'function') {
+        throw new TypeError(
+          `'${pattern.name}' is not a constructor`,
+          pattern.location
+        );
+      }
+
+      // Check that constructor's return type matches scrutinee type
+      if (constructorType.returnType.kind !== 'constructor' ||
+          constructorType.returnType.name !== scrutineeType.name) {
+        throw new TypeError(
+          `Constructor '${pattern.name}' returns '${formatType(constructorType.returnType)}', expected '${scrutineeType.name}'`,
+          pattern.location
+        );
+      }
+
+      // Check argument patterns against constructor parameter types
+      if (pattern.patterns) {
+        if (pattern.patterns.length !== constructorType.params.length) {
           throw new TypeError(
-            `Constructor pattern has ${pattern.patterns.length} arguments, but type has ${scrutineeType.typeArgs.length}`,
+            `Constructor '${pattern.name}' expects ${constructorType.params.length} arguments, got ${pattern.patterns.length}`,
             pattern.location
           );
         }
 
         for (let i = 0; i < pattern.patterns.length; i++) {
-          checkPattern(pattern.patterns[i], scrutineeType.typeArgs[i], bindings);
+          checkPattern(env, pattern.patterns[i], constructorType.params[i], bindings);
         }
       }
       return;
@@ -803,6 +824,54 @@ function checkPattern(
         pattern.location
       );
   }
+}
+
+// ============================================================================
+// CONSTRUCTOR TYPE CREATION
+// ============================================================================
+
+/**
+ * Create constructor function type for a sum type variant
+ *
+ * Example: For `t Color=Red|Green|Blue`
+ *   - Red: λ()→Color
+ *   - Green: λ()→Color
+ *
+ * Example: For `t Option[T]=Some(T)|None`
+ *   - Some: λ(any)→Option  (simplified - type params not tracked)
+ *   - None: λ()→Option
+ *
+ * For now, we create simplified function types for generic constructors.
+ * Type parameters are replaced with 'any'. Full generic inference will come later.
+ */
+function createConstructorType(
+  variant: AST.Variant,
+  _typeParams: string[],
+  typeName: string
+): InferenceType {
+  // Convert variant field types to inference types
+  // Type parameters become 'any' for now
+  const params: InferenceType[] = variant.types.map(fieldType => {
+    if (fieldType.type === 'TypeVariable') {
+      // Type parameter - use 'any' for now
+      return { kind: 'any' };
+    }
+    return astTypeToInferenceType(fieldType);
+  });
+
+  // Result type is the constructor with empty type args for now
+  // (Full generic tracking would require more infrastructure)
+  const resultType: InferenceType = {
+    kind: 'constructor',
+    name: typeName,
+    typeArgs: []
+  };
+
+  return {
+    kind: 'function',
+    params,
+    returnType: resultType
+  };
 }
 
 // ============================================================================
@@ -817,10 +886,28 @@ export function typeCheck(program: AST.Program, _source: string): Map<string, In
   const env = TypeEnvironment.createInitialEnvironment();
   const types = new Map<string, InferenceType>();
 
-  // First pass: Add all function declarations, extern namespaces, and imports to environment
-  // (for mutual recursion support, FFI, and module imports)
+  // First pass: Add all type declarations, function declarations, extern namespaces, and imports to environment
+  // (for mutual recursion support, FFI, module imports, and user-defined types)
   for (const decl of program.declarations) {
-    if (decl.type === 'FunctionDecl') {
+    if (decl.type === 'TypeDecl') {
+      // Register the type in the type registry
+      env.registerType(decl.name, {
+        typeParams: decl.typeParams,
+        definition: decl.definition
+      });
+
+      // Register constructor functions for sum types
+      if (decl.definition.type === 'SumType') {
+        for (const variant of decl.definition.variants) {
+          const constructorType = createConstructorType(
+            variant,
+            decl.typeParams,
+            decl.name
+          );
+          env.bind(variant.name, constructorType);
+        }
+      }
+    } else if (decl.type === 'FunctionDecl') {
       const params = decl.params.map(p => astTypeToInferenceType(p.typeAnnotation!));
       const returnType = astTypeToInferenceType(decl.returnType!);
       const effects = new Set(decl.effects as Array<'IO' | 'Network' | 'Async' | 'Error' | 'Mut'>);

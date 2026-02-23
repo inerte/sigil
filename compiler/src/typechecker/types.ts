@@ -324,10 +324,16 @@ export function astTypeToInferenceType(astType: AST.Type): InferenceType {
       };
 
     case 'TypeVariable':
-      // Type variables in AST are names like "T", "U"
-      // For now, treat them as fresh type variables
-      // (proper handling requires tracking type parameters in context)
-      throw new Error(`Type variable '${astType.name}' not yet supported in type annotations`);
+      // Type variables in AST could be:
+      // 1. Actual type parameters (T, U, E) - not yet supported
+      // 2. User-defined types without type arguments (Color, Status)
+      // For now, treat as a type constructor with no arguments
+      // TODO: Proper handling requires tracking type parameters in context
+      return {
+        kind: 'constructor',
+        name: astType.name,
+        typeArgs: []
+      };
 
     case 'TypeConstructor':
       return {

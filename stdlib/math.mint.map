@@ -1,0 +1,312 @@
+{
+  "version": 1,
+  "file": "math.mint",
+  "generated_by": "mintc@0.1.0",
+  "generated_at": "2026-02-23T22:52:08.316Z",
+  "mappings": {
+    "min": {
+      "range": [
+        358,
+        386
+      ],
+      "summary": "Function: min",
+      "explanation": "Function with 2 parameter(s), returns ℤ",
+      "type": "λ(ℤ,ℤ)→ℤ"
+    },
+    "min_arm_0": {
+      "range": [
+        378,
+        381
+      ],
+      "summary": "Match arm: true",
+      "explanation": "Pattern matches true"
+    },
+    "min_arm_1": {
+      "range": [
+        382,
+        385
+      ],
+      "summary": "Match arm: false",
+      "explanation": "Pattern matches false"
+    },
+    "max": {
+      "range": [
+        415,
+        443
+      ],
+      "summary": "Function: max",
+      "explanation": "Function with 2 parameter(s), returns ℤ",
+      "type": "λ(ℤ,ℤ)→ℤ"
+    },
+    "max_arm_0": {
+      "range": [
+        435,
+        438
+      ],
+      "summary": "Match arm: true",
+      "explanation": "Pattern matches true"
+    },
+    "max_arm_1": {
+      "range": [
+        439,
+        442
+      ],
+      "summary": "Match arm: false",
+      "explanation": "Pattern matches false"
+    },
+    "clamp": {
+      "range": [
+        481,
+        522
+      ],
+      "summary": "Function: clamp",
+      "explanation": "Function with 3 parameter(s), returns ℤ",
+      "type": "λ(ℤ,ℤ,ℤ)→ℤ"
+    },
+    "pow": {
+      "range": [
+        722,
+        783
+      ],
+      "summary": "Function: pow",
+      "explanation": "Function with 2 parameter(s), returns ℤ",
+      "type": "λ(ℤ,ℤ)→ℤ"
+    },
+    "pow_arm_0": {
+      "range": [
+        750,
+        753
+      ],
+      "summary": "Match arm: 0",
+      "explanation": "Pattern matches 0"
+    },
+    "pow_arm_1": {
+      "range": [
+        757,
+        781
+      ],
+      "summary": "Match arm: exp",
+      "explanation": "Pattern matches exp"
+    },
+    "divisible": {
+      "range": [
+        999,
+        1026
+      ],
+      "summary": "Function: divisible",
+      "explanation": "Function with 2 parameter(s), returns 𝔹",
+      "type": "λ(ℤ,ℤ)→𝔹"
+    },
+    "gcd": {
+      "range": [
+        1078,
+        1113
+      ],
+      "summary": "Function: gcd",
+      "explanation": "Function with 2 parameter(s), returns ℤ",
+      "type": "λ(ℤ,ℤ)→ℤ"
+    },
+    "gcd_arm_0": {
+      "range": [
+        1096,
+        1099
+      ],
+      "summary": "Match arm: 0",
+      "explanation": "Pattern matches 0"
+    },
+    "gcd_arm_1": {
+      "range": [
+        1100,
+        1112
+      ],
+      "summary": "Match arm: b",
+      "explanation": "Pattern matches b"
+    },
+    "prime_helper": {
+      "range": [
+        1162,
+        1249
+      ],
+      "summary": "Function: prime_helper",
+      "explanation": "Function with 2 parameter(s), returns 𝔹",
+      "type": "λ(ℤ,ℤ)→𝔹"
+    },
+    "prime_helper_arm_0": {
+      "range": [
+        1196,
+        1199
+      ],
+      "summary": "Match arm: true",
+      "explanation": "Pattern matches true"
+    },
+    "prime_helper_arm_1": {
+      "range": [
+        1203,
+        1247
+      ],
+      "summary": "Match arm: false",
+      "explanation": "Pattern matches false"
+    },
+    "is_prime": {
+      "range": [
+        1251,
+        1315
+      ],
+      "summary": "Function: is_prime",
+      "explanation": "Function with 1 parameter(s), returns 𝔹",
+      "type": "λ(ℤ)→𝔹"
+    },
+    "is_prime_arm_0": {
+      "range": [
+        1273,
+        1276
+      ],
+      "summary": "Match arm: 0",
+      "explanation": "Pattern matches 0"
+    },
+    "is_prime_arm_1": {
+      "range": [
+        1280,
+        1283
+      ],
+      "summary": "Match arm: 1",
+      "explanation": "Pattern matches 1"
+    },
+    "is_prime_arm_2": {
+      "range": [
+        1287,
+        1290
+      ],
+      "summary": "Match arm: 2",
+      "explanation": "Pattern matches 2"
+    },
+    "is_prime_arm_3": {
+      "range": [
+        1294,
+        1313
+      ],
+      "summary": "Match arm: n",
+      "explanation": "Pattern matches n"
+    },
+    "sum_to": {
+      "range": [
+        1531,
+        1568
+      ],
+      "summary": "Function: sum_to",
+      "explanation": "Function with 1 parameter(s), returns ℤ",
+      "type": "λ(ℤ)→ℤ"
+    },
+    "sum_to_arm_0": {
+      "range": [
+        1548,
+        1551
+      ],
+      "summary": "Match arm: 0",
+      "explanation": "Pattern matches 0"
+    },
+    "sum_to_arm_1": {
+      "range": [
+        1552,
+        1567
+      ],
+      "summary": "Match arm: n",
+      "explanation": "Pattern matches n"
+    },
+    "sum_range": {
+      "range": [
+        1602,
+        1653
+      ],
+      "summary": "Function: sum_range",
+      "explanation": "Function with 2 parameter(s), returns ℤ",
+      "type": "λ(ℤ,ℤ)→ℤ"
+    },
+    "sum_range_arm_0": {
+      "range": [
+        1628,
+        1631
+      ],
+      "summary": "Match arm: true",
+      "explanation": "Pattern matches true"
+    },
+    "sum_range_arm_1": {
+      "range": [
+        1632,
+        1652
+      ],
+      "summary": "Match arm: false",
+      "explanation": "Pattern matches false"
+    },
+    "factorial": {
+      "range": [
+        1703,
+        1750
+      ],
+      "summary": "Function: factorial",
+      "explanation": "Function with 1 parameter(s), returns ℤ",
+      "type": "λ(ℤ)→ℤ"
+    },
+    "factorial_arm_0": {
+      "range": [
+        1723,
+        1726
+      ],
+      "summary": "Match arm: 0",
+      "explanation": "Pattern matches 0"
+    },
+    "factorial_arm_1": {
+      "range": [
+        1727,
+        1730
+      ],
+      "summary": "Match arm: 1",
+      "explanation": "Pattern matches 1"
+    },
+    "factorial_arm_2": {
+      "range": [
+        1731,
+        1749
+      ],
+      "summary": "Match arm: n",
+      "explanation": "Pattern matches n"
+    },
+    "fib": {
+      "range": [
+        1773,
+        1815
+      ],
+      "summary": "Function: fib",
+      "explanation": "Function with 1 parameter(s), returns ℤ",
+      "type": "λ(ℤ)→ℤ"
+    },
+    "fib_arm_0": {
+      "range": [
+        1787,
+        1790
+      ],
+      "summary": "Match arm: 0",
+      "explanation": "Pattern matches 0"
+    },
+    "fib_arm_1": {
+      "range": [
+        1791,
+        1794
+      ],
+      "summary": "Match arm: 1",
+      "explanation": "Pattern matches 1"
+    },
+    "fib_arm_2": {
+      "range": [
+        1795,
+        1814
+      ],
+      "summary": "Match arm: n",
+      "explanation": "Pattern matches n"
+    }
+  },
+  "metadata": {
+    "category": "unknown",
+    "tested": false
+  }
+}

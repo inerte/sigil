@@ -1,0 +1,56 @@
+⟦ Sum Types Demo - Option and Result
+
+This example demonstrates Mint's sum type system with practical examples.
+
+Sum types (also called tagged unions or algebraic data types) allow you to define
+types that can be one of several variants. They're essential for type-safe error
+handling and representing optional values.
+⟧
+
+⟦ Simple enum - no type parameters ⟧
+t Color=Red|Green|Blue
+
+⟦ Generic Option type - represents optional values ⟧
+t Option[T]=Some(T)|None
+
+⟦ Generic Result type - represents success or failure ⟧
+t Result[T,E]=Ok(T)|Err(E)
+
+⟦ Example 1: Working with simple enums ⟧
+λcolorToNumber(color:Color)→ℤ≡color{
+  Red→1|
+  Green→2|
+  Blue→3
+}
+
+⟦ Example 2: Safe division using Result ⟧
+λdivide(a:ℤ,b:ℤ)→Result≡b{
+  0→Err("division by zero")|
+  b→Ok(a/b)
+}
+
+⟦ Example 3: Pattern matching on Result ⟦
+λprocessResult(result:Result)→ℤ≡result{
+  Ok(value)→value|
+  Err(_)→0
+}
+
+⟦ Example 4: Working with Option ⟧
+λfirst[T](list:[T])→Option≡list{
+  []→None()|
+  [x,._]→Some(x)
+}
+
+λgetOrDefault(opt:Option,default:ℤ)→ℤ≡opt{
+  Some(x)→x|
+  None→default
+}
+
+⟦ Main - demonstrate all examples ⟧
+λmain()→ℤ≡{
+  let color_value=colorToNumber(Green());
+  let div_ok=processResult(divide(10,2));
+  let div_err=processResult(divide(10,0));
+  let total=color_value+div_ok+div_err;
+  total
+}

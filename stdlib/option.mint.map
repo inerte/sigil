@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "file": "option.mint",
+  "generated_by": "mintc@0.1.0",
+  "generated_at": "2026-02-23T23:41:23.124Z",
+  "mappings": {
+    "Option": {
+      "range": [
+        465,
+        489
+      ],
+      "summary": "Type definition: Option",
+      "explanation": "Type Option"
+    }
+  },
+  "metadata": {
+    "category": "unknown",
+    "tested": false
+  }
+}

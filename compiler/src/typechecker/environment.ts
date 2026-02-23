@@ -6,6 +6,15 @@
  */
 
 import { InferenceType } from './types.js';
+import * as AST from '../parser/ast.js';
+
+/**
+ * Type information for user-defined types
+ */
+export interface TypeInfo {
+  typeParams: string[];        // Generic type parameters (e.g., ['T', 'E'] for Result[T,E])
+  definition: AST.TypeDef;     // The type definition (SumType, ProductType, or TypeAlias)
+}
 
 /**
  * Type environment (Γ in type theory notation)
@@ -15,10 +24,12 @@ import { InferenceType } from './types.js';
  */
 export class TypeEnvironment {
   private bindings: Map<string, InferenceType>;
+  private typeRegistry: Map<string, TypeInfo>;  // NEW: user-defined types
   private parent?: TypeEnvironment;
 
   constructor(parent?: TypeEnvironment) {
     this.bindings = new Map();
+    this.typeRegistry = new Map();
     this.parent = parent;
   }
 
@@ -44,6 +55,30 @@ export class TypeEnvironment {
    */
   bind(name: string, type: InferenceType): void {
     this.bindings.set(name, type);
+  }
+
+  /**
+   * Register a user-defined type
+   *
+   * Stores type definition for later lookup during type checking
+   */
+  registerType(name: string, info: TypeInfo): void {
+    this.typeRegistry.set(name, info);
+  }
+
+  /**
+   * Look up a user-defined type
+   *
+   * Searches this environment and all parent environments
+   */
+  lookupType(name: string): TypeInfo | undefined {
+    const local = this.typeRegistry.get(name);
+    if (local) {
+      return local;
+    }
+
+    // Search parent scope
+    return this.parent?.lookupType(name);
   }
 
   /**

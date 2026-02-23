@@ -1,0 +1,17 @@
+⟦ Mint Standard Library - Result Type
+
+The Result type represents the result of a computation that may fail.
+Every Result is either:
+- Ok(T): The computation succeeded with value of type T
+- Err(E): The computation failed with error of type E
+
+This type is used for operations that can fail in expected ways, such as:
+- I/O operations (file not found, permission denied)
+- Parsing (invalid format, unexpected input)
+- Network requests (timeout, connection refused)
+- Validation (invalid data, constraint violation)
+
+Result types provide type-safe error handling without exceptions.
+⟧
+
+t Result[T,E]=Ok(T)|Err(E)

@@ -1,0 +1,16 @@
+⟦ Mint Standard Library - Option Type
+
+The Option type represents an optional value: every Option is either Some and
+contains a value, or None, and does not.
+
+This type is used for safe operations that may not return a value, such as:
+- Indexing into lists (head, tail, at)
+- String operations (charAt, substring)
+- Dictionary lookups
+- Parsing operations
+
+Option types are common in functional programming and provide a type-safe
+alternative to null/undefined.
+⟧
+
+t Option[T]=Some(T)|None

@@ -2,6 +2,8 @@
 
 This guide is for AI coding agents working inside `language/` (the Sigil language implementation).
 
+We are **designing** this new programming language together. Feel free to propose changes that still adhere to the overall goals.
+
 Wear your PhD Computer Scientist and Programming Language Designer Expert hats when working in this repo.
 
 Use the repo root guide for cross-repo coordination:

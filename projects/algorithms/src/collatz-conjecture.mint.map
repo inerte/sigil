@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "file": "collatz-conjecture.mint",
+  "generated_by": "mintc@0.1.0",
+  "generated_at": "2026-02-24T01:48:13.597Z",
+  "mappings": {
+    "nextCollatz": {
+      "range": [
+        0,
+        47
+      ],
+      "summary": "Function: nextCollatz",
+      "explanation": "Function with 1 parameter(s), returns ℤ",
+      "type": "λ(ℤ)→ℤ"
+    },
+    "nextCollatz_arm_0": {
+      "range": [
+        27,
+        34
+      ],
+      "summary": "Match arm: 0",
+      "explanation": "Pattern matches 0"
+    },
+    "nextCollatz_arm_1": {
+      "range": [
+        38,
+        45
+      ],
+      "summary": "Match arm: _",
+      "explanation": "Pattern matches _"
+    },
+    "collatz": {
+      "range": [
+        49,
+        112
+      ],
+      "summary": "Function: collatz",
+      "explanation": "Function with 1 parameter(s), returns [ℤ]",
+      "type": "λ(ℤ)→[ℤ]"
+    },
+    "collatz_arm_0": {
+      "range": [
+        72,
+        77
+      ],
+      "summary": "Match arm: 1",
+      "explanation": "Pattern matches 1"
+    },
+    "collatz_arm_1": {
+      "range": [
+        81,
+        110
+      ],
+      "summary": "Match arm: n",
+      "explanation": "Pattern matches n"
+    },
+    "main": {
+      "range": [
+        114,
+        137
+      ],
+      "summary": "Function: main",
+      "explanation": "Function with 0 parameter(s), returns [ℤ]",
+      "type": "λ()→[ℤ]"
+    }
+  },
+  "metadata": {
+    "category": "unknown",
+    "tested": false
+  }
+}

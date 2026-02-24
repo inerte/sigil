@@ -12,6 +12,7 @@ dist/
 
 # Compiled Mint programs and temporary files
 .local/
+**/.local/
 
 # TypeScript
 *.tsbuildinfo

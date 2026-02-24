@@ -1,5 +1,7 @@
 # Claude Code Instructions for Mint Programming Language
 
+⟦ Repo split note: this file lives under `language/` in the monorepo. Canonical user Mint projects live under `projects/` and should use `mint.json`, `src/`, and `tests/`. ⟧
+
 ## Language Philosophy: Canonical Forms Only
 
 Mint is a **canonicalization-enforced** language. Every algorithm has exactly ONE valid representation.
@@ -433,22 +435,22 @@ Or for programs that just do side effects:
 
 **Smart defaults (PREFERRED):**
 ```bash
-node compiler/dist/cli.js compile src/myprogram.mint
+node language/compiler/dist/cli.js compile src/myprogram.mint
 # Automatically outputs to: build/myprogram.ts
 
-node compiler/dist/cli.js compile myprogram.mint
+node language/compiler/dist/cli.js compile myprogram.mint
 # Automatically outputs to: .local/myprogram.ts
 ```
 
 **Run directly:**
 ```bash
-node compiler/dist/cli.js run src/myprogram.mint
+node language/compiler/dist/cli.js run src/myprogram.mint
 # Compiles to .local/ and executes main()
 ```
 
 **Custom output (rarely needed):**
 ```bash
-node compiler/dist/cli.js compile src/myprogram.mint -o custom/path.ts
+node language/compiler/dist/cli.js compile src/myprogram.mint -o custom/path.ts
 ```
 
 ## Mint Language Quick Reference
@@ -842,10 +844,10 @@ After writing a Mint program:
 
 ```bash
 # Compile and run
-node compiler/dist/cli.js run src/myprogram.mint
+node language/compiler/dist/cli.js run src/myprogram.mint
 
 # Or compile and inspect
-node compiler/dist/cli.js compile src/myprogram.mint
+node language/compiler/dist/cli.js compile src/myprogram.mint
 cat build/myprogram.ts
 ```
 
@@ -853,13 +855,13 @@ First-class Mint tests (agent-first, JSON default):
 
 ```bash
 # Run all tests from ./tests (JSON to stdout by default)
-node compiler/dist/cli.js test
+node language/compiler/dist/cli.js test
 
 # Human-readable output
-node compiler/dist/cli.js test --human
+node language/compiler/dist/cli.js test --human
 
 # Filter by test description substring (great for agent TDD loops)
-node compiler/dist/cli.js test --match "toggle"
+node language/compiler/dist/cli.js test --match "toggle"
 ```
 
 Testing rules:

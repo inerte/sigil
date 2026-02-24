@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "mint:compile": "node ../../compiler/dist/cli.js compile mint/todo-domain.mint -o src/generated/todo-domain.ts",
+    "mint:compile": "node ../../language/compiler/dist/cli.js compile src/todo-domain.mint -o web/src/generated/todo-domain.ts",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"

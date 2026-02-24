@@ -3,7 +3,7 @@
 This document defines the machine-readable JSON emitted by:
 
 ```bash
-node compiler/dist/cli.js test
+node language/compiler/dist/cli.js test
 ```
 
 JSON is the default output mode for Mint tests (agent-first design).

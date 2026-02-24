@@ -5,13 +5,16 @@
   "description": "Mint - A machine-first programming language optimized for AI code generation",
   "private": true,
   "workspaces": [
-    "compiler",
-    "tools/*"
+    "language/compiler",
+    "language/tools/*",
+    "projects/todo-app"
   ],
   "scripts": {
     "build": "pnpm --filter @mint-lang/compiler build",
     "test": "pnpm -r test",
-    "lex": "node compiler/dist/cli.js lex"
+    "lex": "node language/compiler/dist/cli.js lex",
+    "mint:test:algorithms": "node language/compiler/dist/cli.js test projects/algorithms/tests",
+    "mint:test:todo": "node language/compiler/dist/cli.js test projects/todo-app/tests"
   },
   "packageManager": "pnpm@9.0.0",
   "repository": {

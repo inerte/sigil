@@ -63,16 +63,16 @@ Test files run in parallel by default (results are sorted deterministically in f
 
 ```bash
 # Run all tests in ./tests
-node compiler/dist/cli.js test
+node language/compiler/dist/cli.js test
 
 # Run a file or subdirectory under ./tests
-node compiler/dist/cli.js test tests/basic-testing.mint
+node language/compiler/dist/cli.js test projects/algorithms/tests/basic-testing.mint
 
 # Filter by test description substring
-node compiler/dist/cli.js test --match "cache"
+node language/compiler/dist/cli.js test --match "cache"
 
 # Human-readable output
-node compiler/dist/cli.js test --human
+node language/compiler/dist/cli.js test --human
 ```
 
 ## JSON output (default)

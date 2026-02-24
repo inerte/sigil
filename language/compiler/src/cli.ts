@@ -19,6 +19,53 @@ import { typeCheck } from './typechecker/index.js';
 import { formatType } from './typechecker/errors.js';
 import { generateSemanticMap, enhanceWithClaude } from './mapgen/index.js';
 
+type MintProjectLayout = {
+  src: string;
+  tests: string;
+  out: string;
+};
+
+type MintProjectConfig = {
+  root: string;
+  layout: MintProjectLayout;
+};
+
+function defaultProjectLayout(): MintProjectLayout {
+  return { src: 'src', tests: 'tests', out: '.local' };
+}
+
+function findMintProjectRoot(startPath: string): string | null {
+  let current = resolve(startPath);
+  if (existsSync(current) && !statSync(current).isDirectory()) {
+    current = dirname(current);
+  }
+
+  while (true) {
+    if (existsSync(join(current, 'mint.json'))) {
+      return current;
+    }
+    const parent = dirname(current);
+    if (parent === current) return null;
+    current = parent;
+  }
+}
+
+function getMintProjectConfig(startPath: string): MintProjectConfig | null {
+  const root = findMintProjectRoot(startPath);
+  if (!root) return null;
+  const raw = JSON.parse(readFileSync(join(root, 'mint.json'), 'utf-8')) as any;
+  const layout = {
+    ...defaultProjectLayout(),
+    ...(raw.layout ?? {})
+  };
+  return { root, layout };
+}
+
+function isPathWithin(parentDir: string, candidatePath: string): boolean {
+  const rel = relative(resolve(parentDir), resolve(candidatePath));
+  return rel === '' || (!rel.startsWith('..') && !rel.startsWith(`..${process.platform === 'win32' ? '\\' : '/'}`));
+}
+
 async function main() {
   const args = process.argv.slice(2);
 
@@ -61,13 +108,12 @@ async function main() {
       console.log('  parse <file>      Parse a Mint file and show AST');
       console.log('  compile <file>    Compile a Mint file to TypeScript');
       console.log('  run <file>        Compile and run a Mint file');
-      console.log('  test [path]       Run Mint tests from ./tests (JSON output by default)');
+      console.log('  test [path]       Run Mint tests from the current Mint project tests/ (JSON by default)');
       console.log('  help              Show this help message');
       console.log('');
       console.log('Output locations:');
-      console.log('  examples/*.mint   → examples/*.ts (beside source)');
-      console.log('  src/*.mint        → .local/src/*.ts');
-      console.log('  *.mint            → .local/*.ts');
+      console.log('  Mint project files → <project>/.local/... (detected via mint.json)');
+      console.log('  Non-project files  → .local/... (legacy fallback)');
       console.log('');
       console.log('Options:');
       console.log('  -o <file>         Specify custom output location');
@@ -82,11 +128,18 @@ async function main() {
   }
 }
 
+function getTestsRootForPath(pathHint: string): string {
+  const project = getMintProjectConfig(pathHint) ?? getMintProjectConfig(process.cwd());
+  if (project) {
+    return join(project.root, project.layout.tests);
+  }
+  return resolve(process.cwd(), 'tests');
+}
+
 function pathIsUnderTests(filename: string): boolean {
-  const testsRoot = resolve(process.cwd(), 'tests');
+  const testsRoot = getTestsRootForPath(filename);
   const filePath = resolve(process.cwd(), filename);
-  const rel = relative(testsRoot, filePath);
-  return rel === '' || (!rel.startsWith('..') && rel !== '' && !rel.startsWith(`..${process.platform === 'win32' ? '\\' : '/'}`));
+  return isPathWithin(testsRoot, filePath);
 }
 
 function ensureNoTestsOutsideTestsDir(ast: ReturnType<typeof parse>, filename: string): void {
@@ -193,6 +246,12 @@ function parseCommand(args: string[]) {
  * Determine smart output location based on input file location
  */
 function getSmartOutputPath(inputFile: string): string {
+  const project = getMintProjectConfig(inputFile);
+  if (project && isPathWithin(project.root, resolve(process.cwd(), inputFile))) {
+    const relToProject = relative(project.root, resolve(process.cwd(), inputFile)).replace(/\\/g, '/');
+    return join(project.root, project.layout.out, relToProject.replace(/\.mint$/, '.ts'));
+  }
+
   // examples/*.mint → examples/*.ts (beside source, for documentation)
   if (inputFile.startsWith('examples/')) {
     return inputFile.replace(/\.mint$/, '.ts');
@@ -251,7 +310,8 @@ async function compileCommand(args: string[]) {
       console.log();
     }
 
-    const tsCode = compile(ast, filename);
+    const project = getMintProjectConfig(filename) ?? undefined;
+    const tsCode = compile(ast, { sourceFile: filename, outputFile, projectRoot: project?.root });
 
     // Validate externals BEFORE writing file (link-time validation)
     await validateExterns(ast);
@@ -302,9 +362,10 @@ async function compileToTypeScriptFile(filename: string, outputFile?: string): P
   ensureNoTestsOutsideTestsDir(ast, filename);
   validateCanonicalForm(ast);
   typeCheck(ast, source);
-  const tsCode = compile(ast, filename);
-  await validateExterns(ast);
+  const project = getMintProjectConfig(filename) ?? undefined;
   const finalOutput = outputFile ?? getSmartOutputPath(filename);
+  const tsCode = compile(ast, { sourceFile: filename, outputFile: finalOutput, projectRoot: project?.root });
+  await validateExterns(ast);
   const outputDir = dirname(finalOutput);
   if (outputDir !== '.') {
     mkdirSync(outputDir, { recursive: true });
@@ -320,9 +381,10 @@ async function runCommand(args: string[]) {
   }
 
   const filename = args[0];
+  const project = getMintProjectConfig(filename) ?? undefined;
   const baseName = basename(filename, '.mint');
-  const outputFile = `.local/${baseName}.ts`;
-  const runnerFile = `.local/${baseName}.run.ts`;
+  const outputFile = getSmartOutputPath(filename);
+  const runnerFile = outputFile.replace(/\.ts$/, '.run.ts');
 
   try {
     // Compile to .local/
@@ -341,17 +403,18 @@ async function runCommand(args: string[]) {
     // Type check (should always happen!)
     typeCheck(ast, source);
 
-    const tsCode = compile(ast, filename);
+    const tsCode = compile(ast, { sourceFile: filename, outputFile, projectRoot: project?.root });
 
     // Validate externals BEFORE writing file (link-time validation)
     await validateExterns(ast);
 
     // Ensure .local exists
-    mkdirSync('.local', { recursive: true });
+    mkdirSync(dirname(outputFile), { recursive: true });
     writeFileSync(outputFile, tsCode, 'utf-8');
 
     // Create runner that calls main()
-    const runnerCode = `import { main } from './${baseName}';
+    const runnerImport = `./${basename(outputFile, '.ts')}`;
+    const runnerCode = `import { main } from '${runnerImport}';
 
 if (typeof main !== 'function') {
   console.error('Error: No main() function found in ${filename}');
@@ -404,7 +467,7 @@ if (result !== undefined) {
 }
 
 async function runGeneratedTestModule(moduleFile: string, matchText: string | null): Promise<any> {
-  const runnerDir = '.local/__mint_test';
+  const runnerDir = join(dirname(moduleFile), '__mint_test');
   mkdirSync(runnerDir, { recursive: true });
   const unique = `${process.pid}_${Date.now()}_${Math.floor(Math.random() * 1_000_000)}`;
   const runnerFile = `${runnerDir}/${basename(moduleFile, '.ts')}.${unique}.runner.ts`;
@@ -475,7 +538,7 @@ async function testCommand(args: string[]) {
     if (matchIndex !== -1 && i === matchIndex + 1) return false;
     return true;
   });
-  const rootPath = pathArg ?? 'tests';
+  const rootPath = pathArg ?? getTestsRootForPath(process.cwd());
 
   try {
     if (!pathIsUnderTests(rootPath)) {
@@ -505,7 +568,7 @@ async function testCommand(args: string[]) {
     let selected = 0;
 
     const fileRuns = await Promise.all(files.map(async (file) => {
-      const out = `.local/tests/${relative(process.cwd(), resolve(process.cwd(), file)).replace(/\.mint$/, '.ts')}`;
+      const out = getSmartOutputPath(file);
       const compiled = await compileToTypeScriptFile(file, out);
       const moduleResult = await runGeneratedTestModule(compiled.outputFile, matchText);
       return { file, moduleResult };

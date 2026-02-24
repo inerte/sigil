@@ -5,16 +5,27 @@
  */
 
 import * as AST from '../parser/ast.js';
+import { dirname, relative, resolve } from 'path';
+
+export interface CodegenOptions {
+  sourceFile?: string;
+  outputFile?: string;
+  projectRoot?: string;
+}
 
 export class JavaScriptGenerator {
   private indent = 0;
   private output: string[] = [];
   private sourceFile?: string;
+  private outputFile?: string;
+  private projectRoot?: string;
   private testMetaEntries: string[] = [];
   private mockableFunctions = new Set<string>();
 
-  constructor(sourceFile?: string) {
-    this.sourceFile = sourceFile;
+  constructor(options?: CodegenOptions) {
+    this.sourceFile = options?.sourceFile;
+    this.outputFile = options?.outputFile;
+    this.projectRoot = options?.projectRoot;
   }
 
   generate(program: AST.Program): string {
@@ -142,7 +153,8 @@ export class JavaScriptGenerator {
     // Always use namespace import (import * as name)
     // Works exactly like FFI: i stdlib/list_utils → import * as stdlib_list_utils
     // Use as: stdlib/list_utils.len(xs) → stdlib_list_utils.len(xs)
-    this.emit(`import * as ${jsName} from './${modulePath}';`);
+    const importSpecifier = this.resolveMintImportSpecifier(modulePath);
+    this.emit(`import * as ${jsName} from '${importSpecifier}';`);
   }
 
   private generateExtern(externDecl: AST.ExternDecl): void {
@@ -682,12 +694,32 @@ export class JavaScriptGenerator {
     }
     return 'null';
   }
+
+  private resolveMintImportSpecifier(modulePath: string): string {
+    // Project-root imports like i src/foo should point to generated .local/src/foo from the current generated file.
+    if (modulePath.startsWith('src/') && this.outputFile && this.projectRoot) {
+      const generatedTarget = resolve(this.projectRoot, '.local', `${modulePath}.ts`);
+      const fromDir = dirname(resolve(this.outputFile));
+      let rel = relative(fromDir, generatedTarget).replace(/\\/g, '/');
+      rel = rel.replace(/\.ts$/, '');
+      if (!rel.startsWith('.')) {
+        rel = `./${rel}`;
+      }
+      return rel;
+    }
+
+    // Legacy behavior for stdlib and non-project imports.
+    return `./${modulePath}`;
+  }
 }
 
 /**
  * Compile a Mint program to TypeScript
  */
-export function compile(program: AST.Program, sourceFile?: string): string {
-  const generator = new JavaScriptGenerator(sourceFile);
+export function compile(program: AST.Program, options?: string | CodegenOptions): string {
+  const normalized: CodegenOptions = typeof options === 'string'
+    ? { sourceFile: options }
+    : (options ?? {});
+  const generator = new JavaScriptGenerator(normalized);
   return generator.generate(program);
 }

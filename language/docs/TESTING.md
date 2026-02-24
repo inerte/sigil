@@ -7,6 +7,25 @@ Mint tests are language declarations, not a separate framework.
 - Tests must live under `./tests`
 - `test` declarations outside `./tests` are compile errors
 - Test files may include regular functions/types/constants
+- Tests should import real app/library code from `src/...` (typed cross-module imports)
+
+## Testing real modules (`src/...`)
+
+Use canonical Mint imports and explicit exports in the source module:
+
+```mint
+⟦ src/math.mint ⟧
+export λdouble(x:ℤ)→ℤ=x*2
+```
+
+```mint
+⟦ tests/math.mint ⟧
+i src/math
+
+test "double 2" {
+  src/math.double(2)=4
+}
+```
 
 ## Test syntax
 

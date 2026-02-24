@@ -95,7 +95,7 @@ More code fits in LLM context windows = better understanding = better code gener
 - `≡` instead of `match` or `switch` (1 char vs 5-6)
 - Unicode type symbols: `ℤℝ𝔹𝕊` instead of `Int,Float,Bool,String`
 
-**Result:** 40-60% fewer tokens than Python/JavaScript
+**Result:** Current benchmarks show ~10-15% fewer tokens than TypeScript on average (see `language/benchmarks/RESULTS.md`)
 
 **Why Unicode?** Modern LLMs tokenize Unicode efficiently, and it provides unambiguous semantic meaning. `ℤ` universally means "integers" in mathematics.
 
@@ -103,7 +103,7 @@ More code fits in LLM context windows = better understanding = better code gener
 
 **"The type checker catches everything"**
 
-- Hindley-Milner type inference (types exist but are mostly invisible)
+- Bidirectional type checking with mandatory explicit annotations
 - No `any`, no type coercion, no `null`, no `undefined`
 - Algebraic data types (sum + product types)
 - Effect system tracks IO, network, async operations
@@ -279,12 +279,12 @@ For 50 years we optimized for humans to read code directly. Result: verbose lang
 
 Like assembly vs C vs Python - each level optimizes for different audience. Mint optimizes for AI.
 
-### Types Should Be Mandatory But Invisible
+### Types Should Be Mandatory and Explicit
 
 Dynamic typing: fast prototyping, runtime errors
 Explicit static typing: safe but verbose
 
-**Mint:** Hindley-Milner inference - types mandatory, mostly invisible. Best of both.
+**Mint:** Bidirectional type checking with mandatory annotations - explicit, canonical, and machine-checkable.
 
 ### One Right Way > Flexibility
 

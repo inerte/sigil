@@ -88,7 +88,9 @@ export class JavaScriptGenerator {
     const params = func.params.map(p => p.name).join(', ');
     const implName = func.isMockable ? `__mint_impl_${func.name}` : func.name;
 
-    this.emit(`function ${implName}(${params}) {`);
+    const shouldExport = func.isExported || func.name === 'main';
+    const fnKeyword = shouldExport ? 'export function' : 'function';
+    this.emit(`${fnKeyword} ${implName}(${params}) {`);
     this.indent++;
 
     // Function body
@@ -100,14 +102,14 @@ export class JavaScriptGenerator {
 
     if (func.isMockable) {
       const key = this.mockKeyForFunction(func.name);
-      this.emit(`export function ${func.name}(${params}) {`);
+      const wrapperKeyword = shouldExport ? 'export function' : 'function';
+      this.emit(`${wrapperKeyword} ${func.name}(${params}) {`);
       this.indent++;
       this.emit(`return __mint_call("${key}", ${implName}, [${params}]);`);
       this.indent--;
       this.emit('}');
     } else {
-      // Re-export non-mockable functions with canonical public name
-      this.emit(`export { ${func.name} };`);
+      // Non-mockable functions are already emitted with the final name.
     }
   }
 
@@ -122,7 +124,8 @@ export class JavaScriptGenerator {
         const paramNames = variant.types.map((_, i) => `_${i}`);
         const params = paramNames.join(', ');
 
-        this.emit(`export function ${variant.name}(${params}) {`);
+        const ctorKeyword = decl.isExported ? 'export function' : 'function';
+        this.emit(`${ctorKeyword} ${variant.name}(${params}) {`);
         this.indent++;
         this.emit(`return { __tag: "${variant.name}", __fields: [${params}] };`);
         this.indent--;
@@ -136,7 +139,8 @@ export class JavaScriptGenerator {
 
   private generateConst(constDecl: AST.ConstDecl): void {
     const value = this.generateExpression(constDecl.value);
-    this.emit(`export const ${constDecl.name} = ${value};`);
+    const kw = constDecl.isExported ? 'export const' : 'const';
+    this.emit(`${kw} ${constDecl.name} = ${value};`);
   }
 
   private generateImport(importDecl: AST.ImportDecl): void {
@@ -144,7 +148,7 @@ export class JavaScriptGenerator {
 
     // Convert slash to underscore for generated TypeScript identifier
     // stdlib/list_utils → stdlib_list_utils
-    const jsName = importDecl.modulePath.join('_');
+    const jsName = this.namespaceIdentifier(importDecl.modulePath);
 
     // Always use full module path
     // Import resolution is simplest with absolute paths from project root
@@ -162,7 +166,7 @@ export class JavaScriptGenerator {
 
     // Convert slash to underscore for generated TypeScript identifier
     // fs/promises → fs_promises, axios → axios
-    const jsName = externDecl.modulePath.join('_');
+    const jsName = this.namespaceIdentifier(externDecl.modulePath);
 
     // Always use namespace import (import * as name)
     // This matches our namespace.member usage in Mint
@@ -496,7 +500,7 @@ export class JavaScriptGenerator {
   private generateMemberAccess(access: AST.MemberAccessExpr): string {
     // Convert namespace path to generated TypeScript identifier
     // fs/promises → fs_promises, axios → axios
-    const jsNamespace = access.namespace.join('_');
+    const jsNamespace = this.namespaceIdentifier(access.namespace);
 
     // Generate: namespace.member
     return `${jsNamespace}.${access.member}`;
@@ -695,9 +699,26 @@ export class JavaScriptGenerator {
     return 'null';
   }
 
+  private namespaceIdentifier(pathSegments: string[]): string {
+    return pathSegments
+      .map(seg => seg.replace(/[^A-Za-z0-9_]/g, '_'))
+      .join('_');
+  }
+
   private resolveMintImportSpecifier(modulePath: string): string {
     // Project-root imports like i src/foo should point to generated .local/src/foo from the current generated file.
     if (modulePath.startsWith('src/') && this.outputFile && this.projectRoot) {
+      const generatedTarget = resolve(this.projectRoot, '.local', `${modulePath}.ts`);
+      const fromDir = dirname(resolve(this.outputFile));
+      let rel = relative(fromDir, generatedTarget).replace(/\\/g, '/');
+      rel = rel.replace(/\.ts$/, '');
+      if (!rel.startsWith('.')) {
+        rel = `./${rel}`;
+      }
+      return rel;
+    }
+
+    if (modulePath.startsWith('stdlib/') && this.outputFile && this.projectRoot) {
       const generatedTarget = resolve(this.projectRoot, '.local', `${modulePath}.ts`);
       const fromDir = dirname(resolve(this.outputFile));
       let rel = relative(fromDir, generatedTarget).replace(/\\/g, '/');

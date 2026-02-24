@@ -14,6 +14,7 @@ import { TypeEnvironment } from './environment.js';
 import { TypeError, formatType } from './errors.js';
 import * as AST from '../parser/ast.js';
 import { checkProgramMutability, MutabilityError } from '../mutability/index.js';
+import type { TypeCheckOptions } from './index.js';
 
 /**
  * Synthesize (infer) type from expression
@@ -557,7 +558,18 @@ function synthesizeMemberAccess(env: TypeEnvironment, expr: AST.MemberAccessExpr
     );
   }
 
-  // Return any type for member access
+  if (namespaceType.kind === 'record') {
+    const memberType = namespaceType.fields.get(expr.member);
+    if (!memberType) {
+      throw new TypeError(
+        `Module '${namespaceName}' does not export member '${expr.member}'`,
+        expr.location
+      );
+    }
+    return memberType;
+  }
+
+  // Return any type for extern/trust-mode member access
   // Actual validation happens at link-time (extern-validator.ts)
   return { kind: 'any' };
 }
@@ -1075,7 +1087,7 @@ function createConstructorType(
  * Type check a program
  * Returns map of function names to their types
  */
-export function typeCheck(program: AST.Program, _source: string): Map<string, InferenceType> {
+export function typeCheck(program: AST.Program, _source: string, options?: TypeCheckOptions): Map<string, InferenceType> {
   const env = TypeEnvironment.createInitialEnvironment();
   const types = new Map<string, InferenceType>();
 
@@ -1123,12 +1135,14 @@ export function typeCheck(program: AST.Program, _source: string): Map<string, In
       const anyType: InferenceType = { kind: 'any' };
       env.bindWithMeta(namespaceName, anyType, { isExternNamespace: true });
     } else if (decl.type === 'ImportDecl') {
-      // Register import namespace just like extern (trust mode)
-      // Use as: stdlib/list_utils.len(xs)
-      // Type checking happens within the imported module
       const namespaceName = decl.modulePath.join('/');
-      const anyType: InferenceType = { kind: 'any' };
-      env.bind(namespaceName, anyType);
+      const importedType = options?.importedNamespaces?.get(namespaceName);
+      if (importedType) {
+        env.bind(namespaceName, importedType);
+      } else {
+        const anyType: InferenceType = { kind: 'any' };
+        env.bind(namespaceName, anyType);
+      }
     }
   }
 

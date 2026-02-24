@@ -6,7 +6,7 @@
   _→ch
 }
 
-λrot13(chars:[𝕊])→𝕊≡chars{
+export λrot13(chars:[𝕊])→𝕊≡chars{
   []→""|
   [x,.rest]→rot13Char(x)++rot13(rest)
 }

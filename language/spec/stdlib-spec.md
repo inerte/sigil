@@ -482,14 +482,24 @@ Pipe value through function.
 ### Import Syntax
 
 ```mint
-i std/io{print,read_line}        (* Import specific functions *)
-i std/collections{Map,Set}       (* Import types *)
-i std/math                       (* Import entire module *)
+i stdlib/io
+i stdlib/list_utils
+i stdlib/result
 ```
 
-### Export (Implicit)
+### Export (Explicit)
 
-All top-level declarations are exported by default. No explicit export needed.
+Only explicitly exported top-level declarations are visible across modules.
+
+Canonical export forms:
+
+```mint
+export λ...
+export t...
+export c...
+```
+
+No selective imports, no aliasing, no export lists.
 
 ## Standard Library Modules
 

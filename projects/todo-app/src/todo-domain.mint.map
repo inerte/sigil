@@ -2,20 +2,20 @@
   "version": 1,
   "file": "todo-domain.mint",
   "generated_by": "mintc@0.1.0",
-  "generated_at": "2026-02-24T00:47:14.733Z",
+  "generated_at": "2026-02-24T03:47:14.471Z",
   "mappings": {
     "Todo": {
       "range": [
-        0,
-        27
+        7,
+        34
       ],
       "summary": "Type definition: Todo",
       "explanation": "Type Todo"
     },
     "canAdd": {
       "range": [
-        29,
-        54
+        43,
+        68
       ],
       "summary": "Function: canAdd",
       "explanation": "Function with 1 parameter(s), returns 𝔹",
@@ -23,8 +23,8 @@
     },
     "addTodo": {
       "range": [
-        56,
-        134
+        77,
+        155
       ],
       "summary": "Function: addTodo",
       "explanation": "Function with 3 parameter(s), returns [Todo]",
@@ -32,8 +32,8 @@
     },
     "deleteTodo": {
       "range": [
-        136,
-        217
+        164,
+        245
       ],
       "summary": "Function: deleteTodo",
       "explanation": "Function with 2 parameter(s), returns [Todo]",
@@ -41,8 +41,8 @@
     },
     "clearCompleted": {
       "range": [
-        219,
-        287
+        254,
+        322
       ],
       "summary": "Function: clearCompleted",
       "explanation": "Function with 1 parameter(s), returns [Todo]",
@@ -50,8 +50,8 @@
     },
     "toggleTodo": {
       "range": [
-        289,
-        438
+        331,
+        480
       ],
       "summary": "Function: toggleTodo",
       "explanation": "Function with 2 parameter(s), returns [Todo]",
@@ -59,8 +59,8 @@
     },
     "editTodo": {
       "range": [
-        440,
-        594
+        489,
+        643
       ],
       "summary": "Function: editTodo",
       "explanation": "Function with 3 parameter(s), returns [Todo]",
@@ -68,8 +68,8 @@
     },
     "isVisible": {
       "range": [
-        596,
-        690
+        652,
+        746
       ],
       "summary": "Function: isVisible",
       "explanation": "Function with 2 parameter(s), returns 𝔹",
@@ -77,40 +77,40 @@
     },
     "isVisible_arm_0": {
       "range": [
-        636,
-        643
+        692,
+        699
       ],
       "summary": "Match arm: all",
       "explanation": "Pattern matches all"
     },
     "isVisible_arm_1": {
       "range": [
-        647,
-        661
+        703,
+        717
       ],
       "summary": "Match arm: active",
       "explanation": "Pattern matches active"
     },
     "isVisible_arm_2": {
       "range": [
-        665,
-        681
+        721,
+        737
       ],
       "summary": "Match arm: completed",
       "explanation": "Pattern matches completed"
     },
     "isVisible_arm_3": {
       "range": [
-        685,
-        688
+        741,
+        744
       ],
       "summary": "Match arm: _",
       "explanation": "Pattern matches _"
     },
     "completedCount": {
       "range": [
-        692,
-        786
+        755,
+        849
       ],
       "summary": "Function: completedCount",
       "explanation": "Function with 1 parameter(s), returns ℤ",
@@ -118,8 +118,8 @@
     },
     "remainingCount": {
       "range": [
-        788,
-        842
+        858,
+        912
       ],
       "summary": "Function: remainingCount",
       "explanation": "Function with 2 parameter(s), returns ℤ",

@@ -5,24 +5,24 @@ Last Updated: 2026-02-21
 
 ## Overview
 
-Mint uses a **Hindley-Milner type system** with extensions for:
+Mint uses a **bidirectional type checking system** with:
 - Algebraic data types (sum types + product types)
 - Effect tracking
 - Borrow checking (ownership and lifetimes)
-- Higher-kinded types
+- mandatory explicit type annotations on function signatures
 
-**Design Philosophy**: Types are mandatory but mostly invisible. The type checker infers types automatically, catching errors at compile time while keeping syntax minimal.
+**Design Philosophy**: Types are mandatory and explicit in canonical positions. Bidirectional checking provides precise errors while preserving deterministic syntax.
 
-## Type Inference
+## Type Checking
 
-### Hindley-Milner Algorithm
+### Bidirectional Checking
 
-Mint uses Algorithm W (Damas-Milner) for type inference:
+Mint alternates between:
 
-1. **Collect constraints** from the program
-2. **Unify types** to find most general solution
-3. **Generalize** polymorphic types
-4. **Instantiate** type schemes where needed
+1. **Synthesis (⇒)**: infer a type from expression structure
+2. **Checking (⇐)**: verify an expression against an expected type
+
+Mint does not rely on Hindley-Milner/Algorithm W as its primary typing strategy.
 
 ### Inference Rules
 

@@ -33,48 +33,69 @@ export class Parser {
   }
 
   private declaration(): AST.Declaration {
+    let isExported = false;
+    if (this.match(TokenType.EXPORT)) {
+      isExported = true;
+    }
+
     // Mockable function declaration: mockable λ...
     if (this.match(TokenType.MOCKABLE)) {
+      if (!this.check(TokenType.LAMBDA)) {
+        throw this.error('Expected "λ" after "mockable"');
+      }
       const mockableStart = this.previous();
       this.consume(TokenType.LAMBDA, 'Expected "λ" after "mockable"');
-      return this.functionDeclaration(true, mockableStart);
+      return this.functionDeclaration(true, mockableStart, isExported);
     }
 
     // Function declaration: λ identifier(params)...
     if (this.match(TokenType.LAMBDA)) {
-      return this.functionDeclaration(false);
+      return this.functionDeclaration(false, undefined, isExported);
     }
 
     // Type declaration: t TypeName = ...
     if (this.match(TokenType.TYPE)) {
-      return this.typeDeclaration();
+      return this.typeDeclaration(isExported);
     }
 
     // Const declaration: c name = value
     if (this.match(TokenType.CONST)) {
-      return this.constDeclaration();
+      return this.constDeclaration(isExported);
     }
 
     // Import declaration: i module/path
     if (this.match(TokenType.IMPORT)) {
+      if (isExported) {
+        throw this.error('Cannot export import declarations (canonical form: use "i module/path" only)');
+      }
       return this.importDeclaration();
     }
 
     // Extern declaration: e module/path
     if (this.match(TokenType.EXTERN)) {
+      if (isExported) {
+        throw this.error('Cannot export extern declarations (canonical form: use "e module/path" only)');
+      }
       return this.externDeclaration();
     }
 
     // Test declaration: test "description" { ... }
     if (this.checkIdentifier('test')) {
+      if (isExported) {
+        throw this.error('Cannot export test declarations (tests are file-local)');
+      }
       this.advance();
       return this.testDeclaration();
+    }
+
+    if (isExported) {
+      throw this.error('Expected exportable declaration after "export" (λ, t, or c)');
     }
 
     throw this.error('Expected declaration (λ for function, t for type, etc.)');
   }
 
-  private functionDeclaration(isMockable: boolean, startToken?: Token): AST.FunctionDecl {
+  private functionDeclaration(isMockable: boolean, startToken?: Token, isExported = false): AST.FunctionDecl {
     const start = startToken ?? this.previous();
     const name = this.consume(TokenType.IDENTIFIER, 'Expected function name').value;
 
@@ -114,6 +135,7 @@ export class Parser {
     return {
       type: 'FunctionDecl',
       name,
+      isExported,
       isMockable,
       params,
       effects,
@@ -152,7 +174,7 @@ export class Parser {
     return params;
   }
 
-  private typeDeclaration(): AST.TypeDecl {
+  private typeDeclaration(isExported = false): AST.TypeDecl {
     const start = this.previous();
     const name = this.consume(TokenType.UPPER_IDENTIFIER, 'Expected type name').value;
 
@@ -170,6 +192,7 @@ export class Parser {
     return {
       type: 'TypeDecl',
       name,
+      isExported,
       typeParams,
       definition,
       location: this.makeLocation(start, this.previous()),
@@ -275,7 +298,7 @@ export class Parser {
     };
   }
 
-  private constDeclaration(): AST.ConstDecl {
+  private constDeclaration(isExported = false): AST.ConstDecl {
     const start = this.previous();
     const name = this.consume(TokenType.IDENTIFIER, 'Expected constant name').value;
 
@@ -289,6 +312,7 @@ export class Parser {
     return {
       type: 'ConstDecl',
       name,
+      isExported,
       typeAnnotation,
       value,
       location: this.makeLocation(start, this.previous()),
@@ -303,7 +327,7 @@ export class Parser {
     // Works exactly like FFI: i module/path (NO selective imports)
     // Use as: stdlib/list_utils.len(xs)
     do {
-      modulePath.push(this.consume(TokenType.IDENTIFIER, 'Expected module name').value);
+      modulePath.push(this.modulePathSegment());
     } while (this.match(TokenType.SLASH));
 
     return {
@@ -319,11 +343,11 @@ export class Parser {
 
     // Parse module path (e.g., fs/promises, axios, lodash)
     // Syntax: extern module/path/name
-    modulePath.push(this.consume(TokenType.IDENTIFIER, 'Expected module name').value);
+    modulePath.push(this.modulePathSegment());
 
     // Handle path separators: fs/promises
     while (this.match(TokenType.SLASH)) {
-      modulePath.push(this.consume(TokenType.IDENTIFIER, 'Expected path segment').value);
+      modulePath.push(this.modulePathSegment());
     }
 
     return {
@@ -331,6 +355,34 @@ export class Parser {
       modulePath,
       location: this.makeLocation(start, this.previous()),
     };
+  }
+
+  private modulePathSegment(): string {
+    const start = this.peek();
+    const parts: string[] = [];
+
+    const consumeSegmentPart = (): boolean => {
+      if (this.match(TokenType.IDENTIFIER) || this.match(TokenType.UPPER_IDENTIFIER) || this.match(TokenType.INTEGER)) {
+        parts.push(this.previous().value);
+        return true;
+      }
+      return false;
+    };
+
+    if (!consumeSegmentPart()) {
+      throw this.error('Expected module name');
+    }
+
+    while (this.match(TokenType.MINUS)) {
+      parts.push('-');
+      if (!consumeSegmentPart()) {
+        throw this.error('Expected module path segment after "-"');
+      }
+    }
+
+    // Defensive: ensure location start token is touched for better parser state in callers
+    void start;
+    return parts.join('');
   }
 
   private testDeclaration(): AST.TestDecl {
@@ -844,7 +896,7 @@ export class Parser {
         const namespace: string[] = [firstSegment];
 
         while (this.match(TokenType.SLASH)) {
-          namespace.push(this.consume(TokenType.IDENTIFIER, 'Expected identifier after "/"').value);
+          namespace.push(this.modulePathSegment());
         }
 
         // If followed by dot, it's member access

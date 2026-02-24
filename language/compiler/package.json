@@ -7,7 +7,8 @@
   "scripts": {
     "build": "tsc",
     "watch": "tsc --watch",
-    "test": "npm run test:canonical",
+    "test": "pnpm run test:canonical && pnpm run test:unit",
+    "test:unit": "pnpm exec node --import tsx --test test/**/*.test.ts",
     "test:canonical": "cd .. && ./test-canonical.sh",
     "pretest": "npm run build",
     "compile": "node dist/cli.js"

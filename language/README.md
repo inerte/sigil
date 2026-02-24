@@ -67,6 +67,29 @@ node language/compiler/dist/cli.js test --match "toggle"
 
 See `docs/TESTING.md`.
 
+## Module System (Typed Imports)
+
+Mint-to-Mint imports are typechecked across modules (not trust-mode `any`).
+
+Canonical Mint imports:
+
+```mint
+i src/todo-domain
+i stdlib/list_utils
+```
+
+Canonical exports are explicit:
+
+```mint
+export λaddTodo(...)→...
+export tTodo={...}
+export cVERSION:𝕊="1"
+```
+
+- Only `src/...` and `stdlib/...` are valid Mint import roots
+- Import cycles are compile errors
+- FFI (`e module/path`) remains trust-mode and link-time validated
+
 ## Why Machine-First Design?
 
 ### The Paradigm Shift

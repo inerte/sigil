@@ -259,6 +259,6 @@ Mint is one answer. We're excited to see where this leads!
 **Status:** Proof-of-concept in active development
 **Lexer:** ✅ Complete and tested
 **Parser:** ✅ Complete - builds full AST
-**Next:** Type checker implementation (Hindley-Milner inference)
+**Next:** Type checker improvements and module-system/typechecking enhancements (bidirectional checker)
 
 For more details, see [STATUS.md](STATUS.md)

@@ -35,6 +35,18 @@ i stdlib/list_utils
 
 **Design:** Imports work exactly like FFI (`e module/path`). No selective imports, always use fully qualified names. This prevents name collisions and makes code explicit.
 
+## Module Exports
+
+Mint modules use explicit exports. Standard library modules export the functions/types they expose via:
+
+```mint
+export λ...
+export t...
+export c...
+```
+
+Imported modules only expose exported members. Accessing a non-exported member is a compile error.
+
 ## List Predicates
 
 **Module:** `stdlib/list_predicates`

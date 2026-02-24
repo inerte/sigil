@@ -7,7 +7,7 @@
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, statSync, existsSync } from 'fs';
 import { dirname, basename, resolve, relative, join } from 'path';
 import { spawn } from 'child_process';
-import { pathToFileURL } from 'url';
+import { pathToFileURL, fileURLToPath } from 'url';
 import { tokenize } from './lexer/lexer.js';
 import { tokenToString } from './lexer/token.js';
 import { parse } from './parser/parser.js';
@@ -17,6 +17,8 @@ import { validateSurfaceForm } from './validator/surface-form.js';
 import { validateExterns } from './validator/extern-validator.js';
 import { typeCheck } from './typechecker/index.js';
 import { formatType } from './typechecker/errors.js';
+import type { InferenceType } from './typechecker/types.js';
+import type * as AST from './parser/ast.js';
 import { generateSemanticMap, enhanceWithClaude } from './mapgen/index.js';
 
 type MintProjectLayout = {
@@ -29,6 +31,21 @@ type MintProjectConfig = {
   root: string;
   layout: MintProjectLayout;
 };
+
+type LoadedMintModule = {
+  id: string; // canonical module id (src/foo, stdlib/bar) or file path fallback for roots
+  filePath: string;
+  source: string;
+  ast: ReturnType<typeof parse>;
+  project?: MintProjectConfig;
+};
+
+type ModuleGraph = {
+  modules: Map<string, LoadedMintModule>;
+  topoOrder: string[]; // dependency-first
+};
+
+const LANGUAGE_ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
 function defaultProjectLayout(): MintProjectLayout {
   return { src: 'src', tests: 'tests', out: '.local' };
@@ -147,6 +164,173 @@ function ensureNoTestsOutsideTestsDir(ast: ReturnType<typeof parse>, filename: s
   if (hasTests && !pathIsUnderTests(filename)) {
     throw new Error(`Test declarations are only allowed under ./tests (canonical project layout). Found test in ${filename}`);
   }
+}
+
+function isMintImportPath(modulePath: string): boolean {
+  return modulePath.startsWith('src/') || modulePath.startsWith('stdlib/');
+}
+
+function resolveMintImportToFile(
+  importerFile: string,
+  importerProject: MintProjectConfig | undefined,
+  moduleId: string
+): { moduleId: string; filePath: string; project?: MintProjectConfig } {
+  if (moduleId.startsWith('src/')) {
+    if (!importerProject) {
+      throw new Error(`Project import '${moduleId}' requires a Mint project root (mint.json). Importer: ${importerFile}`);
+    }
+    return {
+      moduleId,
+      filePath: join(importerProject.root, `${moduleId}.mint`),
+      project: importerProject,
+    };
+  }
+  if (moduleId.startsWith('stdlib/')) {
+    return {
+      moduleId,
+      filePath: join(LANGUAGE_ROOT_DIR, `${moduleId}.mint`),
+      project: importerProject,
+    };
+  }
+  throw new Error(`Invalid Mint import '${moduleId}'. Canonical Mint imports are only 'src/...' and 'stdlib/...'`);
+}
+
+function buildModuleGraph(entryFile: string): ModuleGraph {
+  const modules = new Map<string, LoadedMintModule>();
+  const topoOrder: string[] = [];
+  const visiting = new Set<string>();
+  const visitStack: string[] = [];
+
+  const visit = (filePath: string, logicalId?: string, inheritedProject?: MintProjectConfig): void => {
+    const absFile = resolve(filePath);
+    const moduleKey = logicalId ?? absFile;
+    if (modules.has(moduleKey)) return;
+    if (visiting.has(moduleKey)) {
+      const startIdx = visitStack.indexOf(moduleKey);
+      const cycle = (startIdx >= 0 ? visitStack.slice(startIdx) : [moduleKey]).concat(moduleKey);
+      throw new Error(`Import cycle detected: ${cycle.join(' -> ')}`);
+    }
+    visiting.add(moduleKey);
+    visitStack.push(moduleKey);
+
+    const source = readFileSync(absFile, 'utf-8');
+    validateSurfaceForm(source, absFile);
+    const tokens = tokenize(source);
+    const ast = parse(tokens);
+    ensureNoTestsOutsideTestsDir(ast, absFile);
+    validateCanonicalForm(ast);
+    const project = getMintProjectConfig(absFile) ?? inheritedProject;
+    const mod: LoadedMintModule = { id: moduleKey, filePath: absFile, source, ast, project: project ?? undefined };
+
+    for (const decl of ast.declarations) {
+      if (decl.type !== 'ImportDecl') continue;
+      const importedId = decl.modulePath.join('/');
+      if (!isMintImportPath(importedId)) continue;
+      const resolved = resolveMintImportToFile(absFile, project ?? undefined, importedId);
+      if (!existsSync(resolved.filePath)) {
+        throw new Error(`Mint import '${importedId}' not found for ${absFile}. Expected: ${resolved.filePath}`);
+      }
+      visit(resolved.filePath, resolved.moduleId, resolved.project);
+    }
+
+    visiting.delete(moduleKey);
+    visitStack.pop();
+    modules.set(moduleKey, mod);
+    topoOrder.push(moduleKey);
+  };
+
+  visit(entryFile);
+  return { modules, topoOrder };
+}
+
+function declIsExported(decl: AST.Declaration): boolean {
+  return (decl.type === 'FunctionDecl' || decl.type === 'ConstDecl' || decl.type === 'TypeDecl') && !!decl.isExported;
+}
+
+function buildImportedNamespacesForModule(
+  module: LoadedMintModule,
+  exportedNamespaces: Map<string, InferenceType>
+): Map<string, InferenceType> {
+  const imported = new Map<string, InferenceType>();
+  for (const decl of module.ast.declarations) {
+    if (decl.type !== 'ImportDecl') continue;
+    const moduleId = decl.modulePath.join('/');
+    if (!isMintImportPath(moduleId)) continue;
+    const nsType = exportedNamespaces.get(moduleId);
+    if (nsType) {
+      imported.set(moduleId, nsType);
+    }
+  }
+  return imported;
+}
+
+function typeCheckModuleGraph(graph: ModuleGraph): Map<string, Map<string, InferenceType>> {
+  const moduleTypes = new Map<string, Map<string, InferenceType>>();
+  const exportedNamespaces = new Map<string, InferenceType>();
+
+  for (const moduleId of graph.topoOrder) {
+    const mod = graph.modules.get(moduleId)!;
+    const importedNamespaces = buildImportedNamespacesForModule(mod, exportedNamespaces);
+    const types = typeCheck(mod.ast, mod.source, { importedNamespaces });
+    moduleTypes.set(moduleId, types);
+
+    const fields = new Map<string, InferenceType>();
+    for (const decl of mod.ast.declarations) {
+      if (!declIsExported(decl)) continue;
+      if (decl.type === 'FunctionDecl' || decl.type === 'ConstDecl') {
+        const t = types.get(decl.name);
+        if (t) fields.set(decl.name, t);
+      }
+      // Exported types are handled syntactically/canonically now; cross-module type refs are a future extension.
+    }
+    exportedNamespaces.set(moduleId, { kind: 'record', fields });
+  }
+
+  return moduleTypes;
+}
+
+function getModuleOutputPath(entryFile: string, mod: LoadedMintModule, rootProject?: MintProjectConfig, rootOutputOverride?: string): string {
+  if (rootOutputOverride && resolve(mod.filePath) === resolve(entryFile)) {
+    return rootOutputOverride;
+  }
+
+  if (mod.id.startsWith('stdlib/') && rootProject) {
+    return join(rootProject.root, rootProject.layout.out, `${mod.id}.ts`);
+  }
+
+  return getSmartOutputPath(mod.filePath);
+}
+
+async function compileModuleGraph(entryFile: string, rootOutputOverride?: string): Promise<{
+  graph: ModuleGraph;
+  moduleTypes: Map<string, Map<string, InferenceType>>;
+  outputs: Map<string, string>;
+  rootModule: LoadedMintModule;
+}> {
+  const graph = buildModuleGraph(entryFile);
+  const moduleTypes = typeCheckModuleGraph(graph);
+  const rootModule = graph.modules.get(resolve(entryFile)) ?? graph.modules.get(entryFile) ?? (() => { throw new Error('Root module missing'); })();
+  const rootProject = getMintProjectConfig(entryFile) ?? undefined;
+  const outputs = new Map<string, string>();
+
+  for (const moduleId of graph.topoOrder) {
+    const mod = graph.modules.get(moduleId)!;
+    await validateExterns(mod.ast);
+    const outputFile = getModuleOutputPath(entryFile, mod, rootProject, rootOutputOverride);
+    const outputDir = dirname(outputFile);
+    if (outputDir !== '.') {
+      mkdirSync(outputDir, { recursive: true });
+    }
+    const tsCode = compile(mod.ast, {
+      sourceFile: mod.filePath,
+      outputFile,
+      projectRoot: rootProject?.root ?? mod.project?.root,
+    });
+    writeFileSync(outputFile, tsCode, 'utf-8');
+    outputs.set(moduleId, outputFile);
+  }
+
+  return { graph, moduleTypes, outputs, rootModule };
 }
 
 function collectMintFiles(rootPath: string): string[] {
@@ -283,21 +467,16 @@ async function compileCommand(args: string[]) {
   }
 
   try {
-    const source = readFileSync(filename, 'utf-8');
+    const { graph, moduleTypes, outputs } = await compileModuleGraph(filename, outputFile);
+    const rootKey = resolve(filename);
+    const rootModule = graph.modules.get(rootKey) ?? (() => { throw new Error(`Root module not loaded: ${filename}`); })();
+    const ast = rootModule.ast;
+    const source = rootModule.source;
+    const types = moduleTypes.get(rootKey) ?? new Map<string, InferenceType>();
+    outputFile = outputs.get(rootKey) ?? outputFile;
 
-    // Validate surface form (formatting) before tokenizing
-    validateSurfaceForm(source, filename);
-
-    const tokens = tokenize(source);
-    const ast = parse(tokens);
-    ensureNoTestsOutsideTestsDir(ast, filename);
-
-    // Validate canonical form (enforces ONE way)
-    validateCanonicalForm(ast);
-
-    // Type check (ALWAYS - no exceptions)
+    // Type check results for root already available
     const showTypes = args.includes('--show-types');
-    const types = typeCheck(ast, source);
 
     // If --show-types flag, display inferred types
     if (showTypes) {
@@ -309,20 +488,6 @@ async function compileCommand(args: string[]) {
       }
       console.log();
     }
-
-    const project = getMintProjectConfig(filename) ?? undefined;
-    const tsCode = compile(ast, { sourceFile: filename, outputFile, projectRoot: project?.root });
-
-    // Validate externals BEFORE writing file (link-time validation)
-    await validateExterns(ast);
-
-    // Ensure output directory exists
-    const outputDir = dirname(outputFile);
-    if (outputDir !== '.') {
-      mkdirSync(outputDir, { recursive: true });
-    }
-
-    writeFileSync(outputFile, tsCode, 'utf-8');
 
     console.log(`✓ Compiled ${filename} → ${outputFile}`);
 
@@ -355,23 +520,10 @@ type CompiledTestModule = {
 };
 
 async function compileToTypeScriptFile(filename: string, outputFile?: string): Promise<CompiledTestModule> {
-  const source = readFileSync(filename, 'utf-8');
-  validateSurfaceForm(source, filename);
-  const tokens = tokenize(source);
-  const ast = parse(tokens);
-  ensureNoTestsOutsideTestsDir(ast, filename);
-  validateCanonicalForm(ast);
-  typeCheck(ast, source);
-  const project = getMintProjectConfig(filename) ?? undefined;
   const finalOutput = outputFile ?? getSmartOutputPath(filename);
-  const tsCode = compile(ast, { sourceFile: filename, outputFile: finalOutput, projectRoot: project?.root });
-  await validateExterns(ast);
-  const outputDir = dirname(finalOutput);
-  if (outputDir !== '.') {
-    mkdirSync(outputDir, { recursive: true });
-  }
-  writeFileSync(finalOutput, tsCode, 'utf-8');
-  return { sourceFile: filename, outputFile: finalOutput };
+  const { outputs } = await compileModuleGraph(filename, finalOutput);
+  const rootOut = outputs.get(resolve(filename)) ?? finalOutput;
+  return { sourceFile: filename, outputFile: rootOut };
 }
 
 async function runCommand(args: string[]) {
@@ -381,39 +533,16 @@ async function runCommand(args: string[]) {
   }
 
   const filename = args[0];
-  const project = getMintProjectConfig(filename) ?? undefined;
-  const baseName = basename(filename, '.mint');
   const outputFile = getSmartOutputPath(filename);
   const runnerFile = outputFile.replace(/\.ts$/, '.run.ts');
 
   try {
-    // Compile to .local/
-    const source = readFileSync(filename, 'utf-8');
-
-    // Validate surface form (formatting) before tokenizing
-    validateSurfaceForm(source, filename);
-
-    const tokens = tokenize(source);
-    const ast = parse(tokens);
-    ensureNoTestsOutsideTestsDir(ast, filename);
-
-    // Validate canonical form (enforces ONE way)
-    validateCanonicalForm(ast);
-
-    // Type check (should always happen!)
-    typeCheck(ast, source);
-
-    const tsCode = compile(ast, { sourceFile: filename, outputFile, projectRoot: project?.root });
-
-    // Validate externals BEFORE writing file (link-time validation)
-    await validateExterns(ast);
-
-    // Ensure .local exists
-    mkdirSync(dirname(outputFile), { recursive: true });
-    writeFileSync(outputFile, tsCode, 'utf-8');
+    // Compile root module and imported Mint dependencies into .local/
+    const { outputs } = await compileModuleGraph(filename, outputFile);
+    const actualOutput = outputs.get(resolve(filename)) ?? outputFile;
 
     // Create runner that calls main()
-    const runnerImport = `./${basename(outputFile, '.ts')}`;
+    const runnerImport = `./${basename(actualOutput, '.ts')}`;
     const runnerCode = `import { main } from '${runnerImport}';
 
 if (typeof main !== 'function') {
@@ -433,7 +562,7 @@ if (result !== undefined) {
 
     writeFileSync(runnerFile, runnerCode, 'utf-8');
 
-    console.log(`✓ Compiled ${filename} → ${outputFile}`);
+    console.log(`✓ Compiled ${filename} → ${actualOutput}`);
     console.log('');
 
     // Run the wrapper with Node + tsx loader (avoids tsx CLI IPC/daemon issues in sandboxed environments)

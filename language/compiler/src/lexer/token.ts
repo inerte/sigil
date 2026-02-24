@@ -29,6 +29,7 @@ export enum TokenType {
   MUT = 'MUT',                 // mut
   MOCKABLE = 'MOCKABLE',       // mockable
   WITH_MOCK = 'WITH_MOCK',     // with_mock
+  EXPORT = 'EXPORT',           // export
 
   // Type symbols
   TYPE_INT = 'TYPE_INT',       // ℤ

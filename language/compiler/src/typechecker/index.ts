@@ -13,6 +13,10 @@ import { InferenceType } from './types.js';
 export { TypeError } from './errors.js';
 export type { InferenceType } from './types.js';
 
+export interface TypeCheckOptions {
+  importedNamespaces?: Map<string, InferenceType>;
+}
+
 /**
  * Type check a Mint program
  *
@@ -21,10 +25,11 @@ export type { InferenceType } from './types.js';
  */
 export function typeCheck(
   program: AST.Program,
-  sourceCode?: string
+  sourceCode?: string,
+  options?: TypeCheckOptions
 ): Map<string, InferenceType> {
   try {
-    return bidirectionalTypeCheck(program, sourceCode || '');
+    return bidirectionalTypeCheck(program, sourceCode || '', options);
   } catch (error) {
     if (error instanceof TypeError && sourceCode) {
       // Format error with source context

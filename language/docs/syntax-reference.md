@@ -97,7 +97,7 @@ Canonical export forms:
 ```sigil
 export λdouble(x:ℤ)→ℤ=x*2
 export t Todo={id:ℤ,text:𝕊,done:𝔹}
-export c VERSION:𝕊="0.1"
+export c version:𝕊="0.1"
 ```
 
 Notes:
@@ -131,9 +131,13 @@ Err("not found")
 ## Constants (`c`)
 
 ```sigil
-c ANSWER:ℤ=42
-c GREETING:𝕊="hello"
+c answer:ℤ=42
+c greeting:𝕊="hello"
 ```
+
+Current parser behavior:
+- constant identifiers use regular lowercase identifier form (e.g. `c answer:ℤ=42`)
+- uppercase constant names like `c ANSWER:ℤ=42` are rejected today
 
 ## Imports and externs
 

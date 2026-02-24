@@ -50,7 +50,7 @@ All function signatures must have complete type annotations:
 [1,2,3]↦λ(x:ℤ)→ℤ=x*2
 
 ⟦ Constants (when supported) ⟧
-c PI:ℝ=3.14
+c pi:ℝ=3.14
 ```
 
 ### Parse Errors for Missing Annotations

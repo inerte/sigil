@@ -83,7 +83,7 @@ Canonical exports are explicit:
 ```sigil
 export λaddTodo(...)→...
 export t Todo={...}
-export c VERSION:𝕊="1"
+export c version:𝕊="1"
 ```
 
 - Only `src/...` and `stdlib/...` are valid Sigil import roots

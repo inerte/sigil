@@ -19,7 +19,7 @@
   "packageManager": "pnpm@9.0.0",
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/sigil-lang"
+    "url": "https://github.com/inerte/sigil"
   },
   "keywords": [
     "programming-language",

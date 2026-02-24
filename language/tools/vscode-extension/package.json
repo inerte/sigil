@@ -6,7 +6,7 @@
   "publisher": "sigil-lang",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sigil-lang/sigil"
+    "url": "https://github.com/inerte/sigil"
   },
   "engines": {
     "vscode": "^1.75.0"

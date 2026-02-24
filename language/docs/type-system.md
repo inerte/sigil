@@ -43,13 +43,13 @@ Used for expressions where expected type is known from context:
 All function signatures must have complete type annotations:
 
 ```mint
-# Function declarations
+⟦ Function declarations ⟧
 λfactorial(n:ℤ)→ℤ=...
 
-# Lambda expressions
+⟦ Lambda expressions ⟧
 [1,2,3]↦λ(x:ℤ)→ℤ=x*2
 
-# Constants (when supported)
+⟦ Constants (when supported) ⟧
 c PI:ℝ=3.14
 ```
 
@@ -226,9 +226,9 @@ Type checking:
 Built-in list operations are type-checked specially:
 
 ```mint
-[1,2,3]↦λ(x:ℤ)→ℤ=x*2        # [ℤ] ↦ (ℤ→ℤ) ⇒ [ℤ]
-[1,2,3]⊳λ(x:ℤ)→𝔹=x>1        # [ℤ] ⊳ (ℤ→𝔹) ⇒ [ℤ]
-[1,2,3]⊕λ(acc:ℤ,x:ℤ)→ℤ=acc+x⊕0  # [ℤ] ⊕ (ℤ→ℤ→ℤ) ⊕ ℤ ⇒ ℤ
+[1,2,3]↦λ(x:ℤ)→ℤ=x*2        ⟦ [ℤ] ↦ (ℤ→ℤ) ⇒ [ℤ] ⟧
+[1,2,3]⊳λ(x:ℤ)→𝔹=x>1        ⟦ [ℤ] ⊳ (ℤ→𝔹) ⇒ [ℤ] ⟧
+[1,2,3]⊕λ(acc:ℤ,x:ℤ)→ℤ=acc+x⊕0  ⟦ [ℤ] ⊕ (ℤ→ℤ→ℤ) ⊕ ℤ ⇒ ℤ ⟧
 ```
 
 Type rules:
@@ -257,16 +257,16 @@ Mint supports sum types (also called tagged unions or algebraic data types) for 
 ### Syntax
 
 ```mint
-# Simple enum (no type parameters)
+⟦ Simple enum (no type parameters) ⟧
 t Color=Red|Green|Blue
 
-# Generic Option type
+⟦ Generic Option type ⟧
 t Option[T]=Some(T)|None
 
-# Generic Result type
+⟦ Generic Result type ⟧
 t Result[T,E]=Ok(T)|Err(E)
 
-# Multiple fields
+⟦ Multiple fields ⟧
 t Tree[T]=Leaf(T)|Branch(Tree[T],Tree[T])
 ```
 
@@ -283,15 +283,15 @@ Sum types are declared with `t TypeName=Variant1|Variant2|...`:
 Constructors are functions that create sum type values:
 
 ```mint
-# Nullary constructors (no fields) - require ()
+⟦ Nullary constructors (no fields) - require () ⟧
 λgetRed()→Color=Red()
 λgetGreen()→Color=Green()
 
-# Constructors with fields
+⟦ Constructors with fields ⟧
 λsomeValue()→Option=Some(42)
 λnoValue()→Option=None()
 
-# Multiple fields
+⟦ Multiple fields ⟧
 λokResult()→Result=Ok(100)
 λerrResult()→Result=Err("file not found")
 ```
@@ -303,20 +303,20 @@ Constructors are functions that create sum type values:
 Sum types are deconstructed using pattern matching:
 
 ```mint
-# Match on simple enum
+⟦ Match on simple enum ⟧
 λcolorToInt(color:Color)→ℤ≡color{
   Red→1|
   Green→2|
   Blue→3
 }
 
-# Extract values from constructors
+⟦ Extract values from constructors ⟧
 λprocessOption(opt:Option)→ℤ≡opt{
   Some(x)→x|
   None→0
 }
 
-# Nested patterns
+⟦ Nested patterns ⟧
 λprocessResult(res:Result)→𝕊≡res{
   Ok(value)→"Success: "+value|
   Err(msg)→"Error: "+msg
@@ -374,7 +374,7 @@ The standard library provides two essential sum types:
 ```mint
 t Option[T]=Some(T)|None
 
-# Usage
+⟦ Usage ⟧
 λdivide(a:ℤ,b:ℤ)→Option≡b{
   0→None()|
   b→Some(a/b)
@@ -385,7 +385,7 @@ t Option[T]=Some(T)|None
 ```mint
 t Result[T,E]=Ok(T)|Err(E)
 
-# Usage
+⟦ Usage ⟧
 λparseInt(s:𝕊)→Result≡validInput(s){
   ⊤→Ok(parseInt(s))|
   ⊥→Err("invalid input")
@@ -444,7 +444,7 @@ The empty list literal `[]` does not synthesize an element type by itself.
 λemptyInts()→[ℤ]=[]
 
 λreverse(xs:[ℤ])→[ℤ]≡xs{
-  []→[]|                 # OK: expected type is [ℤ]
+  []→[]|                 ⟦ OK: expected type is [ℤ] ⟧
   [x,.rest]→reverse(rest)⧺[x]
 }
 ```
@@ -454,20 +454,20 @@ The empty list literal `[]` does not synthesize an element type by itself.
 ### Valid Programs
 
 ```mint
-# Factorial with pattern matching
+⟦ Factorial with pattern matching ⟧
 λfactorial(n:ℤ)→ℤ≡n{
   0→1|
   1→1|
   n→n*factorial(n-1)
 }
 
-# GCD (multi-parameter recursion allowed)
+⟦ GCD (multi-parameter recursion allowed) ⟧
 λgcd(a:ℤ,b:ℤ)→ℤ≡b{
   0→a|
   b→gcd(b,a%b)
 }
 
-# List operations
+⟦ List operations ⟧
 λdoubleEvens(list:[ℤ])→[ℤ]=
   list↦λ(x:ℤ)→ℤ=x*2⊳λ(x:ℤ)→𝔹=x%2=0
 ```
@@ -475,18 +475,18 @@ The empty list literal `[]` does not synthesize an element type by itself.
 ### Type Errors
 
 ```mint
-# Error: Type mismatch
+⟦ Error: Type mismatch ⟧
 λbad()→ℤ="hello"
-# Error: Literal type mismatch: expected ℤ, got 𝕊
+⟦ Error: Literal type mismatch: expected ℤ, got 𝕊 ⟧
 
-# Error: Argument type mismatch
+⟦ Error: Argument type mismatch ⟧
 λid(x:ℤ)→ℤ=x
 λmain()→𝕊=id("hello")
-# Error: Argument 0 type mismatch: expected ℤ, got 𝕊
+⟦ Error: Argument 0 type mismatch: expected ℤ, got 𝕊 ⟧
 
-# Error: Pattern match type mismatch
+⟦ Error: Pattern match type mismatch ⟧
 λneg(b:𝔹)→𝔹≡b{5→⊥|_→⊤}
-# Error: Pattern type mismatch: expected 𝔹, got ℤ
+⟦ Error: Pattern type mismatch: expected 𝔹, got ℤ ⟧
 ```
 
 ## Summary

@@ -43,14 +43,14 @@ Mint enforces **canonical formatting** at compile-time. Every program has exactl
 
 ❌ REJECTED:
 λmain()→ℤ=1[EOF without newline]
-# Error: File must end with a newline
+⟦ Error: File must end with a newline ⟧
 ```
 
 ### 2. No Trailing Whitespace
 ```mint
 ❌ REJECTED:
 λmain()→ℤ=1   [spaces here]
-# Error: Line 1 has trailing whitespace
+⟦ Error: Line 1 has trailing whitespace ⟧
 ```
 
 ### 3. Maximum One Blank Line
@@ -65,7 +65,7 @@ Mint enforces **canonical formatting** at compile-time. Every program has exactl
 
 
 λb()→ℤ=2
-# Error: Multiple blank lines at line 2 (only one consecutive blank line allowed)
+⟦ Error: Multiple blank lines at line 2 (only one consecutive blank line allowed) ⟧
 ```
 
 ### 4. Equals Sign Placement (Context-Dependent)
@@ -78,11 +78,11 @@ Mint enforces **canonical formatting** at compile-time. Every program has exactl
 
 ❌ REJECTED - Missing =:
 λdouble(x:ℤ)→ℤ x*2
-# Error: Expected "=" before function body (canonical form: λf()→T=...)
+⟦ Error: Expected "=" before function body (canonical form: λf()→T=...) ⟧
 
 ❌ REJECTED - Unwanted = before match:
 λfactorial(n:ℤ)→ℤ=≡n{...}
-# Error: Unexpected "=" before match expression (canonical form: λf()→T≡...)
+⟦ Error: Unexpected "=" before match expression (canonical form: λf()→T≡...) ⟧
 ```
 
 **Why enforce surface forms?**
@@ -113,9 +113,9 @@ Mint enforces **canonical formatting** at compile-time. Every program has exactl
 λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
 
 ❌ SYNTAX ERROR (missing annotations):
-λfactorial(n)=...        # Missing parameter type
-λfactorial(n:ℤ)=...      # Missing return type
-λfactorial(n)→ℤ=...      # Missing parameter type
+λfactorial(n)=...        ⟦ Missing parameter type ⟧
+λfactorial(n:ℤ)=...      ⟦ Missing return type ⟧
+λfactorial(n)→ℤ=...      ⟦ Missing parameter type ⟧
 ```
 
 **How it works:**
@@ -181,9 +181,9 @@ e console
 
 ⟦ ERROR: Pure calling effectful ⟧
 λbad()→𝕌=log("oops")
-# Effect mismatch in function "bad":
-#   Declared effects: (pure)
-#   Undeclared effects used: !IO
+⟦ Effect mismatch in function "bad": ⟧
+⟦   Declared effects: (pure) ⟧
+⟦   Undeclared effects used: !IO ⟧
 
 ⟦ FIX: Declare the effect ⟧
 λgood()→!IO 𝕌=log("works!")
@@ -468,41 +468,41 @@ i stdlib/list_utils
 
 **List predicates:**
 ```mint
-stdlib/list_predicates.sorted_asc([1,2,3])           # Check if sorted ascending
-stdlib/list_predicates.all(is_positive,[1,2,3])      # Check if all elements satisfy predicate
-stdlib/list_predicates.any(is_even,[1,3,5])          # Check if any element satisfies predicate
-stdlib/list_predicates.contains(3,[1,2,3,4])         # Check if element in list
+stdlib/list_predicates.sorted_asc([1,2,3])           ⟦ Check if sorted ascending ⟧
+stdlib/list_predicates.all(is_positive,[1,2,3])      ⟦ Check if all elements satisfy predicate ⟧
+stdlib/list_predicates.any(is_even,[1,3,5])          ⟦ Check if any element satisfies predicate ⟧
+stdlib/list_predicates.contains(3,[1,2,3,4])         ⟦ Check if element in list ⟧
 ```
 
 **Numeric predicates:**
 ```mint
-stdlib/numeric_predicates.is_positive(5)             # Check if > 0
-stdlib/numeric_predicates.is_even(4)                 # Check if divisible by 2
-stdlib/numeric_predicates.is_prime(7)                # Check if prime number
-stdlib/numeric_predicates.in_range(5,1,10)           # Check if in range [min,max]
+stdlib/numeric_predicates.is_positive(5)             ⟦ Check if > 0 ⟧
+stdlib/numeric_predicates.is_even(4)                 ⟦ Check if divisible by 2 ⟧
+stdlib/numeric_predicates.is_prime(7)                ⟦ Check if prime number ⟧
+stdlib/numeric_predicates.in_range(5,1,10)           ⟦ Check if in range [min,max] ⟧
 ```
 
 **List utilities:**
 ```mint
-stdlib/list_utils.len([1,2,3])                       # Get list length
-stdlib/list_utils.head([1,2,3])                      # Get first element
-stdlib/list_utils.tail([1,2,3])                      # Get all but first
+stdlib/list_utils.len([1,2,3])                       ⟦ Get list length ⟧
+stdlib/list_utils.head([1,2,3])                      ⟦ Get first element ⟧
+stdlib/list_utils.tail([1,2,3])                      ⟦ Get all but first ⟧
 ```
 
 **Common patterns:**
 ```mint
 i stdlib/numeric_predicates
 
-# Validation
+⟦ Validation ⟧
 λprocess(x:ℤ)→𝕊≡stdlib/numeric_predicates.is_positive(x){
   ⊥→"Error: Must be positive"|
   ⊤→"Processing..."
 }
 
-# Filtering
+⟦ Filtering ⟧
 λget_primes(xs:[ℤ])→[ℤ]=xs⊳stdlib/numeric_predicates.is_prime
 
-# Preconditions
+⟦ Preconditions ⟧
 λbinary_search(xs:[ℤ],target:ℤ)→ℤ≡stdlib/list_predicates.sorted_asc(xs){
   ⊥→-1|
   ⊤→search_impl(...)
@@ -513,10 +513,10 @@ See `docs/STDLIB.md` for complete reference.
 
 ### External Module Interop (FFI)
 ```mint
-e module/path              # Import external module
-module/path.member(args)   # Call external module function
+e module/path              ⟦ Import external module ⟧
+module/path.member(args)   ⟦ Call external module function ⟧
 
-# Examples:
+⟦ Examples: ⟧
 e console
 console.log("Hello!")
 
@@ -567,15 +567,15 @@ axios.get("https://api.example.com")
 ### Sum Types (Algebraic Data Types)
 ```mint
 ⟦ Type declarations ⟧
-t Color=Red|Green|Blue              # Simple enum
-t Option[T]=Some(T)|None            # Generic optional value
-t Result[T,E]=Ok(T)|Err(E)          # Generic success/failure
+t Color=Red|Green|Blue              ⟦ Simple enum ⟧
+t Option[T]=Some(T)|None            ⟦ Generic optional value ⟧
+t Result[T,E]=Ok(T)|Err(E)          ⟦ Generic success/failure ⟧
 
 ⟦ Constructor calls (always use parentheses) ⟧
-Red()                               # Nullary constructor
-Some(42)                            # Constructor with value
-Ok(100)                             # Success value
-Err("not found")                    # Error value
+Red()                               ⟦ Nullary constructor ⟧
+Some(42)                            ⟦ Constructor with value ⟧
+Ok(100)                             ⟦ Success value ⟧
+Err("not found")                    ⟦ Error value ⟧
 
 ⟦ Pattern matching ⟧
 λprocessColor(c:Color)→ℤ≡c{
@@ -585,8 +585,8 @@ Err("not found")                    # Error value
 }
 
 λprocessOption(opt:Option)→ℤ≡opt{
-  Some(x)→x|                        # Extract value from Some
-  None→0                            # Default for None
+  Some(x)→x|                        ⟦ Extract value from Some ⟧
+  None→0                            ⟦ Default for None ⟧
 }
 
 λprocessResult(res:Result)→𝕊≡res{
@@ -603,9 +603,9 @@ See `examples/sum-types-demo.mint` for comprehensive examples.
 
 ### Lists
 ```mint
-[1,2,3]              # List literal
-[x,.rest]            # Pattern: x is first, rest is tail
-[value,.recursive()]  # Construction with spread
+[1,2,3]              ⟦ List literal ⟧
+[x,.rest]            ⟦ Pattern: x is first, rest is tail ⟧
+[value,.recursive()]  ⟦ Construction with spread ⟧
 ```
 
 **Empty list typing (`[]`)**
@@ -615,18 +615,18 @@ See `examples/sum-types-demo.mint` for comprehensive examples.
 
 ### Concatenation
 ```mint
-"Hello, "++"Mint"      # String concatenation (only for strings)
-[1,2]⧺[3,4]            # List concatenation (only for lists)
+"Hello, "++"Mint"      ⟦ String concatenation (only for strings) ⟧
+[1,2]⧺[3,4]            ⟦ List concatenation (only for lists) ⟧
 ```
 
 ### Built-in List Operations (Language Constructs)
 ```mint
-list↦fn              # Map: ↦ (apply fn to each element)
-list⊳predicate       # Filter: ⊳ (keep elements matching predicate)
-list⊕fn⊕init         # Fold: ⊕ (reduce with fn starting from init)
+list↦fn              ⟦ Map: ↦ (apply fn to each element) ⟧
+list⊳predicate       ⟦ Filter: ⊳ (keep elements matching predicate) ⟧
+list⊕fn⊕init         ⟦ Fold: ⊕ (reduce with fn starting from init) ⟧
 
-# Example: sum of doubled even numbers
-[1,2,3,4,5]↦λx→x*2⊳λx→x%2=0⊕λ(acc,x)→acc+x⊕0  # Result: 30
+⟦ Example: sum of doubled even numbers ⟧
+[1,2,3,4,5]↦λx→x*2⊳λx→x%2=0⊕λ(acc,x)→acc+x⊕0  ⟦ Result: 30 ⟧
 ```
 
 **Note:** Map, filter, and fold are **language constructs**, not library functions. They compile directly to TypeScript/JavaScript array methods (`.map()`, `.filter()`, `.reduce()`).
@@ -650,13 +650,13 @@ list⊕fn⊕init         # Fold: ⊕ (reduce with fn starting from init)
 λisEven(x:ℤ)→𝔹=x%2=0
 λsum(acc:ℤ,x:ℤ)→ℤ=acc+x
 
-# Chain operations: map → filter → fold
-λmain()→ℤ=[1,2,3,4,5]↦double⊳isEven⊕sum⊕0  # Result: 30
+⟦ Chain operations: map → filter → fold ⟧
+λmain()→ℤ=[1,2,3,4,5]↦double⊳isEven⊕sum⊕0  ⟦ Result: 30 ⟧
 ```
 
 ### Manual Recursion (When needed)
 ```mint
-# Custom recursive list processing
+⟦ Custom recursive list processing ⟧
 λmap[T,U](fn:λ(T)→U,list:[T])→[U]≡list{
   []→[]|
   [x,.xs]→[fn(x),.map(fn,xs)]
@@ -665,14 +665,14 @@ list⊕fn⊕init         # Fold: ⊕ (reduce with fn starting from init)
 
 ### Recursion with Base Case
 ```mint
-# Single parameter primitive recursion
+⟦ Single parameter primitive recursion ⟧
 λfactorial(n:ℤ)→ℤ≡n{
   0→1|
   1→1|
   n→n*factorial(n-1)
 }
 
-# Multi-parameter algorithms (ALLOWED when all params are structural or query)
+⟦ Multi-parameter algorithms (ALLOWED when all params are structural or query) ⟧
 λgcd(a:ℤ,b:ℤ)→ℤ≡b{
   0→a|
   b→gcd(b,a%b)

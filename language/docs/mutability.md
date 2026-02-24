@@ -59,14 +59,14 @@ e Array
 ### Valid Code
 
 ```mint
-# Immutable list operations (canonical form)
+⟦ Immutable list operations (canonical form) ⟧
 λdouble(list:[ℤ])→[ℤ]=list↦λ(x:ℤ)→ℤ=x*2
 
-# FFI with mutation
+⟦ FFI with mutation ⟧
 e Array
 λsortArray(arr:mut [ℤ])→𝕌=Array.sort(arr)
 
-# Multiple immutable uses (OK)
+⟦ Multiple immutable uses (OK) ⟧
 λprocess(data:[ℤ])→ℤ≡{
   let sum=data⊕λ(a,x)→a+x⊕0
   let len=data⊕λ(a,_)→a+1⊕0
@@ -77,16 +77,16 @@ e Array
 ### Errors Prevented
 
 ```mint
-# Error: Aliasing mutable
+⟦ Error: Aliasing mutable ⟧
 λbad1(x:mut [ℤ])→𝕌≡{
-  let y=x    # Error: Cannot create alias of mutable value 'x'
+  let y=x    ⟦ Error: Cannot create alias of mutable value 'x' ⟧
 }
 
-# Error: Passing immutable to mutable parameter (FFI)
+⟦ Error: Passing immutable to mutable parameter (FFI) ⟧
 e Array
 λbad2()→𝕌≡{
   let data=[1,2,3]
-  Array.sort(data)    # Error: Cannot pass immutable 'data' to mut parameter
+  Array.sort(data)    ⟦ Error: Cannot pass immutable 'data' to mut parameter ⟧
 }
 ```
 
@@ -98,37 +98,37 @@ e Array
 ```mint
 e Array
 
-# Without mutability checking:
+⟦ Without mutability checking: ⟧
 λprocess(data:[ℤ])→[ℤ]≡{
-  Array.sort(data);    # Oops! Modified input
+  Array.sort(data);    ⟦ Oops! Modified input ⟧
   data
 }
 
-# With mutability checking:
-# Compile error: Cannot pass immutable 'data' to mut parameter
+⟦ With mutability checking: ⟧
+⟦ Compile error: Cannot pass immutable 'data' to mut parameter ⟧
 ```
 
 **2. Aliasing Bugs:**
 ```mint
-# Without mutability checking:
+⟦ Without mutability checking: ⟧
 λbug(x:mut [ℤ])→𝕌≡{
   let y=x
-  modify!(x)    # Modifies through x
-  process(y)    # y changed too!
+  modify!(x)    ⟦ Modifies through x ⟧
+  process(y)    ⟦ y changed too! ⟧
 }
 
-# With mutability checking:
-# Compile error: Cannot create alias of mutable value 'x'
+⟦ With mutability checking: ⟧
+⟦ Compile error: Cannot create alias of mutable value 'x' ⟧
 ```
 
 **3. Unclear Intent:**
 ```mint
-# Pure Mint code - always immutable
-λsorted(data:[ℤ])→[ℤ]=...        # Returns new list (canonical)
+⟦ Pure Mint code - always immutable ⟧
+λsorted(data:[ℤ])→[ℤ]=...        ⟦ Returns new list (canonical) ⟧
 
-# FFI - mut signals mutation
+⟦ FFI - mut signals mutation ⟧
 e Array
-λsortArray(arr:mut [ℤ])→𝕌=Array.sort(arr)  # Mutates via FFI
+λsortArray(arr:mut [ℤ])→𝕌=Array.sort(arr)  ⟦ Mutates via FFI ⟧
 ```
 
 ## Comparison to Other Languages
@@ -171,8 +171,8 @@ let y = &mut data;                                 // Mutable borrow
 
 **Mint's simpler approach:**
 ```mint
-λprocess(data:[ℤ])→ℤ=...           # Immutable by default
-λmodify(data:mut [ℤ])→𝕌=...        # Explicit mut
+λprocess(data:[ℤ])→ℤ=...           ⟦ Immutable by default ⟧
+λmodify(data:mut [ℤ])→𝕌=...        ⟦ Explicit mut ⟧
 ```
 
 **Just ONE new keyword:** `mut`
@@ -183,13 +183,13 @@ Mint enforces canonical forms—one way to do each thing.
 
 **No tail-call optimization:**
 ```mint
-# This style is BLOCKED:
+⟦ This style is BLOCKED: ⟧
 λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{
   0→acc|
   n→factorial(n-1,n*acc)
 }
 
-# Only primitive recursion allowed:
+⟦ Only primitive recursion allowed: ⟧
 λfactorial(n:ℤ)→ℤ≡n{
   0→1|
   1→1|
@@ -225,8 +225,8 @@ Mutability Error: Cannot mutate immutable parameter 'list'
 Effect tracking will be added to track side effects:
 
 ```mint
-λread()→!IO 𝕊=...                    # IO effect
-λfetch(url:𝕊)→!Network Response=... # Network effect
+λread()→!IO 𝕊=...                    ⟦ IO effect ⟧
+λfetch(url:𝕊)→!Network Response=... ⟦ Network effect ⟧
 ```
 
 This helps prevent accidental side effects and documents function behavior clearly.

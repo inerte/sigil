@@ -63,7 +63,7 @@ Lines cannot end with spaces or tabs.
 ```mint
 ❌ REJECTED:
 λmain()→ℤ=1
-# Error: Line 1 has trailing whitespace
+⟦ Error: Line 1 has trailing whitespace ⟧
 ```
 
 **Error message:**
@@ -105,7 +105,7 @@ The presence/absence of `=` depends on the function body type.
 
 ❌ REJECTED:
 λdouble(x:ℤ)→ℤ x*2
-# Error: Expected "=" before function body (canonical form: λf()→T=...)
+⟦ Error: Expected "=" before function body (canonical form: λf()→T=...) ⟧
 ```
 
 **Match expressions forbid `=`:**
@@ -116,7 +116,7 @@ The presence/absence of `=` depends on the function body type.
 
 ❌ REJECTED:
 λfactorial(n:ℤ)→ℤ=≡n{...}
-# Error: Unexpected "=" before match expression (canonical form: λf()→T≡...)
+⟦ Error: Unexpected "=" before match expression (canonical form: λf()→T≡...) ⟧
 ```
 
 **Rationale:** The `≡` operator already signals "this is the body", making `=` redundant and non-canonical.
@@ -129,14 +129,14 @@ The lexer rejects:
 ```mint
 ❌ REJECTED:
 λmain()→ℤ=1[TAB]2
-# Error: Tab characters not allowed - use spaces
+⟦ Error: Tab characters not allowed - use spaces ⟧
 ```
 
 ### Standalone `\r`
 ```mint
 ❌ REJECTED:
 λmain()→ℤ=1\r\n
-# Error: Standalone \r not allowed - use \n for line breaks
+⟦ Error: Standalone \r not allowed - use \n for line breaks ⟧
 ```
 
 Only `\n` is accepted for line breaks (or `\r\n` as a unit on Windows).

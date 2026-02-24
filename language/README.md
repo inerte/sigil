@@ -201,17 +201,17 @@ t User={id:ℤ,name:𝕊,email:𝕊,active:𝔹}
 
 ### Built-in List Operations
 ```mint
-# Map: ↦ - Apply function to each element
-[1,2,3,4,5]↦λx→x*2  # Result: [2,4,6,8,10]
+⟦ Map: ↦ - Apply function to each element ⟧
+[1,2,3,4,5]↦λx→x*2  ⟦ Result: [2,4,6,8,10] ⟧
 
-# Filter: ⊳ - Keep elements matching predicate
-[1,2,3,4,5]⊳λx→x%2=0  # Result: [2,4]
+⟦ Filter: ⊳ - Keep elements matching predicate ⟧
+[1,2,3,4,5]⊳λx→x%2=0  ⟦ Result: [2,4] ⟧
 
-# Fold: ⊕ - Reduce with function and initial value
-[1,2,3,4,5]⊕λ(acc,x)→acc+x⊕0  # Result: 15
+⟦ Fold: ⊕ - Reduce with function and initial value ⟧
+[1,2,3,4,5]⊕λ(acc,x)→acc+x⊕0  ⟦ Result: 15 ⟧
 
-# Chained operations
-[1,2,3,4,5]↦λx→x*2⊳λx→x>5⊕λ(acc,x)→acc+x⊕0  # Result: 30
+⟦ Chained operations ⟧
+[1,2,3,4,5]↦λx→x*2⊳λx→x>5⊕λ(acc,x)→acc+x⊕0  ⟦ Result: 30 ⟧
 ```
 
 ### Pipeline Operations

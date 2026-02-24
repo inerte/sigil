@@ -1,0 +1,38 @@
+⟦ String Operations
+
+   Comprehensive string manipulation and processing functions.
+   Part of Sigil standard library - canonical implementations only.
+
+   These functions are compiler intrinsics - they have type signatures
+   but no bodies. The compiler emits optimized JavaScript directly.
+⟧
+
+⟦ Get character at index - compiler intrinsic ⟧
+export λchar_at(s:𝕊,idx:ℤ)→𝕊=""
+
+⟦ Get substring from start to end - compiler intrinsic ⟧
+export λsubstring(s:𝕊,start:ℤ,end:ℤ)→𝕊=""
+
+⟦ Take first n characters ⟧
+export λtake(s:𝕊,n:ℤ)→𝕊=substring(s,0,n)
+
+⟦ Drop first n characters ⟧
+export λdrop(s:𝕊,n:ℤ)→𝕊=substring(s,n,#s)
+
+⟦ Convert to uppercase - compiler intrinsic ⟧
+export λto_upper(s:𝕊)→𝕊=""
+
+⟦ Convert to lowercase - compiler intrinsic ⟧
+export λto_lower(s:𝕊)→𝕊=""
+
+⟦ Remove leading/trailing whitespace - compiler intrinsic ⟧
+export λtrim(s:𝕊)→𝕊=""
+
+⟦ Find index of first occurrence (-1 if not found) - compiler intrinsic ⟧
+export λindex_of(s:𝕊,search:𝕊)→ℤ=-1
+
+⟦ Split string by delimiter - compiler intrinsic ⟧
+export λsplit(s:𝕊,delimiter:𝕊)→[𝕊]=[""]
+
+⟦ Replace all occurrences - compiler intrinsic ⟧
+export λreplace_all(s:𝕊,pattern:𝕊,replacement:𝕊)→𝕊=""

@@ -425,6 +425,26 @@ function synthesizeUnary(env: TypeEnvironment, expr: AST.UnaryExpr): InferenceTy
       check(env, expr.operand, { kind: 'primitive', name: 'Bool' });
       return { kind: 'primitive', name: 'Bool' };
 
+    case '#': {
+      // Length operator - works on strings and lists
+      const operandType = synthesize(env, expr.operand);
+
+      // Check if type is sizeable (String or List)
+      const isSizeable =
+        (operandType.kind === 'primitive' && operandType.name === 'String') ||
+        operandType.kind === 'list';
+
+      if (!isSizeable) {
+        throw new TypeError(
+          `Cannot apply # to type ${formatType(operandType)}\n` +
+          `Expected: 𝕊 or [T]`,
+          expr.location
+        );
+      }
+
+      return { kind: 'primitive', name: 'Int' };
+    }
+
     default:
       throw new TypeError(`Unknown unary operator: ${expr.operator}`, expr.location);
   }

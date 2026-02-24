@@ -700,9 +700,16 @@ export class Parser {
   }
 
   private unary(): AST.Expr {
-    if (this.match(TokenType.MINUS, TokenType.NOT)) {
+    if (this.match(TokenType.MINUS, TokenType.NOT, TokenType.HASH)) {
       const start = this.previous();
-      const op = start.type === TokenType.MINUS ? '-' : '¬';
+      let op: AST.UnaryOperator;
+      if (start.type === TokenType.MINUS) {
+        op = '-';
+      } else if (start.type === TokenType.NOT) {
+        op = '¬';
+      } else {
+        op = '#';
+      }
       const operand = this.unary();
       return {
         type: 'UnaryExpr',

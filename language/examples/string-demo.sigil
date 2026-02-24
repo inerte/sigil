@@ -1,0 +1,39 @@
+⟦ String Operations Demo
+
+   Demonstrates string operations and the # operator.
+⟧
+
+e console
+i stdlib⋅string_ops
+i stdlib⋅string_predicates
+
+⟦ Main demonstration ⟧
+λmain()→!IO 𝕌={
+  ⟦ Test string length operator ⟧
+  l text="Hello, Sigil!";
+  console.log("Text: "++text);
+  console.log("Length: "++(#text));
+
+  ⟦ Test string transformations ⟧
+  l upper=stdlib⋅string_ops.to_upper("hello");
+  l lower=stdlib⋅string_ops.to_lower("WORLD");
+  console.log("Upper: "++upper);
+  console.log("Lower: "++lower);
+
+  ⟦ Test string predicates ⟧
+  l has_prefix=stdlib⋅string_predicates.starts_with("Hello World","Hello");
+  l has_suffix=stdlib⋅string_predicates.ends_with("test.sigil",".sigil");
+  console.log("Has prefix Hello: "++(has_prefix));
+  console.log("Has suffix .sigil: "++(has_suffix));
+
+  ⟦ Test split ⟧
+  l parts=stdlib⋅string_ops.split("a,b,c",",");
+  console.log("Split length: "++(#parts));
+
+  ⟦ Test take and drop ⟧
+  l sample="abcdefgh";
+  l first_three=stdlib⋅string_ops.take(sample,3);
+  l drop_three=stdlib⋅string_ops.drop(sample,3);
+  console.log("Take 3: "++first_three);
+  console.log("Drop 3: "++drop_three)
+}

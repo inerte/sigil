@@ -90,6 +90,7 @@ export enum TokenType {
   UNDERSCORE = 'UNDERSCORE',   // _
   BANG = 'BANG',               // ! (for effects)
   AMPERSAND = 'AMPERSAND',     // & (for borrows)
+  HASH = 'HASH',               // # (length operator)
 
   // Special
   EOF = 'EOF',

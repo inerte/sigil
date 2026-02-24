@@ -117,6 +117,9 @@ export class Lexer {
       case '&':
         this.addToken(TokenType.AMPERSAND, '&', start);
         break;
+      case '#':
+        this.addToken(TokenType.HASH, '#', start);
+        break;
 
       // Operators
       case '+':

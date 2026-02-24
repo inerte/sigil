@@ -251,6 +251,14 @@ export class JavaScriptGenerator {
   }
 
   private generateApplication(app: AST.ApplicationExpr): string {
+    // Check for stdlib intrinsics first
+    if (app.func.type === 'MemberAccessExpr') {
+      const intrinsic = this.tryGenerateIntrinsic(app.func, app.args);
+      if (intrinsic) {
+        return intrinsic;
+      }
+    }
+
     const args = app.args.map(arg => this.generateExpression(arg)).join(', ');
     if (app.func.type === 'MemberAccessExpr') {
       const func = this.generateMemberAccess(app.func);
@@ -295,6 +303,12 @@ export class JavaScriptGenerator {
 
   private generateUnary(unary: AST.UnaryExpr): string {
     const operand = this.generateExpression(unary.operand);
+
+    // Special case for # (length) operator
+    if (unary.operator === '#') {
+      return `(await ${operand}).length`;
+    }
+
     const opMap: Record<string, string> = {
       '¬': '!',
       '-': '-',
@@ -571,6 +585,54 @@ export class JavaScriptGenerator {
 
   private sanitizeName(name: string): string {
     return name.replace(/[^a-zA-Z0-9_]/g, '_');
+  }
+
+  /**
+   * Try to generate optimized code for stdlib intrinsics.
+   * Returns null if not an intrinsic.
+   */
+  private tryGenerateIntrinsic(func: AST.MemberAccessExpr, args: AST.Expr[]): string | null {
+    const module = func.namespace.join('/');
+    const member = func.member;
+
+    // String operations intrinsics
+    if (module === 'stdlib/string_ops') {
+      const generatedArgs = args.map(arg => this.generateExpression(arg));
+
+      switch (member) {
+        case 'char_at':
+          return `(await ${generatedArgs[0]}).charAt(await ${generatedArgs[1]})`;
+        case 'substring':
+          return `(await ${generatedArgs[0]}).substring(await ${generatedArgs[1]}, await ${generatedArgs[2]})`;
+        case 'to_upper':
+          return `(await ${generatedArgs[0]}).toUpperCase()`;
+        case 'to_lower':
+          return `(await ${generatedArgs[0]}).toLowerCase()`;
+        case 'trim':
+          return `(await ${generatedArgs[0]}).trim()`;
+        case 'index_of':
+          return `(await ${generatedArgs[0]}).indexOf(await ${generatedArgs[1]})`;
+        case 'split':
+          return `(await ${generatedArgs[0]}).split(await ${generatedArgs[1]})`;
+        case 'replace_all':
+          return `(await ${generatedArgs[0]}).replaceAll(await ${generatedArgs[1]}, await ${generatedArgs[2]})`;
+        // take and drop are implemented in Sigil, not intrinsics
+      }
+    }
+
+    // String predicates intrinsics
+    if (module === 'stdlib/string_predicates') {
+      const generatedArgs = args.map(arg => this.generateExpression(arg));
+
+      switch (member) {
+        case 'starts_with':
+          return `(await ${generatedArgs[0]}).startsWith(await ${generatedArgs[1]})`;
+        case 'ends_with':
+          return `(await ${generatedArgs[0]}).endsWith(await ${generatedArgs[1]})`;
+      }
+    }
+
+    return null;
   }
 
   private mockKeyForExtern(expr: AST.MemberAccessExpr): string {

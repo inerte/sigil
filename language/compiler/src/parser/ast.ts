@@ -272,7 +272,7 @@ export interface UnaryExpr {
   location: SourceLocation;
 }
 
-export type UnaryOperator = '-' | '¬';
+export type UnaryOperator = '-' | '¬' | '#';
 
 export interface MatchExpr {
   type: 'MatchExpr';

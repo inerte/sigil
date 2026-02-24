@@ -2,13 +2,9 @@
 
    Standard utility functions for list operations.
    Part of Sigil standard library - canonical implementations only.
-⟧
 
-⟦ Get length of list ⟧
-export λlen(xs:[ℤ])→ℤ≡xs{
-  []→0|
-  [x,.rest]→1+len(rest)
-}
+   Note: Use # operator for length instead of a function (e.g., #[1,2,3] → 3)
+⟧
 
 ⟦ Get first element of list (unsafe - crashes on empty) ⟧
 export λhead(xs:[ℤ])→ℤ≡xs{

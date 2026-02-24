@@ -1,7 +1,7 @@
 /**
  * Canonical Form Validator
  *
- * Enforces Mint's "ONE WAY" principle by making alternative patterns impossible:
+ * Enforces Sigil's "ONE WAY" principle by making alternative patterns impossible:
  * 1. Accumulator parameters forbidden (prevents tail-call optimization)
  * 2. Canonical pattern matching (most direct form)
  * 3. CPS forbidden (function return types blocked for recursive functions)
@@ -112,7 +112,7 @@ function validateRecursiveFunctions(program: AST.Program): void {
           `Parameter roles:\n${paramRoleDescriptions.join('\n')}\n` +
           `\n` +
           `The parameter(s) [${accumulatorParams.join(', ')}] are accumulators (grow during recursion).\n` +
-          `Mint does NOT support tail-call optimization or accumulator-passing style.\n` +
+          `Sigil does NOT support tail-call optimization or accumulator-passing style.\n` +
           `\n` +
           `Accumulator pattern (FORBIDDEN):\n` +
           `  λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}\n` +
@@ -167,7 +167,7 @@ function validateRecursiveFunctions(program: AST.Program): void {
           `  - Uses list to encode multiple values\n` +
           `  - Pattern [n,acc] extracts state, not structure\n` +
           `\n` +
-          `Mint enforces ONE way: structural recursion for collections.`,
+          `Sigil enforces ONE way: structural recursion for collections.`,
           decl.location
         );
       }
@@ -188,7 +188,7 @@ function validateRecursiveFunctions(program: AST.Program): void {
         `Example canonical form:\n` +
         `  λ${decl.name}(n:ℤ)→ℤ≡n{0→1|n→n*${decl.name}(n-1)}\n` +
         `\n` +
-        `Mint enforces ONE way to write recursive functions.`,
+        `Sigil enforces ONE way to write recursive functions.`,
         decl.location
       );
     }
@@ -466,7 +466,7 @@ function validateMatchExpr(match: AST.MatchExpr, params: AST.Param[]): void {
       `Boolean matching is only allowed when value matching is impossible\n` +
       `(e.g., complex conditions like ≡(x>0,y>0){...}).\n` +
       `\n` +
-      `Mint enforces ONE way: use the most direct pattern matching form.`,
+      `Sigil enforces ONE way: use the most direct pattern matching form.`,
       match.location
     );
   }
@@ -484,7 +484,7 @@ function validateMatchExpr(match: AST.MatchExpr, params: AST.Param[]): void {
       `Tuple boolean matching is only allowed for multiple independent conditions\n` +
       `(e.g., ≡(x>0,y>0){...} for two different variables).\n` +
       `\n` +
-      `Mint enforces ONE way: use the most direct pattern matching form.`,
+      `Sigil enforces ONE way: use the most direct pattern matching form.`,
       match.location
     );
   }

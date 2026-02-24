@@ -1,7 +1,7 @@
 /**
- * Mint to TypeScript Code Generator
+ * Sigil to TypeScript Code Generator
  *
- * Compiles Mint AST to runnable TypeScript (ES2022-compatible output).
+ * Compiles Sigil AST to runnable TypeScript (ES2022-compatible output).
  */
 
 import * as AST from '../parser/ast.js';
@@ -157,7 +157,7 @@ export class JavaScriptGenerator {
     // Always use namespace import (import * as name)
     // Works exactly like FFI: i stdlib/list_utils → import * as stdlib_list_utils
     // Use as: stdlib/list_utils.len(xs) → stdlib_list_utils.len(xs)
-    const importSpecifier = this.resolveMintImportSpecifier(modulePath);
+    const importSpecifier = this.resolveSigilImportSpecifier(modulePath);
     this.emit(`import * as ${jsName} from '${importSpecifier}';`);
   }
 
@@ -169,7 +169,7 @@ export class JavaScriptGenerator {
     const jsName = this.namespaceIdentifier(externDecl.modulePath);
 
     // Always use namespace import (import * as name)
-    // This matches our namespace.member usage in Mint
+    // This matches our namespace.member usage in Sigil
     this.emit(`import * as ${jsName} from '${modulePath}';`);
   }
 
@@ -270,7 +270,7 @@ export class JavaScriptGenerator {
     const left = this.generateExpression(binary.left);
     const right = this.generateExpression(binary.right);
 
-    // Map Mint operators to TypeScript/JavaScript
+    // Map Sigil operators to TypeScript/JavaScript
     const opMap: Record<string, string> = {
       '∧': '&&',
       '∨': '||',
@@ -705,7 +705,7 @@ export class JavaScriptGenerator {
       .join('_');
   }
 
-  private resolveMintImportSpecifier(modulePath: string): string {
+  private resolveSigilImportSpecifier(modulePath: string): string {
     // Project-root imports like i src/foo should point to generated .local/src/foo from the current generated file.
     if (modulePath.startsWith('src/') && this.outputFile && this.projectRoot) {
       const generatedTarget = resolve(this.projectRoot, '.local', `${modulePath}.ts`);
@@ -735,7 +735,7 @@ export class JavaScriptGenerator {
 }
 
 /**
- * Compile a Mint program to TypeScript
+ * Compile a Sigil program to TypeScript
  */
 export function compile(program: AST.Program, options?: string | CodegenOptions): string {
   const normalized: CodegenOptions = typeof options === 'string'

@@ -1,7 +1,7 @@
 /**
- * Mint Language Lexer
+ * Sigil Language Lexer
  *
- * Tokenizes Mint source code with canonical formatting enforcement.
+ * Tokenizes Sigil source code with canonical formatting enforcement.
  * The lexer enforces formatting rules at tokenization time - incorrectly
  * formatted code produces lexical errors.
  */

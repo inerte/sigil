@@ -537,7 +537,7 @@ async function runCommand(args: string[]) {
   const runnerFile = outputFile.replace(/\.ts$/, '.run.ts');
 
   try {
-    // Compile root module and imported Mint dependencies into .local/
+    // Compile root module and imported Sigil dependencies into .local/
     const { outputs } = await compileModuleGraph(filename, outputFile);
     const actualOutput = outputs.get(resolve(filename)) ?? outputFile;
 

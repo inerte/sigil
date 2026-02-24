@@ -1,5 +1,5 @@
 /**
- * Mint FFI - Link-Time External Module Validator
+ * Sigil FFI - Link-Time External Module Validator
  *
  * Validates external modules and member access BEFORE writing JavaScript.
  * This catches errors like:

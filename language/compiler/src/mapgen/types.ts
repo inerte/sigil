@@ -1,5 +1,5 @@
 /**
- * Mint Semantic Map Types
+ * Sigil Semantic Map Types
  *
  * Type definitions matching spec/sourcemap-format.md
  */

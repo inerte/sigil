@@ -1,5 +1,5 @@
 /**
- * Mint Semantic Map Generator
+ * Sigil Semantic Map Generator
  *
  * Generates basic semantic mappings from AST nodes
  */
@@ -62,7 +62,7 @@ export function generateBasicMapping(
 }
 
 /**
- * Format type as Mint syntax
+ * Format type as Sigil syntax
  */
 function formatType(type: InferenceType): string {
   switch (type.kind) {

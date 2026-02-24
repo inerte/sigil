@@ -1,5 +1,5 @@
 /**
- * Mint Semantic Map Extractor
+ * Sigil Semantic Map Extractor
  *
  * Extracts mappable nodes from AST
  */

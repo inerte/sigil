@@ -6,8 +6,20 @@ e console
 ⟦ Read all files from a directory ⟧
 λread_dir(dir:𝕊)→!IO [𝕊]=fs⋅promises.readdir(dir)
 
-⟦ Count files in directory ⟧
-λcount_files(dir:𝕊)→!IO ℤ=read_dir(dir)⊕(λ(acc:ℤ,f:𝕊)→ℤ=acc+1)⊕0
+⟦ Read file content ⟧
+λread_file(path:𝕊)→!IO 𝕊=fs⋅promises.readFile(path,"utf8")
 
-⟦ Main entry point - count content files ⟧
-λmain()→!IO ℤ=count_files("content")
+⟦ Build full path ⟧
+λmake_path(dir:𝕊,file:𝕊)→𝕊=dir++"/"+file
+
+⟦ Read all content files ⟧
+λread_all(dir:𝕊)→!IO [𝕊]=read_dir(dir)↦(λ(f:𝕊)→𝕊=make_path(dir,f))↦read_file
+
+⟦ Count files ⟧
+λcount(files:[𝕊])→ℤ=files⊕(λ(acc:ℤ,f:𝕊)→ℤ=acc+1)⊕0
+
+⟦ Build site and count pages ⟧
+λbuild_site(dir:𝕊)→!IO ℤ=read_all(dir)⊕(λ(acc:ℤ,content:𝕊)→ℤ=acc+1)⊕0
+
+⟦ Main entry point ⟧
+λmain()→!IO ℤ=build_site("content")

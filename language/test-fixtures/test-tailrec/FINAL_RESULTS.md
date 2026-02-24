@@ -49,7 +49,7 @@
 **Status:** ✅ Works - but NOT a loophole
 
 **Why it works:**
-```mint
+```sigil
 λmain()→ℤ=(λ(x:ℤ)→≡x{0→1|x→x*(λ(y:ℤ)→...)(x-1)})(4)
 ```
 

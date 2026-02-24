@@ -50,7 +50,7 @@ const add = new Function('a', 'b', 'return a + b');
 ```
 
 **Mint - ONE way:**
-```mint
+```sigil
 λadd(a:ℤ,b:ℤ)→ℤ=a+b
 ```
 
@@ -253,7 +253,7 @@ Production tooling:
 - LSP server with semantic overlay
 - Web playground
 - Standard library (stdlib)
-- Package manager (mintpm)
+- Package manager (sigilpm)
 - MCP server for documentation
 
 **Success metric:** Developers prefer AI-mediated Mint coding for new projects

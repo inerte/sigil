@@ -1,5 +1,5 @@
 /**
- * Mint Semantic Map Enhancement
+ * Sigil Semantic Map Enhancement
  *
  * Enhances basic semantic maps using Claude Code CLI
  */
@@ -10,18 +10,18 @@ import * as path from 'path';
 /**
  * Enhance semantic map with Claude Code CLI
  */
-export function enhanceWithClaude(mintFile: string, mapFile: string): void {
+export function enhanceWithClaude(sigilFile: string, mapFile: string): void {
   if (process.env.SIGIL_ENABLE_MAP_ENHANCE !== '1') {
     return;
   }
 
-  const prompt = buildEnhancementPrompt(mintFile, mapFile);
+  const prompt = buildEnhancementPrompt(sigilFile, mapFile);
 
   try {
     // Invoke Claude Code CLI to enhance the semantic map
     execSync(`claude -p "${escapePrompt(prompt)}" --allowedTools Write Read`, {
       stdio: 'pipe',  // Capture output silently
-      cwd: path.dirname(mintFile),
+      cwd: path.dirname(sigilFile),
       timeout: 5000,
     });
   } catch (error) {
@@ -34,19 +34,19 @@ export function enhanceWithClaude(mintFile: string, mapFile: string): void {
 /**
  * Build enhancement prompt for Claude Code
  */
-function buildEnhancementPrompt(mintFile: string, mapFile: string): string {
+function buildEnhancementPrompt(sigilFile: string, mapFile: string): string {
   return `
-Enhance the semantic map for Mint source code.
+Enhance the semantic map for Sigil source code.
 
 Files:
-- Source: ${mintFile}
+- Source: ${sigilFile}
 - Basic map: ${mapFile}
 
-IMPORTANT - Mint Language Constraints:
-Read AGENTS.md to understand Mint's canonical form philosophy.
+IMPORTANT - Sigil Language Constraints:
+Read AGENTS.md to understand Sigil's canonical form philosophy.
 
 Key constraints to remember:
-- Mint enforces ONE WAY to write code (canonical forms)
+- Sigil enforces ONE WAY to write code (canonical forms)
 - NO tail-call optimization, NO accumulator-passing style, NO iterative patterns
 - Only primitive recursion allowed (direct recursive calls)
 - Don't suggest "iterative version" or "tail-recursive version" - these are BLOCKED
@@ -58,7 +58,7 @@ Read the basic semantic map. For each mapping:
 3. Add rich documentation fields:
    - explanation: Detailed markdown explanation of the code
    - complexity: Time/space complexity (e.g., "O(n) time, O(n) space due to recursion")
-   - warnings: Edge cases, limitations (Mint-appropriate - don't suggest impossible alternatives)
+   - warnings: Edge cases, limitations (Sigil-appropriate - don't suggest impossible alternatives)
    - examples: Usage examples showing input → output
    - related: Related function/type names
 
@@ -66,7 +66,7 @@ Write the enhanced version back to ${mapFile}.
 
 Match the quality and style of examples in examples/fibonacci.sigil.map and examples/list-operations.sigil.map.
 
-Remember: Mint is a canonical-form language. Warnings should acknowledge this, not fight it.
+Remember: Sigil is a canonical-form language. Warnings should acknowledge this, not fight it.
 `.trim();
 }
 

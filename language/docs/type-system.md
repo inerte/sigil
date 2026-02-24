@@ -42,7 +42,7 @@ Used for expressions where expected type is known from context:
 
 All function signatures must have complete type annotations:
 
-```mint
+```sigil
 ⟦ Function declarations ⟧
 λfactorial(n:ℤ)→ℤ=...
 
@@ -203,7 +203,7 @@ All these are **easier** to add with bidirectional typing than with Hindley-Miln
 
 Pattern matching is type-checked using bidirectional rules:
 
-```mint
+```sigil
 λlength(list:[ℤ])→ℤ≡list{
   []→0|
   [_,.rest]→1+length(rest)
@@ -225,7 +225,7 @@ Type checking:
 
 Built-in list operations are type-checked specially:
 
-```mint
+```sigil
 [1,2,3]↦λ(x:ℤ)→ℤ=x*2        ⟦ [ℤ] ↦ (ℤ→ℤ) ⇒ [ℤ] ⟧
 [1,2,3]⊳λ(x:ℤ)→𝔹=x>1        ⟦ [ℤ] ⊳ (ℤ→𝔹) ⇒ [ℤ] ⟧
 [1,2,3]⊕λ(acc:ℤ,x:ℤ)→ℤ=acc+x⊕0  ⟦ [ℤ] ⊕ (ℤ→ℤ→ℤ) ⊕ ℤ ⇒ ℤ ⟧
@@ -256,7 +256,7 @@ Mint supports sum types (also called tagged unions or algebraic data types) for 
 
 ### Syntax
 
-```mint
+```sigil
 ⟦ Simple enum (no type parameters) ⟧
 t Color=Red|Green|Blue
 
@@ -282,7 +282,7 @@ Sum types are declared with `t TypeName=Variant1|Variant2|...`:
 
 Constructors are functions that create sum type values:
 
-```mint
+```sigil
 ⟦ Nullary constructors (no fields) - require () ⟧
 λgetRed()→Color=Red()
 λgetGreen()→Color=Green()
@@ -302,7 +302,7 @@ Constructors are functions that create sum type values:
 
 Sum types are deconstructed using pattern matching:
 
-```mint
+```sigil
 ⟦ Match on simple enum ⟧
 λcolorToInt(color:Color)→ℤ≡color{
   Red→1|
@@ -371,7 +371,7 @@ switch(color.__tag) {
 The standard library provides two essential sum types:
 
 **Option[T]** - Represents optional values:
-```mint
+```sigil
 t Option[T]=Some(T)|None
 
 ⟦ Usage ⟧
@@ -382,7 +382,7 @@ t Option[T]=Some(T)|None
 ```
 
 **Result[T,E]** - Represents success or failure:
-```mint
+```sigil
 t Result[T,E]=Ok(T)|Err(E)
 
 ⟦ Usage ⟧
@@ -426,7 +426,7 @@ Mint uses distinct operators for distinct concatenation semantics:
 - `++` for string concatenation (`𝕊 × 𝕊 → 𝕊`)
 - `⧺` for list concatenation (`[T] × [T] → [T]`)
 
-```mint
+```sigil
 λgreet(name:𝕊)→𝕊="Hello, "++name
 λmerge(xs:[ℤ],ys:[ℤ])→[ℤ]=xs⧺ys
 ```
@@ -440,7 +440,7 @@ The empty list literal `[]` does not synthesize an element type by itself.
 - `[]` is valid when an expected list type is already known (contextual typing)
 - `[]` is rejected when there is no expected element type
 
-```mint
+```sigil
 λemptyInts()→[ℤ]=[]
 
 λreverse(xs:[ℤ])→[ℤ]≡xs{
@@ -453,7 +453,7 @@ The empty list literal `[]` does not synthesize an element type by itself.
 
 ### Valid Programs
 
-```mint
+```sigil
 ⟦ Factorial with pattern matching ⟧
 λfactorial(n:ℤ)→ℤ≡n{
   0→1|
@@ -474,7 +474,7 @@ The empty list literal `[]` does not synthesize an element type by itself.
 
 ### Type Errors
 
-```mint
+```sigil
 ⟦ Error: Type mismatch ⟧
 λbad()→ℤ="hello"
 ⟦ Error: Literal type mismatch: expected ℤ, got 𝕊 ⟧

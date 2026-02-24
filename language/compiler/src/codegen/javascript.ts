@@ -86,7 +86,7 @@ export class JavaScriptGenerator {
   private generateFunction(func: AST.FunctionDecl): void {
     // Function signature
     const params = func.params.map(p => p.name).join(', ');
-    const implName = func.isMockable ? `__mint_impl_${func.name}` : func.name;
+    const implName = func.isMockable ? `__sigil_impl_${func.name}` : func.name;
 
     const shouldExport = func.isExported || func.name === 'main';
     const fnKeyword = shouldExport ? 'export function' : 'function';
@@ -105,7 +105,7 @@ export class JavaScriptGenerator {
       const wrapperKeyword = shouldExport ? 'export function' : 'function';
       this.emit(`${wrapperKeyword} ${func.name}(${params}) {`);
       this.indent++;
-      this.emit(`return __mint_call("${key}", ${implName}, [${params}]);`);
+      this.emit(`return __sigil_call("${key}", ${implName}, [${params}]);`);
       this.indent--;
       this.emit('}');
     } else {
@@ -255,12 +255,12 @@ export class JavaScriptGenerator {
     if (app.func.type === 'MemberAccessExpr') {
       const func = this.generateMemberAccess(app.func);
       const key = this.mockKeyForExtern(app.func);
-      return `__mint_call(${JSON.stringify(key)}, ${func}, [${args}])`;
+      return `__sigil_call(${JSON.stringify(key)}, ${func}, [${args}])`;
     }
     if (app.func.type === 'IdentifierExpr' && this.mockableFunctions.has(app.func.name)) {
       const func = this.generateExpression(app.func);
       const key = this.mockKeyForFunction(app.func.name);
-      return `__mint_call(${JSON.stringify(key)}, ${func}, [${args}])`;
+      return `__sigil_call(${JSON.stringify(key)}, ${func}, [${args}])`;
     }
     const func = this.generateExpression(app.func);
     return `${func}(${args})`;
@@ -512,9 +512,9 @@ export class JavaScriptGenerator {
     const key = this.mockKeyForTarget(expr.target);
     if (expr.target.type === 'MemberAccessExpr') {
       const actualFn = this.generateMemberAccess(expr.target);
-      return `__mint_with_mock_extern(${JSON.stringify(key)}, ${actualFn}, ${replacement}, () => ${body})`;
+      return `__sigil_with_mock_extern(${JSON.stringify(key)}, ${actualFn}, ${replacement}, () => ${body})`;
     }
-    return `__mint_with_mock(${JSON.stringify(key)}, ${replacement}, () => ${body})`;
+    return `__sigil_with_mock(${JSON.stringify(key)}, ${replacement}, () => ${body})`;
   }
 
   private generateIndex(index: AST.IndexExpr): string {
@@ -592,18 +592,18 @@ export class JavaScriptGenerator {
   }
 
   private emitMockRuntimeHelpers(): void {
-    this.emit(`const __mint_mocks = new Map();`);
-    this.emit(`function __mint_preview(value) {`);
+    this.emit(`const __sigil_mocks = new Map();`);
+    this.emit(`function __sigil_preview(value) {`);
     this.indent++;
     this.emit(`try { return JSON.stringify(value); } catch { return String(value); }`);
     this.indent--;
     this.emit(`}`);
-    this.emit(`function __mint_diff_hint(actual, expected) {`);
+    this.emit(`function __sigil_diff_hint(actual, expected) {`);
     this.indent++;
     this.emit(`if (Array.isArray(actual) && Array.isArray(expected)) {`);
     this.indent++;
     this.emit(`if (actual.length !== expected.length) { return { kind: 'array_length', actualLength: actual.length, expectedLength: expected.length }; }`);
-    this.emit(`for (let i = 0; i < actual.length; i++) { if (actual[i] !== expected[i]) { return { kind: 'array_first_diff', index: i, actual: __mint_preview(actual[i]), expected: __mint_preview(expected[i]) }; } }`);
+    this.emit(`for (let i = 0; i < actual.length; i++) { if (actual[i] !== expected[i]) { return { kind: 'array_first_diff', index: i, actual: __sigil_preview(actual[i]), expected: __sigil_preview(expected[i]) }; } }`);
     this.emit(`return null;`);
     this.indent--;
     this.emit(`}`);
@@ -612,7 +612,7 @@ export class JavaScriptGenerator {
     this.emit(`const actualKeys = Object.keys(actual).sort();`);
     this.emit(`const expectedKeys = Object.keys(expected).sort();`);
     this.emit(`if (actualKeys.join('|') !== expectedKeys.join('|')) { return { kind: 'object_keys', actualKeys, expectedKeys }; }`);
-    this.emit(`for (const k of actualKeys) { if (actual[k] !== expected[k]) { return { kind: 'object_field', field: k, actual: __mint_preview(actual[k]), expected: __mint_preview(expected[k]) }; } }`);
+    this.emit(`for (const k of actualKeys) { if (actual[k] !== expected[k]) { return { kind: 'object_field', field: k, actual: __sigil_preview(actual[k]), expected: __sigil_preview(expected[k]) }; } }`);
     this.emit(`return null;`);
     this.indent--;
     this.emit(`}`);
@@ -641,38 +641,38 @@ export class JavaScriptGenerator {
     this.indent--;
     this.emit(`}`);
     this.emit(`if (ok) { return { ok: true }; }`);
-    this.emit(`return { ok: false, failure: { kind: 'comparison_mismatch', message: 'Comparison test failed', operator: op, actual: __mint_preview(actual), expected: __mint_preview(expected), diffHint: __mint_diff_hint(actual, expected) } };`);
+    this.emit(`return { ok: false, failure: { kind: 'comparison_mismatch', message: 'Comparison test failed', operator: op, actual: __sigil_preview(actual), expected: __sigil_preview(expected), diffHint: __sigil_diff_hint(actual, expected) } };`);
     this.indent--;
     this.emit(`}`);
-    this.emit(`function __mint_call(key, actualFn, args) {`);
+    this.emit(`function __sigil_call(key, actualFn, args) {`);
     this.indent++;
-    this.emit(`const mockFn = __mint_mocks.get(key);`);
+    this.emit(`const mockFn = __sigil_mocks.get(key);`);
     this.emit(`const fn = mockFn ?? actualFn;`);
     this.emit(`return fn(...args);`);
     this.indent--;
     this.emit(`}`);
-    this.emit(`function __mint_with_mock(key, mockFn, body) {`);
+    this.emit(`function __sigil_with_mock(key, mockFn, body) {`);
     this.indent++;
-    this.emit(`const had = __mint_mocks.has(key);`);
-    this.emit(`const prev = __mint_mocks.get(key);`);
-    this.emit(`__mint_mocks.set(key, mockFn);`);
+    this.emit(`const had = __sigil_mocks.has(key);`);
+    this.emit(`const prev = __sigil_mocks.get(key);`);
+    this.emit(`__sigil_mocks.set(key, mockFn);`);
     this.emit(`try {`);
     this.indent++;
     this.emit(`return body();`);
     this.indent--;
     this.emit(`} finally {`);
     this.indent++;
-    this.emit(`if (had) { __mint_mocks.set(key, prev); } else { __mint_mocks.delete(key); }`);
+    this.emit(`if (had) { __sigil_mocks.set(key, prev); } else { __sigil_mocks.delete(key); }`);
     this.indent--;
     this.emit(`}`);
     this.indent--;
     this.emit(`}`);
-    this.emit(`function __mint_with_mock_extern(key, actualFn, mockFn, body) {`);
+    this.emit(`function __sigil_with_mock_extern(key, actualFn, mockFn, body) {`);
     this.indent++;
     this.emit(`if (typeof actualFn !== 'function') { throw new Error('with_mock extern target is not callable'); }`);
     this.emit(`if (typeof mockFn !== 'function') { throw new Error('with_mock replacement must be callable'); }`);
     this.emit(`if (actualFn.length !== mockFn.length) { throw new Error(\`with_mock extern arity mismatch for \${key}: expected \${actualFn.length}, got \${mockFn.length}\`); }`);
-    this.emit(`return __mint_with_mock(key, mockFn, body);`);
+    this.emit(`return __sigil_with_mock(key, mockFn, body);`);
     this.indent--;
     this.emit(`}`);
   }

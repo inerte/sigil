@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "file": "99-bottles.mint",
-  "generated_by": "mintc@0.1.0",
+  "file": "source.sigil",
+  "generated_by": "sigilc@0.1.0",
   "generated_at": "2026-02-24T00:32:59.187Z",
   "mappings": {
     "showInt": {

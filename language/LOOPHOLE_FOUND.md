@@ -22,7 +22,7 @@ The validator blocks tuple-type parameters `(ℤ,ℤ)` but **ignores record-type
 
 ### File: `src/factorial.sigil`
 
-```mint
+```sigil
 t State={n:ℤ,acc:ℤ}
 
 λfactorial_recursive(n:ℤ)→ℤ≡n{

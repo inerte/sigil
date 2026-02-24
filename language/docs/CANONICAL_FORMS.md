@@ -42,7 +42,7 @@ Enforced by: **Surface form validator** (`validator/surface-form.ts`)
 
 Every file must end with `\n`.
 
-```mint
+```sigil
 ✅ VALID:
 λmain()→ℤ=1
 [newline]
@@ -60,7 +60,7 @@ Error: File must end with a newline
 
 Lines cannot end with spaces or tabs.
 
-```mint
+```sigil
 ❌ REJECTED:
 λmain()→ℤ=1
 ⟦ Error: Line 1 has trailing whitespace ⟧
@@ -75,7 +75,7 @@ Error: Line N has trailing whitespace
 
 Only one blank line allowed between declarations.
 
-```mint
+```sigil
 ✅ VALID:
 λa()→ℤ=1
 
@@ -98,7 +98,7 @@ Error: Multiple blank lines at line N (only one consecutive blank line allowed)
 The presence/absence of `=` depends on the function body type.
 
 **Regular expressions require `=`:**
-```mint
+```sigil
 ✅ VALID:
 λdouble(x:ℤ)→ℤ=x*2
 λsum(xs:[ℤ])→ℤ=xs⊕(λ(a,x)→a+x)⊕0
@@ -109,7 +109,7 @@ The presence/absence of `=` depends on the function body type.
 ```
 
 **Match expressions forbid `=`:**
-```mint
+```sigil
 ✅ VALID:
 λfactorial(n:ℤ)→ℤ≡n{0→1|n→n*factorial(n-1)}
 λsign(n:ℤ)→𝕊≡(n>0,n<0){(⊤,⊥)→"positive"|...}
@@ -126,14 +126,14 @@ The presence/absence of `=` depends on the function body type.
 The lexer rejects:
 
 ### Tab Characters
-```mint
+```sigil
 ❌ REJECTED:
 λmain()→ℤ=1[TAB]2
 ⟦ Error: Tab characters not allowed - use spaces ⟧
 ```
 
 ### Standalone `\r`
-```mint
+```sigil
 ❌ REJECTED:
 λmain()→ℤ=1\r\n
 ⟦ Error: Standalone \r not allowed - use \n for line breaks ⟧

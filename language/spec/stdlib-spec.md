@@ -23,7 +23,7 @@ The prelude is automatically imported into every Mint module. No explicit import
 
 Represents an optional value - Mint's null-safe alternative.
 
-```mint
+```sigil
 t Option[T]=Some(T)|None
 ```
 
@@ -33,7 +33,7 @@ t Option[T]=Some(T)|None
 
 **Functions:**
 
-```mint
+```sigil
 λmap_option[T,U](fn:λ(T)→U,opt:Option[T])→Option[U]≡opt{Some(v)→Some(fn(v))|None→None}
 λbind_option[T,U](opt:Option[T],fn:λ(T)→Option[U])→Option[U]≡opt{Some(v)→fn(v)|None→None}
 λunwrap_or[T](opt:Option[T],default:T)→T≡opt{Some(v)→v|None→default}
@@ -45,7 +45,7 @@ t Option[T]=Some(T)|None
 
 Represents a computation that may fail - Mint's exception-free error handling.
 
-```mint
+```sigil
 t Result[T,E]=Ok(T)|Err(E)
 ```
 
@@ -55,7 +55,7 @@ t Result[T,E]=Ok(T)|Err(E)
 
 **Functions:**
 
-```mint
+```sigil
 λmap_result[T,U,E](fn:λ(T)→U,res:Result[T,E])→Result[U,E]≡res{Ok(v)→Ok(fn(v))|Err(e)→Err(e)}
 λbind_result[T,U,E](res:Result[T,E],fn:λ(T)→Result[U,E])→Result[U,E]≡res{Ok(v)→fn(v)|Err(e)→Err(e)}
 λunwrap_or_result[T,E](res:Result[T,E],default:T)→T≡res{Ok(v)→v|Err(_)→default}
@@ -67,21 +67,21 @@ t Result[T,E]=Ok(T)|Err(E)
 
 ### Core List Functions
 
-```mint
+```sigil
 λmap[T,U](fn:λ(T)→U,list:[T])→[U]
 ```
 Apply function to each element, return new list.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λfilter[T](pred:λ(T)→𝔹,list:[T])→[T]
 ```
 Keep only elements where predicate is true.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λreduce[T,U](fn:λ(U,T)→U,init:U,list:[T])→U
 ```
 Reduce list to single value by repeatedly applying function.
@@ -89,21 +89,21 @@ Reduce list to single value by repeatedly applying function.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λlength[T](list:[T])→ℤ
 ```
 Return number of elements in list.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λreverse[T](list:[T])→[T]
 ```
 Reverse the list.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λappend[T](list1:[T],list2:[T])→[T]
 ```
 Concatenate two lists.
@@ -111,63 +111,63 @@ Concatenate two lists.
 - Pure: Yes
 - Operator: `++`
 
-```mint
+```sigil
 λhead[T](list:[T])→Option[T]
 ```
 Get first element, None if empty.
 - Complexity: O(1)
 - Pure: Yes
 
-```mint
+```sigil
 λtail[T](list:[T])→Option[[T]]
 ```
 Get all elements except first, None if empty.
 - Complexity: O(1)
 - Pure: Yes
 
-```mint
+```sigil
 λtake[T](n:ℤ,list:[T])→[T]
 ```
 Take first n elements.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λdrop[T](n:ℤ,list:[T])→[T]
 ```
 Drop first n elements.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λzip[T,U](list1:[T],list2:[U])→[(T,U)]
 ```
 Zip two lists into list of pairs. Stops at shorter list.
 - Complexity: O(min(n,m))
 - Pure: Yes
 
-```mint
+```sigil
 λfind[T](pred:λ(T)→𝔹,list:[T])→Option[T]
 ```
 Find first element satisfying predicate.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λany[T](pred:λ(T)→𝔹,list:[T])→𝔹
 ```
 Check if any element satisfies predicate.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λall[T](pred:λ(T)→𝔹,list:[T])→𝔹
 ```
 Check if all elements satisfy predicate.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λsort[T](cmp:λ(T,T)→𝔹,list:[T])→[T]
 ```
 Sort list using comparison function.
@@ -177,14 +177,14 @@ Sort list using comparison function.
 
 ## String Operations
 
-```mint
+```sigil
 λstr_length(s:𝕊)→ℤ
 ```
 Get string length (Unicode code points).
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λstr_concat(s1:𝕊,s2:𝕊)→𝕊
 ```
 Concatenate strings.
@@ -192,56 +192,56 @@ Concatenate strings.
 - Pure: Yes
 - Operator: `+`
 
-```mint
+```sigil
 λstr_split(s:𝕊,sep:𝕊)→[𝕊]
 ```
 Split string by separator.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λstr_join(sep:𝕊,parts:[𝕊])→𝕊
 ```
 Join strings with separator.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λstr_trim(s:𝕊)→𝕊
 ```
 Remove leading/trailing whitespace.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λstr_to_upper(s:𝕊)→𝕊
 ```
 Convert to uppercase.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λstr_to_lower(s:𝕊)→𝕊
 ```
 Convert to lowercase.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λstr_contains(s:𝕊,substr:𝕊)→𝔹
 ```
 Check if string contains substring.
 - Complexity: O(n*m)
 - Pure: Yes
 
-```mint
+```sigil
 λstr_starts_with(s:𝕊,prefix:𝕊)→𝔹
 ```
 Check if string starts with prefix.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λstr_ends_with(s:𝕊,suffix:𝕊)→𝔹
 ```
 Check if string ends with suffix.
@@ -250,56 +250,56 @@ Check if string ends with suffix.
 
 ## Map Operations
 
-```mint
+```sigil
 λmap_empty[K,V]()→{K:V}
 ```
 Create empty map.
 - Complexity: O(1)
 - Pure: Yes
 
-```mint
+```sigil
 λmap_insert[K,V](key:K,value:V,map:{K:V})→{K:V}
 ```
 Insert key-value pair. Returns new map.
 - Complexity: O(log n)
 - Pure: Yes
 
-```mint
+```sigil
 λmap_get[K,V](key:K,map:{K:V})→Option[V]
 ```
 Get value for key.
 - Complexity: O(log n)
 - Pure: Yes
 
-```mint
+```sigil
 λmap_remove[K,V](key:K,map:{K:V})→{K:V}
 ```
 Remove key. Returns new map.
 - Complexity: O(log n)
 - Pure: Yes
 
-```mint
+```sigil
 λmap_has[K,V](key:K,map:{K:V})→𝔹
 ```
 Check if key exists.
 - Complexity: O(log n)
 - Pure: Yes
 
-```mint
+```sigil
 λmap_keys[K,V](map:{K:V})→[K]
 ```
 Get all keys.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λmap_values[K,V](map:{K:V})→[V]
 ```
 Get all values.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λmap_entries[K,V](map:{K:V})→[(K,V)]
 ```
 Get all key-value pairs.
@@ -308,56 +308,56 @@ Get all key-value pairs.
 
 ## Math Operations
 
-```mint
+```sigil
 λabs(n:ℤ)→ℤ
 ```
 Absolute value.
 - Complexity: O(1)
 - Pure: Yes
 
-```mint
+```sigil
 λmin(a:ℤ,b:ℤ)→ℤ
 ```
 Minimum of two integers.
 - Complexity: O(1)
 - Pure: Yes
 
-```mint
+```sigil
 λmax(a:ℤ,b:ℤ)→ℤ
 ```
 Maximum of two integers.
 - Complexity: O(1)
 - Pure: Yes
 
-```mint
+```sigil
 λpow(base:ℤ,exp:ℤ)→ℤ
 ```
 Exponentiation (integer power).
 - Complexity: O(log exp)
 - Pure: Yes
 
-```mint
+```sigil
 λsqrt(n:ℝ)→ℝ
 ```
 Square root.
 - Complexity: O(1)
 - Pure: Yes
 
-```mint
+```sigil
 λfloor(n:ℝ)→ℤ
 ```
 Round down to integer.
 - Complexity: O(1)
 - Pure: Yes
 
-```mint
+```sigil
 λceil(n:ℝ)→ℤ
 ```
 Round up to integer.
 - Complexity: O(1)
 - Pure: Yes
 
-```mint
+```sigil
 λround(n:ℝ)→ℤ
 ```
 Round to nearest integer.
@@ -368,35 +368,35 @@ Round to nearest integer.
 
 All I/O operations have the `!IO` effect.
 
-```mint
+```sigil
 λprint(s:𝕊)→𝕌!IO
 ```
 Print string to stdout.
 - Effect: IO
 - Complexity: O(n)
 
-```mint
+```sigil
 λprintln(s:𝕊)→𝕌!IO
 ```
 Print string with newline.
 - Effect: IO
 - Complexity: O(n)
 
-```mint
+```sigil
 λread_line()→𝕊!IO
 ```
 Read line from stdin.
 - Effect: IO
 - Complexity: O(n)
 
-```mint
+```sigil
 λread_file(path:𝕊)→Result[𝕊,IoError]!IO
 ```
 Read entire file as string.
 - Effect: IO
 - Complexity: O(file size)
 
-```mint
+```sigil
 λwrite_file(path:𝕊,content:𝕊)→Result[𝕌,IoError]!IO
 ```
 Write string to file.
@@ -405,19 +405,19 @@ Write string to file.
 
 ## Error Handling
 
-```mint
+```sigil
 t IoError={kind:𝕊,msg:𝕊}
 t ParseError={line:ℤ,column:ℤ,msg:𝕊}
 ```
 
-```mint
+```sigil
 λpanic[T](msg:𝕊)→T
 ```
 Immediately terminate program with error message.
 - Effect: Diverges (returns ∅)
 - Use sparingly - prefer Result for recoverable errors
 
-```mint
+```sigil
 λassert(condition:𝔹,msg:𝕊)→𝕌
 ```
 Assert condition is true, panic if false.
@@ -426,35 +426,35 @@ Assert condition is true, panic if false.
 
 ## Type Conversion
 
-```mint
+```sigil
 λint_to_string(n:ℤ)→𝕊
 ```
 Convert integer to string.
 - Complexity: O(log n)
 - Pure: Yes
 
-```mint
+```sigil
 λstring_to_int(s:𝕊)→Result[ℤ,ParseError]
 ```
 Parse integer from string.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λfloat_to_string(n:ℝ)→𝕊
 ```
 Convert float to string.
 - Complexity: O(1)
 - Pure: Yes
 
-```mint
+```sigil
 λstring_to_float(s:𝕊)→Result[ℝ,ParseError]
 ```
 Parse float from string.
 - Complexity: O(n)
 - Pure: Yes
 
-```mint
+```sigil
 λbool_to_string(b:𝔹)→𝕊
 ```
 Convert bool to string ("true" or "false").
@@ -463,14 +463,14 @@ Convert bool to string ("true" or "false").
 
 ## Composition Operators
 
-```mint
+```sigil
 λcompose[T,U,V](f:λ(U)→V,g:λ(T)→U)→λ(T)→V
 ```
 Function composition: (f ∘ g)(x) = f(g(x))
 - Operator: `>>`
 - Pure: Yes
 
-```mint
+```sigil
 λpipe[T,U](value:T,fn:λ(T)→U)→U
 ```
 Pipe value through function.
@@ -481,7 +481,7 @@ Pipe value through function.
 
 ### Import Syntax
 
-```mint
+```sigil
 i stdlib/io
 i stdlib/list_utils
 i stdlib/result
@@ -493,7 +493,7 @@ Only explicitly exported top-level declarations are visible across modules.
 
 Canonical export forms:
 
-```mint
+```sigil
 export λ...
 export t...
 export c...
@@ -523,7 +523,7 @@ Mathematical functions: sin, cos, tan, log, exp, etc.
 
 JSON parsing and serialization
 
-```mint
+```sigil
 t JsonValue=JsonNull|JsonBool(𝔹)|JsonInt(ℤ)|JsonFloat(ℝ)|JsonString(𝕊)|JsonArray([JsonValue])|JsonObject({𝕊:JsonValue})
 
 λparse_json(s:𝕊)→Result[JsonValue,ParseError]
@@ -534,7 +534,7 @@ t JsonValue=JsonNull|JsonBool(𝔹)|JsonInt(ℤ)|JsonFloat(ℝ)|JsonString(𝕊)
 
 HTTP client and server
 
-```mint
+```sigil
 t HttpMethod=GET|POST|PUT|DELETE|PATCH
 t HttpRequest={method:HttpMethod,url:𝕊,headers:{𝕊:𝕊},body:𝕊}
 t HttpResponse={status:ℤ,headers:{𝕊:𝕊},body:𝕊}
@@ -547,7 +547,7 @@ t HttpResponse={status:ℤ,headers:{𝕊:𝕊},body:𝕊}
 
 Async/await primitives (Future type)
 
-```mint
+```sigil
 t Future[T]
 
 λasync[T](fn:λ()→T)→Future[T]!Async
@@ -559,7 +559,7 @@ t Future[T]
 
 Testing utilities
 
-```mint
+```sigil
 λtest(name:𝕊,fn:λ()→𝕌)→𝕌!Test
 λassert_eq[T](expected:T,actual:T)→𝕌
 λassert_ne[T](a:T,b:T)→𝕌

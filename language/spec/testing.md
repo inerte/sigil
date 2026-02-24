@@ -36,7 +36,7 @@ Human writes intent (easy) → AI writes tests (fast) → Human reviews (easy)
 
 Tests are a **first-class language construct**, not just function calls:
 
-```mint
+```sigil
 test "description"{
   // Test body with assertions
 }
@@ -49,7 +49,7 @@ TestDecl = "test" , StringLiteral , "{" , Expr , "}" ;
 
 ### Example
 
-```mint
+```sigil
 // fibonacci.sigil
 λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 
@@ -105,7 +105,7 @@ sigilc test --watch           # Continuous testing
 
 From `std/test` module (auto-imported in test files):
 
-```mint
+```sigil
 // Equality
 λassert_eq[T](expected:T,actual:T)→𝕌
 λassert_ne[T](a:T,b:T)→𝕌
@@ -139,7 +139,7 @@ From `std/test` module (auto-imported in test files):
 
 Use `∧` (logical AND) to combine assertions in a single test:
 
-```mint
+```sigil
 test "user validation"{
   assert_eq("Alice",user.name)∧
   assert_eq(25,user.age)∧
@@ -151,7 +151,7 @@ test "user validation"{
 
 ### Property Testing API
 
-```mint
+```sigil
 // Property testing
 λproperty[T](name:𝕊,gen:Generator[T],prop:λ(T)→𝔹)→𝕌!Test
 λcheck_all[T](values:[T],prop:λ(T)→𝔹)→𝕌
@@ -167,7 +167,7 @@ test "user validation"{
 
 ### Property Test Example
 
-```mint
+```sigil
 test "list reverse properties"{
   property("reverse twice is identity",gen_list(gen_int(0,100),0,20),
     λlist→reverse(reverse(list))=list)∧
@@ -188,7 +188,7 @@ test "list reverse properties"{
 
 ### Mocking IO Effects
 
-```mint
+```sigil
 // std/test/mock module
 λwith_mock_io[T](mocks:[IoMock],fn:λ()→T!IO)→T
 λwith_mock_network[T](mocks:[NetworkMock],fn:λ()→T!Network)→T
@@ -197,7 +197,7 @@ test "list reverse properties"{
 
 ### Example
 
-```mint
+```sigil
 test "read_file handles missing file"{
   with_mock_io([
     file_not_found("/missing.txt")→Err(IoError{msg:"not found"})
@@ -467,7 +467,7 @@ AI generates comprehensive integration test suite from this spec.
 
 ### Integration Test Example
 
-```mint
+```sigil
 test "E2E checkout flow - happy path"{
   with_mock_network([
     payment_api("credit_card_123")→Ok(PaymentSuccess{transaction_id:"tx_456"})
@@ -501,7 +501,7 @@ test "E2E checkout flow - out of stock"{
 
 ### Performance Tests
 
-```mint
+```sigil
 // std/test/bench module
 λbenchmark(name:𝕊,fn:λ()→𝕌)→Duration
 λassert_faster_than(max_duration:Duration,fn:λ()→𝕌)→𝕌
@@ -510,7 +510,7 @@ test "E2E checkout flow - out of stock"{
 
 ### Example
 
-```mint
+```sigil
 test "fibonacci performance"{
   assert_faster_than(1ms,λ→fibonacci(10))∧
   assert_faster_than(100ms,λ→fibonacci(20))

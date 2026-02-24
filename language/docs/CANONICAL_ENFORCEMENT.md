@@ -52,7 +52,7 @@ The compiler analyzes ALL recursive calls and checks how each parameter's argume
 #### Examples
 
 ##### ✅ ALLOWED: GCD (both params structural)
-```mint
+```sigil
 λgcd(a:ℤ,b:ℤ)→ℤ≡b{0→a|b→gcd(b,a%b)}
 ```
 - `a` → `b` (swap, structural transformation)
@@ -60,7 +60,7 @@ The compiler analyzes ALL recursive calls and checks how each parameter's argume
 - **Result**: COMPILES ✅
 
 ##### ✅ ALLOWED: Power (query + structural)
-```mint
+```sigil
 λpower(base:ℤ,exp:ℤ)→ℤ≡exp{0→1|exp→base*power(base,exp-1)}
 ```
 - `base` → `base` (query, unchanged)
@@ -68,7 +68,7 @@ The compiler analyzes ALL recursive calls and checks how each parameter's argume
 - **Result**: COMPILES ✅
 
 ##### ✅ ALLOWED: Nth Element (parallel decomposition)
-```mint
+```sigil
 λnth(list:[ℤ],n:ℤ)→ℤ≡(list,n){
   ([x,.xs],0)→x|
   ([x,.xs],n)→nth(xs,n-1)
@@ -79,7 +79,7 @@ The compiler analyzes ALL recursive calls and checks how each parameter's argume
 - **Result**: COMPILES ✅
 
 ##### ❌ BLOCKED: Factorial with Accumulator
-```mint
+```sigil
 λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}
 ```
 - `n` → `n-1` (structural, decreases)
@@ -109,7 +109,7 @@ Use simple recursion without accumulator parameters.
 ```
 
 ##### ❌ BLOCKED: List Reverse with Accumulator
-```mint
+```sigil
 λreverse(lst:[ℤ],acc:[ℤ])→[ℤ]≡lst{[]→acc|[x,.xs]→reverse(xs,[x])}
 ```
 - `lst` → `xs` (structural, list tail)
@@ -126,7 +126,7 @@ Use simple recursion without accumulator parameters.
 
 **Example:**
 
-```mint
+```sigil
 ❌ COMPILE ERROR - Boolean matching when value matching works:
 λisZero(n:ℤ)→𝔹≡(n=0){
   ⊤→⊤|
@@ -142,7 +142,7 @@ Use simple recursion without accumulator parameters.
 
 **ALLOWED:** Boolean tuples for complex multi-condition logic
 
-```mint
+```sigil
 ✅ COMPILES - Complex conditions (no simpler form exists):
 λclassify(x:ℤ,y:ℤ)→𝕊≡(x>0,y>0){
   (⊤,⊤)→"quadrant 1"|

@@ -81,7 +81,7 @@ Navigate your code with the outline view showing:
 2. Open VS Code
 3. Go to Extensions (`Cmd+Shift+X` / `Ctrl+Shift+X`)
 4. Click "..." menu → "Install from VSIX..."
-5. Select `mint-language-0.1.0.vsix`
+5. Select `sigil-language-0.1.0.vsix`
 
 ### From Marketplace (Future)
 Search for "Mint Language" in the VS Code Extensions marketplace.
@@ -97,12 +97,12 @@ The extension includes a bundled Mint Language Server (LSP).
 
 This extension contributes the following settings:
 
-* `mint.trace.server`: Enable/disable tracing of communication with the language server
+* `sigil.trace.server`: Enable/disable tracing of communication with the language server
   - `off` (default) - No tracing
   - `messages` - Trace messages
   - `verbose` - Verbose tracing
 
-* `mint.lsp.path`: Custom path to Mint LSP server
+* `sigil.lsp.path`: Custom path to Mint LSP server
   - Leave empty to use bundled server
   - Set to custom path for development
 
@@ -111,7 +111,7 @@ This extension contributes the following settings:
 1. Create a new file with `.sigil` extension
 2. Start writing Sigil code:
 
-```mint
+```sigil
 λfactorial(n:ℤ)→ℤ≡n{
   0→1|
   1→1|
@@ -147,7 +147,7 @@ Ensure your editor font supports Unicode characters. Recommended fonts:
 ## Development
 
 See the main Sigil repository for development instructions:
-https://github.com/mint-lang/mint
+https://github.com/sigil-lang/mint
 
 ### Building from source
 
@@ -171,9 +171,9 @@ pnpm package  # Creates .vsix file
 
 ## More Information
 
-- [Mint Language Website](https://github.com/mint-lang/mint)
-- [Language Specification](https://github.com/mint-lang/mint/tree/main/spec)
-- [Examples](https://github.com/mint-lang/mint/tree/main/examples)
+- [Mint Language Website](https://github.com/sigil-lang/mint)
+- [Language Specification](https://github.com/sigil-lang/mint/tree/main/spec)
+- [Examples](https://github.com/sigil-lang/mint/tree/main/examples)
 
 ## License
 

@@ -115,7 +115,7 @@ Recommended `category` values:
 ### Example 1: Simple Function
 
 **fibonacci.sigil:**
-```mint
+```sigil
 λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 ```
 
@@ -179,7 +179,7 @@ Recommended `category` values:
 ### Example 2: HTTP Handler
 
 **handler.sigil:**
-```mint
+```sigil
 λhandle_request(req:Request)→Response!Error≡req.path{"/users"→get_users(req)|"/health"→Ok(Response{status:200,body:"OK"})|_→Err(Error{code:404,msg:"Not found"})}
 ```
 
@@ -241,7 +241,7 @@ Recommended `category` values:
 ### Example 3: Type Definition
 
 **types.sigil:**
-```mint
+```sigil
 t Option[T]=Some(T)|None
 t Result[T,E]=Ok(T)|Err(E)
 t User={id:ℤ,name:𝕊,email:𝕊,active:𝔹}
@@ -310,7 +310,7 @@ t User={id:ℤ,name:𝕊,email:𝕊,active:𝔹}
 ### Example 4: Complex Algorithm
 
 **quicksort.sigil:**
-```mint
+```sigil
 λquicksort[T](list:[T],cmp:λ(T,T)→𝔹)→[T]≡list{[]→[]|[p,.rest]→l smaller=filter(λx→cmp(x,p),rest);l greater=filter(λx→¬cmp(x,p),rest);quicksort(smaller,cmp)++[p]++quicksort(greater,cmp)}
 ```
 
@@ -418,7 +418,7 @@ For other values, it sums the previous two Fibonacci numbers.
 - Consider iterative or memoized version for n > 30
 
 ## Examples
-```mint
+```sigil
 fibonacci(0) = 0
 fibonacci(5) = 5
 fibonacci(10) = 55

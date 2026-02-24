@@ -31,12 +31,12 @@ This ensures **zero ambiguity** for LLM code generation and training data qualit
 
 ## Canonical Surface Forms: Byte-for-Byte Reproducibility
 
-Mint enforces **canonical formatting** at compile-time. Every program has exactly ONE valid textual representation.
+Sigil enforces **canonical formatting** at compile-time. Every program has exactly ONE valid textual representation.
 
 **Enforced formatting rules:**
 
 ### 1. Final Newline (Required)
-```mint
+```sigil
 ✅ VALID:
 λmain()→ℤ=1
 [newline here]
@@ -47,14 +47,14 @@ Mint enforces **canonical formatting** at compile-time. Every program has exactl
 ```
 
 ### 2. No Trailing Whitespace
-```mint
+```sigil
 ❌ REJECTED:
 λmain()→ℤ=1   [spaces here]
 ⟦ Error: Line 1 has trailing whitespace ⟧
 ```
 
 ### 3. Maximum One Blank Line
-```mint
+```sigil
 ✅ VALID:
 λa()→ℤ=1
 
@@ -69,7 +69,7 @@ Mint enforces **canonical formatting** at compile-time. Every program has exactl
 ```
 
 ### 4. Equals Sign Placement (Context-Dependent)
-```mint
+```sigil
 ✅ VALID - Regular expression (= required):
 λdouble(x:ℤ)→ℤ=x*2
 
@@ -101,14 +101,14 @@ Mint enforces **canonical formatting** at compile-time. Every program has exactl
 **Paradigm:** Bidirectional type checking (not Hindley-Milner)
 
 **Why bidirectional?**
-- Mint requires **mandatory type annotations everywhere** (canonical forms)
+- Sigil requires **mandatory type annotations everywhere** (canonical forms)
 - Hindley-Milner's strength is type inference with minimal annotations
 - Bidirectional is simpler and better suited for mandatory annotations
 - Better error messages: "expected X, got Y" with precise source locations
 - More extensible: natural framework for polymorphism, refinement types, effects
 
 **Type Annotations Required:**
-```mint
+```sigil
 ✅ CORRECT (only valid form):
 λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
 
@@ -145,7 +145,7 @@ Mint tracks side effects at compile time to prevent bugs and document behavior c
 - `!Mut` - Mutation of data structures (future use)
 
 **Examples:**
-```mint
+```sigil
 ⟦ Pure function (no effects) ⟧
 λadd(a:ℤ,b:ℤ)→ℤ=a+b
 
@@ -175,7 +175,7 @@ e console
 - Preserves canonical forms (one signature per function)
 
 **Example errors:**
-```mint
+```sigil
 e console
 λlog(msg:𝕊)→!IO 𝕌=console.log(msg)
 
@@ -195,12 +195,12 @@ See `examples/effect-demo.sigil` for complete examples.
 
 **Syntax:** `e module/path` (ONLY way)
 
-Mint can call external modules (including TypeScript/JavaScript packages) and npm packages.
+Sigil can call external modules (including TypeScript/JavaScript packages) and npm packages.
 
 **Examples:**
-```mint
+```sigil
 e console
-λmain()→𝕌=console.log("Hello from Mint!")
+λmain()→𝕌=console.log("Hello from Sigil!")
 
 e fs/promises
 λwriteFile(path:𝕊,content:𝕊)→𝕌=fs/promises.writeFile(path,content)
@@ -240,7 +240,7 @@ See `docs/FFI.md` for full documentation.
 - Only ONE comment syntax (canonical form)
 
 **Examples:**
-```mint
+```sigil
 ⟦ This function computes factorial recursively ⟧
 λfactorial(n:ℤ)→ℤ≡n{
   0→1|  ⟦ base case ⟧
@@ -270,7 +270,7 @@ See `docs/FFI.md` for full documentation.
 - Fits the TypeScript compilation target (no memory safety needed)
 
 **Mutability Rules:**
-```mint
+```sigil
 ✅ CORRECT:
 λprocess(data:[ℤ])→ℤ=...              ⟦ Immutable (default) ⟧
 λsort(data:mut [ℤ])→𝕌=...             ⟦ Explicit mutation ⟧
@@ -388,7 +388,7 @@ Match the examples in `examples/*.sigil.map`:
 - ✅ "Not suitable for extremely large inputs due to stack depth"
 - ✅ "Performance characteristic is fundamental to primitive recursion"
 
-**Remember:** Mint enforces canonical forms. ONE way to write each algorithm. Your warnings should acknowledge this, not fight it.
+**Remember:** Sigil enforces canonical forms. ONE way to write each algorithm. Your warnings should acknowledge this, not fight it.
 
 ## Project Structure
 
@@ -420,12 +420,12 @@ ai-pl/
 
 ### 2. All Runnable Programs MUST Have main()
 
-```mint
+```sigil
 λmain()→𝕊="Hello, World!"
 ```
 
 Or for programs that just do side effects:
-```mint
+```sigil
 λmain()→𝕌=process_data()
 ```
 
@@ -464,23 +464,23 @@ Minimum files to review:
 - relevant focused docs (`language/docs/type-system.md`, `language/docs/TESTING.md`, `language/docs/FFI.md`, etc.)
 
 Rule:
-- All ` ```mint ` code fences must contain valid Sigil syntax, including Mint comments `⟦ ... ⟧` (never `#` or `//` in Sigil examples).
+- All ` ```sigil ` code fences must contain valid Sigil syntax, including Sigil comments `⟦ ... ⟧` (never `#` or `//` in Sigil examples).
 
-## Mint Language Quick Reference
+## Sigil Language Quick Reference
 
 ### Standard Library
 
-Mint includes a standard library with common utility functions and predicates.
+Sigil includes a standard library with common utility functions and predicates.
 
 **Import modules (like FFI):**
-```mint
+```sigil
 i stdlib/list_predicates
 i stdlib/numeric_predicates
 i stdlib/list_utils
 ```
 
 **List predicates:**
-```mint
+```sigil
 stdlib/list_predicates.sorted_asc([1,2,3])           ⟦ Check if sorted ascending ⟧
 stdlib/list_predicates.all(is_positive,[1,2,3])      ⟦ Check if all elements satisfy predicate ⟧
 stdlib/list_predicates.any(is_even,[1,3,5])          ⟦ Check if any element satisfies predicate ⟧
@@ -488,7 +488,7 @@ stdlib/list_predicates.contains(3,[1,2,3,4])         ⟦ Check if element in lis
 ```
 
 **Numeric predicates:**
-```mint
+```sigil
 stdlib/numeric_predicates.is_positive(5)             ⟦ Check if > 0 ⟧
 stdlib/numeric_predicates.is_even(4)                 ⟦ Check if divisible by 2 ⟧
 stdlib/numeric_predicates.is_prime(7)                ⟦ Check if prime number ⟧
@@ -496,14 +496,14 @@ stdlib/numeric_predicates.in_range(5,1,10)           ⟦ Check if in range [min,
 ```
 
 **List utilities:**
-```mint
+```sigil
 stdlib/list_utils.len([1,2,3])                       ⟦ Get list length ⟧
 stdlib/list_utils.head([1,2,3])                      ⟦ Get first element ⟧
 stdlib/list_utils.tail([1,2,3])                      ⟦ Get all but first ⟧
 ```
 
 **Common patterns:**
-```mint
+```sigil
 i stdlib/numeric_predicates
 
 ⟦ Validation ⟧
@@ -525,7 +525,7 @@ i stdlib/numeric_predicates
 See `docs/STDLIB.md` for complete reference.
 
 ### External Module Interop (FFI)
-```mint
+```sigil
 e module/path              ⟦ Import external module ⟧
 module/path.member(args)   ⟦ Call external module function ⟧
 
@@ -541,7 +541,7 @@ axios.get("https://api.example.com")
 ```
 
 ### Function Definition
-```mint
+```sigil
 ⟦ Pure function ⟧
 λfunctionName(param:Type)→ReturnType=expression
 
@@ -550,7 +550,7 @@ axios.get("https://api.example.com")
 ```
 
 ### Pattern Matching
-```mint
+```sigil
 ≡value{
   pattern1→result1|
   pattern2→result2|
@@ -559,7 +559,7 @@ axios.get("https://api.example.com")
 ```
 
 ### Tuple Patterns (for multiple conditions)
-```mint
+```sigil
 ≡(condition1,condition2){
   (⊤,⊤)→"both true"|
   (⊤,⊥)→"first true"|
@@ -578,7 +578,7 @@ axios.get("https://api.example.com")
 - `⊥` - false
 
 ### Sum Types (Algebraic Data Types)
-```mint
+```sigil
 ⟦ Type declarations ⟧
 t Color=Red|Green|Blue              ⟦ Simple enum ⟧
 t Option[T]=Some(T)|None            ⟦ Generic optional value ⟧
@@ -615,7 +615,7 @@ Err("not found")                    ⟦ Error value ⟧
 See `examples/sum-types-demo.sigil` for comprehensive examples.
 
 ### Lists
-```mint
+```sigil
 [1,2,3]              ⟦ List literal ⟧
 [x,.rest]            ⟦ Pattern: x is first, rest is tail ⟧
 [value,.recursive()]  ⟦ Construction with spread ⟧
@@ -627,13 +627,13 @@ See `examples/sum-types-demo.sigil` for comprehensive examples.
 - Rejected when no element type can be determined
 
 ### Concatenation
-```mint
-"Hello, "++"Mint"      ⟦ String concatenation (only for strings) ⟧
+```sigil
+"Hello, "++"Sigil"     ⟦ String concatenation (only for strings) ⟧
 [1,2]⧺[3,4]            ⟦ List concatenation (only for lists) ⟧
 ```
 
 ### Built-in List Operations (Language Constructs)
-```mint
+```sigil
 list↦fn              ⟦ Map: ↦ (apply fn to each element) ⟧
 list⊳predicate       ⟦ Filter: ⊳ (keep elements matching predicate) ⟧
 list⊕fn⊕init         ⟦ Fold: ⊕ (reduce with fn starting from init) ⟧
@@ -647,7 +647,7 @@ list⊕fn⊕init         ⟦ Fold: ⊕ (reduce with fn starting from init) ⟧
 ## Common Patterns
 
 ### FizzBuzz
-```mint
+```sigil
 λfizzbuzz(n:ℤ)→𝕊≡(n%3=0,n%5=0){
   (⊤,⊤)→"FizzBuzz"|
   (⊤,⊥)→"Fizz"|
@@ -658,7 +658,7 @@ list⊕fn⊕init         ⟦ Fold: ⊕ (reduce with fn starting from init) ⟧
 ```
 
 ### List Processing (Using Built-in Operations)
-```mint
+```sigil
 λdouble(x:ℤ)→ℤ=x*2
 λisEven(x:ℤ)→𝔹=x%2=0
 λsum(acc:ℤ,x:ℤ)→ℤ=acc+x
@@ -668,7 +668,7 @@ list⊕fn⊕init         ⟦ Fold: ⊕ (reduce with fn starting from init) ⟧
 ```
 
 ### Manual Recursion (When needed)
-```mint
+```sigil
 ⟦ Custom recursive list processing ⟧
 λmap[T,U](fn:λ(T)→U,list:[T])→[U]≡list{
   []→[]|
@@ -677,7 +677,7 @@ list⊕fn⊕init         ⟦ Fold: ⊕ (reduce with fn starting from init) ⟧
 ```
 
 ### Recursion with Base Case
-```mint
+```sigil
 ⟦ Single parameter primitive recursion ⟧
 λfactorial(n:ℤ)→ℤ≡n{
   0→1|
@@ -709,7 +709,7 @@ The key distinction: parameters must be **algorithmically structural** (decompos
 
 ## CRITICAL: Canonical Form Enforcement - COMPILER ENFORCED
 
-Mint enforces **canonical forms** for all code. Every algorithm has exactly ONE syntactically valid representation.
+Sigil enforces **canonical forms** for all code. Every algorithm has exactly ONE syntactically valid representation.
 
 **Computer Science Terms:**
 - **Canonical form**: Unique normal form for equivalent programs
@@ -753,7 +753,7 @@ The Sigil compiler uses **static analysis** to reject non-canonical code:
 - Allows: Primitive recursion with multiple algorithmic inputs, structural recursion
 - Enforces: One canonical form per algorithm
 
-```mint
+```sigil
 ✅ COMPILES - single parameter:
 λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
 
@@ -835,21 +835,21 @@ Like λ-calculus normal forms or term rewriting canonical forms, Mint ensures ea
 ### Examples
 
 **❌ WRONG - Multiple implementations:**
-```mint
+```sigil
 λfactorial_recursive(n:ℤ)→ℤ=...
 λfactorial_iterative(n:ℤ)→ℤ=...
 ```
 
 **✅ CORRECT - One canonical way:**
-```mint
+```sigil
 λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
 ```
 
 **If the user wants "both recursive and iterative", tell them:**
-> "Mint does NOT support tail-call optimization or accumulator-passing style. There is only primitive recursion (the canonical form)."
+> "Sigil does NOT support tail-call optimization or accumulator-passing style. There is only primitive recursion (the canonical form)."
 
 **If the user wants "boolean matching", tell them:**
-> "Mint requires direct value matching when possible. Boolean pattern matching is only allowed for complex conditions."
+> "Sigil requires direct value matching when possible. Boolean pattern matching is only allowed for complex conditions."
 
 ## Testing Your Code
 
@@ -879,7 +879,7 @@ node language/compiler/dist/cli.js test --match "toggle"
 
 Testing rules:
 - Test declarations are only allowed under `./tests` (canonical project layout)
-- Test files may include regular Mint declarations plus `test` declarations
+- Test files may include regular Sigil declarations plus `test` declarations
 - Test bodies must evaluate to `𝔹`
 - Effectful tests must declare effects explicitly (`test "..." →!IO { ... }`)
 - Use `mockable` + `with_mock(...) { ... }` for explicit scoped mocks
@@ -887,7 +887,7 @@ Testing rules:
 
 Example:
 
-```mint
+```sigil
 mockable λping()→!IO 𝕊="real"
 
 test "ping can be mocked" →!IO {

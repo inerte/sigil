@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "file": "test_list_predicates.mint",
-  "generated_by": "mintc@0.1.0",
+  "file": "source.sigil",
+  "generated_by": "sigilc@0.1.0",
   "generated_at": "2026-02-23T21:25:26.463Z",
   "mappings": {
     "main": {

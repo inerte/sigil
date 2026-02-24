@@ -28,7 +28,7 @@ Semantic Map (.map)   ← What humans read (optimized for understanding)
 ## Quick Example
 
 ### What's Stored (Dense Format - fibonacci.sigil)
-```mint
+```sigil
 λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 ```
 
@@ -73,14 +73,14 @@ Mint-to-Mint imports are typechecked across modules (not trust-mode `any`).
 
 Canonical Mint imports:
 
-```mint
+```sigil
 i src/todo-domain
 i stdlib/list_utils
 ```
 
 Canonical exports are explicit:
 
-```mint
+```sigil
 export λaddTodo(...)→...
 export t Todo={...}
 export c VERSION:𝕊="1"
@@ -178,29 +178,29 @@ Unicode symbols for ultimate density:
 ## Syntax Examples
 
 ### Function Definition
-```mint
+```sigil
 λadd(x:ℤ,y:ℤ)→ℤ=x+y
 ```
 
 ### Pattern Matching
-```mint
+```sigil
 λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
 ```
 
 ### HTTP Handler Example
-```mint
+```sigil
 λhandle_request(req:Request)→Response!Error≡req.path{"/users"→get_users(req)|"/health"→Ok(Response{status:200,body:"OK"})|_→Err(Error{code:404,msg:"Not found"})}
 ```
 
 ### Data Types
-```mint
+```sigil
 t Option[T]=Some(T)|None
 t Result[T,E]=Ok(T)|Err(E)
 t User={id:ℤ,name:𝕊,email:𝕊,active:𝔹}
 ```
 
 ### Built-in List Operations
-```mint
+```sigil
 ⟦ Map: ↦ - Apply function to each element ⟧
 [1,2,3,4,5]↦λx→x*2  ⟦ Result: [2,4,6,8,10] ⟧
 
@@ -215,7 +215,7 @@ t User={id:ℤ,name:𝕊,email:𝕊,active:𝔹}
 ```
 
 ### Pipeline Operations
-```mint
+```sigil
 λprocess_users(users:[User])→[𝕊]=users|>filter(λu→u.active)|>map(λu→u.name)
 ```
 
@@ -262,7 +262,7 @@ Git: Commits both .sigil and .sigil.map
 Every `.sigil` file has a corresponding `.sigil.map` file:
 
 **fibonacci.sigil** (what executes):
-```mint
+```sigil
 λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 ```
 
@@ -360,10 +360,10 @@ The **AI Interpretation Layer** provides:
 
 ```bash
 # Install Sigil compiler
-brew install mint-lang
+brew install sigil-lang
 
 # Create new project
-mint new my-project
+sigil new my-project
 
 # Compile to TypeScript
 sigilc compile src/main.sigil --output dist/main.ts

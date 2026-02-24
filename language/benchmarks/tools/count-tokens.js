@@ -36,7 +36,7 @@ export function countTokens(filepath) {
     const ext = path.extname(filepath);
     const filename = path.basename(filepath);
     const languageMap = {
-        '.mint': 'Mint',
+        '.sigil': 'Sigil',
         '.ts': 'TypeScript',
         '.js': 'JavaScript',
         '.py': 'Python',

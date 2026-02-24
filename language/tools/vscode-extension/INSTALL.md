@@ -45,13 +45,13 @@ pnpm build
    ```bash
    pnpm package
    ```
-   This creates `mint-language-0.1.0.vsix`
+   This creates `sigil-language-0.1.0.vsix`
 
 2. Install in VS Code:
    - Open VS Code
    - Go to Extensions (`Cmd+Shift+X` / `Ctrl+Shift+X`)
    - Click "..." menu → "Install from VSIX..."
-   - Select `mint-language-0.1.0.vsix`
+   - Select `sigil-language-0.1.0.vsix`
 
 3. Reload VS Code when prompted
 
@@ -60,7 +60,7 @@ pnpm build
 ### 1. Create a Test File
 
 Create `test.sigil`:
-```mint
+```sigil
 ⟦ Factorial function using primitive recursion ⟧
 λfactorial(n:ℤ)→ℤ≡n{
   0→1|
@@ -81,7 +81,7 @@ Create `test.sigil`:
 
 **✅ Real-time Diagnostics**
 Try adding an error:
-```mint
+```sigil
 λbad()→ℤ="hello"
 ```
 You should see a red squiggle with error: "Literal type mismatch: expected ℤ, got 𝕊"

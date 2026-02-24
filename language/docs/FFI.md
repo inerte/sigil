@@ -6,7 +6,7 @@ Mint can call external modules (including TypeScript/JavaScript packages) using 
 
 ## Syntax
 
-```mint
+```sigil
 e module/path
 ```
 
@@ -16,7 +16,7 @@ That's it. Exactly ONE way to do FFI (canonical form).
 
 ### Console Output
 
-```mint
+```sigil
 e console
 
 λmain()→𝕌=console.log("Hello from Mint!")
@@ -24,7 +24,7 @@ e console
 
 ### Node.js Built-ins
 
-```mint
+```sigil
 e fs/promises
 
 λwriteFile(path:𝕊,content:𝕊)→𝕌=fs/promises.writeFile(path,content)
@@ -40,7 +40,7 @@ npm install axios
 ```
 
 Then use it:
-```mint
+```sigil
 e axios
 
 λfetchUser(id:ℤ)→𝕌=axios.get("https://api.example.com/users/" + id)
@@ -52,7 +52,7 @@ e axios
 
 ### 1. Declaration
 
-```mint
+```sigil
 e module/path
 ```
 
@@ -60,7 +60,7 @@ Declares that you'll use an external module.
 
 ### 2. Usage
 
-```mint
+```sigil
 module/path.member(args)
 ```
 
@@ -77,7 +77,7 @@ This catches typos WITHOUT needing type annotations!
 
 ### 4. Code Generation
 
-```mint
+```sigil
 e fs/promises
 λmain()→𝕌=fs/promises.readFile("file.txt","utf-8")
 ```
@@ -103,14 +103,14 @@ export function main() {
 
 ### ✅ Works - Correct member
 
-```mint
+```sigil
 e console
 λmain()→𝕌=console.log("works!")
 ```
 
 ### ❌ Fails - Typo in member
 
-```mint
+```sigil
 e console
 λmain()→𝕌=console.logg("typo!")
 ```
@@ -123,7 +123,7 @@ Check for typos or see module documentation.
 
 ### ❌ Fails - Module not installed
 
-```mint
+```sigil
 e axios
 λmain()→𝕌=axios.get("url")
 ```
@@ -166,7 +166,7 @@ This ensures deterministic, unambiguous code generation for LLMs.
 
 ### No Direct Object Construction
 
-```mint
+```sigil
 ❌ Cannot: new Date()
 ❌ Cannot: new RegExp(pattern)
 ```
@@ -175,7 +175,7 @@ Must use factory functions or FFI wrappers.
 
 ### No Method Chaining (Yet)
 
-```mint
+```sigil
 ❌ Cannot: axios.get(url).then(fn)
 ```
 
@@ -185,7 +185,7 @@ Future: Expression-level member access.
 
 ### No Class Interop (Yet)
 
-```mint
+```sigil
 ❌ Cannot: class instances
 ❌ Cannot: this binding
 ```
@@ -196,7 +196,7 @@ Use functional APIs or wrapper functions.
 
 ### 1. Wrap FFI in Sigil Functions
 
-```mint
+```sigil
 e console
 
 λlog(msg:𝕊)→𝕌=console.log(msg)
@@ -210,7 +210,7 @@ e console
 
 ### 2. Use Semantic Names
 
-```mint
+```sigil
 e fs/promises
 
 λreadFile(path:𝕊)→𝕌=fs/promises.readFile(path,"utf-8")

@@ -17,8 +17,8 @@ type MintDomain = {
   remainingCount: (total: number, completed: number) => number;
 };
 
-const mint = mintRaw as unknown as MintDomain;
-const STORAGE_KEY = 'mint.todo-react.v1';
+const sigil = sigilRaw as unknown as MintDomain;
+const STORAGE_KEY = 'sigil.todo-react.v1';
 
 type PersistedState = { todos: Todo[]; nextId: number };
 
@@ -54,27 +54,27 @@ function TodoApp(): JSX.Element {
   }, [todos, nextId]);
 
   const visible = useMemo(() => {
-    return todos.filter((todo) => mint.isVisible(filter, todo.done));
+    return todos.filter((todo) => sigil.isVisible(filter, todo.done));
   }, [filter, todos]);
 
   function submitAdd(): void {
     const text = draft.trim();
-    if (!mint.canAdd(text)) return;
-    setTodos((prev) => mint.addTodo(prev, nextId, text));
+    if (!sigil.canAdd(text)) return;
+    setTodos((prev) => sigil.addTodo(prev, nextId, text));
     setNextId((n) => n + 1);
     setDraft('');
   }
 
   function submitEdit(id: number): void {
     const text = editingDraft.trim();
-    if (!mint.canAdd(text)) return;
-    setTodos((prev) => mint.editTodo(prev, id, text));
+    if (!sigil.canAdd(text)) return;
+    setTodos((prev) => sigil.editTodo(prev, id, text));
     setEditingId(null);
     setEditingDraft('');
   }
 
-  const completedCount = mint.completedCount(todos);
-  const activeCount = mint.remainingCount(todos.length, completedCount);
+  const completedCount = sigil.completedCount(todos);
+  const activeCount = sigil.remainingCount(todos.length, completedCount);
 
   return (
     <div className="todo-shell">
@@ -102,7 +102,7 @@ function TodoApp(): JSX.Element {
         </div>
         <div className="filter-group">
           <span aria-live="polite">{activeCount} active / {completedCount} done</span>
-          <button className="danger" onClick={() => setTodos((prev) => mint.clearCompleted(prev))}>Clear Completed</button>
+          <button className="danger" onClick={() => setTodos((prev) => sigil.clearCompleted(prev))}>Clear Completed</button>
         </div>
       </div>
       {visible.length === 0 ? (
@@ -113,7 +113,7 @@ function TodoApp(): JSX.Element {
             const isEditing = editingId === todo.id;
             return (
               <li key={todo.id} className={`todo-item${todo.done ? ' done' : ''}`}>
-                <input type="checkbox" checked={todo.done} onChange={() => setTodos((prev) => mint.toggleTodo(prev, todo.id))} aria-label={`Toggle ${todo.text}`} />
+                <input type="checkbox" checked={todo.done} onChange={() => setTodos((prev) => sigil.toggleTodo(prev, todo.id))} aria-label={`Toggle ${todo.text}`} />
                 {isEditing ? (
                   <input
                     className="todo-text-input"
@@ -138,7 +138,7 @@ function TodoApp(): JSX.Element {
                   ) : (
                     <>
                       <button onClick={() => { setEditingId(todo.id); setEditingDraft(todo.text); }}>Edit</button>
-                      <button className="danger" onClick={() => setTodos((prev) => mint.deleteTodo(prev, todo.id))}>Delete</button>
+                      <button className="danger" onClick={() => setTodos((prev) => sigil.deleteTodo(prev, todo.id))}>Delete</button>
                     </>
                   )}
                 </div>

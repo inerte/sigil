@@ -340,7 +340,7 @@ Comment = "//" , { ? any character except newline ? } , Newline ;
    - print: λprint(value:𝕊)→𝕌!IO
    - panic: λpanic(msg:𝕊)→∅
 
-   See stdlib/prelude.mint for full prelude.
+   See stdlib/prelude.sigil for full prelude.
 *)
 
 (* ============================================================================ *)

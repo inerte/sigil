@@ -1,8 +1,8 @@
 {
   "version": 1,
-  "file": "todo-domain.mint",
-  "generated_by": "mintc@0.1.0",
-  "generated_at": "2026-02-24T03:47:14.471Z",
+  "file": "todo-domain.sigil",
+  "generated_by": "sigilc@0.1.0",
+  "generated_at": "2026-02-24T04:26:31.322Z",
   "mappings": {
     "Todo": {
       "range": [

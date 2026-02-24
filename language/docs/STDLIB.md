@@ -20,7 +20,7 @@ The Mint standard library provides core utility functions and predicates for com
 
 ## Import Syntax
 
-```mint
+```sigil
 ⟦ Import modules (works like FFI - no selective imports) ⟧
 i stdlib/list_predicates
 i stdlib/numeric_predicates
@@ -39,7 +39,7 @@ i stdlib/list_utils
 
 Mint modules use explicit exports. Standard library modules export the functions/types they expose via:
 
-```mint
+```sigil
 export λ...
 export t...
 export c...
@@ -55,12 +55,12 @@ Imported modules only expose exported members. Accessing a non-exported member i
 
 Check if a list is sorted in ascending order.
 
-```mint
+```sigil
 λsorted_asc(xs:[ℤ])→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 sorted_asc([1,2,3])    ⟦ → ⊤ ⟧
 sorted_asc([3,2,1])    ⟦ → ⊥ ⟧
 sorted_asc([])         ⟦ → ⊤ (empty is sorted) ⟧
@@ -73,12 +73,12 @@ sorted_asc([5])        ⟦ → ⊤ (single element is sorted) ⟧
 
 Check if a list is sorted in descending order.
 
-```mint
+```sigil
 λsorted_desc(xs:[ℤ])→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 sorted_desc([3,2,1])   ⟦ → ⊤ ⟧
 sorted_desc([1,2,3])   ⟦ → ⊥ ⟧
 ```
@@ -87,12 +87,12 @@ sorted_desc([1,2,3])   ⟦ → ⊥ ⟧
 
 Check if a list is empty.
 
-```mint
+```sigil
 λis_empty(xs:[ℤ])→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 is_empty([])           ⟦ → ⊤ ⟧
 is_empty([1])          ⟦ → ⊥ ⟧
 ```
@@ -101,12 +101,12 @@ is_empty([1])          ⟦ → ⊥ ⟧
 
 Check if a list is non-empty.
 
-```mint
+```sigil
 λis_non_empty(xs:[ℤ])→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 is_non_empty([1,2])    ⟦ → ⊤ ⟧
 is_non_empty([])       ⟦ → ⊥ ⟧
 ```
@@ -115,12 +115,12 @@ is_non_empty([])       ⟦ → ⊥ ⟧
 
 Check if all elements in a list satisfy a predicate.
 
-```mint
+```sigil
 λall(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 all(is_positive,[1,2,3])      ⟦ → ⊤ ⟧
 all(is_positive,[1,-2,3])     ⟦ → ⊥ ⟧
 all(is_even,[2,4,6])          ⟦ → ⊤ ⟧
@@ -132,12 +132,12 @@ all(is_even,[2,4,6])          ⟦ → ⊤ ⟧
 
 Check if any element in a list satisfies a predicate.
 
-```mint
+```sigil
 λany(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 any(is_even,[1,3,5])          ⟦ → ⊥ ⟧
 any(is_even,[1,2,3])          ⟦ → ⊤ ⟧
 any(is_prime,[4,6,8,7])       ⟦ → ⊤ (7 is prime) ⟧
@@ -149,12 +149,12 @@ any(is_prime,[4,6,8,7])       ⟦ → ⊤ (7 is prime) ⟧
 
 Check if an element exists in a list.
 
-```mint
+```sigil
 λcontains(item:ℤ,xs:[ℤ])→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 contains(3,[1,2,3,4])         ⟦ → ⊤ ⟧
 contains(5,[1,2,3,4])         ⟦ → ⊥ ⟧
 contains(1,[])                ⟦ → ⊥ ⟧
@@ -166,12 +166,12 @@ contains(1,[])                ⟦ → ⊥ ⟧
 
 Check if an index is valid for a list (in range [0, len-1]).
 
-```mint
+```sigil
 λin_bounds(idx:ℤ,xs:[ℤ])→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 in_bounds(0,[1,2,3])          ⟦ → ⊤ ⟧
 in_bounds(2,[1,2,3])          ⟦ → ⊤ ⟧
 in_bounds(3,[1,2,3])          ⟦ → ⊥ (out of bounds) ⟧
@@ -191,12 +191,12 @@ in_bounds(0,[])               ⟦ → ⊥ (empty list) ⟧
 
 Get the length of a list.
 
-```mint
+```sigil
 λlen(xs:[ℤ])→ℤ
 ```
 
 **Examples:**
-```mint
+```sigil
 len([1,2,3])               ⟦ → 3 ⟧
 len([])                    ⟦ → 0 ⟧
 len([42])                  ⟦ → 1 ⟧
@@ -210,12 +210,12 @@ len([42])                  ⟦ → 1 ⟧
 
 Get the first element of a list.
 
-```mint
+```sigil
 λhead(xs:[ℤ])→ℤ
 ```
 
 **Examples:**
-```mint
+```sigil
 head([1,2,3])              ⟦ → 1 ⟧
 head([42])                 ⟦ → 42 ⟧
 ```
@@ -226,12 +226,12 @@ head([42])                 ⟦ → 42 ⟧
 
 Get all elements except the first.
 
-```mint
+```sigil
 λtail(xs:[ℤ])→[ℤ]
 ```
 
 **Examples:**
-```mint
+```sigil
 tail([1,2,3])              ⟦ → [2,3] ⟧
 tail([42])                 ⟦ → [] ⟧
 ```
@@ -246,12 +246,12 @@ tail([42])                 ⟦ → [] ⟧
 
 Check if a number is positive (> 0).
 
-```mint
+```sigil
 λis_positive(x:ℤ)→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 is_positive(5)                ⟦ → ⊤ ⟧
 is_positive(-3)               ⟦ → ⊥ ⟧
 is_positive(0)                ⟦ → ⊥ ⟧
@@ -261,12 +261,12 @@ is_positive(0)                ⟦ → ⊥ ⟧
 
 Check if a number is negative (< 0).
 
-```mint
+```sigil
 λis_negative(x:ℤ)→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 is_negative(-5)               ⟦ → ⊤ ⟧
 is_negative(3)                ⟦ → ⊥ ⟧
 is_negative(0)                ⟦ → ⊥ ⟧
@@ -276,12 +276,12 @@ is_negative(0)                ⟦ → ⊥ ⟧
 
 Check if a number is zero.
 
-```mint
+```sigil
 λis_zero(x:ℤ)→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 is_zero(0)                    ⟦ → ⊤ ⟧
 is_zero(5)                    ⟦ → ⊥ ⟧
 ```
@@ -290,12 +290,12 @@ is_zero(5)                    ⟦ → ⊥ ⟧
 
 Check if a number is non-negative (>= 0).
 
-```mint
+```sigil
 λis_non_negative(x:ℤ)→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 is_non_negative(0)            ⟦ → ⊤ ⟧
 is_non_negative(5)            ⟦ → ⊤ ⟧
 is_non_negative(-1)           ⟦ → ⊥ ⟧
@@ -305,12 +305,12 @@ is_non_negative(-1)           ⟦ → ⊥ ⟧
 
 Check if a number is even.
 
-```mint
+```sigil
 λis_even(x:ℤ)→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 is_even(4)                    ⟦ → ⊤ ⟧
 is_even(5)                    ⟦ → ⊥ ⟧
 is_even(0)                    ⟦ → ⊤ ⟧
@@ -320,12 +320,12 @@ is_even(0)                    ⟦ → ⊤ ⟧
 
 Check if a number is odd.
 
-```mint
+```sigil
 λis_odd(x:ℤ)→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 is_odd(3)                     ⟦ → ⊤ ⟧
 is_odd(4)                     ⟦ → ⊥ ⟧
 ```
@@ -336,12 +336,12 @@ is_odd(4)                     ⟦ → ⊥ ⟧
 
 Check if a number is prime.
 
-```mint
+```sigil
 λis_prime(n:ℤ)→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 is_prime(2)                   ⟦ → ⊤ ⟧
 is_prime(7)                   ⟦ → ⊤ ⟧
 is_prime(8)                   ⟦ → ⊥ ⟧
@@ -358,12 +358,12 @@ is_prime(0)                   ⟦ → ⊥ ⟧
 
 Check if a number is in the inclusive range [min, max].
 
-```mint
+```sigil
 λin_range(x:ℤ,min:ℤ,max:ℤ)→𝔹
 ```
 
 **Examples:**
-```mint
+```sigil
 in_range(5,1,10)              ⟦ → ⊤ ⟧
 in_range(0,1,10)              ⟦ → ⊥ ⟧
 in_range(1,1,10)              ⟦ → ⊤ (inclusive bounds) ⟧
@@ -376,7 +376,7 @@ in_range(10,1,10)             ⟦ → ⊤ (inclusive bounds) ⟧
 
 ### Validation with Predicates
 
-```mint
+```sigil
 ⟦ Validate input before processing ⟧
 λprocess_positive(x:ℤ)→𝕊≡is_positive(x){
   ⊥→"Error: Must be positive"|
@@ -386,21 +386,21 @@ in_range(10,1,10)             ⟦ → ⊤ (inclusive bounds) ⟧
 
 ### Filtering Lists
 
-```mint
+```sigil
 ⟦ Filter primes from a list ⟧
 λget_primes(xs:[ℤ])→[ℤ]=xs⊳is_prime
 ```
 
 ### Higher-Order Validation
 
-```mint
+```sigil
 ⟦ Check all values are in range ⟧
 λall_in_range(xs:[ℤ])→𝔹=all(λx→in_range(x,0,100),xs)
 ```
 
 ### Precondition Checks
 
-```mint
+```sigil
 ⟦ Algorithm that requires sorted input ⟧
 λbinary_search(xs:[ℤ],target:ℤ)→𝕊≡sorted_asc(xs){
   ⊥→"Error: List must be sorted"|
@@ -420,7 +420,7 @@ Each predicate has exactly ONE implementation:
 ### Helper Functions Allowed
 
 Predicates can use helper functions for complex logic:
-```mint
+```sigil
 λis_prime(n:ℤ)→𝔹=...
 λis_prime_helper(n:ℤ,divisor:ℤ)→𝔹=...  ⟦ Allowed ⟧
 ```
@@ -462,19 +462,19 @@ All predicates have explicit type signatures:
 
 Represents an optional value - either `Some(T)` or `None`.
 
-```mint
+```sigil
 i stdlib/option
 
 t Option[T]=Some(T)|None
 ```
 
 **Type declaration:**
-```mint
+```sigil
 t Option[T]=Some(T)|None
 ```
 
 **Usage:**
-```mint
+```sigil
 ⟦ Pattern matching on Option ⟧
 λgetOrDefault(opt:Option,default:ℤ)→ℤ≡opt{
   Some(x)→x|
@@ -494,19 +494,19 @@ t Option[T]=Some(T)|None
 
 Represents success (`Ok(T)`) or failure (`Err(E)`).
 
-```mint
+```sigil
 i stdlib/result
 
 t Result[T,E]=Ok(T)|Err(E)
 ```
 
 **Type declaration:**
-```mint
+```sigil
 t Result[T,E]=Ok(T)|Err(E)
 ```
 
 **Usage:**
-```mint
+```sigil
 ⟦ Pattern matching on Result ⟧
 λprocessResult(res:Result)→𝕊≡res{
   Ok(value)→"Success: "+value|
@@ -527,7 +527,7 @@ t Result[T,E]=Ok(T)|Err(E)
 ### Option/Result Utility Functions
 
 When generic type inference is complete:
-```mint
+```sigil
 λmap[T,U](opt:Option[T],fn:λ(T)→U)→Option[U]
 λunwrap_or[T](opt:Option[T],default:T)→T
 λmap[T,U,E](res:Result[T,E],fn:λ(T)→U)→Result[U,E]
@@ -536,7 +536,7 @@ When generic type inference is complete:
 
 ### String Predicates
 
-```mint
+```sigil
 λstr_contains(s:𝕊,substr:𝕊)→𝔹
 λstr_starts_with(s:𝕊,prefix:𝕊)→𝔹
 λstr_ends_with(s:𝕊,suffix:𝕊)→𝔹
@@ -545,7 +545,7 @@ When generic type inference is complete:
 
 ### List Utility Functions
 
-```mint
+```sigil
 λlen[T](xs:[T])→ℤ
 λhead[T](xs:[T])→Option[T]
 λtail[T](xs:[T])→[T]
@@ -556,7 +556,7 @@ When generic type inference is complete:
 
 Predicates will integrate with the future contract system:
 
-```mint
+```sigil
 ⟦ Today - manual validation ⟧
 λbinary_search(xs:[ℤ],target:ℤ)→ℤ≡sorted_asc(xs){
   ⊥→-1|

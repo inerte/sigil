@@ -92,7 +92,7 @@ Type schemes represent polymorphic types:
 ```
 
 Example:
-```mint
+```sigil
 λidentity(x)=x
 ```
 Infers type: `∀T.λ(T)→T`
@@ -101,7 +101,7 @@ Infers type: `∀T.λ(T)→T`
 
 When binding variables with `l`, generalize free type variables:
 
-```mint
+```sigil
 l id=λx→x;
 l result=id(5);
 l result2=id("hello");
@@ -113,7 +113,7 @@ Type of `id` is generalized to `∀T.λ(T)→T`, allowing it to be used with dif
 
 When using polymorphic values, instantiate with fresh type variables:
 
-```mint
+```sigil
 l id=λx→x;
 id(5)        (* T instantiated to ℤ *)
 id("hi")     (* T instantiated to 𝕊 *)
@@ -135,7 +135,7 @@ id("hi")     (* T instantiated to 𝕊 *)
 
 ### Type Constructors
 
-```mint
+```sigil
 [T]          (* List of T *)
 {K:V}        (* Map from K to V *)
 (T₁,T₂,...) (* Tuple *)
@@ -145,7 +145,7 @@ id("hi")     (* T instantiated to 𝕊 *)
 
 ### Sum Types (Tagged Unions)
 
-```mint
+```sigil
 t Option[T]=Some(T)|None
 t Result[T,E]=Ok(T)|Err(E)
 t Color=Red|Green|Blue
@@ -166,7 +166,7 @@ Err : ∀T,E.E → Result[T,E]
 
 ### Product Types (Records)
 
-```mint
+```sigil
 t User={id:ℤ,name:𝕊,email:𝕊}
 t Point={x:ℝ,y:ℝ}
 ```
@@ -178,7 +178,7 @@ t Point={x:ℝ,y:ℝ}
 
 ### Type Aliases
 
-```mint
+```sigil
 t UserId=ℤ
 t Email=𝕊
 ```
@@ -189,12 +189,12 @@ Type aliases create synonyms, not new types (structural typing).
 
 ### Function Signatures
 
-```mint
+```sigil
 λ(T₁,T₂,...,Tₙ) → R
 ```
 
 Example:
-```mint
+```sigil
 λadd(x:ℤ,y:ℤ)→ℤ=x+y
 ```
 
@@ -204,7 +204,7 @@ Type: `λ(ℤ,ℤ)→ℤ`
 
 Functions can take functions as arguments:
 
-```mint
+```sigil
 λmap[T,U](fn:λ(T)→U,list:[T])→[U]=...
 ```
 
@@ -214,7 +214,7 @@ Type: `∀T,U.λ(λ(T)→U,[T])→[U]`
 
 Functions are **not curried** by default (unlike Haskell). Multi-argument functions take tuples implicitly:
 
-```mint
+```sigil
 λadd(x:ℤ,y:ℤ)→ℤ=x+y
 ```
 
@@ -222,7 +222,7 @@ Type is `λ(ℤ,ℤ)→ℤ`, **not** `λ(ℤ)→λ(ℤ)→ℤ`.
 
 To create curried functions explicitly:
 
-```mint
+```sigil
 λadd(x:ℤ)→λ(ℤ)→ℤ=λy→x+y
 ```
 
@@ -232,7 +232,7 @@ To create curried functions explicitly:
 
 Pattern matches must cover all possible values:
 
-```mint
+```sigil
 (* OK - exhaustive *)
 λsign(n:ℤ)→𝕊≡n{
   0→"zero"|
@@ -249,7 +249,7 @@ Pattern matches must cover all possible values:
 
 Patterns introduce bindings with inferred types:
 
-```mint
+```sigil
 ≡option{
   Some(x)→x+1|    (* x : T where option : Option[T] *)
   None→0           (* return type must match: ℤ *)
@@ -258,7 +258,7 @@ Patterns introduce bindings with inferred types:
 
 ### Type Constraints from Patterns
 
-```mint
+```sigil
 λlength[T](list:[T])→ℤ≡list{
   []→0|
   [x,.xs]→1+length(xs)
@@ -275,7 +275,7 @@ Patterns introduce bindings with inferred types:
 
 Functions can declare effects:
 
-```mint
+```sigil
 λread_file(path:𝕊)→Result[𝕊,IoError]!IO
 λfetch_url(url:𝕊)→Result[𝕊,HttpError]!Network!Async
 ```
@@ -286,7 +286,7 @@ Functions can declare effects:
 
 Functions without effect annotations are pure:
 
-```mint
+```sigil
 λadd(x:ℤ,y:ℤ)→ℤ=x+y    (* Pure, no effects *)
 ```
 
@@ -294,7 +294,7 @@ Functions without effect annotations are pure:
 
 Effects are inferred from function calls:
 
-```mint
+```sigil
 λprocess_file(path:𝕊)→Result[ℤ,Error]!IO=
   l content=read_file(path)?;    (* read_file has !IO *)
   l lines=split(content,"\n");   (* split is pure *)
@@ -305,7 +305,7 @@ Result: `process_file` has effect `!IO` (propagated from `read_file`).
 
 ### Effect Polymorphism
 
-```mint
+```sigil
 λmap[T,U,E](fn:λ(T)→U!E,list:[T])→[U]!E=...
 ```
 
@@ -323,7 +323,7 @@ Result: `process_file` has effect `!IO` (propagated from `read_file`).
 
 By default, passing values moves ownership:
 
-```mint
+```sigil
 l x=[1,2,3];
 l y=x;        (* x moved to y *)
 print(x);     (* ERROR: x was moved *)
@@ -333,7 +333,7 @@ print(x);     (* ERROR: x was moved *)
 
 Use `&` for immutable borrows, `&mut` for mutable borrows:
 
-```mint
+```sigil
 λlength[T](list:&[T])→ℤ=...    (* Borrows list, doesn't take ownership *)
 
 l x=[1,2,3];
@@ -350,7 +350,7 @@ print(x);                       (* OK, x still owned here *)
 
 Example:
 
-```mint
+```sigil
 l mut x=5;
 l y=&x;        (* Immutable borrow *)
 l z=&x;        (* OK - multiple immutable borrows *)
@@ -361,7 +361,7 @@ l w=&mut x;    (* ERROR - cannot have &mut while & exists *)
 
 Lifetimes are inferred automatically (no explicit annotation in Sigil v1.0):
 
-```mint
+```sigil
 λfirst[T](list:&[T])→Option[&T]=≡list{
   [x,..]→Some(&x)|
   []→None
@@ -411,25 +411,25 @@ unify(τ₁→τ₂, τ₃→τ₄) =
 Common type errors:
 
 1. **Type mismatch**:
-   ```mint
+   ```sigil
    λadd(x:ℤ,y:ℤ)→ℤ=x+y
    add(5,"hello")    (* ERROR: expected ℤ, got 𝕊 *)
    ```
 
 2. **Non-exhaustive pattern match**:
-   ```mint
+   ```sigil
    λunwrap[T](opt:Option[T])→T≡opt{
      Some(v)→v       (* ERROR: missing None case *)
    }
    ```
 
 3. **Occurs check failure** (infinite types):
-   ```mint
+   ```sigil
    λloop(x)=loop(x)  (* ERROR: x : α = α → β, infinite type *)
    ```
 
 4. **Effect mismatch**:
-   ```mint
+   ```sigil
    λpure_fn(x:ℤ)→ℤ=read_file("data.txt")  (* ERROR: !IO effect in pure function *)
    ```
 
@@ -437,7 +437,7 @@ Common type errors:
 
 ### Example 1: List Map
 
-```mint
+```sigil
 λmap[T,U](fn:λ(T)→U,list:[T])→[U]≡list{
   []→[]|
   [x,.xs]→[fn(x),.map(fn,xs)]
@@ -456,7 +456,7 @@ Type inference:
 
 ### Example 2: Option Binding
 
-```mint
+```sigil
 λbind[T,U](opt:Option[T],fn:λ(T)→Option[U])→Option[U]≡opt{
   Some(v)→fn(v)|
   None→None
@@ -471,7 +471,7 @@ Type inference:
 
 ### Example 3: Fibonacci with Memoization
 
-```mint
+```sigil
 t Memo={cache:{ℤ:ℤ}}
 
 λfib_memo(n:ℤ,memo:&mut Memo)→ℤ=
@@ -498,7 +498,7 @@ Types:
 
 ### Higher-Kinded Types
 
-```mint
+```sigil
 t Functor[F[_]]={
   map:∀T,U.λ(λ(T)→U,F[T])→F[U]
 }
@@ -506,7 +506,7 @@ t Functor[F[_]]={
 
 ### Dependent Types
 
-```mint
+```sigil
 t Vec[T,n:ℤ]=[T]  (* Vector of length n *)
 
 λhead[T,n:ℤ](v:Vec[T,n])→T where n>0=...
@@ -514,7 +514,7 @@ t Vec[T,n:ℤ]=[T]  (* Vector of length n *)
 
 ### Row Polymorphism
 
-```mint
+```sigil
 t User={id:ℤ,name:𝕊,..r}  (* User with at least id and name *)
 ```
 

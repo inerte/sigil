@@ -16,7 +16,7 @@ React stays idiomatic in TypeScript/JSX for UI rendering, list updates, hooks, e
 
 ```bash
 pnpm install
-pnpm mint:compile
+pnpm sigil:compile
 pnpm dev
 node ../../language/compiler/dist/cli.js test tests
 ```
@@ -24,5 +24,5 @@ node ../../language/compiler/dist/cli.js test tests
 ## Recompile Mint after changing the domain logic
 
 ```bash
-pnpm mint:compile
+pnpm sigil:compile
 ```

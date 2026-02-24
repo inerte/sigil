@@ -30,7 +30,7 @@ The question: Can we bypass Mint's tail-recursion prevention mechanisms?
 
 ### What Initially Worked
 
-```mint
+```sigil
 λfactorial(state:[ℤ])→ℤ≡state{
   [0,acc]→acc|
   [n,acc]→factorial([n-1,n*acc])
@@ -76,7 +76,7 @@ if (param.typeAnnotation && isCollectionType(param.typeAnnotation)) {
 
 ### What's Now Blocked
 
-```mint
+```sigil
 ❌ λfactorial(state:[ℤ])→ℤ=...       // List parameter
 ❌ λfactorial(state:(ℤ,ℤ))→ℤ=...     // Tuple parameter (if parser supported it)
 ❌ λfactorial(state:{ℤ:ℤ})→ℤ=...     // Map parameter

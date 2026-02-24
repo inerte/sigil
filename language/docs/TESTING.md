@@ -13,12 +13,12 @@ Sigil tests are language declarations, not a separate framework.
 
 Use canonical Mint imports and explicit exports in the source module:
 
-```mint
+```sigil
 ⟦ src/math.sigil ⟧
 export λdouble(x:ℤ)→ℤ=x*2
 ```
 
-```mint
+```sigil
 ⟦ tests/math.sigil ⟧
 i src/math
 
@@ -29,7 +29,7 @@ test "double 2" {
 
 ## Test syntax
 
-```mint
+```sigil
 test "adds numbers" {
   1+1=2
 }
@@ -42,7 +42,7 @@ test "adds numbers" {
 
 Use explicit effect annotations on tests (same model as functions):
 
-```mint
+```sigil
 test "writes log" →!IO {
   console.log("x")=()  ⟦ body still must be boolean ⟧
 }
@@ -61,13 +61,13 @@ Mocks are explicit, lexical, and automatically restored.
 
 ### `mockable` adapter function
 
-```mint
+```sigil
 mockable λfetchUser(id:ℤ)→!Network 𝕊="real"
 ```
 
 ### `with_mock`
 
-```mint
+```sigil
 test "fallback on API failure" →!Network {
   with_mock(fetchUser, λ(id:ℤ)→!Network 𝕊="ERR") {
     fetchUser(1)="ERR"

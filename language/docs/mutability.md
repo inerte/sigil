@@ -14,7 +14,7 @@ Mint uses **immutable by default** with explicit `mut` annotations for mutabilit
 
 All values are immutable unless marked `mut`:
 
-```mint
+```sigil
 λsum(list:[ℤ])→ℤ=list⊕(λ(a:ℤ,x:ℤ)→ℤ=a+x)⊕0
 ⟦ list cannot be modified ⟧
 ```
@@ -23,7 +23,7 @@ All values are immutable unless marked `mut`:
 
 Use `mut` keyword for mutable parameters:
 
-```mint
+```sigil
 λsort(list:mut [ℤ])→𝕌=quicksort_impl(list)
 ⟦ list will be modified in place ⟧
 ```
@@ -32,7 +32,7 @@ Use `mut` keyword for mutable parameters:
 
 Cannot create multiple references to mutable values:
 
-```mint
+```sigil
 ⟦ ERROR: Cannot alias mutable ⟧
 λbad(x:mut [ℤ])→𝕌≡{
   let y=x    ⟦ ERROR: Can't create alias ⟧
@@ -46,7 +46,7 @@ Cannot create multiple references to mutable values:
 
 The `mut` keyword is used when calling JavaScript functions that mutate:
 
-```mint
+```sigil
 e Array
 λsortJS(arr:mut [ℤ])→𝕌=Array.sort(arr)  ⟦ JS Array.sort mutates ⟧
 
@@ -58,7 +58,7 @@ e Array
 
 ### Valid Code
 
-```mint
+```sigil
 ⟦ Immutable list operations (canonical form) ⟧
 λdouble(list:[ℤ])→[ℤ]=list↦λ(x:ℤ)→ℤ=x*2
 
@@ -76,7 +76,7 @@ e Array
 
 ### Errors Prevented
 
-```mint
+```sigil
 ⟦ Error: Aliasing mutable ⟧
 λbad1(x:mut [ℤ])→𝕌≡{
   let y=x    ⟦ Error: Cannot create alias of mutable value 'x' ⟧
@@ -95,7 +95,7 @@ e Array
 ### Problems It Prevents
 
 **1. Accidental Mutation (FFI):**
-```mint
+```sigil
 e Array
 
 ⟦ Without mutability checking: ⟧
@@ -109,7 +109,7 @@ e Array
 ```
 
 **2. Aliasing Bugs:**
-```mint
+```sigil
 ⟦ Without mutability checking: ⟧
 λbug(x:mut [ℤ])→𝕌≡{
   let y=x
@@ -122,7 +122,7 @@ e Array
 ```
 
 **3. Unclear Intent:**
-```mint
+```sigil
 ⟦ Pure Sigil code - always immutable ⟧
 λsorted(data:[ℤ])→[ℤ]=...        ⟦ Returns new list (canonical) ⟧
 
@@ -170,7 +170,7 @@ let y = &mut data;                                 // Mutable borrow
 ```
 
 **Mint's simpler approach:**
-```mint
+```sigil
 λprocess(data:[ℤ])→ℤ=...           ⟦ Immutable by default ⟧
 λmodify(data:mut [ℤ])→𝕌=...        ⟦ Explicit mut ⟧
 ```
@@ -182,7 +182,7 @@ let y = &mut data;                                 // Mutable borrow
 Mint enforces canonical forms—one way to do each thing.
 
 **No tail-call optimization:**
-```mint
+```sigil
 ⟦ This style is BLOCKED: ⟧
 λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{
   0→acc|
@@ -224,7 +224,7 @@ Mutability Error: Cannot mutate immutable parameter 'list'
 
 Effect tracking will be added to track side effects:
 
-```mint
+```sigil
 λread()→!IO 𝕊=...                    ⟦ IO effect ⟧
 λfetch(url:𝕊)→!Network Response=... ⟦ Network effect ⟧
 ```
@@ -256,7 +256,7 @@ Mint enforces **ONE way** to write each algorithm. All list operations are immut
 
 ### Example: FFI with Mutation
 
-```mint
+```sigil
 e Array
 e console
 

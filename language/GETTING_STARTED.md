@@ -74,7 +74,7 @@ node compiler/dist/cli.js lex examples/http-handler.sigil
 ### Example 1: Fibonacci (Dense Format)
 
 **examples/fibonacci.sigil:**
-```mint
+```sigil
 λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 ```
 
@@ -86,7 +86,7 @@ node compiler/dist/cli.js lex examples/http-handler.sigil
 ### Example 2: Type Definitions
 
 **examples/types.sigil:**
-```mint
+```sigil
 t Option[T]=Some(T)|None
 t Result[T,E]=Ok(T)|Err(E)
 t User={id:ℤ,name:𝕊,email:𝕊,active:𝔹}
@@ -101,7 +101,7 @@ t User={id:ℤ,name:𝕊,email:𝕊,active:𝔹}
 ### Example 3: HTTP Handler
 
 **examples/http-handler.sigil:**
-```mint
+```sigil
 λhandle_request(req:Request)→Result[Response,Error]≡req.path{
   "/users"→get_users(req)|
   "/health"→Ok(Response{status:200,body:"OK",headers:{}})|

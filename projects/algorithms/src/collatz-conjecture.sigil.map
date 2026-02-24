@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "file": "collatz-conjecture.mint",
-  "generated_by": "mintc@0.1.0",
+  "file": "source.sigil",
+  "generated_by": "sigilc@0.1.0",
   "generated_at": "2026-02-24T01:48:13.597Z",
   "mappings": {
     "nextCollatz": {

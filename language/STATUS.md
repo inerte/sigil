@@ -269,7 +269,7 @@ Parameter roles:
 - ✅ Generates proper ES modules
 
 **Live test:**
-```mint
+```sigil
 i stdlib/numeric_predicates
 
 λmain()→𝔹=stdlib/numeric_predicates.is_positive(5)
@@ -362,7 +362,7 @@ Nothing currently in progress.
 
 ### Package Ecosystem
 
-- ⏳ **Package manager design** - mintpm specification
+- ⏳ **Package manager design** - sigilpm specification
 - ⏳ **Package registry** - Central package repository
 - ⏳ **Dependency resolution** - Version management
 - ⏳ **MCP server** - Model Context Protocol for stdlib docs

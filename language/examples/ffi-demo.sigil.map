@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "file": "ffi-demo.mint",
-  "generated_by": "mintc@0.1.0",
+  "file": "source.sigil",
+  "generated_by": "sigilc@0.1.0",
   "generated_at": "2026-02-23T21:28:31.596Z",
   "mappings": {
     "greet": {

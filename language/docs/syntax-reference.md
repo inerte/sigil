@@ -33,7 +33,7 @@ For formatting/canonical whitespace rules, see:
 
 Mint uses one comment syntax only:
 
-```mint
+```sigil
 ⟦ This is a comment ⟧
 
 λfactorial(n:ℤ)→ℤ≡n{
@@ -48,7 +48,7 @@ Mint uses one comment syntax only:
 
 ## Function declarations
 
-```mint
+```sigil
 λadd(x:ℤ,y:ℤ)→ℤ=x+y
 ```
 
@@ -61,7 +61,7 @@ Rules:
 
 Match-body form:
 
-```mint
+```sigil
 λfactorial(n:ℤ)→ℤ≡n{
   0→1|
   1→1|
@@ -73,14 +73,14 @@ Match-body form:
 
 Effects are declared between `→` and the return type:
 
-```mint
+```sigil
 λfetchUser(id:ℤ)→!Network 𝕊=axios.get("https://api.example.com/users/"+id)
 λmain()→!IO 𝕌=console.log("hello")
 ```
 
 ## Mockable function declarations (tests)
 
-```mint
+```sigil
 mockable λfetchUser(id:ℤ)→!Network 𝕊="real"
 ```
 
@@ -94,7 +94,7 @@ Only explicitly exported top-level declarations are visible to other Mint module
 
 Canonical export forms:
 
-```mint
+```sigil
 export λdouble(x:ℤ)→ℤ=x*2
 export t Todo={id:ℤ,text:𝕊,done:𝔹}
 export c VERSION:𝕊="0.1"
@@ -108,13 +108,13 @@ Notes:
 
 ## Product type (record)
 
-```mint
+```sigil
 t User={id:ℤ,name:𝕊,active:𝔹}
 ```
 
 ## Sum type (ADT)
 
-```mint
+```sigil
 t Color=Red|Green|Blue
 t Option[T]=Some(T)|None
 t Result[T,E]=Ok(T)|Err(E)
@@ -122,7 +122,7 @@ t Result[T,E]=Ok(T)|Err(E)
 
 Constructor usage:
 
-```mint
+```sigil
 Red()
 Some(42)
 Err("not found")
@@ -130,7 +130,7 @@ Err("not found")
 
 ## Constants (`c`)
 
-```mint
+```sigil
 c ANSWER:ℤ=42
 c GREETING:𝕊="hello"
 ```
@@ -141,14 +141,14 @@ c GREETING:𝕊="hello"
 
 Mint-to-Mint imports are namespace imports only.
 
-```mint
+```sigil
 i src/todo-domain
 i stdlib/list_utils
 ```
 
 Use imported members with fully qualified namespace access:
 
-```mint
+```sigil
 src/todo-domain.completedCount(todos)
 stdlib/list_utils.len([1,2,3])
 ```
@@ -165,7 +165,7 @@ Not supported:
 
 ## External module interop (`e`)
 
-```mint
+```sigil
 e console
 e fs/promises
 e react-dom/client
@@ -173,7 +173,7 @@ e react-dom/client
 
 Use with namespace member access:
 
-```mint
+```sigil
 console.log("hello")
 fs/promises.writeFile("x.txt","data")
 react-dom/client.createRoot(root)
@@ -185,7 +185,7 @@ Tests are first-class declarations and must live under `./tests`.
 
 ## Basic test
 
-```mint
+```sigil
 test "adds numbers" {
   1+1=2
 }
@@ -193,7 +193,7 @@ test "adds numbers" {
 
 ## Effectful test
 
-```mint
+```sigil
 e console
 
 test "logs" →!IO {
@@ -203,7 +203,7 @@ test "logs" →!IO {
 
 ## Mocked test
 
-```mint
+```sigil
 mockable λfetchUser(id:ℤ)→!Network 𝕊="real"
 
 test "mocked fetch" →!Network {
@@ -230,7 +230,7 @@ Boolean values:
 
 Examples:
 
-```mint
+```sigil
 42
 3.14
 "hello"
@@ -241,14 +241,14 @@ Examples:
 
 ## Variables and calls
 
-```mint
+```sigil
 add(1,2)
 factorial(n-1)
 ```
 
 ## Pattern matching (`≡`)
 
-```mint
+```sigil
 ≡value{
   pattern1→result1|
   pattern2→result2|
@@ -258,7 +258,7 @@ factorial(n-1)
 
 Examples:
 
-```mint
+```sigil
 λsign(n:ℤ)→𝕊≡n{
   0→"zero"|
   n→"non-zero"
@@ -276,7 +276,7 @@ Examples:
 
 List literals:
 
-```mint
+```sigil
 []
 [1,2,3]
 ["a","b","c"]
@@ -284,7 +284,7 @@ List literals:
 
 List patterns:
 
-```mint
+```sigil
 ≡xs{
   []→0|
   [x,.rest]→1
@@ -293,14 +293,14 @@ List patterns:
 
 Concatenation:
 
-```mint
+```sigil
 "ab"++"cd"      ⟦ string concat only ⟧
 [1,2]⧺[3,4]     ⟦ list concat only ⟧
 ```
 
 ## Records and field access
 
-```mint
+```sigil
 User{id:1,name:"A",active:⊤}
 todo.done
 todo.text
@@ -308,7 +308,7 @@ todo.text
 
 ## Indexing
 
-```mint
+```sigil
 xs[0]
 ```
 
@@ -316,7 +316,7 @@ xs[0]
 
 ## Arithmetic
 
-```mint
+```sigil
 a+b
 a-b
 a*b
@@ -326,7 +326,7 @@ a%b
 
 ## Comparison
 
-```mint
+```sigil
 a=b
 a≠b
 a<b
@@ -337,7 +337,7 @@ a≥b
 
 ## Logical
 
-```mint
+```sigil
 a∧b
 a∨b
 ¬a
@@ -347,19 +347,19 @@ a∨b
 
 Map:
 
-```mint
+```sigil
 [1,2,3]↦λ(x:ℤ)→ℤ=x*2
 ```
 
 Filter:
 
-```mint
+```sigil
 [1,2,3,4]⊳λ(x:ℤ)→𝔹=x%2=0
 ```
 
 Fold:
 
-```mint
+```sigil
 [1,2,3]⊕λ(acc:ℤ,x:ℤ)→ℤ=acc+x⊕0
 ```
 
@@ -367,14 +367,14 @@ Fold:
 
 Lambda parameters and return type annotations are required.
 
-```mint
+```sigil
 λ(x:ℤ)→ℤ=x*2
 λ(todo:Todo)→𝔹=¬todo.done
 ```
 
 Effectful lambda:
 
-```mint
+```sigil
 λ(msg:𝕊)→!IO 𝕌=console.log(msg)
 ```
 

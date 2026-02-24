@@ -13,7 +13,7 @@ This document defines the **operational semantics** of Sigil - how programs exec
 
 Mint evaluates arguments **before** passing them to functions:
 
-```mint
+```sigil
 λadd(x:ℤ,y:ℤ)→ℤ=x+y
 
 add(2+3,4+5)
@@ -27,7 +27,7 @@ add(2+3,4+5)
 
 **Left-to-right, innermost-first**:
 
-```mint
+```sigil
 f(g(x),h(y))
 // Evaluation order:
 // 1. x (if not already a value)
@@ -58,7 +58,7 @@ v ::= n                  (* integer literal *)
 
 **Non-values** (expressions that can be reduced):
 
-```mint
+```sigil
 2+3              (* Can reduce to 5 *)
 fibonacci(10)    (* Can reduce to 55 *)
 [1,2+3,4]        (* Can reduce to [1,5,4] *)
@@ -89,7 +89,7 @@ n₁ + n₂ → n₃         (where n₃ is the sum of n₁ and n₂)
 ```
 
 **Example**:
-```mint
+```sigil
 (2+3)+(4+5)
 → 5+(4+5)           (* Reduce left operand *)
 → 5+9               (* Reduce right operand *)
@@ -107,7 +107,7 @@ e₁(e₂) → e₁'(e₂)
 ```
 
 **Example**:
-```mint
+```sigil
 (λx→x+1)(2+3)
 → (λx→x+1)(5)       (* Evaluate argument *)
 → 5+1               (* Substitute 5 for x *)
@@ -125,7 +125,7 @@ l x=v;e₂ → e₂[x:=v]
 ```
 
 **Example**:
-```mint
+```sigil
 l x=2+3;x*2
 → l x=5;x*2         (* Evaluate binding *)
 → 5*2               (* Substitute *)
@@ -144,7 +144,7 @@ e → e'
 ```
 
 **Example**:
-```mint
+```sigil
 ≡2+3{0→"zero"|5→"five"|_→"other"}
 → ≡5{0→"zero"|5→"five"|_→"other"}    (* Evaluate scrutinee *)
 → "five"                              (* Match second pattern *)
@@ -163,7 +163,7 @@ e → e'
 ```
 
 **Example**:
-```mint
+```sigil
 [1,2]++[3,4]
 → [1,2++[3,4]]
 → [1,[2]++[3,4]]
@@ -182,7 +182,7 @@ e.f → e'.f
 ```
 
 **Example**:
-```mint
+```sigil
 {id:1,name:"Alice"}.name → "Alice"
 ```
 
@@ -197,7 +197,7 @@ v|>f → f(v)
 ```
 
 **Example**:
-```mint
+```sigil
 5|>λx→x*2|>λx→x+1
 → (λx→x*2)(5)|>λx→x+1
 → 10|>λx→x+1
@@ -315,7 +315,7 @@ match({f₁:p₁,...}, {f₁:v₁,...}) =       (* Record *)
 
 ### Example
 
-```mint
+```sigil
 match(Some(x), Some(5))
 = match(x, 5)
 = [x ↦ 5]
@@ -331,7 +331,7 @@ match([x,.xs], [1,2,3])
 
 Pure functions have **no observable effects**:
 
-```mint
+```sigil
 λadd(x:ℤ,y:ℤ)→ℤ=x+y
 
 // Always returns same output for same input
@@ -344,7 +344,7 @@ Pure functions have **no observable effects**:
 
 Functions with effects (`!IO`, `!Network`, etc.) have observable behavior:
 
-```mint
+```sigil
 λread_file(path:𝕊)→Result[𝕊,IoError]!IO
 
 // Different results possible for same input (file may change)
@@ -357,7 +357,7 @@ Functions with effects (`!IO`, `!Network`, etc.) have observable behavior:
 
 Effects execute in **evaluation order** (left-to-right):
 
-```mint
+```sigil
 l content1=read_file("a.txt");   (* Executes first *)
 l content2=read_file("b.txt");   (* Executes second *)
 print(content1++content2)        (* Executes third *)
@@ -367,7 +367,7 @@ print(content1++content2)        (* Executes third *)
 
 Effects cannot escape pure contexts:
 
-```mint
+```sigil
 λpure_fn(x:ℤ)→ℤ=
   read_file("data.txt")  (* ERROR: !IO effect in pure function *)
 
@@ -381,7 +381,7 @@ Effects cannot escape pure contexts:
 
 All values are **immutable** unless explicitly marked `mut`:
 
-```mint
+```sigil
 l x=5
 l y=x      (* y is a copy *)
 l x=10     (* ERROR: cannot reassign immutable binding *)
@@ -391,7 +391,7 @@ l x=10     (* ERROR: cannot reassign immutable binding *)
 
 Use `mut` for mutable bindings:
 
-```mint
+```sigil
 l mut x=5
 l x=10     (* OK: x is mutable *)
 l x=x+1    (* OK: x is now 11 *)
@@ -403,7 +403,7 @@ l x=x+1    (* OK: x is now 11 *)
 
 By default, values are **moved** (ownership transferred):
 
-```mint
+```sigil
 l x=[1,2,3]
 l y=x         (* x moved to y *)
 print(x)      (* ERROR: x was moved *)
@@ -413,7 +413,7 @@ print(x)      (* ERROR: x was moved *)
 
 Use `&` to **borrow** without taking ownership:
 
-```mint
+```sigil
 λlength[T](list:&[T])→ℤ=...
 
 l x=[1,2,3]
@@ -425,7 +425,7 @@ print(x)          (* OK: x still owned here *)
 
 Use `&mut` for mutable borrows:
 
-```mint
+```sigil
 λappend[T](list:&mut [T],item:T)→𝕌=...
 
 l mut xs=[1,2,3]
@@ -436,28 +436,28 @@ print(xs)          (* [1,2,3,4] *)
 #### Borrow Rules (Enforced by Borrow Checker)
 
 1. **Multiple immutable borrows allowed**:
-   ```mint
+   ```sigil
    l x=[1,2,3]
    l len1=length(&x)
    l len2=length(&x)  (* OK: multiple & allowed *)
    ```
 
 2. **Only one mutable borrow allowed**:
-   ```mint
+   ```sigil
    l mut x=[1,2,3]
    append(&mut x,4)
    append(&mut x,5)   (* ERROR: cannot have two &mut simultaneously *)
    ```
 
 3. **Cannot mix immutable and mutable borrows**:
-   ```mint
+   ```sigil
    l mut x=[1,2,3]
    l y=&x
    append(&mut x,4)   (* ERROR: cannot &mut while & exists *)
    ```
 
 4. **Borrows must not outlive owner**:
-   ```mint
+   ```sigil
    l y=
      l x=[1,2,3]
      &x            (* ERROR: x dropped, borrow would dangle *)
@@ -467,7 +467,7 @@ print(xs)          (* [1,2,3,4] *)
 
 Types are **erased** after compilation. At runtime, only values exist:
 
-```mint
+```sigil
 // Compile time:
 λidentity[T](x:T)→T=x
 
@@ -481,7 +481,7 @@ function identity(x) { return x; }
 
 ### Example 1: Fibonacci
 
-```mint
+```sigil
 λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 
 // Evaluate fibonacci(3):
@@ -498,7 +498,7 @@ fibonacci(3)
 
 ### Example 2: List Map
 
-```mint
+```sigil
 λmap[T,U](fn:λ(T)→U,list:[T])→[U]≡list{
   []→[]|
   [x,.xs]→[fn(x),.map(fn,xs)]
@@ -519,7 +519,7 @@ map(λn→n*2,[1,2,3])
 
 ### Example 3: Pipeline
 
-```mint
+```sigil
 [1,2,3]|>map(λx→x*2)|>filter(λx→x>2)|>reduce(0,λa,b→a+b)
 
 // Evaluate:
@@ -568,7 +568,7 @@ Where `ρ` is the environment mapping variables to values.
 
 ### Type Erasure
 
-```mint
+```sigil
 λadd(x:ℤ,y:ℤ)→ℤ=x+y
 ```
 
@@ -582,7 +582,7 @@ function add(x, y) {
 
 ### Pattern Matching
 
-```mint
+```sigil
 ≡option{Some(v)→v|None→0}
 ```
 
@@ -602,7 +602,7 @@ Compiles to:
 
 ### Pipeline Operator
 
-```mint
+```sigil
 x|>f|>g
 ```
 
@@ -636,7 +636,7 @@ g(f(x))
 **Non-theorem**: Sigil programs are **not guaranteed to terminate**.
 
 Counter-example:
-```mint
+```sigil
 λloop()→𝕌=loop()
 ```
 

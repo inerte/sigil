@@ -7,7 +7,7 @@
 i stdlib⋅list_utils
 
 ⟦ Check if list is sorted in ascending order ⟧
-λsorted_asc(xs:[ℤ])→𝔹≡xs{
+export λsorted_asc(xs:[ℤ])→𝔹≡xs{
   []→⊤|
   [_]→⊤|
   [a,.tail]→sorted_asc_check(a,tail)
@@ -22,7 +22,7 @@ i stdlib⋅list_utils
 }
 
 ⟦ Check if list is sorted in descending order ⟧
-λsorted_desc(xs:[ℤ])→𝔹≡xs{
+export λsorted_desc(xs:[ℤ])→𝔹≡xs{
   []→⊤|
   [_]→⊤|
   [a,.tail]→sorted_desc_check(a,tail)
@@ -37,27 +37,27 @@ i stdlib⋅list_utils
 }
 
 ⟦ Check if index is valid for list [0, len-1] ⟧
-λin_bounds(idx:ℤ,xs:[ℤ])→𝔹=in_bounds_helper(idx,xs)
+export λin_bounds(idx:ℤ,xs:[ℤ])→𝔹=in_bounds_helper(idx,xs)
 
 λin_bounds_helper(idx:ℤ,xs:[ℤ])→𝔹≡(idx≥0){
-  ⊤→idx<stdlib⋅list_utils.len(xs)|
+  ⊤→idx<#xs|
   ⊥→⊥
 }
 
 ⟦ Check if list is empty ⟧
-λis_empty(xs:[ℤ])→𝔹≡xs{
+export λis_empty(xs:[ℤ])→𝔹≡xs{
   []→⊤|
   _→⊥
 }
 
 ⟦ Check if list is non-empty ⟧
-λis_non_empty(xs:[ℤ])→𝔹≡xs{
+export λis_non_empty(xs:[ℤ])→𝔹≡xs{
   []→⊥|
   _→⊤
 }
 
 ⟦ Check if all elements satisfy predicate ⟧
-λall(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹≡xs{
+export λall(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹≡xs{
   []→⊤|
   [x,.rest]→≡pred(x){
     ⊤→all(pred,rest)|
@@ -66,7 +66,7 @@ i stdlib⋅list_utils
 }
 
 ⟦ Check if any element satisfies predicate ⟧
-λany(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹≡xs{
+export λany(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹≡xs{
   []→⊥|
   [x,.rest]→≡pred(x){
     ⊤→⊤|
@@ -75,7 +75,7 @@ i stdlib⋅list_utils
 }
 
 ⟦ Check if element is in list ⟧
-λcontains(item:ℤ,xs:[ℤ])→𝔹≡xs{
+export λcontains(item:ℤ,xs:[ℤ])→𝔹≡xs{
   []→⊥|
   [x,.rest]→≡(x=item){
     ⊤→⊤|

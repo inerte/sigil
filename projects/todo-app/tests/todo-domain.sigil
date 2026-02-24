@@ -1,4 +1,5 @@
 i src⋅todo-domain
+i stdlib⋅numeric_predicates
 
 t Todo={id:ℤ,text:𝕊,done:𝔹}
 
@@ -42,4 +43,9 @@ test "todo completedCount counts completed" {
 
 test "todo delete reduces length" {
   lenTodos(src⋅todo-domain.deleteTodo([Todo{id:1,text:"A",done:⊥},Todo{id:2,text:"B",done:⊥}],1))=1
+}
+
+test "todo completedCount result can use numeric predicates" {
+  l count=src⋅todo-domain.completedCount([Todo{id:1,text:"A",done:⊤},Todo{id:2,text:"B",done:⊥},Todo{id:3,text:"C",done:⊤}]);
+  stdlib⋅numeric_predicates.is_even(count)=⊤∧stdlib⋅numeric_predicates.in_range(count,0,3)=⊤
 }

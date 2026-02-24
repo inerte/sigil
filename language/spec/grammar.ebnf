@@ -24,11 +24,11 @@ TopLevelDecl = FunctionDecl
 (* IMPORTS                                                                      *)
 (* ============================================================================ *)
 
-ImportDecl = "i" , ModulePath , [ "{" , ImportList , "}" ] ;
+ImportDecl = "i" , ModulePath ;
 ModulePath = Identifier , { "⋅" , Identifier } ;
-ImportList = Identifier , { "," , Identifier } ;
 
-(* Example: i std⋅io{print,read} *)
+(* Example: i stdlib⋅list_utils *)
+(* Note: Namespace imports only - no selective imports, no aliasing *)
 
 (* ============================================================================ *)
 (* TYPE DECLARATIONS                                                            *)
@@ -301,7 +301,10 @@ EscapeSeq = "\" , ( "n" | "t" | "r" | "\" | '"' | "'" ) ;
 (* Newlines: No significance (unlike Python)                                    *)
 (* Indentation: No significance (unlike Haskell)                                *)
 
-Comment = "//" , { ? any character except newline ? } , Newline ;
+Comment = "⟦" , { ? any Unicode character except ⟧ ? } , "⟧" ;
+
+(* Note: Sigil uses ONLY ⟦ ... ⟧ for comments (multi-line, block comments)     *)
+(* No // or /* */ syntax - exactly ONE canonical comment form                   *)
 
 (* ============================================================================ *)
 (* FORMATTING RULES (ENFORCED AT PARSE TIME)                                   *)

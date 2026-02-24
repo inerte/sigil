@@ -1,0 +1,10 @@
+⟦ Test async list operations with map/filter/fold ⟧
+
+λdouble(x:ℤ)→ℤ=x*2
+λis_even(x:ℤ)→𝔹=x%2=0
+λsum(acc:ℤ,x:ℤ)→ℤ=acc+x
+
+⟦ Chain async operations: map → filter → fold ⟧
+λprocess_list(xs:[ℤ])→ℤ=xs↦double⊳is_even⊕sum⊕0
+
+λmain()→ℤ=process_list([1,2,3,4,5])

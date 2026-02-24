@@ -168,6 +168,69 @@ e console
 2. **Effectful functions must declare all effects** (compile error if missing)
 3. **Effect subtyping:** Effectful can call pure (but not vice versa)
 
+## Async-by-Default
+
+**ALL Sigil functions are async.** This is not optional.
+
+Every function compiles to `async function` in TypeScript/JavaScript.
+Every function call uses `await`.
+
+### Why Async-by-Default?
+
+- **Modern JavaScript is async-first** - Node.js fs/promises, fetch, database clients all return Promises
+- **Prevents Promise-wrapping mistakes** - FFI calls are automatically awaited
+- **Canonical forms** - ONE way to write functions (always async)
+- **Future-proof** - Ready for async-first ecosystem
+
+### Examples
+
+```sigil
+⟦ Pure function - still async ⟧
+λadd(a:ℤ,b:ℤ)→ℤ=a+b
+
+⟦ Compiles to: ⟧
+async function add(a, b) {
+  return await (a + b);
+}
+
+⟦ FFI call - automatically awaited ⟧
+e fs⋅promises
+λread(path:𝕊)→!IO 𝕊=fs⋅promises.readFile(path,"utf8")
+
+⟦ Compiles to: ⟧
+import * as fs_promises from 'fs/promises';
+async function read(path) {
+  return await fs_promises.readFile(path, "utf8");
+}
+```
+
+### Trade-offs
+
+**Performance:**
+- Slight overhead for pure functions (microseconds per call)
+- V8 heavily optimizes async/await
+- Negligible impact for I/O-bound code
+
+**Compatibility:**
+- Requires ES2022+ (top-level await)
+- Minimum Node.js 16+
+- Modern browsers only (Chrome/Firefox/Safari 2021+)
+
+**Interop:**
+- Can't call Sigil from sync JavaScript contexts
+- Sigil should be the entry point for applications
+
+### Important for AI Code Generation
+
+When generating Sigil code or semantic maps:
+
+- **Document that async overhead is intentional** - Not a performance bug
+- **Don't suggest "iterative versions"** - Sigil blocks iteration, everything is async anyway
+- **All Sigil functions return Promises** in the generated JavaScript
+- **This is a design choice**, not a limitation
+
+See [docs/ASYNC.md](./docs/ASYNC.md) for complete details.
+
 **Why effect tracking?**
 - Prevents accidental side effects (catch bugs early)
 - Documents behavior explicitly (function signature shows what it does)

@@ -551,8 +551,8 @@ if (typeof main !== 'function') {
   process.exit(1);
 }
 
-// Call main and handle the result
-const result = main();
+// Call main and handle the result (all Sigil functions are async)
+const result = await main();
 
 // If main returns a value (not Unit/undefined), show it
 if (result !== undefined) {

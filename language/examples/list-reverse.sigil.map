@@ -1,0 +1,46 @@
+{
+  "version": 1,
+  "file": "list-reverse.sigil",
+  "generated_by": "sigilc@0.1.0",
+  "generated_at": "2026-02-24T18:03:32.584Z",
+  "mappings": {
+    "reverse": {
+      "range": [
+        0,
+        63
+      ],
+      "summary": "Function: reverse",
+      "explanation": "Function with 1 parameter(s), returns [ℤ]",
+      "type": "λ([ℤ])→[ℤ]"
+    },
+    "reverse_arm_0": {
+      "range": [
+        29,
+        34
+      ],
+      "summary": "Match arm: []",
+      "explanation": "Pattern matches []"
+    },
+    "reverse_arm_1": {
+      "range": [
+        38,
+        61
+      ],
+      "summary": "Match arm: [x]",
+      "explanation": "Pattern matches [x]"
+    },
+    "main": {
+      "range": [
+        65,
+        97
+      ],
+      "summary": "Function: main",
+      "explanation": "Function with 0 parameter(s), returns [ℤ]",
+      "type": "λ()→[ℤ]"
+    }
+  },
+  "metadata": {
+    "category": "unknown",
+    "tested": false
+  }
+}

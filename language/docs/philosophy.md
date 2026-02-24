@@ -83,6 +83,50 @@ Legitimate multi-parameter algorithms like GCD, binary search, and nth element h
 
 This makes Sigil **more principled** (precise distinction) while **more practical** (enables O(log n) algorithms) - a rare win-win.
 
+#### Async-by-Default: The Ultimate Canonical Form
+
+**"ALL functions are async. No exceptions."**
+
+In 2026, modern JavaScript is async-first:
+- Node.js fs/promises (not fs)
+- fetch() API (browsers and Node.js)
+- Database clients return Promises
+- Most npm packages are async
+
+Yet developers still choose between sync and async implementations, creating:
+- Two ways to write every function
+- Mental overhead switching between modes
+- API surface duplication (readFileSync vs readFile)
+- Integration friction (mixing sync/async code)
+
+**Sigil's solution:** Make async the ONLY option.
+
+```sigil
+⟦ Pure function - async ⟧
+λadd(a:ℤ,b:ℤ)→ℤ=a+b
+
+⟦ I/O function - async ⟧
+e fs⋅promises
+λread(path:𝕊)→!IO 𝕊=fs⋅promises.readFile(path,"utf8")
+```
+
+Both compile to `async function`. ALL calls use `await`. No choice, no ambiguity.
+
+**Benefits:**
+- **Canonical forms preserved** - ONE way to write functions
+- **FFI just works** - Promise-returning APIs automatically awaited
+- **Future-proof** - Ecosystem moving toward async-first anyway
+- **No mental overhead** - Never decide "should this be async?"
+
+**Trade-offs:**
+- Slight performance overhead on pure functions (~microseconds)
+- Requires ES2022+ (top-level await)
+- Can't call from sync contexts (acceptable - Sigil is the entry point)
+
+**Design philosophy:** Correctness and simplicity over micro-optimization. Having two function types would violate canonical forms for marginal performance gains.
+
+See [docs/ASYNC.md](./ASYNC.md) for complete rationale.
+
 ### 2. Token Efficiency
 
 **"Every character carries maximum information density"**

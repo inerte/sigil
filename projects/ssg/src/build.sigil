@@ -1,0 +1,13 @@
+⟦ Static Site Generator - Demonstrates async I/O with Sigil ⟧
+
+e fs⋅promises
+e console
+
+⟦ Read all files from a directory ⟧
+λread_dir(dir:𝕊)→!IO [𝕊]=fs⋅promises.readdir(dir)
+
+⟦ Count files in directory ⟧
+λcount_files(dir:𝕊)→!IO ℤ=read_dir(dir)⊕(λ(acc:ℤ,f:𝕊)→ℤ=acc+1)⊕0
+
+⟦ Main entry point - count content files ⟧
+λmain()→!IO ℤ=count_files("content")

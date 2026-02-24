@@ -87,8 +87,9 @@ Compiles to:
 ```ts
 import * as fs_promises from 'fs/promises';
 
-export function main() {
-  return fs_promises.readFile("file.txt", "utf-8");
+export async function main() {
+  return await __sigil_call("extern:fs/promises.readFile",
+    fs_promises.readFile, ["file.txt", "utf-8"]);
 }
 ```
 
@@ -142,13 +143,36 @@ Member validation is **structural** (does it exist?) not type-based.
 
 Future: Optional type declarations for better safety.
 
-## Promises and Async
+## Async Behavior
 
-FFI calls return whatever the external runtime returns, including Promises for JS/TS modules.
+**ALL Sigil functions are async**, including FFI calls. This means Promise-returning FFI calls are automatically awaited:
 
-Currently no `await` support (prints `Promise { <pending> }`).
+```sigil
+e fs⋅promises
 
-Future feature: `async` functions and `await` expressions.
+λread_file(path:𝕊)→!IO 𝕊=fs⋅promises.readFile(path,"utf8")
+
+λmain()→!IO 𝕊=read_file("data.txt")
+```
+
+Compiles to:
+
+```typescript
+import * as fs_promises from 'fs/promises';
+
+async function read_file(path) {
+  return await __sigil_call("extern:fs/promises.readFile",
+    fs_promises.readFile, [path, "utf8"]);
+}
+
+export async function main() {
+  return await read_file("data.txt");
+}
+```
+
+**No Promise wrapping needed** - it just works! The `await` is added automatically by the compiler.
+
+See [ASYNC.md](./ASYNC.md) for complete details on Sigil's async-by-default design.
 
 ## Canonical Form
 
@@ -238,7 +262,6 @@ Why keep a separate bridge?
 
 ## Future Extensions
 
-- Async/await for Promise handling
 - Type annotations for FFI declarations
 - Method chaining syntax
 - Class/object interop

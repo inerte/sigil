@@ -89,7 +89,7 @@ export class JavaScriptGenerator {
     const implName = func.isMockable ? `__sigil_impl_${func.name}` : func.name;
 
     const shouldExport = func.isExported || func.name === 'main';
-    const fnKeyword = shouldExport ? 'export function' : 'function';
+    const fnKeyword = shouldExport ? 'export async function' : 'async function';
     this.emit(`${fnKeyword} ${implName}(${params}) {`);
     this.indent++;
 
@@ -102,10 +102,10 @@ export class JavaScriptGenerator {
 
     if (func.isMockable) {
       const key = this.mockKeyForFunction(func.name);
-      const wrapperKeyword = shouldExport ? 'export function' : 'function';
+      const wrapperKeyword = shouldExport ? 'export async function' : 'async function';
       this.emit(`${wrapperKeyword} ${func.name}(${params}) {`);
       this.indent++;
-      this.emit(`return __sigil_call("${key}", ${implName}, [${params}]);`);
+      this.emit(`return await __sigil_call("${key}", ${implName}, [${params}]);`);
       this.indent--;
       this.emit('}');
     } else {
@@ -124,7 +124,7 @@ export class JavaScriptGenerator {
         const paramNames = variant.types.map((_, i) => `_${i}`);
         const params = paramNames.join(', ');
 
-        const ctorKeyword = decl.isExported ? 'export function' : 'function';
+        const ctorKeyword = decl.isExported ? 'export async function' : 'async function';
         this.emit(`${ctorKeyword} ${variant.name}(${params}) {`);
         this.indent++;
         this.emit(`return { __tag: "${variant.name}", __fields: [${params}] };`);
@@ -176,7 +176,7 @@ export class JavaScriptGenerator {
   private generateTest(test: AST.TestDecl): void {
     const fnName = `test_${this.sanitizeName(test.description)}`;
     this.emit(`// Test: ${test.description}`);
-    this.emit(`export function ${fnName}() {`);
+    this.emit(`export async function ${fnName}() {`);
     this.indent++;
     const bodyCode = this.generateTestBodyResult(test.body);
     this.emit(`return ${bodyCode};`);
@@ -247,7 +247,7 @@ export class JavaScriptGenerator {
   private generateLambda(lambda: AST.LambdaExpr): string {
     const params = lambda.params.map(p => p.name).join(', ');
     const body = this.generateExpression(lambda.body);
-    return `((${params}) => ${body})`;
+    return `(async (${params}) => ${body})`;
   }
 
   private generateApplication(app: AST.ApplicationExpr): string {
@@ -255,15 +255,15 @@ export class JavaScriptGenerator {
     if (app.func.type === 'MemberAccessExpr') {
       const func = this.generateMemberAccess(app.func);
       const key = this.mockKeyForExtern(app.func);
-      return `__sigil_call(${JSON.stringify(key)}, ${func}, [${args}])`;
+      return `await __sigil_call(${JSON.stringify(key)}, ${func}, [${args}])`;
     }
     if (app.func.type === 'IdentifierExpr' && this.mockableFunctions.has(app.func.name)) {
       const func = this.generateExpression(app.func);
       const key = this.mockKeyForFunction(app.func.name);
-      return `__sigil_call(${JSON.stringify(key)}, ${func}, [${args}])`;
+      return `await __sigil_call(${JSON.stringify(key)}, ${func}, [${args}])`;
     }
     const func = this.generateExpression(app.func);
-    return `${func}(${args})`;
+    return `await ${func}(${args})`;
   }
 
   private generateBinary(binary: AST.BinaryExpr): string {
@@ -304,14 +304,14 @@ export class JavaScriptGenerator {
   }
 
   private generateMatch(match: AST.MatchExpr): string {
-    // Generate an IIFE that implements pattern matching
+    // Generate an async IIFE that implements pattern matching
     const scrutinee = this.generateExpression(match.scrutinee);
 
     // For now, implement simple pattern matching
     // This could be optimized later
     const lines: string[] = [];
-    lines.push(`(() => {`);
-    lines.push(`  const __match = ${scrutinee};`);
+    lines.push(`(async () => {`);
+    lines.push(`  const __match = await ${scrutinee};`);
 
     for (let i = 0; i < match.arms.length; i++) {
       const arm = match.arms[i];
@@ -425,13 +425,13 @@ export class JavaScriptGenerator {
   }
 
   private generateLet(letExpr: AST.LetExpr): string {
-    // Generate IIFE for let binding
+    // Generate async IIFE for let binding
     const value = this.generateExpression(letExpr.value);
     const body = this.generateExpression(letExpr.body);
     const bindings = this.generatePatternBindings(letExpr.pattern, '__value');
 
-    return `(() => {
-  const __value = ${value};
+    return `(async () => {
+  const __value = await ${value};
   ${bindings || ''}
   return ${body};
 })()`;
@@ -512,9 +512,9 @@ export class JavaScriptGenerator {
     const key = this.mockKeyForTarget(expr.target);
     if (expr.target.type === 'MemberAccessExpr') {
       const actualFn = this.generateMemberAccess(expr.target);
-      return `__sigil_with_mock_extern(${JSON.stringify(key)}, ${actualFn}, ${replacement}, () => ${body})`;
+      return `await __sigil_with_mock_extern(${JSON.stringify(key)}, ${actualFn}, ${replacement}, async () => ${body})`;
     }
-    return `__sigil_with_mock(${JSON.stringify(key)}, ${replacement}, () => ${body})`;
+    return `await __sigil_with_mock(${JSON.stringify(key)}, ${replacement}, async () => ${body})`;
   }
 
   private generateIndex(index: AST.IndexExpr): string {
@@ -529,17 +529,17 @@ export class JavaScriptGenerator {
 
     // |> is function application: x |> f  becomes  f(x)
     if (pipeline.operator === '|>') {
-      return `${right}(${left})`;
+      return `await ${right}(await ${left})`;
     }
 
     // >> is function composition: f >> g  becomes  (x) => g(f(x))
     if (pipeline.operator === '>>') {
-      return `((x) => ${right}(${left}(x)))`;
+      return `(async (x) => await ${right}(await ${left}(x)))`;
     }
 
     // << is reverse composition: f << g  becomes  (x) => f(g(x))
     if (pipeline.operator === '<<') {
-      return `((x) => ${left}(${right}(x)))`;
+      return `(async (x) => await ${left}(await ${right}(x)))`;
     }
 
     return `${left} ${pipeline.operator} ${right}`;
@@ -548,20 +548,20 @@ export class JavaScriptGenerator {
   private generateMap(map: AST.MapExpr): string {
     const list = this.generateExpression(map.list);
     const fn = this.generateExpression(map.fn);
-    return `${list}.map(${fn})`;
+    return `await Promise.all((await ${list}).map(${fn}))`;
   }
 
   private generateFilter(filter: AST.FilterExpr): string {
     const list = this.generateExpression(filter.list);
     const predicate = this.generateExpression(filter.predicate);
-    return `${list}.filter(${predicate})`;
+    return `(await Promise.all((await ${list}).map(async (x) => ({ x, keep: await ${predicate}(x) })))).filter(({ keep }) => keep).map(({ x }) => x)`;
   }
 
   private generateFold(fold: AST.FoldExpr): string {
     const list = this.generateExpression(fold.list);
     const fn = this.generateExpression(fold.fn);
     const init = this.generateExpression(fold.init);
-    return `${list}.reduce(${fn}, ${init})`;
+    return `(await ${list}).reduce(async (accPromise, x) => await ${fn}(await accPromise, x), await ${init})`;
   }
 
   private emit(code: string): void {
@@ -619,15 +619,16 @@ export class JavaScriptGenerator {
     this.emit(`return null;`);
     this.indent--;
     this.emit(`}`);
-    this.emit(`function __sigil_test_bool_result(ok) {`);
+    this.emit(`async function __sigil_test_bool_result(ok) {`);
     this.indent++;
-    this.emit(`return ok === true ? { ok: true } : { ok: false, failure: { kind: 'assert_false', message: 'Test body evaluated to ⊥' } };`);
+    this.emit(`const result = await ok;`);
+    this.emit(`return result === true ? { ok: true } : { ok: false, failure: { kind: 'assert_false', message: 'Test body evaluated to ⊥' } };`);
     this.indent--;
     this.emit(`}`);
-    this.emit(`function __sigil_test_compare_result(op, leftFn, rightFn) {`);
+    this.emit(`async function __sigil_test_compare_result(op, leftFn, rightFn) {`);
     this.indent++;
-    this.emit(`const actual = leftFn();`);
-    this.emit(`const expected = rightFn();`);
+    this.emit(`const actual = await leftFn();`);
+    this.emit(`const expected = await rightFn();`);
     this.emit(`let ok = false;`);
     this.emit(`switch (op) {`);
     this.indent++;
@@ -644,21 +645,21 @@ export class JavaScriptGenerator {
     this.emit(`return { ok: false, failure: { kind: 'comparison_mismatch', message: 'Comparison test failed', operator: op, actual: __sigil_preview(actual), expected: __sigil_preview(expected), diffHint: __sigil_diff_hint(actual, expected) } };`);
     this.indent--;
     this.emit(`}`);
-    this.emit(`function __sigil_call(key, actualFn, args) {`);
+    this.emit(`async function __sigil_call(key, actualFn, args) {`);
     this.indent++;
     this.emit(`const mockFn = __sigil_mocks.get(key);`);
     this.emit(`const fn = mockFn ?? actualFn;`);
-    this.emit(`return fn(...args);`);
+    this.emit(`return await fn(...args);`);
     this.indent--;
     this.emit(`}`);
-    this.emit(`function __sigil_with_mock(key, mockFn, body) {`);
+    this.emit(`async function __sigil_with_mock(key, mockFn, body) {`);
     this.indent++;
     this.emit(`const had = __sigil_mocks.has(key);`);
     this.emit(`const prev = __sigil_mocks.get(key);`);
     this.emit(`__sigil_mocks.set(key, mockFn);`);
     this.emit(`try {`);
     this.indent++;
-    this.emit(`return body();`);
+    this.emit(`return await body();`);
     this.indent--;
     this.emit(`} finally {`);
     this.indent++;
@@ -667,12 +668,12 @@ export class JavaScriptGenerator {
     this.emit(`}`);
     this.indent--;
     this.emit(`}`);
-    this.emit(`function __sigil_with_mock_extern(key, actualFn, mockFn, body) {`);
+    this.emit(`async function __sigil_with_mock_extern(key, actualFn, mockFn, body) {`);
     this.indent++;
     this.emit(`if (typeof actualFn !== 'function') { throw new Error('with_mock extern target is not callable'); }`);
     this.emit(`if (typeof mockFn !== 'function') { throw new Error('with_mock replacement must be callable'); }`);
     this.emit(`if (actualFn.length !== mockFn.length) { throw new Error(\`with_mock extern arity mismatch for \${key}: expected \${actualFn.length}, got \${mockFn.length}\`); }`);
-    this.emit(`return __sigil_with_mock(key, mockFn, body);`);
+    this.emit(`return await __sigil_with_mock(key, mockFn, body);`);
     this.indent--;
     this.emit(`}`);
   }
@@ -681,10 +682,10 @@ export class JavaScriptGenerator {
     if (expr.type === 'BinaryExpr' && ['=', '≠', '<', '>', '≤', '≥'].includes(expr.operator)) {
       const left = this.generateExpression(expr.left);
       const right = this.generateExpression(expr.right);
-      return `__sigil_test_compare_result(${JSON.stringify(expr.operator)}, () => ${left}, () => ${right})`;
+      return `await __sigil_test_compare_result(${JSON.stringify(expr.operator)}, async () => ${left}, async () => ${right})`;
     }
     const body = this.generateExpression(expr);
-    return `__sigil_test_bool_result(${body})`;
+    return `await __sigil_test_bool_result(${body})`;
   }
 
   private generateAssertionMetadata(expr: AST.Expr): string {

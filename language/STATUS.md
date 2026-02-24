@@ -1,10 +1,60 @@
 # Sigil Programming Language - Implementation Status
 
-**Last Updated:** 2026-02-23 (Major audit - reflects actual implementation)
+**Last Updated:** 2026-02-24 (Async-by-default implementation)
 
 ## Project Overview
 
 Sigil is a machine-first programming language optimized for AI code generation. This document tracks the implementation progress of the proof-of-concept compiler and tooling.
+
+## Recent Changes (2026-02-24)
+
+### ✅ Async-by-Default Implementation
+
+**ALL Sigil functions are now async.** This fundamental change aligns with Sigil's canonical forms philosophy and modern JavaScript practices.
+
+#### What Changed
+
+- **Code Generator**: Every function emits as `async function`
+- **Function Calls**: Every call uses `await`
+- **Lambdas**: All lambda expressions are async
+- **List Operations**: Map/filter use `Promise.all` for parallelism
+- **Mock Runtime**: Test helpers are async-aware
+- **Test Runner**: Properly handles async test functions
+- **FFI**: External calls are automatically awaited
+
+#### Generated Code Example
+
+```sigil
+λadd(a:ℤ,b:ℤ)→ℤ=a+b
+λmain()→ℤ=add(1,2)
+```
+
+Compiles to:
+
+```typescript
+async function add(a, b) {
+  return (a + b);
+}
+
+export async function main() {
+  return await add(1, 2);
+}
+```
+
+#### Why This Matters
+
+- **FFI Just Works**: Node.js `fs/promises`, `fetch`, and other Promise-based APIs are automatically awaited
+- **Canonical Forms Preserved**: ONE way to write functions (always async)
+- **Future-Proof**: Aligns with ES2022+ top-level await and async-first JavaScript ecosystem
+- **No Mental Overhead**: Never decide "should this be async?"
+
+#### Impact
+
+- **Compatibility**: Requires ES2022+ (Node.js 16+, modern browsers)
+- **Performance**: Minimal overhead for pure functions (microseconds per call)
+- **Interop**: Sigil should be the entry point; can't call from sync JavaScript contexts
+
+See [docs/ASYNC.md](./docs/ASYNC.md) for complete details.
 
 ## Completed ✅
 
@@ -132,19 +182,26 @@ $ node compiler/dist/cli.js run factorial.sigil
 **Verified working:**
 ```javascript
 // Generated from factorial.sigil:
-export function factorial(n) {
-  return (() => {
-  const __match = n;
-  if (__match === 0) { return 1; }
-  else if (__match === 1) { return 1; }
-  else if (true) {
-    const n = __match;
-    return (n * factorial((n - 1)));
-  }
-  throw new Error('Match failed: no pattern matched');
-})();
+export async function factorial(n) {
+  return (async () => {
+    const __match = await n;
+    if (__match === 0) { return 1; }
+    else if (__match === 1) { return 1; }
+    else if (true) {
+      const n = __match;
+      return (n * (await factorial((n - 1))));
+    }
+    throw new Error('Match failed: no pattern matched');
+  })();
 }
 ```
+
+**Key Features:**
+- ✅ All functions are `async function`
+- ✅ All function calls use `await`
+- ✅ All lambdas are async
+- ✅ List operations use `Promise.all` for parallel execution
+- ✅ FFI calls automatically awaited
 
 **Not yet implemented:**
 - ⏳ JavaScript source maps (.js.map) - Generates code but no source maps

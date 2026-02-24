@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "file": "effect-demo.sigil",
+  "generated_by": "sigilc@0.1.0",
+  "generated_at": "2026-02-24T17:25:52.508Z",
+  "mappings": {
+    "add": {
+      "range": [
+        402,
+        421
+      ],
+      "summary": "Function: add",
+      "explanation": "Function with 2 parameter(s), returns ℤ",
+      "type": "λ(ℤ,ℤ)→ℤ"
+    },
+    "double": {
+      "range": [
+        447,
+        465
+      ],
+      "summary": "Function: double",
+      "explanation": "Function with 1 parameter(s), returns ℤ",
+      "type": "λ(ℤ)→ℤ"
+    },
+    "computeSum": {
+      "range": [
+        516,
+        547
+      ],
+      "summary": "Function: computeSum",
+      "explanation": "Function with 2 parameter(s), returns ℤ",
+      "type": "λ(ℤ,ℤ)→ℤ"
+    },
+    "log": {
+      "range": [
+        755,
+        789
+      ],
+      "summary": "Function: log",
+      "explanation": "Function with 1 parameter(s), returns 𝕌",
+      "type": "λ(𝕊)→𝕌"
+    },
+    "logValue": {
+      "range": [
+        822,
+        857
+      ],
+      "summary": "Function: logValue",
+      "explanation": "Function with 1 parameter(s), returns 𝕌",
+      "type": "λ(ℤ)→𝕌"
+    },
+    "fetchData": {
+      "range": [
+        1064,
+        1102
+      ],
+      "summary": "Function: fetchData",
+      "explanation": "Function with 0 parameter(s), returns 𝕊",
+      "type": "λ()→𝕊"
+    },
+    "processAndLog": {
+      "range": [
+        1143,
+        1191
+      ],
+      "summary": "Function: processAndLog",
+      "explanation": "Function with 0 parameter(s), returns 𝕌",
+      "type": "λ()→𝕌"
+    },
+    "logDoubled": {
+      "range": [
+        1417,
+        1459
+      ],
+      "summary": "Function: logDoubled",
+      "explanation": "Function with 1 parameter(s), returns 𝕌",
+      "type": "λ(ℤ)→𝕌"
+    },
+    "main": {
+      "range": [
+        1496,
+        1534
+      ],
+      "summary": "Function: main",
+      "explanation": "Function with 0 parameter(s), returns 𝕌",
+      "type": "λ()→𝕌"
+    }
+  },
+  "metadata": {
+    "category": "unknown",
+    "tested": false
+  }
+}

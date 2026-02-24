@@ -1,7 +1,7 @@
 ⟦ List Utility Functions
 
    Standard utility functions for list operations.
-   Part of Mint standard library - canonical implementations only.
+   Part of Sigil standard library - canonical implementations only.
 ⟧
 
 ⟦ Get length of list ⟧

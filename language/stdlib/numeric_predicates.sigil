@@ -1,7 +1,7 @@
 ⟦ Numeric Range Predicates
 
    Standard predicates for numeric validation and range checking.
-   Part of Mint standard library - canonical implementations only.
+   Part of Sigil standard library - canonical implementations only.
 ⟧
 
 ⟦ Check if value is positive ⟧

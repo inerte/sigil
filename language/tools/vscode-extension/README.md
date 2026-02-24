@@ -147,7 +147,7 @@ Ensure your editor font supports Unicode characters. Recommended fonts:
 ## Development
 
 See the main Sigil repository for development instructions:
-https://github.com/sigil-lang/mint
+https://github.com/inerte/sigil
 
 ### Building from source
 
@@ -162,7 +162,7 @@ pnpm package  # Creates .vsix file
 
 ### 0.1.0 (Initial Release)
 
-- ✅ Syntax highlighting for Mint
+- ✅ Syntax highlighting for Sigil
 - ✅ Real-time diagnostics (syntax, type, canonical, mutability)
 - ✅ Hover tooltips with AI-generated documentation
 - ✅ Unicode symbol completions
@@ -171,9 +171,9 @@ pnpm package  # Creates .vsix file
 
 ## More Information
 
-- [Mint Language Website](https://github.com/sigil-lang/mint)
-- [Language Specification](https://github.com/sigil-lang/mint/tree/main/spec)
-- [Examples](https://github.com/sigil-lang/mint/tree/main/examples)
+- [Sigil Language Website](https://github.com/inerte/sigil)
+- [Language Specification](https://github.com/inerte/sigil/tree/main/language/spec)
+- [Examples](https://github.com/inerte/sigil/tree/main/language/examples)
 
 ## License
 

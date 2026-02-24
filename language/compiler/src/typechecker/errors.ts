@@ -85,7 +85,7 @@ export function formatType(type: InferenceType): string {
       const params = type.params.map(formatType).join(', ');
       const ret = formatType(type.returnType);
 
-      // Use Mint syntax: λ(T1, T2) → R
+      // Use Sigil syntax: λ(T1, T2) → R
       if (type.params.length === 0) {
         return `λ() → ${ret}`;
       }

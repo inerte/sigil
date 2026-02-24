@@ -1,7 +1,7 @@
 /**
  * Surface Form Validator
  *
- * Enforces canonical surface forms (formatting) for Mint programs.
+ * Enforces canonical surface forms (formatting) for Sigil programs.
  *
  * Mint's philosophy: **byte-for-byte reproducibility**.
  * Every program has exactly ONE valid textual representation.

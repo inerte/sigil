@@ -1,5 +1,5 @@
 /**
- * Token types for Mint language lexer
+ * Token types for Sigil language lexer
  */
 export enum TokenType {
   // Literals

@@ -1,5 +1,5 @@
 /**
- * Mint Mutability Checker - Error Types
+ * Sigil Mutability Checker - Error Types
  *
  * Error classes for mutability violations
  */

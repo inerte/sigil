@@ -1,4 +1,4 @@
-⟦ Mint Standard Library - Option Type
+⟦ Sigil Standard Library - Option Type
 
 The Option type represents an optional value: every Option is either Some and
 contains a value, or None, and does not.

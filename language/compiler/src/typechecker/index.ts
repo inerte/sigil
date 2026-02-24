@@ -1,7 +1,7 @@
 /**
  * Sigil Type Checker - Public API (Bidirectional)
  *
- * Main entry point for type checking Mint programs
+ * Main entry point for type checking Sigil programs
  */
 
 import * as AST from '../parser/ast.js';

@@ -5,7 +5,7 @@
  * - Synthesis (⇒): Infer type from expression structure (bottom-up)
  * - Checking (⇐): Verify expression matches expected type (top-down)
  *
- * This is simpler than Hindley-Milner because Mint requires mandatory
+ * This is simpler than Hindley-Milner because Sigil requires mandatory
  * type annotations everywhere, making the inference burden much lighter.
  */
 
@@ -317,7 +317,7 @@ function synthesizeWithMock(env: TypeEnvironment, expr: AST.WithMockExpr): Infer
 
   if (externTarget && replacementType.kind === 'any') {
     throw new TypeError(
-      'with_mock on extern members requires an explicitly typed Mint replacement function (e.g., a λ with annotations), not an untyped extern/any value',
+      'with_mock on extern members requires an explicitly typed Sigil replacement function (e.g., a λ with annotations), not an untyped extern/any value',
       expr.replacement.location
     );
   }

@@ -1,5 +1,5 @@
 /**
- * Mint Mutability Checker - Tracking
+ * Sigil Mutability Checker - Tracking
  *
  * Tracks mutability state and prevents invalid mutations
  */

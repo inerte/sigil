@@ -612,7 +612,7 @@ async function runGeneratedTestModule(moduleFile: string, matchText: string | nu
     `for (const t of selected) {\n` +
     `  const start = Date.now();\n` +
     `  try {\n` +
-    `    const freshMod = await import(moduleUrl + '?mint_test=' + encodeURIComponent(String(t.id)) + '&ts=' + Date.now() + '_' + Math.random());\n` +
+    `    const freshMod = await import(moduleUrl + '?sigil_test=' + encodeURIComponent(String(t.id)) + '&ts=' + Date.now() + '_' + Math.random());\n` +
     `    const freshTests = Array.isArray(freshMod.__sigil_tests) ? freshMod.__sigil_tests : [];\n` +
     `    const freshTest = freshTests.find((x) => x.id === t.id);\n` +
     `    if (!freshTest) { throw new Error('Test not found in isolated module reload: ' + String(t.id)); }\n` +

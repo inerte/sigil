@@ -1,7 +1,7 @@
 ⟦ List Validation Predicates
 
    Standard predicates for list validation and checking.
-   Part of Mint standard library - canonical implementations only.
+   Part of Sigil standard library - canonical implementations only.
 ⟧
 
 i stdlib/list_utils

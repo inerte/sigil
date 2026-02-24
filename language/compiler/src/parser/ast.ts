@@ -1,7 +1,7 @@
 /**
- * Mint Programming Language - Abstract Syntax Tree (AST) Definitions
+ * Sigil Programming Language - Abstract Syntax Tree (AST) Definitions
  *
- * This file defines the AST node types that represent parsed Mint programs.
+ * This file defines the AST node types that represent parsed Sigil programs.
  * The AST is the intermediate representation between lexing and type checking.
  */
 

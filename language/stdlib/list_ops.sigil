@@ -1,7 +1,7 @@
 ⟦
-  Mint Standard Library - List Operations
+  Sigil Standard Library - List Operations
 
-  Pure Mint implementations using pattern matching and recursion.
+  Pure Sigil implementations using pattern matching and recursion.
   Builds on language primitives: ↦ (map), ⊳ (filter), ⊕ (fold)
 ⟧
 

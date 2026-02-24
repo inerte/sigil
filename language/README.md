@@ -372,7 +372,7 @@ sigilc compile src/main.sigil --output dist/main.ts
 sigilc map generate src/**/*.sigil
 
 # Run REPL
-mint
+sigil
 ```
 
 ## Documentation

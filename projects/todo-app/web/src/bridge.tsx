@@ -1,11 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import * as mintRaw from './generated/todo-domain';
+import * as sigilRaw from './generated/todo-domain';
 
 type Todo = { id: number; text: string; done: boolean };
 type Filter = 'all' | 'active' | 'completed';
 
-type MintDomain = {
+type SigilDomain = {
   canAdd: (text: string) => boolean;
   addTodo: (todos: Todo[], id: number, text: string) => Todo[];
   toggleTodo: (todos: Todo[], targetId: number) => Todo[];

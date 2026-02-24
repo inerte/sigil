@@ -1,5 +1,5 @@
 /**
- * Mint Mutability Checker
+ * Sigil Mutability Checker
  *
  * Public API for mutability checking
  */

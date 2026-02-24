@@ -1,7 +1,7 @@
 ⟦
   Effect Tracking Demo
 
-  Demonstrates Mint's compile-time effect tracking system.
+  Demonstrates Sigil's compile-time effect tracking system.
   Effects prevent accidental side effects by requiring explicit declarations.
 ⟧
 

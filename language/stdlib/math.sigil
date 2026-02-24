@@ -1,8 +1,8 @@
 ⟦
-  Mint Standard Library - Math Operations
+  Sigil Standard Library - Math Operations
 
-  Pure Mint implementations - canonical recursive forms.
-  NO FFI - demonstrates what Mint can do natively.
+  Pure Sigil implementations - canonical recursive forms.
+  NO FFI - demonstrates what Sigil can do natively.
 ⟧
 
 ⟦ ========================================================================

@@ -1,4 +1,4 @@
-⟦ Mint Standard Library - Result Type
+⟦ Sigil Standard Library - Result Type
 
 The Result type represents the result of a computation that may fail.
 Every Result is either:

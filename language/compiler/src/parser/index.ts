@@ -1,5 +1,5 @@
 /**
- * Mint Programming Language - Parser Module
+ * Sigil Programming Language - Parser Module
  *
  * Exports the parser and AST types for use by other compiler phases.
  */

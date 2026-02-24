@@ -1,5 +1,5 @@
 /**
- * Mint Programming Language - Parser (Stub Implementation)
+ * Sigil Programming Language - Parser (Stub Implementation)
  *
  * This is a minimal parser stub that compiles successfully.
  * Full parser implementation coming soon.

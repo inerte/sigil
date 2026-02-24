@@ -1,5 +1,5 @@
 ⟦
-  Mint Standard Library - I/O Operations
+  Sigil Standard Library - I/O Operations
 
   File system and console I/O using Node.js FFI.
   All functions have !IO effect annotation.

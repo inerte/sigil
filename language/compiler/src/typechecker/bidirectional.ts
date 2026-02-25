@@ -116,6 +116,10 @@ function check(env: TypeEnvironment, expr: AST.Expr, expectedType: InferenceType
       checkList(env, expr, expectedType);
       return;
 
+    case 'RecordExpr':
+      checkRecord(env, expr, expectedType);
+      return;
+
     case 'WithMockExpr':
       checkWithMock(env, expr, expectedType);
       return;
@@ -176,6 +180,37 @@ function checkList(env: TypeEnvironment, expr: AST.ListExpr, expectedType: Infer
 
   for (const elem of expr.elements) {
     check(env, elem, expectedType.elementType);
+  }
+}
+
+function checkRecord(env: TypeEnvironment, expr: AST.RecordExpr, expectedType: InferenceType): void {
+  if (expectedType.kind !== 'record') {
+    throw new TypeError(
+      `Type mismatch: expected ${formatType(expectedType)}, got record`,
+      expr.location
+    );
+  }
+
+  // Check each field against the expected field type
+  for (const field of expr.fields) {
+    const expectedFieldType = expectedType.fields.get(field.name);
+    if (!expectedFieldType) {
+      throw new TypeError(
+        `Record field "${field.name}" not found in expected type ${formatType(expectedType)}`,
+        field.location
+      );
+    }
+    check(env, field.value, expectedFieldType);
+  }
+
+  // Check for missing fields
+  for (const [expectedFieldName] of expectedType.fields) {
+    if (!expr.fields.some(f => f.name === expectedFieldName)) {
+      throw new TypeError(
+        `Missing required field "${expectedFieldName}" in record literal`,
+        expr.location
+      );
+    }
   }
 }
 

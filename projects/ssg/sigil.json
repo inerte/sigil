@@ -1,0 +1,6 @@
+{
+  "name": "@sigil-projects/ssg",
+  "version": "0.1.0",
+  "src": "src",
+  "out": ".local"
+}

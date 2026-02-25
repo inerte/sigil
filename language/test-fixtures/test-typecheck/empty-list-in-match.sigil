@@ -1,0 +1,28 @@
+⟦ Test: Empty lists in match expressions should infer from first arm ⟧
+
+t Foo=A|B|C
+
+⟦ Case 1: First arm non-empty, second arm empty ⟧
+λtest1(x:Foo)→[ℤ]≡x{
+  A → [1,2,3]|
+  B → []|
+  C → [4,5]
+}
+
+⟦ Case 2: Multiple empty arms after non-empty ⟧
+λtest2(x:Foo)→[𝕊]≡x{
+  A → ["hello"]|
+  B → []|
+  C → []
+}
+
+⟦ Case 3: Nested match with empty list ⟧
+λtest3(x:Foo,y:Foo)→[ℤ]≡x{
+  A → [1]|
+  B → ≡y{
+    A → [2]|
+    B → []|
+    C → [3]
+  }|
+  C → []
+}

@@ -468,13 +468,30 @@ function synthesizeMatch(env: TypeEnvironment, expr: AST.MatchExpr): InferenceTy
   // Synthesize scrutinee type
   const scrutineeType = synthesize(env, expr.scrutinee);
 
-  // Process each arm
-  const armTypes: InferenceType[] = [];
-  for (const arm of expr.arms) {
-    // Check pattern against scrutinee type, get bindings
-    const bindings = checkPatternAndGetBindings(env, arm.pattern, scrutineeType);
+  // Synthesize first arm to establish expected type for subsequent arms
+  const firstArm = expr.arms[0];
+  const firstBindings = checkPatternAndGetBindings(env, firstArm.pattern, scrutineeType);
+  const firstArmEnv = env.extend(firstBindings);
 
-    // Extend environment with bindings
+  // Check guard if present (must be boolean)
+  if (firstArm.guard) {
+    const guardType = synthesize(firstArmEnv, firstArm.guard);
+    const boolType: InferenceType = { kind: 'primitive', name: 'Bool' };
+    if (!typesEqual(guardType, boolType)) {
+      throw new TypeError(
+        `Pattern guard must have type 𝔹, got ${formatType(guardType)}`,
+        firstArm.guard.location
+      );
+    }
+  }
+
+  // Synthesize first arm body to get expected type
+  const expectedType = synthesize(firstArmEnv, firstArm.body);
+
+  // Check remaining arms against the first arm's type
+  for (let i = 1; i < expr.arms.length; i++) {
+    const arm = expr.arms[i];
+    const bindings = checkPatternAndGetBindings(env, arm.pattern, scrutineeType);
     const armEnv = env.extend(bindings);
 
     // Check guard if present (must be boolean)
@@ -489,22 +506,11 @@ function synthesizeMatch(env: TypeEnvironment, expr: AST.MatchExpr): InferenceTy
       }
     }
 
-    // Synthesize arm body type
-    const armType = synthesize(armEnv, arm.body);
-    armTypes.push(armType);
+    // Check subsequent arms against first arm's type
+    check(armEnv, arm.body, expectedType);
   }
 
-  // All arms must have same type
-  for (let i = 1; i < armTypes.length; i++) {
-    if (!typesEqual(armTypes[0], armTypes[i])) {
-      throw new TypeError(
-        `Pattern match arms have different types: ${formatType(armTypes[0])} vs ${formatType(armTypes[i])}`,
-        expr.arms[i].location
-      );
-    }
-  }
-
-  return armTypes[0];
+  return expectedType;
 }
 
 function synthesizeList(env: TypeEnvironment, expr: AST.ListExpr): InferenceType {
@@ -512,7 +518,7 @@ function synthesizeList(env: TypeEnvironment, expr: AST.ListExpr): InferenceType
     // Empty list - we'd need type annotation in full system
     // For now, default to [ℤ] (this is a limitation of monomorphic system)
     throw new TypeError(
-      'Cannot infer type of empty list. Please use type annotation.',
+      'Cannot infer type of empty list []. Try adding a non-empty list in an earlier pattern match arm, or ensure the function return type is specified.',
       expr.location
     );
   }

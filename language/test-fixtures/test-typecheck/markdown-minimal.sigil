@@ -1,0 +1,12 @@
+⟦ Minimal reproduction of markdown.sigil structure ⟧
+
+t Block=Header(ℤ,𝕊)|Paragraph(𝕊)|HorizontalRule
+
+t ParseState={in_code_block:𝔹}
+
+λempty_blocks()→[Block]=[]
+
+λflush_code_block(state:ParseState)→[Block]≡state.in_code_block{
+  ⊤ → [Paragraph("test")]|
+  ⊥ → empty_blocks()
+}

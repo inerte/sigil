@@ -10,6 +10,10 @@ pnpm-lock.yaml
 dist/
 *.js.map
 
+# Generated runtime/stdlib
+language/compiler/stdlib/
+language/runtime/
+
 # Compiled Mint programs and temporary files
 .local/
 **/.local/

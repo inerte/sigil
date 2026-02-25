@@ -1,0 +1,102 @@
+{
+  "version": 1,
+  "file": "string_ops.sigil",
+  "generated_by": "sigilc@0.1.0",
+  "generated_at": "2026-02-24T22:06:01.764Z",
+  "mappings": {
+    "char_at": {
+      "range": [
+        350,
+        374
+      ],
+      "summary": "Function: char_at",
+      "explanation": "Function with 2 parameter(s), returns 𝕊",
+      "type": "λ(𝕊,ℤ)→𝕊"
+    },
+    "substring": {
+      "range": [
+        440,
+        474
+      ],
+      "summary": "Function: substring",
+      "explanation": "Function with 3 parameter(s), returns 𝕊",
+      "type": "λ(𝕊,ℤ,ℤ)→𝕊"
+    },
+    "take": {
+      "range": [
+        511,
+        544
+      ],
+      "summary": "Function: take",
+      "explanation": "Function with 2 parameter(s), returns 𝕊",
+      "type": "λ(𝕊,ℤ)→𝕊"
+    },
+    "drop": {
+      "range": [
+        581,
+        615
+      ],
+      "summary": "Function: drop",
+      "explanation": "Function with 2 parameter(s), returns 𝕊",
+      "type": "λ(𝕊,ℤ)→𝕊"
+    },
+    "to_upper": {
+      "range": [
+        670,
+        689
+      ],
+      "summary": "Function: to_upper",
+      "explanation": "Function with 1 parameter(s), returns 𝕊",
+      "type": "λ(𝕊)→𝕊"
+    },
+    "to_lower": {
+      "range": [
+        744,
+        763
+      ],
+      "summary": "Function: to_lower",
+      "explanation": "Function with 1 parameter(s), returns 𝕊",
+      "type": "λ(𝕊)→𝕊"
+    },
+    "trim": {
+      "range": [
+        832,
+        847
+      ],
+      "summary": "Function: trim",
+      "explanation": "Function with 1 parameter(s), returns 𝕊",
+      "type": "λ(𝕊)→𝕊"
+    },
+    "index_of": {
+      "range": [
+        930,
+        958
+      ],
+      "summary": "Function: index_of",
+      "explanation": "Function with 2 parameter(s), returns ℤ",
+      "type": "λ(𝕊,𝕊)→ℤ"
+    },
+    "split": {
+      "range": [
+        1018,
+        1050
+      ],
+      "summary": "Function: split",
+      "explanation": "Function with 2 parameter(s), returns [𝕊]",
+      "type": "λ(𝕊,𝕊)→[𝕊]"
+    },
+    "replace_all": {
+      "range": [
+        1108,
+        1154
+      ],
+      "summary": "Function: replace_all",
+      "explanation": "Function with 3 parameter(s), returns 𝕊",
+      "type": "λ(𝕊,𝕊,𝕊)→𝕊"
+    }
+  },
+  "metadata": {
+    "category": "unknown",
+    "tested": false
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "file": "string_predicates.sigil",
+  "generated_by": "sigilc@0.1.0",
+  "generated_at": "2026-02-24T22:06:01.813Z",
+  "mappings": {
+    "starts_with": {
+      "range": [
+        355,
+        385
+      ],
+      "summary": "Function: starts_with",
+      "explanation": "Function with 2 parameter(s), returns 𝔹",
+      "type": "λ(𝕊,𝕊)→𝔹"
+    },
+    "ends_with": {
+      "range": [
+        452,
+        480
+      ],
+      "summary": "Function: ends_with",
+      "explanation": "Function with 2 parameter(s), returns 𝔹",
+      "type": "λ(𝕊,𝕊)→𝔹"
+    }
+  },
+  "metadata": {
+    "category": "unknown",
+    "tested": false
+  }
+}

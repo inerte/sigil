@@ -1,0 +1,8 @@
+⟦ Test FFI wrapper for string operations ⟧
+
+e console
+e ../runtime/string
+
+λtest_length(s:𝕊)→ℤ=string.length(s)
+
+λmain()→!IO ℤ=test_length("hello")

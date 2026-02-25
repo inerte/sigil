@@ -43,3 +43,7 @@ For language/compiler work, prefer the deeper guide:
 ## Escalation / Ambiguity
 
 If a change affects language design (syntax, canonical forms, stdlib surface, codegen contracts), pause and clarify the intended invariant before implementing broad edits.
+
+## Development tips
+
+Don't give estimates about time or think a change is too big or will take a long time. Ignore complexity of implementation when proposing changes.

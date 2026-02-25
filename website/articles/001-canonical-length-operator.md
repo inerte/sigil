@@ -1,7 +1,11 @@
-# The `#` Operator: Why Sigil Has ONE Way to Get Length
+---
+title: The # Operator: Why Sigil Has ONE Way to Get Length
+date: February 24, 2026
+author: Sigil Language Team
+slug: 001-canonical-length-operator
+---
 
-**Date:** February 24, 2026
-**Author:** Sigil Language Team
+# The `#` Operator: Why Sigil Has ONE Way to Get Length
 
 ## The Problem: Syntactic Noise in Training Data
 

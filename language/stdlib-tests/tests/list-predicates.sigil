@@ -1,13 +1,13 @@
 i stdlib⋅list_predicates
 
+test "list_predicates.in_bounds checks valid and invalid indexes" {
+  stdlib⋅list_predicates.in_bounds(0,[10,20,30])=⊤∧stdlib⋅list_predicates.in_bounds(3,[10,20,30])=⊥
+}
+
 test "list_predicates.sorted_asc accepts ascending list" {
   stdlib⋅list_predicates.sorted_asc([1,2,3,4])=⊤
 }
 
 test "list_predicates.sorted_desc accepts descending list" {
   stdlib⋅list_predicates.sorted_desc([4,3,2,1])=⊤
-}
-
-test "list_predicates.in_bounds checks valid and invalid indexes" {
-  stdlib⋅list_predicates.in_bounds(0,[10,20,30])=⊤∧stdlib⋅list_predicates.in_bounds(3,[10,20,30])=⊥
 }

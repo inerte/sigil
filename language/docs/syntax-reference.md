@@ -276,6 +276,61 @@ Examples:
 }
 ```
 
+## Pattern guards (`when`)
+
+Pattern guards add conditional checks to pattern matching.
+After a pattern binds variables, the guard expression is evaluated.
+If the guard returns `⊥`, matching continues to the next arm.
+
+Syntax:
+```sigil
+≡value{
+  pattern when guard_expr → result
+}
+```
+
+The guard expression:
+- Is evaluated **after** pattern bindings are established
+- Has access to all bindings from the pattern
+- Must have type `𝔹` (boolean)
+- If `⊥`, matching falls through to the next arm
+
+Examples:
+
+```sigil
+⟦ Range checking ⟧
+λclassify(n:ℤ)→𝕊≡n{
+  x when x>100 → "large"|
+  x when x>10 → "medium"|
+  x when x>0 → "small"|
+  _ → "non-positive"
+}
+
+⟦ Conditional unpacking ⟧
+t Result=Ok(ℤ)|Err(𝕊)
+
+λprocess(r:Result)→𝕊≡r{
+  Ok(n) when n>0 → "positive success"|
+  Ok(n) → "non-positive success"|
+  Err(msg) when #msg>0 → "error: "++msg|
+  Err(_) → "unknown error"
+}
+
+⟦ Complex conditions ⟧
+t Point={x:ℤ,y:ℤ}
+
+λquadrant(p:Point)→𝕊≡p{
+  {x,y} when x=0∧y=0 → "origin"|
+  {x,y} when x>0∧y>0 → "quadrant I"|
+  {x,y} when x<0∧y>0 → "quadrant II"|
+  _ → "other"
+}
+```
+
+Pattern guards are **backward compatible**: patterns without guards work exactly as before.
+
+See `language/examples/pattern-guards.sigil` for more examples.
+
 ## Lists
 
 List literals:

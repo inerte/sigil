@@ -1020,10 +1020,18 @@ export class Parser {
     do {
       const armStart = this.peek();
       const pattern = this.pattern();
+
+      // Parse optional guard: when expr
+      let guard: AST.Expr | null = null;
+      if (this.match(TokenType.WHEN)) {
+        guard = this.expression();
+      }
+
       this.consume(TokenType.ARROW, 'Expected "→"');
       const body = this.expression();
       arms.push({
         pattern,
+        guard,
         body,
         location: this.makeLocation(armStart, this.previous()),
       });

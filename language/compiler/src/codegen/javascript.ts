@@ -344,7 +344,17 @@ export class JavaScriptGenerator {
       if (bindings) {
         lines.push(`    ${bindings}`);
       }
-      lines.push(`    return ${body};`);
+
+      // Add guard check if present
+      if (arm.guard) {
+        const guardExpr = this.generateExpression(arm.guard);
+        lines.push(`    if (await ${guardExpr}) {`);
+        lines.push(`      return ${body};`);
+        lines.push(`    }`);
+      } else {
+        lines.push(`    return ${body};`);
+      }
+
       lines.push(`  }`);
     }
 

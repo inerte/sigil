@@ -1,0 +1,67 @@
+⟦ Pattern Guards Test
+
+  Tests the new `when` keyword for conditional pattern matching.
+
+  Syntax: pattern when guard_expr → body
+
+  The guard expression is evaluated after pattern bindings are established
+  and must have type 𝔹 (boolean).
+⟧
+
+e console
+
+⟦ Test 1: Simple guards with literal patterns ⟧
+λtest1(x:ℤ)→𝕊≡x{
+  0 when ⊤ → "zero" |
+  1 → "one" |
+  _ → "other"
+}
+
+⟦ Test 2: Guards with pattern bindings ⟧
+λtest2(x:ℤ)→𝕊≡x{
+  n when n>10 → "big" |
+  n when n>0 → "small positive" |
+  n → "zero or negative"
+}
+
+⟦ Test 3: Fall-through when guard fails ⟧
+λtest3(x:ℤ,flag:𝔹)→𝕊≡x{
+  1 when flag → "one with flag" |
+  1 → "one without flag" |
+  _ → "other"
+}
+
+⟦ Test 4: Sum type with guards ⟧
+t Result=Ok(ℤ)|Err(𝕊)
+
+λtest4(r:Result)→𝕊≡r{
+  Ok(n) when n>100 → "big success" |
+  Ok(n) when n>0 → "small success" |
+  Ok(_) → "zero or negative" |
+  Err(msg) → "error: "++msg
+}
+
+⟦ Test 5: Complex guards ⟧
+λtest5(x:ℤ,y:ℤ)→𝕊≡x{
+  a when a>0∧y>0 → "both positive" |
+  a when a>0∨y>0 → "one positive" |
+  _ → "neither positive"
+}
+
+⟦ Test 6: Backward compatibility - no guards ⟧
+λtest6(x:ℤ)→𝕊≡x{
+  0 → "zero" |
+  1 → "one" |
+  _ → "other"
+}
+
+⟦ Run tests ⟧
+λmain()→ℤ≡{
+  l r1=test1(0);
+  l r2=test2(15);
+  l r3=test3(1,⊤);
+  l r4=test4(Ok(150));
+  l r5=test5(5,10);
+  l r6=test6(0);
+  0
+}

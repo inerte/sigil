@@ -1,0 +1,186 @@
+⟦ Pattern Guards - Conditional Pattern Matching
+
+Pattern guards extend Sigil's pattern matching with conditional checks.
+They allow you to test conditions on pattern bindings before accepting a match.
+
+Syntax: pattern when boolean_expr → body
+
+The guard expression:
+- Is evaluated AFTER pattern bindings are established
+- Has access to all bindings from the pattern
+- Must have type 𝔹 (boolean)
+- If false, matching continues to the next arm
+
+This feature was added to enable clean state machine implementations
+(like the markdown parser in stdlib⋅markdown).
+⟧
+
+e console
+
+⟦ Example 1: Range Checking
+
+Without guards, you'd need nested match expressions.
+With guards, you can express ranges cleanly.
+⟧
+
+λclassifyNumber(n:ℤ)→𝕊≡n{
+  x when x>1000 → "huge" |
+  x when x>100 → "large" |
+  x when x>10 → "medium" |
+  x when x>0 → "small" |
+  0 → "zero" |
+  _ → "negative"
+}
+
+⟦ Example 2: Validating Data
+
+Guards are perfect for validation logic where you match
+on structure but need to check constraints.
+⟧
+
+t User={name:𝕊,age:ℤ}
+
+λvalidateUser(u:User)→𝕊≡u{
+  {name,age} when age<0 → "Invalid: negative age" |
+  {name,age} when age>150 → "Invalid: age too high" |
+  {name,..} when #name=0 → "Invalid: empty name" |
+  {name,age} → "Valid user: "++name
+}
+
+⟦ Example 3: Conditional Unpacking
+
+Match on structure, then check additional conditions
+on the unpacked values.
+⟧
+
+t Result=Ok(ℤ)|Err(𝕊)
+
+λprocessResult(r:Result)→𝕊≡r{
+  Ok(n) when n>100 → "Big success: "++stdlib⋅string_ops.int_to_string(n) |
+  Ok(n) when n>0 → "Success: "++stdlib⋅string_ops.int_to_string(n) |
+  Ok(n) → "Success with zero or negative" |
+  Err(msg) when #msg>0 → "Error: "++msg |
+  Err(_) → "Unknown error"
+}
+
+⟦ Example 4: Fall-through Behavior
+
+When a guard fails, matching continues to the next arm.
+This enables priority-based matching.
+⟧
+
+λprioritizeTask(priority:ℤ,urgent:𝔹)→𝕊≡priority{
+  p when urgent → "URGENT (priority "++stdlib⋅string_ops.int_to_string(p)++")" |
+  p when p>7 → "High priority" |
+  p when p>3 → "Medium priority" |
+  _ → "Low priority"
+}
+
+⟦ Example 5: Complex Conditions
+
+Guards can use any boolean expression, including
+conjunction (∧), disjunction (∨), and comparisons.
+⟧
+
+t Point={x:ℤ,y:ℤ}
+
+λclassifyPoint(p:Point)→𝕊≡p{
+  {x,y} when x=0∧y=0 → "origin" |
+  {x,y} when x=0 → "on y-axis" |
+  {x,y} when y=0 → "on x-axis" |
+  {x,y} when x=y → "on diagonal y=x" |
+  {x,y} when x=-y → "on diagonal y=-x" |
+  {x,y} when x>0∧y>0 → "quadrant I" |
+  {x,y} when x<0∧y>0 → "quadrant II" |
+  {x,y} when x<0∧y<0 → "quadrant III" |
+  _ → "quadrant IV"
+}
+
+⟦ Example 6: State Machines
+
+Pattern guards shine in state machine implementations.
+Match on state structure, guard on input conditions.
+⟧
+
+t State={mode:𝕊,count:ℤ}
+t Action=Increment|Decrement|Reset
+
+λstateTransition(state:State,action:Action)→State≡action{
+  Increment when state.count<100 → {mode:state.mode,count:state.count+1} |
+  Increment → {mode:"maxed",count:100} |
+  Decrement when state.count>0 → {mode:state.mode,count:state.count-1} |
+  Decrement → {mode:"empty",count:0} |
+  Reset → {mode:"normal",count:0}
+}
+
+⟦ Example 7: List Processing
+
+Combine list patterns with guards for powerful
+conditional list processing.
+⟧
+
+λfindFirstPositive(list:[ℤ])→𝕊≡list{
+  [] → "empty list" |
+  [x,._] when x>0 → "first positive: "++stdlib⋅string_ops.int_to_string(x) |
+  [_,.xs] → findFirstPositive(xs)
+}
+
+⟦ Example 8: Backward Compatibility
+
+Patterns without guards work exactly as before.
+Guards are purely additive.
+⟧
+
+t Color=Red|Green|Blue
+
+λcolorToHex(c:Color)→𝕊≡c{
+  Red → "#FF0000" |
+  Green → "#00FF00" |
+  Blue → "#0000FF"
+}
+
+⟦ Design Principles
+
+1. ONE CANONICAL FORM: Guards extend ≡, they don't replace it
+2. TYPE SAFE: Guards must be boolean (checked at compile time)
+3. EXPLICIT: The `when` keyword makes intent clear
+4. PREDICTABLE: Evaluation order is top-to-bottom
+
+This fits Sigil's philosophy: add features only when they make
+complex code SIMPLER, not just different.
+⟧
+
+⟦ Demo - Run examples ⟧
+
+λmain()→ℤ≡{
+  l _=console.log("=== Range Checking ===");
+  l _=console.log(classifyNumber(5000));
+  l _=console.log(classifyNumber(50));
+  l _=console.log(classifyNumber(5));
+  l _=console.log(classifyNumber(-5));
+
+  l _=console.log("\n=== User Validation ===");
+  l _=console.log(validateUser({name:"Alice",age:30}));
+  l _=console.log(validateUser({name:"",age:25}));
+  l _=console.log(validateUser({name:"Bob",age:-5}));
+
+  l _=console.log("\n=== Result Processing ===");
+  l _=console.log(processResult(Ok(150)));
+  l _=console.log(processResult(Ok(5)));
+  l _=console.log(processResult(Err("timeout")));
+
+  l _=console.log("\n=== Priority Tasks ===");
+  l _=console.log(prioritizeTask(5,⊤));
+  l _=console.log(prioritizeTask(5,⊥));
+  l _=console.log(prioritizeTask(9,⊥));
+
+  l _=console.log("\n=== Point Classification ===");
+  l _=console.log(classifyPoint({x:0,y:0}));
+  l _=console.log(classifyPoint({x:5,y:5}));
+  l _=console.log(classifyPoint({x:3,y:7}));
+
+  l _=console.log("\n=== Color Conversion ===");
+  l _=console.log(colorToHex(Red()));
+
+  0
+}

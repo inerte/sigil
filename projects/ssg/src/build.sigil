@@ -1,25 +1,146 @@
-⟦ Static Site Generator - Demonstrates async I/O with Sigil ⟧
+⟦ Build pipeline for static site generator ⟧
 
 e fs⋅promises
+e path
 e console
 
-⟦ Read all files from a directory ⟧
-λread_dir(dir:𝕊)→!IO [𝕊]=fs⋅promises.readdir(dir)
+i stdlib⋅string_ops
+i stdlib⋅string_predicates
+i stdlib⋅markdown
+i ./types
+i ./frontmatter
+i ./templates
 
-⟦ Read file content ⟧
-λread_file(path:𝕊)→!IO 𝕊=fs⋅promises.readFile(path,"utf8")
+⟦ Check if file is markdown ⟧
+λis_markdown_file(filename:𝕊)→𝔹=
+  stdlib⋅string_predicates.ends_with(filename,".md")
 
-⟦ Build full path ⟧
-λmake_path(dir:𝕊,file:𝕊)→𝕊=dir++"/"+file
+⟦ Get output filename from slug or input filename ⟧
+λget_output_filename(meta:types.ArticleMeta,input_filename:𝕊)→𝕊=
+  l slug=meta.slug;
+  #slug>0≡{
+    ⊤ → slug++".html"|
+    ⊥ →
+      ⟦ Replace .md with .html ⟧
+      l len=#input_filename;
+      l basename=stdlib⋅string_ops.substring(input_filename,0,len-4);
+      basename++".html"
+  }
 
-⟦ Read all content files ⟧
-λread_all(dir:𝕊)→!IO [𝕊]=read_dir(dir)↦(λ(f:𝕊)→𝕊=make_path(dir,f))↦read_file
+⟦ Process a single article file ⟧
+λprocess_article(input_dir:𝕊,filename:𝕊)→!IO types.Article=
+  ⟦ Read markdown file ⟧
+  l filepath=path.join(input_dir,filename);
+  l markdown_content=fs⋅promises.readFile(filepath,"utf8");
 
-⟦ Count files ⟧
-λcount(files:[𝕊])→ℤ=files⊕(λ(acc:ℤ,f:𝕊)→ℤ=acc+1)⊕0
+  ⟦ Parse frontmatter ⟧
+  l (meta,content)=frontmatter.parse_frontmatter(markdown_content);
 
-⟦ Build site and count pages ⟧
-λbuild_site(dir:𝕊)→!IO ℤ=read_all(dir)⊕(λ(acc:ℤ,content:𝕊)→ℤ=acc+1)⊕0
+  ⟦ Convert markdown to HTML ⟧
+  l html=stdlib⋅markdown.parse(content);
 
-⟦ Main entry point ⟧
-λmain()→!IO ℤ=build_site("content")
+  ⟦ Create article object ⟧
+  {
+    meta:meta,
+    markdown:content,
+    html:html,
+    filename:get_output_filename(meta,filename)
+  }
+
+⟦ Write article HTML file ⟧
+λwrite_article(output_dir:𝕊,article:types.Article)→!IO 𝕌=
+  ⟦ Generate full HTML page ⟧
+  l page_html=templates.article(article.meta,article.html);
+
+  ⟦ Write to file ⟧
+  l output_path=path.join(output_dir,article.filename);
+  fs⋅promises.writeFile(output_path,page_html,"utf8");
+
+  ⟦ Log ⟧
+  console.log("  Wrote "++article.filename);
+  ()
+
+⟦ Write index page ⟧
+λwrite_index(output_dir:𝕊,articles:[types.Article])→!IO 𝕌=
+  ⟦ Generate index HTML ⟧
+  l index_html=templates.index(articles);
+
+  ⟦ Write to file ⟧
+  l output_path=path.join(output_dir,"index.html");
+  fs⋅promises.writeFile(output_path,index_html,"utf8");
+
+  ⟦ Log ⟧
+  console.log("  Wrote index.html");
+  ()
+
+⟦ Ensure directory exists ⟧
+λensure_dir(dir:𝕊)→!IO 𝕌=
+  fs⋅promises.mkdir(dir,{recursive:⊤});
+  ()
+
+⟦ Main build function ⟧
+export λbuild(input_dir:𝕊,output_dir:𝕊)→!IO 𝕌=
+  console.log("Building site...");
+
+  ⟦ Ensure output directory exists ⟧
+  ensure_dir(output_dir);
+
+  ⟦ Read all files from input directory ⟧
+  l all_files=fs⋅promises.readdir(input_dir);
+
+  ⟦ Filter for markdown files ⟧
+  l num_files=#all_files;
+  l filter_md=λ(i:ℤ,md_files:[𝕊])→[𝕊]≡i{
+    idx when idx≥num_files → md_files|
+    idx →
+      l file=all_files[idx];
+      l new_list=is_markdown_file(file)≡{
+        ⊤ → md_files⧺[file]|
+        ⊥ → md_files
+      };
+      filter_md(idx+1,new_list)
+  };
+
+  l markdown_files=filter_md(0,[]);
+
+  ⟦ Process all articles ⟧
+  l num_articles=#markdown_files;
+  l process_all=λ(i:ℤ,articles:[types.Article])→!IO [types.Article]≡i{
+    idx when idx≥num_articles → articles|
+    idx →
+      l filename=markdown_files[idx];
+      l article=process_article(input_dir,filename);
+      process_all(idx+1,articles⧺[article])
+  };
+
+  l articles=process_all(0,[]);
+
+  ⟦ Write all articles ⟧
+  l write_all=λ(i:ℤ)→!IO 𝕌≡i{
+    idx when idx≥num_articles → ()|
+    idx →
+      write_article(output_dir,articles[idx]);
+      write_all(idx+1)
+  };
+
+  write_all(0);
+
+  ⟦ Write index page ⟧
+  write_index(output_dir,articles);
+
+  console.log("Build complete!");
+  ()
+
+⟦ Entry point ⟧
+λmain()→!IO 𝕌=
+  ⟦ Get project root (two levels up from src/) ⟧
+  l cwd=process.cwd();
+  l project_root=path.join(cwd,"../..");
+
+  ⟦ Define paths ⟧
+  l input_dir=path.join(project_root,"website/articles");
+  l output_dir=path.join(cwd,"dist");
+
+  ⟦ Run build ⟧
+  build(input_dir,output_dir);
+  ()

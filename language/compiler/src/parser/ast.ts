@@ -283,6 +283,7 @@ export interface MatchExpr {
 
 export interface MatchArm {
   pattern: Pattern;
+  guard: Expr | null;  // Optional pattern guard: when boolean_expr
   body: Expr;
   location: SourceLocation;
 }

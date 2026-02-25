@@ -143,6 +143,19 @@ function checkMatch(env: TypeEnvironment, expr: AST.MatchExpr, expectedType: Inf
   for (const arm of expr.arms) {
     const bindings = checkPatternAndGetBindings(env, arm.pattern, scrutineeType);
     const armEnv = env.extend(bindings);
+
+    // Check guard if present (must be boolean)
+    if (arm.guard) {
+      const guardType = synthesize(armEnv, arm.guard);
+      const boolType: InferenceType = { kind: 'primitive', name: 'Bool' };
+      if (!typesEqual(guardType, boolType)) {
+        throw new TypeError(
+          `Pattern guard must have type 𝔹, got ${formatType(guardType)}`,
+          arm.guard.location
+        );
+      }
+    }
+
     check(armEnv, arm.body, expectedType);
   }
 }
@@ -462,6 +475,18 @@ function synthesizeMatch(env: TypeEnvironment, expr: AST.MatchExpr): InferenceTy
 
     // Extend environment with bindings
     const armEnv = env.extend(bindings);
+
+    // Check guard if present (must be boolean)
+    if (arm.guard) {
+      const guardType = synthesize(armEnv, arm.guard);
+      const boolType: InferenceType = { kind: 'primitive', name: 'Bool' };
+      if (!typesEqual(guardType, boolType)) {
+        throw new TypeError(
+          `Pattern guard must have type 𝔹, got ${formatType(guardType)}`,
+          arm.guard.location
+        );
+      }
+    }
 
     // Synthesize arm body type
     const armType = synthesize(armEnv, arm.body);

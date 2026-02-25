@@ -1,0 +1,168 @@
+⟦ stdlib⋅http_server - Canonical HTTP Server for Sigil
+
+This is a thin FFI wrapper around Node.js's http module.
+Provides a type-safe, idiomatic Sigil interface for HTTP servers.
+
+This is the ONE canonical way to serve HTTP in Sigil.
+No npm dependencies, no library choices - just import and use.
+⟧
+
+⟦ External FFI bindings ⟧
+e http
+e url
+e console
+
+⟦ HTTP request type ⟧
+export t Request={
+  path:𝕊,
+  method:𝕊,
+  headers:{𝕊:𝕊},
+  body:𝕊
+}
+
+⟦ HTTP response type ⟧
+export t Response={
+  status:ℤ,
+  body:𝕊,
+  headers:{𝕊:𝕊}
+}
+
+⟦ Helper: Create a 200 OK response ⟧
+export λok(body:𝕊)→Response={
+  status:200,
+  body:body,
+  headers:{"Content-Type":"text/html; charset=utf-8"}
+}
+
+⟦ Helper: Create a 404 Not Found response ⟧
+export λnot_found()→Response={
+  status:404,
+  body:"<h1>404 Not Found</h1>",
+  headers:{"Content-Type":"text/html; charset=utf-8"}
+}
+
+⟦ Helper: Create a 404 with custom message ⟧
+export λnot_found_msg(path:𝕊)→Response={
+  status:404,
+  body:"<h1>404 Not Found</h1><p>Path: "++path++"</p>",
+  headers:{"Content-Type":"text/html; charset=utf-8"}
+}
+
+⟦ Helper: Create a 500 Internal Server Error response ⟧
+export λserver_error(message:𝕊)→Response={
+  status:500,
+  body:"<h1>500 Internal Server Error</h1><p>"++message++"</p>",
+  headers:{"Content-Type":"text/html; charset=utf-8"}
+}
+
+⟦ Helper: Create a custom response ⟧
+export λresponse(status:ℤ,body:𝕊,content_type:𝕊)→Response={
+  status:status,
+  body:body,
+  headers:{"Content-Type":content_type}
+}
+
+⟦ Helper: Create a JSON response ⟧
+export λjson(status:ℤ,body:𝕊)→Response={
+  status:status,
+  body:body,
+  headers:{"Content-Type":"application/json; charset=utf-8"}
+}
+
+⟦ Helper: Log HTTP request to console ⟧
+export λlog_request(req:Request)→!IO 𝕌={
+  l log_line=req.method++" "++req.path;
+  console.log(log_line)
+}
+
+⟦ Main Export: Start HTTP server on specified port
+
+Usage:
+  λhandle_request(req:Request)→!IO Response={
+    stdlib⋅http_server.log_request(req);
+    stdlib⋅http_server.ok("<h1>Hello World</h1>")
+  }
+
+  λmain()→!IO 𝕌={
+    stdlib⋅http_server.serve(3000,handle_request)
+  }
+⟧
+
+export λserve(port:ℤ,handler:λ(Request)→!IO Response)→!IO 𝕌={
+  ⟦ Create HTTP server with request handler ⟧
+  l server=http.createServer(λ(node_req,node_res)→!IO 𝕌={
+    ⟦ Parse URL to extract path ⟧
+    l parsed_url=url.parse(node_req.url,⊤);
+    l path=parsed_url.pathname;
+
+    ⟦ Extract method ⟧
+    l method=node_req.method;
+
+    ⟦ For v1, use empty headers map ⟧
+    ⟦ TODO: Convert Node.js headers object to Sigil map ⟧
+    l headers={};
+
+    ⟦ Collect request body chunks ⟧
+    l body_chunks=[];
+
+    ⟦ Listen for data chunks ⟧
+    node_req.on("data",λ(chunk)→!IO 𝕌={
+      body_chunks.push(chunk);
+      ()
+    });
+
+    ⟦ Handle end of request ⟧
+    node_req.on("end",λ()→!IO 𝕌={
+      ⟦ Concatenate body chunks into string ⟧
+      l body=body_chunks.length>0?
+        Buffer.concat(body_chunks).toString("utf8"):"";
+
+      ⟦ Build Sigil Request object ⟧
+      l sigil_request={
+        path:path,
+        method:method,
+        headers:headers,
+        body:body
+      };
+
+      ⟦ Call user-provided handler ⟧
+      l sigil_response=handler(sigil_request);
+
+      ⟦ Set response headers from map ⟧
+      l response_headers=sigil_response.headers;
+      l header_keys=Object.keys(response_headers);
+
+      ⟦ Set each header ⟧
+      l i=0;
+      l num_headers=header_keys.length;
+
+      λset_next_header()→!IO 𝕌={
+        i<num_headers?{
+          l key=header_keys[i];
+          l value=response_headers[key];
+          node_res.setHeader(key,value);
+          i=i+1;
+          set_next_header()
+        }:()
+      };
+
+      set_next_header();
+
+      ⟦ Write status and body ⟧
+      node_res.writeHead(sigil_response.status);
+      node_res.end(sigil_response.body);
+      ()
+    });
+
+    ()
+  });
+
+  ⟦ Start listening on port ⟧
+  server.listen(port,λ()→!IO 𝕌={
+    l port_str=port.toString();
+    console.log("Server running at http://localhost:"++port_str);
+    ()
+  });
+
+  ()
+}

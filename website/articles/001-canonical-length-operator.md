@@ -103,20 +103,24 @@ Importantly, `#` is **not a polymorphic function**. It's a compile-time checked 
 
 The type checker validates the operator based on the known type:
 ```typescript
-// In bidirectional type checker
-function checkUnary(unary: UnaryExpr, ctx: Context): Type {
-  if (unary.operator === '#') {
-    const operandType = synth(unary.operand, ctx);
+case '#': {
+  // Length operator - works on strings and lists
+  const operandType = synthesize(env, expr.operand);
 
-    if (!isSizeable(operandType)) {
-      throw new TypeError(
-        `Cannot apply # to type ${showType(operandType)}\n` +
-        `Expected: 𝕊 or [T]`
-      );
-    }
+  // Check if type is sizeable (String or List)
+  const isSizeable =
+    (operandType.kind === 'primitive' && operandType.name === 'String') ||
+    operandType.kind === 'list';
 
-    return IntType; // Always returns ℤ
+  if (!isSizeable) {
+    throw new TypeError(
+      `Cannot apply # to type ${formatType(operandType)}\n` +
+      `Expected: 𝕊 or [T]`,
+      expr.location
+    );
   }
+
+  return { kind: 'primitive', name: 'Int' }; // Always returns ℤ
 }
 ```
 
@@ -127,10 +131,9 @@ Since Sigil uses bidirectional type checking with **mandatory type annotations e
 Because types are known at compile time, codegen is trivial:
 
 ```typescript
-generateUnary(unary: UnaryExpr): string {
-  if (unary.operator === '#') {
-    return `(await ${operand}).length`;
-  }
+case '#': {
+  const operand = this.generateExpression(expr.operand);
+  return `(await ${operand}).length`;
 }
 ```
 
@@ -149,13 +152,18 @@ stdlib⋅string_predicates.starts_with("# Title","# ")  ⟦ → ⊤ ⟧
 These are not implemented in Sigil - they're recognized by the compiler and emit optimized JavaScript:
 
 ```typescript
-tryGenerateIntrinsic(func: MemberAccessExpr, args: Expr[]): string | null {
+private tryGenerateIntrinsic(func: AST.MemberAccessExpr, args: AST.Expr[]): string | null {
+  const module = func.namespace.join('/');
+  const member = func.member;
+
   if (module === 'stdlib/string_ops') {
+    const generatedArgs = args.map(arg => this.generateExpression(arg));
+
     switch (member) {
       case 'to_upper':
-        return `(await ${args[0]}).toUpperCase()`;
+        return `(await ${generatedArgs[0]}).toUpperCase()`;
       case 'substring':
-        return `(await ${args[0]}).substring(await ${args[1]}, await ${args[2]})`;
+        return `(await ${generatedArgs[0]}).substring(await ${generatedArgs[1]}, await ${generatedArgs[2]})`;
       // ...
     }
   }

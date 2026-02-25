@@ -33,22 +33,29 @@ Markdown parsing is fundamentally a state machine:
 Here's what the code looked like **without** pattern guards:
 
 ```sigil
+⟦ Hypothetical pre-guards syntax - deeply nested matches ⟧
 λparse_line(state:ParseState, line:𝕊)→(ParseState,[Block])≡state{
-  {in_code=⊤,..} → ≡line{
-    l when is_code_fence(l) → close_code_block(state)|
-    l → accumulate_code_line(state,l)
+  {in_code=⊤,..} → ≡is_code_fence(line){
+    ⊤ → close_code_block(state)|
+    ⊥ → accumulate_code_line(state,line)
   }|
-  {in_code=⊥,..} → ≡line{
-    l when is_code_fence(l) → start_code_block(state,l)|
-    l when is_header(l) → parse_header(state,l)|
-    l when is_hr(l) → parse_hr(state)|
-    l when is_empty(l) → flush_paragraph(state)|
-    l → accumulate_para(state,l)
+  {in_code=⊥,..} → ≡is_code_fence(line){
+    ⊤ → start_code_block(state,line)|
+    ⊥ → ≡is_header(line){
+      ⊤ → parse_header(state,line)|
+      ⊥ → ≡is_hr(line){
+        ⊤ → parse_hr(state)|
+        ⊥ → ≡is_empty(line){
+          ⊤ → flush_paragraph(state)|
+          ⊥ → accumulate_para(state,line)
+        }
+      }
+    }
   }
 }
 ```
 
-See the problem? **Deeply nested match expressions.** We're matching on state, then matching on line, then checking conditions. Seven levels deep in some cases. It works, but it's ugly.
+See the problem? **Deeply nested match expressions.** We're matching on state structure, then nesting additional matches on boolean predicates. The logic is buried in seven levels of indentation. It works, but it's ugly and hard to read.
 
 ## The Gap
 
@@ -168,6 +175,7 @@ Total implementation: **~50 lines of code**. Minimal, backward-compatible, type-
 Now the markdown parser looks like this:
 
 ```sigil
+⟦ With pattern guards - clean and linear ⟧
 λparse_line(state:ParseState, line:𝕊)→(ParseState,[Block])≡state{
   {in_code=⊤,..} when is_code_fence(line) → close_code_block(state)|
   {in_code=⊤,..} → accumulate_code_line(state,line)|
@@ -180,6 +188,8 @@ Now the markdown parser looks like this:
 ```
 
 **One** level of matching. Clean, linear, readable. Match on state structure, guard on line content. Perfect.
+
+The difference is dramatic: instead of nesting matches seven levels deep, we express each case as a flat pattern-plus-condition. The `when` keyword lets us combine structural matching (destructuring the state) with predicate checking (testing properties of the line) in a single, readable line.
 
 ## Beyond Markdown
 

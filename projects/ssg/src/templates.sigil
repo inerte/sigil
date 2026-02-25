@@ -1,69 +1,7 @@
-⟦ HTML template generation ⟧
-
-i stdlib⋅string_ops
 i src⋅types
 
-⟦ Basic CSS for readability ⟧
-λget_css()→𝕊=
-  "body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.6;max-width:800px;margin:40px auto;padding:0 20px;color:#333}h1{font-size:2em;margin-bottom:0.5em}h2{font-size:1.5em;margin-top:1.5em}h3{font-size:1.25em;margin-top:1.25em}code{background:#f4f4f4;padding:2px 6px;border-radius:3px;font-family:'Courier New',monospace}pre{background:#f4f4f4;padding:15px;border-radius:5px;overflow-x:auto}pre code{background:none;padding:0}a{color:#0066cc;text-decoration:none}a:hover{text-decoration:underline}blockquote{border-left:4px solid #ddd;margin:0;padding-left:20px;color:#666}hr{border:none;border-top:2px solid #eee;margin:2em 0}.article-meta{color:#666;font-size:0.9em;margin-bottom:2em}.article-list{list-style:none;padding:0}.article-list li{margin-bottom:1.5em;padding-bottom:1.5em;border-bottom:1px solid #eee}.article-list li:last-child{border-bottom:none}.article-title{font-size:1.3em;margin-bottom:0.25em}.article-date{color:#999;font-size:0.85em}"
-
-⟦ Full HTML page template ⟧
-export λpage(title:𝕊,content:𝕊)→𝕊=
-  "<!DOCTYPE html>\n"++
-  "<html lang=\"en\">\n"++
-  "<head>\n"++
-  "  <meta charset=\"UTF-8\">\n"++
-  "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n"++
-  "  <title>"++title++"</title>\n"++
-  "  <style>"++get_css()++"</style>\n"++
-  "</head>\n"++
-  "<body>\n"++
-  content++
-  "\n</body>\n"++
-  "</html>"
-
-⟦ Article layout with metadata ⟧
 export λarticle(meta:src⋅types.ArticleMeta,html:𝕊)→𝕊=
-  l meta_html=
-    "<div class=\"article-meta\">\n"++
-    "  <div class=\"article-date\">"++meta.date++"</div>\n"++
-    "  <div class=\"article-author\">By "++meta.author++"</div>\n"++
-    "</div>\n";
-  l nav_html=
-    "<nav>\n"++
-    "  <a href=\"/\">&larr; Back to Articles</a>\n"++
-    "</nav>\n"++
-    "<hr>\n";
-  l content=
-    nav_html++
-    "<article>\n"++
-    "  <h1>"++meta.title++"</h1>\n"++
-    meta_html++
-    html++
-    "\n</article>";
-  page(meta.title++" - Sigil Language",content)
+  "<html><body>"++html++"</body></html>"
 
-⟦ Article index page ⟧
 export λindex(articles:[src⋅types.Article])→𝕊=
-  l num_articles=#articles;
-  l render_articles=λ(i:ℤ,result:𝕊)→𝕊≡i{
-    idx when idx≥num_articles → result|
-    idx →
-      l article=articles[idx];
-      l slug=article.meta.slug;
-      l filename=#slug>0?slug++".html":article.filename;
-      l item_html=
-        "  <li>\n"++
-        "    <div class=\"article-title\"><a href=\"/"++filename++"\">"++
-        article.meta.title++"</a></div>\n"++
-        "    <div class=\"article-date\">"++article.meta.date++"</div>\n"++
-        "  </li>\n";
-      render_articles(idx+1,result++item_html)
-  };
-  l articles_html=
-    "<h1>Sigil Language - Articles</h1>\n"++
-    "<p>Exploring the design and implementation of the Sigil programming language.</p>\n"++
-    "<ul class=\"article-list\">\n"++
-    render_articles(0,"")++
-    "</ul>";
-  page("Articles - Sigil Language",articles_html)
+  "<html><body>Index</body></html>"

@@ -51,6 +51,40 @@ type ModuleGraph = {
 
 const LANGUAGE_ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
+/**
+ * Convert Sigil module path (⋅ separator) to file path (/ separator)
+ * Example: "src⋅types" → "src/types"
+ */
+function modulePathToFilePath(moduleId: string): string {
+  return moduleId.replace(/⋅/g, '/');
+}
+
+/**
+ * Convert an absolute file path to a logical module ID
+ * Returns undefined if the file is not a stdlib or src module
+ */
+function filePathToModuleId(absFilePath: string, project?: SigilProjectConfig): string | undefined {
+  // Check if it's a stdlib module
+  if (absFilePath.startsWith(LANGUAGE_ROOT_DIR)) {
+    const relativePath = relative(LANGUAGE_ROOT_DIR, absFilePath);
+    if (relativePath.endsWith('.sigil')) {
+      const withoutExt = relativePath.slice(0, -6); // Remove .sigil
+      return withoutExt.replace(/\//g, '⋅');
+    }
+  }
+
+  // Check if it's a src module (project module)
+  if (project && absFilePath.startsWith(project.root)) {
+    const relativePath = relative(project.root, absFilePath);
+    if (relativePath.endsWith('.sigil')) {
+      const withoutExt = relativePath.slice(0, -6); // Remove .sigil
+      return withoutExt.replace(/\//g, '⋅');
+    }
+  }
+
+  return undefined;
+}
+
 function hasFlag(args: string[], flag: string): boolean {
   return args.includes(flag);
 }
@@ -257,7 +291,7 @@ function ensureNoTestsOutsideTestsDir(ast: ReturnType<typeof parse>, filename: s
 }
 
 function isSigilImportPath(modulePath: string): boolean {
-  return modulePath.startsWith('src/') || modulePath.startsWith('stdlib/');
+  return modulePath.startsWith('src⋅') || modulePath.startsWith('stdlib⋅');
 }
 
 function resolveSigilImportToFile(
@@ -265,7 +299,10 @@ function resolveSigilImportToFile(
   importerProject: SigilProjectConfig | undefined,
   moduleId: string
 ): { moduleId: string; filePath: string; project?: SigilProjectConfig } {
-  if (moduleId.startsWith('src/')) {
+  // Convert module path (⋅) to file path (/)
+  const filePathStr = modulePathToFilePath(moduleId);
+
+  if (moduleId.startsWith('src⋅')) {
     if (!importerProject) {
       throw new SigilDiagnosticError(diagnostic('SIGIL-CLI-PROJECT-ROOT-REQUIRED', 'cli', 'project import requires sigil project root', {
         details: { moduleId, importerFile }
@@ -273,20 +310,20 @@ function resolveSigilImportToFile(
     }
     return {
       moduleId,
-      filePath: join(importerProject.root, `${moduleId}.sigil`),
+      filePath: join(importerProject.root, `${filePathStr}.sigil`),
       project: importerProject,
     };
   }
-  if (moduleId.startsWith('stdlib/')) {
+  if (moduleId.startsWith('stdlib⋅')) {
     return {
       moduleId,
-      filePath: join(LANGUAGE_ROOT_DIR, `${moduleId}.sigil`),
+      filePath: join(LANGUAGE_ROOT_DIR, `${filePathStr}.sigil`),
       project: importerProject,
     };
   }
   throw new SigilDiagnosticError(diagnostic('SIGIL-CLI-INVALID-IMPORT', 'cli', 'invalid sigil import module id', {
     found: moduleId,
-    expected: ['src/...', 'stdlib/...']
+    expected: ['src⋅...', 'stdlib⋅...']
   }));
 }
 
@@ -298,7 +335,11 @@ function buildModuleGraph(entryFile: string): ModuleGraph {
 
   const visit = (filePath: string, logicalId?: string, inheritedProject?: SigilProjectConfig): void => {
     const absFile = resolve(filePath);
-    const moduleKey = logicalId ?? absFile;
+    // Determine project early to compute logical ID
+    const project = getSigilProjectConfig(absFile) ?? inheritedProject;
+    // Compute logical ID if not provided
+    const computedLogicalId = logicalId ?? filePathToModuleId(absFile, project ?? undefined);
+    const moduleKey = computedLogicalId ?? absFile;
     if (modules.has(moduleKey)) return;
     if (visiting.has(moduleKey)) {
       const startIdx = visitStack.indexOf(moduleKey);
@@ -316,12 +357,11 @@ function buildModuleGraph(entryFile: string): ModuleGraph {
     const ast = parse(tokens, absFile);
     ensureNoTestsOutsideTestsDir(ast, absFile);
     validateCanonicalForm(ast, absFile);
-    const project = getSigilProjectConfig(absFile) ?? inheritedProject;
     const mod: LoadedSigilModule = { id: moduleKey, filePath: absFile, source, ast, project: project ?? undefined };
 
     for (const decl of ast.declarations) {
       if (decl.type !== 'ImportDecl') continue;
-      const importedId = decl.modulePath.join('/');
+      const importedId = decl.modulePath.join('⋅');
       if (!isSigilImportPath(importedId)) continue;
       const resolved = resolveSigilImportToFile(absFile, project ?? undefined, importedId);
       if (!existsSync(resolved.filePath)) {
@@ -391,7 +431,7 @@ function typeCheckModuleGraph(graph: ModuleGraph): Map<string, Map<string, Infer
   const exportedTypeRegistries = new Map<string, Map<string, TypeInfo>>();
 
   for (const moduleId of graph.topoOrder) {
-    const mod = graph.modules.get(moduleId)!;
+    const mod = graph.modules.get(moduleId)!
 
     // Build imported type registries for this module
     const importedTypeRegistries = buildImportedTypeRegistriesForModule(
@@ -454,8 +494,11 @@ async function compileModuleGraph(entryFile: string, rootOutputOverride?: string
 }> {
   const graph = buildModuleGraph(entryFile);
   const moduleTypes = typeCheckModuleGraph(graph);
-  const rootModule = graph.modules.get(resolve(entryFile)) ?? graph.modules.get(entryFile) ?? (() => { throw new Error('Root module missing'); })();
   const rootProject = getSigilProjectConfig(entryFile) ?? undefined;
+  const absEntryFile = resolve(entryFile);
+  const entryLogicalId = filePathToModuleId(absEntryFile, rootProject);
+  const rootModuleKey = entryLogicalId ?? absEntryFile;
+  const rootModule = graph.modules.get(rootModuleKey) ?? (() => { throw new Error('Root module missing: ' + rootModuleKey); })();
   const outputs = new Map<string, string>();
 
   for (const moduleId of graph.topoOrder) {
@@ -616,8 +659,11 @@ async function compileCommand(args: string[]) {
     }
 
     const { graph, moduleTypes, outputs } = await compileModuleGraph(filename, outputFile);
-    const rootKey = resolve(filename);
-    const rootModule = graph.modules.get(rootKey) ?? (() => { throw new Error(`Root module not loaded: ${filename}`); })();
+    const absFilename = resolve(filename);
+    const rootProject = getSigilProjectConfig(filename) ?? undefined;
+    const filenameLogicalId = filePathToModuleId(absFilename, rootProject);
+    const rootKey = filenameLogicalId ?? absFilename;
+    const rootModule = graph.modules.get(rootKey) ?? (() => { throw new Error(`Root module not loaded: ${filename} (key: ${rootKey})`); })();
     const ast = rootModule.ast;
     const source = rootModule.source;
     const types = moduleTypes.get(rootKey) ?? new Map<string, InferenceType>();

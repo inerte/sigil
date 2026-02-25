@@ -31,16 +31,18 @@ export async function validateExterns(program: AST.Program): Promise<void> {
   const loadedModules = new Map<string, any>();
 
   for (const ext of externs) {
-    const modulePath = ext.modulePath.join('/');
+    const modulePath = ext.modulePath.join('⋅');
+    // Convert to JavaScript module path (⋅ → /)
+    const jsModulePath = modulePath.replace(/⋅/g, '/');
     try {
       // Dynamic import - works with npm packages and Node.js built-ins
-      const module = await import(modulePath);
+      const module = await import(jsModulePath);
       loadedModules.set(modulePath, module);
     } catch (err: any) {
       throw new Error(
-        `Cannot load external module '${modulePath}':\n` +
+        `Cannot load external module '${jsModulePath}':\n` +
           `  ${err.message}\n` +
-          `Make sure it's installed: npm install ${modulePath}`
+          `Make sure it's installed: npm install ${jsModulePath}`
       );
     }
   }

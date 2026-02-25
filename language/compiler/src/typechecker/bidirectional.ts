@@ -651,7 +651,7 @@ function synthesizeIndex(env: TypeEnvironment, expr: AST.IndexExpr): InferenceTy
 }
 
 function synthesizeMemberAccess(env: TypeEnvironment, expr: AST.MemberAccessExpr): InferenceType {
-  const namespaceName = expr.namespace.join('/');
+  const namespaceName = expr.namespace.join('⋅');
   const sigilNamespace = expr.namespace.join('⋅');
 
   // Check namespace exists (should be registered from extern declaration)
@@ -904,6 +904,30 @@ function astTypeToInferenceTypeResolved(env: TypeEnvironment, astType: AST.Type)
 
 function resolveTypeAliases(env: TypeEnvironment, type: InferenceType): InferenceType {
   if (type.kind === 'constructor' && type.typeArgs.length === 0) {
+    // Check if this is a qualified type (contains '.')
+    if (type.name.includes('.')) {
+      // Parse qualified name: "module⋅path.TypeName"
+      const lastDotIndex = type.name.lastIndexOf('.');
+      const moduleId = type.name.substring(0, lastDotIndex);
+      const typeName = type.name.substring(lastDotIndex + 1);
+      const modulePath = moduleId.split('⋅');
+
+      const typeInfo = env.lookupQualifiedType(modulePath, typeName);
+      if (typeInfo && typeInfo.typeParams.length === 0) {
+        if (typeInfo.definition.type === 'ProductType') {
+          const fields = new Map<string, InferenceType>();
+          for (const field of typeInfo.definition.fields) {
+            fields.set(field.name, astTypeToInferenceTypeResolved(env, field.fieldType));
+          }
+          return { kind: 'record', fields, name: type.name };
+        }
+        if (typeInfo.definition.type === 'TypeAlias') {
+          return astTypeToInferenceTypeResolved(env, typeInfo.definition.aliasedType);
+        }
+      }
+    }
+
+    // Try local type lookup
     const typeInfo = env.lookupType(type.name);
     if (typeInfo && typeInfo.typeParams.length === 0) {
       if (typeInfo.definition.type === 'ProductType') {

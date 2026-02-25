@@ -144,7 +144,9 @@ export class JavaScriptGenerator {
   }
 
   private generateImport(importDecl: AST.ImportDecl): void {
-    const modulePath = importDecl.modulePath.join('/');
+    const modulePath = importDecl.modulePath.join('⋅');
+    // Convert to file path for import specifier resolution
+    const fileModulePath = modulePath.replace(/⋅/g, '/');
 
     // Convert slash to underscore for generated TypeScript identifier
     // stdlib⋅list_utils (Sigil) → stdlib_list_utils (generated JS identifier)
@@ -157,12 +159,14 @@ export class JavaScriptGenerator {
     // Always use namespace import (import * as name)
     // Works exactly like FFI: i stdlib⋅list_utils → import * as stdlib_list_utils
     // Use as: stdlib⋅list_utils.len(xs) → stdlib_list_utils.len(xs)
-    const importSpecifier = this.resolveSigilImportSpecifier(modulePath);
+    const importSpecifier = this.resolveSigilImportSpecifier(fileModulePath);
     this.emit(`import * as ${jsName} from '${importSpecifier}';`);
   }
 
   private generateExtern(externDecl: AST.ExternDecl): void {
-    const modulePath = externDecl.modulePath.join('/');
+    const modulePath = externDecl.modulePath.join('⋅');
+    // Convert to JavaScript path for require/import (fs⋅promises → fs/promises)
+    const jsModulePath = modulePath.replace(/⋅/g, '/');
 
     // Convert slash to underscore for generated TypeScript identifier
     // fs⋅promises (Sigil) / fs/promises (JS specifier) → fs_promises
@@ -170,7 +174,7 @@ export class JavaScriptGenerator {
 
     // Always use namespace import (import * as name)
     // This matches our namespace.member usage in Sigil
-    this.emit(`import * as ${jsName} from '${modulePath}';`);
+    this.emit(`import * as ${jsName} from '${jsModulePath}';`);
   }
 
   private generateTest(test: AST.TestDecl): void {

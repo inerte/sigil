@@ -128,15 +128,8 @@ export function formatType(type: InferenceType): string {
     }
 
     case 'constructor': {
-      // Extract module prefix if present
-      const parts = type.name.split('.');
-      let displayName = type.name;
-
-      if (parts.length === 2) {
-        // Qualified type: "src/types.Article" -> "src⋅types.Article"
-        const modulePath = parts[0].replace(/\//g, '⋅');
-        displayName = `${modulePath}.${parts[1]}`;
-      }
+      // Type name already uses ⋅ separator internally
+      const displayName = type.name;
 
       if (type.typeArgs.length === 0) {
         return displayName;

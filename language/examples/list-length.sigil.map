@@ -2,7 +2,7 @@
   "version": 1,
   "file": "list-length.sigil",
   "generated_by": "sigilc@0.1.0",
-  "generated_at": "2026-02-25T17:55:42.205Z",
+  "generated_at": "2026-02-25T23:46:56.142Z",
   "mappings": {
     "length": {
       "range": [

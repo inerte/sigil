@@ -1,0 +1,11 @@
+⟦ Test: Record literal with empty list after local binding ⟧
+
+t Inner={items:[ℤ]}
+t Outer={state:Inner}
+
+λtest(x:𝔹)→Outer≡x{
+  ⊤ →
+    l dummy=1;
+    {state:{items:[]}}|
+  ⊥ → {state:{items:[1,2,3]}}
+}

@@ -120,6 +120,10 @@ function check(env: TypeEnvironment, expr: AST.Expr, expectedType: InferenceType
       checkRecord(env, expr, expectedType);
       return;
 
+    case 'LetExpr':
+      checkLet(env, expr, expectedType);
+      return;
+
     case 'WithMockExpr':
       checkWithMock(env, expr, expectedType);
       return;
@@ -212,6 +216,19 @@ function checkRecord(env: TypeEnvironment, expr: AST.RecordExpr, expectedType: I
       );
     }
   }
+}
+
+function checkLet(env: TypeEnvironment, expr: AST.LetExpr, expectedType: InferenceType): void {
+  // Synthesize binding value type
+  const valueType = synthesize(env, expr.value);
+
+  // Check pattern and get bindings
+  const bindings = new Map<string, InferenceType>();
+  checkPattern(env, expr.pattern, valueType, bindings);
+
+  // Extend environment and check body against expected type
+  const bodyEnv = env.extend(bindings);
+  check(bodyEnv, expr.body, expectedType);
 }
 
 function checkWithMock(env: TypeEnvironment, expr: AST.WithMockExpr, expectedType: InferenceType): void {

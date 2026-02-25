@@ -37,11 +37,8 @@ t Block=Header(ℤ,𝕊)
        |Blockquote(𝕊)
        |HorizontalRule
 
-⟦ Parse result - state and blocks ⟧
-t ParseResult={state:ParseState,blocks:[Block]}
-
 ⟦ Parser State ⟧
-t ParseState={
+t ParserState={
   in_code_block:𝔹,
   code_lang:𝕊,
   code_lines:[𝕊],
@@ -50,6 +47,9 @@ t ParseState={
   list_items:[𝕊],
   para_lines:[𝕊]
 }
+
+⟦ Parse result - state and blocks ⟧
+t ParsingResult={state:ParserState,blocks:[Block]}
 
 ⟦ Block to HTML Conversion ⟧
 λblock_to_html(block:Block)→𝕊≡block{
@@ -87,7 +87,7 @@ t ParseState={
 λempty_blocks()→[Block]=[]
 
 ⟦ Initial empty state ⟧
-λempty_state()→ParseState={
+λempty_state()→ParserState={
   in_code_block:⊥,
   code_lang:"",
   code_lines:[],
@@ -126,12 +126,12 @@ t ParseState={
 }
 
 ⟦ Flush accumulated content to blocks ⟧
-λflush_code_block(state:ParseState)→[Block]≡state.in_code_block{
+λflush_code_block(state:ParserState)→[Block]≡state.in_code_block{
   ⊤ → [CodeBlock(state.code_lang,stdlib⋅string_ops.join(state.code_lines,"\n"))]|
   ⊥ → empty_blocks()
 }
 
-λflush_list(state:ParseState)→[Block]≡state.in_list{
+λflush_list(state:ParserState)→[Block]≡state.in_list{
   ⊥ → empty_blocks()|
   ⊤ → flush_list_by_type(state.list_type,state.list_items)
 }
@@ -142,7 +142,7 @@ t ParseState={
   _ → empty_blocks()
 }
 
-λflush_paragraph(state:ParseState)→[Block]≡state.para_lines{
+λflush_paragraph(state:ParserState)→[Block]≡state.para_lines{
   [] → empty_blocks()|
   lines → [Paragraph(stdlib⋅string_ops.join(lines," "))]
 }
@@ -181,7 +181,7 @@ t ParseState={
 
 Uses field access in pattern guards for the one canonical way to inspect state.
 ⟧
-λparse_line(state:ParseState,line:𝕊)→ParseResult≡state.in_code_block{
+λparse_line(state:ParserState,line:𝕊)→ParsingResult≡state.in_code_block{
   ⟦ Inside code block - check for closing fence ⟧
   ⊤ when is_code_fence(line) →
     {state:empty_state(),blocks:flush_code_block(state)}|
@@ -261,7 +261,7 @@ Uses field access in pattern guards for the one canonical way to inspect state.
   l lines=stdlib⋅string_ops.split(markdown,"\n");
   parse_lines_helper(empty_state(),lines,[])
 
-λparse_lines_helper(state:ParseState,lines:[𝕊],blocks:[Block])→[Block]≡lines{
+λparse_lines_helper(state:ParserState,lines:[𝕊],blocks:[Block])→[Block]≡lines{
   [] →
     l final_blocks=flush_code_block(state)⧺flush_list(state)⧺flush_paragraph(state);
     blocks⧺final_blocks|

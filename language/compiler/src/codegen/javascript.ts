@@ -639,6 +639,10 @@ export class JavaScriptGenerator {
           return `(await ${generatedArgs[0]}).startsWith(await ${generatedArgs[1]})`;
         case 'ends_with':
           return `(await ${generatedArgs[0]}).endsWith(await ${generatedArgs[1]})`;
+        case 'is_digit':
+          return `/^[0-9]$/.test(await ${generatedArgs[0]})`;
+        case 'is_whitespace':
+          return `(await ${generatedArgs[0]}).trim().length === 0`;
       }
     }
 

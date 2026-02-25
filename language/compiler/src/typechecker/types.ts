@@ -358,7 +358,7 @@ export function astTypeToInferenceType(astType: AST.Type): InferenceType {
       // Return constructor with fully qualified internal name
       return {
         kind: 'constructor',
-        name: `${astType.modulePath.join('/')}.${astType.typeName}`,
+        name: `${astType.modulePath.join('⋅')}.${astType.typeName}`,
         typeArgs: astType.typeArgs.map(astTypeToInferenceType)
       };
 

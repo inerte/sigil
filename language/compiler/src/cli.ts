@@ -353,7 +353,7 @@ function buildImportedNamespacesForModule(
   const imported = new Map<string, InferenceType>();
   for (const decl of module.ast.declarations) {
     if (decl.type !== 'ImportDecl') continue;
-    const moduleId = decl.modulePath.join('/');
+    const moduleId = decl.modulePath.join('⋅');
     if (!isSigilImportPath(moduleId)) continue;
     const nsType = exportedNamespaces.get(moduleId);
     if (nsType) {
@@ -371,7 +371,7 @@ function buildImportedTypeRegistriesForModule(
 
   for (const decl of module.ast.declarations) {
     if (decl.type !== 'ImportDecl') continue;
-    const moduleId = decl.modulePath.join('/');
+    const moduleId = decl.modulePath.join('⋅');
 
     // Only track Sigil imports (not externs)
     if (!isSigilImportPath(moduleId)) continue;

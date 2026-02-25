@@ -115,7 +115,7 @@ export class TypeEnvironment {
    * Example: lookupQualifiedType(['src', 'types'], 'ArticleMeta')
    */
   lookupQualifiedType(modulePath: string[], typeName: string): TypeInfo | undefined {
-    const moduleId = modulePath.join('/');
+    const moduleId = modulePath.join('⋅');
     const registry = this.importedTypeRegistries.get(moduleId);
     if (registry) {
       return registry.get(typeName);

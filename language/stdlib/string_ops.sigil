@@ -16,6 +16,12 @@ export λdrop(s:𝕊,n:ℤ)→𝕊=substring(s,n,#s)
 ⟦ Find index of first occurrence (-1 if not found) - compiler intrinsic ⟧
 export λindex_of(s:𝕊,search:𝕊)→ℤ=-1
 
+⟦ Convert integer to string - compiler intrinsic ⟧
+export λint_to_string(n:ℤ)→𝕊=""
+
+⟦ Join list of strings with separator - compiler intrinsic ⟧
+export λjoin(strings:[𝕊],separator:𝕊)→𝕊=""
+
 ⟦ Replace all occurrences - compiler intrinsic ⟧
 export λreplace_all(s:𝕊,pattern:𝕊,replacement:𝕊)→𝕊=""
 

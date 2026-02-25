@@ -83,6 +83,9 @@ t ParseState={
     "<hr>"
 }
 
+⟦ Empty block list helper ⟧
+λempty_blocks()→[Block]=[]
+
 ⟦ Initial empty state ⟧
 λempty_state()→ParseState={
   in_code_block:⊥,
@@ -125,22 +128,22 @@ t ParseState={
 ⟦ Flush accumulated content to blocks ⟧
 λflush_code_block(state:ParseState)→[Block]≡state.in_code_block{
   ⊤ → [CodeBlock(state.code_lang,stdlib⋅string_ops.join(state.code_lines,"\n"))]|
-  ⊥ → []
+  ⊥ → empty_blocks()
 }
 
 λflush_list(state:ParseState)→[Block]≡state.in_list{
-  ⊥ → []|
+  ⊥ → empty_blocks()|
   ⊤ → flush_list_by_type(state.list_type,state.list_items)
 }
 
 λflush_list_by_type(list_type:𝕊,list_items:[𝕊])→[Block]≡list_type{
   "ul" → [UnorderedList(list_items)]|
   "ol" → [OrderedList(list_items)]|
-  _ → []
+  _ → empty_blocks()
 }
 
 λflush_paragraph(state:ParseState)→[Block]≡state.para_lines{
-  [] → []|
+  [] → empty_blocks()|
   lines → [Paragraph(stdlib⋅string_ops.join(lines," "))]
 }
 

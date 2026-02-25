@@ -2,7 +2,7 @@
   "version": 1,
   "file": "hanoi.sigil",
   "generated_by": "sigilc@0.1.0",
-  "generated_at": "2026-02-25T03:08:28.414Z",
+  "generated_at": "2026-02-25T03:09:06.554Z",
   "mappings": {
     "hanoi": {
       "range": [

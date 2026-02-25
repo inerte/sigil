@@ -56,8 +56,14 @@ The `#` operator is a **built-in language operator** that returns the length of 
 #"hello"        ⟦ → 5 ⟧
 #""             ⟦ → 0 ⟧
 #[1,2,3]        ⟦ → 3 ⟧
-#[]=[ℤ]         ⟦ → 0 (type annotation required for empty list) ⟧
+#[]             ⟦ → 0 (empty list type inferred from context) ⟧
 ```
+
+**Note on Empty Lists:**
+Empty lists `[]` infer their type from context:
+- In pattern matching: First arm establishes the type
+- In function return: Return type annotation provides context
+- In standalone expressions: Type cannot be inferred (use function with explicit return type)
 
 **Why `#` instead of functions?**
 

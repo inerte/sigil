@@ -435,19 +435,44 @@ This preserves canonical surface forms by avoiding one overloaded concat operato
 
 ## Empty List Contextual Typing
 
-The empty list literal `[]` does not synthesize an element type by itself.
+The empty list literal `[]` requires type context to determine its element type.
 
-- `[]` is valid when an expected list type is already known (contextual typing)
-- `[]` is rejected when there is no expected element type
+**Works in these contexts:**
+- **Function return type**: `λf()→[ℤ]=[]` provides `[ℤ]` context
+- **Pattern matching arms**: First arm establishes type for subsequent arms
+- **Explicit checking contexts**: Where expected type flows downward
 
+**Example - Pattern Matching:**
 ```sigil
+⟦ Basic: empty list infers from function return type ⟧
 λemptyInts()→[ℤ]=[]
 
+⟦ Pattern matching: first arm pattern infers from scrutinee, body from return type ⟧
 λreverse(xs:[ℤ])→[ℤ]≡xs{
-  []→[]|                 ⟦ OK: expected type is [ℤ] ⟧
+  []→[]|                 ⟦ OK: expected type is [ℤ] from function signature ⟧
   [x,.rest]→reverse(rest)⧺[x]
 }
+
+⟦ Pattern matching: subsequent arms checked against first arm's type ⟧
+λfirstNonEmpty(a:[ℤ],b:[ℤ])→[ℤ]≡a{
+  [x,.xs] → a|      ⟦ First arm synthesizes to [ℤ] ⟧
+  [] → b            ⟦ Second arm checked against [ℤ] from first arm ⟧
+}
+
+⟦ Multiple empty arms work when return type provides context ⟧
+t Foo=A|B|C
+
+λtest(x:Foo)→[ℤ]≡x{
+  A → [1,2,3]|      ⟦ First arm synthesizes to [ℤ] ⟧
+  B → []|           ⟦ Checked against [ℤ] ⟧
+  C → []            ⟦ Checked against [ℤ] ⟧
+}
 ```
+
+**Does NOT work when:**
+- Standalone expression with no context: `c x=[]` (no type known)
+- All pattern arms are empty and no function return type
+- Nested expressions in synthesis mode without surrounding context
 
 ## Examples
 

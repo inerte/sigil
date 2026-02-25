@@ -83,6 +83,22 @@ Where `σ` is the generalization of the type of `e₁`.
 
 All match arms must have the same result type `τ'`.
 
+**Bidirectional Typing for Match Expressions:**
+
+In synthesis mode (⇒), the first arm establishes the type that subsequent arms are checked against:
+
+```
+Γ ⊢ e ⇒ τ_scrutinee
+Γ, Δ₁ ⊢ p₁ ⇐ τ_scrutinee ⇝ Δ₁
+Γ, Δ₁ ⊢ e₁ ⇒ τ
+Γ, Δᵢ ⊢ pᵢ ⇐ τ_scrutinee ⇝ Δᵢ  (for i > 1)
+Γ, Δᵢ ⊢ eᵢ ⇐ τ                 (for i > 1)
+─────────────────────────────────────────
+Γ ⊢ (e ≡ { p₁ → e₁ | ... | pₙ → eₙ }) ⇒ τ
+```
+
+Note: The first arm body is synthesized (⇒) to establish expected type τ. Remaining arm bodies are checked (⇐) against that type. This allows empty list `[]` in later arms when the first arm provides context.
+
 ### Type Schemes
 
 Type schemes represent polymorphic types:

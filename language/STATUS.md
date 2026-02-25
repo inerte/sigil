@@ -6,9 +6,41 @@
 
 Sigil is a machine-first programming language optimized for AI code generation. This document tracks the implementation progress of the proof-of-concept compiler and tooling.
 
-## Recent Changes (2026-02-24)
+## Recent Changes
 
-### ✅ Async-by-Default Implementation
+### ✅ Empty List Type Inference in Pattern Matching (2026-02-25)
+
+**Pattern match expressions now propagate type context from the first arm to subsequent arms**, enabling empty list `[]` literals in later match arms without explicit type annotations.
+
+#### What Changed
+
+- **Bidirectional Typechecker**: Modified `synthesizeMatch()` to use "first arm establishes type" strategy
+- **First arm**: Synthesized (⇒) to infer the expected type
+- **Subsequent arms**: Checked (⇐) against the first arm's type
+- **Empty lists**: Now work in later arms because they're in checking mode
+- **No new syntax**: Leverages existing bidirectional typing infrastructure
+
+#### Impact
+
+- **Cleaner stdlib code**: Functions like `list_ops.reverse` no longer need workarounds
+- **Better DX**: Matches user expectations from Haskell, OCaml, and other ML languages
+- **Idiomatic patterns**: Enables natural recursive list functions with empty base cases
+
+#### Example
+
+```sigil
+⟦ Before: Error - Cannot infer type of empty list ⟧
+⟦ After: Works! ⟧
+t Foo=A|B|C
+
+λtest(x:Foo)→[ℤ]≡x{
+  A → [1,2,3]|      ⟦ First arm synthesizes to [ℤ] ⟧
+  B → []|           ⟦ Checked against [ℤ] - now works! ⟧
+  C → [4,5]
+}
+```
+
+### ✅ Async-by-Default Implementation (2026-02-24)
 
 **ALL Sigil functions are now async.** This fundamental change aligns with Sigil's canonical forms philosophy and modern JavaScript practices.
 

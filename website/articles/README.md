@@ -12,6 +12,18 @@ How the canonical forms philosophy shaped our decision to use a single `#` opera
 
 **Key topics:** Canonical forms, training data quality, bidirectional type checking, compiler intrinsics
 
+**February 24, 2026** - [Pattern Guards: How Dog-Fooding Evolved Sigil](./003-pattern-guards-dog-fooding.md)
+
+How building Sigil's website in Sigil exposed the need for pattern guards, and how a small, focused language feature unlocked cleaner state-machine code.
+
+**Key topics:** Dog-fooding, pattern matching, guards, parser ergonomics, language evolution
+
+**February 25, 2026** - [Stdlib Tests + Claude Hooks: Making Sigil Dog-Food Itself Continuously](./004-stdlib-tests-and-claude-hooks.md)
+
+Why we moved stdlib “test” demos into a dedicated Sigil test project and automated stdlib behavior tests with Claude Code hooks after relevant edits.
+
+**Key topics:** First-class tests, repo canonicality, Claude Code hooks, stdlib regression testing, AI-assisted workflows
+
 ---
 
 ## About These Articles

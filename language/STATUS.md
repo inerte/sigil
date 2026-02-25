@@ -263,12 +263,12 @@ Warning: Could not enhance semantic map (Claude Code CLI not available)
   - sorted_asc, sorted_desc, all, any, contains, in_bounds
 - ✅ **stdlib⋅list_utils.sigil** + .map - List utility functions
   - len, head, tail
-- ✅ **stdlib⋅test_numeric_predicates.sigil** + .map - Tests
-- ✅ **stdlib⋅test_list_predicates.sigil** + .map - Tests
+- ✅ **language/stdlib-tests/tests/numeric-predicates.sigil** - Stdlib behavior tests (first-class `test`)
+- ✅ **language/stdlib-tests/tests/list-predicates.sigil** - Stdlib behavior tests (first-class `test`)
 
 **Live test:**
 ```bash
-$ node compiler/dist/cli.js run stdlib⋅test_numeric_predicates.sigil
+$ pnpm sigil:test:stdlib
 is_positive(5): true
 ```
 

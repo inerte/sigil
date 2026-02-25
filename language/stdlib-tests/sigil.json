@@ -1,0 +1,9 @@
+{
+  "name": "stdlib-tests",
+  "version": "0.1.0",
+  "layout": {
+    "src": "src",
+    "tests": "tests",
+    "out": ".local"
+  }
+}

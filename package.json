@@ -13,8 +13,10 @@
     "build": "pnpm --filter @sigil-lang/compiler build",
     "test": "pnpm -r test",
     "lex": "node language/compiler/dist/cli.js lex",
+    "sigil:test:stdlib": "node language/compiler/dist/cli.js test language/stdlib-tests/tests",
     "sigil:test:algorithms": "node language/compiler/dist/cli.js test projects/algorithms/tests",
-    "sigil:test:todo": "node language/compiler/dist/cli.js test projects/todo-app/tests"
+    "sigil:test:todo": "node language/compiler/dist/cli.js test projects/todo-app/tests",
+    "sigil:test:all": "pnpm sigil:test:stdlib && pnpm sigil:test:algorithms && pnpm sigil:test:todo"
   },
   "packageManager": "pnpm@9.0.0",
   "repository": {

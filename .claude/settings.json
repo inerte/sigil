@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PROJECT_DIR}/tools/claude-hooks/run-stdlib-tests-on-edit.mjs\"",
+            "timeout": 300
+          }
+        ]
+      }
+    ]
+  }
+}

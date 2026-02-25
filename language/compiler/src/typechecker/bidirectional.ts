@@ -609,7 +609,11 @@ function synthesizeMemberAccess(env: TypeEnvironment, expr: AST.MemberAccessExpr
     if (!memberType) {
       throw new TypeError(
         `Module '${sigilNamespace}' does not export member '${expr.member}'`,
-        expr.location
+        expr.location,
+        undefined,
+        undefined,
+        'SIGIL-TYPE-MODULE-NOT-EXPORTED',
+        { module: sigilNamespace, member: expr.member }
       );
     }
     return memberType;

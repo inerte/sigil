@@ -6,18 +6,25 @@
 
 import * as AST from '../parser/ast.js';
 import { InferenceType, TVar } from './types.js';
+import { SigilDiagnosticError } from '../diagnostics/error.js';
+import { astLocationToSpan, diagnostic } from '../diagnostics/helpers.js';
 
 /**
  * Type error with source location information
  */
-export class TypeError extends Error {
+export class TypeError extends SigilDiagnosticError {
   constructor(
     message: string,
     public location?: AST.SourceLocation,
     public expected?: InferenceType,
-    public actual?: InferenceType
+    public actual?: InferenceType,
+    code = 'SIGIL-TYPE-ERROR',
+    details?: Record<string, unknown>
   ) {
-    super(message);
+    super(diagnostic(code, 'typecheck', message, {
+      location: astLocationToSpan('<unknown>', location),
+      details,
+    }));
     this.name = 'TypeError';
   }
 

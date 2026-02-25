@@ -10,6 +10,8 @@
  */
 
 import * as AST from '../parser/ast.js';
+import { SigilDiagnosticError } from '../diagnostics/error.js';
+import { astLocationToSpan, diagnostic } from '../diagnostics/helpers.js';
 
 /**
  * Parameter role classification for multi-parameter recursion validation
@@ -26,12 +28,15 @@ enum ParameterRole {
   UNKNOWN       // Cannot determine
 }
 
-export class CanonicalError extends Error {
+export class CanonicalError extends SigilDiagnosticError {
   constructor(
+    code: string,
     message: string,
     public location?: AST.SourceLocation
   ) {
-    super(message);
+    super(diagnostic(code, 'canonical', message, {
+      location: astLocationToSpan('<unknown>', location)
+    }));
     this.name = 'CanonicalError';
   }
 }
@@ -39,10 +44,17 @@ export class CanonicalError extends Error {
 /**
  * Validate that the program follows canonical form rules
  */
-export function validateCanonicalForm(program: AST.Program): void {
-  validateRecursiveFunctions(program);
-  validateCanonicalPatternMatching(program);
-  validateDeclarationOrdering(program);
+export function validateCanonicalForm(program: AST.Program, filename?: string): void {
+  try {
+    validateRecursiveFunctions(program);
+    validateCanonicalPatternMatching(program);
+    validateDeclarationOrdering(program);
+  } catch (error) {
+    if (filename && error instanceof CanonicalError && error.diagnostic.location?.file === '<unknown>') {
+      error.diagnostic.location.file = filename;
+    }
+    throw error;
+  }
 }
 
 /**
@@ -108,6 +120,7 @@ function validateRecursiveFunctions(program: AST.Program): void {
 
       if (accumulatorParams.length > 0) {
         throw new CanonicalError(
+          'SIGIL-CANON-RECURSION-ACCUMULATOR',
           `Accumulator-passing style detected in function '${decl.name}'.\n` +
           `\n` +
           `Parameter roles:\n${paramRoleDescriptions.join('\n')}\n` +
@@ -153,6 +166,7 @@ function validateRecursiveFunctions(program: AST.Program): void {
 
       if (!isStructuralRecursion(decl, collectionParam)) {
         throw new CanonicalError(
+          'SIGIL-CANON-RECURSION-COLLECTION-NONSTRUCTURAL',
           `Recursive function '${decl.name}' has collection parameter but doesn't use structural recursion.\n` +
           `Parameter: ${collectionParam.param.name}${collectionParam.param.typeAnnotation ? ':' + formatType(collectionParam.param.typeAnnotation) : ''}\n` +
           `\n` +
@@ -178,6 +192,7 @@ function validateRecursiveFunctions(program: AST.Program): void {
     // This closes the CPS loophole: λfactorial(n:ℤ)→λ(ℤ)→ℤ
     if (decl.returnType && decl.returnType.type === 'FunctionType') {
       throw new CanonicalError(
+        'SIGIL-CANON-RECURSION-CPS',
         `Recursive function '${decl.name}' returns a function type.\n` +
         `Return type: ${formatType(decl.returnType)}\n` +
         `\n` +
@@ -457,6 +472,7 @@ function validateMatchExpr(match: AST.MatchExpr, params: AST.Param[]): void {
   // Check if scrutinee is a boolean/comparison expression on a single parameter
   if (isSingleParamComparison(scrutinee, params)) {
     throw new CanonicalError(
+      'SIGIL-CANON-MATCH-BOOLEAN',
       `Non-canonical pattern matching: matching on boolean expression.\n` +
       `\n` +
       `Found: ≡(${formatScrutinee(scrutinee)}){...}\n` +
@@ -475,6 +491,7 @@ function validateMatchExpr(match: AST.MatchExpr, params: AST.Param[]): void {
   // Check if scrutinee is a tuple of boolean expressions on a single parameter
   if (scrutinee.type === 'TupleExpr' && isTupleSingleParamComparisons(scrutinee, params)) {
     throw new CanonicalError(
+      'SIGIL-CANON-MATCH-TUPLE-BOOLEAN',
       `Non-canonical pattern matching: tuple of boolean expressions on single parameter.\n` +
       `\n` +
       `Found: ≡(${formatTupleScrutinee(scrutinee)}){...}\n` +
@@ -1164,6 +1181,7 @@ function validateCategoryBoundaries(decls: AST.Declaration[]): void {
       const currentSymbol = categorySymbols[currentIndex];
 
       throw new CanonicalError(
+        'SIGIL-CANON-DECL-CATEGORY-ORDER',
         `Canonical Ordering Error: Wrong category position\n` +
         `\n` +
         `Found: ${currentSymbol} (${currentCategory}) at line ${decl.location.start.line}\n` +
@@ -1231,6 +1249,7 @@ function validateWithinCategoryOrder(
 
     if (exportedIndex < nonExportedIndex) {
       throw new CanonicalError(
+        'SIGIL-CANON-DECL-EXPORT-ORDER',
         `Canonical Ordering Error: Exports must come after non-exports\n` +
         `\n` +
         `Found: export ${categorySymbol} ${firstExported.name} at line ${firstExported.decl.location.start.line}\n` +
@@ -1267,6 +1286,7 @@ function checkAlphabeticalOrder(
       const exportPrefix = isExported ? 'export ' : '';
 
       throw new CanonicalError(
+        'SIGIL-CANON-DECL-ALPHABETICAL',
         `Canonical Ordering Error: Declaration out of alphabetical order\n` +
         `\n` +
         `Found: ${exportPrefix}${categorySymbol} ${curr.name} at line ${curr.decl.location.start.line}\n` +

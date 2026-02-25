@@ -7,13 +7,21 @@
  */
 
 import { Token, TokenType, SourceLocation, createToken } from './token.js';
+import { SigilDiagnosticError } from '../diagnostics/error.js';
+import { diagnostic } from '../diagnostics/helpers.js';
 
-export class LexerError extends Error {
+export class LexerError extends SigilDiagnosticError {
   constructor(
+    code: string,
     message: string,
     public location: SourceLocation
   ) {
-    super(`Lexer error at ${location.line}:${location.column}: ${message}`);
+    super(diagnostic(code, 'lexer', message, {
+      location: {
+        file: '<unknown>',
+        start: { line: location.line, column: location.column, offset: location.offset }
+      }
+    }));
     this.name = 'LexerError';
   }
 }
@@ -64,12 +72,12 @@ export class Lexer {
           this.advance(); // Skip \r\n
           this.addToken(TokenType.NEWLINE, '\n', start);
         } else {
-          this.error('Standalone \\r not allowed - use \\n for line breaks');
+          this.error('SIGIL-LEX-CRLF', 'standalone carriage return not allowed');
         }
         break;
 
       case '\t':
-        this.error('Tab characters not allowed - use spaces');
+        this.error('SIGIL-LEX-TAB', 'tab characters not allowed');
         break;
 
       // Division operator
@@ -279,7 +287,7 @@ export class Lexer {
         } else if (this.isAlpha(char)) {
           this.identifier();
         } else {
-          this.error(`Unexpected character: ${char} (U+${char.codePointAt(0)?.toString(16).toUpperCase().padStart(4, '0')})`);
+          this.error('SIGIL-LEX-UNEXPECTED-CHAR', `unexpected character: ${char} (U+${char.codePointAt(0)?.toString(16).toUpperCase().padStart(4, '0')})`);
         }
     }
   }
@@ -295,7 +303,7 @@ export class Lexer {
     }
 
     if (this.isAtEnd()) {
-      this.error('Unterminated multi-line comment (missing ⟧)');
+      this.error('SIGIL-LEX-UNTERMINATED-COMMENT', 'unterminated multi-line comment');
     }
 
     this.advance(); // Consume closing ⟧
@@ -310,7 +318,7 @@ export class Lexer {
 
     while (this.peek() !== '"' && !this.isAtEnd()) {
       if (this.peek() === '\n') {
-        this.error('Unterminated string literal');
+        this.error('SIGIL-LEX-UNTERMINATED-STRING', 'unterminated string literal');
       }
       if (this.peek() === '\\') {
         this.advance();
@@ -321,7 +329,7 @@ export class Lexer {
     }
 
     if (this.isAtEnd()) {
-      this.error('Unterminated string literal');
+      this.error('SIGIL-LEX-UNTERMINATED-STRING', 'unterminated string literal');
     }
 
     this.advance(); // Closing "
@@ -340,13 +348,13 @@ export class Lexer {
       this.advance();
       value = this.escapeSequence();
     } else if (this.peek() === "'") {
-      this.error('Empty character literal');
+      this.error('SIGIL-LEX-EMPTY-CHAR', 'empty character literal');
     } else {
       value = this.advance();
     }
 
     if (this.peek() !== "'") {
-      this.error('Character literal must contain exactly one character');
+      this.error('SIGIL-LEX-CHAR-LENGTH', 'character literal must contain exactly one character');
     }
 
     this.advance(); // Closing '
@@ -364,7 +372,7 @@ export class Lexer {
       case '"': return '"';
       case "'": return "'";
       default:
-        this.error(`Invalid escape sequence: \\${char}`);
+        this.error('SIGIL-LEX-INVALID-ESCAPE', `invalid escape sequence: \\${char}`);
         return '';
     }
   }
@@ -498,8 +506,8 @@ export class Lexer {
     this.tokens.push(createToken(type, value, start, end));
   }
 
-  private error(message: string): never {
-    throw new LexerError(message, this.currentLocation());
+  private error(code: string, message: string): never {
+    throw new LexerError(code, message, this.currentLocation());
   }
 }
 

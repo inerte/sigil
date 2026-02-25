@@ -21,6 +21,9 @@ import type { InferenceType } from './typechecker/types.js';
 import type { TypeInfo } from './typechecker/index.js';
 import type * as AST from './parser/ast.js';
 import { generateSemanticMap, enhanceWithClaude } from './mapgen/index.js';
+import { SigilDiagnosticError, isSigilDiagnosticError } from './diagnostics/error.js';
+import type { CommandEnvelope, Diagnostic, SigilPhase } from './diagnostics/types.js';
+import { diagnostic } from './diagnostics/helpers.js';
 
 type SigilProjectLayout = {
   src: string;
@@ -47,6 +50,84 @@ type ModuleGraph = {
 };
 
 const LANGUAGE_ROOT_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+function hasFlag(args: string[], flag: string): boolean {
+  return args.includes(flag);
+}
+
+function rejectRemovedJsonFlag(args: string[]): void {
+  if (hasFlag(args, '--json')) {
+    throw new SigilDiagnosticError(diagnostic('SIGIL-CLI-UNSUPPORTED-OPTION', 'cli', 'unsupported option', {
+      found: '--json',
+      expected: '--human'
+    }));
+  }
+}
+
+function stripFlag(args: string[], flag: string): string[] {
+  return args.filter(a => a !== flag);
+}
+
+function formatLocation(loc?: Diagnostic['location']): string {
+  if (!loc) return '';
+  return `${loc.file}:${loc.start.line}:${loc.start.column}`;
+}
+
+function renderHumanEnvelope(envelope: CommandEnvelope): string {
+  if (envelope.ok) {
+    const parts = [`${envelope.command} OK`];
+    if (envelope.phase) parts.push(`phase=${envelope.phase}`);
+    return parts.join(' ');
+  }
+  const err = envelope.error;
+  if (!err) return `${envelope.command} FAIL`;
+  const bits = [err.code];
+  const loc = formatLocation(err.location);
+  if (loc) bits.push(loc);
+  bits.push(err.message);
+  if (err.found !== undefined || err.expected !== undefined) {
+    bits.push(`(found ${JSON.stringify(err.found)}, expected ${JSON.stringify(err.expected)})`);
+  }
+  return bits.join(' ');
+}
+
+function emitEnvelope<T>(envelope: CommandEnvelope<T>, human: boolean): never {
+  if (human) {
+    if (envelope.command === 'sigilc parse' && envelope.ok && envelope.data && typeof envelope.data === 'object' && 'ast' in (envelope.data as any)) {
+      console.log(renderHumanEnvelope(envelope));
+      console.log(JSON.stringify((envelope.data as any).ast, null, 2));
+    } else if (envelope.command === 'sigilc lex' && envelope.ok && envelope.data && typeof envelope.data === 'object' && Array.isArray((envelope.data as any).tokens)) {
+      console.log(renderHumanEnvelope(envelope));
+      for (const t of (envelope.data as any).tokens) {
+        console.log(`${t.type}(${t.lexeme}) at ${t.start.line}:${t.start.column}`);
+      }
+    } else if (envelope.command === 'sigilc run' && envelope.ok && envelope.data && typeof envelope.data === 'object') {
+      const runtime = (envelope.data as any).runtime;
+      if (runtime?.stdout) process.stdout.write(runtime.stdout);
+      if (runtime?.stderr) process.stderr.write(runtime.stderr);
+      console.log(renderHumanEnvelope(envelope));
+    } else {
+      console.log(renderHumanEnvelope(envelope));
+    }
+  } else {
+    process.stdout.write(JSON.stringify(envelope) + '\n');
+  }
+  process.exit(envelope.ok ? 0 : 1);
+}
+
+function unknownToDiagnostic(error: unknown, phase: SigilPhase = 'cli', filename?: string): Diagnostic {
+  if (isSigilDiagnosticError(error)) {
+    const d = { ...error.diagnostic };
+    if (filename && d.location && d.location.file === '<unknown>') {
+      d.location = { ...d.location, file: filename };
+    }
+    return d;
+  }
+  if (error instanceof Error) {
+    return diagnostic('SIGIL-CLI-UNEXPECTED', phase, error.message);
+  }
+  return diagnostic('SIGIL-CLI-UNEXPECTED', phase, String(error));
+}
 
 function defaultProjectLayout(): SigilProjectLayout {
   return { src: 'src', tests: 'tests', out: '.local' };
@@ -88,16 +169,15 @@ async function main() {
   const args = process.argv.slice(2);
 
   if (args.length === 0) {
-    console.error('Usage: sigilc <command> [options]');
-    console.error('');
-    console.error('Commands:');
-    console.error('  lex <file>        Tokenize a Sigil file');
-    console.error('  parse <file>      Parse a Sigil file and show AST');
-    console.error('  compile <file>    Compile a Sigil file to TypeScript');
-    console.error('  run <file>        Compile and run a Sigil file');
-    console.error('  test [path]       Run Sigil tests from ./tests (JSON output by default)');
-    console.error('  help              Show this help message');
-    process.exit(1);
+    emitEnvelope({
+      formatVersion: 1,
+      command: 'sigilc',
+      ok: false,
+      phase: 'cli',
+      error: diagnostic('SIGIL-CLI-USAGE', 'cli', 'missing command', {
+        expected: ['lex', 'parse', 'compile', 'run', 'test', 'help']
+      })
+    }, false);
   }
 
   const command = args[0];
@@ -122,10 +202,10 @@ async function main() {
       console.log('Sigil Compiler v0.1.0');
       console.log('');
       console.log('Commands:');
-      console.log('  lex <file>        Tokenize a Sigil file and print tokens');
-      console.log('  parse <file>      Parse a Sigil file and show AST');
-      console.log('  compile <file>    Compile a Sigil file to TypeScript');
-      console.log('  run <file>        Compile and run a Sigil file');
+      console.log('  lex <file>        Tokenize a Sigil file (JSON by default)');
+      console.log('  parse <file>      Parse a Sigil file (JSON by default)');
+      console.log('  compile <file>    Compile a Sigil file to TypeScript (JSON by default)');
+      console.log('  run <file>        Compile and run a Sigil file (JSON by default)');
       console.log('  test [path]       Run Sigil tests from the current Sigil project tests/ (JSON by default)');
       console.log('  help              Show this help message');
       console.log('');
@@ -135,14 +215,21 @@ async function main() {
       console.log('');
       console.log('Options:');
       console.log('  -o <file>         Specify custom output location');
-      console.log('  --show-types      Display inferred types after type checking');
-      console.log('  --json            JSON test output (default for sigilc test)');
-      console.log('  --human           Human-readable test output');
+      console.log('  --show-types      Include inferred types in compile JSON output');
+      console.log('  --human           Human-readable output (derived from JSON payloads)');
       console.log('  --match <text>    Filter tests by substring (sigilc test)');
       break;
     default:
-      console.error(`Unknown command: ${command}`);
-      process.exit(1);
+      emitEnvelope({
+        formatVersion: 1,
+        command: 'sigilc',
+        ok: false,
+        phase: 'cli',
+        error: diagnostic('SIGIL-CLI-UNKNOWN-COMMAND', 'cli', 'unknown command', {
+          found: command,
+          expected: ['lex', 'parse', 'compile', 'run', 'test', 'help']
+        })
+      }, hasFlag(args, '--human'));
   }
 }
 
@@ -163,7 +250,9 @@ function pathIsUnderTests(filename: string): boolean {
 function ensureNoTestsOutsideTestsDir(ast: ReturnType<typeof parse>, filename: string): void {
   const hasTests = ast.declarations.some(d => d.type === 'TestDecl');
   if (hasTests && !pathIsUnderTests(filename)) {
-    throw new Error(`Test declarations are only allowed under ./tests (canonical project layout). Found test in ${filename}`);
+    throw new SigilDiagnosticError(diagnostic('SIGIL-CANON-TEST-PATH', 'canonical', 'test declarations are only allowed under project tests/', {
+      details: { file: filename, testsRoot: getTestsRootForPath(filename) }
+    }));
   }
 }
 
@@ -178,7 +267,9 @@ function resolveSigilImportToFile(
 ): { moduleId: string; filePath: string; project?: SigilProjectConfig } {
   if (moduleId.startsWith('src/')) {
     if (!importerProject) {
-      throw new Error(`Project import '${moduleId}' requires a Sigil project root (sigil.json). Importer: ${importerFile}`);
+      throw new SigilDiagnosticError(diagnostic('SIGIL-CLI-PROJECT-ROOT-REQUIRED', 'cli', 'project import requires sigil project root', {
+        details: { moduleId, importerFile }
+      }));
     }
     return {
       moduleId,
@@ -193,7 +284,10 @@ function resolveSigilImportToFile(
       project: importerProject,
     };
   }
-  throw new Error(`Invalid Sigil import '${moduleId}'. Canonical Sigil imports are only 'src/...' and 'stdlib/...'`);
+  throw new SigilDiagnosticError(diagnostic('SIGIL-CLI-INVALID-IMPORT', 'cli', 'invalid sigil import module id', {
+    found: moduleId,
+    expected: ['src/...', 'stdlib/...']
+  }));
 }
 
 function buildModuleGraph(entryFile: string): ModuleGraph {
@@ -209,7 +303,9 @@ function buildModuleGraph(entryFile: string): ModuleGraph {
     if (visiting.has(moduleKey)) {
       const startIdx = visitStack.indexOf(moduleKey);
       const cycle = (startIdx >= 0 ? visitStack.slice(startIdx) : [moduleKey]).concat(moduleKey);
-      throw new Error(`Import cycle detected: ${cycle.join(' -> ')}`);
+      throw new SigilDiagnosticError(diagnostic('SIGIL-CLI-IMPORT-CYCLE', 'cli', 'import cycle detected', {
+        details: { cycle }
+      }));
     }
     visiting.add(moduleKey);
     visitStack.push(moduleKey);
@@ -217,9 +313,9 @@ function buildModuleGraph(entryFile: string): ModuleGraph {
     const source = readFileSync(absFile, 'utf-8');
     validateSurfaceForm(source, absFile);
     const tokens = tokenize(source);
-    const ast = parse(tokens);
+    const ast = parse(tokens, absFile);
     ensureNoTestsOutsideTestsDir(ast, absFile);
-    validateCanonicalForm(ast);
+    validateCanonicalForm(ast, absFile);
     const project = getSigilProjectConfig(absFile) ?? inheritedProject;
     const mod: LoadedSigilModule = { id: moduleKey, filePath: absFile, source, ast, project: project ?? undefined };
 
@@ -229,7 +325,9 @@ function buildModuleGraph(entryFile: string): ModuleGraph {
       if (!isSigilImportPath(importedId)) continue;
       const resolved = resolveSigilImportToFile(absFile, project ?? undefined, importedId);
       if (!existsSync(resolved.filePath)) {
-        throw new Error(`Sigil import '${importedId}' not found for ${absFile}. Expected: ${resolved.filePath}`);
+        throw new SigilDiagnosticError(diagnostic('SIGIL-CLI-IMPORT-NOT-FOUND', 'cli', 'sigil import not found', {
+          details: { importedId, importerFile: absFile, expectedFile: resolved.filePath }
+        }));
       }
       visit(resolved.filePath, resolved.moduleId, resolved.project);
     }
@@ -304,7 +402,8 @@ function typeCheckModuleGraph(graph: ModuleGraph): Map<string, Map<string, Infer
     const importedNamespaces = buildImportedNamespacesForModule(mod, exportedNamespaces);
     const types = typeCheck(mod.ast, mod.source, {
       importedNamespaces,
-      importedTypeRegistries
+      importedTypeRegistries,
+      sourceFile: mod.filePath
     });
     moduleTypes.set(moduleId, types);
 
@@ -401,49 +500,54 @@ function collectSigilFiles(rootPath: string): string[] {
 }
 
 function lexCommand(args: string[]) {
-  if (args.length === 0) {
-    console.error('Usage: sigilc lex <file>');
-    process.exit(1);
-  }
-
-  const filename = args[0];
-
+  const human = hasFlag(args, '--human');
+  const cleaned = stripFlag(args, '--human');
   try {
+    rejectRemovedJsonFlag(args);
+    if (cleaned.length === 0) {
+      emitEnvelope({ formatVersion: 1, command: 'sigilc lex', ok: false, phase: 'cli', error: diagnostic('SIGIL-CLI-USAGE', 'cli', 'missing file argument') }, human);
+    }
+
+    const filename = cleaned[0];
     const source = readFileSync(filename, 'utf-8');
 
     // Validate surface form (formatting) before tokenizing
     validateSurfaceForm(source, filename);
 
     const tokens = tokenize(source);
-
-    console.log(`Tokens for ${filename}:`);
-    console.log('');
-
-    for (const token of tokens) {
-      console.log(tokenToString(token));
-    }
-
-    console.log('');
-    console.log(`Total tokens: ${tokens.length}`);
+    emitEnvelope({
+      formatVersion: 1,
+      command: 'sigilc lex',
+      ok: true,
+      phase: 'lexer',
+      data: {
+        file: filename,
+        summary: { tokens: tokens.length },
+        tokens: tokens.map(t => ({
+          type: t.type,
+          lexeme: t.value,
+          start: t.start,
+          end: t.end,
+          text: tokenToString(t)
+        }))
+      }
+    }, human);
   } catch (error) {
-    if (error instanceof Error) {
-      console.error(`Error: ${error.message}`);
-    } else {
-      console.error(`Unknown error: ${error}`);
-    }
-    process.exit(1);
+    const filename = cleaned[0];
+    emitEnvelope({ formatVersion: 1, command: 'sigilc lex', ok: false, phase: 'lexer', error: unknownToDiagnostic(error, 'lexer', filename) }, human);
   }
 }
 
 function parseCommand(args: string[]) {
-  if (args.length === 0) {
-    console.error('Usage: sigilc parse <file>');
-    process.exit(1);
-  }
-
-  const filename = args[0];
-
+  const human = hasFlag(args, '--human');
+  const cleaned = stripFlag(args, '--human');
   try {
+    rejectRemovedJsonFlag(args);
+    if (cleaned.length === 0) {
+      emitEnvelope({ formatVersion: 1, command: 'sigilc parse', ok: false, phase: 'cli', error: diagnostic('SIGIL-CLI-USAGE', 'cli', 'missing file argument') }, human);
+    }
+
+    const filename = cleaned[0];
     const source = readFileSync(filename, 'utf-8');
 
     // Validate surface form (formatting) before tokenizing
@@ -451,24 +555,22 @@ function parseCommand(args: string[]) {
 
     const tokens = tokenize(source);
 
-    console.log(`Parsing ${filename}...`);
-    console.log(`Total tokens: ${tokens.length}`);
-
-    const ast = parse(tokens);
+    const ast = parse(tokens, filename);
     ensureNoTestsOutsideTestsDir(ast, filename);
-
-    console.log('');
-    console.log(`AST for ${filename}:`);
-    console.log('');
-    console.log(JSON.stringify(ast, null, 2));
+    emitEnvelope({
+      formatVersion: 1,
+      command: 'sigilc parse',
+      ok: true,
+      phase: 'parser',
+      data: {
+        file: filename,
+        summary: { tokens: tokens.length, declarations: ast.declarations.length },
+        ast
+      }
+    }, human);
   } catch (error) {
-    if (error instanceof Error) {
-      console.error(`Error: ${error.message}`);
-      console.error(error.stack);
-    } else {
-      console.error(`Unknown error: ${error}`);
-    }
-    process.exit(1);
+    const filename = cleaned[0];
+    emitEnvelope({ formatVersion: 1, command: 'sigilc parse', ok: false, phase: 'parser', error: unknownToDiagnostic(error, 'parser', filename) }, human);
   }
 }
 
@@ -494,25 +596,25 @@ function getSmartOutputPath(inputFile: string): string {
 }
 
 async function compileCommand(args: string[]) {
-  if (args.length === 0) {
-    console.error('Usage: sigilc compile <file> [-o output.ts]');
-    process.exit(1);
-  }
-
-  const filename = args[0];
-
-  // Check for -o flag first
-  const outputIndex = args.indexOf('-o');
-  let outputFile: string;
-
-  if (outputIndex !== -1 && args[outputIndex + 1]) {
-    outputFile = args[outputIndex + 1];
-  } else {
-    // Use smart defaults
-    outputFile = getSmartOutputPath(filename);
-  }
+  const human = hasFlag(args, '--human');
+  const cleanedArgs = stripFlag(args, '--human');
+  let outputFile = '';
+  const filename = cleanedArgs[0];
 
   try {
+    rejectRemovedJsonFlag(args);
+    if (cleanedArgs.length === 0) {
+      emitEnvelope({ formatVersion: 1, command: 'sigilc compile', ok: false, phase: 'cli', error: diagnostic('SIGIL-CLI-USAGE', 'cli', 'missing file argument') }, human);
+    }
+
+    // Check for -o flag first
+    const outputIndex = cleanedArgs.indexOf('-o');
+    if (outputIndex !== -1 && cleanedArgs[outputIndex + 1]) {
+      outputFile = cleanedArgs[outputIndex + 1];
+    } else {
+      outputFile = getSmartOutputPath(filename);
+    }
+
     const { graph, moduleTypes, outputs } = await compileModuleGraph(filename, outputFile);
     const rootKey = resolve(filename);
     const rootModule = graph.modules.get(rootKey) ?? (() => { throw new Error(`Root module not loaded: ${filename}`); })();
@@ -522,41 +624,46 @@ async function compileCommand(args: string[]) {
     outputFile = outputs.get(rootKey) ?? outputFile;
 
     // Type check results for root already available
-    const showTypes = args.includes('--show-types');
-
-    // If --show-types flag, display inferred types
-    if (showTypes) {
-      console.log('\n✓ Type checked successfully\n');
-      console.log('Inferred types:');
-      for (const [name, type] of types) {
-        const typeStr = formatType(type);
-        console.log(`  ${name} : ${typeStr}`);
-      }
-      console.log();
-    }
-
-    console.log(`✓ Compiled ${filename} → ${outputFile}`);
+    const showTypes = cleanedArgs.includes('--show-types');
 
     // Generate semantic map
     const mapFile = filename.replace('.sigil', '.sigil.map');
     generateSemanticMap(ast, types, source, mapFile);
-    console.log(`✓ Generated basic semantic map → ${mapFile}`);
 
     // Enhance with Claude Code CLI
     enhanceWithClaude(filename, mapFile);
-    if (process.env.SIGIL_ENABLE_MAP_ENHANCE === '1') {
-      console.log(`✓ Enhanced semantic map with AI documentation`);
-    } else {
-      console.log('✓ Skipped AI semantic map enhancement (set SIGIL_ENABLE_MAP_ENHANCE=1 to enable)');
-    }
+    emitEnvelope({
+      formatVersion: 1,
+      command: 'sigilc compile',
+      ok: true,
+      phase: 'codegen',
+      data: {
+        input: filename,
+        outputs: {
+          rootTs: outputFile,
+          allModules: graph.topoOrder.map((moduleId) => {
+            const mod = graph.modules.get(moduleId)!;
+            return {
+              moduleId,
+              sourceFile: mod.filePath,
+              outputFile: outputs.get(moduleId) ?? '',
+            };
+          })
+        },
+        project: rootModule.project ? { root: rootModule.project.root, layout: rootModule.project.layout } : undefined,
+        typecheck: {
+          ok: true,
+          inferred: showTypes ? Array.from(types.entries()).map(([name, type]) => ({ name, type: formatType(type) })) : []
+        },
+        semanticMap: {
+          path: mapFile,
+          generated: true,
+          aiEnhanced: process.env.SIGIL_ENABLE_MAP_ENHANCE === '1'
+        }
+      }
+    }, human);
   } catch (error) {
-    if (error instanceof Error) {
-      console.error(`Error: ${error.message}`);
-      console.error(error.stack);
-    } else {
-      console.error(`Unknown error: ${error}`);
-    }
-    process.exit(1);
+    emitEnvelope({ formatVersion: 1, command: 'sigilc compile', ok: false, phase: 'codegen', error: unknownToDiagnostic(error, 'codegen', filename) }, human);
   }
 }
 
@@ -573,16 +680,17 @@ async function compileToTypeScriptFile(filename: string, outputFile?: string): P
 }
 
 async function runCommand(args: string[]) {
-  if (args.length === 0) {
-    console.error('Usage: sigilc run <file>');
-    process.exit(1);
-  }
-
-  const filename = args[0];
-  const outputFile = getSmartOutputPath(filename);
-  const runnerFile = outputFile.replace(/\.ts$/, '.run.ts');
+  const human = hasFlag(args, '--human');
+  const cleaned = stripFlag(args, '--human');
+  const filename = cleaned[0];
+  const outputFile = filename ? getSmartOutputPath(filename) : '';
+  const runnerFile = outputFile ? outputFile.replace(/\.ts$/, '.run.ts') : '';
 
   try {
+    rejectRemovedJsonFlag(args);
+    if (cleaned.length === 0) {
+      emitEnvelope({ formatVersion: 1, command: 'sigilc run', ok: false, phase: 'cli', error: diagnostic('SIGIL-CLI-USAGE', 'cli', 'missing file argument') }, human);
+    }
     // Compile root module and imported Sigil dependencies into .local/
     const { outputs } = await compileModuleGraph(filename, outputFile);
     const actualOutput = outputs.get(resolve(filename)) ?? outputFile;
@@ -608,36 +716,60 @@ if (result !== undefined) {
 
     writeFileSync(runnerFile, runnerCode, 'utf-8');
 
-    console.log(`✓ Compiled ${filename} → ${actualOutput}`);
-    console.log('');
-
-    // Run the wrapper with Node + tsx loader (avoids tsx CLI IPC/daemon issues in sandboxed environments)
-    const nodeProcess = spawn('pnpm', ['exec', 'node', '--import', 'tsx', runnerFile], {
-      stdio: 'inherit',
-      shell: false,
+    const started = Date.now();
+    const runtime = await new Promise<{ stdout: string; stderr: string; exitCode: number }>((resolveRun, rejectRun) => {
+      let stdout = '';
+      let stderr = '';
+      const nodeProcess = spawn('pnpm', ['exec', 'node', '--import', 'tsx', runnerFile], {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        shell: false,
+      });
+      nodeProcess.stdout.on('data', d => { stdout += d.toString(); });
+      nodeProcess.stderr.on('data', d => { stderr += d.toString(); });
+      nodeProcess.on('exit', (code) => resolveRun({ stdout, stderr, exitCode: code ?? 0 }));
+      nodeProcess.on('error', (error) => rejectRun(error));
     });
 
-    nodeProcess.on('exit', (code) => {
-      process.exit(code || 0);
-    });
-
-    nodeProcess.on('error', (error) => {
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-        console.error('Failed to run: pnpm, node, and/or tsx is not available on PATH.');
-        console.error('Install tsx with: pnpm add -D tsx');
-      } else {
-        console.error(`Failed to run: ${error.message}`);
-      }
-      process.exit(1);
-    });
-  } catch (error) {
-    if (error instanceof Error) {
-      console.error(`Error: ${error.message}`);
-      console.error(error.stack);
-    } else {
-      console.error(`Unknown error: ${error}`);
+    if (runtime.exitCode !== 0) {
+      emitEnvelope({
+        formatVersion: 1,
+        command: 'sigilc run',
+        ok: false,
+        phase: 'runtime',
+        error: diagnostic('SIGIL-RUNTIME-CHILD-EXIT', 'runtime', 'child process exited with nonzero status', {
+          details: { exitCode: runtime.exitCode, stdout: runtime.stdout, stderr: runtime.stderr }
+        })
+      }, human);
     }
-    process.exit(1);
+
+    emitEnvelope({
+      formatVersion: 1,
+      command: 'sigilc run',
+      ok: true,
+      phase: 'runtime',
+      data: {
+        compile: {
+          input: filename,
+          output: actualOutput,
+          runnerFile,
+        },
+        runtime: {
+          engine: 'node+tsx',
+          exitCode: runtime.exitCode,
+          durationMs: Date.now() - started,
+          stdout: runtime.stdout,
+          stderr: runtime.stderr,
+        }
+      }
+    }, human);
+  } catch (error) {
+    let d = unknownToDiagnostic(error, 'runtime', filename);
+    if (error instanceof Error && (error as NodeJS.ErrnoException).code === 'ENOENT') {
+      d = diagnostic('SIGIL-RUN-ENGINE-NOT-FOUND', 'runtime', 'runtime engine not available', {
+        details: { required: ['pnpm', 'node', 'tsx'] }
+      });
+    }
+    emitEnvelope({ formatVersion: 1, command: 'sigilc run', ok: false, phase: 'runtime', error: d }, human);
   }
 }
 
@@ -716,6 +848,7 @@ async function testCommand(args: string[]) {
   const rootPath = pathArg ?? getTestsRootForPath(process.cwd());
 
   try {
+    rejectRemovedJsonFlag(args);
     if (!pathIsUnderTests(rootPath)) {
       throw new Error(`sigilc test only accepts paths under ./tests. Got: ${rootPath}`);
     }
@@ -799,7 +932,7 @@ async function testCommand(args: string[]) {
     }
     process.exit(payload.ok ? 0 : 1);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const diag = unknownToDiagnostic(error, 'cli');
     if (jsonMode) {
       process.stdout.write(JSON.stringify({
         formatVersion: 1,
@@ -807,10 +940,10 @@ async function testCommand(args: string[]) {
         ok: false,
         summary: { files: 0, discovered: 0, selected: 0, passed: 0, failed: 0, errored: 1, skipped: 0, durationMs: 0 },
         results: [],
-        error: { kind: 'runner_error', message }
+        error: diag
       }) + '\n');
     } else {
-      console.error(`Error: ${message}`);
+      console.error(renderHumanEnvelope({ formatVersion: 1, command: 'sigilc test', ok: false, phase: diag.phase, error: diag }));
     }
     process.exit(2);
   }

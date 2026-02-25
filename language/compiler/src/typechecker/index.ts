@@ -17,6 +17,7 @@ export type { TypeInfo } from './environment.js';
 export interface TypeCheckOptions {
   importedNamespaces?: Map<string, InferenceType>;
   importedTypeRegistries?: Map<string, Map<string, import('./environment.js').TypeInfo>>;
+  sourceFile?: string;
 }
 
 /**
@@ -33,9 +34,8 @@ export function typeCheck(
   try {
     return bidirectionalTypeCheck(program, sourceCode || '', options);
   } catch (error) {
-    if (error instanceof TypeError && sourceCode) {
-      // Format error with source context
-      console.error(error.format(sourceCode));
+    if (error instanceof TypeError && options?.sourceFile && error.diagnostic.location?.file === '<unknown>') {
+      error.diagnostic.location.file = options.sourceFile;
     }
     throw error;
   }

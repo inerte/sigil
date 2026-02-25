@@ -12,14 +12,23 @@
  * - Zero ambiguity (canonical forms extend to formatting)
  */
 
-export class SurfaceFormError extends Error {
+import { SigilDiagnosticError } from '../diagnostics/error.js';
+import { diagnostic } from '../diagnostics/helpers.js';
+
+export class SurfaceFormError extends SigilDiagnosticError {
   constructor(
+    code: string,
     message: string,
     public readonly filename: string,
     public readonly line?: number,
     public readonly column?: number
   ) {
-    super(message);
+    super(diagnostic(code, 'surface', message, {
+      location: line !== undefined ? {
+        file: filename,
+        start: { line, column: column ?? 0 },
+      } : { file: filename, start: { line: 1, column: column ?? 0 } }
+    }));
     this.name = 'SurfaceFormError';
   }
 }
@@ -45,7 +54,8 @@ export function validateSurfaceForm(source: string, filename: string): void {
 
   if (!source.endsWith('\n')) {
     throw new SurfaceFormError(
-      'File must end with a newline',
+      'SIGIL-SURFACE-EOF-NEWLINE',
+      'file must end with newline',
       filename,
       undefined,
       source.length
@@ -62,7 +72,8 @@ export function validateSurfaceForm(source: string, filename: string): void {
     // Check for trailing spaces or tabs
     if (line.endsWith(' ') || line.endsWith('\t')) {
       throw new SurfaceFormError(
-        `Line ${i + 1} has trailing whitespace`,
+        'SIGIL-SURFACE-TRAILING-WHITESPACE',
+        'trailing whitespace',
         filename,
         i + 1,
         line.length
@@ -74,7 +85,8 @@ export function validateSurfaceForm(source: string, filename: string): void {
   for (let i = 0; i < lines.length - 1; i++) {
     if (lines[i] === '' && lines[i + 1] === '') {
       throw new SurfaceFormError(
-        `Multiple blank lines at line ${i + 1} (only one consecutive blank line allowed)`,
+        'SIGIL-SURFACE-BLANK-LINES',
+        'multiple consecutive blank lines',
         filename,
         i + 1,
         0

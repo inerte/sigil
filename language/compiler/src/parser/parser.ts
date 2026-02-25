@@ -7,14 +7,18 @@
 
 import { Token, TokenType } from '../lexer/token.js';
 import * as AST from './ast.js';
+import { SigilDiagnosticError } from '../diagnostics/error.js';
+import { diagnostic, replaceTokenFixit, tokenToSpan } from '../diagnostics/helpers.js';
 
 export class Parser {
   private tokens: Token[];
   private current = 0;
+  private readonly filename: string;
 
-  constructor(tokens: Token[]) {
+  constructor(tokens: Token[], filename = '<unknown>') {
     // Filter out newlines for now
     this.tokens = tokens.filter(t => t.type !== TokenType.NEWLINE);
+    this.filename = filename;
   }
 
   parse(): AST.Program {
@@ -300,6 +304,13 @@ export class Parser {
 
   private constDeclaration(isExported = false): AST.ConstDecl {
     const start = this.previous();
+    if (this.check(TokenType.UPPER_IDENTIFIER)) {
+      const bad = this.peek();
+      throw this.diagError('SIGIL-PARSE-CONST-NAME', 'invalid constant name', bad, {
+        found: bad.value,
+        expected: 'lowercase identifier'
+      });
+    }
     const name = this.consume(TokenType.IDENTIFIER, 'Expected constant name').value;
 
     // Type annotation is MANDATORY (canonical form)
@@ -330,8 +341,13 @@ export class Parser {
       modulePath.push(this.modulePathSegment());
     } while (this.match(TokenType.NAMESPACE_SEP));
 
-    if (this.check(TokenType.SLASH)) {
-      throw this.error('Legacy "/" namespace separator is no longer valid in Sigil imports. Use "⋅" (e.g., i stdlib⋅list_utils).');
+    if (this.check(TokenType.SLASH) || this.check(TokenType.DOT)) {
+      const bad = this.peek();
+      throw this.diagError('SIGIL-PARSE-NS-SEP', 'invalid namespace separator', bad, {
+        found: bad.value || bad.type,
+        expected: '⋅',
+        fixits: [replaceTokenFixit(this.filename, bad, '⋅')]
+      });
     }
 
     return {
@@ -354,8 +370,13 @@ export class Parser {
       modulePath.push(this.modulePathSegment());
     }
 
-    if (this.check(TokenType.SLASH)) {
-      throw this.error('Legacy "/" namespace separator is no longer valid in extern declarations. Use "⋅" (e.g., e fs⋅promises).');
+    if (this.check(TokenType.SLASH) || this.check(TokenType.DOT)) {
+      const bad = this.peek();
+      throw this.diagError('SIGIL-PARSE-NS-SEP', 'invalid namespace separator', bad, {
+        found: bad.value || bad.type,
+        expected: '⋅',
+        fixits: [replaceTokenFixit(this.filename, bad, '⋅')]
+      });
     }
 
     return {
@@ -970,6 +991,14 @@ export class Parser {
     if (this.match(TokenType.LET)) {
       return this.letExpr();
     }
+    if (this.checkIdentifier('let')) {
+      const bad = this.peek();
+      throw this.diagError('SIGIL-PARSE-LOCAL-BINDING', 'invalid local binding keyword', bad, {
+        found: 'let',
+        expected: 'l',
+        fixits: [replaceTokenFixit(this.filename, bad, 'l')]
+      });
+    }
 
     // List literal: [1, 2, 3]
     if (this.match(TokenType.LBRACKET)) {
@@ -1547,10 +1576,33 @@ export class Parser {
 
   private error(message: string): Error {
     const token = this.peek();
-    return new Error(
-      `Parse error at line ${token.start.line}, column ${token.start.column}: ${message}\n` +
-      `Got: ${token.type}${token.value ? ` (${token.value})` : ''}`
-    );
+    return this.diagError('SIGIL-PARSE-UNEXPECTED-TOKEN', 'unexpected token', token, {
+      details: {
+        parserMessage: message,
+        tokenType: token.type,
+      },
+      found: token.value || token.type,
+    });
+  }
+
+  private diagError(
+    code: string,
+    message: string,
+    token: Token,
+    extras: {
+      found?: unknown;
+      expected?: unknown;
+      details?: Record<string, unknown>;
+      fixits?: ReturnType<typeof replaceTokenFixit>[];
+    } = {}
+  ): SigilDiagnosticError {
+    return new SigilDiagnosticError(diagnostic(code, 'parser', message, {
+      location: tokenToSpan(this.filename, token),
+      found: extras.found,
+      expected: extras.expected,
+      details: extras.details,
+      fixits: extras.fixits,
+    }));
   }
 
   private makeLocation(start: Token | { line: number; column: number; offset: number }, end: Token | { line: number; column: number; offset: number }): AST.SourceLocation {
@@ -1576,7 +1628,7 @@ export class Parser {
 
 }
 
-export function parse(tokens: Token[]): AST.Program {
-  const parser = new Parser(tokens);
+export function parse(tokens: Token[], filename = '<unknown>'): AST.Program {
+  const parser = new Parser(tokens, filename);
   return parser.parse();
 }

@@ -5,13 +5,21 @@
  */
 
 import { SourceLocation } from '../parser/ast.js';
+import { SigilDiagnosticError } from '../diagnostics/error.js';
+import { diagnostic } from '../diagnostics/helpers.js';
 
-export class MutabilityError extends Error {
+export class MutabilityError extends SigilDiagnosticError {
   constructor(
     message: string,
     public location: SourceLocation
   ) {
-    super(message);
+    super(diagnostic('SIGIL-MUTABILITY-INVALID', 'mutability', message, {
+      location: {
+        file: '<unknown>',
+        start: { line: location.start.line, column: location.start.column, offset: location.start.offset },
+        end: { line: location.end.line, column: location.end.column, offset: location.end.offset },
+      }
+    }));
     this.name = 'MutabilityError';
   }
 

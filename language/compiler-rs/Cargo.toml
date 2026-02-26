@@ -1,0 +1,51 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "crates/sigil-ast",
+    "crates/sigil-lexer",
+    "crates/sigil-parser",
+    "crates/sigil-validator",
+    "crates/sigil-typechecker",
+    "crates/sigil-codegen",
+    "crates/sigil-diagnostics",
+    "crates/sigil-cli",
+]
+
+# Workspace-wide dependencies (can be inherited by crates)
+[workspace.dependencies]
+# Error handling
+thiserror = "2.0"
+anyhow = "1.0"
+
+# CLI
+clap = { version = "4.4", features = ["derive"] }
+
+# Async runtime (for CLI execution)
+tokio = { version = "1.35", features = ["full"] }
+
+# Diagnostics
+codespan-reporting = "0.11"
+termcolor = "1.2"
+
+# Lexing
+logos = "0.13"
+
+# Immutable data structures (for type environments)
+im = "15.1"
+
+# Serialization (for JSON output)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# String formatting
+indoc = "2.0"
+
+# Testing
+pretty_assertions = "1.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

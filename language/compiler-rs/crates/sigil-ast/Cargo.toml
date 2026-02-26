@@ -1,0 +1,15 @@
+[package]
+name = "sigil-ast"
+version = "0.1.0"
+edition = "2021"
+authors = ["Sigil Language Team"]
+description = "Abstract Syntax Tree definitions for the Sigil programming language"
+license = "MIT"
+
+[dependencies]
+serde = { workspace = true, optional = true }
+serde_json = { workspace = true, optional = true }
+
+[features]
+default = []
+serde = ["dep:serde", "dep:serde_json"]

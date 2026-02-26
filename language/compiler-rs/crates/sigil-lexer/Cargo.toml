@@ -1,0 +1,11 @@
+[package]
+name = "sigil-lexer"
+version = "0.1.0"
+edition = "2021"
+authors = ["Sigil Language Team"]
+description = "Lexer for the Sigil programming language"
+license = "MIT"
+
+[dependencies]
+logos = { workspace = true }
+thiserror = { workspace = true }

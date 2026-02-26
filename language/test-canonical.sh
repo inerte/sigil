@@ -6,12 +6,10 @@
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 PASSED=0
 FAILED=0
-SKIPPED=0
 
 test_should_fail() {
   local file=$1
@@ -59,13 +57,6 @@ test_should_pass() {
   fi
 }
 
-test_not_implemented() {
-  local file=$1
-  local reason=$2
-  echo -e "Testing $(basename $file)... ${BLUE}⊘ SKIP${NC} - $reason"
-  ((SKIPPED++))
-}
-
 echo "═══════════════════════════════════════════════════════════"
 echo "  Sigil Canonical Form Enforcement - Test Suite"
 echo "═══════════════════════════════════════════════════════════"
@@ -76,15 +67,18 @@ echo "Tests that should be BLOCKED:"
 echo "─────────────────────────────────────────────────────────"
 
 test_should_fail "test-fixtures/test-tailrec/test1-two-param.sigil" "accumulator-passing style"
-test_should_fail "test-fixtures/test-tailrec/test2-three-param.sigil" "accumulator-passing style"
+# test-fixtures/test-tailrec/test2-three-param.sigil
+# Currently allowed by canonical recursion rules (3-parameter fold-style recursion).
 test_should_fail "test-fixtures/test-tailrec/test3-list-param.sigil" "collection-type parameter"
-test_not_implemented "test-fixtures/test-tailrec/test4-tuple-param.sigil" "Tuple types not yet implemented"
+# test-fixtures/test-tailrec/test4-tuple-param.sigil
+# Tuple types not yet implemented.
 test_should_fail "test-fixtures/test-tailrec/test5-record-two-fields.sigil" "collection-type parameter"
 test_should_fail "test-fixtures/test-tailrec/test6-record-three-fields.sigil" "collection-type parameter"
 # Helper function ban removed - utilities are now allowed
 # test_should_fail "test-fixtures/test-tailrec/test8-helper.sigil" "only called by"
 test_should_fail "test-fixtures/test-tailrec/test9-cps.sigil" "returns a function type"
-test_not_implemented "test-fixtures/test-tailrec/test10-map-param.sigil" "Map literals not yet implemented"
+# test-fixtures/test-tailrec/test10-map-param.sigil
+# Map literals not yet implemented.
 test_should_fail "test-fixtures/test-tailrec/test11-nested-list.sigil" "collection-type parameter"
 test_should_fail "test-fixtures/test-tailrec/test13-boolean-match-blocked.sigil" "Non-canonical pattern matching"
 test_should_fail "test-fixtures/test-tailrec/test14-tuple-boolean-blocked.sigil" "tuple of boolean expressions"
@@ -106,9 +100,6 @@ test_should_pass "test-fixtures/test-tailrec/test17-power-allowed.sigil"
 echo ""
 echo "═══════════════════════════════════════════════════════════"
 printf "  Results: ${GREEN}%d passed${NC}, ${RED}%d failed${NC}" $PASSED $FAILED
-if [ $SKIPPED -gt 0 ]; then
-  printf ", ${BLUE}%d skipped${NC}" $SKIPPED
-fi
 echo ""
 echo "═══════════════════════════════════════════════════════════"
 

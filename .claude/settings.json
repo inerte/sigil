@@ -1,16 +1,15 @@
 {
   "hooks": {
-    "PostToolUse": [
+    "toolResult": [
       {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"${CLAUDE_PROJECT_DIR}/tools/claude-hooks/run-stdlib-tests-on-edit.mjs\"",
-            "timeout": 300
-          }
-        ]
+        "tool": "Edit",
+        "command": "node tools/claude-hooks/smart-validator.mjs"
+      },
+      {
+        "tool": "Write",
+        "command": "node tools/claude-hooks/smart-validator.mjs"
       }
     ]
-  }
+  },
+  "description": "Sigil language development - auto-validates changes intelligently"
 }

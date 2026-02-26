@@ -1,13 +1,14 @@
 {
   "hooks": {
-    "toolResult": [
+    "PostToolUse": [
       {
-        "tool": "Edit",
-        "command": "node tools/claude-hooks/smart-validator.mjs"
-      },
-      {
-        "tool": "Write",
-        "command": "node tools/claude-hooks/smart-validator.mjs"
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node tools/claude-hooks/smart-validator.mjs"
+          }
+        ]
       }
     ]
   },

@@ -1,7 +1,7 @@
+t Todo={id:ℤ,text:𝕊,done:𝔹}
+
 i src⋅todo-domain
 i stdlib⋅numeric
-
-t Todo={id:ℤ,text:𝕊,done:𝔹}
 
 λlenTodos(todos:[Todo])→ℤ≡todos{
   []→0|

@@ -6,7 +6,6 @@
   "private": true,
   "workspaces": [
     "language/compiler",
-    "language/tools/*",
     "projects/todo-app"
   ],
   "scripts": {

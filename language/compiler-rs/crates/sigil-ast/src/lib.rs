@@ -12,13 +12,14 @@
 //!   precise error reporting and diagnostics
 //! - **Type-Safe Enums**: Uses Rust enums for sum types (Declaration, Expr, Type, etc.)
 
-pub mod location;
 pub mod declarations;
 pub mod types;
 pub mod expressions;
 pub mod patterns;
 
-pub use location::*;
+// Re-export location types from sigil-lexer
+pub use sigil_lexer::{Position, SourceLocation};
+
 pub use declarations::*;
 pub use types::*;
 pub use expressions::*;

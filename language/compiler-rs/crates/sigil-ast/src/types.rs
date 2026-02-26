@@ -1,6 +1,7 @@
 //! Type syntax AST nodes
+use crate::SourceLocation;
 
-use crate::location::SourceLocation;
+
 
 /// Type expressions in Sigil
 #[derive(Debug, Clone, PartialEq)]

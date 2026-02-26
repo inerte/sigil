@@ -131,6 +131,7 @@ version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
+ "sigil-lexer",
 ]
 
 [[package]]
@@ -156,6 +157,11 @@ dependencies = [
 [[package]]
 name = "sigil-parser"
 version = "0.1.0"
+dependencies = [
+ "sigil-ast",
+ "sigil-lexer",
+ "thiserror",
+]
 
 [[package]]
 name = "sigil-typechecker"

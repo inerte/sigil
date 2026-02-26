@@ -2,5 +2,11 @@
 name = "sigil-parser"
 version = "0.1.0"
 edition = "2021"
+authors = ["Sigil Language Team"]
+description = "Parser for the Sigil programming language"
+license = "MIT"
 
 [dependencies]
+sigil-ast = { path = "../sigil-ast" }
+sigil-lexer = { path = "../sigil-lexer" }
+thiserror = { workspace = true }

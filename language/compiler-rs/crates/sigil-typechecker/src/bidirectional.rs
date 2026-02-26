@@ -235,6 +235,10 @@ fn synthesize(env: &TypeEnvironment, expr: &Expr) -> Result<InferenceType, TypeE
 
         Expr::List(list) => synthesize_list(env, list),
 
+        Expr::If(if_expr) => synthesize_if(env, if_expr),
+
+        Expr::Let(let_expr) => synthesize_let(env, let_expr),
+
         _ => Err(TypeError::new(
             format!("Synthesis not yet implemented for expression type"),
             None, // TODO: extract location from specific expression variant
@@ -463,6 +467,84 @@ fn synthesize_list(
     })))
 }
 
+fn synthesize_if(
+    env: &TypeEnvironment,
+    if_expr: &sigil_ast::IfExpr,
+) -> Result<InferenceType, TypeError> {
+    // Check condition is boolean
+    let bool_type = InferenceType::Primitive(TPrimitive {
+        name: PrimitiveName::Bool,
+    });
+    check(env, &if_expr.condition, &bool_type)?;
+
+    // Synthesize then branch
+    let then_type = synthesize(env, &if_expr.then_branch)?;
+
+    // If no else branch, then branch must be Unit
+    if if_expr.else_branch.is_none() {
+        let unit_type = InferenceType::Primitive(TPrimitive {
+            name: PrimitiveName::Unit,
+        });
+        if !types_equal(&then_type, &unit_type) {
+            return Err(TypeError::new(
+                format!(
+                    "If expression without else must have Unit type, got {}",
+                    format_type(&then_type)
+                ),
+                Some(if_expr.location),
+            ));
+        }
+        return Ok(then_type);
+    }
+
+    // Synthesize else branch
+    let else_type = synthesize(env, if_expr.else_branch.as_ref().unwrap())?;
+
+    // Both branches must have same type
+    if !types_equal(&then_type, &else_type) {
+        return Err(TypeError::new(
+            format!(
+                "If branches have different types: then is {}, else is {}",
+                format_type(&then_type),
+                format_type(&else_type)
+            ),
+            Some(if_expr.location),
+        ));
+    }
+
+    Ok(then_type)
+}
+
+fn synthesize_let(
+    env: &TypeEnvironment,
+    let_expr: &sigil_ast::LetExpr,
+) -> Result<InferenceType, TypeError> {
+    use sigil_ast::Pattern;
+
+    // Synthesize binding value type
+    let value_type = synthesize(env, &let_expr.value)?;
+
+    // Check pattern and get bindings
+    // For now, only support simple identifier patterns
+    // TODO: Full pattern matching support
+    let mut bindings = HashMap::new();
+    match &let_expr.pattern {
+        Pattern::Identifier(id_pattern) => {
+            bindings.insert(id_pattern.name.clone(), value_type);
+        }
+        _ => {
+            return Err(TypeError::new(
+                "Let expression pattern matching not yet fully implemented".to_string(),
+                Some(let_expr.location),
+            ));
+        }
+    }
+
+    // Extend environment and synthesize body
+    let body_env = env.extend(Some(bindings));
+    synthesize(&body_env, &let_expr.body)
+}
+
 // ============================================================================
 // CHECKING (⇐) - Verify expression matches expected type
 // ============================================================================
@@ -552,4 +634,7 @@ mod tests {
         let result = type_check(&program, source, TypeCheckOptions::default());
         assert!(result.is_ok());
     }
+
+    // TODO: Add If/Let expression tests when full syntax support is confirmed
+    // The type checking logic is implemented, but needs matching lexer/parser support
 }

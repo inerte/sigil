@@ -25,9 +25,6 @@ Not supported in v1:
 This parser uses pattern guards extensively for clean state machine transitions.
 ⟧
 
-i stdlib⋅string
-i stdlib⋅string
-
 ⟦ Block Types ⟧
 t Block=Header(ℤ,𝕊)
        |Paragraph(𝕊)
@@ -50,6 +47,8 @@ t ParserState={
 
 ⟦ Parse result - state and blocks ⟧
 t ParsingResult={state:ParserState,blocks:[Block]}
+
+i stdlib⋅string
 
 ⟦ Block to HTML Conversion ⟧
 λblock_to_html(block:Block)→𝕊≡block{

@@ -504,8 +504,10 @@ function getModuleOutputPath(entryFile: string, mod: LoadedSigilModule, rootProj
     return rootOutputOverride;
   }
 
-  if (mod.id.startsWith('stdlib/') && rootProject) {
-    return join(rootProject.root, rootProject.layout.out, `${mod.id}.ts`);
+  if (mod.id.startsWith('stdlib⋅') && rootProject) {
+    // Convert stdlib⋅markdown to stdlib/markdown for filesystem path
+    const fsPath = mod.id.replace(/⋅/g, '/');
+    return join(rootProject.root, rootProject.layout.out, `${fsPath}.ts`);
   }
 
   return getSmartOutputPath(mod.filePath);

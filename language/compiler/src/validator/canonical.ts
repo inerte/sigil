@@ -51,10 +51,132 @@ export class CanonicalError extends SigilDiagnosticError {
 }
 
 /**
+ * Validate that there are no duplicate declarations
+ *
+ * Sigil enforces ONE canonical declaration per name.
+ * No duplicate types, externs, imports, consts, or functions allowed.
+ */
+function validateNoDuplicateDeclarations(program: AST.Program): void {
+  const typeNames = new Map<string, AST.SourceLocation>();
+  const externNames = new Map<string, AST.SourceLocation>();
+  const importPaths = new Map<string, AST.SourceLocation>();
+  const constNames = new Map<string, AST.SourceLocation>();
+  const functionNames = new Map<string, AST.SourceLocation>();
+  const testNames = new Map<string, AST.SourceLocation>();
+
+  for (const decl of program.declarations) {
+    switch (decl.type) {
+      case 'TypeDecl': {
+        const name = decl.name;
+        if (typeNames.has(name)) {
+          throw new CanonicalError(
+            'SIGIL-CANON-DUPLICATE-TYPE',
+            `Duplicate type declaration: "${name}"\n\nSigil enforces ONE canonical declaration per name.\nRemove the duplicate type declaration.`,
+            decl.location,
+            {
+              details: { typeName: name, firstLocation: typeNames.get(name) },
+              suggestions: [suggestGeneric('remove duplicate type declaration', 'remove_duplicate')]
+            }
+          );
+        }
+        typeNames.set(name, decl.location);
+        break;
+      }
+
+      case 'ExternDecl': {
+        const name = decl.modulePath.join('⋅');
+        if (externNames.has(name)) {
+          throw new CanonicalError(
+            'SIGIL-CANON-DUPLICATE-EXTERN',
+            `Duplicate extern declaration: "${name}"\n\nSigil enforces ONE canonical declaration per name.\nRemove the duplicate extern declaration.`,
+            decl.location,
+            {
+              details: { externName: name, firstLocation: externNames.get(name) },
+              suggestions: [suggestGeneric('remove duplicate extern declaration', 'remove_duplicate')]
+            }
+          );
+        }
+        externNames.set(name, decl.location);
+        break;
+      }
+
+      case 'ImportDecl': {
+        const path = decl.modulePath.join('⋅');
+        if (importPaths.has(path)) {
+          throw new CanonicalError(
+            'SIGIL-CANON-DUPLICATE-IMPORT',
+            `Duplicate import declaration: "${path}"\n\nSigil enforces ONE canonical declaration per name.\nRemove the duplicate import declaration.`,
+            decl.location,
+            {
+              details: { importPath: path, firstLocation: importPaths.get(path) },
+              suggestions: [suggestGeneric('remove duplicate import declaration', 'remove_duplicate')]
+            }
+          );
+        }
+        importPaths.set(path, decl.location);
+        break;
+      }
+
+      case 'ConstDecl': {
+        const name = decl.name;
+        if (constNames.has(name)) {
+          throw new CanonicalError(
+            'SIGIL-CANON-DUPLICATE-CONST',
+            `Duplicate const declaration: "${name}"\n\nSigil enforces ONE canonical declaration per name.\nRemove the duplicate const declaration.`,
+            decl.location,
+            {
+              details: { constName: name, firstLocation: constNames.get(name) },
+              suggestions: [suggestGeneric('remove duplicate const declaration', 'remove_duplicate')]
+            }
+          );
+        }
+        constNames.set(name, decl.location);
+        break;
+      }
+
+      case 'FunctionDecl': {
+        const name = decl.name;
+        if (functionNames.has(name)) {
+          throw new CanonicalError(
+            'SIGIL-CANON-DUPLICATE-FUNCTION',
+            `Duplicate function declaration: "${name}"\n\nSigil enforces ONE canonical declaration per name.\nRemove the duplicate function declaration.`,
+            decl.location,
+            {
+              details: { functionName: name, firstLocation: functionNames.get(name) },
+              suggestions: [suggestGeneric('remove duplicate function declaration', 'remove_duplicate')]
+            }
+          );
+        }
+        functionNames.set(name, decl.location);
+        break;
+      }
+
+      case 'TestDecl': {
+        const name = decl.description;
+        if (testNames.has(name)) {
+          throw new CanonicalError(
+            'SIGIL-CANON-DUPLICATE-TEST',
+            `Duplicate test declaration: "${name}"\n\nSigil enforces ONE canonical declaration per name.\nRemove the duplicate test declaration.`,
+            decl.location,
+            {
+              details: { testName: name, firstLocation: testNames.get(name) },
+              suggestions: [suggestGeneric('remove duplicate test declaration', 'remove_duplicate')]
+            }
+          );
+        }
+        testNames.set(name, decl.location);
+        break;
+      }
+    }
+  }
+}
+
+/**
  * Validate that the program follows canonical form rules
  */
 export function validateCanonicalForm(program: AST.Program, filename?: string): void {
   try {
+    validateNoDuplicateDeclarations(program);
     validateRecursiveFunctions(program);
     validateCanonicalPatternMatching(program);
     validateDeclarationOrdering(program);

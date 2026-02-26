@@ -110,7 +110,6 @@ See [docs/ASYNC.md](./docs/ASYNC.md) for complete details.
 - ✅ **README.md** - Project philosophy and overview
 - ✅ **spec/grammar.ebnf** - Complete formal grammar with Unicode symbols
 - ✅ **spec/type-system.md** - Bidirectional type checking specification
-- ✅ **spec/sourcemap-format.md** - Semantic source map (.sigil.map) format
 - ✅ **spec/stdlib-spec.md** - Standard library design and function signatures
 - ✅ **docs/philosophy.md** - Detailed design philosophy and rationale
 - ✅ **docs/type-system.md** - Bidirectional type system guide
@@ -138,7 +137,7 @@ Additional examples:
 - ✅ **examples/ffi-demo.sigil** + .map - JavaScript FFI examples
 - ✅ **examples/effect-demo.sigil** - Effect tracking system demonstration
 
-**Total:** 12 examples (10 with semantic maps)
+**Total:** 12 examples
 
 ### Phase 3: Compiler - Lexer ✅ COMPLETE
 
@@ -254,52 +253,6 @@ export async function factorial(n) {
 - ⏳ JavaScript source maps (.js.map) - Generates code but no source maps
 - ⏳ Standard library runtime - No JS runtime for stdlib (stdlib is pure Sigil)
 
-### Phase 7: Semantic Map Generator ✅ COMPLETE
-
-- ✅ **compiler/src/mapgen/index.ts** - Main API
-- ✅ **compiler/src/mapgen/generator.ts** - Basic map generation
-- ✅ **compiler/src/mapgen/extractor.ts** - AST node extraction
-- ✅ **compiler/src/mapgen/enhance.ts** - AI enhancement (Claude integration)
-- ✅ **compiler/src/mapgen/writer.ts** - File writing
-- ✅ **compiler/src/mapgen/types.ts** - Map format types
-
-**Verified working:**
-```bash
-$ node compiler/dist/cli.js compile test.sigil
-✓ Compiled test.sigil → .local/test.js
-✓ Generated basic semantic map → test.sigil.map
-Warning: Could not enhance semantic map (Claude Code CLI not available)
-✓ Enhanced semantic map with AI documentation
-```
-
-**Generated .sigil.map files exist for:**
-- ✅ All 11 examples/
-- ✅ All 3 stdlib/ modules
-- ✅ All test files
-
-**Features:**
-- ✅ AST → explanations (extracts nodes and generates mappings)
-- ✅ Map generation (creates .sigil.map files)
-- ✅ AI enhancement (Claude API integration when available)
-- ✅ Map validation (maps match code structure)
-- ✅ Batch processing (generates for entire projects)
-
-### Phase 8: Developer Tooling ✅ MOSTLY COMPLETE
-
-- ✅ **tools/lsp/** - Full Language Server Protocol implementation
-  - Real-time diagnostics (syntax, type, canonical, mutability errors)
-  - Hover tooltips (shows semantic map documentation)
-  - Function explanations, type signatures, complexity, warnings, examples
-
-- ✅ **tools/vscode-extension/** - Working VS Code extension
-  - Syntax highlighting for Sigil
-  - LSP integration
-  - Semantic overlay (AI-generated explanations on hover)
-  - README.md and INSTALL.md
-
-**Not yet implemented:**
-- ⏳ Full LSP features (autocomplete, go-to-definition, refactoring)
-- ⏳ Cursor integration - Directory exists but likely empty
 - ⏳ Web playground - Not found
 
 ### Phase 9: Standard Library Implementation ⚠️ PARTIALLY COMPLETE
@@ -451,17 +404,13 @@ Nothing currently in progress.
 
 ### Research & Writing
 
-- ⏳ **docs/semantic-maps.md** - How to use semantic maps (LSP README covers basics)
 - ⏳ **Research paper draft** - "Sigil: A Machine-First Language"
 
 ## TODO - Lower Priority 📝
 
-### LSP/Tooling Enhancements
+### Claude Code Integration
 
-- ⏳ **Autocomplete** - Intelligent code completion
-- ⏳ **Go-to-definition** - Jump to definition
-- ⏳ **Refactoring** - Automated refactorings
-- ⏳ **Cursor integration** - Native Cursor editor support
+- ⏳ **Enhanced explanations** - Better code explanations via Claude Code
 - ⏳ **Web playground** - Browser-based Sigil editor/compiler
 
 ### Package Ecosystem
@@ -476,19 +425,16 @@ Nothing currently in progress.
 ### Code Statistics
 
 ```
-Specification:       ~15,000 lines (EBNF + markdown, 12 docs)
-Example Programs:    11 files + 11 semantic maps
+Specification:       ~15,000 lines (EBNF + markdown, 11 docs)
+Example Programs:    11 files
 Lexer:              ~500 lines TypeScript
 Parser:             ~1,200 lines TypeScript
 Type Checker:       ~1,400 lines TypeScript (bidirectional)
 Code Generator:     ~900 lines TypeScript
-Semantic Maps:      ~600 lines TypeScript
 Validators:         ~800 lines TypeScript
 Mutability:         ~400 lines TypeScript
 AST Definitions:    ~430 lines TypeScript
-Total Compiler:     ~6,600 lines TypeScript
-LSP Server:         ~1,000 lines TypeScript (estimate)
-VS Code Extension:  ~500 lines TypeScript (estimate)
+Total Compiler:     ~5,600 lines TypeScript
 Standard Library:   3 modules + 2 tests
 ```
 
@@ -521,12 +467,11 @@ To consider the proof-of-concept successful:
 - [x] ✅ Type checker infers types for all examples
 - [x] ✅ Code generator produces runnable JavaScript
 - [x] ✅ Generated JS executes correctly (factorial(5) = 120 ✓)
-- [x] ✅ Semantic map generator creates useful explanations
-- [x] ✅ VS Code extension shows semantic maps on hover
+- [x] ✅ Claude Code can read and explain Sigil code
 - [ ] ⏳ Token efficiency: 40%+ reduction vs Python/JS
 - [ ] ⏳ LLM syntax correctness: >99% for GPT-4/Claude
 
-**Status: 7/9 criteria met (78% complete)**
+**Status: 5/7 criteria met (71% complete)**
 
 The remaining criteria require benchmarking and validation, not implementation.
 
@@ -594,15 +539,15 @@ Sigil enforces canonical forms at **two levels:**
 
 **If:** Developers reject "unreadable" dense syntax
 **Impact:** Language remains academic exercise
-**Mitigation:** Excellent IDE tooling, semantic maps, compelling performance benefits.
-**Status:** ⚠️ Pending validation (LSP/VS Code complete, need user testing)
+**Mitigation:** Claude Code integration, compelling performance benefits, strong type system.
+**Status:** ⚠️ Pending validation (Claude Code works, need user testing)
 
-### Risk: Semantic Map Quality
+### Risk: AI Explanation Quality
 
-**If:** AI-generated explanations are inaccurate or unhelpful
-**Impact:** Defeats purpose of semantic maps
-**Mitigation:** Validation system, human review, iterative improvement.
-**Status:** ⚠️ Pending validation (generator works, quality TBD)
+**If:** Claude Code explanations are inaccurate or unhelpful
+**Impact:** Defeats purpose of AI-first approach
+**Mitigation:** Strong type system catches errors, compiler provides accurate diagnostics.
+**Status:** ⚠️ Pending validation (Claude Code integration works, quality TBD)
 
 ## Next Steps (Priority Order)
 
@@ -630,12 +575,11 @@ Sigil enforces canonical forms at **two levels:**
 
 ## Resources
 
-- **Compiler:** `compiler/` (TypeScript, 6,600+ lines)
+- **Compiler:** `compiler/` (TypeScript, 5,600+ lines)
 - **Specs:** `spec/` (EBNF, markdown)
-- **Examples:** `examples/` (11 .sigil + .sigil.map files)
-- **Docs:** `docs/` (12 comprehensive guides)
+- **Examples:** `examples/` (11 .sigil files)
+- **Docs:** `docs/` (11 comprehensive guides)
 - **Stdlib:** `stdlib/` (3 modules, 2 tests)
-- **Tools:** `tools/` (LSP, VS Code extension)
 
 ## Community & Feedback
 

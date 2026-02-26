@@ -15,31 +15,29 @@
 
 ### The Core Innovation
 
-Sigil introduces **semantic source maps** (.sigil.map) - like TypeScript/JavaScript source maps, but for human understanding:
+**Humans don't read code anymore** - they ask Claude Code to explain it.
 
-```
-Sigil Code (.sigil)     ← What runs (optimized for LLMs/execution)
-      ↕ (mapped by)
-Semantic Map (.map)   ← What humans read (optimized for understanding)
-```
-
-**humans rarely write Sigil directly.** Instead, they use AI to generate and modify code while reviewing semantic explanations.
+Sigil is optimized for:
+- **AI generation**: Dense, canonical syntax reduces hallucinations
+- **AI explanation**: Claude Code reads source and explains via CLI
+- **Deterministic compilation**: One way to write anything ensures consistency
 
 ## Quick Example
 
-### What's Stored (Dense Format - fibonacci.sigil)
+### What's Written (Dense, Canonical Format)
 ```sigil
 λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 ```
 
-### What Humans See (IDE with Semantic Map)
+### How Humans Understand It
 ```
-💬 "This function calculates the nth Fibonacci number recursively.
-    Base cases: F(0)=0, F(1)=1
-    Recursive case: F(n) = F(n-1) + F(n-2)
+You: "Claude, what does fibonacci.sigil do?"
+Claude Code: "This function calculates the nth Fibonacci number recursively.
+              Base cases: F(0)=0, F(1)=1
+              Recursive case: F(n) = F(n-1) + F(n-2)
 
-    Complexity: O(2^n) time, O(n) space
-    Warning: Inefficient for large n - consider memoization"
+              Complexity: O(2^n) time, O(n) space
+              Warning: Inefficient for large n - consider memoization"
 ```
 
 **~10-15% fewer tokens than TypeScript (11.2% avg in current benchmark suite)** - More code fits in LLM context windows!
@@ -106,12 +104,12 @@ If 93% of code is AI-generated (2026 stats), why optimize for the 7%?
 
 ### How Humans Interact
 
-Developers interact via the **AI Interpretation Layer**:
+Developers interact through **Claude Code**:
 
-- **LSP** that shows semantic explanations on hover
-- **AI assistants** that write/edit the dense code
-- **Visual debugging** tools with natural language explanations
-- **Semantic maps** (.sigil.map) that persist AI-generated documentation
+- **Ask Claude Code** to explain any code section
+- **Claude Code writes/edits** the dense canonical code
+- **Compiler CLI** provides diagnostic errors and type information
+- **No IDE tooling needed** - Claude Code is the interface
 
 ## Design Principles
 
@@ -248,51 +246,37 @@ Developer writes code → Compiler checks → If error, developer fixes
 ### Sigil Workflow
 ```
 Developer: "Create a function that validates email addresses"
-AI: [Generates dense code + semantic map]
-AI: "I've created validate_email(email:𝕊)→𝔹!Error. It checks:
-     - Contains exactly one @
-     - Has characters before and after @
-     - Domain has at least one dot"
-Developer: Reviews semantic map, approves
-Git: Commits both .sigil and .sigil.map
+Claude Code: [Generates dense code]
+Claude Code: "I've created validate_email(email:𝕊)→𝔹!Error. It checks:
+              - Contains exactly one @
+              - Has characters before and after @
+              - Domain has at least one dot"
+Developer: Reviews via compiler, approves
+Git: Commits .sigil file
 ```
 
-## Semantic Source Maps
+## AI-First Development
 
-Every `.sigil` file has a corresponding `.sigil.map` file:
+**Claude Code is the primary interface:**
 
-**fibonacci.sigil** (what executes):
-```sigil
-λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
+```bash
+# Compile code (machine-readable JSON output)
+node language/compiler/dist/cli.js compile src/main.sigil
+
+# Ask Claude Code to explain any code
+"Claude, what does this function do?"
+"Claude, why did compilation fail?"
+"Claude, add error logging to main.sigil"
+
+# Run tests
+node language/compiler/dist/cli.js test --human
 ```
 
-**fibonacci.sigil.map** (human interpretation):
-```json
-{
-  "version": 1,
-  "file": "fibonacci.sigil",
-  "mappings": {
-    "function": {
-      "range": [0, 67],
-      "summary": "Computes the nth Fibonacci number recursively",
-      "explanation": "Classic recursive Fibonacci. Base cases: F(0)=0, F(1)=1. For other values, sums the previous two Fibonacci numbers.",
-      "complexity": "O(2^n) time, O(n) space",
-      "warnings": ["Inefficient for large n", "Consider memoization"]
-    }
-  }
-}
-```
-
-## IDE Features
-
-The **AI Interpretation Layer** provides:
-
-- **Hover tooltips**: Instant semantic explanations (from .sigil.map)
-- **Unicode input helpers**: Type `lambda` → auto-insert `λ`
-- **Semantic view panel**: Detailed explanations of selected code
-- **Natural language queries**: "What does line 47 do?"
-- **AI-mediated editing**: "Add error logging" → AI modifies code
-- **Beautiful rendering**: Proper Unicode fonts and ligatures
+**No IDE tooling needed** - Claude Code uses the compiler CLI directly:
+- Reads source files
+- Invokes compiler for diagnostics
+- Explains code in natural language
+- Writes/edits canonical Sigil code
 
 ## Project Status
 
@@ -326,35 +310,14 @@ The **AI Interpretation Layer** provides:
   - Can be inserted anywhere (mid-expression)
   - Stripped during lexing
   - Canonical form (only ONE comment syntax)
-- ✅ Semantic map generator (Basic) - ✓ COMPLETED (2026-02-23)
-  - Auto-generated during compilation
-  - Extracts ranges, types, basic summaries from AST
-  - JSON format matching spec/sourcemap-format.md
-  - Outputs .sigil.map beside source files
-  - Ready for enhancement via Claude Code CLI
-
-- ✅ LSP Server (Phase 1: Basic Infrastructure) - ✓ COMPLETED (2026-02-23)
-  - Server with document tracking and diagnostics
-  - Real-time error reporting (syntax, type, canonical violations)
-  - Hover provider showing semantic map content
-  - Unicode symbol completion (lambda → λ, arrow → →, etc.)
-  - Document symbols for outline view
-  - Built on vscode-languageserver protocol
-
-- ✅ VS Code Extension (Phase 2: Editor Integration) - ✓ COMPLETED (2026-02-23)
-  - Full VS Code extension with LSP client
-  - Syntax highlighting (TextMate grammar)
-  - Language configuration (brackets, auto-closing, comments)
-  - Extension activation for .sigil files
-  - Ready to package and install
 
 ### In Progress
 - 🔄 Testing and refinement
 
 ### Upcoming
-- ⏳ VS Code extension packaging and distribution
 - ⏳ Token efficiency benchmarks
 - ⏳ LLM generation accuracy tests
+- ⏳ Claude Code integration enhancements
 
 ## Installation (Future)
 
@@ -368,11 +331,8 @@ sigil new my-project
 # Compile to TypeScript
 sigilc compile src/main.sigil --output dist/main.ts
 
-# Generate semantic maps
-sigilc map generate src/**/*.sigil
-
-# Run REPL
-sigil
+# Run tests
+sigilc test
 ```
 
 ## Documentation
@@ -380,7 +340,6 @@ sigil
 - [Philosophy](docs/philosophy.md) - Why machine-first?
 - [Syntax Reference](docs/syntax-reference.md) - Canonical syntax reference
 - [Type System](docs/type-system.md) - Types and inference
-- [Semantic Maps](docs/semantic-maps.md) - How .sigil.map works
 - [Specification](spec/) - Formal language specification
 
 ## Contributing
@@ -391,7 +350,7 @@ This is a research project exploring machine-first language design. Contribution
 - Unicode tokenization benchmarks (critical!)
 - LLM code generation accuracy studies
 - Alternative syntax explorations
-- Tooling improvements (LSP, IDE extensions)
+- Claude Code integration improvements
 - Standard library design
 
 ## Research Questions
@@ -423,9 +382,9 @@ Like XML vs JSON vs YAML - optimized for machine reading/writing, not human aest
 
 **The future of programming:**
 - Nobody writes transpiled JavaScript directly → toolchains do it
-- Nobody writes Sigil directly → AI does it
-- Humans guide through natural language, AI generates optimal code
-- Semantic maps make it more understandable than hand-written code
+- Nobody writes Sigil directly → Claude Code does it
+- Humans guide through natural language, Claude Code generates optimal code
+- Claude Code explains code better than human-written documentation
 
 ---
 

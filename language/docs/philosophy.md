@@ -185,43 +185,44 @@ The formatter is part of the parser. Code that violates formatting rules produce
 1. Pure functions are easier for LLMs to reason about (no hidden state)
 2. Composition is natural (build complex from simple)
 3. Better type inference
-4. Simpler semantic maps ("transforms X to Y" vs "mutates Z, depends on W")
+4. Simpler AI explanations ("transforms X to Y" vs "mutates Z, depends on W")
 
-### 6. AI Interpretation Layer
+### 6. AI-First Development
 
-**"Humans never read dense syntax directly"**
+**"Humans ask Claude Code to explain code, not read it directly"**
 
-This is the **killer feature** - semantic source maps.
+This is the **killer feature** - Claude Code as the primary interface.
 
 **Traditional approach:**
 ```
-Code is human-readable → Minified for performance → Source maps for debugging
+Code is human-readable → Humans read/edit → Compiler checks
 ```
 
 **Sigil approach:**
 ```
-Code is machine-optimal → Semantic maps for humans → AI explanations on demand
+Code is machine-optimal → Claude Code explains → Humans understand via AI
 ```
 
-**File Structure:**
+**Development Flow:**
 ```
-fibonacci.sigil       # Dense executable code: λfibonacci(n:ℤ)→ℤ≡n{...}
-fibonacci.sigil.map   # JSON: {"fibonacci": {"explanation": "Computes nth Fibonacci..."}}
+fibonacci.sigil       # Dense canonical code: λfibonacci(n:ℤ)→ℤ≡n{...}
+  ↓ (Claude Code reads via compiler CLI)
+Natural language explanation on demand
 ```
 
-**IDE Features:**
-- Hover over code → instant explanation (from .map file, no AI call)
-- Select code → detailed natural language description
-- Ask "What does this do?" → AI explains
-- Modify code → "Add memoization" → AI edits dense syntax
+**Claude Code Interface:**
+- Developer asks "What does this do?" → Claude Code explains
+- Developer asks "Add memoization" → Claude Code edits canonical syntax
+- Compiler CLI provides diagnostics → Claude Code interprets
+- No IDE tooling needed → Claude Code is the interface
 
 **Workflow:**
 ```
 Developer: "Create email validation function"
-AI: [Generates dense code + semantic map]
-AI: "I've created validate_email(email:𝕊)→𝔹!Error that checks..."
-Developer: Reviews semantic map (never touches dense syntax)
-Git: Commits both .sigil and .sigil.map
+Claude Code: [Generates dense canonical code]
+Claude Code: "I've created validate_email(email:𝕊)→𝔹!Error that checks..."
+Developer: Asks questions via Claude Code (never touches dense syntax)
+Git: Commits .sigil file
 ```
 
 ## The Analogy
@@ -232,9 +233,9 @@ Git: Commits both .sigil and .sigil.map
 - SQL execution plans (we write queries, optimizer decides)
 
 **Similarly - nobody writes Sigil directly:**
-- AI writes Sigil (machine-optimal)
-- Humans review via semantic maps (AI-generated explanations)
-- Everyone benefits: compact code, perfect understanding
+- Claude Code writes Sigil (machine-optimal)
+- Humans review via Claude Code (AI explanations)
+- Everyone benefits: compact code, better understanding than documentation
 
 ## Design Decisions
 
@@ -253,7 +254,7 @@ Git: Commits both .sigil and .sigil.map
 **Response:** You don't type it - AI does. IDE provides helpers: type `lambda` → inserts `λ`
 
 **Objection:** "Unicode is hard to read!"
-**Response:** You don't read it - you read the semantic map. Dense code is for execution.
+**Response:** You don't read it - you ask Claude Code to explain it. Dense code is for execution.
 
 **Objection:** "What about tokenization efficiency?"
 **Response:** We benchmark this! If `λ` tokenizes to multiple tokens vs `fn` to one, we'll reconsider. But early evidence suggests modern LLM tokenizers handle common Unicode efficiently.
@@ -276,7 +277,7 @@ Git: Commits both .sigil and .sigil.map
 - Easier to reason about (no hidden state)
 - Better type inference
 - Natural composition
-- Simpler semantic maps
+- Simpler AI explanations
 
 ## The Vision
 
@@ -284,8 +285,7 @@ Git: Commits both .sigil and .sigil.map
 
 Proof-of-concept:
 - Compiler to TypeScript
-- Semantic map generator
-- VS Code extension
+- Claude Code integration
 - Token efficiency benchmarks
 - LLM generation accuracy studies
 
@@ -306,12 +306,12 @@ Production tooling:
 
 **The future of programming:**
 
-1. **Natural language specs** → AI generates Sigil code
-2. **AI pair programming** → Modify code via conversation
-3. **Perfect understanding** → Semantic maps better than comments
-4. **Massive context** → 2× more code in LLM windows
+1. **Natural language specs** → Claude Code generates Sigil code
+2. **AI pair programming** → Modify code via conversation with Claude Code
+3. **Perfect understanding** → Claude Code explanations better than comments
+4. **Massive context** → More code fits in LLM windows
 5. **Zero ambiguity** → Type checker catches everything
-6. **AI evolution** → Better models → better semantic maps (code unchanged)
+6. **AI evolution** → Better models → better explanations (code unchanged)
 
 ## Controversial Takes
 
@@ -378,13 +378,13 @@ A: When 40% more code fits in context, LLMs generate better results. When types 
 A: Yes, like humans CAN write minified JavaScript. But why? Use AI.
 
 **Q: What if AI writes bad code?**
-A: Types catch most errors. Semantic maps explain what code does. Humans review and approve. Net result: fewer bugs than hand-written code.
+A: Types catch most errors. Claude Code explains what code does. Humans review and approve. Net result: fewer bugs than hand-written code.
 
 **Q: Is this just code golf?**
-A: No. Code golf sacrifices readability for brevity. Sigil sacrifices DIRECT readability for brevity, but provides BETTER understanding via semantic maps.
+A: No. Code golf sacrifices readability for brevity. Sigil sacrifices DIRECT readability for brevity, but provides BETTER understanding via Claude Code.
 
 **Q: What about debugging?**
-A: Source maps! Dense code maps to semantic explanations. Debugger shows both. Like debugging minified JS with source maps.
+A: Ask Claude Code! "Why is this failing?" gets you better explanations than reading stack traces.
 
 **Q: Won't this make developers obsolete?**
 A: No. It shifts work from writing syntax to describing intent, reviewing semantics, architecting systems. Higher-level thinking.

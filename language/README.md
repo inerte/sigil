@@ -75,7 +75,7 @@ Canonical Sigil imports:
 
 ```sigil
 i src⋅todo-domain
-i stdlib⋅list_utils
+i stdlib⋅list
 ```
 
 Canonical exports are explicit:

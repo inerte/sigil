@@ -69,7 +69,7 @@ Error messages should:
 - give a minimal example fix when possible
 
 Prefer:
-- `Use "⋅" (e.g., i stdlib⋅list_utils)`
+- `Use "⋅" (e.g., i stdlib⋅list)`
 
 Over:
 - vague parse failures with no remediation

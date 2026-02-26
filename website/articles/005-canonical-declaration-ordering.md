@@ -84,8 +84,8 @@ Within each category:
 e console
 
 ⟦ 2. Imports second ⟧
-i stdlib⋅list_utils
-i stdlib⋅string_ops
+i stdlib⋅list
+i stdlib⋅string
 
 ⟦ 3. Types third ⟧
 t Color=Red|Green|Blue
@@ -102,7 +102,7 @@ c TIMEOUT=1000
 
 ⟦ 6. Exported functions (alphabetically) ⟧
 export λcreateUser(name:𝕊)→User={name:name,age:0}
-export λformatPoint(p:Point)→𝕊=stdlib⋅string_ops.int_to_string(p.x)
+export λformatPoint(p:Point)→𝕊=stdlib⋅string.int_to_string(p.x)
 
 ⟦ 7. Tests last ⟧
 test "creates user with default age"={
@@ -162,7 +162,7 @@ The compiler catches ordering violations with **actionable error messages**:
 ### Wrong Category Order
 
 ```sigil
-i stdlib⋅list_utils  ⟦ Import ⟧
+i stdlib⋅list  ⟦ Import ⟧
 e console            ⟦ ERROR: extern comes after import ⟧
 ```
 
@@ -244,7 +244,7 @@ export λcreateUser(name:𝕊)→User={name:name,age:0}
 
 t User={name:𝕊,age:ℤ}
 
-i stdlib⋅string_ops
+i stdlib⋅string
 
 λhelper(n:ℤ)→ℤ=n+1
 
@@ -254,7 +254,7 @@ c MAX_RETRIES=5
 
 t Point={x:ℤ,y:ℤ}
 
-export λformatPoint(p:Point)→𝕊=stdlib⋅string_ops.int_to_string(p.x)
+export λformatPoint(p:Point)→𝕊=stdlib⋅string.int_to_string(p.x)
 
 c TIMEOUT=1000
 ```
@@ -274,7 +274,7 @@ The ONLY valid form:
 ⟦ Canonical order - identical in every file ⟧
 e console
 
-i stdlib⋅string_ops
+i stdlib⋅string
 
 t Point={x:ℤ,y:ℤ}
 t User={name:𝕊,age:ℤ}
@@ -285,7 +285,7 @@ c TIMEOUT=1000
 λhelper(n:ℤ)→ℤ=n+1
 
 export λcreateUser(name:𝕊)→User={name:name,age:0}
-export λformatPoint(p:Point)→𝕊=stdlib⋅string_ops.int_to_string(p.x)
+export λformatPoint(p:Point)→𝕊=stdlib⋅string.int_to_string(p.x)
 ```
 
 **Benefits:**
@@ -533,7 +533,7 @@ Create a file with messy ordering:
 ⟦ out-of-order.sigil ⟧
 λfoo()→ℤ=42
 t MyType=ℤ
-i stdlib⋅list_utils
+i stdlib⋅list
 ```
 
 Compile it:
@@ -558,7 +558,7 @@ Category order: e → i → t → c → λ → test
 
 ```sigil
 ⟦ canonical.sigil ⟧
-i stdlib⋅list_utils
+i stdlib⋅list
 
 t MyType=ℤ
 

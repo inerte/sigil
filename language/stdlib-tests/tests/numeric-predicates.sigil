@@ -1,13 +1,13 @@
-i stdlib⋅numeric_predicates
+i stdlib⋅numeric
 
-test "numeric_predicates.in_range is inclusive" {
-  stdlib⋅numeric_predicates.in_range(3,1,3)=⊤∧stdlib⋅numeric_predicates.in_range(4,1,3)=⊥
+test "numeric.in_range is inclusive" {
+  stdlib⋅numeric.in_range(3,1,3)=⊤∧stdlib⋅numeric.in_range(4,1,3)=⊥
 }
 
-test "numeric_predicates.is_even and is_odd basics" {
-  stdlib⋅numeric_predicates.is_even(4)=⊤∧stdlib⋅numeric_predicates.is_odd(5)=⊤
+test "numeric.is_even and is_odd basics" {
+  stdlib⋅numeric.is_even(4)=⊤∧stdlib⋅numeric.is_odd(5)=⊤
 }
 
-test "numeric_predicates.is_positive and is_negative basics" {
-  stdlib⋅numeric_predicates.is_positive(5)=⊤∧stdlib⋅numeric_predicates.is_negative(-1)=⊤
+test "numeric.is_positive and is_negative basics" {
+  stdlib⋅numeric.is_positive(5)=⊤∧stdlib⋅numeric.is_negative(-1)=⊤
 }

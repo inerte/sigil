@@ -36,7 +36,7 @@ Consider what happens when an LLM learns to write code that gets string/list len
 ```sigil
 ⟦ BAD - Multiple syntactic forms for same concept ⟧
 stdlib⋅string_utils.len("hello")
-stdlib⋅list_utils.len([1,2,3])
+stdlib⋅list.len([1,2,3])
 s.length  ⟦ if we allowed property access ⟧
 ```
 
@@ -63,7 +63,7 @@ We considered several approaches:
 ### Option 1: Type-Specific Functions ❌
 ```sigil
 stdlib⋅string_utils.len(s)
-stdlib⋅list_utils.len(xs)
+stdlib⋅list.len(xs)
 ```
 
 **Problems:**
@@ -144,9 +144,9 @@ Both JavaScript strings and arrays use `.length`, so the generated code is ident
 Alongside the `#` operator, we added comprehensive string operations as **compiler intrinsics**:
 
 ```sigil
-stdlib⋅string_ops.to_upper("hello")              ⟦ → "HELLO" ⟧
-stdlib⋅string_ops.substring("hello world",6,11)  ⟦ → "world" ⟧
-stdlib⋅string_predicates.starts_with("# Title","# ")  ⟦ → ⊤ ⟧
+stdlib⋅string.to_upper("hello")              ⟦ → "HELLO" ⟧
+stdlib⋅string.substring("hello world",6,11)  ⟦ → "world" ⟧
+stdlib⋅string.starts_with("# Title","# ")  ⟦ → ⊤ ⟧
 ```
 
 These are not implemented in Sigil - they're recognized by the compiler and emit optimized JavaScript:
@@ -156,7 +156,7 @@ private tryGenerateIntrinsic(func: AST.MemberAccessExpr, args: AST.Expr[]): stri
   const module = func.namespace.join('/');
   const member = func.member;
 
-  if (module === 'stdlib/string_ops') {
+  if (module === 'stdlib/string') {
     const generatedArgs = args.map(arg => this.generateExpression(arg));
 
     switch (member) {
@@ -180,8 +180,8 @@ Following the "ONE way to do things" philosophy, we deliberately avoid redundant
 ```sigil
 ⟦ These are redundant - users can compose them ⟧
 is_empty(s)         ⟦ Just use: #s = 0 ⟧
-is_whitespace(s)    ⟦ Just use: stdlib⋅string_ops.trim(s) = "" ⟧
-contains(s, search) ⟦ Just use: stdlib⋅string_ops.index_of(s, search) ≠ -1 ⟧
+is_whitespace(s)    ⟦ Just use: stdlib⋅string.trim(s) = "" ⟧
+contains(s, search) ⟦ Just use: stdlib⋅string.index_of(s, search) ≠ -1 ⟧
 ```
 
 Each of these can be composed from existing primitives. Adding them would create multiple ways to express the same concept - exactly what we're trying to avoid.
@@ -221,12 +221,12 @@ This isn't about human ergonomics - it's about **machine learning efficiency**. 
 
 As of February 2026, Sigil has:
 - ✅ `#` operator for strings and lists
-- ✅ Compiler intrinsics for `stdlib⋅string_ops` (10 functions)
-- ✅ Compiler intrinsics for `stdlib⋅string_predicates` (2 predicates)
+- ✅ Compiler intrinsics for `stdlib⋅string` (10 functions)
+- ✅ Compiler intrinsics for `stdlib⋅string` (2 predicates)
 - ✅ Full type checking and error messages
 - ✅ Optimized JavaScript codegen
 
-The old `stdlib⋅list_utils.len` function has been removed. Use `#` instead.
+The old `stdlib⋅list.len` function has been removed. Use `#` instead.
 
 ## Try It Yourself
 

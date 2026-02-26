@@ -336,9 +336,9 @@ export class Parser {
     const start = this.previous();
     const modulePath: string[] = [];
 
-    // Parse module path: i stdlib⋅list_utils
+    // Parse module path: i stdlib⋅list
     // Works exactly like FFI: i module⋅path (NO selective imports)
-    // Use as: stdlib⋅list_utils.len(xs)
+    // Use as: stdlib⋅list.len(xs)
     do {
       modulePath.push(this.modulePathSegment());
     } while (this.match(TokenType.NAMESPACE_SEP));

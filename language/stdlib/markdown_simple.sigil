@@ -4,24 +4,24 @@
   Does NOT support (v1): lists, blockquotes, links (complex nesting issues with pattern matching)
 ⟧
 
-i stdlib⋅string_ops
-i stdlib⋅string_predicates
+i stdlib⋅string
+i stdlib⋅string
 
 ⟦ Check if line starts with # (header) ⟧
 λis_header_line(line:𝕊)→𝔹={
-  l trimmed=stdlib⋅string_ops.trim(line);
-  stdlib⋅string_predicates.starts_with(trimmed,"#")
+  l trimmed=stdlib⋅string.trim(line);
+  stdlib⋅string.starts_with(trimmed,"#")
 }
 
 ⟦ Check if line is code fence ⟧
 λis_code_fence(line:𝕊)→𝔹={
-  l trimmed=stdlib⋅string_ops.trim(line);
-  stdlib⋅string_predicates.starts_with(trimmed,"```")
+  l trimmed=stdlib⋅string.trim(line);
+  stdlib⋅string.starts_with(trimmed,"```")
 }
 
 ⟦ Check if line is horizontal rule ⟧
 λis_hr_line(line:𝕊)→𝔹={
-  l trimmed=stdlib⋅string_ops.trim(line);
+  l trimmed=stdlib⋅string.trim(line);
   l is_dashes=trimmed="---";
   l is_stars=trimmed="***";
   l is_underscores=trimmed="___";
@@ -30,7 +30,7 @@ i stdlib⋅string_predicates
 
 ⟦ Check if line is empty ⟧
 λis_empty_line(line:𝕊)→𝔹={
-  l trimmed=stdlib⋅string_ops.trim(line);
+  l trimmed=stdlib⋅string.trim(line);
   l len=#trimmed;
   ≡len{0→⊤|n→⊥}
 }
@@ -40,7 +40,7 @@ i stdlib⋅string_predicates
   l len=#text;
   λcount_loop(i:ℤ)→ℤ≡i{
     i→≡(i<len){
-      ⊤→≡(stdlib⋅string_ops.char_at(text,i)="#"){
+      ⊤→≡(stdlib⋅string.char_at(text,i)="#"){
         ⊤→count_loop(i⊕1)|
         ⊥→i
       }|
@@ -52,19 +52,19 @@ i stdlib⋅string_predicates
 
 ⟦ Extract header text after ## ⟧
 λextract_header_text(line:𝕊)→𝕊={
-  l trimmed=stdlib⋅string_ops.trim(line);
+  l trimmed=stdlib⋅string.trim(line);
   l level=count_hashes(trimmed);
   l len=#trimmed;
   l after_hashes=≡(level<len){
-    ⊤→stdlib⋅string_ops.substring(trimmed,level,len)|
+    ⊤→stdlib⋅string.substring(trimmed,level,len)|
     ⊥→""
   };
-  stdlib⋅string_ops.trim(after_hashes)
+  stdlib⋅string.trim(after_hashes)
 }
 
 ⟦ Convert header level to HTML tag ⟧
 λheader_tag(level:ℤ)→𝕊={
-  "h"⊕stdlib⋅string_ops.int_to_string(level)
+  "h"⊕stdlib⋅string.int_to_string(level)
 }
 
 ⟦ Wrap text in header tags ⟧
@@ -88,7 +88,7 @@ i stdlib⋅string_predicates
 
 ⟦ Process markdown lines into HTML blocks ⟧
 export λparse(markdown:𝕊)→𝕊={
-  l lines=stdlib⋅string_ops.split(markdown,"\n");
+  l lines=stdlib⋅string.split(markdown,"\n");
   l num_lines=#lines;
 
   ⟦ Parse loop - accumulate HTML output ⟧
@@ -140,7 +140,7 @@ export λparse(markdown:𝕊)→𝕊={
               ⟦ Check for header ⟧
               ≡(is_header_line(line)){
                 ⊤→{
-                  l trimmed=stdlib⋅string_ops.trim(line);
+                  l trimmed=stdlib⋅string.trim(line);
                   l level=count_hashes(trimmed);
                   l text=extract_header_text(line);
                   l header_html=render_header(level,text);
@@ -175,8 +175,8 @@ export λparse(markdown:𝕊)→𝕊={
                         ⊥→{
                           ⟦ Regular text line - accumulate into paragraph ⟧
                           l new_para=≡(#para_acc>0){
-                            ⊤→para_acc⊕" "⊕stdlib⋅string_ops.trim(line)|
-                            ⊥→stdlib⋅string_ops.trim(line)
+                            ⊤→para_acc⊕" "⊕stdlib⋅string.trim(line)|
+                            ⊥→stdlib⋅string.trim(line)
                           };
                           parse_lines(i⊕1,result,⊥,code_acc,new_para)
                         }

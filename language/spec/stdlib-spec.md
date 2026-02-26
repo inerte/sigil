@@ -483,7 +483,7 @@ Pipe value through function.
 
 ```sigil
 i stdlib⋅io
-i stdlib⋅list_utils
+i stdlib⋅list
 i stdlib⋅result
 ```
 
@@ -515,7 +515,7 @@ I/O operations (read_file, write_file, etc.)
 
 Advanced collections: Set[T], Queue[T], Stack[T]
 
-### std/math
+### std/numeric
 
 Mathematical functions: sin, cos, tan, log, exp, etc.
 

@@ -3,8 +3,8 @@
    Comprehensive tests for # operator and stdlib string operations.
 ⟧
 
-i stdlib⋅string_ops
-i stdlib⋅string_predicates
+i stdlib⋅string
+i stdlib⋅string
 
 ⟦ Test # operator on strings ⟧
 test "# returns string length" {
@@ -30,93 +30,93 @@ test "# works on empty list" {
 
 ⟦ Test string_ops.char_at ⟧
 test "char_at gets character at index" {
-  stdlib⋅string_ops.char_at("hello",0)="h"
+  stdlib⋅string.char_at("hello",0)="h"
 }
 
 test "char_at gets last character" {
-  stdlib⋅string_ops.char_at("hello",4)="o"
+  stdlib⋅string.char_at("hello",4)="o"
 }
 
 ⟦ Test string_ops.substring ⟧
 test "substring extracts middle portion" {
-  stdlib⋅string_ops.substring("hello world",6,11)="world"
+  stdlib⋅string.substring("hello world",6,11)="world"
 }
 
 test "substring from start" {
-  stdlib⋅string_ops.substring("hello",0,3)="hel"
+  stdlib⋅string.substring("hello",0,3)="hel"
 }
 
 ⟦ Test string_ops.take and drop ⟧
 test "take gets first n characters" {
-  stdlib⋅string_ops.take("hello",3)="hel"
+  stdlib⋅string.take("hello",3)="hel"
 }
 
 test "drop removes first n characters" {
-  stdlib⋅string_ops.drop("hello",2)="llo"
+  stdlib⋅string.drop("hello",2)="llo"
 }
 
 ⟦ Test string_ops transformations ⟧
 test "to_upper converts to uppercase" {
-  stdlib⋅string_ops.to_upper("hello")="HELLO"
+  stdlib⋅string.to_upper("hello")="HELLO"
 }
 
 test "to_lower converts to lowercase" {
-  stdlib⋅string_ops.to_lower("WORLD")="world"
+  stdlib⋅string.to_lower("WORLD")="world"
 }
 
 test "trim removes whitespace" {
-  stdlib⋅string_ops.trim("  hello  ")="hello"
+  stdlib⋅string.trim("  hello  ")="hello"
 }
 
 ⟦ Test string_ops.split ⟧
 test "split divides string by delimiter" {
-  l parts=stdlib⋅string_ops.split("a,b,c",",");
+  l parts=stdlib⋅string.split("a,b,c",",");
   #parts=3
 }
 
 test "split with newlines" {
-  l lines=stdlib⋅string_ops.split("line1\nline2","\n");
+  l lines=stdlib⋅string.split("line1\nline2","\n");
   #lines=2
 }
 
 ⟦ Test string_ops.index_of ⟧
 test "index_of finds substring" {
-  stdlib⋅string_ops.index_of("hello world","world")=6
+  stdlib⋅string.index_of("hello world","world")=6
 }
 
 test "index_of returns -1 when not found" {
-  stdlib⋅string_ops.index_of("hello","xyz")=-1
+  stdlib⋅string.index_of("hello","xyz")=-1
 }
 
 ⟦ Test string_ops.replace_all ⟧
 test "replace_all replaces all occurrences" {
-  stdlib⋅string_ops.replace_all("hello hello","hello","hi")="hi hi"
+  stdlib⋅string.replace_all("hello hello","hello","hi")="hi hi"
 }
 
 ⟦ Test string_predicates ⟧
 test "starts_with checks prefix" {
-  stdlib⋅string_predicates.starts_with("# Title","# ")
+  stdlib⋅string.starts_with("# Title","# ")
 }
 
 test "starts_with returns false when no match" {
-  ¬stdlib⋅string_predicates.starts_with("Title","# ")
+  ¬stdlib⋅string.starts_with("Title","# ")
 }
 
 test "ends_with checks suffix" {
-  stdlib⋅string_predicates.ends_with("test.sigil",".sigil")
+  stdlib⋅string.ends_with("test.sigil",".sigil")
 }
 
 test "ends_with returns false when no match" {
-  ¬stdlib⋅string_predicates.ends_with("test.txt",".sigil")
+  ¬stdlib⋅string.ends_with("test.txt",".sigil")
 }
 
 ⟦ Integration test: parse markdown title ⟧
 test "extract title from markdown" {
   l content="# Hello World\nContent here";
-  l lines=stdlib⋅string_ops.split(content,"\n");
+  l lines=stdlib⋅string.split(content,"\n");
   l first=lines[0];
-  l title=stdlib⋅string_predicates.starts_with(first,"# "){
-    ⊤→stdlib⋅string_ops.substring(first,2,#first)|
+  l title=stdlib⋅string.starts_with(first,"# "){
+    ⊤→stdlib⋅string.substring(first,2,#first)|
     ⊥→"Untitled"
   };
   title="Hello World"

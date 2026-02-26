@@ -4,8 +4,8 @@
 ⟧
 
 e console
-i stdlib⋅string_ops
-i stdlib⋅string_predicates
+i stdlib⋅string
+i stdlib⋅string
 
 ⟦ Main demonstration ⟧
 λmain()→!IO 𝕌={
@@ -15,25 +15,25 @@ i stdlib⋅string_predicates
   console.log("Length: "++(#text));
 
   ⟦ Test string transformations ⟧
-  l upper=stdlib⋅string_ops.to_upper("hello");
-  l lower=stdlib⋅string_ops.to_lower("WORLD");
+  l upper=stdlib⋅string.to_upper("hello");
+  l lower=stdlib⋅string.to_lower("WORLD");
   console.log("Upper: "++upper);
   console.log("Lower: "++lower);
 
   ⟦ Test string predicates ⟧
-  l has_prefix=stdlib⋅string_predicates.starts_with("Hello World","Hello");
-  l has_suffix=stdlib⋅string_predicates.ends_with("test.sigil",".sigil");
+  l has_prefix=stdlib⋅string.starts_with("Hello World","Hello");
+  l has_suffix=stdlib⋅string.ends_with("test.sigil",".sigil");
   console.log("Has prefix Hello: "++(has_prefix));
   console.log("Has suffix .sigil: "++(has_suffix));
 
   ⟦ Test split ⟧
-  l parts=stdlib⋅string_ops.split("a,b,c",",");
+  l parts=stdlib⋅string.split("a,b,c",",");
   console.log("Split length: "++(#parts));
 
   ⟦ Test take and drop ⟧
   l sample="abcdefgh";
-  l first_three=stdlib⋅string_ops.take(sample,3);
-  l drop_three=stdlib⋅string_ops.drop(sample,3);
+  l first_three=stdlib⋅string.take(sample,3);
+  l drop_three=stdlib⋅string.drop(sample,3);
   console.log("Take 3: "++first_three);
   console.log("Drop 3: "++drop_three)
 }

@@ -50,7 +50,7 @@ describe('CLI JSON schema and diagnostics', () => {
     const dir = mkdtempSync(join(tmpdir(), 'sigil-cli-json-'));
     try {
       const file = join(dir, 'bad-import.sigil');
-      writeFileSync(file, 'i stdlib/list_utils\n\nλmain()→𝕌=()\n', 'utf-8');
+      writeFileSync(file, 'i stdlib/list\n\nλmain()→𝕌=()\n', 'utf-8');
       const { result, payload } = runCli(['parse', file]);
       assert.equal(result.status, 1);
       assert.equal(payload.ok, false);
@@ -83,7 +83,7 @@ describe('CLI JSON schema and diagnostics', () => {
     const dir = mkdtempSync(join(tmpdir(), 'sigil-cli-json-'));
     try {
       const file = join(dir, 'type-missing-export.sigil');
-      writeFileSync(file, 'i stdlib⋅list_utils\n\nλmain()→ℤ=stdlib⋅list_utils.nope([])\n', 'utf-8');
+      writeFileSync(file, 'i stdlib⋅list\n\nλmain()→ℤ=stdlib⋅list.nope([])\n', 'utf-8');
       const { result, payload } = runCli(['compile', file]);
       assert.equal(result.status, 1);
       assert.equal(payload.error.code, 'SIGIL-TYPE-MODULE-NOT-EXPORTED');

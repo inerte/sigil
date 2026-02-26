@@ -28,7 +28,7 @@ Sigil is a machine-first programming language optimized for AI code generation. 
 
 #### Impact
 
-- **Cleaner stdlib code**: `stdlib/markdown.sigil` and `stdlib/list_ops.sigil` now compile
+- **Cleaner stdlib code**: `stdlib/markdown.sigil` and `stdlib/list.sigil` now compile
 - **Better DX**: Matches user expectations from Haskell, OCaml, and other ML languages
 - **Idiomatic patterns**: Enables natural recursive list functions and state initialization
 
@@ -304,11 +304,11 @@ Warning: Could not enhance semantic map (Claude Code CLI not available)
 
 ### Phase 9: Standard Library Implementation ⚠️ PARTIALLY COMPLETE
 
-- ✅ **stdlib⋅numeric_predicates.sigil** + .map - Predicates for numbers
+- ✅ **stdlib⋅numeric.sigil** + .map - Predicates for numbers
   - is_positive, is_negative, is_even, is_odd, is_prime, in_range
-- ✅ **stdlib⋅list_predicates.sigil** + .map - Predicates for lists
+- ✅ **stdlib⋅list.sigil** + .map - Predicates for lists
   - sorted_asc, sorted_desc, all, any, contains, in_bounds
-- ✅ **stdlib⋅list_utils.sigil** + .map - List utility functions
+- ✅ **stdlib⋅list.sigil** + .map - List utility functions
   - len, head, tail
 - ✅ **language/stdlib-tests/tests/numeric-predicates.sigil** - Stdlib behavior tests (first-class `test`)
 - ✅ **language/stdlib-tests/tests/list-predicates.sigil** - Stdlib behavior tests (first-class `test`)
@@ -374,9 +374,9 @@ Parameter roles:
 
 **Live test:**
 ```sigil
-i stdlib⋅numeric_predicates
+i stdlib⋅numeric
 
-λmain()→𝔹=stdlib⋅numeric_predicates.is_positive(5)
+λmain()→𝔹=stdlib⋅numeric.is_positive(5)
 ```
 
 ### Development Environment ✅ COMPLETE

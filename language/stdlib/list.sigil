@@ -1,10 +1,10 @@
-⟦ List Validation Predicates
+⟦ List Standard Library
 
-   Standard predicates for list validation and checking.
+   Canonical list utilities and predicates.
    Part of Sigil standard library - canonical implementations only.
-⟧
 
-i stdlib⋅list_utils
+   Note: Use # operator for length instead of a function (e.g., #[1,2,3] → 3)
+⟧
 
 ⟦ Helper: Check if index is in bounds ⟧
 λin_bounds_helper(idx:ℤ,xs:[ℤ])→𝔹≡(idx≥0){
@@ -57,6 +57,11 @@ export λcontains(item:ℤ,xs:[ℤ])→𝔹≡xs{
   }
 }
 
+⟦ Get first element of list (unsafe - crashes on empty) ⟧
+export λhead(xs:[ℤ])→ℤ≡xs{
+  [x,.rest]→x
+}
+
 ⟦ Check if index is valid for list [0, len-1] ⟧
 export λin_bounds(idx:ℤ,xs:[ℤ])→𝔹=in_bounds_helper(idx,xs)
 
@@ -84,4 +89,9 @@ export λsorted_desc(xs:[ℤ])→𝔹≡xs{
   []→⊤|
   [_]→⊤|
   [a,.tail]→sorted_desc_check(a,tail)
+}
+
+⟦ Get all elements except first (unsafe - crashes on empty) ⟧
+export λtail(xs:[ℤ])→[ℤ]≡xs{
+  [x,.rest]→rest
 }

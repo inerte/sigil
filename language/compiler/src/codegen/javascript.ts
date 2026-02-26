@@ -149,16 +149,16 @@ export class JavaScriptGenerator {
     const fileModulePath = modulePath.replace(/⋅/g, '/');
 
     // Convert slash to underscore for generated TypeScript identifier
-    // stdlib⋅list_utils (Sigil) → stdlib_list_utils (generated JS identifier)
+    // stdlib⋅list (Sigil) → stdlib_list (generated JS identifier)
     const jsName = this.namespaceIdentifier(importDecl.modulePath);
 
     // Always use full module path
     // Import resolution is simplest with absolute paths from project root
-    // i stdlib⋅list_utils → import * as stdlib_list_utils from './stdlib/list_utils'
+    // i stdlib⋅list → import * as stdlib_list from './stdlib/list'
 
     // Always use namespace import (import * as name)
-    // Works exactly like FFI: i stdlib⋅list_utils → import * as stdlib_list_utils
-    // Use as: stdlib⋅list_utils.len(xs) → stdlib_list_utils.len(xs)
+    // Works exactly like FFI: i stdlib⋅list → import * as stdlib_list
+    // Use as: stdlib⋅list.head(xs) → stdlib_list.head(xs)
     const importSpecifier = this.resolveSigilImportSpecifier(fileModulePath);
     this.emit(`import * as ${jsName} from '${importSpecifier}';`);
   }
@@ -610,7 +610,7 @@ export class JavaScriptGenerator {
     const member = func.member;
 
     // String operations intrinsics
-    if (module === 'stdlib/string_ops') {
+    if (module === 'stdlib/string') {
       const generatedArgs = args.map(arg => this.generateExpression(arg));
 
       switch (member) {
@@ -635,7 +635,7 @@ export class JavaScriptGenerator {
     }
 
     // String predicates intrinsics
-    if (module === 'stdlib/string_predicates') {
+    if (module === 'stdlib/string') {
       const generatedArgs = args.map(arg => this.generateExpression(arg));
 
       switch (member) {

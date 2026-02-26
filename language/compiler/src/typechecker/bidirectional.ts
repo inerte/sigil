@@ -651,7 +651,7 @@ function synthesizeIndex(env: TypeEnvironment, expr: AST.IndexExpr): InferenceTy
 }
 
 function synthesizeMemberAccess(env: TypeEnvironment, expr: AST.MemberAccessExpr): InferenceType {
-  const namespaceName = expr.namespace.join('⋅');
+  const namespaceName = expr.namespace.join('/');
   const sigilNamespace = expr.namespace.join('⋅');
 
   // Check namespace exists (should be registered from extern declaration)
@@ -830,7 +830,7 @@ function resolveQualifiedType(
   env: TypeEnvironment,
   astType: AST.QualifiedType
 ): InferenceType {
-  const moduleId = astType.modulePath.join('⋅');
+  const moduleId = astType.modulePath.join('/');
   const typeInfo = env.lookupQualifiedType(astType.modulePath, astType.typeName);
 
   if (!typeInfo) {
@@ -910,7 +910,7 @@ function resolveTypeAliases(env: TypeEnvironment, type: InferenceType): Inferenc
       const lastDotIndex = type.name.lastIndexOf('.');
       const moduleId = type.name.substring(0, lastDotIndex);
       const typeName = type.name.substring(lastDotIndex + 1);
-      const modulePath = moduleId.split('⋅');
+      const modulePath = moduleId.split('/');
 
       const typeInfo = env.lookupQualifiedType(modulePath, typeName);
       if (typeInfo && typeInfo.typeParams.length === 0) {
@@ -1347,11 +1347,11 @@ export function typeCheck(program: AST.Program, _source: string, options?: TypeC
     } else if (decl.type === 'ExternDecl') {
       // Register namespace as "any" type (trust mode)
       // Member validation happens at link-time, not type-check time
-      const namespaceName = decl.modulePath.join('⋅');
+      const namespaceName = decl.modulePath.join('/');
       const anyType: InferenceType = { kind: 'any' };
       env.bindWithMeta(namespaceName, anyType, { isExternNamespace: true });
     } else if (decl.type === 'ImportDecl') {
-      const namespaceName = decl.modulePath.join('⋅');
+      const namespaceName = decl.modulePath.join('/');
       const importedType = options?.importedNamespaces?.get(namespaceName);
       if (importedType) {
         env.bind(namespaceName, importedType);
@@ -1639,7 +1639,7 @@ function qualifyTypeInContext(
         // Qualify it with module path
         return {
           type: 'QualifiedType',
-          modulePath: moduleId.split('⋅'),
+          modulePath: moduleId.split('/'),
           typeName: astType.name,
           typeArgs: [],
           location: astType.location

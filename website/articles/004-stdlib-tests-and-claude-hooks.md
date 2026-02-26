@@ -15,8 +15,8 @@ This was not just cleanup. It tightened Sigil's feedback loop and made the repo 
 
 We had files like:
 
-- `language/stdlib/test_list_predicates.sigil`
-- `language/stdlib/test_numeric_predicates.sigil`
+- `language/stdlib/test_list.sigil`
+- `language/stdlib/test_numeric.sigil`
 
 But they were not first-class Sigil tests. They were small demo programs using `λmain()` and `console.log(...)`.
 
@@ -162,10 +162,10 @@ Examples:
 These are proper Sigil tests:
 
 ```sigil
-i stdlib⋅numeric_predicates
+i stdlib⋅numeric
 
-test "numeric_predicates.is_even and is_odd basics" {
-  stdlib⋅numeric_predicates.is_even(4)=⊤∧stdlib⋅numeric_predicates.is_odd(5)=⊤
+test "numeric.is_even and is_odd basics" {
+  stdlib⋅numeric.is_even(4)=⊤∧stdlib⋅numeric.is_odd(5)=⊤
 }
 ```
 

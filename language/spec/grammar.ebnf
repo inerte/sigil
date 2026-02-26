@@ -27,7 +27,7 @@ TopLevelDecl = FunctionDecl
 ImportDecl = "i" , ModulePath ;
 ModulePath = Identifier , { "⋅" , Identifier } ;
 
-(* Example: i stdlib⋅list_utils *)
+(* Example: i stdlib⋅list *)
 (* Note: Namespace imports only - no selective imports, no aliasing *)
 
 (* ============================================================================ *)

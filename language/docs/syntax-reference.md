@@ -147,14 +147,14 @@ Sigil-to-Sigil imports are namespace imports only.
 
 ```sigil
 i src⋅todo-domain
-i stdlib⋅list_utils
+i stdlib⋅list
 ```
 
 Use imported members with fully qualified namespace access:
 
 ```sigil
 src⋅todo-domain.completedCount(todos)
-stdlib⋅list_utils.len([1,2,3])
+stdlib⋅list.len([1,2,3])
 ```
 
 Canonical Sigil import roots:

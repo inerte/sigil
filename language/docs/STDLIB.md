@@ -7,11 +7,11 @@ The Sigil standard library provides core utility functions and predicates for co
 ## Current Status
 
 **Implemented:**
-- ✅ List predicates (validation, checking) - `stdlib/list_predicates`
-- ✅ Numeric predicates (range checking, properties) - `stdlib/numeric_predicates`
-- ✅ List utilities (head, tail) - `stdlib/list_utils`
-- ✅ String operations (manipulation, searching) - `stdlib/string_ops`
-- ✅ String predicates (prefix/suffix checking) - `stdlib/string_predicates`
+- ✅ List predicates (validation, checking) - `stdlib/list`
+- ✅ Numeric predicates (range checking, properties) - `stdlib/numeric`
+- ✅ List utilities (head, tail) - `stdlib/list`
+- ✅ String operations (manipulation, searching) - `stdlib/string`
+- ✅ String predicates (prefix/suffix checking) - `stdlib/string`
 - ✅ Sum types (Option, Result) - `stdlib/option`, `stdlib/result`
 - ✅ Length operator (`#`) - works on strings and lists
 
@@ -24,14 +24,14 @@ The Sigil standard library provides core utility functions and predicates for co
 
 ```sigil
 ⟦ Import modules (works like FFI - no selective imports) ⟧
-i stdlib⋅list_predicates
-i stdlib⋅numeric_predicates
-i stdlib⋅list_utils
+i stdlib⋅list
+i stdlib⋅numeric
+i stdlib⋅list
 
 ⟦ Use with fully qualified names ⟧
 λmain()→𝕌=console.log(
-  stdlib⋅list_predicates.sorted_asc([1,2,3]) ++ " " ++
-  ("" + stdlib⋅list_utils.len([1,2,3]))
+  stdlib⋅list.sorted_asc([1,2,3]) ++ " " ++
+  ("" + stdlib⋅list.len([1,2,3]))
 )
 ```
 
@@ -67,7 +67,7 @@ Empty lists `[]` infer their type from context:
 
 **Why `#` instead of functions?**
 
-1. **ONE canonical form** - Not `string_utils.len` vs `list_utils.len`, just `#`
+1. **ONE canonical form** - Not `stdlib⋅string` helper calls vs `stdlib⋅list` helper calls, just `#`
 2. **Leverages bidirectional type checking** - Type is known at compile time
 3. **Concise** - Machine-first language optimizes for brevity (`#s` vs `len(s)`)
 4. **Zero syntactic variation** - Single way to express "get length"
@@ -78,7 +78,7 @@ Empty lists `[]` infer their type from context:
 #[1,2,3]    → (await [1,2,3]).length
 ```
 
-**Note:** The deprecated `stdlib⋅list_utils.len` function has been removed. Use `#` instead.
+**Note:** The deprecated `stdlib⋅list.len` function has been removed. Use `#` instead.
 
 ## Module Exports
 
@@ -94,7 +94,7 @@ Imported modules only expose exported members. Accessing a non-exported member i
 
 ## List Predicates
 
-**Module:** `stdlib/list_predicates`
+**Module:** `stdlib/list`
 
 ### sorted_asc
 
@@ -230,7 +230,7 @@ in_bounds(0,[])               ⟦ → ⊥ (empty list) ⟧
 
 ## List Utilities
 
-**Module:** `stdlib/list_utils`
+**Module:** `stdlib/list`
 
 **Note:** Use the `#` operator for list length instead of a function (e.g., `#[1,2,3]` → `3`).
 
@@ -268,7 +268,7 @@ tail([42])                 ⟦ → [] ⟧
 
 ## String Operations
 
-**Module:** `stdlib/string_ops`
+**Module:** `stdlib/string`
 
 Comprehensive string manipulation functions. These are **compiler intrinsics** - the compiler emits optimized JavaScript directly instead of calling Sigil functions.
 
@@ -282,8 +282,8 @@ Get character at index.
 
 **Examples:**
 ```sigil
-stdlib⋅string_ops.char_at("hello",0)    ⟦ → "h" ⟧
-stdlib⋅string_ops.char_at("hello",4)    ⟦ → "o" ⟧
+stdlib⋅string.char_at("hello",0)    ⟦ → "h" ⟧
+stdlib⋅string.char_at("hello",4)    ⟦ → "o" ⟧
 ```
 
 **Codegen:** `s.charAt(idx)`
@@ -298,8 +298,8 @@ Get substring from start to end index.
 
 **Examples:**
 ```sigil
-stdlib⋅string_ops.substring("hello world",6,11)    ⟦ → "world" ⟧
-stdlib⋅string_ops.substring("hello",0,3)           ⟦ → "hel" ⟧
+stdlib⋅string.substring("hello world",6,11)    ⟦ → "world" ⟧
+stdlib⋅string.substring("hello",0,3)           ⟦ → "hel" ⟧
 ```
 
 **Codegen:** `s.substring(start, end)`
@@ -314,8 +314,8 @@ Take first n characters.
 
 **Examples:**
 ```sigil
-stdlib⋅string_ops.take("hello",3)    ⟦ → "hel" ⟧
-stdlib⋅string_ops.take("hi",5)       ⟦ → "hi" (takes available chars) ⟧
+stdlib⋅string.take("hello",3)    ⟦ → "hel" ⟧
+stdlib⋅string.take("hi",5)       ⟦ → "hi" (takes available chars) ⟧
 ```
 
 **Implementation:** `substring(s, 0, n)` (in Sigil)
@@ -330,8 +330,8 @@ Drop first n characters.
 
 **Examples:**
 ```sigil
-stdlib⋅string_ops.drop("hello",2)    ⟦ → "llo" ⟧
-stdlib⋅string_ops.drop("hi",5)       ⟦ → "" (drops all available) ⟧
+stdlib⋅string.drop("hello",2)    ⟦ → "llo" ⟧
+stdlib⋅string.drop("hi",5)       ⟦ → "" (drops all available) ⟧
 ```
 
 **Implementation:** `substring(s, n, #s)` (in Sigil, uses `#` operator)
@@ -346,7 +346,7 @@ Convert to uppercase.
 
 **Examples:**
 ```sigil
-stdlib⋅string_ops.to_upper("hello")    ⟦ → "HELLO" ⟧
+stdlib⋅string.to_upper("hello")    ⟦ → "HELLO" ⟧
 ```
 
 **Codegen:** `s.toUpperCase()`
@@ -361,7 +361,7 @@ Convert to lowercase.
 
 **Examples:**
 ```sigil
-stdlib⋅string_ops.to_lower("WORLD")    ⟦ → "world" ⟧
+stdlib⋅string.to_lower("WORLD")    ⟦ → "world" ⟧
 ```
 
 **Codegen:** `s.toLowerCase()`
@@ -376,8 +376,8 @@ Remove leading and trailing whitespace.
 
 **Examples:**
 ```sigil
-stdlib⋅string_ops.trim("  hello  ")    ⟦ → "hello" ⟧
-stdlib⋅string_ops.trim("\n\ttest\n")   ⟦ → "test" ⟧
+stdlib⋅string.trim("  hello  ")    ⟦ → "hello" ⟧
+stdlib⋅string.trim("\n\ttest\n")   ⟦ → "test" ⟧
 ```
 
 **Codegen:** `s.trim()`
@@ -392,8 +392,8 @@ Find index of first occurrence (returns -1 if not found).
 
 **Examples:**
 ```sigil
-stdlib⋅string_ops.index_of("hello world","world")    ⟦ → 6 ⟧
-stdlib⋅string_ops.index_of("hello","xyz")            ⟦ → -1 ⟧
+stdlib⋅string.index_of("hello world","world")    ⟦ → 6 ⟧
+stdlib⋅string.index_of("hello","xyz")            ⟦ → -1 ⟧
 ```
 
 **Codegen:** `s.indexOf(search)`
@@ -408,8 +408,8 @@ Split string by delimiter.
 
 **Examples:**
 ```sigil
-stdlib⋅string_ops.split("a,b,c",",")           ⟦ → ["a","b","c"] ⟧
-stdlib⋅string_ops.split("line1\nline2","\n")   ⟦ → ["line1","line2"] ⟧
+stdlib⋅string.split("a,b,c",",")           ⟦ → ["a","b","c"] ⟧
+stdlib⋅string.split("line1\nline2","\n")   ⟦ → ["line1","line2"] ⟧
 ```
 
 **Codegen:** `s.split(delimiter)`
@@ -424,14 +424,14 @@ Replace all occurrences of pattern with replacement.
 
 **Examples:**
 ```sigil
-stdlib⋅string_ops.replace_all("hello hello","hello","hi")    ⟦ → "hi hi" ⟧
+stdlib⋅string.replace_all("hello hello","hello","hi")    ⟦ → "hi hi" ⟧
 ```
 
 **Codegen:** `s.replaceAll(pattern, replacement)`
 
 ## String Predicates
 
-**Module:** `stdlib/string_predicates`
+**Module:** `stdlib/string`
 
 Boolean validation predicates for string properties. These are **compiler intrinsics**.
 
@@ -445,8 +445,8 @@ Check if string starts with prefix.
 
 **Examples:**
 ```sigil
-stdlib⋅string_predicates.starts_with("# Title","# ")    ⟦ → ⊤ ⟧
-stdlib⋅string_predicates.starts_with("Title","# ")      ⟦ → ⊥ ⟧
+stdlib⋅string.starts_with("# Title","# ")    ⟦ → ⊤ ⟧
+stdlib⋅string.starts_with("Title","# ")      ⟦ → ⊥ ⟧
 ```
 
 **Codegen:** `s.startsWith(prefix)`
@@ -463,8 +463,8 @@ Check if string ends with suffix.
 
 **Examples:**
 ```sigil
-stdlib⋅string_predicates.ends_with("test.sigil",".sigil")    ⟦ → ⊤ ⟧
-stdlib⋅string_predicates.ends_with("test.txt",".sigil")      ⟦ → ⊥ ⟧
+stdlib⋅string.ends_with("test.sigil",".sigil")    ⟦ → ⊤ ⟧
+stdlib⋅string.ends_with("test.txt",".sigil")      ⟦ → ⊥ ⟧
 ```
 
 **Codegen:** `s.endsWith(suffix)`
@@ -473,14 +473,14 @@ stdlib⋅string_predicates.ends_with("test.txt",".sigil")      ⟦ → ⊥ ⟧
 
 **Design Note:** No redundant predicates like `is_empty`, `is_whitespace`, or `contains`. Users compose these:
 - `is_empty(s)` → `#s = 0`
-- `is_whitespace(s)` → `stdlib⋅string_ops.trim(s) = ""`
-- `contains(s, search)` → `stdlib⋅string_ops.index_of(s, search) ≠ -1`
+- `is_whitespace(s)` → `stdlib⋅string.trim(s) = ""`
+- `contains(s, search)` → `stdlib⋅string.index_of(s, search) ≠ -1`
 
 This follows Sigil's "ONE way to do things" philosophy.
 
 ## Numeric Predicates
 
-**Module:** `stdlib/numeric_predicates`
+**Module:** `stdlib/numeric`
 
 ### is_positive
 

@@ -9,8 +9,8 @@ i src⋅frontmatter
 i src⋅templates
 i src⋅types
 i stdlib⋅markdown
-i stdlib⋅string_ops
-i stdlib⋅string_predicates
+i stdlib⋅string
+i stdlib⋅string
 
 ⟦ Add file to list if markdown ⟧
 λadd_if_markdown(file:𝕊,md_files:[𝕊])→[𝕊]≡is_markdown_file(file){
@@ -36,13 +36,13 @@ i stdlib⋅string_predicates
   slug when #slug>0 → slug++".html"|
   _ →
     l len=#input_filename;
-    l basename=stdlib⋅string_ops.substring(input_filename,0,len-4);
+    l basename=stdlib⋅string.substring(input_filename,0,len-4);
     basename++".html"
 }
 
 ⟦ Check if file is markdown ⟧
 λis_markdown_file(filename:𝕊)→𝔹=
-  stdlib⋅string_predicates.ends_with(filename,".md")
+  stdlib⋅string.ends_with(filename,".md")
 
 ⟦ Main entry point ⟧
 λmain()→!IO 𝕌=

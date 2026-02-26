@@ -56,8 +56,8 @@ on the unpacked values.
 t Result=Ok(ℤ)|Err(𝕊)
 
 λprocessResult(r:Result)→𝕊≡r{
-  Ok(n) when n>100 → "Big success: "++stdlib⋅string_ops.int_to_string(n) |
-  Ok(n) when n>0 → "Success: "++stdlib⋅string_ops.int_to_string(n) |
+  Ok(n) when n>100 → "Big success: "++stdlib⋅string.int_to_string(n) |
+  Ok(n) when n>0 → "Success: "++stdlib⋅string.int_to_string(n) |
   Ok(n) → "Success with zero or negative" |
   Err(msg) when #msg>0 → "Error: "++msg |
   Err(_) → "Unknown error"
@@ -70,7 +70,7 @@ This enables priority-based matching.
 ⟧
 
 λprioritizeTask(priority:ℤ,urgent:𝔹)→𝕊≡priority{
-  p when urgent → "URGENT (priority "++stdlib⋅string_ops.int_to_string(p)++")" |
+  p when urgent → "URGENT (priority "++stdlib⋅string.int_to_string(p)++")" |
   p when p>7 → "High priority" |
   p when p>3 → "Medium priority" |
   _ → "Low priority"
@@ -121,7 +121,7 @@ conditional list processing.
 
 λfindFirstPositive(list:[ℤ])→𝕊≡list{
   [] → "empty list" |
-  [x,._] when x>0 → "first positive: "++stdlib⋅string_ops.int_to_string(x) |
+  [x,._] when x>0 → "first positive: "++stdlib⋅string.int_to_string(x) |
   [_,.xs] → findFirstPositive(xs)
 }
 

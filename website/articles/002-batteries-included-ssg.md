@@ -100,8 +100,8 @@ We could have wrapped `marked` or `markdown-it` with one line of FFI. But buildi
 - **Produces better training data** - LLMs see how to build parsers in Sigil
 
 The implementation uses:
-- `stdlib⋅string_ops` for substring, split, trim, char_at
-- `stdlib⋅string_predicates` for starts_with, ends_with, is_digit
+- `stdlib⋅string` for substring, split, trim, char_at
+- `stdlib⋅string` for starts_with, ends_with, is_digit
 - Recursive descent parsing with state machines
 - Pattern matching on block types (Header, Paragraph, CodeBlock, etc.)
 
@@ -140,7 +140,7 @@ We wrap Node's `http` module to provide:
 ```sigil
 i stdlib⋅io          ⟦ File I/O ⟧
 i stdlib⋅markdown    ⟦ Markdown parsing ⟧
-i stdlib⋅string_ops  ⟦ String operations ⟧
+i stdlib⋅string  ⟦ String operations ⟧
 
 λbuild(input_dir:𝕊,output_dir:𝕊)→!IO 𝕌={
   ⟦ 1. Read all .md files ⟧
@@ -258,7 +258,7 @@ Building Sigil's website in Sigil taught us:
 Writing the markdown parser in pure Sigil (~600 lines) proved:
 - Pattern matching is expressive for parsing
 - Recursive functions handle nested structures well
-- String intrinsics (`stdlib⋅string_ops`) are fast enough
+- String intrinsics (`stdlib⋅string`) are fast enough
 - No need for parser combinator libraries
 
 ### 2. Thin FFI wrappers beat raw FFI
@@ -318,8 +318,8 @@ We use this rubric:
 **Stdlib modules (ship with compiler):**
 - `stdlib⋅markdown`: 600 lines (pure Sigil)
 - `stdlib⋅http_server`: 200 lines (FFI wrapper)
-- `stdlib⋅string_ops`: compiler intrinsics
-- `stdlib⋅string_predicates`: compiler intrinsics
+- `stdlib⋅string`: compiler intrinsics
+- `stdlib⋅string`: compiler intrinsics
 
 **SSG project (example usage):**
 - `src/build.sigil`: 150 lines

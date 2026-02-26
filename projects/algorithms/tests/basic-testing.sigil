@@ -1,4 +1,4 @@
-i stdlib⋅numeric_predicates
+i stdlib⋅numeric
 
 mockable λping()→!IO 𝕊="real"
 
@@ -9,7 +9,7 @@ test "mockable function can be overridden" →!IO {
 }
 
 test "numeric predicates are available in projects" {
-  stdlib⋅numeric_predicates.is_even(2)=⊤∧stdlib⋅numeric_predicates.is_odd(3)=⊤
+  stdlib⋅numeric.is_even(2)=⊤∧stdlib⋅numeric.is_odd(3)=⊤
 }
 
 test "pure boolean passes" {

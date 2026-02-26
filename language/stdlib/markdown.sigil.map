@@ -2,36 +2,36 @@
   "version": 1,
   "file": "markdown.sigil",
   "generated_by": "sigilc@0.1.0",
-  "generated_at": "2026-02-26T00:24:03.028Z",
+  "generated_at": "2026-02-26T00:39:51.777Z",
   "mappings": {
     "Block": {
       "range": [
-        750,
-        910
+        735,
+        895
       ],
       "summary": "Type definition: Block",
       "explanation": "Type Block"
     },
     "ParserState": {
       "range": [
-        929,
-        1061
+        914,
+        1046
       ],
       "summary": "Type definition: ParserState",
       "explanation": "Type ParserState"
     },
     "ParsingResult": {
       "range": [
-        1099,
-        1149
+        1084,
+        1134
       ],
       "summary": "Type definition: ParsingResult",
       "explanation": "Type ParsingResult"
     },
     "block_to_html": {
       "range": [
-        1180,
-        2036
+        1165,
+        2009
       ],
       "summary": "Function: block_to_html",
       "explanation": "Function with 1 parameter(s), returns 𝕊",
@@ -39,64 +39,64 @@
     },
     "block_to_html_arm_0": {
       "range": [
-        1219,
-        1377
+        1204,
+        1358
       ],
       "summary": "Match arm: Header(level,text)",
       "explanation": "Pattern matches Header(level,text)"
     },
     "block_to_html_arm_1": {
       "range": [
-        1382,
-        1466
+        1363,
+        1447
       ],
       "summary": "Match arm: Paragraph(text)",
       "explanation": "Pattern matches Paragraph(text)"
     },
     "block_to_html_arm_2": {
       "range": [
-        1471,
-        1534
+        1452,
+        1515
       ],
       "summary": "Match arm: CodeBlock(lang,code)",
       "explanation": "Pattern matches CodeBlock(lang,code)"
     },
     "block_to_html_arm_3": {
       "range": [
-        1539,
-        1715
+        1520,
+        1692
       ],
       "summary": "Match arm: UnorderedList(items)",
       "explanation": "Pattern matches UnorderedList(items)"
     },
     "block_to_html_arm_4": {
       "range": [
-        1720,
-        1894
+        1697,
+        1867
       ],
       "summary": "Match arm: OrderedList(items)",
       "explanation": "Pattern matches OrderedList(items)"
     },
     "block_to_html_arm_5": {
       "range": [
-        1899,
-        2002
+        1872,
+        1975
       ],
       "summary": "Match arm: Blockquote(text)",
       "explanation": "Pattern matches Blockquote(text)"
     },
     "block_to_html_arm_6": {
       "range": [
-        2007,
-        2034
+        1980,
+        2007
       ],
       "summary": "Match arm: HorizontalRule",
       "explanation": "Pattern matches HorizontalRule"
     },
     "empty_blocks": {
       "range": [
-        2066,
-        2092
+        2039,
+        2065
       ],
       "summary": "Function: empty_blocks",
       "explanation": "Function with 0 parameter(s), returns [Block]",
@@ -104,8 +104,8 @@
     },
     "empty_state": {
       "range": [
-        2118,
-        2262
+        2091,
+        2235
       ],
       "summary": "Function: empty_state",
       "explanation": "Function with 0 parameter(s), returns ParserState",
@@ -113,8 +113,8 @@
     },
     "extract_blockquote_text": {
       "range": [
-        2303,
-        2382
+        2276,
+        2351
       ],
       "summary": "Function: extract_blockquote_text",
       "explanation": "Function with 1 parameter(s), returns 𝕊",
@@ -122,8 +122,8 @@
     },
     "extract_code_lang": {
       "range": [
-        2384,
-        2490
+        2353,
+        2455
       ],
       "summary": "Function: extract_code_lang",
       "explanation": "Function with 1 parameter(s), returns 𝕊",
@@ -131,24 +131,24 @@
     },
     "extract_code_lang_arm_0": {
       "range": [
-        2422,
-        2478
+        2391,
+        2443
       ],
       "summary": "Match arm: len",
       "explanation": "Pattern matches len"
     },
     "extract_code_lang_arm_1": {
       "range": [
-        2482,
-        2488
+        2447,
+        2453
       ],
       "summary": "Match arm: _",
       "explanation": "Pattern matches _"
     },
     "extract_header_level": {
       "range": [
-        2492,
-        2908
+        2457,
+        2807
       ],
       "summary": "Function: extract_header_level",
       "explanation": "Function with 1 parameter(s), returns ℤ",
@@ -156,64 +156,64 @@
     },
     "extract_header_level_arm_0": {
       "range": [
-        2532,
-        2592
+        2497,
+        2546
       ],
       "summary": "Match arm: s",
       "explanation": "Pattern matches s"
     },
     "extract_header_level_arm_1": {
       "range": [
-        2596,
-        2655
+        2550,
+        2598
       ],
       "summary": "Match arm: s",
       "explanation": "Pattern matches s"
     },
     "extract_header_level_arm_2": {
       "range": [
-        2659,
-        2717
+        2602,
+        2649
       ],
       "summary": "Match arm: s",
       "explanation": "Pattern matches s"
     },
     "extract_header_level_arm_3": {
       "range": [
-        2721,
-        2778
+        2653,
+        2699
       ],
       "summary": "Match arm: s",
       "explanation": "Pattern matches s"
     },
     "extract_header_level_arm_4": {
       "range": [
-        2782,
-        2838
+        2703,
+        2748
       ],
       "summary": "Match arm: s",
       "explanation": "Pattern matches s"
     },
     "extract_header_level_arm_5": {
       "range": [
-        2842,
-        2897
+        2752,
+        2796
       ],
       "summary": "Match arm: s",
       "explanation": "Pattern matches s"
     },
     "extract_header_level_arm_6": {
       "range": [
-        2901,
-        2906
+        2800,
+        2805
       ],
       "summary": "Match arm: _",
       "explanation": "Pattern matches _"
     },
     "extract_header_text": {
       "range": [
-        2910,
-        2999
+        2809,
+        2894
       ],
       "summary": "Function: extract_header_text",
       "explanation": "Function with 2 parameter(s), returns 𝕊",
@@ -221,8 +221,8 @@
     },
     "extract_list_item": {
       "range": [
-        3001,
-        3182
+        2896,
+        3069
       ],
       "summary": "Function: extract_list_item",
       "explanation": "Function with 1 parameter(s), returns 𝕊",
@@ -230,32 +230,32 @@
     },
     "extract_list_item_arm_0": {
       "range": [
-        3038,
-        3103
+        2933,
+        2994
       ],
       "summary": "Match arm: s",
       "explanation": "Pattern matches s"
     },
     "extract_list_item_arm_1": {
       "range": [
-        3107,
-        3170
+        2998,
+        3057
       ],
       "summary": "Match arm: s",
       "explanation": "Pattern matches s"
     },
     "extract_list_item_arm_2": {
       "range": [
-        3174,
-        3180
+        3061,
+        3067
       ],
       "summary": "Match arm: _",
       "explanation": "Pattern matches _"
     },
     "flush_code_block": {
       "range": [
-        3224,
-        3394
+        3111,
+        3277
       ],
       "summary": "Function: flush_code_block",
       "explanation": "Function with 1 parameter(s), returns [Block]",
@@ -263,24 +263,24 @@
     },
     "flush_code_block_arm_0": {
       "range": [
-        3292,
-        3370
+        3179,
+        3253
       ],
       "summary": "Match arm: true",
       "explanation": "Pattern matches true"
     },
     "flush_code_block_arm_1": {
       "range": [
-        3374,
-        3392
+        3257,
+        3275
       ],
       "summary": "Match arm: false",
       "explanation": "Pattern matches false"
     },
     "flush_list": {
       "range": [
-        3396,
-        3532
+        3279,
+        3415
       ],
       "summary": "Function: flush_list",
       "explanation": "Function with 1 parameter(s), returns [Block]",
@@ -288,24 +288,24 @@
     },
     "flush_list_arm_0": {
       "range": [
-        3452,
-        3470
+        3335,
+        3353
       ],
       "summary": "Match arm: false",
       "explanation": "Pattern matches false"
     },
     "flush_list_arm_1": {
       "range": [
-        3474,
-        3530
+        3357,
+        3413
       ],
       "summary": "Match arm: true",
       "explanation": "Pattern matches true"
     },
     "flush_list_by_type": {
       "range": [
-        3534,
-        3697
+        3417,
+        3580
       ],
       "summary": "Function: flush_list_by_type",
       "explanation": "Function with 2 parameter(s), returns [Block]",
@@ -313,32 +313,32 @@
     },
     "flush_list_by_type_arm_0": {
       "range": [
-        3603,
-        3637
+        3486,
+        3520
       ],
       "summary": "Match arm: ul",
       "explanation": "Pattern matches ul"
     },
     "flush_list_by_type_arm_1": {
       "range": [
-        3641,
-        3673
+        3524,
+        3556
       ],
       "summary": "Match arm: ol",
       "explanation": "Pattern matches ol"
     },
     "flush_list_by_type_arm_2": {
       "range": [
-        3677,
-        3695
+        3560,
+        3578
       ],
       "summary": "Match arm: _",
       "explanation": "Pattern matches _"
     },
     "flush_paragraph": {
       "range": [
-        3699,
-        3842
+        3582,
+        3721
       ],
       "summary": "Function: flush_paragraph",
       "explanation": "Function with 1 parameter(s), returns [Block]",
@@ -346,24 +346,24 @@
     },
     "flush_paragraph_arm_0": {
       "range": [
-        3763,
-        3782
+        3646,
+        3665
       ],
       "summary": "Match arm: []",
       "explanation": "Pattern matches []"
     },
     "flush_paragraph_arm_1": {
       "range": [
-        3786,
-        3840
+        3669,
+        3719
       ],
       "summary": "Match arm: lines",
       "explanation": "Pattern matches lines"
     },
     "is_blockquote": {
       "range": [
-        3869,
-        3944
+        3748,
+        3812
       ],
       "summary": "Function: is_blockquote",
       "explanation": "Function with 1 parameter(s), returns 𝔹",
@@ -371,8 +371,8 @@
     },
     "is_code_fence": {
       "range": [
-        3946,
-        4022
+        3814,
+        3879
       ],
       "summary": "Function: is_code_fence",
       "explanation": "Function with 1 parameter(s), returns 𝔹",
@@ -380,8 +380,8 @@
     },
     "is_empty": {
       "range": [
-        4024,
-        4091
+        3881,
+        3937
       ],
       "summary": "Function: is_empty",
       "explanation": "Function with 1 parameter(s), returns 𝔹",
@@ -389,8 +389,8 @@
     },
     "is_header": {
       "range": [
-        4093,
-        4163
+        3939,
+        3998
       ],
       "summary": "Function: is_header",
       "explanation": "Function with 1 parameter(s), returns 𝔹",
@@ -398,8 +398,8 @@
     },
     "is_hr": {
       "range": [
-        4165,
-        4236
+        4000,
+        4071
       ],
       "summary": "Function: is_hr",
       "explanation": "Function with 1 parameter(s), returns 𝔹",
@@ -407,40 +407,40 @@
     },
     "is_hr_arm_0": {
       "range": [
-        4190,
-        4199
+        4025,
+        4034
       ],
       "summary": "Match arm: ---",
       "explanation": "Pattern matches ---"
     },
     "is_hr_arm_1": {
       "range": [
-        4203,
-        4212
+        4038,
+        4047
       ],
       "summary": "Match arm: ***",
       "explanation": "Pattern matches ***"
     },
     "is_hr_arm_2": {
       "range": [
-        4216,
-        4225
+        4051,
+        4060
       ],
       "summary": "Match arm: ___",
       "explanation": "Pattern matches ___"
     },
     "is_hr_arm_3": {
       "range": [
-        4229,
-        4234
+        4064,
+        4069
       ],
       "summary": "Match arm: _",
       "explanation": "Pattern matches _"
     },
     "is_ordered_list": {
       "range": [
-        4238,
-        4388
+        4073,
+        4204
       ],
       "summary": "Function: is_ordered_list",
       "explanation": "Function with 1 parameter(s), returns 𝔹",
@@ -448,8 +448,8 @@
     },
     "is_unordered_list": {
       "range": [
-        4390,
-        4571
+        4206,
+        4354
       ],
       "summary": "Function: is_unordered_list",
       "explanation": "Function with 1 parameter(s), returns 𝔹",
@@ -457,8 +457,8 @@
     },
     "parse_line": {
       "range": [
-        4691,
-        7722
+        4474,
+        7505
       ],
       "summary": "Function: parse_line",
       "explanation": "Function with 2 parameter(s), returns ParsingResult",
@@ -466,104 +466,104 @@
     },
     "parse_line_arm_0": {
       "range": [
-        4816,
-        4901
+        4599,
+        4684
       ],
       "summary": "Match arm: true",
       "explanation": "Pattern matches true"
     },
     "parse_line_arm_1": {
       "range": [
-        4954,
-        5116
+        4737,
+        4899
       ],
       "summary": "Match arm: true",
       "explanation": "Pattern matches true"
     },
     "parse_line_arm_2": {
       "range": [
-        5171,
-        5423
+        4954,
+        5206
       ],
       "summary": "Match arm: false",
       "explanation": "Pattern matches false"
     },
     "parse_line_arm_3": {
       "range": [
-        5446,
-        5672
+        5229,
+        5455
       ],
       "summary": "Match arm: false",
       "explanation": "Pattern matches false"
     },
     "parse_line_arm_4": {
       "range": [
-        5699,
-        5835
+        5482,
+        5618
       ],
       "summary": "Match arm: false",
       "explanation": "Pattern matches false"
     },
     "parse_line_arm_5": {
       "range": [
-        5891,
-        6185
+        5674,
+        5968
       ],
       "summary": "Match arm: false",
       "explanation": "Pattern matches false"
     },
     "parse_line_arm_6": {
       "range": [
-        6234,
-        6476
+        6017,
+        6259
       ],
       "summary": "Match arm: false",
       "explanation": "Pattern matches false"
     },
     "parse_line_arm_7": {
       "range": [
-        6530,
-        6822
+        6313,
+        6605
       ],
       "summary": "Match arm: false",
       "explanation": "Pattern matches false"
     },
     "parse_line_arm_8": {
       "range": [
-        6869,
-        7109
+        6652,
+        6892
       ],
       "summary": "Match arm: false",
       "explanation": "Pattern matches false"
     },
     "parse_line_arm_9": {
       "range": [
-        7131,
-        7317
+        6914,
+        7100
       ],
       "summary": "Match arm: false",
       "explanation": "Pattern matches false"
     },
     "parse_line_arm_10": {
       "range": [
-        7366,
-        7486
+        7149,
+        7269
       ],
       "summary": "Match arm: false",
       "explanation": "Pattern matches false"
     },
     "parse_line_arm_11": {
       "range": [
-        7533,
-        7720
+        7316,
+        7503
       ],
       "summary": "Match arm: false",
       "explanation": "Pattern matches false"
     },
     "parse_lines": {
       "range": [
-        7756,
-        7884
+        7539,
+        7663
       ],
       "summary": "Function: parse_lines",
       "explanation": "Function with 1 parameter(s), returns [Block]",
@@ -571,8 +571,8 @@
     },
     "parse_lines_helper": {
       "range": [
-        7886,
-        8201
+        7665,
+        7980
       ],
       "summary": "Function: parse_lines_helper",
       "explanation": "Function with 3 parameter(s), returns [Block]",
@@ -580,24 +580,24 @@
     },
     "parse_lines_helper_arm_0": {
       "range": [
-        7967,
-        8080
+        7746,
+        7859
       ],
       "summary": "Match arm: []",
       "explanation": "Pattern matches []"
     },
     "parse_lines_helper_arm_1": {
       "range": [
-        8085,
-        8199
+        7864,
+        7978
       ],
       "summary": "Match arm: [line]",
       "explanation": "Pattern matches [line]"
     },
     "process_inline": {
       "range": [
-        8298,
-        8469
+        8077,
+        8248
       ],
       "summary": "Function: process_inline",
       "explanation": "Function with 1 parameter(s), returns 𝕊",
@@ -605,8 +605,8 @@
     },
     "process_inline_bold": {
       "range": [
-        8471,
-        8567
+        8250,
+        8346
       ],
       "summary": "Function: process_inline_bold",
       "explanation": "Function with 1 parameter(s), returns 𝕊",
@@ -614,8 +614,8 @@
     },
     "process_inline_code": {
       "range": [
-        8569,
-        8660
+        8348,
+        8439
       ],
       "summary": "Function: process_inline_code",
       "explanation": "Function with 1 parameter(s), returns 𝕊",
@@ -623,8 +623,8 @@
     },
     "process_inline_italic": {
       "range": [
-        8662,
-        8751
+        8441,
+        8530
       ],
       "summary": "Function: process_inline_italic",
       "explanation": "Function with 1 parameter(s), returns 𝕊",
@@ -632,8 +632,8 @@
     },
     "process_inline_links": {
       "range": [
-        8812,
-        8916
+        8591,
+        8695
       ],
       "summary": "Function: process_inline_links",
       "explanation": "Function with 1 parameter(s), returns 𝕊",
@@ -641,8 +641,8 @@
     },
     "replace_paired_delimiters": {
       "range": [
-        8963,
-        9840
+        8742,
+        9595
       ],
       "summary": "Function: replace_paired_delimiters",
       "explanation": "Function with 5 parameter(s), returns 𝕊",
@@ -650,8 +650,8 @@
     },
     "parse": {
       "range": [
-        9890,
-        10026
+        9645,
+        9777
       ],
       "summary": "Function: parse",
       "explanation": "Function with 1 parameter(s), returns 𝕊",

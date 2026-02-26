@@ -95,7 +95,7 @@ When checking `[]` against type `[ℤ]`, the typechecker knows it needs an empty
 
 ## Real-World Impact: stdlib Compiles
 
-This fix unblocked 15 functions in `stdlib/list_ops.sigil` that use empty list patterns:
+This fix unblocked 15 functions in `stdlib/list.sigil` that use empty list patterns:
 
 ```sigil
 ⟦ Get all but first element ⟧
@@ -123,14 +123,14 @@ All of these patterns now typecheck correctly. The empty list arms are checked a
 **Before the fix:**
 
 ```bash
-$ sigilc compile language/stdlib/list_ops.sigil
+$ sigilc compile language/stdlib/list.sigil
 {
   "ok": false,
   "phase": "typecheck",
   "error": {
     "code": "SIGIL-TYPE-ERROR",
     "message": "Cannot infer type of empty list []. Try adding a non-empty list in an earlier pattern match arm, or ensure the function return type is specified.",
-    "location": {"file": "language/stdlib/list_ops.sigil", "start": {"line": 16, "column": 20}}
+    "location": {"file": "language/stdlib/list.sigil", "start": {"line": 16, "column": 20}}
   }
 }
 ```
@@ -138,7 +138,7 @@ $ sigilc compile language/stdlib/list_ops.sigil
 **After the fix:**
 
 ```bash
-$ sigilc compile language/stdlib/list_ops.sigil
+$ sigilc compile language/stdlib/list.sigil
 {
   "formatVersion": 1,
   "command": "sigilc compile",
@@ -350,14 +350,14 @@ That's what a "ONE canonical way" language should do: make the canonical way wor
 
 **Files affected:**
 - `language/compiler/src/typechecker/bidirectional.ts` (match expression synthesis)
-- `language/stdlib/list_ops.sigil` (15 functions now compile)
-- `language/stdlib/list_predicates.sigil` (10 predicates now compile)
+- `language/stdlib/list.sigil` (15 functions now compile)
+- `language/stdlib/list.sigil` (10 predicates now compile)
 - `language/stdlib/markdown.sigil` (parser now typechecks)
 
 **Try it yourself:**
 
 ```bash
-$ sigilc compile language/stdlib/list_ops.sigil
+$ sigilc compile language/stdlib/list.sigil
 {"ok":true,"phase":"codegen",...}
 
 $ sigilc run language/examples/list-operations.sigil

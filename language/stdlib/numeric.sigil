@@ -1,6 +1,6 @@
-⟦ Numeric Range Predicates
+⟦ Numeric Standard Library
 
-   Standard predicates for numeric validation and range checking.
+   Canonical numeric predicates and math operations.
    Part of Sigil standard library - canonical implementations only.
 ⟧
 
@@ -18,6 +18,21 @@
     ⊥→⊥
   }
 }
+
+⟦ Clamp value between min and max ⟧
+export λclamp(x:ℤ,lo:ℤ,hi:ℤ)→ℤ=max(lo,min(x,hi))
+
+⟦ Check if n is divisible by d ⟧
+export λdivisible(n:ℤ,d:ℤ)→𝔹=n%d=0
+
+⟦ Product of integers from 1 to n (factorial) ⟧
+export λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
+
+⟦ Fibonacci number ⟧
+export λfib(n:ℤ)→ℤ≡n{0→0|1→1|n→fib(n-1)+fib(n-2)}
+
+⟦ Greatest common divisor (Euclidean algorithm) ⟧
+export λgcd(a:ℤ,b:ℤ)→ℤ≡b{0→a|b→gcd(b,a%b)}
 
 ⟦ Check if value is in range [min, max] (inclusive) ⟧
 export λin_range(x:ℤ,min:ℤ,max:ℤ)→𝔹=in_range_helper(x,min,max)
@@ -46,3 +61,21 @@ export λis_prime(n:ℤ)→𝔹≡n{
 
 ⟦ Check if value is zero ⟧
 export λis_zero(x:ℤ)→𝔹=x=0
+
+⟦ Maximum of two numbers ⟧
+export λmax(a:ℤ,b:ℤ)→ℤ≡a>b{⊤→a|⊥→b}
+
+⟦ Minimum of two numbers ⟧
+export λmin(a:ℤ,b:ℤ)→ℤ≡a<b{⊤→a|⊥→b}
+
+⟦ Integer power (exponentiation) ⟧
+export λpow(base:ℤ,exp:ℤ)→ℤ≡exp{
+  0→1|
+  exp→base*pow(base,exp-1)
+}
+
+⟦ Sum of integers from a to b ⟧
+export λsum_range(a:ℤ,b:ℤ)→ℤ≡a>b{⊤→0|⊥→a+sum_range(a+1,b)}
+
+⟦ Sum of integers from 1 to n ⟧
+export λsum_to(n:ℤ)→ℤ≡n{0→0|n→n+sum_to(n-1)}

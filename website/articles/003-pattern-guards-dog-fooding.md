@@ -17,7 +17,7 @@ To prove this works, we decided to build Sigil's own website using only Sigil an
 - **`stdlib⋅markdown`** - Pure Sigil markdown parser
 - **`stdlib⋅http_server`** - HTTP server wrapper
 - **`stdlib⋅io`** - File operations
-- **`stdlib⋅string_ops`** - String utilities
+- **`stdlib⋅string`** - String utilities
 
 Everything in stdlib, nothing external. If we couldn't build our own website in pure Sigil, the language wasn't ready.
 

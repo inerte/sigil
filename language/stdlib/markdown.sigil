@@ -25,8 +25,8 @@ Not supported in v1:
 This parser uses pattern guards extensively for clean state machine transitions.
 ⟧
 
-i stdlib⋅string_ops
-i stdlib⋅string_predicates
+i stdlib⋅string
+i stdlib⋅string
 
 ⟦ Block Types ⟧
 t Block=Header(ℤ,𝕊)
@@ -54,7 +54,7 @@ t ParsingResult={state:ParserState,blocks:[Block]}
 ⟦ Block to HTML Conversion ⟧
 λblock_to_html(block:Block)→𝕊≡block{
   Header(level,text) →
-    l tag="h"++stdlib⋅string_ops.int_to_string(level);
+    l tag="h"++stdlib⋅string.int_to_string(level);
     l processed=process_inline(text);
     "<"++tag++">"++processed++"</"++tag++">"|
 
@@ -67,12 +67,12 @@ t ParsingResult={state:ParserState,blocks:[Block]}
 
   UnorderedList(items) →
     l html_items=items↦λ(item:𝕊)→𝕊="<li>"++process_inline(item)++"</li>";
-    l joined=stdlib⋅string_ops.join(html_items,"");
+    l joined=stdlib⋅string.join(html_items,"");
     "<ul>"++joined++"</ul>"|
 
   OrderedList(items) →
     l html_items=items↦λ(item:𝕊)→𝕊="<li>"++process_inline(item)++"</li>";
-    l joined=stdlib⋅string_ops.join(html_items,"");
+    l joined=stdlib⋅string.join(html_items,"");
     "<ol>"++joined++"</ol>"|
 
   Blockquote(text) →
@@ -99,35 +99,35 @@ t ParsingResult={state:ParserState,blocks:[Block]}
 
 ⟦ Extract content from special lines ⟧
 λextract_blockquote_text(line:𝕊)→𝕊=
-  stdlib⋅string_ops.substring(line,2,#line)
+  stdlib⋅string.substring(line,2,#line)
 
 λextract_code_lang(line:𝕊)→𝕊≡#line{
-  len when len>3 → stdlib⋅string_ops.substring(line,3,len)|
+  len when len>3 → stdlib⋅string.substring(line,3,len)|
   _ → ""
 }
 
 λextract_header_level(line:𝕊)→ℤ≡line{
-  s when stdlib⋅string_predicates.starts_with(s,"###### ") → 6|
-  s when stdlib⋅string_predicates.starts_with(s,"##### ") → 5|
-  s when stdlib⋅string_predicates.starts_with(s,"#### ") → 4|
-  s when stdlib⋅string_predicates.starts_with(s,"### ") → 3|
-  s when stdlib⋅string_predicates.starts_with(s,"## ") → 2|
-  s when stdlib⋅string_predicates.starts_with(s,"# ") → 1|
+  s when stdlib⋅string.starts_with(s,"###### ") → 6|
+  s when stdlib⋅string.starts_with(s,"##### ") → 5|
+  s when stdlib⋅string.starts_with(s,"#### ") → 4|
+  s when stdlib⋅string.starts_with(s,"### ") → 3|
+  s when stdlib⋅string.starts_with(s,"## ") → 2|
+  s when stdlib⋅string.starts_with(s,"# ") → 1|
   _ → 0
 }
 
 λextract_header_text(line:𝕊,level:ℤ)→𝕊=
-  stdlib⋅string_ops.substring(line,level+1,#line)
+  stdlib⋅string.substring(line,level+1,#line)
 
 λextract_list_item(line:𝕊)→𝕊≡line{
-  s when is_unordered_list(s) → stdlib⋅string_ops.substring(s,2,#s)|
-  s when is_ordered_list(s) → stdlib⋅string_ops.substring(s,3,#s)|
+  s when is_unordered_list(s) → stdlib⋅string.substring(s,2,#s)|
+  s when is_ordered_list(s) → stdlib⋅string.substring(s,3,#s)|
   _ → ""
 }
 
 ⟦ Flush accumulated content to blocks ⟧
 λflush_code_block(state:ParserState)→[Block]≡state.in_code_block{
-  ⊤ → [CodeBlock(state.code_lang,stdlib⋅string_ops.join(state.code_lines,"\n"))]|
+  ⊤ → [CodeBlock(state.code_lang,stdlib⋅string.join(state.code_lines,"\n"))]|
   ⊥ → empty_blocks()
 }
 
@@ -144,21 +144,21 @@ t ParsingResult={state:ParserState,blocks:[Block]}
 
 λflush_paragraph(state:ParserState)→[Block]≡state.para_lines{
   [] → empty_blocks()|
-  lines → [Paragraph(stdlib⋅string_ops.join(lines," "))]
+  lines → [Paragraph(stdlib⋅string.join(lines," "))]
 }
 
 ⟦ Line Type Predicates ⟧
 λis_blockquote(line:𝕊)→𝔹=
-  stdlib⋅string_predicates.starts_with(line,"> ")
+  stdlib⋅string.starts_with(line,"> ")
 
 λis_code_fence(line:𝕊)→𝔹=
-  stdlib⋅string_predicates.starts_with(line,"```")
+  stdlib⋅string.starts_with(line,"```")
 
 λis_empty(line:𝕊)→𝔹=
-  stdlib⋅string_predicates.is_whitespace(line)
+  stdlib⋅string.is_whitespace(line)
 
 λis_header(line:𝕊)→𝔹=
-  stdlib⋅string_predicates.starts_with(line,"#")
+  stdlib⋅string.starts_with(line,"#")
 
 λis_hr(line:𝕊)→𝔹≡line{
   "---" → ⊤|
@@ -169,13 +169,13 @@ t ParsingResult={state:ParserState,blocks:[Block]}
 
 λis_ordered_list(line:𝕊)→𝔹=
   #line>2∧
-  stdlib⋅string_predicates.is_digit(stdlib⋅string_ops.char_at(line,0))∧
-  stdlib⋅string_ops.char_at(line,1)="."
+  stdlib⋅string.is_digit(stdlib⋅string.char_at(line,0))∧
+  stdlib⋅string.char_at(line,1)="."
 
 λis_unordered_list(line:𝕊)→𝔹=
-  stdlib⋅string_predicates.starts_with(line,"- ")∨
-  stdlib⋅string_predicates.starts_with(line,"* ")∨
-  stdlib⋅string_predicates.starts_with(line,"+ ")
+  stdlib⋅string.starts_with(line,"- ")∨
+  stdlib⋅string.starts_with(line,"* ")∨
+  stdlib⋅string.starts_with(line,"+ ")
 
 ⟦ State Machine - Main Line Parser
 
@@ -258,7 +258,7 @@ Uses field access in pattern guards for the one canonical way to inspect state.
 
 ⟦ Parse all lines into blocks ⟧
 λparse_lines(markdown:𝕊)→[Block]=
-  l lines=stdlib⋅string_ops.split(markdown,"\n");
+  l lines=stdlib⋅string.split(markdown,"\n");
   parse_lines_helper(empty_state(),lines,[])
 
 λparse_lines_helper(state:ParserState,lines:[𝕊],blocks:[Block])→[Block]≡lines{
@@ -298,17 +298,17 @@ Process **bold**, *italic*, `code`, and [links](url) within text.
 
 ⟦ Replace paired delimiters with HTML tags ⟧
 λreplace_paired_delimiters(text:𝕊,delimiter:𝕊,open_tag:𝕊,close_tag:𝕊,result:𝕊)→𝕊=
-  l first_idx=stdlib⋅string_ops.index_of(text,delimiter);
+  l first_idx=stdlib⋅string.index_of(text,delimiter);
   ≡first_idx{
     idx when idx≥0 →
-      l after_first=stdlib⋅string_ops.substring(text,idx+#delimiter,#text);
-      l second_idx=stdlib⋅string_ops.index_of(after_first,delimiter);
+      l after_first=stdlib⋅string.substring(text,idx+#delimiter,#text);
+      l second_idx=stdlib⋅string.index_of(after_first,delimiter);
       ≡second_idx{
         idx2 when idx2≥0 →
-          l before=stdlib⋅string_ops.substring(text,0,idx);
-          l content=stdlib⋅string_ops.substring(after_first,0,idx2);
+          l before=stdlib⋅string.substring(text,0,idx);
+          l content=stdlib⋅string.substring(after_first,0,idx2);
           l after_second_relative=idx2+#delimiter;
-          l after_second=stdlib⋅string_ops.substring(after_first,after_second_relative,#after_first);
+          l after_second=stdlib⋅string.substring(after_first,after_second_relative,#after_first);
           l new_result=result+before+open_tag+content+close_tag;
           replace_paired_delimiters(after_second,delimiter,open_tag,close_tag,new_result)|
         _ →
@@ -322,4 +322,4 @@ Process **bold**, *italic*, `code`, and [links](url) within text.
 export λparse(markdown:𝕊)→𝕊=
   l blocks=parse_lines(markdown);
   l html_blocks=blocks↦block_to_html;
-  stdlib⋅string_ops.join(html_blocks,"\n")
+  stdlib⋅string.join(html_blocks,"\n")

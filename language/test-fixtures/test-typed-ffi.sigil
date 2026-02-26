@@ -1,0 +1,6 @@
+⟦ TEST: Typed FFI type checking ⟧
+
+e console : { log : λ(𝕊) → 𝕌 }
+
+⟦ This should compile - correct type ⟧
+λgood()→𝕌=console.log("type safe")

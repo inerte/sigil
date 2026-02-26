@@ -1346,11 +1346,27 @@ export function typeCheck(program: AST.Program, _source: string, options?: TypeC
       }
       types.set(decl.name, funcType);
     } else if (decl.type === 'ExternDecl') {
-      // Register namespace as "any" type (trust mode)
-      // Member validation happens at link-time, not type-check time
       const namespaceName = decl.modulePath.join('⋅');
-      const anyType: InferenceType = { kind: 'any' };
-      env.bindWithMeta(namespaceName, anyType, { isExternNamespace: true });
+
+      if (decl.members) {
+        // Typed extern: Create record type with typed members
+        const fields = new Map<string, InferenceType>();
+        for (const member of decl.members) {
+          fields.set(member.name, astTypeToInferenceTypeResolved(env, member.memberType));
+        }
+
+        const recordType: InferenceType = {
+          kind: 'record',
+          fields,
+          name: namespaceName
+        };
+        env.bindWithMeta(namespaceName, recordType, { isExternNamespace: true });
+      } else {
+        // Untyped extern (backward compatible): Trust mode
+        // Member validation happens at link-time, not type-check time
+        const anyType: InferenceType = { kind: 'any' };
+        env.bindWithMeta(namespaceName, anyType, { isExternNamespace: true });
+      }
     } else if (decl.type === 'ImportDecl') {
       const namespaceName = decl.modulePath.join('⋅');
       const importedType = options?.importedNamespaces?.get(namespaceName);

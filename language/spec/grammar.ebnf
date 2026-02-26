@@ -18,6 +18,7 @@ Program = { TopLevelDecl } ;
 TopLevelDecl = FunctionDecl
              | TypeDecl
              | ImportDecl
+             | ExternDecl
              | ConstDecl ;
 
 (* ============================================================================ *)
@@ -29,6 +30,23 @@ ModulePath = Identifier , { "⋅" , Identifier } ;
 
 (* Example: i stdlib⋅list *)
 (* Note: Namespace imports only - no selective imports, no aliasing *)
+
+(* ============================================================================ *)
+(* EXTERN DECLARATIONS (FFI)                                                   *)
+(* ============================================================================ *)
+
+ExternDecl = "e" , ModulePath , [ ":" , TypedMembers ] ;
+TypedMembers = "{" , TypedMember , { ( "," | Newline ) , TypedMember } , "}" ;
+TypedMember = Identifier , ":" , Type ;
+
+(* Examples:
+   e console
+   e console : { log : λ(𝕊) → 𝕌, error : λ(𝕊) → 𝕌 }
+   e fs⋅promises : { readFile : λ(𝕊, 𝕊) → 𝕊, writeFile : λ(𝕊, 𝕊, 𝕊) → 𝕌 }
+*)
+
+(* Note: Untyped externs (e console) use "trust mode" - all members return Any.
+   Typed externs provide compile-time type checking for FFI calls. *)
 
 (* ============================================================================ *)
 (* TYPE DECLARATIONS                                                            *)

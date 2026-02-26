@@ -1,0 +1,8 @@
+⟦ TEST: Typed FFI with list return type ⟧
+
+e fs⋅promises : { readdir : λ(𝕊) → [𝕊] }
+
+λcountFiles(dir:𝕊)→ℤ={
+  l files=fs⋅promises.readdir(dir);
+  #files  ⟦ Works because files is [𝕊], not Any ⟧
+}

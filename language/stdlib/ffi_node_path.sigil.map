@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "file": "ffi_node_path.sigil",
+  "generated_by": "sigilc@0.1.0",
+  "generated_at": "2026-02-26T03:23:18.133Z",
+  "mappings": {},
+  "metadata": {
+    "category": "unknown",
+    "tested": false
+  }
+}

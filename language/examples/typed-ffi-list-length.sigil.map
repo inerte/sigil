@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "file": "typed-ffi-list-length.sigil",
+  "generated_by": "sigilc@0.1.0",
+  "generated_at": "2026-02-26T03:22:27.120Z",
+  "mappings": {
+    "countFiles": {
+      "range": [
+        477,
+        586
+      ],
+      "summary": "Function: countFiles",
+      "explanation": "Function with 1 parameter(s), returns ℤ",
+      "type": "λ(𝕊)→ℤ"
+    },
+    "main": {
+      "range": [
+        609,
+        640
+      ],
+      "summary": "Function: main",
+      "explanation": "Function with 0 parameter(s), returns ℤ",
+      "type": "λ()→ℤ"
+    }
+  },
+  "metadata": {
+    "category": "unknown",
+    "tested": false
+  }
+}

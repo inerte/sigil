@@ -1,0 +1,24 @@
+⟦ Typed FFI Example: List Length from fs.readdir
+
+  This demonstrates the key benefit of typed FFI: when fs⋅promises.readdir
+  has a type signature that returns [𝕊], we can use the # operator on the result.
+
+  With untyped FFI (trust mode), fs⋅promises.readdir returns type 'any',
+  and # operator fails because you can't apply # to type any.
+⟧
+
+⟦ Typed FFI declaration: readdir returns [𝕊], not any ⟧
+e fs⋅promises : {
+  readdir : λ(𝕊) → [𝕊]
+}
+
+⟦ Count files in a directory ⟧
+λcountFiles(dir:𝕊)→ℤ={
+  l files=fs⋅promises.readdir(dir);
+  #files  ⟦ Works! files has type [𝕊], not any ⟧
+}
+
+⟦ Main entry point ⟧
+λmain()→ℤ={
+  countFiles(".")
+}

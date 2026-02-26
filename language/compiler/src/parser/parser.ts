@@ -383,9 +383,42 @@ export class Parser {
       });
     }
 
+    // Optional type annotation: e console : { log : (𝕊) → 𝕌, ... }
+    let members: AST.ExternMember[] | undefined;
+
+    if (this.match(TokenType.COLON)) {
+      this.consume(TokenType.LBRACE, 'Expected "{" after ":" in typed extern declaration');
+      members = [];
+
+      while (!this.check(TokenType.RBRACE) && !this.isAtEnd()) {
+        const memberStart = this.peek();
+        const memberName = this.consume(TokenType.IDENTIFIER, 'Expected member name in extern type declaration').value;
+        this.consume(TokenType.COLON, 'Expected ":" after member name');
+        const memberType = this.type();
+
+        members.push({
+          name: memberName,
+          memberType,
+          location: this.makeLocation(memberStart, this.previous())
+        });
+
+        // Allow comma or newline as separator, break if we hit }
+        if (this.check(TokenType.RBRACE)) break;
+        if (!this.match(TokenType.COMMA) && !this.match(TokenType.NEWLINE)) {
+          // If there's no comma/newline and we're not at }, error
+          if (!this.check(TokenType.RBRACE)) {
+            throw this.error('Expected "," or newline between extern members');
+          }
+        }
+      }
+
+      this.consume(TokenType.RBRACE, 'Expected "}" after extern members');
+    }
+
     return {
       type: 'ExternDecl',
       modulePath,
+      members,
       location: this.makeLocation(start, this.previous()),
     };
   }

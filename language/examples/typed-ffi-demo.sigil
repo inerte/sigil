@@ -1,0 +1,27 @@
+⟦ Typed FFI Demonstration
+
+  This example demonstrates typed FFI declarations for Node.js modules.
+  With typed FFI, we get compile-time type checking for external function calls.
+⟧
+
+e console : {
+  log : λ(𝕊) → 𝕌
+}
+
+e fs⋅promises : {
+  readFile : λ(𝕊, 𝕊) → 𝕊,
+  writeFile : λ(𝕊, 𝕊) → 𝕌
+}
+
+e path : {
+  join : λ(𝕊, 𝕊) → 𝕊
+}
+
+λmain()→𝕌={
+  console.log("Typed FFI demonstration")
+}
+
+λreadConfig(filename:𝕊)→𝕊={
+  l configPath=path.join("config", filename);
+  fs⋅promises.readFile(configPath, "utf8")
+}

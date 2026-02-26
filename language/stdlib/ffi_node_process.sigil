@@ -1,0 +1,14 @@
+⟦ Node.js process FFI Type Declarations
+
+  Provides typed FFI declarations for the Node.js process module.
+  Import this module to get compile-time type checking for process operations.
+
+  Example:
+    i stdlib⋅ffi_node_process
+    λgetWorkingDir()→𝕊=process.cwd()
+⟧
+
+e process : {
+  exit : λ(ℤ) → 𝕌,
+  cwd : λ() → 𝕊
+}

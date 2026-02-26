@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "file": "test-typed-ffi.sigil",
+  "generated_by": "sigilc@0.1.0",
+  "generated_at": "2026-02-26T03:19:09.333Z",
+  "mappings": {
+    "good": {
+      "range": [
+        106,
+        140
+      ],
+      "summary": "Function: good",
+      "explanation": "Function with 0 parameter(s), returns 𝕌",
+      "type": "λ()→𝕌"
+    }
+  },
+  "metadata": {
+    "category": "unknown",
+    "tested": false
+  }
+}

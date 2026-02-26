@@ -1,0 +1,6 @@
+⟦ TEST: Typed FFI should catch type errors ⟧
+
+e console : { log : λ(𝕊) → 𝕌 }
+
+⟦ This should fail with type error - passing Int instead of String ⟧
+λbad()→𝕌=console.log(42)

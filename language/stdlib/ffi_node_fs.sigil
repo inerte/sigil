@@ -1,0 +1,22 @@
+⟦ Node.js fs/promises FFI Type Declarations
+
+  Provides typed FFI declarations for the Node.js fs/promises module.
+  Import this module to get compile-time type checking for file system operations.
+
+  Example:
+    i stdlib⋅ffi_node_fs
+    λreadConfig()→𝕊=fs⋅promises.readFile("config.json", "utf8")
+⟧
+
+e fs⋅promises : {
+  readFile : λ(𝕊, 𝕊) → 𝕊,
+  writeFile : λ(𝕊, 𝕊, 𝕊) → 𝕌,
+  appendFile : λ(𝕊, 𝕊, 𝕊) → 𝕌,
+  readdir : λ(𝕊) → [𝕊],
+  rm : λ(𝕊) → 𝕌,
+  unlink : λ(𝕊) → 𝕌
+}
+
+⟦ Note: mkdir is not included because it takes an options object parameter
+  that cannot be properly typed in Sigil yet. Use untyped 'e fs⋅promises'
+  if you need mkdir with options. ⟧

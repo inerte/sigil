@@ -1,0 +1,17 @@
+⟦ Node.js Console FFI Type Declarations
+
+  Provides typed FFI declarations for the Node.js console module.
+  Import this module to get compile-time type checking for console methods.
+
+  Example:
+    i stdlib⋅ffi_node_console
+    λmain()→𝕌=console.log("typed!")
+⟧
+
+e console : {
+  log : λ(𝕊) → 𝕌,
+  error : λ(𝕊) → 𝕌,
+  warn : λ(𝕊) → 𝕌,
+  info : λ(𝕊) → 𝕌,
+  debug : λ(𝕊) → 𝕌
+}

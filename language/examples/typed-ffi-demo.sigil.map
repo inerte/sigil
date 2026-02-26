@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "file": "typed-ffi-demo.sigil",
+  "generated_by": "sigilc@0.1.0",
+  "generated_at": "2026-02-26T03:23:18.035Z",
+  "mappings": {
+    "main": {
+      "range": [
+        325,
+        379
+      ],
+      "summary": "Function: main",
+      "explanation": "Function with 0 parameter(s), returns 𝕌",
+      "type": "λ()→𝕌"
+    },
+    "readConfig": {
+      "range": [
+        381,
+        499
+      ],
+      "summary": "Function: readConfig",
+      "explanation": "Function with 1 parameter(s), returns 𝕊",
+      "type": "λ(𝕊)→𝕊"
+    }
+  },
+  "metadata": {
+    "category": "unknown",
+    "tested": false
+  }
+}

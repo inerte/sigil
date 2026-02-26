@@ -128,6 +128,13 @@ export interface TestDecl {
 export interface ExternDecl {
   type: 'ExternDecl';
   modulePath: string[];          // ['fs', 'promises'] or ['axios'] (Sigil syntax: fs⋅promises)
+  members?: ExternMember[];      // Optional typed members for FFI type checking
+  location: SourceLocation;
+}
+
+export interface ExternMember {
+  name: string;
+  memberType: Type;              // Function type or primitive type
   location: SourceLocation;
 }
 

@@ -7,6 +7,8 @@ i stdlib⋅string
 i stdlib⋅string
 
 ⟦ Test # operator on strings ⟧
+λmain()→𝕌=()
+
 test "# returns string length" {
   #"hello"=5
 }
@@ -121,3 +123,4 @@ test "extract title from markdown" {
   };
   title="Hello World"
 }
+

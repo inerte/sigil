@@ -62,6 +62,17 @@ pub enum ValidationError {
     FilePurposeBoth {
         message: String,
     },
+
+    #[error("SIGIL-CANON-TEST-LOCATION: {message}")]
+    TestLocationInvalid {
+        message: String,
+        file_path: String,
+    },
+
+    #[error("SIGIL-CANON-TEST-NO-EXPORTS: {message}")]
+    TestNoExports {
+        message: String,
+    },
 }
 
 impl ValidationError {
@@ -80,6 +91,14 @@ impl ValidationError {
                 end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
             },
             ValidationError::FilePurposeBoth { .. } => SourceLocation {
+                start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+                end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+            },
+            ValidationError::TestLocationInvalid { .. } => SourceLocation {
+                start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+                end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+            },
+            ValidationError::TestNoExports { .. } => SourceLocation {
                 start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
                 end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
             },

@@ -178,6 +178,12 @@ export function validateCanonicalForm(program: AST.Program, filename?: string): 
   try {
     validateNoDuplicateDeclarations(program);
     validateFilePurpose(program);
+
+    // Validate test location (requires filename)
+    if (filename) {
+      validateTestLocation(program, filename);
+    }
+
     validateRecursiveFunctions(program);
     validateCanonicalPatternMatching(program);
     validateDeclarationOrdering(program);
@@ -215,6 +221,7 @@ function buildTypeDefinitionMap(program: AST.Program): Map<string, AST.TypeDef> 
 function validateFilePurpose(program: AST.Program): void {
   let hasExports = false;
   let hasMain = false;
+  const hasTests = program.declarations.some(d => d.type === 'TestDecl');
 
   for (const decl of program.declarations) {
     // Check if any declaration is exported
@@ -231,9 +238,14 @@ function validateFilePurpose(program: AST.Program): void {
   }
 
   if (!hasExports && !hasMain) {
+    // Add hint for test files
+    const hint = hasTests
+      ? '\n\nHint: Test files are executables and must have a main() function.\nAdd: λmain()→𝕌=()'
+      : '';
+
     throw new CanonicalError(
       'SIGIL-CANON-FILE-PURPOSE-NONE',
-      'File must have either a main() function (executable) or export declarations (library)',
+      `File must have either a main() function (executable) or export declarations (library)${hint}`,
       undefined,
       {
         suggestions: [
@@ -257,6 +269,45 @@ function validateFilePurpose(program: AST.Program): void {
           suggestGeneric('Remove main() to make this a library', 'remove_main'),
           suggestGeneric('Remove export keywords to make this executable', 'remove_exports')
         ]
+      }
+    );
+  }
+
+  // Tests cannot have exports
+  if (hasTests && hasExports) {
+    throw new CanonicalError(
+      'SIGIL-CANON-TEST-NO-EXPORTS',
+      'Test files cannot have export declarations.\n\nTest files are executables, not libraries.\nRemove all export keywords from this file.',
+      program.declarations.find(d => d.type === 'TestDecl')?.location
+    );
+  }
+}
+
+/**
+ * Rule: Test Location - Test blocks can only appear in tests/ directories
+ *
+ * Enforces location-based separation: implementation code vs test code.
+ */
+function validateTestLocation(program: AST.Program, filePath: string): void {
+  const hasTests = program.declarations.some(d => d.type === 'TestDecl');
+
+  if (!hasTests) return;
+
+  // Normalize path for cross-platform
+  const normalizedPath = filePath.replace(/\\/g, '/');
+
+  // Check if file is in a tests/ directory
+  if (!normalizedPath.includes('/tests/')) {
+    throw new CanonicalError(
+      'SIGIL-CANON-TEST-LOCATION',
+      `test blocks can only appear in files under tests/ directories.\n\nThis file contains test blocks but is not in a tests/ directory.\n\nMove this file to a tests/ directory (e.g., tests/your-test.sigil).\n\nSigil enforces ONE way: tests live in tests/ directories.`,
+      program.declarations.find(d => d.type === 'TestDecl')?.location,
+      {
+        details: {
+          filePath: normalizedPath,
+          hasTests: true,
+          inTestsDir: false
+        }
       }
     );
   }

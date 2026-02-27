@@ -2,6 +2,8 @@ i stdlib⋅numeric
 
 mockable λping()→!IO 𝕊="real"
 
+λmain()→𝕌=()
+
 test "mockable function can be overridden" →!IO {
   with_mock(ping, λ()→!IO 𝕊="fake") {
     ping()="fake"
@@ -15,3 +17,4 @@ test "numeric predicates are available in projects" {
 test "pure boolean passes" {
   1+1=2
 }
+

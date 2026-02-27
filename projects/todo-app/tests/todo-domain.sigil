@@ -8,6 +8,8 @@ i stdlib⋅numeric
   [_,.rest]→1+lenTodos(rest)
 }
 
+λmain()→𝕌=()
+
 test "todo add prepends item" {
   ≡src⋅todo-domain.addTodo([],1,"Task"){
     [todo]→todo.id=1∧todo.text="Task"∧todo.done=⊥|
@@ -49,3 +51,4 @@ test "todo edit updates text" {
 test "todo toggle flips done flag" {
   src⋅todo-domain.toggleTodo([Todo{id:1,text:"Task",done:⊥}],1)[0].done=⊤
 }
+

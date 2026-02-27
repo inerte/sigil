@@ -11,7 +11,7 @@ use std::collections::{HashMap, HashSet};
 use crate::error::ValidationError;
 
 /// Validate that a program follows canonical form rules
-pub fn validate_canonical_form(program: &Program) -> Result<(), Vec<ValidationError>> {
+pub fn validate_canonical_form(program: &Program, file_path: Option<&str>) -> Result<(), Vec<ValidationError>> {
     let mut errors = Vec::new();
 
     // Rule 1: No duplicate declarations
@@ -24,7 +24,14 @@ pub fn validate_canonical_form(program: &Program) -> Result<(), Vec<ValidationEr
         errors.extend(e);
     }
 
-    // Rule 3: Recursive functions must not use accumulators
+    // Rule 3: Test location - tests must be in tests/ directories
+    if let Some(path) = file_path {
+        if let Err(e) = validate_test_location(program, path) {
+            errors.extend(e);
+        }
+    }
+
+    // Rule 4: Recursive functions must not use accumulators
     if let Err(e) = validate_recursive_functions(program) {
         errors.extend(e);
     }
@@ -154,6 +161,7 @@ fn validate_no_duplicates(program: &Program) -> Result<(), Vec<ValidationError>>
 fn validate_file_purpose(program: &Program) -> Result<(), Vec<ValidationError>> {
     let mut has_exports = false;
     let mut has_main = false;
+    let has_tests = program.declarations.iter().any(|d| matches!(d, Declaration::Test(_)));
 
     for decl in &program.declarations {
         match decl {
@@ -180,14 +188,57 @@ fn validate_file_purpose(program: &Program) -> Result<(), Vec<ValidationError>> 
     }
 
     if !has_exports && !has_main {
+        let hint = if has_tests {
+            "\n\nHint: Test files are executables and must have a main() function.\nAdd: λmain()→𝕌=()"
+        } else {
+            ""
+        };
+
         return Err(vec![ValidationError::FilePurposeNone {
-            message: "File must have either a main() function (executable) or export declarations (library)".to_string(),
+            message: format!(
+                "File must have either a main() function (executable) or export declarations (library){}",
+                hint
+            ),
         }]);
     }
 
     if has_exports && has_main {
         return Err(vec![ValidationError::FilePurposeBoth {
             message: "File cannot be both executable and library - remove either main() or export declarations".to_string(),
+        }]);
+    }
+
+    // Tests cannot have exports
+    if has_tests && has_exports {
+        return Err(vec![ValidationError::TestNoExports {
+            message: "Test files cannot have export declarations.\n\nTest files are executables, not libraries.\nRemove all export keywords from this file.".to_string(),
+        }]);
+    }
+
+    Ok(())
+}
+
+/// Validate that test blocks only appear in tests/ directories
+fn validate_test_location(program: &Program, file_path: &str) -> Result<(), Vec<ValidationError>> {
+    let has_tests = program.declarations.iter().any(|d| matches!(d, Declaration::Test(_)));
+
+    if !has_tests {
+        return Ok(());
+    }
+
+    // Normalize path separators
+    let normalized_path = file_path.replace('\\', "/");
+
+    // Check if file is in a tests/ directory
+    if !normalized_path.contains("/tests/") {
+        return Err(vec![ValidationError::TestLocationInvalid {
+            message: format!(
+                "test blocks can only appear in files under tests/ directories.\n\n\
+                This file contains test blocks but is not in a tests/ directory.\n\n\
+                Move this file to a tests/ directory (e.g., tests/your-test.sigil).\n\n\
+                Sigil enforces ONE way: tests live in tests/ directories."
+            ),
+            file_path: normalized_path,
         }]);
     }
 

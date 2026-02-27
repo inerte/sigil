@@ -1,5 +1,7 @@
 i stdlib⋅numeric
 
+λmain()→𝕌=()
+
 test "numeric.in_range is inclusive" {
   stdlib⋅numeric.in_range(3,1,3)=⊤∧stdlib⋅numeric.in_range(4,1,3)=⊥
 }
@@ -11,3 +13,4 @@ test "numeric.is_even and is_odd basics" {
 test "numeric.is_positive and is_negative basics" {
   stdlib⋅numeric.is_positive(5)=⊤∧stdlib⋅numeric.is_negative(-1)=⊤
 }
+

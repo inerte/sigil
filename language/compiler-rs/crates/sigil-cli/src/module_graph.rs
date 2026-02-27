@@ -132,7 +132,7 @@ impl ModuleGraphBuilder {
         // Validate
         validate_surface_form(&ast)
             .map_err(|e| ModuleGraphError::Validation(format!("{} errors", e.len())))?;
-        validate_canonical_form(&ast)
+        validate_canonical_form(&ast, Some(&filename))
             .map_err(|e| ModuleGraphError::Validation(format!("{} errors", e.len())))?;
 
         // Process imports

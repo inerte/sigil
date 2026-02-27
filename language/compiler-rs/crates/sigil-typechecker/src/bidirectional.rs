@@ -48,7 +48,17 @@ pub fn type_check(
                     },
                 );
 
-                // TODO: Register constructor functions for sum types
+                // Register constructor functions for sum types
+                if let sigil_ast::TypeDef::Sum(sum_type) = &type_decl.definition {
+                    for variant in &sum_type.variants {
+                        let constructor_type = create_constructor_type(
+                            variant,
+                            &type_decl.type_params,
+                            &type_decl.name,
+                        );
+                        env.bind(variant.name.clone(), constructor_type);
+                    }
+                }
             }
 
             Declaration::Function(func_decl) => {
@@ -179,6 +189,41 @@ pub fn type_check(
     }
 
     Ok(types)
+}
+
+/// Create a constructor function type for a sum type variant
+///
+/// For example, Some : T → Option[T]
+fn create_constructor_type(
+    variant: &sigil_ast::Variant,
+    _type_params: &[String],
+    type_name: &str,
+) -> InferenceType {
+    // Convert variant field types to inference types
+    let params: Vec<InferenceType> = variant
+        .types
+        .iter()
+        .map(|field_type| {
+            // Type parameters become Any for now (full generic tracking needs more infrastructure)
+            if matches!(field_type, sigil_ast::Type::Variable(_)) {
+                InferenceType::Any
+            } else {
+                ast_type_to_inference_type(field_type)
+            }
+        })
+        .collect();
+
+    // Result type is the constructor with empty type args for now
+    let result_type = InferenceType::Constructor(crate::types::TConstructor {
+        name: type_name.to_string(),
+        type_args: vec![],
+    });
+
+    InferenceType::Function(Box::new(TFunction {
+        params,
+        return_type: result_type,
+        effects: None,
+    }))
 }
 
 /// Type check a function declaration
@@ -1110,8 +1155,141 @@ fn check_pattern(
             }
             Ok(())
         }
-        _ => Err(TypeError::new(
-            "Complex pattern matching not yet fully implemented".to_string(),
+
+        Pattern::List(list_pattern) => {
+            // List pattern requires list type
+            if !matches!(scrutinee_type, InferenceType::List(_)) {
+                return Err(TypeError::new(
+                    format!(
+                        "List pattern requires list type, got {}",
+                        format_type(scrutinee_type)
+                    ),
+                    Some(list_pattern.location),
+                ));
+            }
+
+            if let InferenceType::List(ref list_type) = scrutinee_type {
+                // Check each element pattern
+                for elem_pattern in &list_pattern.patterns {
+                    check_pattern(env, elem_pattern, &list_type.element_type, bindings)?;
+                }
+
+                // Handle rest pattern if present
+                if let Some(ref rest_name) = list_pattern.rest {
+                    bindings.insert(rest_name.clone(), scrutinee_type.clone());
+                }
+            }
+
+            Ok(())
+        }
+
+        Pattern::Tuple(tuple_pattern) => {
+            // Tuple pattern requires tuple type
+            if !matches!(scrutinee_type, InferenceType::Tuple(_)) {
+                return Err(TypeError::new(
+                    format!(
+                        "Tuple pattern requires tuple type, got {}",
+                        format_type(scrutinee_type)
+                    ),
+                    Some(tuple_pattern.location),
+                ));
+            }
+
+            if let InferenceType::Tuple(ref tuple_type) = scrutinee_type {
+                if tuple_pattern.patterns.len() != tuple_type.types.len() {
+                    return Err(TypeError::new(
+                        format!(
+                            "Tuple pattern has {} elements, but type has {}",
+                            tuple_pattern.patterns.len(),
+                            tuple_type.types.len()
+                        ),
+                        Some(tuple_pattern.location),
+                    ));
+                }
+
+                for (pattern, typ) in tuple_pattern.patterns.iter().zip(&tuple_type.types) {
+                    check_pattern(env, pattern, typ, bindings)?;
+                }
+            }
+
+            Ok(())
+        }
+
+        Pattern::Constructor(constructor_pattern) => {
+            // Constructor pattern requires constructor type
+            if !matches!(scrutinee_type, InferenceType::Constructor(_)) {
+                return Err(TypeError::new(
+                    format!(
+                        "Constructor pattern requires constructor type, got {}",
+                        format_type(scrutinee_type)
+                    ),
+                    Some(constructor_pattern.location),
+                ));
+            }
+
+            // Look up the constructor in the environment
+            let constructor_type = env.lookup(&constructor_pattern.name);
+            if constructor_type.is_none() {
+                return Err(TypeError::new(
+                    format!("Unknown constructor '{}'", constructor_pattern.name),
+                    Some(constructor_pattern.location),
+                ));
+            }
+
+            let constructor_type = constructor_type.unwrap();
+
+            // Constructor should be a function type
+            if !matches!(constructor_type, InferenceType::Function(_)) {
+                return Err(TypeError::new(
+                    format!("'{}' is not a constructor", constructor_pattern.name),
+                    Some(constructor_pattern.location),
+                ));
+            }
+
+            if let (InferenceType::Function(ref ctor_fn), InferenceType::Constructor(ref scrutinee_ctor)) =
+                (&constructor_type, scrutinee_type)
+            {
+                // Check that constructor's return type matches scrutinee type
+                if let InferenceType::Constructor(ref return_ctor) = ctor_fn.return_type {
+                    if return_ctor.name != scrutinee_ctor.name {
+                        return Err(TypeError::new(
+                            format!(
+                                "Constructor '{}' returns '{}', expected '{}'",
+                                constructor_pattern.name,
+                                format_type(&ctor_fn.return_type),
+                                scrutinee_ctor.name
+                            ),
+                            Some(constructor_pattern.location),
+                        ));
+                    }
+                }
+
+                // Check argument patterns against constructor parameter types
+                let patterns = &constructor_pattern.patterns;
+                if !patterns.is_empty() {
+                    if patterns.len() != ctor_fn.params.len() {
+                        return Err(TypeError::new(
+                            format!(
+                                "Constructor '{}' expects {} arguments, got {}",
+                                constructor_pattern.name,
+                                ctor_fn.params.len(),
+                                patterns.len()
+                            ),
+                            Some(constructor_pattern.location),
+                        ));
+                    }
+
+                    for (pattern, param_type) in patterns.iter().zip(&ctor_fn.params) {
+                        check_pattern(env, pattern, param_type, bindings)?;
+                    }
+                }
+            }
+
+            Ok(())
+        }
+
+        Pattern::Record(_) => Err(TypeError::new(
+            "Record pattern matching not yet implemented".to_string(),
             None,
         )),
     }
@@ -1207,9 +1385,28 @@ mod tests {
         assert!(result.is_ok());
     }
 
-    // TODO: Add Match/If/Let expression tests when full parser support is confirmed
+    #[test]
+    fn test_sum_type_constructors() {
+        // Test that sum type constructors are registered and callable
+        // Using fully specified constructor type for now
+        let source = "t Color=Red|Green|Blue\nλgetRed()→Color=Red()";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        if result.is_err() {
+            eprintln!("Constructor test error: {:?}", result.as_ref().err());
+        }
+        // Should succeed - Red is registered as a constructor
+        assert!(result.is_ok());
+    }
+
+    // TODO: Add list pattern test when parser fully supports match expression syntax
+    // The type checking logic is complete for list patterns [x,.xs]
+
+    // TODO: Add If/Let expression tests when full parser support is confirmed
     // The type checking logic is implemented for:
-    // - Match expressions with pattern checking (literal, identifier, wildcard patterns)
+    // - Match expressions with all pattern types (literal, identifier, wildcard, list, tuple, constructor)
     // - If expressions with optional else branches
     // - Let expressions with identifier patterns
     // Waiting for complete lexer/parser syntax support to test end-to-end

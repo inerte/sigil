@@ -303,9 +303,22 @@ pub fn ast_type_to_inference_type(ast_type: &AstType) -> InferenceType {
             type_args: tc.type_args.iter().map(ast_type_to_inference_type).collect(),
         }),
 
-        AstType::Variable(_var_type) => {
-            // Type variables in AST become fresh inference variables
-            fresh_type_var(Some(_var_type.name.clone()))
+        AstType::Variable(var_type) => {
+            // Type variables in AST - could be either:
+            // 1. An actual type parameter (T, U, etc.)
+            // 2. A reference to a named type without args (Color, Option, etc.)
+            // For now, treat uppercase single letters as type params, others as constructors
+            if var_type.name.len() == 1 && var_type.name.chars().next().unwrap().is_uppercase() {
+                // Likely a type parameter: T, U, etc.
+                fresh_type_var(Some(var_type.name.clone()))
+            } else {
+                // Likely a named type reference: Color, Option, etc.
+                // Convert to constructor with empty type args
+                InferenceType::Constructor(TConstructor {
+                    name: var_type.name.clone(),
+                    type_args: vec![],
+                })
+            }
         }
 
         // Other AST type variants can be added as needed

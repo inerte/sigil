@@ -1,3 +1,3 @@
-i src⋅rot13_encoder
+i src⋅rot13-encoder
 
-λmain()→𝕊=src⋅rot13_encoder.rot13(["H","e","l","l","o",","," ","W","o","r","l","d","!"])
+λmain()→𝕊=src⋅rot13-encoder.rot13(["H","e","l","l","o",","," ","W","o","r","l","d","!"])

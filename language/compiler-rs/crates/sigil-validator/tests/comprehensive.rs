@@ -14,7 +14,7 @@ fn test_duplicate_types() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
-    let result = validate_canonical_form(&program);
+    let result = validate_canonical_form(&program, Some("test.sigil"));
     assert!(result.is_err());
     let errors = result.unwrap_err();
     assert_eq!(errors.len(), 1);
@@ -27,7 +27,7 @@ fn test_duplicate_consts() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
-    let result = validate_canonical_form(&program);
+    let result = validate_canonical_form(&program, Some("test.sigil"));
     assert!(result.is_err());
 }
 
@@ -37,7 +37,7 @@ fn test_duplicate_imports() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
-    let result = validate_canonical_form(&program);
+    let result = validate_canonical_form(&program, Some("test.sigil"));
     assert!(result.is_err());
 }
 
@@ -47,7 +47,7 @@ fn test_no_duplicates_different_names() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
-    assert!(validate_canonical_form(&program).is_ok());
+    assert!(validate_canonical_form(&program, Some("test.sigil")).is_ok());
 }
 
 #[test]
@@ -58,7 +58,7 @@ fn test_different_declaration_types() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     // This should pass - different declaration types and names
-    assert!(validate_canonical_form(&program).is_ok());
+    assert!(validate_canonical_form(&program, Some("test.sigil")).is_ok());
 }
 
 // ============================================================================
@@ -71,7 +71,7 @@ fn test_non_recursive_function() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
-    assert!(validate_canonical_form(&program).is_ok());
+    assert!(validate_canonical_form(&program, Some("test.sigil")).is_ok());
 }
 
 #[test]
@@ -81,18 +81,72 @@ fn test_recursive_single_param() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     // Simple recursion is allowed
-    assert!(validate_canonical_form(&program).is_ok());
+    assert!(validate_canonical_form(&program, Some("test.sigil")).is_ok());
+}
+
+#[test]
+fn test_accumulator_blocked() {
+    // Tail-recursive factorial with accumulator parameter (forbidden)
+    let source = "λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("test.sigil"));
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(matches!(errors[0], ValidationError::AccumulatorParameter { .. }));
+}
+
+#[test]
+fn test_tailrec_factorial_blocked() {
+    // Full tail-recursive factorial program (forbidden)
+    let source = "λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}\nλmain()→ℤ=factorial(5,1)";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("test.sigil"));
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(matches!(errors[0], ValidationError::AccumulatorParameter { .. }));
+}
+
+#[test]
+fn test_invalid_helper_pattern_blocked() {
+    // Helper function with accumulator-passing style (forbidden)
+    let source = "λhelper(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→helper(n-1,n*acc)}\nλfactorial(n:ℤ)→ℤ=helper(n,1)\nλmain()→ℤ=factorial(5)";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("test.sigil"));
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(matches!(errors[0], ValidationError::AccumulatorParameter { .. }));
 }
 
 #[test]
 fn test_cps_rejected() {
-    // TODO: This test requires function type syntax to work
-    // For now, just verify basic validation works
-    let source = "λfoo()→ℤ=1";
+    // Continuation-passing style factorial (forbidden)
+    let source = "λfactorial(n:ℤ)→λ(ℤ)→ℤ≡n{0→λ(k:ℤ)→k|n→λ(k:ℤ)→factorial(n-1)(n*k)}";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
-    assert!(validate_canonical_form(&program).is_ok());
+    let result = validate_canonical_form(&program, Some("test.sigil"));
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(matches!(errors[0], ValidationError::ContinuationPassingStyle { .. }));
+}
+
+#[test]
+fn test_cps_factorial_blocked() {
+    // Full CPS factorial program (forbidden)
+    let source = "λfactorial(n:ℤ)→λ(ℤ)→ℤ≡n{0→λ(k:ℤ)→k|n→λ(k:ℤ)→factorial(n-1)(n*k)}\nλmain()→ℤ=factorial(5)(1)";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("test.sigil"));
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(matches!(errors[0], ValidationError::ContinuationPassingStyle { .. }));
 }
 
 // ============================================================================
@@ -136,7 +190,7 @@ fn test_valid_program_both_validators() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
-    assert!(validate_canonical_form(&program).is_ok());
+    assert!(validate_canonical_form(&program, Some("test.sigil")).is_ok());
     assert!(validate_surface_form(&program).is_ok());
 }
 
@@ -146,7 +200,7 @@ fn test_multiple_errors_collected() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
-    let result = validate_canonical_form(&program);
+    let result = validate_canonical_form(&program, Some("test.sigil"));
     assert!(result.is_err());
     let errors = result.unwrap_err();
     // Should report 2 duplicates (second and third foo)
@@ -159,7 +213,7 @@ fn test_exported_function_valid() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
-    assert!(validate_canonical_form(&program).is_ok());
+    assert!(validate_canonical_form(&program, Some("test.sigil")).is_ok());
     assert!(validate_surface_form(&program).is_ok());
 }
 
@@ -169,7 +223,7 @@ fn test_mockable_function_valid() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
-    assert!(validate_canonical_form(&program).is_ok());
+    assert!(validate_canonical_form(&program, Some("test.sigil")).is_ok());
 }
 
 #[test]
@@ -178,7 +232,7 @@ fn test_type_declaration_valid() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
-    assert!(validate_canonical_form(&program).is_ok());
+    assert!(validate_canonical_form(&program, Some("test.sigil")).is_ok());
 }
 
 #[test]
@@ -187,7 +241,7 @@ fn test_import_valid() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
-    assert!(validate_canonical_form(&program).is_ok());
+    assert!(validate_canonical_form(&program, Some("test.sigil")).is_ok());
 }
 
 #[test]
@@ -196,7 +250,7 @@ fn test_const_lowercase_name() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
-    assert!(validate_canonical_form(&program).is_ok());
+    assert!(validate_canonical_form(&program, Some("test.sigil")).is_ok());
 }
 
 #[test]
@@ -205,5 +259,5 @@ fn test_effect_annotations_valid() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
-    assert!(validate_canonical_form(&program).is_ok());
+    assert!(validate_canonical_form(&program, Some("test.sigil")).is_ok());
 }

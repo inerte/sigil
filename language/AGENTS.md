@@ -188,6 +188,82 @@ test "my feature works" {
 }
 ```
 
+### Testing Invalid Code Patterns
+
+**IMPORTANT**: All `.sigil` files in the repository should compile successfully.
+
+To test that the compiler correctly rejects invalid code patterns (accumulator-passing style, CPS, etc.), use the **string-based compilation API** instead of creating `.sigil` files:
+
+#### TypeScript Compiler
+
+```typescript
+import { compileFromString } from '@sigil-lang/compiler';
+
+// Test that accumulator-passing is rejected
+const result = compileFromString(
+  'λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}'
+);
+
+if (!result.ok) {
+  console.log(result.error.code); // SIGIL-CANON-RECURSION-ACCUMULATOR
+}
+```
+
+TypeScript test files go in `language/compiler/test/*.test.ts` and use Node's built-in test runner:
+
+```typescript
+import { describe, test } from 'node:test';
+import assert from 'node:assert';
+import { compileFromString } from '../src/api.js';
+
+test('rejects accumulator-passing style', () => {
+  const code = 'λf(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→f(n-1,n*acc)}';
+  const result = compileFromString(code);
+
+  assert.strictEqual(result.ok, false);
+  if (!result.ok) {
+    assert.strictEqual(result.error.code, 'SIGIL-CANON-RECURSION-ACCUMULATOR');
+  }
+});
+```
+
+Run TypeScript compiler tests:
+```bash
+cd language/compiler
+pnpm test
+```
+
+#### Rust Compiler
+
+The Rust compiler already uses string-based compilation internally for tests:
+
+```rust
+use sigil_lexer::tokenize;
+use sigil_parser::parse;
+use sigil_validator::{validate_canonical_form, ValidationError};
+
+#[test]
+fn test_accumulator_blocked() {
+    let source = "λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    let result = validate_canonical_form(&program);
+    assert!(result.is_err());
+    assert!(matches!(result.unwrap_err()[0], ValidationError::AccumulatorParameter { .. }));
+}
+```
+
+Rust tests go in:
+- `language/compiler-rs/crates/sigil-validator/tests/comprehensive.rs` - canonical form validation
+- `language/compiler-rs/crates/sigil-parser/tests/comprehensive.rs` - parser rejection tests
+
+Run Rust compiler tests:
+```bash
+cd language/compiler-rs
+cargo test
+```
+
 ## Directory-Specific Notes
 
 ### `compiler/src/lexer` and `compiler/src/parser`

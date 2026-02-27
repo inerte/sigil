@@ -137,6 +137,32 @@ Run compiler unit tests:
 pnpm --filter @sigil-lang/compiler test
 ```
 
+### Working with Tests
+
+Test files must:
+1. Live in `tests/` directories
+2. Have a `main()→𝕌=()` function (executable marker)
+3. Cannot have `export` declarations
+
+Run tests:
+```bash
+cd language/compiler-rs
+cargo build
+./target/debug/sigil test ../tests/
+```
+
+Create new test file:
+```sigil
+// tests/my-feature.sigil
+i stdlib⋅list
+
+λmain()→𝕌=()
+
+test "my feature works" {
+  stdlib⋅list.length([1,2,3])=3
+}
+```
+
 ## Directory-Specific Notes
 
 ### `compiler/src/lexer` and `compiler/src/parser`

@@ -49,6 +49,50 @@ export λadd(x:ℤ,y:ℤ)→ℤ=x+y
 Error: SIGIL-CANON-FILE-PURPOSE-BOTH
 ```
 
+#### Test Location Rule
+
+Test blocks can ONLY appear in files under `tests/` directories.
+
+**Canonical enforcement:**
+
+```sigil
+✅ VALID - Test file in tests/ directory:
+// tests/list-predicates.sigil
+i stdlib⋅list
+
+λmain()→𝕌=()
+
+test "list.in_bounds checks valid indexes" {
+  stdlib⋅list.in_bounds(0,[10,20,30])=⊤
+}
+
+❌ REJECTED - Test blocks outside tests/ directory:
+// examples/fibonacci.sigil
+λfibonacci(n:ℤ)→ℤ=...
+
+test "fibonacci works" {  // ERROR: SIGIL-CANON-TEST-LOCATION
+  fibonacci(5)=5
+}
+
+❌ REJECTED - Test file without main():
+// tests/my-test.sigil
+test "example" { ⊤ }
+// ERROR: SIGIL-CANON-FILE-PURPOSE-NONE
+// Hint: Test files are executables and must have a main() function.
+
+❌ REJECTED - Test file with exports:
+// tests/my-test.sigil
+export λhelper()→ℤ=42  // ERROR: SIGIL-CANON-TEST-NO-EXPORTS
+test "example" { ⊤ }
+λmain()→𝕌=()
+```
+
+**Rationale:**
+- Tests are executables with test blocks, not a separate category
+- Location-based enforcement prevents scattered test code
+- `main()→𝕌` is a marker - actual execution via test runner
+- Tests are file-local (cannot export, already enforced at parse time)
+
 **What's allowed:**
 - Primitive recursion (direct recursive calls)
 - Direct style (no continuations)

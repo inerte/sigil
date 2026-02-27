@@ -1232,32 +1232,32 @@ impl Parser {
     }
 
     fn match_expression(&mut self) -> Result<Expr, ParseError> {
-        // Match syntax: scrutinee ≡ pattern → body | pattern → body
-        let scrutinee = self.logical()?;
-
-        // The ≡ was already consumed as part of checking for match
-        // But we might need to consume it depending on where this is called from
-        // For now, assume it's consumed
+        // Match syntax: ≡scrutinee{pattern→body|pattern→body}
+        let start = self.previous();
+        let scrutinee = self.expression()?;
+        self.consume(TokenType::LBRACE, "Expected \"{\"")?;
 
         let mut arms = Vec::new();
         loop {
+            let arm_start = self.peek();
             let pattern = self.pattern()?;
 
+            // Parse optional guard: when expr
             let guard = if self.match_token(TokenType::WHEN) {
-                Some(self.logical()?)
+                Some(self.expression()?)
             } else {
                 None
             };
 
-            self.consume(TokenType::ARROW, "Expected \"→\" after pattern")?;
-            let body = self.logical()?;
+            self.consume(TokenType::ARROW, "Expected \"→\"")?;
+            let body = self.expression()?;
 
             let arm_end = self.previous();
             arms.push(MatchArm {
                 pattern,
                 guard,
                 body,
-                location: arm_end.location,
+                location: self.make_location(arm_start.location.start, arm_end.location.end),
             });
 
             if !self.match_token(TokenType::PIPE_SEP) {
@@ -1265,11 +1265,13 @@ impl Parser {
             }
         }
 
+        self.consume(TokenType::RBRACE, "Expected \"}\"")?;
+
         let end = self.previous();
         Ok(Expr::Match(Box::new(MatchExpr {
             scrutinee,
             arms,
-            location: end.location,
+            location: self.make_location(start.location.start, end.location.end),
         })))
     }
 

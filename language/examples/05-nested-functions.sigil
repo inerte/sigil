@@ -1,0 +1,12 @@
+⟦ Test: Nested Function Calls
+   Expected output: 50
+   Tests: function composition
+⟧
+
+λ add(a: ℤ, b: ℤ) → ℤ = a + b
+
+λ multiply(a: ℤ, b: ℤ) → ℤ = a * b
+
+λ compute() → ℤ = add(multiply(10, 3), multiply(5, 4))
+
+λ main() → ℤ = compute()

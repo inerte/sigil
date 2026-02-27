@@ -1,0 +1,6 @@
+⟦ Test: Negative Numbers
+   Expected output: 5
+   Tests: negative literals and arithmetic
+⟧
+
+λ main() → ℤ = 10 + (-5)

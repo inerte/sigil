@@ -1,0 +1,6 @@
+⟦ Test: Subtraction
+   Expected output: 42
+   Tests: subtraction operator
+⟧
+
+λ main() → ℤ = 100 - 58

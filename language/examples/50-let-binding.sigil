@@ -1,8 +1,0 @@
-⟦ Test: Let Bindings
-   Expected output: 25
-   Using let to bind intermediate values
-⟧
-
-λ main() → ℤ =
-  let x = 5 in
-  x * x

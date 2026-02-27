@@ -1,0 +1,6 @@
+⟦ Test: Division Operator
+   Expected output: 7
+   Tests: integer division
+⟧
+
+λ main() → ℤ = 21 / 3

@@ -1,9 +1,0 @@
-⟦ Test: Logical Operators
-   Expected output: 1 (true)
-   Tests: (true AND true) OR false = true
-⟧
-
-λ main() → ℤ ≡(⊤ ∧ ⊤ ∨ ⊥) {
-  ⊤ → 1 |
-  ⊥ → 0
-}

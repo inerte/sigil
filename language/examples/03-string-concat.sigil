@@ -1,0 +1,7 @@
+⟦ Test: String Concatenation
+   Expected output: Hello, World!
+⟧
+
+e console
+
+λ main() → 𝕌 = console.log("Hello, " ++ "World!")

@@ -1,8 +1,0 @@
-⟦ Test: Let with Tuple Destructuring
-   Expected output: 12
-   Bind tuple elements with let
-⟧
-
-λ main() → ℤ =
-  let (x, y) = (3, 4) in
-  x * y

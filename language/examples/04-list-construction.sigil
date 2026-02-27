@@ -1,0 +1,8 @@
+⟦ Test: List Construction
+   Expected output: 4
+   Tests: creating list and getting length
+⟧
+
+λ make_list() → [ℤ] = [10, 20, 30, 40]
+
+λ main() → ℤ = #make_list()

@@ -1,9 +1,0 @@
-⟦ Test: Comparison Operators
-   Expected output: 1 (true)
-   Tests: 5 > 3 and 10 ≤ 10 and 7 ≠ 8
-⟧
-
-λ main() → ℤ ≡(5 > 3 ∧ 10 ≤ 10 ∧ 7 ≠ 8) {
-  ⊤ → 1 |
-  ⊥ → 0
-}

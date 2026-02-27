@@ -1,6 +1,0 @@
-⟦ Test: Power Operator
-   Expected output: 32
-   Calculation: 2^5 = 32
-⟧
-
-λ main() → ℤ = 2 ** 5

@@ -44,7 +44,6 @@ export type Declaration =
 export interface FunctionDecl {
   type: 'FunctionDecl';
   name: string;
-  isExported: boolean;
   isMockable: boolean;
   params: Param[];
   effects: string[];            // Effect annotations: ['IO', 'Network', 'Async', 'Error', 'Mut']
@@ -63,7 +62,6 @@ export interface Param {
 export interface TypeDecl {
   type: 'TypeDecl';
   name: string;
-  isExported: boolean;
   typeParams: string[];
   definition: TypeDef;
   location: SourceLocation;
@@ -111,7 +109,6 @@ export interface ImportDecl {
 export interface ConstDecl {
   type: 'ConstDecl';
   name: string;
-  isExported: boolean;
   typeAnnotation: Type | null;
   value: Expr;
   location: SourceLocation;

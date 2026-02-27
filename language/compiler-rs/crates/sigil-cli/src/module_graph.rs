@@ -220,6 +220,19 @@ struct ResolvedImport {
     project: Option<ProjectConfig>,
 }
 
+fn resolve_import_path(base_path: &Path, file_path_str: &str) -> Result<PathBuf, ModuleGraphError> {
+    let lib_path = base_path.join(format!("{}.lib.sigil", file_path_str));
+
+    if lib_path.exists() {
+        Ok(lib_path)
+    } else {
+        Err(ModuleGraphError::ImportNotFound {
+            module_id: file_path_str.to_string(),
+            expected_path: format!("Expected: {:?} (libraries must use .lib.sigil extension)", lib_path),
+        })
+    }
+}
+
 fn resolve_sigil_import(
     importer_file: &Path,
     importer_project: Option<&ProjectConfig>,
@@ -235,7 +248,7 @@ fn resolve_sigil_import(
             expected_path: "project not found".to_string(),
         })?;
 
-        let file_path = project.root.join(format!("{}.sigil", file_path_str));
+        let file_path = resolve_import_path(&project.root, &file_path_str)?;
 
         Ok(ResolvedImport {
             module_id: module_id.to_string(),
@@ -245,7 +258,7 @@ fn resolve_sigil_import(
     } else if module_id.starts_with("stdlib⋅") {
         // Stdlib import - find language root
         let language_root = find_language_root(importer_file)?;
-        let file_path = language_root.join(format!("{}.sigil", file_path_str));
+        let file_path = resolve_import_path(&language_root, &file_path_str)?;
 
         Ok(ResolvedImport {
             module_id: module_id.to_string(),

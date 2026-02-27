@@ -8,7 +8,7 @@ No npm dependencies, no library choices - just import and use.
 ⟧
 
 ⟦ HTTP request type ⟧
-export t Request={
+t Request={
   path:𝕊,
   method:𝕊,
   headers:Any,
@@ -16,7 +16,7 @@ export t Request={
 }
 
 ⟦ HTTP response type ⟧
-export t Response={
+t Response={
   status:ℤ,
   body:𝕊,
   headers:Any
@@ -28,41 +28,41 @@ e http
 e url
 
 ⟦ Helper: Create a JSON response ⟧
-export λjson(status:ℤ,body:𝕊)→Response={
+λjson(status:ℤ,body:𝕊)→Response={
   status:status,
   body:body,
   headers:{"Content-Type":"application/json; charset=utf-8"}
 }
 
 ⟦ Helper: Log HTTP request to console ⟧
-export λlog_request(req:Request)→!IO 𝕌={
+λlog_request(req:Request)→!IO 𝕌={
   l log_line=req.method++" "++req.path;
   console.log(log_line)
 }
 
 ⟦ Helper: Create a 404 Not Found response ⟧
-export λnot_found()→Response={
+λnot_found()→Response={
   status:404,
   body:"<h1>404 Not Found</h1>",
   headers:{"Content-Type":"text/html; charset=utf-8"}
 }
 
 ⟦ Helper: Create a 404 with custom message ⟧
-export λnot_found_msg(path:𝕊)→Response={
+λnot_found_msg(path:𝕊)→Response={
   status:404,
   body:"<h1>404 Not Found</h1><p>Path: "++path++"</p>",
   headers:{"Content-Type":"text/html; charset=utf-8"}
 }
 
 ⟦ Helper: Create a 200 OK response ⟧
-export λok(body:𝕊)→Response={
+λok(body:𝕊)→Response={
   status:200,
   body:body,
   headers:{"Content-Type":"text/html; charset=utf-8"}
 }
 
 ⟦ Helper: Create a custom response ⟧
-export λresponse(status:ℤ,body:𝕊,content_type:𝕊)→Response={
+λresponse(status:ℤ,body:𝕊,content_type:𝕊)→Response={
   status:status,
   body:body,
   headers:{"Content-Type":content_type}
@@ -81,7 +81,7 @@ Usage:
   }
 ⟧
 
-export λserve(port:ℤ,handler:λ(Request)→!IO Response)→!IO 𝕌={
+λserve(port:ℤ,handler:λ(Request)→!IO Response)→!IO 𝕌={
   ⟦ Create HTTP server with request handler ⟧
   (http.createServer(λ(node_req:Any,node_res:Any)→!IO 𝕌={
     ⟦ Parse URL to extract path ⟧
@@ -133,7 +133,7 @@ export λserve(port:ℤ,handler:λ(Request)→!IO Response)→!IO 𝕌={
 }
 
 ⟦ Helper: Create a 500 Internal Server Error response ⟧
-export λserver_error(message:𝕊)→Response={
+λserver_error(message:𝕊)→Response={
   status:500,
   body:"<h1>500 Internal Server Error</h1><p>"++message++"</p>",
   headers:{"Content-Type":"text/html; charset=utf-8"}

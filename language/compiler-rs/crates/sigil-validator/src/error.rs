@@ -73,6 +73,21 @@ pub enum ValidationError {
     TestNoExports {
         message: String,
     },
+
+    #[error("SIGIL-CANON-LIB-NO-MAIN: {message}")]
+    LibNoMain {
+        message: String,
+    },
+
+    #[error("SIGIL-CANON-EXEC-NEEDS-MAIN: {message}")]
+    ExecNeedsMain {
+        message: String,
+    },
+
+    #[error("SIGIL-CANON-TEST-NEEDS-MAIN: {message}")]
+    TestNeedsMain {
+        message: String,
+    },
 }
 
 impl ValidationError {
@@ -99,6 +114,18 @@ impl ValidationError {
                 end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
             },
             ValidationError::TestNoExports { .. } => SourceLocation {
+                start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+                end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+            },
+            ValidationError::LibNoMain { .. } => SourceLocation {
+                start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+                end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+            },
+            ValidationError::ExecNeedsMain { .. } => SourceLocation {
+                start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+                end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+            },
+            ValidationError::TestNeedsMain { .. } => SourceLocation {
                 start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
                 end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
             },

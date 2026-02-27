@@ -189,7 +189,7 @@ i stdlib⋅string
 }
 
 ⟦ Process markdown lines into HTML blocks ⟧
-export λparse(markdown:𝕊)→𝕊={
+λparse(markdown:𝕊)→𝕊={
   l lines=stdlib⋅string.split(markdown,"\n");
   l num_lines=#lines;
   parse_lines_loop(lines,num_lines,0,"",⊥,"","")

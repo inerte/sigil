@@ -1,0 +1,52 @@
+⟦
+  Sigil Standard Library - I/O Operations
+
+  File system and console I/O using Node.js FFI.
+  All functions have !IO effect annotation.
+⟧
+
+e console
+e fs⋅promises
+e process
+
+⟦ Append string to file ⟧
+λappend_file(path:𝕊,content:𝕊)→!IO 𝕌=fs⋅promises.appendFile(path,content,"utf8")
+
+⟦ Print debug info ⟧
+λdebug(msg:𝕊)→!IO 𝕌=console.debug(msg)
+
+⟦ Delete file ⟧
+λdelete_file(path:𝕊)→!IO 𝕌=fs⋅promises.unlink(path)
+
+⟦ Print to stderr ⟧
+λeprintln(msg:𝕊)→!IO 𝕌=console.error(msg)
+
+⟦ Check if file exists ⟧
+λfile_exists(path:𝕊)→!IO 𝔹=file_exists_helper(path)
+
+λfile_exists_false()→𝔹=⊥
+
+λfile_exists_helper(path:𝕊)→!IO 𝔹=fs⋅promises.access(path).then(file_exists_true).catch(file_exists_false)
+
+λfile_exists_true()→𝔹=⊤
+
+⟦ List directory contents ⟧
+λlist_dir(path:𝕊)→!IO [𝕊]=fs⋅promises.readdir(path)
+
+⟦ Create directory ⟧
+λmake_dir(path:𝕊)→!IO 𝕌=fs⋅promises.mkdir(path)
+
+⟦ Print to stdout (without newline) ⟧
+λprint(msg:𝕊)→!IO 𝕌=process.stdout.write(msg)
+
+⟦ Print to stdout (with newline) ⟧
+λprintln(msg:𝕊)→!IO 𝕌=console.log(msg)
+
+⟦ Read file as UTF-8 string ⟧
+λread_file(path:𝕊)→!IO 𝕊=fs⋅promises.readFile(path,"utf8")
+
+⟦ Print warning ⟧
+λwarn(msg:𝕊)→!IO 𝕌=console.warn(msg)
+
+⟦ Write string to file (overwrites) ⟧
+λwrite_file(path:𝕊,content:𝕊)→!IO 𝕌=fs⋅promises.writeFile(path,content,"utf8")

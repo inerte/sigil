@@ -20,62 +20,62 @@
 }
 
 ⟦ Clamp value between min and max ⟧
-export λclamp(x:ℤ,lo:ℤ,hi:ℤ)→ℤ=max(lo,min(x,hi))
+λclamp(x:ℤ,lo:ℤ,hi:ℤ)→ℤ=max(lo,min(x,hi))
 
 ⟦ Check if n is divisible by d ⟧
-export λdivisible(n:ℤ,d:ℤ)→𝔹=n%d=0
+λdivisible(n:ℤ,d:ℤ)→𝔹=n%d=0
 
 ⟦ Product of integers from 1 to n (factorial) ⟧
-export λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
+λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
 
 ⟦ Fibonacci number ⟧
-export λfib(n:ℤ)→ℤ≡n{0→0|1→1|n→fib(n-1)+fib(n-2)}
+λfib(n:ℤ)→ℤ≡n{0→0|1→1|n→fib(n-1)+fib(n-2)}
 
 ⟦ Greatest common divisor (Euclidean algorithm) ⟧
-export λgcd(a:ℤ,b:ℤ)→ℤ≡b{0→a|b→gcd(b,a%b)}
+λgcd(a:ℤ,b:ℤ)→ℤ≡b{0→a|b→gcd(b,a%b)}
 
 ⟦ Check if value is in range [min, max] (inclusive) ⟧
-export λin_range(x:ℤ,min:ℤ,max:ℤ)→𝔹=in_range_helper(x,min,max)
+λin_range(x:ℤ,min:ℤ,max:ℤ)→𝔹=in_range_helper(x,min,max)
 
 ⟦ Check if value is even ⟧
-export λis_even(x:ℤ)→𝔹=(x%2)=0
+λis_even(x:ℤ)→𝔹=(x%2)=0
 
 ⟦ Check if value is negative ⟧
-export λis_negative(x:ℤ)→𝔹=x<0
+λis_negative(x:ℤ)→𝔹=x<0
 
 ⟦ Check if value is non-negative (≥0) ⟧
-export λis_non_negative(x:ℤ)→𝔹=x≥0
+λis_non_negative(x:ℤ)→𝔹=x≥0
 
 ⟦ Check if value is odd ⟧
-export λis_odd(x:ℤ)→𝔹=¬(is_even(x))
+λis_odd(x:ℤ)→𝔹=¬(is_even(x))
 
 ⟦ Check if value is positive ⟧
-export λis_positive(x:ℤ)→𝔹=x>0
+λis_positive(x:ℤ)→𝔹=x>0
 
 ⟦ Check if value is prime ⟧
-export λis_prime(n:ℤ)→𝔹≡n{
+λis_prime(n:ℤ)→𝔹≡n{
   0→⊥|
   1→⊥|
   n→is_prime_helper(n,2)
 }
 
 ⟦ Check if value is zero ⟧
-export λis_zero(x:ℤ)→𝔹=x=0
+λis_zero(x:ℤ)→𝔹=x=0
 
 ⟦ Maximum of two numbers ⟧
-export λmax(a:ℤ,b:ℤ)→ℤ≡a>b{⊤→a|⊥→b}
+λmax(a:ℤ,b:ℤ)→ℤ≡a>b{⊤→a|⊥→b}
 
 ⟦ Minimum of two numbers ⟧
-export λmin(a:ℤ,b:ℤ)→ℤ≡a<b{⊤→a|⊥→b}
+λmin(a:ℤ,b:ℤ)→ℤ≡a<b{⊤→a|⊥→b}
 
 ⟦ Integer power (exponentiation) ⟧
-export λpow(base:ℤ,exp:ℤ)→ℤ≡exp{
+λpow(base:ℤ,exp:ℤ)→ℤ≡exp{
   0→1|
   exp→base*pow(base,exp-1)
 }
 
 ⟦ Sum of integers from a to b ⟧
-export λsum_range(a:ℤ,b:ℤ)→ℤ≡a>b{⊤→0|⊥→a+sum_range(a+1,b)}
+λsum_range(a:ℤ,b:ℤ)→ℤ≡a>b{⊤→0|⊥→a+sum_range(a+1,b)}
 
 ⟦ Sum of integers from 1 to n ⟧
-export λsum_to(n:ℤ)→ℤ≡n{0→0|n→n+sum_to(n-1)}
+λsum_to(n:ℤ)→ℤ≡n{0→0|n→n+sum_to(n-1)}

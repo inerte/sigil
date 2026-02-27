@@ -531,7 +531,6 @@ impl Lexer {
             "mut" => TokenType::MUT,
             "mockable" => TokenType::MOCKABLE,
             "with_mock" => TokenType::WITH_MOCK,
-            "export" => TokenType::EXPORT,
             "when" => TokenType::WHEN,
             _ => {
                 if first_char.is_uppercase() {

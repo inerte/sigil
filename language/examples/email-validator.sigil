@@ -17,7 +17,7 @@ Production email validation is more complex (RFC 5322).
 t EmailParts={local:𝕊,domain:𝕊}
 
 ⟦ Result type for validation ⟧
-export t ValidationResult=Valid|Invalid(𝕊)
+t ValidationResult=Valid|Invalid(𝕊)
 
 e console
 
@@ -155,4 +155,4 @@ i stdlib⋅string
 }
 
 ⟦ Main email validation function - exported for testing ⟧
-export λvalidate_email(email:𝕊)→ValidationResult=validate_email_with_parts(email,split_at(email))
+λvalidate_email(email:𝕊)→ValidationResult=validate_email_with_parts(email,split_at(email))

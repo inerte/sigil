@@ -318,7 +318,7 @@ Process **bold**, *italic*, `code`, and [links](url) within text.
   }
 
 ⟦ Main Export - Parse markdown to HTML ⟧
-export λparse(markdown:𝕊)→𝕊=
+λparse(markdown:𝕊)→𝕊=
   l blocks=parse_lines(markdown);
   l html_blocks=blocks↦block_to_html;
   stdlib⋅string.join(html_blocks,"\n")

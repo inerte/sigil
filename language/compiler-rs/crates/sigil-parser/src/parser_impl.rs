@@ -50,11 +50,6 @@ impl Parser {
     // ========================================================================
 
     fn declaration(&mut self) -> Result<Declaration, ParseError> {
-        let mut is_exported = false;
-        if self.match_token(TokenType::EXPORT) {
-            is_exported = true;
-        }
-
         // Mockable function declaration: mockable λ...
         if self.match_token(TokenType::MOCKABLE) {
             if !self.check(TokenType::LAMBDA) {
@@ -62,57 +57,38 @@ impl Parser {
             }
             let mockable_start = self.previous();
             self.consume(TokenType::LAMBDA, "Expected \"λ\" after \"mockable\"")?;
-            return self.function_declaration(true, Some(mockable_start), is_exported);
+            return self.function_declaration(true, Some(mockable_start));
         }
 
         // Function declaration: λ identifier(params)...
         if self.match_token(TokenType::LAMBDA) {
-            return self.function_declaration(false, None, is_exported);
+            return self.function_declaration(false, None);
         }
 
         // Type declaration: t TypeName = ...
         if self.match_token(TokenType::TYPE) {
-            return self.type_declaration(is_exported);
+            return self.type_declaration();
         }
 
         // Const declaration: c name = value
         if self.match_token(TokenType::CONST) {
-            return self.const_declaration(is_exported);
+            return self.const_declaration();
         }
 
         // Import declaration: i module⋅path
         if self.match_token(TokenType::IMPORT) {
-            if is_exported {
-                return Err(self.error_at_current(
-                    "Cannot export import declarations (canonical form: use \"i module⋅path\" only)",
-                ));
-            }
             return self.import_declaration();
         }
 
         // Extern declaration: e module⋅path
         if self.match_token(TokenType::EXTERN) {
-            if is_exported {
-                return Err(self.error_at_current(
-                    "Cannot export extern declarations (canonical form: use \"e module⋅path\" only)",
-                ));
-            }
             return self.extern_declaration();
         }
 
         // Test declaration: test "description" { ... }
         if self.check_identifier("test") {
-            if is_exported {
-                return Err(self.error_at_current(
-                    "Cannot export test declarations (tests are file-local)",
-                ));
-            }
             self.advance();
             return self.test_declaration();
-        }
-
-        if is_exported {
-            return Err(self.error("Expected exportable declaration after \"export\" (λ, t, or c)"));
         }
 
         Err(self.error("Expected declaration (λ for function, t for type, etc.)"))
@@ -122,7 +98,6 @@ impl Parser {
         &mut self,
         is_mockable: bool,
         start_token: Option<Token>,
-        is_exported: bool,
     ) -> Result<Declaration, ParseError> {
         let start = start_token.unwrap_or_else(|| self.previous());
         let name = self.consume(TokenType::IDENTIFIER, "Expected function name")?.value.clone();
@@ -171,7 +146,6 @@ impl Parser {
 
         Ok(Declaration::Function(FunctionDecl {
             name,
-            is_exported,
             is_mockable,
             params,
             effects,
@@ -223,7 +197,7 @@ impl Parser {
         Ok(params)
     }
 
-    fn type_declaration(&mut self, is_exported: bool) -> Result<Declaration, ParseError> {
+    fn type_declaration(&mut self) -> Result<Declaration, ParseError> {
         let start = self.previous();
         let name = self.consume(TokenType::UPPER_IDENTIFIER, "Expected type name")?.value.clone();
 
@@ -248,7 +222,6 @@ impl Parser {
 
         Ok(Declaration::Type(TypeDecl {
             name,
-            is_exported,
             type_params,
             definition,
             location,
@@ -363,7 +336,7 @@ impl Parser {
         })
     }
 
-    fn const_declaration(&mut self, is_exported: bool) -> Result<Declaration, ParseError> {
+    fn const_declaration(&mut self) -> Result<Declaration, ParseError> {
         let start = self.previous();
 
         if self.check(TokenType::UPPER_IDENTIFIER) {
@@ -394,7 +367,6 @@ impl Parser {
         let end = self.previous();
         Ok(Declaration::Const(ConstDecl {
             name,
-            is_exported,
             type_annotation,
             value,
             location: self.make_location(start.location.start, end.location.end),

@@ -26,28 +26,83 @@ Enforced by: **Canonical form validator** (`validator/canonical.ts`)
 - **Files with ambiguous purpose** (neither executable nor library)
 - **Files with dual purpose** (both executable and library)
 
-**File Purpose Rule:**
+**File Purpose Rule (Legacy - see File Extension Convention below):**
 
-Every .sigil file MUST have **exclusive purpose**:
-- **Executable:** Has `main()` function, NO `export` declarations
-- **Library:** Has `export` declarations, NO `main()` function
+NOTE: This section describes the old validation approach. Modern Sigil uses file extensions (`.lib.sigil` vs `.sigil`) to distinguish file purpose. See "File Extension Convention" section below for current canonical approach.
+
+### File Extension Convention
+
+Sigil uses file extensions to distinguish libraries from executables at the filesystem level.
+
+**Extension rules:**
+- `.lib.sigil` → Libraries (all functions visible, no main)
+- `.sigil` → Executables (have main, not imported except by tests)
+- `tests/*.sigil` → Tests (have main and test blocks, can import from anywhere)
+
+**Examples:**
+
+✅ VALID - Library file:
+```sigil
+// math.lib.sigil
+λadd(x:ℤ,y:ℤ)→ℤ=x+y
+λmultiply(x:ℤ,y:ℤ)→ℤ=x*y
+// All functions automatically visible to importers
+```
+
+✅ VALID - Executable file:
+```sigil
+// calculator.sigil
+i src⋅math
+
+λmain()→ℤ=src⋅math.add(2,3)
+```
+
+✅ VALID - Test file:
+```sigil
+// tests/math.sigil
+i src⋅math
+
+λmain()→𝕌=()
+
+test "addition works" {
+  src⋅math.add(2,3)=5
+}
+```
+
+❌ REJECTED - .lib.sigil with main():
+```sigil
+// math.lib.sigil
+λadd(x:ℤ,y:ℤ)→ℤ=x+y
+λmain()→ℤ=42  // ERROR: SIGIL-CANON-LIB-NO-MAIN
+```
+
+❌ REJECTED - .sigil without main (and not in tests/):
+```sigil
+// math.sigil
+λhelper(x:ℤ)→ℤ=x*2  // ERROR: SIGIL-CANON-EXEC-NEEDS-MAIN
+// Solution: Add λmain() or rename to math.lib.sigil
+```
+
+**Import statements:**
+
+Import statements use logical module names, not file extensions:
 
 ```sigil
-✅ VALID - Executable:
-λmain()→ℤ=42
-
-✅ VALID - Library:
-export λadd(x:ℤ,y:ℤ)→ℤ=x+y
-
-❌ REJECTED - No purpose (neither main nor exports):
-λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
-Error: SIGIL-CANON-FILE-PURPOSE-NONE
-
-❌ REJECTED - Dual purpose (both main and exports):
-export λadd(x:ℤ,y:ℤ)→ℤ=x+y
-λmain()→ℤ=add(2,3)
-Error: SIGIL-CANON-FILE-PURPOSE-BOTH
+i stdlib⋅list      // Resolves to stdlib/list.lib.sigil
+i stdlib⋅numeric   // Resolves to stdlib/numeric.lib.sigil
+i src⋅math         // Resolves to src/math.lib.sigil
 ```
+
+**Test file special visibility:**
+
+Test files in `tests/` directories can import from ANY file (including `.sigil` executables) and access ALL functions, even those not in `.lib.sigil` files. This enables testing internal implementation details.
+
+**Rationale:**
+- Tools can determine file purpose from filename alone (no need to read contents)
+- Clear at a glance in file trees and directory listings
+- Import resolution is deterministic
+- No `export` keyword needed - everything is visible
+- Reinforces "ONE WAY" canonical philosophy
 
 #### Test Location Rule
 
@@ -80,9 +135,9 @@ test "example" { ⊤ }
 // ERROR: SIGIL-CANON-FILE-PURPOSE-NONE
 // Hint: Test files are executables and must have a main() function.
 
-❌ REJECTED - Test file with exports:
+❌ REJECTED - Test file with exports (not applicable with .lib.sigil convention):
 // tests/my-test.sigil
-export λhelper()→ℤ=42  // ERROR: SIGIL-CANON-TEST-NO-EXPORTS
+// Test files are .sigil executables, not .lib.sigil libraries
 test "example" { ⊤ }
 λmain()→𝕌=()
 ```
@@ -91,7 +146,7 @@ test "example" { ⊤ }
 - Tests are executables with test blocks, not a separate category
 - Location-based enforcement prevents scattered test code
 - `main()→𝕌` is a marker - actual execution via test runner
-- Tests are file-local (cannot export, already enforced at parse time)
+- Tests use `.sigil` extension (executables), not `.lib.sigil` (libraries)
 
 **What's allowed:**
 - Primitive recursion (direct recursive calls)
@@ -220,8 +275,7 @@ t User = { name: 𝕊, age: ℤ }
 - `test` = tests
 
 **Within-category ordering:**
-- Non-exported declarations first (alphabetically by name)
-- Exported declarations second (alphabetically by name)
+- Alphabetically by name within each category
 
 **Error message:**
 ```

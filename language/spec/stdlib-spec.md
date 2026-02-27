@@ -487,17 +487,17 @@ i stdlib⋅list
 i stdlib⋅result
 ```
 
-### Export (Explicit)
+### Export Visibility
 
-Only explicitly exported top-level declarations are visible across modules.
+File extension determines visibility:
 
-Canonical export forms:
+**`.lib.sigil` files** (libraries):
+- All top-level declarations are automatically visible to importers
+- No `export` keyword needed or allowed
 
-```sigil
-export λ...
-export t...
-export c...
-```
+**`.sigil` files** (executables):
+- Cannot be imported (except by test files in `tests/` directories)
+- Have `main()` function
 
 No selective imports, no aliasing, no export lists.
 
@@ -605,7 +605,7 @@ Planned for future stdlib versions:
 
 - [Type System](type-system.md) - Type inference and checking
 - [Grammar](grammar.ebnf) - Language syntax
-- Implementation: stdlib/prelude.sigil
+- Implementation: stdlib/prelude.lib.sigil
 
 ---
 

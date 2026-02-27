@@ -1,7 +1,7 @@
 e fs⋅promises
 i stdlib⋅http_server
 
-export λstart_server(dist_dir:𝕊,port:ℤ)→!IO 𝕌=
+λstart_server(dist_dir:𝕊,port:ℤ)→!IO 𝕌=
   {
     ⟦ TODO: Reconnect to stdlib⋅http_server.serve after callback function-type identity bug is fixed ⟧
     l noop_dist=dist_dir;

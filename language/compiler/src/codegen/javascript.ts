@@ -21,11 +21,13 @@ export class JavaScriptGenerator {
   private projectRoot?: string;
   private testMetaEntries: string[] = [];
   private mockableFunctions = new Set<string>();
+  private isLibraryFile: boolean;
 
   constructor(options?: CodegenOptions) {
     this.sourceFile = options?.sourceFile;
     this.outputFile = options?.outputFile;
     this.projectRoot = options?.projectRoot;
+    this.isLibraryFile = this.sourceFile?.endsWith('.lib.sigil') ?? false;
   }
 
   generate(program: AST.Program): string {
@@ -88,7 +90,10 @@ export class JavaScriptGenerator {
     const params = func.params.map(p => p.name).join(', ');
     const implName = func.isMockable ? `__sigil_impl_${func.name}` : func.name;
 
-    const shouldExport = func.isExported || func.name === 'main';
+    // Export logic:
+    // - .lib.sigil files: export ALL declarations
+    // - .sigil files: export main() only (executable entry point)
+    const shouldExport = this.isLibraryFile || func.name === 'main';
     const fnKeyword = shouldExport ? 'export async function' : 'async function';
     this.emit(`${fnKeyword} ${implName}(${params}) {`);
     this.indent++;
@@ -124,7 +129,11 @@ export class JavaScriptGenerator {
         const paramNames = variant.types.map((_, i) => `_${i}`);
         const params = paramNames.join(', ');
 
-        const ctorKeyword = decl.isExported ? 'export async function' : 'async function';
+        // Export logic:
+        // - .lib.sigil files: export ALL declarations
+        // - .sigil files: no exports
+        const shouldExport = this.isLibraryFile;
+        const ctorKeyword = shouldExport ? 'export async function' : 'async function';
         this.emit(`${ctorKeyword} ${variant.name}(${params}) {`);
         this.indent++;
         this.emit(`return { __tag: "${variant.name}", __fields: [${params}] };`);
@@ -139,7 +148,11 @@ export class JavaScriptGenerator {
 
   private generateConst(constDecl: AST.ConstDecl): void {
     const value = this.generateExpression(constDecl.value);
-    const kw = constDecl.isExported ? 'export const' : 'const';
+    // Export logic:
+    // - .lib.sigil files: export ALL declarations
+    // - .sigil files: no exports
+    const shouldExport = this.isLibraryFile;
+    const kw = shouldExport ? 'export const' : 'const';
     this.emit(`${kw} ${constDecl.name} = ${value};`);
   }
 

@@ -255,7 +255,7 @@ pub fn compile_command(
 
         // Track for dependents
         compiled_modules.insert(module_id.clone(), inferred_types);
-        type_registries.insert(module_id.clone(), extract_type_registry(&module.ast));
+        type_registries.insert(module_id.clone(), extract_type_registry(&module.ast, &module.file_path));
     }
 
     // Find entry module output
@@ -348,7 +348,7 @@ pub fn run_command(file: &Path, human: bool) -> Result<(), CliError> {
 
         // Track for dependents
         compiled_modules.insert(module_id.clone(), inferred_types);
-        type_registries.insert(module_id.clone(), extract_type_registry(&module.ast));
+        type_registries.insert(module_id.clone(), extract_type_registry(&module.ast, &module.file_path));
     }
 
     // Create runner file
@@ -687,7 +687,7 @@ fn compile_and_run_tests(
 
         // Track for dependents
         compiled_modules.insert(module_id.clone(), inferred_types);
-        type_registries.insert(module_id.clone(), extract_type_registry(&module.ast));
+        type_registries.insert(module_id.clone(), extract_type_registry(&module.ast, &module.file_path));
     }
 
     // Run test runner on the test module
@@ -887,12 +887,15 @@ fn build_imported_type_registries(
 /// Extract type registry from a module's AST
 ///
 /// Collects all exported type definitions for use by dependent modules
-fn extract_type_registry(ast: &Program) -> HashMap<String, TypeInfo> {
+fn extract_type_registry(ast: &Program, file_path: &std::path::Path) -> HashMap<String, TypeInfo> {
     let mut registry = HashMap::new();
+
+    // Only .lib.sigil files export types
+    let is_lib_file = file_path.to_string_lossy().ends_with(".lib.sigil");
 
     for decl in &ast.declarations {
         if let Declaration::Type(type_decl) = decl {
-            if type_decl.is_exported {
+            if is_lib_file {
                 registry.insert(
                     type_decl.name.clone(),
                     TypeInfo {

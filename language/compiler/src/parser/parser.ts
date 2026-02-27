@@ -38,11 +38,6 @@ export class Parser {
   }
 
   private declaration(): AST.Declaration {
-    let isExported = false;
-    if (this.match(TokenType.EXPORT)) {
-      isExported = true;
-    }
-
     // Mockable function declaration: mockable λ...
     if (this.match(TokenType.MOCKABLE)) {
       if (!this.check(TokenType.LAMBDA)) {
@@ -50,57 +45,44 @@ export class Parser {
       }
       const mockableStart = this.previous();
       this.consume(TokenType.LAMBDA, 'Expected "λ" after "mockable"');
-      return this.functionDeclaration(true, mockableStart, isExported);
+      return this.functionDeclaration(true, mockableStart);
     }
 
     // Function declaration: λ identifier(params)...
     if (this.match(TokenType.LAMBDA)) {
-      return this.functionDeclaration(false, undefined, isExported);
+      return this.functionDeclaration(false, undefined);
     }
 
     // Type declaration: t TypeName = ...
     if (this.match(TokenType.TYPE)) {
-      return this.typeDeclaration(isExported);
+      return this.typeDeclaration();
     }
 
     // Const declaration: c name = value
     if (this.match(TokenType.CONST)) {
-      return this.constDeclaration(isExported);
+      return this.constDeclaration();
     }
 
     // Import declaration: i module⋅path
     if (this.match(TokenType.IMPORT)) {
-      if (isExported) {
-        throw this.error('Cannot export import declarations (canonical form: use "i module⋅path" only)');
-      }
       return this.importDeclaration();
     }
 
     // Extern declaration: e module⋅path
     if (this.match(TokenType.EXTERN)) {
-      if (isExported) {
-        throw this.error('Cannot export extern declarations (canonical form: use "e module⋅path" only)');
-      }
       return this.externDeclaration();
     }
 
     // Test declaration: test "description" { ... }
     if (this.checkIdentifier('test')) {
-      if (isExported) {
-        throw this.error('Cannot export test declarations (tests are file-local)');
-      }
       this.advance();
       return this.testDeclaration();
-    }
-
-    if (isExported) {
-      throw this.error('Expected exportable declaration after "export" (λ, t, or c)');
     }
 
     throw this.error('Expected declaration (λ for function, t for type, etc.)');
   }
 
-  private functionDeclaration(isMockable: boolean, startToken?: Token, isExported = false): AST.FunctionDecl {
+  private functionDeclaration(isMockable: boolean, startToken?: Token): AST.FunctionDecl {
     const start = startToken ?? this.previous();
     const name = this.consume(TokenType.IDENTIFIER, 'Expected function name').value;
 
@@ -140,7 +122,6 @@ export class Parser {
     return {
       type: 'FunctionDecl',
       name,
-      isExported,
       isMockable,
       params,
       effects,
@@ -179,7 +160,7 @@ export class Parser {
     return params;
   }
 
-  private typeDeclaration(isExported = false): AST.TypeDecl {
+  private typeDeclaration(): AST.TypeDecl {
     const start = this.previous();
     const name = this.consume(TokenType.UPPER_IDENTIFIER, 'Expected type name').value;
 
@@ -197,7 +178,6 @@ export class Parser {
     return {
       type: 'TypeDecl',
       name,
-      isExported,
       typeParams,
       definition,
       location: this.makeLocation(start, this.previous()),
@@ -303,7 +283,7 @@ export class Parser {
     };
   }
 
-  private constDeclaration(isExported = false): AST.ConstDecl {
+  private constDeclaration(): AST.ConstDecl {
     const start = this.previous();
     if (this.check(TokenType.UPPER_IDENTIFIER)) {
       const bad = this.peek();
@@ -325,7 +305,6 @@ export class Parser {
     return {
       type: 'ConstDecl',
       name,
-      isExported,
       typeAnnotation,
       value,
       location: this.makeLocation(start, this.previous()),

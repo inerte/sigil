@@ -297,6 +297,18 @@ function isSigilImportPath(modulePath: string): boolean {
   return modulePath.startsWith('src⋅') || modulePath.startsWith('stdlib⋅');
 }
 
+function resolveImportPath(basePath: string, filePathStr: string): string {
+  const libPath = join(basePath, `${filePathStr}.lib.sigil`);
+
+  if (existsSync(libPath)) {
+    return libPath;
+  }
+
+  throw new SigilDiagnosticError(diagnostic('SIGIL-CLI-IMPORT-NOT-FOUND', 'cli', `cannot resolve import: ${filePathStr}`, {
+    details: { expectedPath: libPath, hint: 'Libraries must use .lib.sigil extension' }
+  }));
+}
+
 function resolveSigilImportToFile(
   importerFile: string,
   importerProject: SigilProjectConfig | undefined,
@@ -313,14 +325,14 @@ function resolveSigilImportToFile(
     }
     return {
       moduleId,
-      filePath: join(importerProject.root, `${filePathStr}.sigil`),
+      filePath: resolveImportPath(importerProject.root, filePathStr),
       project: importerProject,
     };
   }
   if (moduleId.startsWith('stdlib⋅')) {
     return {
       moduleId,
-      filePath: join(LANGUAGE_ROOT_DIR, `${filePathStr}.sigil`),
+      filePath: resolveImportPath(LANGUAGE_ROOT_DIR, filePathStr),
       project: importerProject,
     };
   }
@@ -385,8 +397,10 @@ function buildModuleGraph(entryFile: string): ModuleGraph {
   return { modules, topoOrder };
 }
 
-function declIsExported(decl: AST.Declaration): boolean {
-  return (decl.type === 'FunctionDecl' || decl.type === 'ConstDecl' || decl.type === 'TypeDecl') && !!decl.isExported;
+function declIsExported(decl: AST.Declaration, sourceFile: string): boolean {
+  // Only .lib.sigil files export declarations
+  const isLibFile = sourceFile.endsWith('.lib.sigil');
+  return isLibFile && (decl.type === 'FunctionDecl' || decl.type === 'ConstDecl' || decl.type === 'TypeDecl');
 }
 
 function buildImportedNamespacesForModule(
@@ -453,7 +467,7 @@ function typeCheckModuleGraph(graph: ModuleGraph): Map<string, Map<string, Infer
     // Build exported namespace (values)
     const fields = new Map<string, InferenceType>();
     for (const decl of mod.ast.declarations) {
-      if (!declIsExported(decl)) continue;
+      if (!declIsExported(decl, mod.filePath)) continue;
       if (decl.type === 'FunctionDecl' || decl.type === 'ConstDecl') {
         const t = types.get(decl.name);
         if (t) fields.set(decl.name, t);
@@ -477,7 +491,7 @@ function typeCheckModuleGraph(graph: ModuleGraph): Map<string, Map<string, Infer
 
     // Second pass: export with qualified field types
     for (const decl of mod.ast.declarations) {
-      if (decl.type === 'TypeDecl' && decl.isExported) {
+      if (decl.type === 'TypeDecl' && declIsExported(decl, mod.filePath)) {
         // Qualify all unqualified type references in the definition
         const qualifiedDef = qualifyTypeDef(
           decl.definition,

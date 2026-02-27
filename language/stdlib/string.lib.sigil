@@ -8,49 +8,49 @@
 ⟧
 
 ⟦ Get character at index - compiler intrinsic ⟧
-export λchar_at(s:𝕊,idx:ℤ)→𝕊=""
+λchar_at(s:𝕊,idx:ℤ)→𝕊=""
 
 ⟦ Drop first n characters ⟧
-export λdrop(s:𝕊,n:ℤ)→𝕊=substring(s,n,#s)
+λdrop(s:𝕊,n:ℤ)→𝕊=substring(s,n,#s)
 
 ⟦ Check if string ends with suffix - compiler intrinsic ⟧
-export λends_with(s:𝕊,suffix:𝕊)→𝔹=⊥
+λends_with(s:𝕊,suffix:𝕊)→𝔹=⊥
 
 ⟦ Find index of first occurrence (-1 if not found) - compiler intrinsic ⟧
-export λindex_of(s:𝕊,search:𝕊)→ℤ=-1
+λindex_of(s:𝕊,search:𝕊)→ℤ=-1
 
 ⟦ Convert integer to string - compiler intrinsic ⟧
-export λint_to_string(n:ℤ)→𝕊=""
+λint_to_string(n:ℤ)→𝕊=""
 
 ⟦ Check if string is a single digit character (0-9) - compiler intrinsic ⟧
-export λis_digit(s:𝕊)→𝔹=⊥
+λis_digit(s:𝕊)→𝔹=⊥
 
 ⟦ Check if string is empty or only whitespace - compiler intrinsic ⟧
-export λis_whitespace(s:𝕊)→𝔹=⊥
+λis_whitespace(s:𝕊)→𝔹=⊥
 
 ⟦ Join list of strings with separator - compiler intrinsic ⟧
-export λjoin(strings:[𝕊],separator:𝕊)→𝕊=""
+λjoin(strings:[𝕊],separator:𝕊)→𝕊=""
 
 ⟦ Replace all occurrences - compiler intrinsic ⟧
-export λreplace_all(s:𝕊,pattern:𝕊,replacement:𝕊)→𝕊=""
+λreplace_all(s:𝕊,pattern:𝕊,replacement:𝕊)→𝕊=""
 
 ⟦ Split string by delimiter - compiler intrinsic ⟧
-export λsplit(s:𝕊,delimiter:𝕊)→[𝕊]=[""]
+λsplit(s:𝕊,delimiter:𝕊)→[𝕊]=[""]
 
 ⟦ Check if string starts with prefix - compiler intrinsic ⟧
-export λstarts_with(s:𝕊,prefix:𝕊)→𝔹=⊥
+λstarts_with(s:𝕊,prefix:𝕊)→𝔹=⊥
 
 ⟦ Get substring from start to end - compiler intrinsic ⟧
-export λsubstring(s:𝕊,start:ℤ,end:ℤ)→𝕊=""
+λsubstring(s:𝕊,start:ℤ,end:ℤ)→𝕊=""
 
 ⟦ Take first n characters ⟧
-export λtake(s:𝕊,n:ℤ)→𝕊=substring(s,0,n)
+λtake(s:𝕊,n:ℤ)→𝕊=substring(s,0,n)
 
 ⟦ Convert to lowercase - compiler intrinsic ⟧
-export λto_lower(s:𝕊)→𝕊=""
+λto_lower(s:𝕊)→𝕊=""
 
 ⟦ Convert to uppercase - compiler intrinsic ⟧
-export λto_upper(s:𝕊)→𝕊=""
+λto_upper(s:𝕊)→𝕊=""
 
 ⟦ Remove leading/trailing whitespace - compiler intrinsic ⟧
-export λtrim(s:𝕊)→𝕊=""
+λtrim(s:𝕊)→𝕊=""

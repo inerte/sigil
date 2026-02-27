@@ -58,6 +58,17 @@ impl TypeScriptGenerator {
         }
     }
 
+    /// Determine if declarations should be exported based on source file extension
+    /// - .lib.sigil files: export ALL top-level declarations
+    /// - .sigil files: export NOTHING (executables)
+    fn should_export_from_lib(&self) -> bool {
+        if let Some(ref source_file) = self.source_file {
+            source_file.ends_with(".lib.sigil")
+        } else {
+            false
+        }
+    }
+
     pub fn generate(&mut self, program: &Program) -> Result<String, CodegenError> {
         self.output.clear();
         self.indent = 0;
@@ -187,7 +198,15 @@ impl TypeScriptGenerator {
             func.name.clone()
         };
 
-        let should_export = func.is_exported || func.name == "main";
+        // Export logic:
+        // - .lib.sigil files: export all functions
+        // - .sigil files: export main() only (for executables)
+        let should_export = if self.should_export_from_lib() {
+            true
+        } else {
+            func.name == "main"
+        };
+
         let fn_keyword = if should_export {
             "export async function"
         } else {
@@ -240,7 +259,8 @@ impl TypeScriptGenerator {
                     .collect();
                 let params = param_names.join(", ");
 
-                let ctor_keyword = if type_decl.is_exported {
+                // Export constructors from .lib.sigil files
+                let ctor_keyword = if self.should_export_from_lib() {
                     "export async function"
                 } else {
                     "async function"
@@ -265,7 +285,8 @@ impl TypeScriptGenerator {
 
     fn generate_const(&mut self, const_decl: &ConstDecl) -> Result<(), CodegenError> {
         let value = self.generate_expression(&const_decl.value)?;
-        let export_keyword = if const_decl.is_exported { "export " } else { "" };
+        // Export consts from .lib.sigil files
+        let export_keyword = if self.should_export_from_lib() { "export " } else { "" };
         self.emit(&format!("{}const {} = {};", export_keyword, const_decl.name, value));
         Ok(())
     }

@@ -2,6 +2,6 @@ t ParseResult={meta:src⋅types.ArticleMeta,content:𝕊}
 
 i src⋅types
 
-export λparse_frontmatter(markdown:𝕊)→ParseResult=
+λparse_frontmatter(markdown:𝕊)→ParseResult=
   l default_meta={title:"Untitled",date:"",author:"",slug:""};
   {meta:default_meta,content:markdown}

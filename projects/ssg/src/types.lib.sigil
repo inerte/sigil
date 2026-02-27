@@ -1,7 +1,7 @@
 ⟦ SSG Types - Shared type definitions for the static site generator ⟧
 
 ⟦ Complete article with metadata and content ⟧
-export t Article={
+t Article={
   meta:ArticleMeta,
   markdown:𝕊,
   html:𝕊,
@@ -9,7 +9,7 @@ export t Article={
 }
 
 ⟦ Article metadata extracted from frontmatter ⟧
-export t ArticleMeta={
+t ArticleMeta={
   title:𝕊,
   date:𝕊,
   author:𝕊,
@@ -17,7 +17,7 @@ export t ArticleMeta={
 }
 
 ⟦ Site configuration ⟧
-export t SiteConfig={
+t SiteConfig={
   title:𝕊,
   description:𝕊,
   base_url:𝕊

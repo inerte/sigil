@@ -1,7 +1,0 @@
-i src⋅types
-
-export λarticle(meta:src⋅types.ArticleMeta,html:𝕊)→𝕊=
-  "<html><body>"++html++"</body></html>"
-
-export λindex(articles:[src⋅types.Article])→𝕊=
-  "<html><body>Index</body></html>"

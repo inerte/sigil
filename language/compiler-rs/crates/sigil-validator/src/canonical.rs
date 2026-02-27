@@ -20,7 +20,7 @@ pub fn validate_canonical_form(program: &Program, file_path: Option<&str>) -> Re
     }
 
     // Rule 2: File purpose - must be EITHER executable OR library
-    if let Err(e) = validate_file_purpose(program) {
+    if let Err(e) = validate_file_purpose(program, file_path) {
         errors.extend(e);
     }
 
@@ -153,65 +153,44 @@ fn validate_no_duplicates(program: &Program) -> Result<(), Vec<ValidationError>>
 
 /// Validate file purpose - must be EITHER executable OR library (exclusive)
 ///
-/// Every file must have:
-/// - At least one `export` declaration (library), OR
-/// - A `main()` function (executable program)
-/// - BUT NOT BOTH (exclusive purpose)
-/// - AND NOT NEITHER (useless code)
-fn validate_file_purpose(program: &Program) -> Result<(), Vec<ValidationError>> {
-    let mut has_exports = false;
+/// Extension-based validation:
+/// - `.lib.sigil` files CANNOT have main() function
+/// - `.sigil` files (non-test) MUST have main() function
+/// - Test files (`tests/` in path) can have either
+fn validate_file_purpose(program: &Program, file_path: Option<&str>) -> Result<(), Vec<ValidationError>> {
     let mut has_main = false;
     let has_tests = program.declarations.iter().any(|d| matches!(d, Declaration::Test(_)));
 
     for decl in &program.declarations {
-        match decl {
-            Declaration::Function(FunctionDecl { name, is_exported, .. }) => {
-                if *is_exported {
-                    has_exports = true;
-                }
-                if name == "main" {
-                    has_main = true;
-                }
+        if let Declaration::Function(FunctionDecl { name, .. }) = decl {
+            if name == "main" {
+                has_main = true;
             }
-            Declaration::Const(ConstDecl { is_exported, .. }) => {
-                if *is_exported {
-                    has_exports = true;
-                }
-            }
-            Declaration::Type(TypeDecl { is_exported, .. }) => {
-                if *is_exported {
-                    has_exports = true;
-                }
-            }
-            _ => {}
         }
     }
 
-    if !has_exports && !has_main {
-        let hint = if has_tests {
-            "\n\nHint: Test files are executables and must have a main() function.\nAdd: λmain()→𝕌=()"
-        } else {
-            ""
-        };
+    // Extension-based validation
+    if let Some(path) = file_path {
+        let is_lib_file = path.ends_with(".lib.sigil");
+        let is_test_file = path.contains("/tests/");
 
-        return Err(vec![ValidationError::FilePurposeNone {
-            message: format!(
-                "File must have either a main() function (executable) or export declarations (library){}",
-                hint
-            ),
-        }]);
+        if is_lib_file && has_main {
+            return Err(vec![ValidationError::LibNoMain {
+                message: format!(".lib.sigil files are libraries and cannot have main()\n\nFile: {}\nSolution: Remove main() or rename to .sigil executable", path),
+            }]);
+        }
+
+        if !is_lib_file && !is_test_file && !has_main {
+            return Err(vec![ValidationError::ExecNeedsMain {
+                message: format!(".sigil executables must have main() function\n\nFile: {}\nSolution: Add λmain() or rename to .lib.sigil library", path),
+            }]);
+        }
     }
 
-    if has_exports && has_main {
-        return Err(vec![ValidationError::FilePurposeBoth {
-            message: "File cannot be both executable and library - remove either main() or export declarations".to_string(),
-        }]);
-    }
-
-    // Tests cannot have exports
-    if has_tests && has_exports {
-        return Err(vec![ValidationError::TestNoExports {
-            message: "Test files cannot have export declarations.\n\nTest files are executables, not libraries.\nRemove all export keywords from this file.".to_string(),
+    // Test-specific validation
+    if has_tests && !has_main {
+        return Err(vec![ValidationError::TestNeedsMain {
+            message: "Test files must have λmain()→𝕌=()\n\nHint: Test files are executables".to_string(),
         }]);
     }
 
@@ -436,7 +415,7 @@ mod tests {
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
-        assert!(validate_canonical_form(&program).is_ok());
+        assert!(validate_canonical_form(&program, None).is_ok());
     }
 
     #[test]
@@ -446,7 +425,7 @@ mod tests {
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
-        let result = validate_canonical_form(&program);
+        let result = validate_canonical_form(&program, None);
         assert!(result.is_err());
 
         let errors = result.unwrap_err();
@@ -463,6 +442,6 @@ mod tests {
         let program = parse(tokens, "test.sigil").unwrap();
 
         // Should pass - simple recursion is allowed
-        assert!(validate_canonical_form(&program).is_ok());
+        assert!(validate_canonical_form(&program, None).is_ok());
     }
 }

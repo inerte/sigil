@@ -434,7 +434,6 @@ export class Lexer {
       case 'mut': return TokenType.MUT;
       case 'mockable': return TokenType.MOCKABLE;
       case 'with_mock': return TokenType.WITH_MOCK;
-      case 'export': return TokenType.EXPORT;
       case 'when': return TokenType.WHEN;
       default: return null;
     }

@@ -44,13 +44,6 @@ i stdlib⋅string
 λis_markdown_file(filename:𝕊)→𝔹=
   stdlib⋅string.ends_with(filename,".md")
 
-⟦ Main entry point ⟧
-λmain()→!IO 𝕌=
-  l cwd=process.cwd();
-  l project_root=path.join(cwd,"../..");
-  l input_dir=path.join(project_root,"website/articles");
-  l output_dir=path.join(cwd,"dist");
-  build(input_dir,output_dir)
 
 ⟦ Process all articles helper ⟧
 λprocess_all_articles(input_dir:𝕊,markdown_files:[𝕊],num_articles:ℤ,idx:ℤ,articles:[src⋅types.Article])→!IO [src⋅types.Article]≡idx≥num_articles{
@@ -97,7 +90,7 @@ i stdlib⋅string
   fs⋅promises.writeFile(output_path,index_html,"utf8")
 
 ⟦ Main build function ⟧
-export λbuild(input_dir:𝕊,output_dir:𝕊)→!IO 𝕌=
+λbuild(input_dir:𝕊,output_dir:𝕊)→!IO 𝕌=
   l _=ensure_dir(output_dir);
   l all_files=(λ()→[𝕊]=fs⋅promises.readdir(input_dir))();
   l num_files=#all_files;

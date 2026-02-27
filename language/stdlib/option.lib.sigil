@@ -13,4 +13,4 @@ Option types are common in functional programming and provide a type-safe
 alternative to null/undefined.
 ⟧
 
-export t Option[T]=Some(T)|None
+t Option[T]=Some(T)|None

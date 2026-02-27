@@ -79,9 +79,6 @@ pub enum TokenType {
     #[token("with_mock")]
     WITH_MOCK,
 
-    #[token("export")]
-    EXPORT,
-
     #[token("when")]
     WHEN,
 

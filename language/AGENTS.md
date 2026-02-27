@@ -137,12 +137,37 @@ Run compiler unit tests:
 pnpm --filter @sigil-lang/compiler test
 ```
 
+### File Naming Conventions
+
+Sigil uses file extensions to distinguish file purpose:
+
+**`.lib.sigil` files** (libraries):
+- All functions are automatically visible to importers (no `export` keyword)
+- Cannot have main() function
+- Used for reusable code, types, utilities
+
+**`.sigil` files** (executables):
+- Must have main() function
+- Cannot be imported (except by test files)
+- Used for programs, scripts, examples
+
+**`tests/*.sigil` files** (tests):
+- Must have main()→𝕌=() function
+- Can have test blocks
+- Must be in tests/ directory
+- Special privilege: can import from ANY file and see ALL functions
+
+When creating new files:
+- Library? → Use `.lib.sigil`, all functions auto-visible
+- Executable? → Use `.sigil` and add main()
+- Test? → Create in tests/ directory with main()
+
 ### Working with Tests
 
 Test files must:
 1. Live in `tests/` directories
 2. Have a `main()→𝕌=()` function (executable marker)
-3. Cannot have `export` declarations
+3. Use `.sigil` extension (executables, not libraries)
 
 Run tests:
 ```bash
@@ -185,7 +210,8 @@ test "my feature works" {
 ### `stdlib/`
 - Prefer small, canonical modules.
 - Avoid duplicate overlapping functions across modules unless there is a clear module-boundary reason.
-- Exported surface should match how tests/examples import the module.
+- All stdlib modules use `.lib.sigil` extension.
+- All functions in `.lib.sigil` files are automatically visible to importers.
 
 ### `examples/`
 - Example Sigil files demonstrating language features

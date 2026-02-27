@@ -31,7 +31,7 @@
 }
 
 ⟦ Check if all elements satisfy predicate ⟧
-export λall(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹≡xs{
+λall(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹≡xs{
   []→⊤|
   [x,.rest]→≡pred(x){
     ⊤→all(pred,rest)|
@@ -40,7 +40,7 @@ export λall(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹≡xs{
 }
 
 ⟦ Check if any element satisfies predicate ⟧
-export λany(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹≡xs{
+λany(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹≡xs{
   []→⊥|
   [x,.rest]→≡pred(x){
     ⊤→⊤|
@@ -49,7 +49,7 @@ export λany(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹≡xs{
 }
 
 ⟦ Check if element is in list ⟧
-export λcontains(item:ℤ,xs:[ℤ])→𝔹≡xs{
+λcontains(item:ℤ,xs:[ℤ])→𝔹≡xs{
   []→⊥|
   [x,.rest]→≡(x=item){
     ⊤→⊤|
@@ -58,40 +58,40 @@ export λcontains(item:ℤ,xs:[ℤ])→𝔹≡xs{
 }
 
 ⟦ Get first element of list (unsafe - crashes on empty) ⟧
-export λhead(xs:[ℤ])→ℤ≡xs{
+λhead(xs:[ℤ])→ℤ≡xs{
   [x,.rest]→x
 }
 
 ⟦ Check if index is valid for list [0, len-1] ⟧
-export λin_bounds(idx:ℤ,xs:[ℤ])→𝔹=in_bounds_helper(idx,xs)
+λin_bounds(idx:ℤ,xs:[ℤ])→𝔹=in_bounds_helper(idx,xs)
 
 ⟦ Check if list is empty ⟧
-export λis_empty(xs:[ℤ])→𝔹≡xs{
+λis_empty(xs:[ℤ])→𝔹≡xs{
   []→⊤|
   _→⊥
 }
 
 ⟦ Check if list is non-empty ⟧
-export λis_non_empty(xs:[ℤ])→𝔹≡xs{
+λis_non_empty(xs:[ℤ])→𝔹≡xs{
   []→⊥|
   _→⊤
 }
 
 ⟦ Check if list is sorted in ascending order ⟧
-export λsorted_asc(xs:[ℤ])→𝔹≡xs{
+λsorted_asc(xs:[ℤ])→𝔹≡xs{
   []→⊤|
   [_]→⊤|
   [a,.tail]→sorted_asc_check(a,tail)
 }
 
 ⟦ Check if list is sorted in descending order ⟧
-export λsorted_desc(xs:[ℤ])→𝔹≡xs{
+λsorted_desc(xs:[ℤ])→𝔹≡xs{
   []→⊤|
   [_]→⊤|
   [a,.tail]→sorted_desc_check(a,tail)
 }
 
 ⟦ Get all elements except first (unsafe - crashes on empty) ⟧
-export λtail(xs:[ℤ])→[ℤ]≡xs{
+λtail(xs:[ℤ])→[ℤ]≡xs{
   [x,.rest]→rest
 }

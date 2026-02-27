@@ -20,7 +20,6 @@ pub enum Declaration {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FunctionDecl {
     pub name: String,
-    pub is_exported: bool,
     pub is_mockable: bool,
     pub params: Vec<Param>,
     pub effects: Vec<String>,     // Effect annotations: ['IO', 'Network', 'Async', 'Error', 'Mut']
@@ -44,7 +43,6 @@ pub struct Param {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TypeDecl {
     pub name: String,
-    pub is_exported: bool,
     pub type_params: Vec<String>,
     pub definition: TypeDef,
     pub location: SourceLocation,
@@ -115,7 +113,6 @@ pub struct ImportDecl {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ConstDecl {
     pub name: String,
-    pub is_exported: bool,
     pub type_annotation: Option<Type>,
     pub value: Expr,
     pub location: SourceLocation,

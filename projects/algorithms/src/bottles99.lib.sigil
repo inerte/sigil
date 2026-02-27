@@ -8,6 +8,6 @@
 
 λshowInt(n:ℤ)→𝕊=""+n
 
-export λsong(n:ℤ)→𝕊≡n{0→verse(0)|n→verse(n)++"\n\n"++song(n-1)}
+λsong(n:ℤ)→𝕊≡n{0→verse(0)|n→verse(n)++"\n\n"++song(n-1)}
 
-export λverse(n:ℤ)→𝕊=countUpper(n)++" of beer on the wall, "++countLower(n)++" of beer.\n"++action(n)++", "++nextCount(n)++" of beer on the wall."
+λverse(n:ℤ)→𝕊=countUpper(n)++" of beer on the wall, "++countLower(n)++" of beer.\n"++action(n)++", "++nextCount(n)++" of beer on the wall."

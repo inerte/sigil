@@ -177,7 +177,7 @@ function validateNoDuplicateDeclarations(program: AST.Program): void {
 export function validateCanonicalForm(program: AST.Program, filename?: string): void {
   try {
     validateNoDuplicateDeclarations(program);
-    validateFilePurpose(program);
+    validateFilePurpose(program, filename);
 
     // Validate test location (requires filename)
     if (filename) {
@@ -211,73 +211,54 @@ function buildTypeDefinitionMap(program: AST.Program): Map<string, AST.TypeDef> 
 /**
  * Rule: File Purpose - Every file must be EITHER executable OR a library
  *
- * A file MUST have one of:
- *   - At least one `export` declaration (library)
- *   - A `main()` function (executable program)
- *
- * A file MUST NOT have both (exclusive purpose).
- * A file MUST NOT have neither (useless code).
+ * Extension-based validation:
+ *   - `.lib.sigil` files are libraries - CANNOT have main()
+ *   - `.sigil` files are executables - MUST have main() (unless in tests/)
+ *   - Files in `tests/` directories can have either (flexible for test setup)
  */
-function validateFilePurpose(program: AST.Program): void {
-  let hasExports = false;
+function validateFilePurpose(program: AST.Program, filename?: string): void {
   let hasMain = false;
   const hasTests = program.declarations.some(d => d.type === 'TestDecl');
 
   for (const decl of program.declarations) {
-    // Check if any declaration is exported
-    if (
-      (decl.type === 'FunctionDecl' && decl.isExported) ||
-      (decl.type === 'ConstDecl' && decl.isExported) ||
-      (decl.type === 'TypeDecl' && decl.isExported)
-    ) {
-      hasExports = true;
-    }
     if (decl.type === 'FunctionDecl' && decl.name === 'main') {
       hasMain = true;
     }
   }
 
-  if (!hasExports && !hasMain) {
-    // Add hint for test files
-    const hint = hasTests
-      ? '\n\nHint: Test files are executables and must have a main() function.\nAdd: λmain()→𝕌=()'
-      : '';
+  // Extension-based validation (if filename is provided)
+  if (filename) {
+    const isLibFile = filename.endsWith('.lib.sigil');
+    const isTestFile = filename.includes('/tests/');
 
-    throw new CanonicalError(
-      'SIGIL-CANON-FILE-PURPOSE-NONE',
-      `File must have either a main() function (executable) or export declarations (library)${hint}`,
-      undefined,
-      {
-        suggestions: [
-          suggestGeneric('Add λmain() for an executable program', 'add_main'),
-          suggestGeneric('Add export keyword to declarations for a library', 'add_exports')
-        ]
-      }
-    );
+    if (isLibFile && hasMain) {
+      throw new CanonicalError(
+        'SIGIL-CANON-LIB-NO-MAIN',
+        `.lib.sigil files are libraries and cannot have main()\n\nFile: ${filename}\nSolution: Remove main() or rename to .sigil executable`,
+        program.declarations.find(d => d.type === 'FunctionDecl' && d.name === 'main')?.location
+      );
+    }
+
+    if (!isLibFile && !isTestFile && !hasMain) {
+      throw new CanonicalError(
+        'SIGIL-CANON-EXEC-NEEDS-MAIN',
+        `.sigil executables must have main() function\n\nFile: ${filename}\nSolution: Add λmain()→𝕌=() or rename to .lib.sigil library`,
+        undefined,
+        {
+          suggestions: [
+            suggestGeneric('Add λmain()→𝕌=() for an executable program', 'add_main'),
+            suggestGeneric('Rename to .lib.sigil for a library', 'rename_to_lib')
+          ]
+        }
+      );
+    }
   }
 
-  if (hasExports && hasMain) {
+  // Test-specific validation
+  if (hasTests && !hasMain) {
     throw new CanonicalError(
-      'SIGIL-CANON-FILE-PURPOSE-BOTH',
-      'File cannot be both executable and library - remove either main() or export declarations',
-      undefined,
-      {
-        details: {
-          conflict: 'A file must have exclusive purpose: EITHER executable (main) OR library (exports), not both'
-        },
-        suggestions: [
-          suggestGeneric('Remove main() to make this a library', 'remove_main'),
-          suggestGeneric('Remove export keywords to make this executable', 'remove_exports')
-        ]
-      }
-    );
-  }
-
-  // Tests cannot have exports
-  if (hasTests && hasExports) {
-    throw new CanonicalError(
-      'SIGIL-CANON-TEST-NO-EXPORTS',
-      'Test files cannot have export declarations.\n\nTest files are executables, not libraries.\nRemove all export keywords from this file.',
+      'SIGIL-CANON-TEST-NEEDS-MAIN',
+      'Test files must have λmain()→𝕌=()\n\nHint: Test files are executables',
       program.declarations.find(d => d.type === 'TestDecl')?.location
     );
   }
@@ -1659,17 +1640,12 @@ function formatModulePath(path: string[]): string {
 }
 
 /**
- * Check if a declaration has export modifier
+ * Check if a declaration has export modifier (no longer used - kept for compatibility)
  */
-function isExportedDeclaration(decl: AST.Declaration): boolean {
-  switch (decl.type) {
-    case 'TypeDecl':
-    case 'ConstDecl':
-    case 'FunctionDecl':
-      return decl.isExported || false;
-    default:
-      return false;
-  }
+function isExportedDeclaration(_decl: AST.Declaration): boolean {
+  // All declarations in .lib.sigil files are exported
+  // No export keyword exists anymore
+  return false;
 }
 
 /**

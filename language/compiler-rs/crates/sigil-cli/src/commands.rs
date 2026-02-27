@@ -848,10 +848,48 @@ fn extract_type_registry(ast: &Program) -> HashMap<String, TypeInfo> {
 
 /// Get output path for a compiled module
 ///
-/// Converts module ID to file path:
-/// - stdlib⋅list → .local/stdlib/list.ts
-/// - src⋅utils → .local/src/utils.ts
+/// Converts module ID to file path, using repo root's .local directory:
+/// - stdlib⋅list → <repo_root>/.local/language/stdlib/list.ts
+/// - src⋅utils → <repo_root>/.local/path/to/src/utils.ts
 fn get_module_output_path(module: &LoadedModule) -> PathBuf {
-    let path_str = module.id.replace('⋅', "/");
-    PathBuf::from(format!(".local/{}.ts", path_str))
+    use std::env;
+    use std::fs;
+
+    // Check if this is a project file
+    if let Some(project) = crate::project::get_project_config(&module.file_path) {
+        // Use project's output directory
+        let path_str = module.id.replace('⋅', "/");
+        return project.root.join(&project.layout.out).join(format!("{}.ts", path_str));
+    }
+
+    // For non-project files, use repo root's .local/
+    // Find repo root by walking up from source file
+    let abs_source = fs::canonicalize(&module.file_path).unwrap_or_else(|_| module.file_path.clone());
+    let mut repo_root = abs_source.parent().unwrap().to_path_buf();
+
+    // Walk up to find .git directory (repo root marker)
+    while !repo_root.join(".git").exists() {
+        if let Some(parent) = repo_root.parent() {
+            repo_root = parent.to_path_buf();
+        } else {
+            // If we can't find .git, fall back to current directory
+            repo_root = env::current_dir().unwrap();
+            break;
+        }
+    }
+
+    // Calculate relative path from repo root to source file
+    let rel_source = abs_source.strip_prefix(&repo_root)
+        .unwrap_or(&abs_source);
+
+    // Build output path: <repo_root>/.local/<rel_path>.ts
+    let mut output = repo_root.join(".local");
+    if let Some(parent) = rel_source.parent() {
+        output = output.join(parent);
+    }
+    if let Some(stem) = rel_source.file_stem() {
+        output = output.join(format!("{}.ts", stem.to_string_lossy()));
+    }
+
+    output
 }

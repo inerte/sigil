@@ -104,9 +104,13 @@ impl TypeScriptGenerator {
     }
 
     fn emit_mock_runtime_helpers(&mut self) {
-        self.emit("// Sigil Runtime Helpers");
         self.emit("const __sigil_mocks = new Map();");
-        self.emit("");
+        self.emit("function __sigil_preview(value) {");
+        self.indent += 1;
+        self.emit("try { return JSON.stringify(value); } catch { return String(value); }");
+        self.indent -= 1;
+        self.emit("}");
+
         self.emit("function __sigil_call(name, impl, ...args) {");
         self.indent += 1;
         self.emit("if (__sigil_mocks.has(name)) {");

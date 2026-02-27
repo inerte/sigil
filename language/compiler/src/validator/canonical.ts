@@ -177,6 +177,7 @@ function validateNoDuplicateDeclarations(program: AST.Program): void {
 export function validateCanonicalForm(program: AST.Program, filename?: string): void {
   try {
     validateNoDuplicateDeclarations(program);
+    validateFilePurpose(program);
     validateRecursiveFunctions(program);
     validateCanonicalPatternMatching(program);
     validateDeclarationOrdering(program);
@@ -199,6 +200,66 @@ function buildTypeDefinitionMap(program: AST.Program): Map<string, AST.TypeDef> 
     }
   }
   return typeMap;
+}
+
+/**
+ * Rule: File Purpose - Every file must be EITHER executable OR a library
+ *
+ * A file MUST have one of:
+ *   - At least one `export` declaration (library)
+ *   - A `main()` function (executable program)
+ *
+ * A file MUST NOT have both (exclusive purpose).
+ * A file MUST NOT have neither (useless code).
+ */
+function validateFilePurpose(program: AST.Program): void {
+  let hasExports = false;
+  let hasMain = false;
+
+  for (const decl of program.declarations) {
+    // Check if any declaration is exported
+    if (
+      (decl.type === 'FunctionDecl' && decl.isExported) ||
+      (decl.type === 'ConstDecl' && decl.isExported) ||
+      (decl.type === 'TypeDecl' && decl.isExported)
+    ) {
+      hasExports = true;
+    }
+    if (decl.type === 'FunctionDecl' && decl.name === 'main') {
+      hasMain = true;
+    }
+  }
+
+  if (!hasExports && !hasMain) {
+    throw new CanonicalError(
+      'SIGIL-CANON-FILE-PURPOSE-NONE',
+      'File must have either a main() function (executable) or export declarations (library)',
+      undefined,
+      {
+        suggestions: [
+          suggestGeneric('Add λmain() for an executable program', 'add_main'),
+          suggestGeneric('Add export keyword to declarations for a library', 'add_exports')
+        ]
+      }
+    );
+  }
+
+  if (hasExports && hasMain) {
+    throw new CanonicalError(
+      'SIGIL-CANON-FILE-PURPOSE-BOTH',
+      'File cannot be both executable and library - remove either main() or export declarations',
+      undefined,
+      {
+        details: {
+          conflict: 'A file must have exclusive purpose: EITHER executable (main) OR library (exports), not both'
+        },
+        suggestions: [
+          suggestGeneric('Remove main() to make this a library', 'remove_main'),
+          suggestGeneric('Remove export keywords to make this executable', 'remove_exports')
+        ]
+      }
+    );
+  }
 }
 
 /**

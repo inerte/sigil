@@ -23,6 +23,31 @@ Enforced by: **Canonical form validator** (`validator/canonical.ts`)
 - Helper functions that encode iterative patterns
 - Closure-based state accumulation
 - Boolean pattern matching when value matching works
+- **Files with ambiguous purpose** (neither executable nor library)
+- **Files with dual purpose** (both executable and library)
+
+**File Purpose Rule:**
+
+Every .sigil file MUST have **exclusive purpose**:
+- **Executable:** Has `main()` function, NO `export` declarations
+- **Library:** Has `export` declarations, NO `main()` function
+
+```sigil
+✅ VALID - Executable:
+λmain()→ℤ=42
+
+✅ VALID - Library:
+export λadd(x:ℤ,y:ℤ)→ℤ=x+y
+
+❌ REJECTED - No purpose (neither main nor exports):
+λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
+Error: SIGIL-CANON-FILE-PURPOSE-NONE
+
+❌ REJECTED - Dual purpose (both main and exports):
+export λadd(x:ℤ,y:ℤ)→ℤ=x+y
+λmain()→ℤ=add(2,3)
+Error: SIGIL-CANON-FILE-PURPOSE-BOTH
+```
 
 **What's allowed:**
 - Primitive recursion (direct recursive calls)

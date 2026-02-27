@@ -19,7 +19,12 @@ pub fn validate_canonical_form(program: &Program) -> Result<(), Vec<ValidationEr
         errors.extend(e);
     }
 
-    // Rule 2: Recursive functions must not use accumulators
+    // Rule 2: File purpose - must be EITHER executable OR library
+    if let Err(e) = validate_file_purpose(program) {
+        errors.extend(e);
+    }
+
+    // Rule 3: Recursive functions must not use accumulators
     if let Err(e) = validate_recursive_functions(program) {
         errors.extend(e);
     }
@@ -137,6 +142,56 @@ fn validate_no_duplicates(program: &Program) -> Result<(), Vec<ValidationError>>
     } else {
         Err(errors)
     }
+}
+
+/// Validate file purpose - must be EITHER executable OR library (exclusive)
+///
+/// Every file must have:
+/// - At least one `export` declaration (library), OR
+/// - A `main()` function (executable program)
+/// - BUT NOT BOTH (exclusive purpose)
+/// - AND NOT NEITHER (useless code)
+fn validate_file_purpose(program: &Program) -> Result<(), Vec<ValidationError>> {
+    let mut has_exports = false;
+    let mut has_main = false;
+
+    for decl in &program.declarations {
+        match decl {
+            Declaration::Function(FunctionDecl { name, is_exported, .. }) => {
+                if *is_exported {
+                    has_exports = true;
+                }
+                if name == "main" {
+                    has_main = true;
+                }
+            }
+            Declaration::Const(ConstDecl { is_exported, .. }) => {
+                if *is_exported {
+                    has_exports = true;
+                }
+            }
+            Declaration::Type(TypeDecl { is_exported, .. }) => {
+                if *is_exported {
+                    has_exports = true;
+                }
+            }
+            _ => {}
+        }
+    }
+
+    if !has_exports && !has_main {
+        return Err(vec![ValidationError::FilePurposeNone {
+            message: "File must have either a main() function (executable) or export declarations (library)".to_string(),
+        }]);
+    }
+
+    if has_exports && has_main {
+        return Err(vec![ValidationError::FilePurposeBoth {
+            message: "File cannot be both executable and library - remove either main() or export declarations".to_string(),
+        }]);
+    }
+
+    Ok(())
 }
 
 /// Validate recursive functions don't use accumulator parameters

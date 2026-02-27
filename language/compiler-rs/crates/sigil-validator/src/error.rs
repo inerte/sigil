@@ -52,6 +52,16 @@ pub enum ValidationError {
         param_name: String,
         location: SourceLocation,
     },
+
+    #[error("SIGIL-CANON-FILE-PURPOSE-NONE: {message}")]
+    FilePurposeNone {
+        message: String,
+    },
+
+    #[error("SIGIL-CANON-FILE-PURPOSE-BOTH: {message}")]
+    FilePurposeBoth {
+        message: String,
+    },
 }
 
 impl ValidationError {
@@ -65,6 +75,14 @@ impl ValidationError {
             ValidationError::UnreachablePattern { location } => *location,
             ValidationError::MissingReturnType { location, .. } => *location,
             ValidationError::MissingParamType { location, .. } => *location,
+            ValidationError::FilePurposeNone { .. } => SourceLocation {
+                start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+                end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+            },
+            ValidationError::FilePurposeBoth { .. } => SourceLocation {
+                start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+                end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+            },
         }
     }
 }

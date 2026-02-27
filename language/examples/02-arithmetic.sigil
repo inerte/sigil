@@ -1,0 +1,6 @@
+⟦ Test: Arithmetic Operations
+   Expected output: 17
+   Calculation: (3 + 4) * 2 + 3 = 7 * 2 + 3 = 14 + 3 = 17
+⟧
+
+λ main() → ℤ = (3 + 4) * 2 + 3

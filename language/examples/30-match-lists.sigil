@@ -1,0 +1,11 @@
+⟦ Test: List Pattern Matching
+   Expected output: 6
+   Calculation: sum([1, 2, 3]) = 1 + 2 + 3 = 6
+⟧
+
+λ sum(xs: [ℤ]) → ℤ = ≡xs {
+  [] → 0 |
+  [x, .rest] → x + sum(rest)
+}
+
+λ main() → ℤ = sum([1, 2, 3])

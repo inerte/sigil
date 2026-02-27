@@ -1,0 +1,5 @@
+⟦ Test: Basic Literals
+   Expected output: 42
+⟧
+
+λ main() → ℤ = 42

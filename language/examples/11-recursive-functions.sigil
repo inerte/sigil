@@ -1,0 +1,11 @@
+⟦ Test: Recursive Functions
+   Expected output: 120
+   Calculation: factorial(5) = 5! = 120
+⟧
+
+λ factorial(n: ℤ) → ℤ = ≡(n ≤ 1) {
+  ⊤ → 1 |
+  ⊥ → n * factorial(n - 1)
+}
+
+λ main() → ℤ = factorial(5)

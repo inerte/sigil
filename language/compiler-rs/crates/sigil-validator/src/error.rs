@@ -137,6 +137,26 @@ pub enum ValidationError {
         line: usize,
         location: SourceLocation,
     },
+
+    #[error("SIGIL-CANON-PARAM-ORDER: Parameter out of alphabetical order in function '{function_name}'\n\nFound: {param_name} at position {position}\nAfter: {prev_param}\n\nParameters must be alphabetically ordered.\nExpected '{param_name}' to come before '{prev_param}'.\n\nCorrect order: {expected_order:?}\n\nSigil enforces ONE WAY: canonical parameter ordering.")]
+    ParameterOrder {
+        function_name: String,
+        param_name: String,
+        prev_param: String,
+        position: usize,
+        expected_order: Vec<String>,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-EFFECT-ORDER: Effect out of alphabetical order in function '{function_name}'\n\nFound: !{effect_name} at position {position}\nAfter: !{prev_effect}\n\nEffects must be alphabetically ordered.\nExpected '{effect_name}' to come before '{prev_effect}'.\n\nCorrect order: {expected_order:?}\n\nSigil enforces ONE WAY: canonical effect ordering.")]
+    EffectOrder {
+        function_name: String,
+        effect_name: String,
+        prev_effect: String,
+        position: usize,
+        expected_order: Vec<String>,
+        location: SourceLocation,
+    },
 }
 
 impl ValidationError {
@@ -188,6 +208,8 @@ impl ValidationError {
             ValidationError::EOFNewline { location, .. } => *location,
             ValidationError::TrailingWhitespace { location, .. } => *location,
             ValidationError::BlankLines { location, .. } => *location,
+            ValidationError::ParameterOrder { location, .. } => *location,
+            ValidationError::EffectOrder { location, .. } => *location,
         }
     }
 }

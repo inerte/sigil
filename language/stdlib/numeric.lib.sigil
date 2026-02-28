@@ -5,10 +5,10 @@
 ⟧
 
 ⟦ Clamp value between min and max ⟧
-λclamp(x:ℤ,lo:ℤ,hi:ℤ)→ℤ=max(lo,min(x,hi))
+λclamp(hi:ℤ,lo:ℤ,x:ℤ)→ℤ=max(lo,min(x,hi))
 
 ⟦ Check if n is divisible by d ⟧
-λdivisible(n:ℤ,d:ℤ)→𝔹=n%d=0
+λdivisible(d:ℤ,n:ℤ)→𝔹=n%d=0
 
 ⟦ Product of integers from 1 to n (factorial) ⟧
 λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
@@ -20,10 +20,10 @@
 λgcd(a:ℤ,b:ℤ)→ℤ≡b{0→a|b→gcd(b,a%b)}
 
 ⟦ Check if value is in range [min, max] (inclusive) ⟧
-λin_range(x:ℤ,min:ℤ,max:ℤ)→𝔹=in_range_helper(x,min,max)
+λin_range(max:ℤ,min:ℤ,x:ℤ)→𝔹=in_range_helper(max,min,x)
 
 ⟦ Helper: Range checking ⟧
-λin_range_helper(x:ℤ,min:ℤ,max:ℤ)→𝔹≡(x≥min){
+λin_range_helper(max:ℤ,min:ℤ,x:ℤ)→𝔹≡(x≥min){
   ⊤→x≤max|
   ⊥→⊥
 }
@@ -47,14 +47,14 @@
 λis_prime(n:ℤ)→𝔹≡n{
   0→⊥|
   1→⊥|
-  n→is_prime_helper(n,2)
+  n→is_prime_helper(2,n)
 }
 
 ⟦ Helper: Prime checking ⟧
-λis_prime_helper(n:ℤ,divisor:ℤ)→𝔹≡(divisor*divisor>n){
+λis_prime_helper(divisor:ℤ,n:ℤ)→𝔹≡(divisor*divisor>n){
   ⊤→⊤|
   ⊥→≡(n%divisor≠0){
-    ⊤→is_prime_helper(n,divisor+1)|
+    ⊤→is_prime_helper(divisor+1,n)|
     ⊥→⊥
   }
 }

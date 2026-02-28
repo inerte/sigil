@@ -28,7 +28,7 @@ e http
 e url
 
 ⟦ Helper: Create a JSON response ⟧
-λjson(status:ℤ,body:𝕊)→Response={
+λjson(body:𝕊,status:ℤ)→Response={
   status:status,
   body:body,
   headers:{"Content-Type":"application/json; charset=utf-8"}
@@ -62,7 +62,7 @@ e url
 }
 
 ⟦ Helper: Create a custom response ⟧
-λresponse(status:ℤ,body:𝕊,content_type:𝕊)→Response={
+λresponse(body:𝕊,content_type:𝕊,status:ℤ)→Response={
   status:status,
   body:body,
   headers:{"Content-Type":content_type}
@@ -77,11 +77,11 @@ Usage:
   }
 
   λmain()→!IO 𝕌={
-    stdlib⋅http-server.serve(3000,handle_request)
+    stdlib⋅http-server.serve(handle_request,3000)
   }
 ⟧
 
-λserve(port:ℤ,handler:λ(Request)→!IO Response)→!IO 𝕌={
+λserve(handler:λ(Request)→!IO Response,port:ℤ)→!IO 𝕌={
   ⟦ Create HTTP server with request handler ⟧
   (http.createServer(λ(node_req:Any,node_res:Any)→!IO 𝕌={
     ⟦ Parse URL to extract path ⟧

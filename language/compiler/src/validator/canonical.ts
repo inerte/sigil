@@ -277,6 +277,7 @@ export function validateCanonicalForm(program: AST.Program, filename?: string, s
     validateRecursiveFunctions(program);
     validateCanonicalPatternMatching(program);
     validateDeclarationOrdering(program);
+    validateFunctionSignatureOrdering(program);
   } catch (error) {
     if (filename && error instanceof CanonicalError && error.diagnostic.location?.file === '<unknown>') {
       error.diagnostic.location.file = filename;
@@ -1537,6 +1538,261 @@ function isDestructuringPattern(pattern: AST.Pattern): boolean {
 
     default:
       return false;
+  }
+}
+
+/**
+ * Rule: Parameter Alphabetical Ordering
+ *
+ * Function parameters must be in alphabetical order by name.
+ *
+ * Rationale: Sigil's ONE WAY philosophy - no arbitrary parameter ordering.
+ * Alphabetical ordering is deterministic, predictable, and machine-friendly.
+ */
+function validateParameterOrdering(
+  params: AST.Param[],
+  funcName: string,
+  _location: AST.SourceLocation
+): void {
+  if (params.length <= 1) return; // Single param or no params - nothing to order
+
+  for (let i = 1; i < params.length; i++) {
+    const prev = params[i - 1];
+    const curr = params[i];
+
+    // Use same comparison as declaration ordering
+    const comparison = compareNames(curr.name, prev.name);
+
+    if (comparison < 0) {
+      const expectedOrder = params
+        .map(p => p.name)
+        .slice()
+        .sort(compareNames);
+
+      throw new CanonicalError(
+        'SIGIL-CANON-PARAM-ORDER',
+        `Parameter out of alphabetical order in function "${funcName}"\n` +
+        `\n` +
+        `Found: ${curr.name} at position ${i + 1}\n` +
+        `After: ${prev.name} at position ${i}\n` +
+        `\n` +
+        `Parameters must be alphabetically ordered.\n` +
+        `Expected '${curr.name}' to come before '${prev.name}'.\n` +
+        `\n` +
+        `Alphabetical order uses Unicode code point comparison (case-sensitive).\n` +
+        `Reorder parameters: ${expectedOrder.join(', ')}\n` +
+        `\n` +
+        `Sigil enforces ONE WAY: canonical parameter ordering.`,
+        curr.location,
+        {
+          details: {
+            functionName: funcName,
+            parameterName: curr.name,
+            previousParameter: prev.name,
+            position: i + 1,
+            expectedOrder: expectedOrder
+          },
+          suggestions: [
+            suggestGeneric('reorder parameters alphabetically', 'reorder_params')
+          ]
+        }
+      );
+    }
+  }
+}
+
+/**
+ * Rule: Effect Alphabetical Ordering
+ *
+ * Effect annotations must be in alphabetical order.
+ *
+ * Rationale: Sigil's ONE WAY philosophy - deterministic effect ordering.
+ */
+function validateEffectOrdering(
+  effects: string[],
+  funcName: string,
+  _location: AST.SourceLocation
+): void {
+  if (effects.length <= 1) return; // Single effect or no effects - nothing to order
+
+  for (let i = 1; i < effects.length; i++) {
+    const prev = effects[i - 1];
+    const curr = effects[i];
+
+    const comparison = compareNames(curr, prev);
+
+    if (comparison < 0) {
+      const expectedOrder = effects.slice().sort(compareNames);
+
+      // Use the first effect location as the error location
+      const errorLocation = _location;
+
+      throw new CanonicalError(
+        'SIGIL-CANON-EFFECT-ORDER',
+        `Effect out of alphabetical order in function "${funcName}"\n` +
+        `\n` +
+        `Found: !${curr} at position ${i + 1}\n` +
+        `After: !${prev} at position ${i}\n` +
+        `\n` +
+        `Effects must be alphabetically ordered.\n` +
+        `Expected '${curr}' to come before '${prev}'.\n` +
+        `\n` +
+        `Correct order: ${expectedOrder.map(e => '!' + e).join(' ')}\n` +
+        `\n` +
+        `Sigil enforces ONE WAY: canonical effect ordering.`,
+        errorLocation,
+        {
+          details: {
+            functionName: funcName,
+            effectName: curr,
+            previousEffect: prev,
+            position: i + 1,
+            expectedOrder: expectedOrder
+          },
+          suggestions: [
+            suggestGeneric('reorder effects alphabetically', 'reorder_effects')
+          ]
+        }
+      );
+    }
+  }
+}
+
+/**
+ * Validate parameter and effect ordering in all functions
+ */
+function validateFunctionSignatureOrdering(program: AST.Program): void {
+  // Walk all declarations
+  for (const decl of program.declarations) {
+    if (decl.type === 'FunctionDecl') {
+      validateParameterOrdering(decl.params, decl.name, decl.location);
+      validateEffectOrdering(decl.effects, decl.name, decl.location);
+    }
+  }
+
+  // Also walk lambdas in expressions
+  walkExpressionsForLambdas(program);
+}
+
+/**
+ * Walk all expressions to find and validate lambdas
+ */
+function walkExpressionsForLambdas(program: AST.Program): void {
+  for (const decl of program.declarations) {
+    if (decl.type === 'FunctionDecl') {
+      walkExpressionForLambdas(decl.body, decl.name);
+    } else if (decl.type === 'ConstDecl') {
+      walkExpressionForLambdas(decl.value, `const ${decl.name}`);
+    } else if (decl.type === 'TestDecl') {
+      walkExpressionForLambdas(decl.body, `test "${decl.description}"`);
+    }
+  }
+}
+
+/**
+ * Recursively walk an expression tree to find and validate lambdas
+ */
+function walkExpressionForLambdas(expr: AST.Expr, contextName: string): void {
+  switch (expr.type) {
+    case 'LambdaExpr':
+      validateParameterOrdering(expr.params, `lambda in ${contextName}`, expr.location);
+      validateEffectOrdering(expr.effects, `lambda in ${contextName}`, expr.location);
+      walkExpressionForLambdas(expr.body, contextName);
+      break;
+
+    case 'BinaryExpr':
+      walkExpressionForLambdas(expr.left, contextName);
+      walkExpressionForLambdas(expr.right, contextName);
+      break;
+
+    case 'UnaryExpr':
+      walkExpressionForLambdas(expr.operand, contextName);
+      break;
+
+    case 'ApplicationExpr':
+      walkExpressionForLambdas(expr.func, contextName);
+      expr.args.forEach(arg => walkExpressionForLambdas(arg, contextName));
+      break;
+
+    case 'MatchExpr':
+      walkExpressionForLambdas(expr.scrutinee, contextName);
+      expr.arms.forEach((arm: AST.MatchArm) => {
+        if (arm.guard) {
+          walkExpressionForLambdas(arm.guard, contextName);
+        }
+        walkExpressionForLambdas(arm.body, contextName);
+      });
+      break;
+
+    case 'ListExpr':
+      expr.elements.forEach(el => walkExpressionForLambdas(el, contextName));
+      break;
+
+    case 'TupleExpr':
+      expr.elements.forEach(el => walkExpressionForLambdas(el, contextName));
+      break;
+
+    case 'RecordExpr':
+      expr.fields.forEach(f => walkExpressionForLambdas(f.value, contextName));
+      break;
+
+    case 'IfExpr':
+      walkExpressionForLambdas(expr.condition, contextName);
+      walkExpressionForLambdas(expr.thenBranch, contextName);
+      if (expr.elseBranch) {
+        walkExpressionForLambdas(expr.elseBranch, contextName);
+      }
+      break;
+
+    case 'FieldAccessExpr':
+      walkExpressionForLambdas(expr.object, contextName);
+      break;
+
+    case 'IndexExpr':
+      walkExpressionForLambdas(expr.object, contextName);
+      walkExpressionForLambdas(expr.index, contextName);
+      break;
+
+    case 'LetExpr':
+      walkExpressionForLambdas(expr.value, contextName);
+      walkExpressionForLambdas(expr.body, contextName);
+      break;
+
+    case 'PipelineExpr':
+      walkExpressionForLambdas(expr.left, contextName);
+      walkExpressionForLambdas(expr.right, contextName);
+      break;
+
+    case 'MapExpr':
+      walkExpressionForLambdas(expr.list, contextName);
+      walkExpressionForLambdas(expr.fn, contextName);
+      break;
+
+    case 'FilterExpr':
+      walkExpressionForLambdas(expr.list, contextName);
+      walkExpressionForLambdas(expr.predicate, contextName);
+      break;
+
+    case 'FoldExpr':
+      walkExpressionForLambdas(expr.list, contextName);
+      walkExpressionForLambdas(expr.init, contextName);
+      walkExpressionForLambdas(expr.fn, contextName);
+      break;
+
+    case 'MemberAccessExpr':
+      // No sub-expressions to walk (just namespace.member)
+      break;
+
+    case 'WithMockExpr':
+      walkExpressionForLambdas(expr.target, contextName);
+      walkExpressionForLambdas(expr.replacement, contextName);
+      walkExpressionForLambdas(expr.body, contextName);
+      break;
+
+    // Literals and identifiers don't contain lambdas
+    case 'LiteralExpr':
+    case 'IdentifierExpr':
+      break;
   }
 }
 

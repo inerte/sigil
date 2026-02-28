@@ -9,13 +9,13 @@ i stdlib⋅string
 ⟦ Count leading # characters for header level ⟧
 λcount_hashes(text:𝕊)→ℤ={
   l len=#text;
-  count_hashes_loop(text,len,0)
+  count_hashes_loop(0,len,text)
 }
 
 ⟦ Tail-recursive helper for count_hashes ⟧
-λcount_hashes_loop(text:𝕊,len:ℤ,idx:ℤ)→ℤ≡idx{
-  idx when idx<len→≡(stdlib⋅string.char_at(text,idx)="#"){
-    ⊤→count_hashes_loop(text,len,idx+1)|
+λcount_hashes_loop(idx:ℤ,len:ℤ,text:𝕊)→ℤ≡idx{
+  idx when idx<len→≡(stdlib⋅string.char_at(idx,text)="#"){
+    ⊤→count_hashes_loop(idx+1,len,text)|
     ⊥→idx
   }|
   idx→idx
@@ -27,7 +27,7 @@ i stdlib⋅string
   l level=count_hashes(trimmed);
   l len=#trimmed;
   l after_hashes=≡(level<len){
-    ⊤→stdlib⋅string.substring(trimmed,level,len)|
+    ⊤→stdlib⋅string.substring(len,trimmed,level)|
     ⊥→""
   };
   stdlib⋅string.trim(after_hashes)
@@ -41,7 +41,7 @@ i stdlib⋅string
 ⟦ Check if line is code fence ⟧
 λis_code_fence(line:𝕊)→𝔹={
   l trimmed=stdlib⋅string.trim(line);
-  stdlib⋅string.starts_with(trimmed,"```")
+  stdlib⋅string.starts_with("```",trimmed)
 }
 
 ⟦ Check if line is empty ⟧
@@ -54,7 +54,7 @@ i stdlib⋅string
 ⟦ Check if line starts with # (header) ⟧
 λis_header_line(line:𝕊)→𝔹={
   l trimmed=stdlib⋅string.trim(line);
-  stdlib⋅string.starts_with(trimmed,"#")
+  stdlib⋅string.starts_with("#",trimmed)
 }
 
 ⟦ Check if line is horizontal rule ⟧
@@ -68,13 +68,13 @@ i stdlib⋅string
 
 ⟦ Process markdown lines into HTML blocks ⟧
 λparse(markdown:𝕊)→𝕊={
-  l lines=stdlib⋅string.split(markdown,"\n");
+  l lines=stdlib⋅string.split("\n",markdown);
   l num_lines=#lines;
-  parse_lines_loop(lines,num_lines,0,"",⊥,"","")
+  parse_lines_loop("",0,⊥,lines,num_lines,"","")
 }
 
 ⟦ Parse markdown lines into HTML blocks (recursive helper) ⟧
-λparse_lines_loop(lines:[𝕊],num_lines:ℤ,idx:ℤ,result:𝕊,in_code:𝔹,code_acc:𝕊,para_acc:𝕊)→𝕊={
+λparse_lines_loop(code_acc:𝕊,idx:ℤ,in_code:𝔹,lines:[𝕊],num_lines:ℤ,para_acc:𝕊,result:𝕊)→𝕊={
   ≡(idx≥num_lines){
     ⊤→{
       ⟦ End of input - flush remaining state ⟧
@@ -97,7 +97,7 @@ i stdlib⋅string
           ⊤→{
             ⟦ End code block ⟧
             l new_result=result++"\n"++render_code_block(code_acc);
-            parse_lines_loop(lines,num_lines,idx+1,new_result,⊥,"","")
+            parse_lines_loop("",idx+1,⊥,lines,num_lines,"",new_result)
           }|
           ⊥→{
             ⟦ Accumulate code line ⟧
@@ -105,7 +105,7 @@ i stdlib⋅string
               ⊤→code_acc++"\n"++line|
               ⊥→line
             };
-            parse_lines_loop(lines,num_lines,idx+1,result,⊤,new_code,para_acc)
+            parse_lines_loop(new_code,idx+1,⊤,lines,num_lines,para_acc,result)
           }
         }|
         ⊥→{
@@ -117,7 +117,7 @@ i stdlib⋅string
                 ⊤→result++"\n"++render_paragraph(para_acc)|
                 ⊥→result
               };
-              parse_lines_loop(lines,num_lines,idx+1,new_result,⊤,"","")
+              parse_lines_loop("",idx+1,⊤,lines,num_lines,"",new_result)
             }|
             ⊥→{
               ⟦ Check for header ⟧
@@ -131,7 +131,7 @@ i stdlib⋅string
                     ⊤→result++"\n"++render_paragraph(para_acc)++"\n"++header_html|
                     ⊥→result++"\n"++header_html
                   };
-                  parse_lines_loop(lines,num_lines,idx+1,new_result,⊥,"","")
+                  parse_lines_loop("",idx+1,⊥,lines,num_lines,"",new_result)
                 }|
                 ⊥→{
                   ⟦ Check for horizontal rule ⟧
@@ -142,7 +142,7 @@ i stdlib⋅string
                         ⊤→result++"\n"++render_paragraph(para_acc)++"\n"++hr_html|
                         ⊥→result++"\n"++hr_html
                       };
-                      parse_lines_loop(lines,num_lines,idx+1,new_result,⊥,"","")
+                      parse_lines_loop("",idx+1,⊥,lines,num_lines,"",new_result)
                     }|
                     ⊥→{
                       ⟦ Check for empty line ⟧
@@ -153,7 +153,7 @@ i stdlib⋅string
                             ⊤→result++"\n"++render_paragraph(para_acc)|
                             ⊥→result
                           };
-                          parse_lines_loop(lines,num_lines,idx+1,new_result,⊥,"","")
+                          parse_lines_loop("",idx+1,⊥,lines,num_lines,"",new_result)
                         }|
                         ⊥→{
                           ⟦ Regular text line - accumulate into paragraph ⟧
@@ -161,7 +161,7 @@ i stdlib⋅string
                             ⊤→para_acc++" "++stdlib⋅string.trim(line)|
                             ⊥→stdlib⋅string.trim(line)
                           };
-                          parse_lines_loop(lines,num_lines,idx+1,result,⊥,code_acc,new_para)
+                          parse_lines_loop(code_acc,idx+1,⊥,lines,num_lines,new_para,result)
                         }
                       }
                     }

@@ -10,7 +10,7 @@ e fs⋅promises
 e process
 
 ⟦ Append string to file ⟧
-λappend_file(path:𝕊,content:𝕊)→!IO 𝕌=fs⋅promises.appendFile(path,content,"utf8")
+λappend_file(content:𝕊,path:𝕊)→!IO 𝕌=fs⋅promises.appendFile(path,content,"utf8")
 
 ⟦ Print debug info ⟧
 λdebug(msg:𝕊)→!IO 𝕌=console.debug(msg)
@@ -49,4 +49,4 @@ e process
 λwarn(msg:𝕊)→!IO 𝕌=console.warn(msg)
 
 ⟦ Write string to file (overwrites) ⟧
-λwrite_file(path:𝕊,content:𝕊)→!IO 𝕌=fs⋅promises.writeFile(path,content,"utf8")
+λwrite_file(content:𝕊,path:𝕊)→!IO 𝕌=fs⋅promises.writeFile(path,content,"utf8")

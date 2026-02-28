@@ -66,12 +66,12 @@ i stdlib⋅string
 
   UnorderedList(items) →
     l html_items=items↦λ(item:𝕊)→𝕊="<li>"++process_inline(item)++"</li>";
-    l joined=stdlib⋅string.join(html_items,"");
+    l joined=stdlib⋅string.join("",html_items);
     "<ul>"++joined++"</ul>"|
 
   OrderedList(items) →
     l html_items=items↦λ(item:𝕊)→𝕊="<li>"++process_inline(item)++"</li>";
-    l joined=stdlib⋅string.join(html_items,"");
+    l joined=stdlib⋅string.join("",html_items);
     "<ol>"++joined++"</ol>"|
 
   Blockquote(text) →
@@ -98,44 +98,44 @@ i stdlib⋅string
 
 ⟦ Extract content from special lines ⟧
 λextract_blockquote_text(line:𝕊)→𝕊=
-  stdlib⋅string.substring(line,2,#line)
+  stdlib⋅string.substring(#line,line,2)
 
 λextract_code_lang(line:𝕊)→𝕊≡#line{
-  len when len>3 → stdlib⋅string.substring(line,3,len)|
+  len when len>3 → stdlib⋅string.substring(len,line,3)|
   _ → ""
 }
 
 λextract_header_level(line:𝕊)→ℤ≡line{
-  s when stdlib⋅string.starts_with(s,"###### ") → 6|
-  s when stdlib⋅string.starts_with(s,"##### ") → 5|
-  s when stdlib⋅string.starts_with(s,"#### ") → 4|
-  s when stdlib⋅string.starts_with(s,"### ") → 3|
-  s when stdlib⋅string.starts_with(s,"## ") → 2|
-  s when stdlib⋅string.starts_with(s,"# ") → 1|
+  s when stdlib⋅string.starts_with("###### ",s) → 6|
+  s when stdlib⋅string.starts_with("##### ",s) → 5|
+  s when stdlib⋅string.starts_with("#### ",s) → 4|
+  s when stdlib⋅string.starts_with("### ",s) → 3|
+  s when stdlib⋅string.starts_with("## ",s) → 2|
+  s when stdlib⋅string.starts_with("# ",s) → 1|
   _ → 0
 }
 
-λextract_header_text(line:𝕊,level:ℤ)→𝕊=
-  stdlib⋅string.substring(line,level+1,#line)
+λextract_header_text(level:ℤ,line:𝕊)→𝕊=
+  stdlib⋅string.substring(#line,line,level+1)
 
 λextract_list_item(line:𝕊)→𝕊≡line{
-  s when is_unordered_list(s) → stdlib⋅string.substring(s,2,#s)|
-  s when is_ordered_list(s) → stdlib⋅string.substring(s,3,#s)|
+  s when is_unordered_list(s) → stdlib⋅string.substring(#s,s,2)|
+  s when is_ordered_list(s) → stdlib⋅string.substring(#s,s,3)|
   _ → ""
 }
 
 ⟦ Flush accumulated content to blocks ⟧
 λflush_code_block(state:ParserState)→[Block]≡state.in_code_block{
-  ⊤ → [CodeBlock(state.code_lang,stdlib⋅string.join(state.code_lines,"\n"))]|
+  ⊤ → [CodeBlock(state.code_lang,stdlib⋅string.join("\n",state.code_lines))]|
   ⊥ → empty_blocks()
 }
 
 λflush_list(state:ParserState)→[Block]≡state.in_list{
   ⊥ → empty_blocks()|
-  ⊤ → flush_list_by_type(state.list_type,state.list_items)
+  ⊤ → flush_list_by_type(state.list_items,state.list_type)
 }
 
-λflush_list_by_type(list_type:𝕊,list_items:[𝕊])→[Block]≡list_type{
+λflush_list_by_type(list_items:[𝕊],list_type:𝕊)→[Block]≡list_type{
   "ul" → [UnorderedList(list_items)]|
   "ol" → [OrderedList(list_items)]|
   _ → empty_blocks()
@@ -143,21 +143,21 @@ i stdlib⋅string
 
 λflush_paragraph(state:ParserState)→[Block]≡state.para_lines{
   [] → empty_blocks()|
-  lines → [Paragraph(stdlib⋅string.join(lines," "))]
+  lines → [Paragraph(stdlib⋅string.join(" ",lines))]
 }
 
 ⟦ Line Type Predicates ⟧
 λis_blockquote(line:𝕊)→𝔹=
-  stdlib⋅string.starts_with(line,"> ")
+  stdlib⋅string.starts_with("> ",line)
 
 λis_code_fence(line:𝕊)→𝔹=
-  stdlib⋅string.starts_with(line,"```")
+  stdlib⋅string.starts_with("```",line)
 
 λis_empty(line:𝕊)→𝔹=
   stdlib⋅string.is_whitespace(line)
 
 λis_header(line:𝕊)→𝔹=
-  stdlib⋅string.starts_with(line,"#")
+  stdlib⋅string.starts_with("#",line)
 
 λis_hr(line:𝕊)→𝔹≡line{
   "---" → ⊤|
@@ -168,25 +168,25 @@ i stdlib⋅string
 
 λis_ordered_list(line:𝕊)→𝔹=
   #line>2∧
-  stdlib⋅string.is_digit(stdlib⋅string.char_at(line,0))∧
-  stdlib⋅string.char_at(line,1)="."
+  stdlib⋅string.is_digit(stdlib⋅string.char_at(0,line))∧
+  stdlib⋅string.char_at(1,line)="."
 
 λis_unordered_list(line:𝕊)→𝔹=
-  stdlib⋅string.starts_with(line,"- ")∨
-  stdlib⋅string.starts_with(line,"* ")∨
-  stdlib⋅string.starts_with(line,"+ ")
+  stdlib⋅string.starts_with("- ",line)∨
+  stdlib⋅string.starts_with("* ",line)∨
+  stdlib⋅string.starts_with("+ ",line)
 
 ⟦ Main Export - Parse markdown to HTML ⟧
 λparse(markdown:𝕊)→𝕊=
   l blocks=parse_lines(markdown);
   l html_blocks=blocks↦block_to_html;
-  stdlib⋅string.join(html_blocks,"\n")
+  stdlib⋅string.join("\n",html_blocks)
 
 ⟦ State Machine - Main Line Parser
 
 Uses field access in pattern guards for the one canonical way to inspect state.
 ⟧
-λparse_line(state:ParserState,line:𝕊)→ParsingResult≡state.in_code_block{
+λparse_line(line:𝕊,state:ParserState)→ParsingResult≡state.in_code_block{
   ⟦ Inside code block - check for closing fence ⟧
   ⊤ when is_code_fence(line) →
     {state:empty_state(),blocks:flush_code_block(state)}|
@@ -206,7 +206,7 @@ Uses field access in pattern guards for the one canonical way to inspect state.
   ⟦ Header line ⟧
   ⊥ when is_header(line) →
     l level=extract_header_level(line);
-    l text=extract_header_text(line,level);
+    l text=extract_header_text(level,line);
     l flushed=flush_list(state)⧺flush_paragraph(state);
     {state:empty_state(),blocks:flushed⧺[Header(level,text)]}|
 
@@ -263,17 +263,17 @@ Uses field access in pattern guards for the one canonical way to inspect state.
 
 ⟦ Parse all lines into blocks ⟧
 λparse_lines(markdown:𝕊)→[Block]=
-  l lines=stdlib⋅string.split(markdown,"\n");
-  parse_lines_helper(empty_state(),lines,[])
+  l lines=stdlib⋅string.split("\n",markdown);
+  parse_lines_helper([],lines,empty_state())
 
-λparse_lines_helper(state:ParserState,lines:[𝕊],blocks:[Block])→[Block]≡lines{
+λparse_lines_helper(blocks:[Block],lines:[𝕊],state:ParserState)→[Block]≡lines{
   [] →
     l final_blocks=flush_code_block(state)⧺flush_list(state)⧺flush_paragraph(state);
     blocks⧺final_blocks|
 
   [line,.rest] →
-    l result=parse_line(state,line);
-    parse_lines_helper(result.state,rest,blocks⧺result.blocks)
+    l result=parse_line(line,state);
+    parse_lines_helper(blocks⧺result.blocks,rest,result.state)
 }
 
 ⟦ Inline Element Parsing
@@ -288,13 +288,13 @@ Process **bold**, *italic*, `code`, and [links](url) within text.
   process_inline_links(step3)
 
 λprocess_inline_bold(text:𝕊)→𝕊=
-  replace_paired_delimiters(text,"**","<strong>","</strong>","")
+  replace_paired_delimiters("</strong>","**","<strong>","",text)
 
 λprocess_inline_code(text:𝕊)→𝕊=
-  replace_paired_delimiters(text,"`","<code>","</code>","")
+  replace_paired_delimiters("</code>","`","<code>","",text)
 
 λprocess_inline_italic(text:𝕊)→𝕊=
-  replace_paired_delimiters(text,"*","<em>","</em>","")
+  replace_paired_delimiters("</em>","*","<em>","",text)
 
 ⟦ Simplified link processing - find [text](url) patterns ⟧
 λprocess_inline_links(text:𝕊)→𝕊=
@@ -302,20 +302,20 @@ Process **bold**, *italic*, `code`, and [links](url) within text.
   text
 
 ⟦ Replace paired delimiters with HTML tags ⟧
-λreplace_paired_delimiters(text:𝕊,delimiter:𝕊,open_tag:𝕊,close_tag:𝕊,result:𝕊)→𝕊=
+λreplace_paired_delimiters(close_tag:𝕊,delimiter:𝕊,open_tag:𝕊,result:𝕊,text:𝕊)→𝕊=
   l first_idx=stdlib⋅string.index_of(text,delimiter);
   ≡first_idx{
     idx when idx≥0 →
-      l after_first=stdlib⋅string.substring(text,idx+#delimiter,#text);
+      l after_first=stdlib⋅string.substring(#text,text,idx+#delimiter);
       l second_idx=stdlib⋅string.index_of(after_first,delimiter);
       ≡second_idx{
         idx2 when idx2≥0 →
-          l before=stdlib⋅string.substring(text,0,idx);
-          l content=stdlib⋅string.substring(after_first,0,idx2);
+          l before=stdlib⋅string.substring(idx,text,0);
+          l content=stdlib⋅string.substring(idx2,after_first,0);
           l after_second_relative=idx2+#delimiter;
-          l after_second=stdlib⋅string.substring(after_first,after_second_relative,#after_first);
+          l after_second=stdlib⋅string.substring(#after_first,after_first,after_second_relative);
           l new_result=result+before+open_tag+content+close_tag;
-          replace_paired_delimiters(after_second,delimiter,open_tag,close_tag,new_result)|
+          replace_paired_delimiters(close_tag,delimiter,open_tag,new_result,after_second)|
         _ →
           result+text
       }|

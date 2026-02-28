@@ -121,6 +121,102 @@ pub fn validate_canonical_form(program: &Program, file_path: Option<&str>, sourc
         errors.extend(e);
     }
 
+    // Rule 7: Parameter and effect ordering - alphabetical
+    if let Err(e) = validate_function_signature_ordering(program) {
+        errors.extend(e);
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+/// Validate parameter alphabetical ordering
+fn validate_parameter_ordering(
+    params: &[Param],
+    func_name: &str,
+    location: SourceLocation
+) -> Result<(), Vec<ValidationError>> {
+    if params.len() <= 1 {
+        return Ok(());
+    }
+
+    for i in 1..params.len() {
+        let prev = &params[i - 1];
+        let curr = &params[i];
+
+        if curr.name < prev.name {
+            let expected_order: Vec<String> = params.iter()
+                .map(|p| p.name.clone())
+                .collect::<Vec<_>>()
+                .iter()
+                .cloned()
+                .collect::<Vec<_>>();
+            let mut sorted_order = expected_order.clone();
+            sorted_order.sort();
+
+            return Err(vec![ValidationError::ParameterOrder {
+                function_name: func_name.to_string(),
+                param_name: curr.name.clone(),
+                prev_param: prev.name.clone(),
+                position: i + 1,
+                expected_order: sorted_order,
+                location,
+            }]);
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate effect alphabetical ordering
+fn validate_effect_ordering(
+    effects: &[String],
+    func_name: &str,
+    location: SourceLocation
+) -> Result<(), Vec<ValidationError>> {
+    if effects.len() <= 1 {
+        return Ok(());
+    }
+
+    for i in 1..effects.len() {
+        if effects[i] < effects[i - 1] {
+            let mut expected_order = effects.to_vec();
+            expected_order.sort();
+
+            return Err(vec![ValidationError::EffectOrder {
+                function_name: func_name.to_string(),
+                effect_name: effects[i].clone(),
+                prev_effect: effects[i - 1].clone(),
+                position: i + 1,
+                expected_order,
+                location,
+            }]);
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate all function signatures in program
+fn validate_function_signature_ordering(program: &Program) -> Result<(), Vec<ValidationError>> {
+    let mut errors = Vec::new();
+
+    for decl in &program.declarations {
+        if let Declaration::Function(func) = decl {
+            if let Err(e) = validate_parameter_ordering(&func.params, &func.name, func.location) {
+                errors.extend(e);
+            }
+            if let Err(e) = validate_effect_ordering(&func.effects, &func.name, func.location) {
+                errors.extend(e);
+            }
+        }
+    }
+
+    // TODO: Also walk lambda expressions in function bodies
+
     if errors.is_empty() {
         Ok(())
     } else {

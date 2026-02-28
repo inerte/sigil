@@ -338,4 +338,101 @@ describe('Canonical Form Validation', () => {
       assert.strictEqual(result.ok, true);
     });
   });
+
+  describe('Parameter and effect ordering', () => {
+    test('rejects non-alphabetical parameter order', () => {
+      const code = `λfoo(z:ℤ,a:ℤ)→ℤ=z+a
+λmain()→ℤ=foo(1,2)
+`;
+      const result = compileFromString(code);
+
+      assert.strictEqual(result.ok, false);
+      if (!result.ok) {
+        assert.strictEqual(result.error.code, 'SIGIL-CANON-PARAM-ORDER');
+      }
+    });
+
+    test('accepts alphabetical parameter order', () => {
+      const code = `λfoo(a:ℤ,z:ℤ)→ℤ=a+z
+λmain()→ℤ=foo(1,2)
+`;
+      const result = compileFromString(code);
+
+      assert.strictEqual(result.ok, true);
+    });
+
+    test('rejects non-alphabetical effect order', () => {
+      const code = `λfoo()→!Network !IO 𝕌=()
+λmain()→𝕌=()
+`;
+      const result = compileFromString(code);
+
+      assert.strictEqual(result.ok, false);
+      if (!result.ok) {
+        assert.strictEqual(result.error.code, 'SIGIL-CANON-EFFECT-ORDER');
+      }
+    });
+
+    test('accepts alphabetical effect order', () => {
+      const code = `λfoo()→!IO !Network 𝕌=()
+λmain()→𝕌=()
+`;
+      const result = compileFromString(code);
+
+      assert.strictEqual(result.ok, true);
+    });
+
+    test('handles single parameter (no ordering required)', () => {
+      const code = `λfoo(x:ℤ)→ℤ=x
+λmain()→ℤ=foo(5)
+`;
+      const result = compileFromString(code);
+
+      assert.strictEqual(result.ok, true);
+    });
+
+    test('handles no parameters (no ordering required)', () => {
+      const code = `λfoo()→ℤ=42
+λmain()→ℤ=foo()
+`;
+      const result = compileFromString(code);
+
+      assert.strictEqual(result.ok, true);
+    });
+
+    test('validates lambda parameter ordering', () => {
+      const code = `λfoo()→ℤ=(λ(z:ℤ,a:ℤ)→ℤ=z+a)(1,2)
+λmain()→ℤ=foo()
+`;
+      const result = compileFromString(code);
+
+      assert.strictEqual(result.ok, false);
+      if (!result.ok) {
+        assert.strictEqual(result.error.code, 'SIGIL-CANON-PARAM-ORDER');
+      }
+    });
+
+    test('accepts alphabetical lambda parameter order', () => {
+      const code = `λfoo()→ℤ=(λ(a:ℤ,z:ℤ)→ℤ=a+z)(1,2)
+λmain()→ℤ=foo()
+`;
+      const result = compileFromString(code);
+
+      assert.strictEqual(result.ok, true);
+    });
+
+    test('validates parameter ordering with multiple parameters', () => {
+      const code = `λfoo(y:ℤ,z:ℤ,x:ℤ)→ℤ=x+y+z
+λmain()→ℤ=foo(1,2,3)
+`;
+      const result = compileFromString(code);
+
+      assert.strictEqual(result.ok, false);
+      if (!result.ok) {
+        assert.strictEqual(result.error.code, 'SIGIL-CANON-PARAM-ORDER');
+        // Should suggest correct order: x, y, z
+        assert.match(result.error.message, /x, y, z/);
+      }
+    });
+  });
 });

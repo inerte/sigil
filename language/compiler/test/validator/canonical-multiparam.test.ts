@@ -69,11 +69,11 @@ describe('Canonical Form - Multi-Parameter Recursion', () => {
 
     test('Hanoi - all params swap algorithmically', () => {
       const code = `
-        λhanoi(n:ℤ,from:𝕊,to:𝕊,aux:𝕊)→𝕊≡n{
+        λhanoi(aux:𝕊,from:𝕊,n:ℤ,to:𝕊)→𝕊≡n{
           1→"Move from "+from+" to "+to|
-          n→hanoi(n-1,from,aux,to)+hanoi(n-1,aux,to,from)
+          n→hanoi(to,from,n-1,aux)+hanoi(from,aux,n-1,to)
         }
-        λmain()→𝕊=hanoi(3,"A","C","B")
+        λmain()→𝕊=hanoi("B","A",3,"C")
       `;
       const tokens = tokenize(code);
       const ast = parse(tokens);
@@ -126,10 +126,10 @@ describe('Canonical Form - Multi-Parameter Recursion', () => {
 
     test('List reverse with accumulator - list building', () => {
       const code = `
-        λmain()→[ℤ]=reverse_acc([1,2,3],[])
-        λreverse_acc(lst:[ℤ],acc:[ℤ])→[ℤ]≡lst{
+        λmain()→[ℤ]=reverse_acc([],[1,2,3])
+        λreverse_acc(acc:[ℤ],lst:[ℤ])→[ℤ]≡lst{
           []→acc|
-          [x,.xs]→reverse_acc(xs,[x])
+          [x,.xs]→reverse_acc([x],xs)
         }
       `;
       const tokens = tokenize(code);
@@ -156,10 +156,10 @@ describe('Canonical Form - Multi-Parameter Recursion', () => {
 
     test('String concatenation accumulator', () => {
       const code = `
-        λmain()→𝕊=repeat(3,"x","")
-        λrepeat(n:ℤ,str:𝕊,acc:𝕊)→𝕊≡n{
+        λmain()→𝕊=repeat("","x",3)
+        λrepeat(acc:𝕊,n:ℤ,str:𝕊)→𝕊≡n{
           0→acc|
-          n→repeat(n-1,str,acc++str)
+          n→repeat(acc++str,n-1,str)
         }
       `;
       const tokens = tokenize(code);

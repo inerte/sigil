@@ -8,10 +8,10 @@
 ⟧
 
 ⟦ Get character at index - compiler intrinsic ⟧
-λchar_at(s:𝕊,idx:ℤ)→𝕊=""
+λchar_at(idx:ℤ,s:𝕊)→𝕊=""
 
 ⟦ Drop first n characters ⟧
-λdrop(s:𝕊,n:ℤ)→𝕊=substring(s,n,#s)
+λdrop(n:ℤ,s:𝕊)→𝕊=substring(#s,s,n)
 
 ⟦ Check if string ends with suffix - compiler intrinsic ⟧
 λends_with(s:𝕊,suffix:𝕊)→𝔹=⊥
@@ -29,22 +29,22 @@
 λis_whitespace(s:𝕊)→𝔹=⊥
 
 ⟦ Join list of strings with separator - compiler intrinsic ⟧
-λjoin(strings:[𝕊],separator:𝕊)→𝕊=""
+λjoin(separator:𝕊,strings:[𝕊])→𝕊=""
 
 ⟦ Replace all occurrences - compiler intrinsic ⟧
-λreplace_all(s:𝕊,pattern:𝕊,replacement:𝕊)→𝕊=""
+λreplace_all(pattern:𝕊,replacement:𝕊,s:𝕊)→𝕊=""
 
 ⟦ Split string by delimiter - compiler intrinsic ⟧
-λsplit(s:𝕊,delimiter:𝕊)→[𝕊]=[""]
+λsplit(delimiter:𝕊,s:𝕊)→[𝕊]=[""]
 
 ⟦ Check if string starts with prefix - compiler intrinsic ⟧
-λstarts_with(s:𝕊,prefix:𝕊)→𝔹=⊥
+λstarts_with(prefix:𝕊,s:𝕊)→𝔹=⊥
 
 ⟦ Get substring from start to end - compiler intrinsic ⟧
-λsubstring(s:𝕊,start:ℤ,end:ℤ)→𝕊=""
+λsubstring(end:ℤ,s:𝕊,start:ℤ)→𝕊=""
 
 ⟦ Take first n characters ⟧
-λtake(s:𝕊,n:ℤ)→𝕊=substring(s,0,n)
+λtake(n:ℤ,s:𝕊)→𝕊=substring(n,s,0)
 
 ⟦ Convert to lowercase - compiler intrinsic ⟧
 λto_lower(s:𝕊)→𝕊=""

@@ -320,7 +320,92 @@ t User = { name: 𝕊, age: ℤ }
 **Within-category ordering:**
 - Alphabetically by name within each category
 
+#### Rule 6: Parameter Alphabetical Ordering
+
+Function parameters must be in alphabetical order by name.
+
+**Error code:** `SIGIL-CANON-PARAM-ORDER`
+
+```sigil
+✅ VALID - alphabetical order:
+λfoo(a:ℤ,b:ℤ,c:ℤ)→ℤ=a+b+c
+
+❌ REJECTED - non-alphabetical:
+λfoo(c:ℤ,a:ℤ,b:ℤ)→ℤ=a+b+c
+⟦ Error: Parameter out of alphabetical order ⟧
+```
+
+**Applies to:**
+- Function declarations: `λfoo(x:ℤ,y:ℤ)→ℤ=x+y`
+- Lambda expressions: `(λ(a:ℤ,b:ℤ)→ℤ=a+b)(1,2)`
+- All parameter lists regardless of length
+
+**Rationale:**
+- Alphabetical ordering is deterministic and language-agnostic
+- Eliminates debate about "natural" parameter ordering
+- Consistent with declaration alphabetical ordering
+- One canonical way to write every function signature
+- Improves training data quality for AI code generation
+
 **Error message:**
+```
+Parameter out of alphabetical order in function "foo"
+
+Found: c at position 3
+After: b at position 2
+
+Parameters must be alphabetically ordered.
+Expected 'c' to come before 'b'.
+
+Alphabetical order uses Unicode code point comparison (case-sensitive).
+Reorder parameters: a, b, c
+
+Sigil enforces ONE WAY: canonical parameter ordering.
+```
+
+#### Rule 7: Effect Alphabetical Ordering
+
+Effect annotations must be in alphabetical order.
+
+**Error code:** `SIGIL-CANON-EFFECT-ORDER`
+
+```sigil
+✅ VALID - alphabetical order:
+λfetch()→!Async !IO !Network 𝕊="data"
+
+❌ REJECTED - non-alphabetical:
+λfetch()→!Network !IO !Async 𝕊="data"
+⟦ Error: Effect out of alphabetical order ⟧
+```
+
+**Standard effect order (alphabetical):**
+- `!Async` before `!Error`
+- `!Error` before `!IO`
+- `!IO` before `!Mut`
+- `!Mut` before `!Network`
+
+**Rationale:**
+- Deterministic effect declaration
+- No arbitrary ordering choices
+- Consistent with all other alphabetical ordering rules
+- One canonical way to declare effects
+
+**Error message:**
+```
+Effect out of alphabetical order in function "fetch"
+
+Found: !IO at position 2
+After: !Network at position 1
+
+Effects must be alphabetically ordered.
+Expected 'IO' to come before 'Network'.
+
+Correct order: !Async !IO !Network
+
+Sigil enforces ONE WAY: canonical effect ordering.
+```
+
+**Declaration ordering error message:**
 ```
 Canonical Ordering Error: Wrong category position
 
@@ -437,6 +522,9 @@ node compiler/dist/cli.js compile myfile.sigil
 5. Omit `=` for match expressions: `λf()→T≡value{...}`
 6. Use spaces (never tabs)
 7. Use `\n` for line breaks (never `\r`)
+8. **Order declarations alphabetically within categories** (types, externs, imports, consts, functions, tests)
+9. **Order function parameters alphabetically by name** (`λfoo(a,b,z)` not `λfoo(z,b,a)`)
+10. **Order effect annotations alphabetically** (`!Async !IO !Network` not `!Network !IO !Async`)
 
 **Remember:** There is exactly ONE valid way to write each program. If you generate non-canonical code, compilation will fail.
 

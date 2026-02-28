@@ -3,11 +3,11 @@
 t Inner={items:[ℤ]}
 t Outer={state:Inner}
 
+λmain()→𝕌=()
+
 λtest(x:𝔹)→Outer≡x{
   ⊤ →
     l dummy=1;
     {state:{items:[]}}|
   ⊥ → {state:{items:[1,2,3]}}
 }
-
-λmain()→𝕌=()

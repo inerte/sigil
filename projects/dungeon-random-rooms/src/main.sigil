@@ -14,17 +14,17 @@ t World={room1:Room,room2:Room,room3:Room}
 
 e console
 
-c height:ℤ=18
-c seed0:ℤ=1337
-c width:ℤ=48
+c height=(18:ℤ)
+c seed0=(1337:ℤ)
+c width=(48:ℤ)
 
 λcenterX(room:Room)→ℤ=room.x+halfFloor(room.w)
 
 λcenterY(room:Room)→ℤ=room.y+halfFloor(room.h)
 
-λcorridorL(x:ℤ,y:ℤ,a:Room,b:Room)→𝔹=
-  inH(x,y,centerX(a),centerX(b),centerY(a))∨
-  inV(x,y,centerX(b),centerY(a),centerY(b))
+λcorridorL(a:Room,b:Room,x:ℤ,y:ℤ)→𝔹=
+  inH(centerY(a),x,centerX(a),centerX(b),y)∨
+  inV(centerX(b),x,y,centerY(a),centerY(b))
 
 λhalfFloor(n:ℤ)→ℤ≡n{
   0→0|
@@ -32,35 +32,35 @@ c width:ℤ=48
   n→1+halfFloor(n-2)
 }
 
-λinH(x:ℤ,y:ℤ,x1:ℤ,x2:ℤ,cy:ℤ)→𝔹=((y=cy)∧(x≥min2(x1,x2)))∧(x≤max2(x1,x2))
+λinH(cy:ℤ,x:ℤ,x1:ℤ,x2:ℤ,y:ℤ)→𝔹=((y=cy)∧(x≥min2(x1,x2)))∧(x≤max2(x1,x2))
 
-λinRect(x:ℤ,y:ℤ,rx:ℤ,ry:ℤ,rw:ℤ,rh:ℤ)→𝔹=((x≥rx)∧(x<rx+rw))∧((y≥ry)∧(y<ry+rh))
+λinRect(rh:ℤ,rw:ℤ,rx:ℤ,ry:ℤ,x:ℤ,y:ℤ)→𝔹=((x≥rx)∧(x<rx+rw))∧((y≥ry)∧(y<ry+rh))
 
-λinRoom(x:ℤ,y:ℤ,room:Room)→𝔹=inRect(x,y,room.x,room.y,room.w,room.h)
+λinRoom(room:Room,x:ℤ,y:ℤ)→𝔹=inRect(room.h,room.w,room.x,room.y,x,y)
 
-λinV(x:ℤ,y:ℤ,cx:ℤ,y1:ℤ,y2:ℤ)→𝔹=((x=cx)∧(y≥min2(y1,y2)))∧(y≤max2(y1,y2))
+λinV(cx:ℤ,x:ℤ,y:ℤ,y1:ℤ,y2:ℤ)→𝔹=((x=cx)∧(y≥min2(y1,y2)))∧(y≤max2(y1,y2))
 
 λisExit(world:World,x:ℤ,y:ℤ)→𝔹=(x=centerX(world.room3))∧(y=centerY(world.room3))
 
 λisFloor(world:World,x:ℤ,y:ℤ)→𝔹=
-  inRoom(x,y,world.room1)∨
-  inRoom(x,y,world.room2)∨
-  inRoom(x,y,world.room3)∨
-  corridorL(x,y,world.room1,world.room2)∨
-  corridorL(x,y,world.room2,world.room3)
+  inRoom(world.room1,x,y)∨
+  inRoom(world.room2,x,y)∨
+  inRoom(world.room3,x,y)∨
+  corridorL(world.room1,world.room2,x,y)∨
+  corridorL(world.room2,world.room3,x,y)
 
 λisPlayer(world:World,x:ℤ,y:ℤ)→𝔹=(x=centerX(world.room1))∧(y=centerY(world.room1))
 
 λmain()→!IO 𝕌={
-  l world=makeWorld(seed0);
+  l world=(makeWorld(seed0):World);
   console.log(renderRows(world,0))
 }
 
 λmakeWorld(seed:ℤ)→World={
-  l rng=Rng{seed:seed};
-  l r1=randRoomInZone(rng,2,2,13,6);
-  l r2=randRoomInZone(r1.rng,18,2,14,7);
-  l r3=randRoomInZone(r2.rng,32,9,12,6);
+  l rng=(Rng{seed:seed}:Rng);
+  l r1=(randRoomInZone(rng,6,13,2,2):RoomRoll);
+  l r2=(randRoomInZone(r1.rng,7,14,18,2):RoomRoll);
+  l r3=(randRoomInZone(r2.rng,6,12,32,9):RoomRoll);
   World{room1:r1.room,room2:r2.room,room3:r3.room}
 }
 
@@ -77,30 +77,30 @@ c width:ℤ=48
 λnextRng(rng:Rng)→Rng=
   Rng{seed:((rng.seed*48271)%2147483647)}
 
-λrandInt(rng:Rng,min:ℤ,max:ℤ)→IntRoll={
-  l next=nextRng(rng);
-  l span=(max-min)+1;
-  l value=min+(next.seed%span);
+λrandInt(max:ℤ,min:ℤ,rng:Rng)→IntRoll={
+  l next=(nextRng(rng):Rng);
+  l span=((max-min)+1:ℤ);
+  l value=(min+(next.seed%span):ℤ);
   IntRoll{rng:next,value:value}
 }
 
-λrandRoomInZone(rng:Rng,zx:ℤ,zy:ℤ,zw:ℤ,zh:ℤ)→RoomRoll={
-  l wRoll=randInt(rng,5,zw-1);
-  l hRoll=randInt(wRoll.rng,4,zh-1);
-  l xRoll=randInt(hRoll.rng,zx,(zx+zw)-wRoll.value);
-  l yRoll=randInt(xRoll.rng,zy,(zy+zh)-hRoll.value);
-  l room=Room{x:xRoll.value,y:yRoll.value,w:wRoll.value,h:hRoll.value};
+λrandRoomInZone(rng:Rng,zh:ℤ,zw:ℤ,zx:ℤ,zy:ℤ)→RoomRoll={
+  l wRoll=(randInt(zw-1,5,rng):IntRoll);
+  l hRoll=(randInt(zh-1,4,wRoll.rng):IntRoll);
+  l xRoll=(randInt((zx+zw)-wRoll.value,zx,hRoll.rng):IntRoll);
+  l yRoll=(randInt((zy+zh)-hRoll.value,zy,xRoll.rng):IntRoll);
+  l room=(Room{x:xRoll.value,y:yRoll.value,w:wRoll.value,h:hRoll.value}:Room);
   RoomRoll{rng:yRoll.rng,room:room}
 }
 
-λrenderRow(world:World,y:ℤ,x:ℤ)→𝕊≡width-x{
+λrenderRow(world:World,x:ℤ,y:ℤ)→𝕊≡width-x{
   0→""|
-  _→tileAt(world,x,y)++renderRow(world,y,x+1)
+  _→tileAt(world,x,y)++renderRow(world,x+1,y)
 }
 
 λrenderRows(world:World,y:ℤ)→𝕊≡height-y{
   0→""|
-  _→renderRow(world,y,0)++"\n"++renderRows(world,y+1)
+  _→renderRow(world,0,y)++"\n"++renderRows(world,y+1)
 }
 
 λtileAt(world:World,x:ℤ,y:ℤ)→𝕊≡isPlayer(world,x,y){

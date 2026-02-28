@@ -24,10 +24,10 @@ e console
 i stdlib⋅string
 
 ⟦ Helper: Count occurrences of character in string ⟧
-λcount_char(str:𝕊,char:𝕊)→ℤ=count_helper(str,char,0,0)
+λcount_char(char:𝕊,str:𝕊)→ℤ=count_helper(0,char,0,str)
 
-λcount_helper(str:𝕊,char:𝕊,idx:ℤ,acc:ℤ)→ℤ≡idx<#str{
-  ⊤ → count_helper(str,char,idx+1,acc+≡stdlib⋅string.char_at(str,idx)=char{⊤→1|⊥→0}) |
+λcount_helper(acc:ℤ,char:𝕊,idx:ℤ,str:𝕊)→ℤ≡idx<#str{
+  ⊤ → count_helper(acc+≡stdlib⋅string.char_at(idx,str)=char{⊤→1|⊥→0},char,idx+1,str) |
   ⊥ → acc
 }
 
@@ -50,42 +50,42 @@ i stdlib⋅string
 
 ⟦ Main - Demonstrate email validation ⟧
 λmain()→!IO 𝕌={
-  l _=console.log("=== Email Validator ===\n");
+  l _=(console.log("=== Email Validator ===\n"):𝕌);
 
   ⟦ Valid emails ⟧
-  l _=console.log("Valid examples:");
-  l _=console.log(format_result("user@example.com",validate_email("user@example.com")));
-  l _=console.log(format_result("alice.bob@mail.co.uk",validate_email("alice.bob@mail.co.uk")));
-  l _=console.log(format_result("test123@domain.org",validate_email("test123@domain.org")));
+  l _=(console.log("Valid examples:"):𝕌);
+  l _=(console.log(format_result("user@example.com",validate_email("user@example.com"))):𝕌);
+  l _=(console.log(format_result("alice.bob@mail.co.uk",validate_email("alice.bob@mail.co.uk"))):𝕌);
+  l _=(console.log(format_result("test123@domain.org",validate_email("test123@domain.org"))):𝕌);
 
-  l _=console.log("\nInvalid examples:");
+  l _=(console.log("\nInvalid examples:"):𝕌);
 
   ⟦ Missing @ ⟧
-  l _=console.log(format_result("userexample.com",validate_email("userexample.com")));
+  l _=(console.log(format_result("userexample.com",validate_email("userexample.com"))):𝕌);
 
   ⟦ Multiple @ ⟧
-  l _=console.log(format_result("user@@example.com",validate_email("user@@example.com")));
+  l _=(console.log(format_result("user@@example.com",validate_email("user@@example.com"))):𝕌);
 
   ⟦ Empty local ⟧
-  l _=console.log(format_result("@example.com",validate_email("@example.com")));
+  l _=(console.log(format_result("@example.com",validate_email("@example.com"))):𝕌);
 
   ⟦ Empty domain ⟧
-  l _=console.log(format_result("user@",validate_email("user@")));
+  l _=(console.log(format_result("user@",validate_email("user@"))):𝕌);
 
   ⟦ No dot in domain ⟧
-  l _=console.log(format_result("user@domain",validate_email("user@domain")));
+  l _=(console.log(format_result("user@domain",validate_email("user@domain"))):𝕌);
 
   ⟦ Domain starts with dot ⟧
-  l _=console.log(format_result("user@.example.com",validate_email("user@.example.com")));
+  l _=(console.log(format_result("user@.example.com",validate_email("user@.example.com"))):𝕌);
 
   ⟦ Domain ends with dot ⟧
-  l _=console.log(format_result("user@example.com.",validate_email("user@example.com.")));
+  l _=(console.log(format_result("user@example.com.",validate_email("user@example.com."))):𝕌);
 
   ⟦ Local starts with dot ⟧
-  l _=console.log(format_result(".user@example.com",validate_email(".user@example.com")));
+  l _=(console.log(format_result(".user@example.com",validate_email(".user@example.com"))):𝕌);
 
   ⟦ Consecutive dots in local ⟧
-  l _=console.log(format_result("user..name@example.com",validate_email("user..name@example.com")));
+  l _=(console.log(format_result("user..name@example.com",validate_email("user..name@example.com"))):𝕌);
 
   ⟦ Empty email ⟧
   console.log(format_result("",validate_email("")))
@@ -138,9 +138,9 @@ i stdlib⋅string
 }
 
 ⟦ Validate local part (before @) ⟧
-λvalidate_local(local:𝕊)→ValidationResult=validate_local_checks(local,#local)
+λvalidate_local(local:𝕊)→ValidationResult=validate_local_checks(#local,local)
 
-λvalidate_local_checks(local:𝕊,len:ℤ)→ValidationResult≡len=0{
+λvalidate_local_checks(len:ℤ,local:𝕊)→ValidationResult≡len=0{
   ⊤ → Invalid("Local part cannot be empty") |
   ⊥ → ≡len>64{
     ⊤ → Invalid("Local part too long (max 64 characters)") |

@@ -14,7 +14,7 @@ e fs⋅promises : {
 
 ⟦ Count files in a directory ⟧
 λcountFiles(dir:𝕊)→ℤ={
-  l files=fs⋅promises.readdir(dir);
+  l files=(fs⋅promises.readdir(dir):[𝕊]);
   #files  ⟦ Works! files has type [𝕊], not any ⟧
 }
 

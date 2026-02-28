@@ -1,6 +1,6 @@
 ⟦ Test async FFI integration - reading files ⟧
 e fs⋅promises
 
-λread_file(path:𝕊)→!IO 𝕊=fs⋅promises.readFile(path,"utf8")
-
 λmain()→!IO 𝕊=read_file("../test-fixtures/test-async-ffi.sigil")
+
+λread_file(path:𝕊)→!IO 𝕊=fs⋅promises.readFile(path,"utf8")

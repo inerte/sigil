@@ -17,10 +17,10 @@ t State={
   names:["a","b"]
 }
 
+λmain()→𝕌=()
+
 ⟦ Mixed empty and non-empty ⟧
 λpartial_state()→State={
   items:[],
   names:["test"]
 }
-
-λmain()→𝕌=()

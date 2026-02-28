@@ -11,29 +11,29 @@ i stdlib⋅string
 λmain()→!IO 𝕌={
   ⟦ Test string length operator ⟧
   l text=("Hello, Sigil!":𝕊);
-  l _=console.log("Text: "++text);
-  l _=console.log("Length: "++stdlib⋅string.int_to_string(#text));
+  l _=(console.log("Text: "++text):𝕌);
+  l _=(console.log("Length: "++stdlib⋅string.int_to_string(#text)):𝕌);
 
   ⟦ Test string transformations ⟧
-  l upper=stdlib⋅string.to_upper("hello");
-  l lower=stdlib⋅string.to_lower("WORLD");
-  l _=console.log("Upper: "++upper);
-  l _=console.log("Lower: "++lower);
+  l upper=(stdlib⋅string.to_upper("hello"):𝕊);
+  l lower=(stdlib⋅string.to_lower("WORLD"):𝕊);
+  l _=(console.log("Upper: "++upper):𝕌);
+  l _=(console.log("Lower: "++lower):𝕌);
 
   ⟦ Test string predicates ⟧
-  l has_prefix=stdlib⋅string.starts_with("Hello World","Hello");
-  l has_suffix=stdlib⋅string.ends_with("test.sigil",".sigil");
-  l _=console.log("Has prefix Hello: "++stdlib⋅string.bool_to_string(has_prefix));
-  l _=console.log("Has suffix .sigil: "++stdlib⋅string.bool_to_string(has_suffix));
+  l has_prefix=(stdlib⋅string.starts_with("Hello World","Hello"):𝔹);
+  l has_suffix=(stdlib⋅string.ends_with("test.sigil",".sigil"):𝔹);
+  l _=(console.log("Has prefix Hello: "++stdlib⋅string.bool_to_string(has_prefix)):𝕌);
+  l _=(console.log("Has suffix .sigil: "++stdlib⋅string.bool_to_string(has_suffix)):𝕌);
 
   ⟦ Test split ⟧
-  l parts=stdlib⋅string.split("a,b,c",",");
-  l _=console.log("Split length: "++stdlib⋅string.int_to_string(#parts));
+  l parts=(stdlib⋅string.split("a,b,c",","):[𝕊]);
+  l _=(console.log("Split length: "++stdlib⋅string.int_to_string(#parts)):𝕌);
 
   ⟦ Test take and drop ⟧
   l sample=("abcdefgh":𝕊);
-  l first_three=stdlib⋅string.take(sample,3);
-  l drop_three=stdlib⋅string.drop(sample,3);
-  l _=console.log("Take 3: "++first_three);
+  l first_three=(stdlib⋅string.take(3,sample):𝕊);
+  l drop_three=(stdlib⋅string.drop(3,sample):𝕊);
+  l _=(console.log("Take 3: "++first_three):𝕌);
   console.log("Drop 3: "++drop_three)
 }

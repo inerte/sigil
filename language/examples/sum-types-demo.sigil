@@ -35,17 +35,17 @@ t Result[T,E]=Ok(T)|Err(E)
   [x,.rest]→Some(x)
 }
 
-λgetOrDefault(opt:Option,default:ℤ)→ℤ≡opt{
+λgetOrDefault(default:ℤ,opt:Option)→ℤ≡opt{
   Some(x)→x|
   None→default
 }
 
 ⟦ Main - demonstrate all examples ⟧
 λmain()→ℤ={
-  l color_value=colorToNumber(Green());
-  l div_ok=processResult(divide(10,2));
-  l div_err=processResult(divide(10,0));
-  l total=color_value+div_ok+div_err;
+  l color_value=(colorToNumber(Green()):ℤ);
+  l div_ok=(processResult(divide(10,2)):ℤ);
+  l div_err=(processResult(divide(10,0)):ℤ);
+  l total=(color_value+div_ok+div_err:ℤ);
   total
 }
 

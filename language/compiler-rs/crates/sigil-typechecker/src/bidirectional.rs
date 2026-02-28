@@ -308,6 +308,8 @@ fn synthesize(env: &TypeEnvironment, expr: &Expr) -> Result<InferenceType, TypeE
 
         Expr::Pipeline(pipeline) => synthesize_pipeline(env, pipeline),
 
+        Expr::TypeAscription(type_asc) => synthesize_type_ascription(env, type_asc),
+
         _ => Err(TypeError::new(
             format!("Synthesis not yet implemented for expression type"),
             None, // TODO: extract location from specific expression variant
@@ -1293,6 +1295,20 @@ fn check_pattern(
             None,
         )),
     }
+}
+
+fn synthesize_type_ascription(
+    env: &TypeEnvironment,
+    type_asc: &sigil_ast::TypeAscriptionExpr,
+) -> Result<InferenceType, TypeError> {
+    // Convert ascribed type from AST to inference type
+    let ascribed_type = ast_type_to_inference_type(&type_asc.ascribed_type);
+
+    // Check that the expression matches the ascribed type
+    check(env, &type_asc.expr, &ascribed_type)?;
+
+    // Return the ascribed type
+    Ok(ascribed_type)
 }
 
 // ============================================================================

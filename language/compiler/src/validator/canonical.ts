@@ -179,8 +179,9 @@ export function validateCanonicalForm(program: AST.Program, filename?: string): 
     validateNoDuplicateDeclarations(program);
     validateFilePurpose(program, filename);
 
-    // Validate test location (requires filename)
+    // Validate filename format and test location (requires filename)
     if (filename) {
+      validateFilenameFormat(filename);
       validateTestLocation(program, filename);
     }
 
@@ -260,6 +261,103 @@ function validateFilePurpose(program: AST.Program, filename?: string): void {
       'SIGIL-CANON-TEST-NEEDS-MAIN',
       'Test files must have λmain()→𝕌=()\n\nHint: Test files are executables',
       program.declarations.find(d => d.type === 'TestDecl')?.location
+    );
+  }
+}
+
+/**
+ * Rule: Filename Format - Filenames must be lowercase with hyphens only
+ *
+ * Canonical filename format:
+ *   - Lowercase letters only (a-z)
+ *   - Numbers allowed (0-9)
+ *   - Hyphens for word separation (-)
+ *   - No underscores, spaces, or special characters
+ *   - Must end with .sigil or .lib.sigil
+ */
+function validateFilenameFormat(filename?: string): void {
+  if (!filename) return;
+
+  // Extract basename (without extension)
+  const basename = filename
+    .replace(/\.lib\.sigil$/, '')
+    .replace(/\.sigil$/, '')
+    .split('/').pop() || '';
+
+  // Check for uppercase
+  if (basename !== basename.toLowerCase()) {
+    throw new CanonicalError(
+      'SIGIL-CANON-FILENAME-CASE',
+      `Filenames must be lowercase\n\n` +
+      `File: ${filename}\n` +
+      `Found uppercase in: ${basename}\n` +
+      `Rename to: ${basename.toLowerCase()}.{sigil,lib.sigil}\n\n` +
+      `Sigil enforces ONE way: lowercase filenames with hyphens for word separation.`,
+      undefined,
+      { details: { filename, basename, suggested: basename.toLowerCase() } }
+    );
+  }
+
+  // Check for underscores
+  if (basename.includes('_')) {
+    throw new CanonicalError(
+      'SIGIL-CANON-FILENAME-INVALID-CHAR',
+      `Filenames cannot contain underscores\n\n` +
+      `File: ${filename}\n` +
+      `Found underscores in: ${basename}\n` +
+      `Rename to: ${basename.replace(/_/g, '-')}.{sigil,lib.sigil}\n\n` +
+      `Sigil enforces ONE way: use hyphens (-) not underscores (_) for word separation.`,
+      undefined,
+      { details: { filename, basename, suggested: basename.replace(/_/g, '-'), invalidChar: '_' } }
+    );
+  }
+
+  // Check for invalid characters (anything not a-z, 0-9, -)
+  const invalidChars = basename.match(/[^a-z0-9-]/g);
+  if (invalidChars) {
+    throw new CanonicalError(
+      'SIGIL-CANON-FILENAME-INVALID-CHAR',
+      `Filenames can only contain lowercase letters, numbers, and hyphens\n\n` +
+      `File: ${filename}\n` +
+      `Invalid characters: ${[...new Set(invalidChars)].join(', ')}\n` +
+      `Allowed: a-z, 0-9, -\n\n` +
+      `Sigil enforces ONE way: lowercase alphanumeric with hyphens.`,
+      undefined,
+      { details: { filename, basename, invalidChars: [...new Set(invalidChars)] } }
+    );
+  }
+
+  // Check format (can't start/end with hyphen, no consecutive hyphens, not empty)
+  if (basename.length === 0) {
+    throw new CanonicalError(
+      'SIGIL-CANON-FILENAME-FORMAT',
+      `Filename cannot be empty\n\nFile: ${filename}`,
+      undefined,
+      { details: { filename, issue: 'empty' } }
+    );
+  }
+
+  if (basename.startsWith('-') || basename.endsWith('-')) {
+    throw new CanonicalError(
+      'SIGIL-CANON-FILENAME-FORMAT',
+      `Filename cannot start or end with hyphen\n\n` +
+      `File: ${filename}\n` +
+      `Found: ${basename}\n` +
+      `Hyphens must separate words, not appear at edges.`,
+      undefined,
+      { details: { filename, basename, issue: 'hyphen-at-edge' } }
+    );
+  }
+
+  if (basename.includes('--')) {
+    throw new CanonicalError(
+      'SIGIL-CANON-FILENAME-FORMAT',
+      `Filename cannot contain consecutive hyphens\n\n` +
+      `File: ${filename}\n` +
+      `Found: ${basename}\n` +
+      `Use single hyphens to separate words.`,
+      undefined,
+      { details: { filename, basename, issue: 'consecutive-hyphens' } }
     );
   }
 }

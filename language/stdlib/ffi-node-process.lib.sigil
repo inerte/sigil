@@ -4,7 +4,7 @@
   Import this module to get compile-time type checking for process operations.
 
   Example:
-    i stdlib⋅ffi_node_process
+    i stdlib⋅ffi-node-process
     λgetWorkingDir()→𝕊=process.cwd()
 ⟧
 

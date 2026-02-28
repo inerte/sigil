@@ -273,3 +273,118 @@ fn test_typed_ffi_declaration_valid() {
     // Parser and validator should accept this
     assert!(validate_canonical_form(&program, Some("test.sigil")).is_ok());
 }
+
+// ============================================================================
+// FILENAME VALIDATION TESTS
+// ============================================================================
+
+#[test]
+fn test_filename_uppercase_rejected() {
+    let source = "λmain()→𝕌=()";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "UserService.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("UserService.sigil"));
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(matches!(errors[0], ValidationError::FilenameCase { .. }));
+}
+
+#[test]
+fn test_filename_underscore_rejected() {
+    let source = "λmain()→𝕌=()";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "user_service.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("user_service.sigil"));
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(matches!(errors[0], ValidationError::FilenameInvalidChar { .. }));
+}
+
+#[test]
+fn test_filename_special_char_rejected() {
+    let source = "λmain()→𝕌=()";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "user@service.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("user@service.sigil"));
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(matches!(errors[0], ValidationError::FilenameInvalidChar { .. }));
+}
+
+#[test]
+fn test_filename_space_rejected() {
+    let source = "λmain()→𝕌=()";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "user service.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("user service.sigil"));
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(matches!(errors[0], ValidationError::FilenameInvalidChar { .. }));
+}
+
+#[test]
+fn test_filename_hyphen_at_start_rejected() {
+    let source = "λmain()→𝕌=()";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "-hello.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("-hello.sigil"));
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(matches!(errors[0], ValidationError::FilenameFormat { .. }));
+}
+
+#[test]
+fn test_filename_hyphen_at_end_rejected() {
+    let source = "λmain()→𝕌=()";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "hello-.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("hello-.sigil"));
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(matches!(errors[0], ValidationError::FilenameFormat { .. }));
+}
+
+#[test]
+fn test_filename_consecutive_hyphens_rejected() {
+    let source = "λmain()→𝕌=()";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "hello--world.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("hello--world.sigil"));
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(matches!(errors[0], ValidationError::FilenameFormat { .. }));
+}
+
+#[test]
+fn test_filename_valid_kebab_case() {
+    let source = "λmain()→𝕌=()";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "user-service.sigil").unwrap();
+
+    assert!(validate_canonical_form(&program, Some("user-service.sigil")).is_ok());
+}
+
+#[test]
+fn test_filename_valid_with_numbers() {
+    let source = "λmain()→𝕌=()";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "01-introduction.sigil").unwrap();
+
+    assert!(validate_canonical_form(&program, Some("01-introduction.sigil")).is_ok());
+}
+
+#[test]
+fn test_filename_valid_lib_extension() {
+    let source = "";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "ffi-node-console.lib.sigil").unwrap();
+
+    assert!(validate_canonical_form(&program, Some("ffi-node-console.lib.sigil")).is_ok());
+}

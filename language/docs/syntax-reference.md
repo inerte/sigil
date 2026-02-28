@@ -24,10 +24,23 @@ For formatting/canonical whitespace rules, see:
 
 ## Source Files
 
-- Sigil source files use `.sigil`
+Sigil source files use canonical naming:
+- Extension: `.sigil` (executables) or `.lib.sigil` (libraries)
+- Format: lowercase letters, numbers, hyphens only
+- Example: `user-service.lib.sigil`, `01-hello.sigil`
 - Files should end with a final newline
 - Tests live in project `./tests`
 - App/library code lives in project `./src`
+
+**Filename rules:**
+- Lowercase only (a-z)
+- Numbers allowed (0-9)
+- Hyphens for word separation (-)
+- No underscores, spaces, or special characters
+- Must end with `.sigil` or `.lib.sigil`
+
+**Valid:** `user-service.lib.sigil`, `01-intro.sigil`
+**Invalid:** `UserService.sigil` (uppercase), `user_service.lib.sigil` (underscore)
 
 ## Comments
 

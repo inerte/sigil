@@ -79,6 +79,39 @@ Example:
   - a `replace` fixit (`/` -> `⋅`)
   - a `replace_symbol` suggestion explaining the canonical separator
 
+## Error Codes
+
+### Canonical Form Errors (phase: `canonical`)
+
+#### Filename Validation
+
+```json
+{
+  "code": "SIGIL-CANON-FILENAME-CASE",
+  "message": "Filenames must be lowercase",
+  "phase": "canonical"
+}
+```
+Filename contains uppercase letters. Solution: rename to lowercase.
+
+```json
+{
+  "code": "SIGIL-CANON-FILENAME-INVALID-CHAR",
+  "message": "Filenames cannot contain underscores or special characters",
+  "phase": "canonical"
+}
+```
+Filename contains invalid characters (underscores, spaces, special chars). Solution: use hyphens for word separation.
+
+```json
+{
+  "code": "SIGIL-CANON-FILENAME-FORMAT",
+  "message": "Filename format violation",
+  "phase": "canonical"
+}
+```
+Filename format issues: starts/ends with hyphen, consecutive hyphens, or empty basename.
+
 ## Validation Guidance
 
 Recommended for tool authors / CI:

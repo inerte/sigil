@@ -93,6 +93,30 @@ pub enum ValidationError {
     DeclarationOrder {
         message: String,
     },
+
+    #[error("SIGIL-CANON-FILENAME-CASE: Filenames must be lowercase\n\nFile: {filename}\nFound uppercase in: {basename}\nRename to: {suggested}\n\nSigil enforces ONE way: lowercase filenames with hyphens for word separation.")]
+    FilenameCase {
+        filename: String,
+        basename: String,
+        suggested: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-FILENAME-INVALID-CHAR: Filenames cannot contain {invalid_char}\n\nFile: {filename}\nFound in: {basename}\nRename to: {suggested}\n\nSigil enforces ONE way: use hyphens (-) not underscores (_) for word separation.")]
+    FilenameInvalidChar {
+        filename: String,
+        basename: String,
+        suggested: String,
+        invalid_char: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-FILENAME-FORMAT: {message}\n\nFile: {filename}")]
+    FilenameFormat {
+        filename: String,
+        message: String,
+        location: SourceLocation,
+    },
 }
 
 impl ValidationError {
@@ -138,6 +162,9 @@ impl ValidationError {
                 start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
                 end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
             },
+            ValidationError::FilenameCase { location, .. } => *location,
+            ValidationError::FilenameInvalidChar { location, .. } => *location,
+            ValidationError::FilenameFormat { location, .. } => *location,
         }
     }
 }

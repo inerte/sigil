@@ -24,19 +24,26 @@ pub fn validate_canonical_form(program: &Program, file_path: Option<&str>) -> Re
         errors.extend(e);
     }
 
-    // Rule 3: Test location - tests must be in tests/ directories
+    // Rule 3: Filename format - lowercase with hyphens only
+    if let Some(path) = file_path {
+        if let Err(e) = validate_filename_format(path) {
+            errors.extend(e);
+        }
+    }
+
+    // Rule 4: Test location - tests must be in tests/ directories
     if let Some(path) = file_path {
         if let Err(e) = validate_test_location(program, path) {
             errors.extend(e);
         }
     }
 
-    // Rule 4: Declaration ordering - canonical alphabetical order
+    // Rule 5: Declaration ordering - canonical alphabetical order
     if let Err(e) = validate_declaration_ordering(program) {
         errors.extend(e);
     }
 
-    // Rule 5: Recursive functions must not use accumulators
+    // Rule 6: Recursive functions must not use accumulators
     if let Err(e) = validate_recursive_functions(program) {
         errors.extend(e);
     }
@@ -196,6 +203,85 @@ fn validate_file_purpose(program: &Program, file_path: Option<&str>) -> Result<(
     if has_tests && !has_main {
         return Err(vec![ValidationError::TestNeedsMain {
             message: "Test files must have λmain()→𝕌=()\n\nHint: Test files are executables".to_string(),
+        }]);
+    }
+
+    Ok(())
+}
+
+/// Validate filename format - lowercase, hyphens only
+fn validate_filename_format(file_path: &str) -> Result<(), Vec<ValidationError>> {
+    // Extract basename (without extension)
+    let basename = file_path
+        .strip_suffix(".lib.sigil")
+        .or_else(|| file_path.strip_suffix(".sigil"))
+        .and_then(|p| p.split('/').last())
+        .unwrap_or("");
+
+    let location = SourceLocation {
+        start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+        end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+    };
+
+    // Check for uppercase
+    if basename != basename.to_lowercase() {
+        return Err(vec![ValidationError::FilenameCase {
+            filename: file_path.to_string(),
+            basename: basename.to_string(),
+            suggested: format!("{}.{{sigil,lib.sigil}}", basename.to_lowercase()),
+            location,
+        }]);
+    }
+
+    // Check for underscores
+    if basename.contains('_') {
+        return Err(vec![ValidationError::FilenameInvalidChar {
+            filename: file_path.to_string(),
+            basename: basename.to_string(),
+            suggested: format!("{}.{{sigil,lib.sigil}}", basename.replace('_', "-")),
+            invalid_char: "underscores".to_string(),
+            location,
+        }]);
+    }
+
+    // Check for invalid characters
+    let invalid_chars: Vec<char> = basename
+        .chars()
+        .filter(|c| !c.is_ascii_lowercase() && !c.is_ascii_digit() && *c != '-')
+        .collect();
+
+    if !invalid_chars.is_empty() {
+        return Err(vec![ValidationError::FilenameInvalidChar {
+            filename: file_path.to_string(),
+            basename: basename.to_string(),
+            suggested: basename.to_string(),
+            invalid_char: format!("{:?}", invalid_chars),
+            location,
+        }]);
+    }
+
+    // Check format
+    if basename.is_empty() {
+        return Err(vec![ValidationError::FilenameFormat {
+            filename: file_path.to_string(),
+            message: "Filename cannot be empty".to_string(),
+            location,
+        }]);
+    }
+
+    if basename.starts_with('-') || basename.ends_with('-') {
+        return Err(vec![ValidationError::FilenameFormat {
+            filename: file_path.to_string(),
+            message: "Filename cannot start or end with hyphen".to_string(),
+            location,
+        }]);
+    }
+
+    if basename.contains("--") {
+        return Err(vec![ValidationError::FilenameFormat {
+            filename: file_path.to_string(),
+            message: "Filename cannot contain consecutive hyphens".to_string(),
+            location,
         }]);
     }
 

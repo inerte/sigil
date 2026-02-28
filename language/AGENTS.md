@@ -139,7 +139,39 @@ pnpm --filter @sigil-lang/compiler test
 
 ### File Naming Conventions
 
-Sigil uses file extensions to distinguish file purpose:
+Sigil enforces canonical filename format and uses file extensions to distinguish file purpose:
+
+#### Filename Format Rules
+
+Sigil enforces canonical filename format:
+
+**Rules:**
+- **Lowercase only** - no uppercase letters
+- **Hyphens for word separation** - not underscores or spaces
+- **Allowed characters**: `a-z`, `0-9`, `-`
+- **Must end with** `.sigil` or `.lib.sigil`
+
+**Valid examples:**
+- `user-service.lib.sigil` ✅
+- `01-introduction.sigil` ✅
+- `ffi-node-console.lib.sigil` ✅
+
+**Invalid examples:**
+- `UserService.lib.sigil` ❌ (uppercase)
+- `user_service.lib.sigil` ❌ (underscore)
+- `user service.sigil` ❌ (space)
+
+**Error codes:**
+- `SIGIL-CANON-FILENAME-CASE` - Contains uppercase
+- `SIGIL-CANON-FILENAME-INVALID-CHAR` - Contains underscores or special characters
+- `SIGIL-CANON-FILENAME-FORMAT` - Format violations (hyphens at edges, consecutive hyphens)
+
+**Why?**
+- Case-insensitive filesystem safety (macOS/Windows)
+- Consistent import path readability
+- One canonical way (Sigil philosophy)
+
+#### File Purpose (by extension)
 
 **`.lib.sigil` files** (libraries):
 - All functions are automatically visible to importers (no `export` keyword)

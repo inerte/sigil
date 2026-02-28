@@ -214,4 +214,107 @@ describe('Canonical Form Validation', () => {
       assert.strictEqual(result.ok, true);
     });
   });
+
+  describe('Filename validation', () => {
+    test('rejects uppercase in filename', () => {
+      const code = `λmain()→𝕌=()
+`;
+      const result = compileFromString(code, 'UserService.sigil');
+
+      assert.strictEqual(result.ok, false);
+      if (!result.ok) {
+        assert.strictEqual(result.error.code, 'SIGIL-CANON-FILENAME-CASE');
+      }
+    });
+
+    test('rejects underscores in filename', () => {
+      const code = `λmain()→𝕌=()
+`;
+      const result = compileFromString(code, 'user_service.sigil');
+
+      assert.strictEqual(result.ok, false);
+      if (!result.ok) {
+        assert.strictEqual(result.error.code, 'SIGIL-CANON-FILENAME-INVALID-CHAR');
+      }
+    });
+
+    test('rejects special characters in filename', () => {
+      const code = `λmain()→𝕌=()
+`;
+      const result = compileFromString(code, 'user@service.sigil');
+
+      assert.strictEqual(result.ok, false);
+      if (!result.ok) {
+        assert.strictEqual(result.error.code, 'SIGIL-CANON-FILENAME-INVALID-CHAR');
+      }
+    });
+
+    test('rejects spaces in filename', () => {
+      const code = `λmain()→𝕌=()
+`;
+      const result = compileFromString(code, 'user service.sigil');
+
+      assert.strictEqual(result.ok, false);
+      if (!result.ok) {
+        assert.strictEqual(result.error.code, 'SIGIL-CANON-FILENAME-INVALID-CHAR');
+      }
+    });
+
+    test('rejects filename starting with hyphen', () => {
+      const code = `λmain()→𝕌=()
+`;
+      const result = compileFromString(code, '-hello.sigil');
+
+      assert.strictEqual(result.ok, false);
+      if (!result.ok) {
+        assert.strictEqual(result.error.code, 'SIGIL-CANON-FILENAME-FORMAT');
+      }
+    });
+
+    test('rejects filename ending with hyphen', () => {
+      const code = `λmain()→𝕌=()
+`;
+      const result = compileFromString(code, 'hello-.sigil');
+
+      assert.strictEqual(result.ok, false);
+      if (!result.ok) {
+        assert.strictEqual(result.error.code, 'SIGIL-CANON-FILENAME-FORMAT');
+      }
+    });
+
+    test('rejects consecutive hyphens in filename', () => {
+      const code = `λmain()→𝕌=()
+`;
+      const result = compileFromString(code, 'hello--world.sigil');
+
+      assert.strictEqual(result.ok, false);
+      if (!result.ok) {
+        assert.strictEqual(result.error.code, 'SIGIL-CANON-FILENAME-FORMAT');
+      }
+    });
+
+    test('accepts valid kebab-case filename', () => {
+      const code = `λmain()→𝕌=()
+`;
+      const result = compileFromString(code, 'user-service.sigil');
+
+      assert.strictEqual(result.ok, true);
+    });
+
+    test('accepts numbers in filename', () => {
+      const code = `λmain()→𝕌=()
+`;
+      const result = compileFromString(code, '01-introduction.sigil');
+
+      assert.strictEqual(result.ok, true);
+    });
+
+    test('accepts .lib.sigil extension', () => {
+      const code = `λfoo()→ℤ=1
+`;
+      const result = compileFromString(code, 'ffi-node-console.lib.sigil');
+
+      assert.strictEqual(result.ok, true);
+    });
+  });
 });

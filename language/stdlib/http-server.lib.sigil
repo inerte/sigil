@@ -1,4 +1,4 @@
-⟦ stdlib⋅http_server - Canonical HTTP Server for Sigil
+⟦ stdlib⋅http-server - Canonical HTTP Server for Sigil
 
 This is a thin FFI wrapper around Node.js's http module.
 Provides a type-safe, idiomatic Sigil interface for HTTP servers.
@@ -72,12 +72,12 @@ e url
 
 Usage:
   λhandle_request(req:Request)→!IO Response={
-    stdlib⋅http_server.log_request(req)
-    stdlib⋅http_server.ok("<h1>Hello World</h1>")
+    stdlib⋅http-server.log_request(req)
+    stdlib⋅http-server.ok("<h1>Hello World</h1>")
   }
 
   λmain()→!IO 𝕌={
-    stdlib⋅http_server.serve(3000,handle_request)
+    stdlib⋅http-server.serve(3000,handle_request)
   }
 ⟧
 

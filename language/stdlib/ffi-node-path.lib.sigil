@@ -4,7 +4,7 @@
   Import this module to get compile-time type checking for path operations.
 
   Example:
-    i stdlib⋅ffi_node_path
+    i stdlib⋅ffi-node-path
     λgetConfigPath()→𝕊=path.join(["config", "app.json"])
 ⟧
 

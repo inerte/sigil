@@ -4,7 +4,7 @@
   Import this module to get compile-time type checking for file system operations.
 
   Example:
-    i stdlib⋅ffi_node_fs
+    i stdlib⋅ffi-node-fs
     λreadConfig()→𝕊=fs⋅promises.readFile("config.json", "utf8")
 ⟧
 

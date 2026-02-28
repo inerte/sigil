@@ -4,7 +4,7 @@
   Import this module to get compile-time type checking for console methods.
 
   Example:
-    i stdlib⋅ffi_node_console
+    i stdlib⋅ffi-node-console
     λmain()→𝕌=console.log("typed!")
 ⟧
 

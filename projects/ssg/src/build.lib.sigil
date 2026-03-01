@@ -43,11 +43,11 @@ i stdlib⋅string
 }
 
 ⟦ Get output filename from slug or input filename ⟧
-λget_output_filename(meta:src⋅types.ArticleMeta,input_filename:𝕊)→𝕊≡meta.slug{
+λget_output_filename(input_filename:𝕊,meta:src⋅types.ArticleMeta)→𝕊≡meta.slug{
   slug when #slug>0 → slug++".html"|
   _ →
-    l len=#input_filename;
-    l basename=stdlib⋅string.substring(len-4,input_filename,0);
+    l len=(#input_filename:ℤ);
+    l basename=(stdlib⋅string.substring(len-4,input_filename,0):𝕊);
     basename++".html"
 }
 
@@ -76,7 +76,7 @@ i stdlib⋅string
     meta:meta,
     markdown:content,
     html:html,
-    filename:get_output_filename(meta,filename)
+    filename:get_output_filename(filename,meta)
   }
 
 ⟦ Write all articles helper ⟧

@@ -21,7 +21,7 @@ i stdlib⋅string
 ⟦ Main build function ⟧
 λbuild(input_dir:𝕊,output_dir:𝕊)→!IO 𝕌=
   l _=(ensure_dir(output_dir):𝕌);
-  l all_files=(λ()→[𝕊]=fs⋅promises.readdir(input_dir))();
+  l all_files=((λ()→[𝕊]=fs⋅promises.readdir(input_dir))():[𝕊]);
   l num_files=(#all_files:ℤ);
   l markdown_files=(filter_md_files_inner(all_files,0,[],num_files):[𝕊]);
   l num_articles=(#markdown_files:ℤ);

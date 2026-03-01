@@ -25,7 +25,7 @@ i stdlib⋅string
   l num_files=#all_files;
   l markdown_files=(filter_md_files_inner(all_files,0,[],num_files):[𝕊]);
   l num_articles=#markdown_files;
-  l articles=process_all_articles(input_dir,markdown_files,num_articles,0,[]);
+  l articles=(process_all_articles([],0,input_dir,markdown_files,num_articles):[src⋅types.Article]);
   l _=write_all_articles(output_dir,articles,num_articles,0);
   write_index(output_dir,articles)
 
@@ -56,12 +56,12 @@ i stdlib⋅string
   stdlib⋅string.ends_with(filename,".md")
 
 ⟦ Process all articles helper ⟧
-λprocess_all_articles(input_dir:𝕊,markdown_files:[𝕊],num_articles:ℤ,idx:ℤ,articles:[src⋅types.Article])→!IO [src⋅types.Article]≡idx≥num_articles{
+λprocess_all_articles(articles:[src⋅types.Article],idx:ℤ,input_dir:𝕊,markdown_files:[𝕊],num_articles:ℤ)→!IO [src⋅types.Article]≡idx≥num_articles{
   ⊤ → articles|
   ⊥ →
-    l filename=markdown_files[idx];
-    l article=process_article(input_dir,filename);
-    process_all_articles(input_dir,markdown_files,num_articles,idx+1,articles⧺[article])
+    l filename=(markdown_files[idx]:𝕊);
+    l article=(process_article(input_dir,filename):src⋅types.Article);
+    process_all_articles(articles⧺[article],idx+1,input_dir,markdown_files,num_articles)
 }
 
 ⟦ Process a single article file ⟧

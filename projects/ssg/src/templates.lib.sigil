@@ -1,6 +1,6 @@
 i src⋅types
 
-λarticle(meta:src⋅types.ArticleMeta,html:𝕊)→𝕊=
+λarticle(html:𝕊,meta:src⋅types.ArticleMeta)→𝕊=
   "<html><body>"++html++"</body></html>"
 
 λindex(articles:[src⋅types.Article])→𝕊=

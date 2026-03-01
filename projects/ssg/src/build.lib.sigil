@@ -89,7 +89,7 @@ i stdlib⋅string
 
 ⟦ Write article HTML file ⟧
 λwrite_article(article:src⋅types.Article,output_dir:𝕊)→!IO 𝕌=
-  l page_html=(src⋅templates.article(article.meta,article.html):𝕊);
+  l page_html=(src⋅templates.article(article.html,article.meta):𝕊);
   l output_path=(path.join(output_dir,article.filename):𝕊);
   fs⋅promises.writeFile(output_path,page_html,"utf8")
 

@@ -11,7 +11,7 @@ i stdlib⋅numeric
 λmain()→𝕌=()
 
 test "todo add prepends item" {
-  ≡src⋅todo-domain.addTodo([],1,"Task"){
+  ≡src⋅todo-domain.addTodo(1,"Task",[]){
     [todo]→todo.id=1∧todo.text="Task"∧todo.done=⊥|
     _→⊥
   }
@@ -29,25 +29,25 @@ test "todo completedCount counts completed" {
 }
 
 test "todo completedCount result can use numeric predicates" {
-  l count=src⋅todo-domain.completedCount([Todo{id:1,text:"A",done:⊤},Todo{id:2,text:"B",done:⊥},Todo{id:3,text:"C",done:⊤}]);
+  l count=(src⋅todo-domain.completedCount([Todo{id:1,text:"A",done:⊤},Todo{id:2,text:"B",done:⊥},Todo{id:3,text:"C",done:⊤}]):ℤ);
   stdlib⋅numeric.is_even(count)=⊤∧stdlib⋅numeric.in_range(count,0,3)=⊤
 }
 
 test "todo delete reduces length" {
-  lenTodos(src⋅todo-domain.deleteTodo([Todo{id:1,text:"A",done:⊥},Todo{id:2,text:"B",done:⊥}],1))=1
+  lenTodos(src⋅todo-domain.deleteTodo(1,[Todo{id:1,text:"A",done:⊥},Todo{id:2,text:"B",done:⊥}]))=1
 }
 
 test "todo delete removes target" {
-  ≡src⋅todo-domain.deleteTodo([Todo{id:1,text:"A",done:⊥},Todo{id:2,text:"B",done:⊥}],1){
+  ≡src⋅todo-domain.deleteTodo(1,[Todo{id:1,text:"A",done:⊥},Todo{id:2,text:"B",done:⊥}]){
     [todo]→todo.id=2∧todo.text="B"|
     _→⊥
   }
 }
 
 test "todo edit updates text" {
-  src⋅todo-domain.editTodo([Todo{id:1,text:"Old",done:⊥}],1,"New")[0].text="New"
+  src⋅todo-domain.editTodo("New",1,[Todo{id:1,text:"Old",done:⊥}])[0].text="New"
 }
 
 test "todo toggle flips done flag" {
-  src⋅todo-domain.toggleTodo([Todo{id:1,text:"Task",done:⊥}],1)[0].done=⊤
+  src⋅todo-domain.toggleTodo(1,[Todo{id:1,text:"Task",done:⊥}])[0].done=⊤
 }

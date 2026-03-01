@@ -1,3 +1,0 @@
-[build]
-# Put all build artifacts in root .local/ instead of compiler-rs/target/
-target-dir = "../../.local/rust-target"

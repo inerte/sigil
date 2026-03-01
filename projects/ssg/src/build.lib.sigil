@@ -27,7 +27,7 @@ i stdlib⋅string
   l num_articles=#markdown_files;
   l articles=(process_all_articles([],0,input_dir,markdown_files,num_articles):[src⋅types.Article]);
   l _=(write_all_articles(articles,0,num_articles,output_dir):𝕌);
-  write_index(output_dir,articles)
+  write_index(articles,output_dir)
 
 ⟦ Ensure directory exists ⟧
 λensure_dir(dir:𝕊)→!IO 𝕌=
@@ -94,7 +94,7 @@ i stdlib⋅string
   fs⋅promises.writeFile(output_path,page_html,"utf8")
 
 ⟦ Write index page ⟧
-λwrite_index(output_dir:𝕊,articles:[src⋅types.Article])→!IO 𝕌=
+λwrite_index(articles:[src⋅types.Article],output_dir:𝕊)→!IO 𝕌=
   l index_html=src⋅templates.index(articles);
   l output_path=path.join(output_dir,"index.html");
   fs⋅promises.writeFile(output_path,index_html,"utf8")

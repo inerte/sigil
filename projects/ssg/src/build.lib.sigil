@@ -89,12 +89,12 @@ i stdlib⋅string
 
 ⟦ Write article HTML file ⟧
 λwrite_article(article:src⋅types.Article,output_dir:𝕊)→!IO 𝕌=
-  l page_html=src⋅templates.article(article.meta,article.html);
-  l output_path=path.join(output_dir,article.filename);
+  l page_html=(src⋅templates.article(article.meta,article.html):𝕊);
+  l output_path=(path.join(output_dir,article.filename):𝕊);
   fs⋅promises.writeFile(output_path,page_html,"utf8")
 
 ⟦ Write index page ⟧
 λwrite_index(articles:[src⋅types.Article],output_dir:𝕊)→!IO 𝕌=
-  l index_html=src⋅templates.index(articles);
-  l output_path=path.join(output_dir,"index.html");
+  l index_html=(src⋅templates.index(articles):𝕊);
+  l output_path=(path.join(output_dir,"index.html"):𝕊);
   fs⋅promises.writeFile(output_path,index_html,"utf8")

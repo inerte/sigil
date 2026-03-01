@@ -116,6 +116,29 @@ impl TypeScriptGenerator {
 
     fn emit_mock_runtime_helpers(&mut self) {
         self.emit("const __sigil_mocks = new Map();");
+        self.emit("function __sigil_deep_equal(a, b) {");
+        self.emit("  if (a === b) return true;");
+        self.emit("  if (a == null || b == null) return false;");
+        self.emit("  if (typeof a !== typeof b) return false;");
+        self.emit("  if (Array.isArray(a) && Array.isArray(b)) {");
+        self.emit("    if (a.length !== b.length) return false;");
+        self.emit("    for (let i = 0; i < a.length; i++) {");
+        self.emit("      if (!__sigil_deep_equal(a[i], b[i])) return false;");
+        self.emit("    }");
+        self.emit("    return true;");
+        self.emit("  }");
+        self.emit("  if (typeof a === 'object' && typeof b === 'object') {");
+        self.emit("    const aKeys = Object.keys(a).sort();");
+        self.emit("    const bKeys = Object.keys(b).sort();");
+        self.emit("    if (aKeys.length !== bKeys.length) return false;");
+        self.emit("    for (let i = 0; i < aKeys.length; i++) {");
+        self.emit("      if (aKeys[i] !== bKeys[i]) return false;");
+        self.emit("      if (!__sigil_deep_equal(a[aKeys[i]], b[bKeys[i]])) return false;");
+        self.emit("    }");
+        self.emit("    return true;");
+        self.emit("  }");
+        self.emit("  return false;");
+        self.emit("}");
         self.emit("function __sigil_preview(value) {");
         self.emit("  try { return JSON.stringify(value); } catch { return String(value); }");
         self.emit("}");
@@ -143,8 +166,8 @@ impl TypeScriptGenerator {
         self.emit("  const expected = await rightFn();");
         self.emit("  let ok = false;");
         self.emit("  switch (op) {");
-        self.emit("    case '=': ok = actual === expected; break;");
-        self.emit("    case '≠': ok = actual !== expected; break;");
+        self.emit("    case '=': ok = __sigil_deep_equal(actual, expected); break;");
+        self.emit("    case '≠': ok = !__sigil_deep_equal(actual, expected); break;");
         self.emit("    case '<': ok = actual < expected; break;");
         self.emit("    case '>': ok = actual > expected; break;");
         self.emit("    case '≤': ok = actual <= expected; break;");
@@ -430,7 +453,7 @@ impl TypeScriptGenerator {
         let params: Vec<String> = lambda.params.iter().map(|p| p.name.clone()).collect();
         let params_str = params.join(", ");
         let body = self.generate_expression(&lambda.body)?;
-        Ok(format!("async ({}) => {}", params_str, body))
+        Ok(format!("(async ({}) => {})", params_str, body))
     }
 
     fn generate_application(&mut self, app: &ApplicationExpr) -> Result<String, CodegenError> {
@@ -465,7 +488,7 @@ impl TypeScriptGenerator {
             let args_str = args?.join(", ");
 
             // All function calls use await
-            Ok(format!("(await {}({}))", func, args_str))
+            Ok(format!("await {}({})", func, args_str))
         }
     }
 
@@ -531,10 +554,42 @@ impl TypeScriptGenerator {
     }
 
     fn generate_list(&mut self, list: &ListExpr) -> Result<String, CodegenError> {
-        let elements: Result<Vec<String>, CodegenError> = list.elements.iter()
-            .map(|elem| self.generate_expression(elem))
+        if list.elements.is_empty() {
+            return Ok("[]".to_string());
+        }
+
+        if list.elements.len() == 1 {
+            let elem = self.generate_expression(&list.elements[0])?;
+            // Single element - check if it needs to be wrapped
+            match &list.elements[0] {
+                Expr::Application(_) | Expr::Identifier(_) => {
+                    // Could be an array, could be a value - use concat to ensure proper handling
+                    return Ok(format!("[].concat({})", elem));
+                }
+                _ => {
+                    return Ok(format!("[{}]", elem));
+                }
+            }
+        }
+
+        // Multiple elements - use concat for all, wrapping literals in arrays
+        let parts: Result<Vec<String>, CodegenError> = list.elements.iter()
+            .map(|e| {
+                let code = self.generate_expression(e)?;
+                match e {
+                    Expr::Application(_) | Expr::Identifier(_) => {
+                        // Could be array or value, concat handles both
+                        Ok(code)
+                    }
+                    _ => {
+                        // Definitely a single value, wrap it
+                        Ok(format!("[{}]", code))
+                    }
+                }
+            })
             .collect();
-        Ok(format!("[{}]", elements?.join(", ")))
+
+        Ok(format!("[].concat({})", parts?.join(", ")))
     }
 
     fn generate_tuple(&mut self, tuple: &TupleExpr) -> Result<String, CodegenError> {
@@ -738,16 +793,22 @@ impl TypeScriptGenerator {
     fn generate_filter(&mut self, filter: &FilterExpr) -> Result<String, CodegenError> {
         let list = self.generate_expression(&filter.list)?;
         let predicate = self.generate_expression(&filter.predicate)?;
-        // Need async filter helper
-        Ok(format!("(await __sigil_filter({}, {}))", list, predicate))
+        // Inline filter expansion to match TypeScript compiler output
+        Ok(format!(
+            "(await Promise.all((await {}).map(async (x) => ({{ x, keep: await {}(x) }})))).filter(({{ keep }}) => keep).map(({{ x }}) => x)",
+            list, predicate
+        ))
     }
 
     fn generate_fold(&mut self, fold: &FoldExpr) -> Result<String, CodegenError> {
         let list = self.generate_expression(&fold.list)?;
         let func = self.generate_expression(&fold.func)?;
         let init = self.generate_expression(&fold.init)?;
-        // Need async reduce helper
-        Ok(format!("(await __sigil_fold({}, {}, {}))", list, func, init))
+        // Inline fold expansion to match TypeScript compiler output
+        Ok(format!(
+            "(await {}).reduce(async (accPromise, x) => await {}(await accPromise, x), await {})",
+            list, func, init
+        ))
     }
 
     fn generate_pipeline(&mut self, pipeline: &PipelineExpr) -> Result<String, CodegenError> {

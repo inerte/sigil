@@ -8,3 +8,4 @@ sigil-ast = { path = "../sigil-ast" }
 sigil-lexer = { path = "../sigil-lexer" }
 sigil-parser = { path = "../sigil-parser" }
 thiserror = "1.0"
+serde_json = "1.0"

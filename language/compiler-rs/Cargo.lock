@@ -320,6 +320,7 @@ dependencies = [
 name = "sigil-codegen"
 version = "0.1.0"
 dependencies = [
+ "serde_json",
  "sigil-ast",
  "sigil-lexer",
  "sigil-parser",

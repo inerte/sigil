@@ -442,8 +442,14 @@ impl TypeScriptGenerator {
         match &lit.value {
             LiteralValue::Int(n) => Ok(n.to_string()),
             LiteralValue::Float(f) => Ok(f.to_string()),
-            LiteralValue::String(s) => Ok(format!("\"{}\"", s.replace('\"', "\\\""))),
-            LiteralValue::Char(c) => Ok(format!("'{}'", c)),
+            LiteralValue::String(s) => {
+                // Use JSON encoding to properly escape all special characters including newlines
+                Ok(serde_json::to_string(s).unwrap())
+            }
+            LiteralValue::Char(c) => {
+                // Chars are also strings in JavaScript, use JSON encoding
+                Ok(serde_json::to_string(&c.to_string()).unwrap())
+            }
             LiteralValue::Bool(b) => Ok(b.to_string()),
             LiteralValue::Unit => Ok("null".to_string()),
         }
@@ -694,8 +700,14 @@ impl TypeScriptGenerator {
                 let value = match &lit.value {
                     PatternLiteralValue::Int(n) => n.to_string(),
                     PatternLiteralValue::Float(f) => f.to_string(),
-                    PatternLiteralValue::String(s) => format!("\"{}\"", s.replace('\"', "\\\"")),
-                    PatternLiteralValue::Char(c) => format!("'{}'", c),
+                    PatternLiteralValue::String(s) => {
+                        // Use JSON encoding to properly escape all special characters
+                        serde_json::to_string(s).unwrap()
+                    }
+                    PatternLiteralValue::Char(c) => {
+                        // Chars are also strings in JavaScript, use JSON encoding
+                        serde_json::to_string(&c.to_string()).unwrap()
+                    }
                     PatternLiteralValue::Bool(b) => b.to_string(),
                     PatternLiteralValue::Unit => "null".to_string(),
                 };

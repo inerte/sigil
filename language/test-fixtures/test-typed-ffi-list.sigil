@@ -3,7 +3,7 @@
 e fs⋅promises : { readdir : λ(𝕊) → [𝕊] }
 
 λcountFiles(dir:𝕊)→ℤ={
-  l files=fs⋅promises.readdir(dir);
+  l files=(fs⋅promises.readdir(dir):[𝕊]);
   #files  ⟦ Works because files is [𝕊], not Any ⟧
 }
 

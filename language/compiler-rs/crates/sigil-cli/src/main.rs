@@ -103,9 +103,7 @@ fn main() {
     };
 
     if let Err(e) = result {
-        // Only print error if not in JSON mode (commands handle JSON errors themselves)
-        // For now, we suppress stderr output since commands output JSON errors
-        // In human mode, errors would be printed by the command itself
+        eprintln!("Error: {}", e);
         process::exit(1);
     }
 }

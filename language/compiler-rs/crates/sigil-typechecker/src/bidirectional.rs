@@ -596,12 +596,16 @@ fn synthesize_let(
     let value_type = synthesize(env, &let_expr.value)?;
 
     // Check pattern and get bindings
-    // For now, only support simple identifier patterns
-    // TODO: Full pattern matching support
+    // For now, support identifier and wildcard patterns
+    // TODO: Full pattern matching support (tuples, records, etc.)
     let mut bindings = HashMap::new();
     match &let_expr.pattern {
         Pattern::Identifier(id_pattern) => {
             bindings.insert(id_pattern.name.clone(), value_type);
+        }
+        Pattern::Wildcard(_) => {
+            // Wildcard pattern: discard the value, no bindings
+            // This is valid and commonly used for effectful expressions
         }
         _ => {
             return Err(TypeError::new(
@@ -728,8 +732,11 @@ fn synthesize_field_access(
         return Ok(InferenceType::Any);
     }
 
+    // Normalize the type to resolve type aliases (e.g., EmailParts -> {local:𝕊,domain:𝕊})
+    let normalized_type = env.normalize_type(&obj_type);
+
     // Must be a record type
-    match obj_type {
+    match normalized_type {
         InferenceType::Record(ref record) => {
             if let Some(field_type) = record.fields.get(&field_access.field) {
                 Ok(field_type.clone())
@@ -737,7 +744,7 @@ fn synthesize_field_access(
                 Err(TypeError::new(
                     format!(
                         "Record type {} does not have field '{}'",
-                        format_type(&obj_type),
+                        format_type(&normalized_type),
                         field_access.field
                     ),
                     Some(field_access.location),
@@ -746,7 +753,8 @@ fn synthesize_field_access(
         }
         _ => Err(TypeError::new(
             format!(
-                "Field access requires record type, got {}",
+                "Field access requires record type, got {} (normalized from {})",
+                format_type(&normalized_type),
                 format_type(&obj_type)
             ),
             Some(field_access.location),
@@ -1335,16 +1343,20 @@ fn check(
         return Ok(());
     }
 
-    if !types_equal(&actual_type, expected_type) {
+    // Normalize both types to resolve type aliases before comparison
+    let normalized_actual = env.normalize_type(&actual_type);
+    let normalized_expected = env.normalize_type(expected_type);
+
+    if !types_equal(&normalized_actual, &normalized_expected) {
         return Err(TypeError::mismatch(
             format!(
                 "Type mismatch: expected {}, got {}",
-                format_type(expected_type),
-                format_type(&actual_type)
+                format_type(&normalized_expected),
+                format_type(&normalized_actual)
             ),
             None, // TODO: extract location from expression variant
-            expected_type.clone(),
-            actual_type,
+            normalized_expected,
+            normalized_actual,
         ));
     }
 
@@ -1410,9 +1422,6 @@ mod tests {
         let program = parse(tokens, "test.sigil").unwrap();
 
         let result = type_check(&program, source, TypeCheckOptions::default());
-        if result.is_err() {
-            eprintln!("Constructor test error: {:?}", result.as_ref().err());
-        }
         // Should succeed - Red is registered as a constructor
         assert!(result.is_ok());
     }

@@ -168,6 +168,94 @@ impl TypeEnvironment {
 
         env
     }
+
+    /// Normalize a type by resolving type aliases
+    ///
+    /// If the type is a Constructor that refers to a type alias, resolve it to the underlying type.
+    /// This enables structural compatibility for type aliases to record types.
+    pub fn normalize_type(&self, ty: &InferenceType) -> InferenceType {
+        match ty {
+            InferenceType::Constructor(ctor) => {
+                // Look up the constructor in the type registry
+                if let Some(type_info) = self.lookup_type(&ctor.name) {
+                    // Resolve type definition to its underlying structure
+                    match &type_info.definition {
+                        TypeDef::Alias(alias) => {
+                            // Convert the aliased AST type to InferenceType and normalize recursively
+                            use crate::types::ast_type_to_inference_type;
+                            let underlying = ast_type_to_inference_type(&alias.aliased_type);
+                            // Recursively normalize in case of nested aliases
+                            return self.normalize_type(&underlying);
+                        }
+                        TypeDef::Product(product) => {
+                            // Convert product type to record type for structural comparison
+                            let fields: std::collections::HashMap<String, InferenceType> = product
+                                .fields
+                                .iter()
+                                .map(|f| {
+                                    use crate::types::ast_type_to_inference_type;
+                                    (f.name.clone(), ast_type_to_inference_type(&f.field_type))
+                                })
+                                .collect();
+                            return InferenceType::Record(crate::types::TRecord {
+                                fields,
+                                name: Some(ctor.name.clone()),
+                            });
+                        }
+                        TypeDef::Sum(_) => {
+                            // Sum types cannot be normalized to records
+                        }
+                    }
+                }
+                // Not an alias, return as-is
+                ty.clone()
+            }
+            // For other types, recursively normalize nested types
+            InferenceType::List(list) => {
+                let normalized_elem = self.normalize_type(&list.element_type);
+                InferenceType::List(Box::new(crate::types::TList {
+                    element_type: normalized_elem,
+                }))
+            }
+            InferenceType::Tuple(tuple) => {
+                let normalized_types: Vec<InferenceType> = tuple
+                    .types
+                    .iter()
+                    .map(|t| self.normalize_type(t))
+                    .collect();
+                InferenceType::Tuple(crate::types::TTuple {
+                    types: normalized_types,
+                })
+            }
+            InferenceType::Function(func) => {
+                let normalized_params: Vec<InferenceType> = func
+                    .params
+                    .iter()
+                    .map(|p| self.normalize_type(p))
+                    .collect();
+                let normalized_return = self.normalize_type(&func.return_type);
+                InferenceType::Function(Box::new(crate::types::TFunction {
+                    params: normalized_params,
+                    effects: func.effects.clone(),
+                    return_type: normalized_return,
+                }))
+            }
+            InferenceType::Record(record) => {
+                // Normalize field types
+                let normalized_fields: std::collections::HashMap<String, InferenceType> = record
+                    .fields
+                    .iter()
+                    .map(|(name, ty)| (name.clone(), self.normalize_type(ty)))
+                    .collect();
+                InferenceType::Record(crate::types::TRecord {
+                    fields: normalized_fields,
+                    name: record.name.clone(),
+                })
+            }
+            // Other types don't need normalization
+            _ => ty.clone(),
+        }
+    }
 }
 
 impl Default for TypeEnvironment {

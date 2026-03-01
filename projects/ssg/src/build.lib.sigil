@@ -68,7 +68,7 @@ i stdlib⋅string
 λprocess_article(filename:𝕊,input_dir:𝕊)→!IO src⋅types.Article=
   l filepath=(path.join(input_dir,filename):𝕊);
   l markdown_content=(fs⋅promises.readFile(filepath,"utf8"):𝕊);
-  l parsed=(src⋅frontmatter.parse_frontmatter(markdown_content):{content:𝕊,meta:src⋅types.ArticleMeta});
+  l parsed=(src⋅frontmatter.parse_frontmatter(markdown_content):src⋅frontmatter.ParseResult);
   l meta=(parsed.meta:src⋅types.ArticleMeta);
   l content=(parsed.content:𝕊);
   l html=(stdlib⋅markdown.parse(content):𝕊);

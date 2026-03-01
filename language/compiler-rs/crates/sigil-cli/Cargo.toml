@@ -13,7 +13,7 @@ sigil-parser = { path = "../sigil-parser" }
 sigil-validator = { path = "../sigil-validator" }
 sigil-typechecker = { path = "../sigil-typechecker" }
 sigil-codegen = { path = "../sigil-codegen" }
-sigil-ast = { path = "../sigil-ast" }
+sigil-ast = { path = "../sigil-ast", features = ["serde"] }
 clap = { version = "4.4", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

@@ -7,11 +7,17 @@ use crate::{Expr, SourceLocation, Type};
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(tag = "type"))]
 pub enum Declaration {
+    #[cfg_attr(feature = "serde", serde(rename = "FunctionDecl"))]
     Function(FunctionDecl),
+    #[cfg_attr(feature = "serde", serde(rename = "TypeDecl"))]
     Type(TypeDecl),
+    #[cfg_attr(feature = "serde", serde(rename = "ImportDecl"))]
     Import(ImportDecl),
+    #[cfg_attr(feature = "serde", serde(rename = "ConstDecl"))]
     Const(ConstDecl),
+    #[cfg_attr(feature = "serde", serde(rename = "TestDecl"))]
     Test(TestDecl),
+    #[cfg_attr(feature = "serde", serde(rename = "ExternDecl"))]
     Extern(ExternDecl),
 }
 
@@ -20,9 +26,11 @@ pub enum Declaration {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FunctionDecl {
     pub name: String,
+    #[cfg_attr(feature = "serde", serde(rename = "isMockable"))]
     pub is_mockable: bool,
     pub params: Vec<Param>,
     pub effects: Vec<String>,     // Effect annotations: ['IO', 'Network', 'Async', 'Error', 'Mut']
+    #[cfg_attr(feature = "serde", serde(rename = "returnType"))]
     pub return_type: Option<Type>,
     pub body: Expr,
     pub location: SourceLocation,
@@ -33,7 +41,9 @@ pub struct FunctionDecl {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Param {
     pub name: String,
+    #[cfg_attr(feature = "serde", serde(rename = "typeAnnotation"))]
     pub type_annotation: Option<Type>,
+    #[cfg_attr(feature = "serde", serde(rename = "isMutable"))]
     pub is_mutable: bool,          // tracks if parameter is mutable
     pub location: SourceLocation,
 }
@@ -43,6 +53,7 @@ pub struct Param {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TypeDecl {
     pub name: String,
+    #[cfg_attr(feature = "serde", serde(rename = "typeParams"))]
     pub type_params: Vec<String>,
     pub definition: TypeDef,
     pub location: SourceLocation,
@@ -53,8 +64,11 @@ pub struct TypeDecl {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(tag = "type"))]
 pub enum TypeDef {
+    #[cfg_attr(feature = "serde", serde(rename = "SumType"))]
     Sum(SumType),
+    #[cfg_attr(feature = "serde", serde(rename = "ProductType"))]
     Product(ProductType),
+    #[cfg_attr(feature = "serde", serde(rename = "TypeAlias"))]
     Alias(TypeAlias),
 }
 
@@ -88,6 +102,7 @@ pub struct ProductType {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Field {
     pub name: String,
+    #[cfg_attr(feature = "serde", serde(rename = "fieldType"))]
     pub field_type: Type,
     pub location: SourceLocation,
 }
@@ -96,6 +111,7 @@ pub struct Field {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TypeAlias {
+    #[cfg_attr(feature = "serde", serde(rename = "aliasedType"))]
     pub aliased_type: Type,
     pub location: SourceLocation,
 }
@@ -104,6 +120,7 @@ pub struct TypeAlias {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ImportDecl {
+    #[cfg_attr(feature = "serde", serde(rename = "modulePath"))]
     pub module_path: Vec<String>,  // No selective imports - works like FFI (use as namespace.member)
     pub location: SourceLocation,
 }
@@ -113,6 +130,7 @@ pub struct ImportDecl {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ConstDecl {
     pub name: String,
+    #[cfg_attr(feature = "serde", serde(rename = "typeAnnotation"))]
     pub type_annotation: Option<Type>,
     pub value: Expr,
     pub location: SourceLocation,
@@ -132,7 +150,9 @@ pub struct TestDecl {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ExternDecl {
+    #[cfg_attr(feature = "serde", serde(rename = "modulePath"))]
     pub module_path: Vec<String>,     // ['fs', 'promises'] or ['axios'] (Sigil syntax: fs⋅promises)
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub members: Option<Vec<ExternMember>>, // Optional typed members for FFI type checking
     pub location: SourceLocation,
 }
@@ -142,6 +162,7 @@ pub struct ExternDecl {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ExternMember {
     pub name: String,
+    #[cfg_attr(feature = "serde", serde(rename = "memberType"))]
     pub member_type: Type,             // Function type or primitive type
     pub location: SourceLocation,
 }

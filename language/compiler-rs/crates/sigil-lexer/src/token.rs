@@ -260,6 +260,7 @@ impl std::fmt::Display for TokenType {
 
 /// Position in source code (1-indexed line and column, 0-indexed byte offset)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Position {
     pub line: usize,
     pub column: usize,
@@ -274,6 +275,7 @@ impl Position {
 
 /// Source location (start and end positions)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SourceLocation {
     pub start: Position,
     pub end: Position,

@@ -93,7 +93,7 @@ pub fn lex_command(file: &Path, human: bool) -> Result<(), CliError> {
             );
         }
     } else {
-        // JSON output
+        // JSON output - field ordering matches TypeScript exactly
         let output = serde_json::json!({
             "formatVersion": 1,
             "command": "sigilc lex",
@@ -105,6 +105,7 @@ pub fn lex_command(file: &Path, human: bool) -> Result<(), CliError> {
                     "tokens": tokens.len()
                 },
                 "tokens": tokens.iter().map(|t| {
+                    // Match TypeScript field order: type, lexeme, start, end, text
                     serde_json::json!({
                         "type": format!("{:?}", t.token_type),
                         "lexeme": &t.value,
@@ -112,7 +113,13 @@ pub fn lex_command(file: &Path, human: bool) -> Result<(), CliError> {
                             "line": t.location.start.line,
                             "column": t.location.start.column,
                             "offset": t.location.start.offset
-                        }
+                        },
+                        "end": {
+                            "line": t.location.end.line,
+                            "column": t.location.end.column,
+                            "offset": t.location.end.offset
+                        },
+                        "text": format!("{}({}) at {}:{}", format!("{:?}", t.token_type), &t.value, t.location.start.line, t.location.start.column)
                     })
                 }).collect::<Vec<_>>()
             }
@@ -131,6 +138,7 @@ pub fn parse_command(file: &Path, human: bool) -> Result<(), CliError> {
     // Tokenize
     let mut lexer = Lexer::new(&source);
     let tokens = lexer.tokenize().map_err(|e| CliError::Lexer(format!("{}", e)))?;
+    let token_count = tokens.len(); // Store token count for JSON output
 
     // Parse
     let mut parser = Parser::new(tokens, &filename);
@@ -145,7 +153,13 @@ pub fn parse_command(file: &Path, human: bool) -> Result<(), CliError> {
         println!("sigilc parse OK phase=parser");
         println!("{:#?}", ast);
     } else {
-        // JSON output
+        // JSON output - serialize AST as JSON (requires serde feature)
+        let ast_json = serde_json::to_value(&ast).unwrap_or_else(|e| {
+            // Fallback to debug representation if serialization fails
+            eprintln!("Warning: AST serialization failed: {}", e);
+            serde_json::json!(format!("{:#?}", ast))
+        });
+
         let output = serde_json::json!({
             "formatVersion": 1,
             "command": "sigilc parse",
@@ -154,9 +168,10 @@ pub fn parse_command(file: &Path, human: bool) -> Result<(), CliError> {
             "data": {
                 "file": filename,
                 "summary": {
+                    "tokens": token_count,
                     "declarations": ast.declarations.len()
                 },
-                "ast": format!("{:#?}", ast) // Simplified for now
+                "ast": ast_json
             }
         });
         println!("{}", serde_json::to_string(&output).unwrap());
@@ -203,6 +218,7 @@ pub fn compile_command(
     let mut compiled_modules = HashMap::new();
     let mut type_registries = HashMap::new();
     let mut output_files = Vec::new();
+    let mut module_outputs: HashMap<String, PathBuf> = HashMap::new(); // Track module ID -> output path
 
     // Compile modules in topological order
     for module_id in &graph.topo_order {
@@ -251,7 +267,8 @@ pub fn compile_command(
 
         // Write output file
         fs::write(&output_path, ts_code)?;
-        output_files.push(output_path);
+        output_files.push(output_path.clone());
+        module_outputs.insert(module_id.clone(), output_path);
 
         // Track for dependents
         compiled_modules.insert(module_id.clone(), inferred_types);
@@ -260,13 +277,38 @@ pub fn compile_command(
 
     // Find entry module output
     let entry_output = output_files.last().unwrap();
+    let entry_module = graph.modules.get(graph.topo_order.last().unwrap()).unwrap();
 
     if human {
         println!("sigilc compile OK phase=codegen");
         println!("Compiled {} module(s)", graph.modules.len());
         println!("Entry output: {}", entry_output.display());
     } else {
-        // JSON output
+        // JSON output - build allModules array matching TypeScript format
+        let all_modules: Vec<serde_json::Value> = graph.topo_order
+            .iter()
+            .map(|module_id| {
+                let module = &graph.modules[module_id];
+                let output_file = module_outputs.get(module_id)
+                    .map(|p| p.to_string_lossy().to_string())
+                    .unwrap_or_default();
+
+                serde_json::json!({
+                    "moduleId": module_id,
+                    "sourceFile": module.file_path.to_string_lossy(),
+                    "outputFile": output_file
+                })
+            })
+            .collect();
+
+        // Extract project info from entry module (if present)
+        let project_json = entry_module.project.as_ref().map(|proj| {
+            serde_json::json!({
+                "root": proj.root.to_string_lossy(),
+                "layout": serde_json::to_value(&proj.layout).unwrap_or(serde_json::json!({}))
+            })
+        });
+
         let output_json = serde_json::json!({
             "formatVersion": 1,
             "command": "sigilc compile",
@@ -276,8 +318,9 @@ pub fn compile_command(
                 "input": file.to_string_lossy(),
                 "outputs": {
                     "rootTs": entry_output.to_string_lossy(),
-                    "modules": graph.modules.len()
+                    "allModules": all_modules
                 },
+                "project": project_json,
                 "typecheck": {
                     "ok": true,
                     "inferred": if show_types { vec![] as Vec<serde_json::Value> } else { vec![] }
@@ -443,8 +486,7 @@ if (result !== undefined) {{
                 "compile": {
                     "input": file.to_string_lossy(),
                     "output": entry_output_path.to_string_lossy(),
-                    "runnerFile": runner_path.to_string_lossy(),
-                    "modules": graph.modules.len()
+                    "runnerFile": runner_path.to_string_lossy()
                 },
                 "runtime": {
                     "engine": "node+tsx",

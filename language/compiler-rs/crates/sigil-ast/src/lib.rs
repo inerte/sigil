@@ -29,12 +29,24 @@ pub use patterns::*;
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Program {
+    #[cfg_attr(feature = "serde", serde(rename = "type"))]
+    #[cfg_attr(feature = "serde", serde(default = "program_type_default"))]
+    #[cfg_attr(feature = "serde", serde(skip_deserializing))]
+    r#type: String,
     pub declarations: Vec<Declaration>,
     pub location: SourceLocation,
 }
 
+fn program_type_default() -> String {
+    "Program".to_string()
+}
+
 impl Program {
     pub fn new(declarations: Vec<Declaration>, location: SourceLocation) -> Self {
-        Self { declarations, location }
+        Self {
+            r#type: "Program".to_string(),
+            declarations,
+            location
+        }
     }
 }

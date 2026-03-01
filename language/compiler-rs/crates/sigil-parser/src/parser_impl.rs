@@ -963,6 +963,55 @@ impl Parser {
         // Due to complexity, I'll implement a simplified postfix that handles
         // field access, index, and application
         loop {
+            // Typed record construction: TypeName{field:value, ...}
+            // Only for UPPERCASE identifiers (type names)
+            if self.check(TokenType::LBRACE) {
+                if let Expr::Identifier(id_expr) = &expr {
+                    let first_char = id_expr.name.chars().next().unwrap_or(' ');
+                    if first_char.is_uppercase() {
+                        let start = id_expr.location.start;
+                        self.advance(); // consume {
+
+                        let mut fields = Vec::new();
+
+                        if !self.check(TokenType::RBRACE) {
+                            loop {
+                                let field_start = self.peek().location.start;
+                                // Field names can be identifiers OR strings (for map literals)
+                                let field_name = if self.check(TokenType::STRING) {
+                                    self.advance().value.clone()
+                                } else {
+                                    self.consume(TokenType::IDENTIFIER, "Expected field name")?.value.clone()
+                                };
+                                self.consume(TokenType::COLON, "Expected ':' after field name")?;
+                                let field_value = self.expression()?;
+                                let field_end = self.previous().location.end;
+
+                                fields.push(RecordField {
+                                    name: field_name,
+                                    value: field_value,
+                                    location: SourceLocation::new(field_start, field_end),
+                                });
+
+                                if !self.match_token(TokenType::COMMA) {
+                                    break;
+                                }
+                            }
+                        }
+
+                        let rbrace = self.consume(TokenType::RBRACE, "Expected '}' after record fields")?;
+                        let end = rbrace.location.end;
+
+                        // Treat as RecordExpr (type checker will verify it matches the type)
+                        expr = Expr::Record(RecordExpr {
+                            fields,
+                            location: SourceLocation::new(start, end),
+                        });
+                        continue;
+                    }
+                }
+            }
+
             // Function application: f(args...)
             if self.check(TokenType::LPAREN) {
                 self.advance();
@@ -1144,6 +1193,7 @@ impl Parser {
         }
 
         if self.match_token(TokenType::LPAREN) {
+            let lparen_start = self.previous().location.start;  // Save LPAREN position
             // Could be tuple or grouped expression
             if self.check(TokenType::RPAREN) {
                 // Empty tuple? Or unit? In Sigil, () is unit literal
@@ -1152,7 +1202,7 @@ impl Parser {
                 return Ok(Expr::Literal(LiteralExpr {
                     value: LiteralValue::Unit,
                     literal_type: LiteralType::Unit,
-                    location: SourceLocation::new(self.previous().location.start, end),
+                    location: SourceLocation::new(lparen_start, end),  // Use saved LPAREN start
                 }));
             }
 
@@ -1327,14 +1377,14 @@ impl Parser {
             }));
         }
 
-        // Try to parse as record field (id:expr)
-        if self.check(TokenType::IDENTIFIER) {
+        // Try to parse as record/map field (id:expr or "key":expr)
+        if self.check(TokenType::IDENTIFIER) || self.check(TokenType::STRING) {
             let checkpoint = self.current;
             let name_token = self.advance();
             let name = name_token.value.clone();
 
             if self.match_token(TokenType::COLON) {
-                // It's a record literal
+                // It's a record or map literal
                 let value = self.expression()?;
                 let mut fields = vec![RecordField {
                     name,
@@ -1344,7 +1394,12 @@ impl Parser {
 
                 while self.match_token(TokenType::COMMA) {
                     let field_start = self.peek();
-                    let field_name = self.consume(TokenType::IDENTIFIER, "Expected field name")?.value.clone();
+                    // Field names can be identifiers OR strings (for map literals)
+                    let field_name = if self.check(TokenType::STRING) {
+                        self.advance().value.clone()
+                    } else {
+                        self.consume(TokenType::IDENTIFIER, "Expected field name")?.value.clone()
+                    };
                     self.consume(TokenType::COLON, "Expected \":\"")?;
                     let field_value = self.expression()?;
                     fields.push(RecordField {

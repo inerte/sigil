@@ -463,6 +463,13 @@ impl TypeScriptGenerator {
     }
 
     fn generate_application(&mut self, app: &ApplicationExpr) -> Result<String, CodegenError> {
+        // Check for stdlib intrinsics first
+        if let Expr::MemberAccess(member_access) = &app.func {
+            if let Some(intrinsic) = self.try_generate_intrinsic(member_access, &app.args)? {
+                return Ok(intrinsic);
+            }
+        }
+
         // Check if this is a call to an imported function (MemberAccess)
         // If so, wrap with __sigil_call for mock support
         if let Expr::MemberAccess(member_access) = &app.func {
@@ -496,6 +503,73 @@ impl TypeScriptGenerator {
             // All function calls use await
             Ok(format!("await {}({})", func, args_str))
         }
+    }
+
+    fn try_generate_intrinsic(&mut self, func: &MemberAccessExpr, args: &[Expr]) -> Result<Option<String>, CodegenError> {
+        let module = func.namespace.join("/");
+        let member = &func.member;
+
+        // String operations intrinsics (matching TypeScript compiler)
+        if module == "stdlib/string" {
+            let generated_args: Result<Vec<String>, CodegenError> = args.iter()
+                .map(|arg| self.generate_expression(arg))
+                .collect();
+            let generated_args = generated_args?;
+
+            match member.as_str() {
+                "char_at" if generated_args.len() == 2 => {
+                    return Ok(Some(format!("(await {}).charAt(await {})", generated_args[0], generated_args[1])));
+                }
+                "substring" if generated_args.len() == 3 => {
+                    return Ok(Some(format!("(await {}).substring(await {}, await {})", generated_args[0], generated_args[1], generated_args[2])));
+                }
+                "to_upper" if generated_args.len() == 1 => {
+                    return Ok(Some(format!("(await {}).toUpperCase()", generated_args[0])));
+                }
+                "to_lower" if generated_args.len() == 1 => {
+                    return Ok(Some(format!("(await {}).toLowerCase()", generated_args[0])));
+                }
+                "trim" if generated_args.len() == 1 => {
+                    return Ok(Some(format!("(await {}).trim()", generated_args[0])));
+                }
+                "index_of" if generated_args.len() == 2 => {
+                    return Ok(Some(format!("(await {}).indexOf(await {})", generated_args[0], generated_args[1])));
+                }
+                "split" if generated_args.len() == 2 => {
+                    return Ok(Some(format!("(await {}).split(await {})", generated_args[0], generated_args[1])));
+                }
+                "replace_all" if generated_args.len() == 3 => {
+                    return Ok(Some(format!("(await {}).replaceAll(await {}, await {})", generated_args[0], generated_args[1], generated_args[2])));
+                }
+                "int_to_string" if generated_args.len() == 1 => {
+                    return Ok(Some(format!("String(await {})", generated_args[0])));
+                }
+                "join" if generated_args.len() == 2 => {
+                    return Ok(Some(format!("(await {}).join(await {})", generated_args[0], generated_args[1])));
+                }
+                "take" if generated_args.len() == 2 => {
+                    return Ok(Some(format!("(await {}).substring(0, await {})", generated_args[0], generated_args[1])));
+                }
+                "drop" if generated_args.len() == 2 => {
+                    return Ok(Some(format!("(await {}).substring(await {})", generated_args[0], generated_args[1])));
+                }
+                "starts_with" if generated_args.len() == 2 => {
+                    return Ok(Some(format!("(await {}).startsWith(await {})", generated_args[0], generated_args[1])));
+                }
+                "ends_with" if generated_args.len() == 2 => {
+                    return Ok(Some(format!("(await {}).endsWith(await {})", generated_args[0], generated_args[1])));
+                }
+                "is_digit" if generated_args.len() == 1 => {
+                    return Ok(Some(format!("/^[0-9]$/.test(await {})", generated_args[0])));
+                }
+                "is_whitespace" if generated_args.len() == 1 => {
+                    return Ok(Some(format!("(await {}).trim().length === 0", generated_args[0])));
+                }
+                _ => {}
+            }
+        }
+
+        Ok(None)
     }
 
     fn generate_binary(&mut self, bin: &BinaryExpr) -> Result<String, CodegenError> {
@@ -609,7 +683,10 @@ impl TypeScriptGenerator {
         let fields: Result<Vec<String>, CodegenError> = record.fields.iter()
             .map(|field| {
                 let value = self.generate_expression(&field.value)?;
-                Ok(format!("{}: {}", field.name, value))
+                // Always quote field names using JSON encoding (handles special chars like Content-Type)
+                let quoted_name = serde_json::to_string(&field.name)
+                    .map_err(|e| CodegenError::General(format!("Failed to JSON-encode field name: {}", e)))?;
+                Ok(format!("{}: {}", quoted_name, value))
             })
             .collect();
         Ok(format!("{{ {} }}", fields?.join(", ")))

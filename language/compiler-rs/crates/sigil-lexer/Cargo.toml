@@ -10,3 +10,8 @@ license = "MIT"
 logos = { workspace = true }
 thiserror = { workspace = true }
 sigil-diagnostics = { path = "../sigil-diagnostics" }
+serde = { workspace = true, optional = true }
+
+[features]
+default = []
+serde = ["dep:serde"]

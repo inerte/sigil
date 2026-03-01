@@ -1,20 +1,26 @@
 //! Type syntax AST nodes
 use crate::SourceLocation;
 
-
-
 /// Type expressions in Sigil
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[cfg_attr(feature = "serde", serde(tag = "type"))]
 pub enum Type {
+    #[cfg_attr(feature = "serde", serde(rename = "PrimitiveType"))]
     Primitive(PrimitiveType),
+    #[cfg_attr(feature = "serde", serde(rename = "ListType"))]
     List(Box<ListType>),
+    #[cfg_attr(feature = "serde", serde(rename = "MapType"))]
     Map(Box<MapType>),
+    #[cfg_attr(feature = "serde", serde(rename = "FunctionType"))]
     Function(Box<FunctionType>),
+    #[cfg_attr(feature = "serde", serde(rename = "TypeConstructor"))]
     Constructor(TypeConstructor),
+    #[cfg_attr(feature = "serde", serde(rename = "TypeVariable"))]
     Variable(TypeVariable),
+    #[cfg_attr(feature = "serde", serde(rename = "TupleType"))]
     Tuple(TupleType),
+    #[cfg_attr(feature = "serde", serde(rename = "QualifiedType"))]
     Qualified(QualifiedType),
 }
 
@@ -28,6 +34,7 @@ pub struct PrimitiveType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "PascalCase"))]
 pub enum PrimitiveName {
     Int,
     Float,
@@ -54,6 +61,7 @@ impl std::fmt::Display for PrimitiveName {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ListType {
+    #[cfg_attr(feature = "serde", serde(rename = "elementType"))]
     pub element_type: Type,
     pub location: SourceLocation,
 }
@@ -62,7 +70,9 @@ pub struct ListType {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MapType {
+    #[cfg_attr(feature = "serde", serde(rename = "keyType"))]
     pub key_type: Type,
+    #[cfg_attr(feature = "serde", serde(rename = "valueType"))]
     pub value_type: Type,
     pub location: SourceLocation,
 }
@@ -71,8 +81,10 @@ pub struct MapType {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FunctionType {
+    #[cfg_attr(feature = "serde", serde(rename = "paramTypes"))]
     pub param_types: Vec<Type>,
     pub effects: Vec<String>,  // Effect annotations: ['IO', 'Network', 'Async', 'Error', 'Mut']
+    #[cfg_attr(feature = "serde", serde(rename = "returnType"))]
     pub return_type: Type,
     pub location: SourceLocation,
 }
@@ -82,6 +94,7 @@ pub struct FunctionType {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct TypeConstructor {
     pub name: String,
+    #[cfg_attr(feature = "serde", serde(rename = "typeArgs"))]
     pub type_args: Vec<Type>,
     pub location: SourceLocation,
 }
@@ -106,8 +119,11 @@ pub struct TupleType {
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct QualifiedType {
+    #[cfg_attr(feature = "serde", serde(rename = "modulePath"))]
     pub module_path: Vec<String>,  // ['src', 'types'] from "src⋅types"
+    #[cfg_attr(feature = "serde", serde(rename = "typeName"))]
     pub type_name: String,          // 'ArticleMeta' from "src⋅types.ArticleMeta"
+    #[cfg_attr(feature = "serde", serde(rename = "typeArgs"))]
     pub type_args: Vec<Type>,       // [T, E] for generic types like "Result[T, E]"
     pub location: SourceLocation,
 }

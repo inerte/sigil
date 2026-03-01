@@ -7,10 +7,10 @@ description = "Abstract Syntax Tree definitions for the Sigil programming langua
 license = "MIT"
 
 [dependencies]
-sigil-lexer = { path = "../sigil-lexer" }
+sigil-lexer = { path = "../sigil-lexer", features = [] }
 serde = { workspace = true, optional = true }
 serde_json = { workspace = true, optional = true }
 
 [features]
 default = []
-serde = ["dep:serde", "dep:serde_json"]
+serde = ["dep:serde", "dep:serde_json", "sigil-lexer/serde"]

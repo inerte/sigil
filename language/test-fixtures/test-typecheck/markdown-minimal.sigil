@@ -6,7 +6,7 @@ t ParseState={in_code_block:𝔹}
 
 λempty_blocks()→[Block]=[]
 
-λflush_code_block(state:ParseState)→[Block]≡state.in_code_block{
+λflush_code_block(state:ParseState)→[Block] match state.in_code_block{
   true → [Paragraph("test")]|
   false → empty_blocks()
 }

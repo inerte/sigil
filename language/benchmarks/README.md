@@ -131,14 +131,14 @@ The inserted space is part of the real replacement cost and must be measured.
 
 **Hypothesis:** Sigil should have **20-40% fewer tokens** than TypeScript/Python due to:
 
-1. **Dense Unicode operators** - `→` vs `function`, `≡` vs `switch/match`
+1. **Dense Unicode operators** - `→` vs `function`, `match` vs `switch/match`
 2. **Canonical forms** - ONE way to write each construct
 3. **No syntactic noise** - Minimal keywords/boilerplate
 4. **Type annotations required** - More type info per token
 
 **Example (factorial):**
 ```
-Sigil:       λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
+Sigil:       λfactorial(n:ℤ)→ℤ match n{0→1|1→1|n→n*factorial(n-1)}
 TypeScript: function factorial(n: number): number {
               if (n === 0 || n === 1) return 1;
               return n * factorial(n - 1);

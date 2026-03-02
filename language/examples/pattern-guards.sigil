@@ -33,7 +33,7 @@ Without guards, you'd need nested match expressions.
 With guards, you can express ranges cleanly.
 ⟧
 
-λclassifyNumber(n:ℤ)→𝕊≡n{
+λclassifyNumber(n:ℤ)→𝕊 match n{
   x when x>1000 → "huge" |
   x when x>100 → "large" |
   x when x>10 → "medium" |
@@ -48,7 +48,7 @@ Guards can use any boolean expression, including
 conjunction (∧), disjunction (∨), and comparisons.
 ⟧
 
-λclassifyPoint(p:Point)→𝕊≡p.x{
+λclassifyPoint(p:Point)→𝕊 match p.x{
   x when x=0∧p.y=0 → "origin" |
   x when x=0 → "on y-axis" |
   _ when p.y=0 → "on x-axis" |
@@ -66,7 +66,7 @@ Patterns without guards work exactly as before.
 Guards are purely additive.
 ⟧
 
-λcolorToHex(color:Color)→𝕊≡color{
+λcolorToHex(color:Color)→𝕊 match color{
   Red → "#FF0000" |
   Green → "#00FF00" |
   Blue → "#0000FF"
@@ -78,7 +78,7 @@ Combine list patterns with guards for powerful
 conditional list processing.
 ⟧
 
-λfindFirstPositive(list:[ℤ])→𝕊≡list{
+λfindFirstPositive(list:[ℤ])→𝕊 match list{
   [] → "empty list" |
   [x,.rest] when x>0 → "first positive: "++stdlib⋅string.int_to_string(x) |
   [_,.xs] → findFirstPositive(xs)
@@ -125,7 +125,7 @@ When a guard fails, matching continues to the next arm.
 This enables priority-based matching.
 ⟧
 
-λprioritizeTask(priority:ℤ,urgent:𝔹)→𝕊≡priority{
+λprioritizeTask(priority:ℤ,urgent:𝔹)→𝕊 match priority{
   p when urgent → "URGENT (priority "++stdlib⋅string.int_to_string(p)++")" |
   p when p>7 → "High priority" |
   p when p>3 → "Medium priority" |
@@ -138,7 +138,7 @@ Match on structure, then check additional conditions
 on the unpacked values.
 ⟧
 
-λprocessResult(r:Result)→𝕊≡r{
+λprocessResult(r:Result)→𝕊 match r{
   Ok(n) when n>100 → "Big success: "++stdlib⋅string.int_to_string(n) |
   Ok(n) when n>0 → "Success: "++stdlib⋅string.int_to_string(n) |
   Ok(n) → "Success with zero or negative" |
@@ -152,7 +152,7 @@ Pattern guards shine in state machine implementations.
 Match on state structure, guard on input conditions.
 ⟧
 
-λstateTransition(action:Action,state:State)→State≡action{
+λstateTransition(action:Action,state:State)→State match action{
   Increment when state.count<100 → {mode:state.mode,count:state.count+1} |
   Increment → {mode:"maxed",count:100} |
   Decrement when state.count>0 → {mode:state.mode,count:state.count-1} |
@@ -166,7 +166,7 @@ Guards are perfect for validation logic where you match
 on structure but need to check constraints.
 ⟧
 
-λvalidateUser(u:User)→𝕊≡u.age{
+λvalidateUser(u:User)→𝕊 match u.age{
   age when age<0 → "Invalid: negative age" |
   age when age>150 → "Invalid: age too high" |
   _ when #u.name=0 → "Invalid: empty name" |
@@ -175,7 +175,7 @@ on structure but need to check constraints.
 
 ⟦ Design Principles
 
-1. ONE CANONICAL FORM: Guards extend ≡, they don't replace it
+1. ONE CANONICAL FORM: Guards extend match , they don't replace it
 2. TYPE SAFE: Guards must be boolean (checked at compile time)
 3. EXPLICIT: The `when` keyword makes intent clear
 4. PREDICTABLE: Evaluation order is top-to-bottom

@@ -3,7 +3,7 @@ t Todo={id:ℤ,text:𝕊,done:𝔹}
 i src⋅todo-domain
 i stdlib⋅numeric
 
-λlenTodos(todos:[Todo])→ℤ≡todos{
+λlenTodos(todos:[Todo])→ℤ match todos{
   []→0|
   [_,.rest]→1+lenTodos(rest)
 }
@@ -11,14 +11,14 @@ i stdlib⋅numeric
 λmain()→𝕌=()
 
 test "todo add prepends item" {
-  ≡src⋅todo-domain.addTodo(1,"Task",[]){
+  match src⋅todo-domain.addTodo(1,"Task",[]){
     [todo]→todo.id=1∧todo.text="Task"∧todo.done=false|
     _→false
   }
 }
 
 test "todo clearCompleted keeps active only" {
-  ≡src⋅todo-domain.clearCompleted([Todo{id:1,text:"A",done:true},Todo{id:2,text:"B",done:false}]){
+  match src⋅todo-domain.clearCompleted([Todo{id:1,text:"A",done:true},Todo{id:2,text:"B",done:false}]){
     [todo]→todo.id=2∧todo.done=false|
     _→false
   }
@@ -38,7 +38,7 @@ test "todo delete reduces length" {
 }
 
 test "todo delete removes target" {
-  ≡src⋅todo-domain.deleteTodo(1,[Todo{id:1,text:"A",done:false},Todo{id:2,text:"B",done:false}]){
+  match src⋅todo-domain.deleteTodo(1,[Todo{id:1,text:"A",done:false},Todo{id:2,text:"B",done:false}]){
     [todo]→todo.id=2∧todo.text="B"|
     _→false
   }

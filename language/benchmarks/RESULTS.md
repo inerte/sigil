@@ -34,7 +34,7 @@ Sigil demonstrates **11.2% average token reduction** compared to TypeScript acro
 - factorial: **+15.6%** (45 vs 52 tokens)
 - gcd: **+11.6%** (43 vs 48 tokens)
 
-Sigil's `≡n{0→1|n→...}` vs TypeScript's `if (n === 0) return 1;` saves significant tokens.
+Sigil's `match n{0→1|n→...}` vs TypeScript's `if (n === 0) return 1;` saves significant tokens.
 
 ### 2. Functional Operations Are Competitive
 
@@ -67,7 +67,7 @@ Characters don't directly impact LLM training, but they show Sigil's syntactic d
 ### factorial (Recursive)
 
 ```
-Sigil:       λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
+Sigil:       λfactorial(n:ℤ)→ℤ match n{0→1|1→1|n→n*factorial(n-1)}
 TypeScript: function factorial(n: number): number {
               if (n === 0 || n === 1) return 1;
               return n * factorial(n - 1);
@@ -83,12 +83,12 @@ TypeScript: function factorial(n: number): number {
 **Why Sigil wins:**
 - `λ` vs `function` (1 char vs 8)
 - `→` vs `: ... { }` (1 char vs 5+)
-- `≡n{0→1|n→...}` vs `if (n === 0) return 1;` (compact pattern matching)
+- `match n{0→1|n→...}` vs `if (n === 0) return 1;` (compact pattern matching)
 
 ### fibonacci (Recursive)
 
 ```
-Sigil:       λfib(n:ℤ)→ℤ≡n{0→0|1→1|n→fib(n-1)+fib(n-2)}
+Sigil:       λfib(n:ℤ)→ℤ match n{0→0|1→1|n→fib(n-1)+fib(n-2)}
 TypeScript: function fib(n: number): number {
               if (n === 0) return 0;
               if (n === 1) return 1;
@@ -177,7 +177,7 @@ We use **tiktoken** with GPT-4 encoding (`cl100k_base`) because:
 1. Industry standard for LLM token counting
 2. Same tokenizer used for GPT-3.5/GPT-4 training
 3. Reflects real-world LLM training costs
-4. Handles Unicode correctly (Sigil's `λ→≡ℤ` symbols)
+4. Handles Unicode correctly (Sigil's `λ→match ℤ` symbols)
 
 ### Language Implementations
 
@@ -200,7 +200,7 @@ All implementations use:
 
 1. **11.2% average token reduction** vs TypeScript
 2. **Recursion excels** - Pattern matching is highly compact
-3. **Unicode operators work** - `→≡↦⊳⊕` are efficient in tiktoken
+3. **Unicode operators work** - `→match ↦⊳⊕` are efficient in tiktoken
 4. **Character efficiency** - 35.5% fewer characters (readability for humans)
 
 ### Trade-offs

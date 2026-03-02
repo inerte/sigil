@@ -329,7 +329,7 @@ impl std::fmt::Display for UnaryOperator {
     }
 }
 
-/// Match expression: value ≡ Some x → x | None → 0
+/// Match expression: match value{Some(x)→x|None→0}
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MatchExpr {

@@ -26,7 +26,7 @@ Sigil is optimized for:
 
 ### What's Written (Dense, Canonical Format)
 ```sigil
-λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
+λfibonacci(n:ℤ)→ℤ match n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 ```
 
 ### How Humans Understand It
@@ -145,7 +145,7 @@ Developers interact through **Claude Code**:
 Unicode symbols for ultimate density:
 - `λ` for function (1 char vs 2-8)
 - `→` for returns/maps-to (1 char vs 2)
-- `≡` for pattern match (1 char vs 5+)
+- `match` for pattern match (common keyword with strong model priors)
 - `ℤ` for integers, `ℝ` for reals, `𝔹` for bool, `𝕊` for string
 - `↦` for map (1 char vs 4)
 - `⊳` for filter (1 char vs 7)
@@ -182,12 +182,12 @@ Unicode symbols for ultimate density:
 
 ### Pattern Matching
 ```sigil
-λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
+λfactorial(n:ℤ)→ℤ match n{0→1|1→1|n→n*factorial(n-1)}
 ```
 
 ### HTTP Handler Example
 ```sigil
-λhandle_request(req:Request)→Response!Error≡req.path{"/users"→get_users(req)|"/health"→Ok(Response{status:200,body:"OK"})|_→Err(Error{code:404,msg:"Not found"})}
+λhandle_request(req:Request)→Response!Error match req.path{"/users"→get_users(req)|"/health"→Ok(Response{status:200,body:"OK"})|_→Err(Error{code:404,msg:"Not found"})}
 ```
 
 ### Data Types

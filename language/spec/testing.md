@@ -51,7 +51,7 @@ TestDecl = "test" , StringLiteral , "{" , Expr , "}" ;
 
 ```sigil
 // fibonacci.sigil
-λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
+λfibonacci(n:ℤ)→ℤ match n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 
 // tests/fibonacci.test.sigil
 test "fibonacci base cases"{
@@ -432,13 +432,13 @@ AI Explanation:
   This suggests the second base case (n=1→1) is either missing or incorrect.
 
   Looking at your code:
-    λfibonacci(n:ℤ)→ℤ≡n{0→0|n→fibonacci(n-1)+fibonacci(n-2)}
+    λfibonacci(n:ℤ)→ℤ match n{0→0|n→fibonacci(n-1)+fibonacci(n-2)}
 
   The problem: You only have one base case (0→0). When n=1, it falls through
   to the recursive case, which calls fibonacci(0) + fibonacci(-1).
 
   Suggested fix:
-    λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
+    λfibonacci(n:ℤ)→ℤ match n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
                                 ^^^^ Add this base case
 ```
 
@@ -546,7 +546,7 @@ Overall: 100% coverage
 
 ```
 src/fibonacci.sigil:
-  1: λfibonacci(n:ℤ)→ℤ≡n{        ✓ Executed
+  1: λfibonacci(n:ℤ)→ℤ match n{        ✓ Executed
   2:   0→0|                      ✓ Executed (2 times)
   3:   1→1|                      ✓ Executed (2 times)
   4:   n→fibonacci(n-1)+         ✓ Executed (15 times)

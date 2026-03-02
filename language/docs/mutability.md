@@ -34,7 +34,7 @@ Cannot create multiple references to mutable values:
 
 ```sigil
 ⟦ ERROR: Cannot alias mutable ⟧
-λbad(x:mut [ℤ])→𝕌≡{
+λbad(x:mut [ℤ])→𝕌 match {
   let y=x    ⟦ ERROR: Can't create alias ⟧
 }
 
@@ -67,7 +67,7 @@ e Array
 λsortArray(arr:mut [ℤ])→𝕌=Array.sort(arr)
 
 ⟦ Multiple immutable uses (OK) ⟧
-λprocess(data:[ℤ])→ℤ≡{
+λprocess(data:[ℤ])→ℤ match {
   let sum=data⊕λ(a,x)→a+x⊕0
   let len=data⊕λ(a,_)→a+1⊕0
   sum/len
@@ -78,13 +78,13 @@ e Array
 
 ```sigil
 ⟦ Error: Aliasing mutable ⟧
-λbad1(x:mut [ℤ])→𝕌≡{
+λbad1(x:mut [ℤ])→𝕌 match {
   let y=x    ⟦ Error: Cannot create alias of mutable value 'x' ⟧
 }
 
 ⟦ Error: Passing immutable to mutable parameter (FFI) ⟧
 e Array
-λbad2()→𝕌≡{
+λbad2()→𝕌 match {
   let data=[1,2,3]
   Array.sort(data)    ⟦ Error: Cannot pass immutable 'data' to mut parameter ⟧
 }
@@ -99,7 +99,7 @@ e Array
 e Array
 
 ⟦ Without mutability checking: ⟧
-λprocess(data:[ℤ])→[ℤ]≡{
+λprocess(data:[ℤ])→[ℤ] match {
   Array.sort(data);    ⟦ Oops! Modified input ⟧
   data
 }
@@ -111,7 +111,7 @@ e Array
 **2. Aliasing Bugs:**
 ```sigil
 ⟦ Without mutability checking: ⟧
-λbug(x:mut [ℤ])→𝕌≡{
+λbug(x:mut [ℤ])→𝕌 match {
   let y=x
   modify!(x)    ⟦ Modifies through x ⟧
   process(y)    ⟦ y changed too! ⟧
@@ -184,13 +184,13 @@ Sigil enforces canonical forms—one way to do each thing.
 **No tail-call optimization:**
 ```sigil
 ⟦ This style is BLOCKED: ⟧
-λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{
+λfactorial(n:ℤ,acc:ℤ)→ℤ match n{
   0→acc|
   n→factorial(n-1,n*acc)
 }
 
 ⟦ Only primitive recursion allowed: ⟧
-λfactorial(n:ℤ)→ℤ≡n{
+λfactorial(n:ℤ)→ℤ match n{
   0→1|
   1→1|
   n→n*factorial(n-1)
@@ -206,7 +206,7 @@ Sigil provides clear, actionable error messages:
 ```
 Mutability Error: Cannot create alias of mutable value 'x'
 
-  12 | λbad(x:mut [ℤ])→𝕌≡{
+  12 | λbad(x:mut [ℤ])→𝕌 match {
   13 |   let y=x
        ^^^^^^^
 ```
@@ -261,7 +261,7 @@ e Array
 e console
 
 ⟦ JavaScript's Array.sort mutates in place ⟧
-λsortAndLog(arr:mut [ℤ])→𝕌≡{
+λsortAndLog(arr:mut [ℤ])→𝕌 match {
   Array.sort(arr);
   console.log(arr)
 }

@@ -126,7 +126,7 @@ if (result !== undefined) {
 Even pure functions are async, with minimal overhead:
 
 ```sigil
-λfactorial(n:ℤ)→ℤ≡n{0→1|1→1|n→n*factorial(n-1)}
+λfactorial(n:ℤ)→ℤ match n{0→1|1→1|n→n*factorial(n-1)}
 
 λmain()→ℤ=factorial(5)
 ⟦ Output: 120 ⟧
@@ -207,7 +207,7 @@ e console
 λlog(msg:𝕊)→!IO 𝕌=console.log(msg)
 
 ⟦ ERROR: Can't call effectful from pure ⟧
-λbad()→ℤ≡{l _=log("oops");42}
+λbad()→ℤ match {l _=log("oops");42}
 ⟦ Effect mismatch: pure function calls !IO function ⟧
 ```
 
@@ -339,7 +339,7 @@ All I/O is blocking, but goroutines make it efficient. However, this doesn't map
 Async functions still use the call stack:
 
 ```sigil
-λfactorial(n:ℤ)→ℤ≡n{0→1|n→n*factorial(n-1)}
+λfactorial(n:ℤ)→ℤ match n{0→1|n→n*factorial(n-1)}
 
 ⟦ Stack depth: O(n) ⟧
 ⟦ Will overflow for large n (typically n > 10000) ⟧
@@ -389,7 +389,7 @@ xs↦∥fn  ⟦ Parallel map (↦∥) - default ⟧
 Support for async iteration:
 
 ```sigil
-λstream_lines(path:𝕊)→!IO [𝕊]≡{
+λstream_lines(path:𝕊)→!IO [𝕊] match {
   ⟦ Read file line-by-line without loading entire file ⟧
 }
 ```
@@ -399,7 +399,7 @@ Support for async iteration:
 Native support for streams and observables:
 
 ```sigil
-λprocess_stream(stream:Stream[ℤ])→!IO Stream[ℤ]≡{
+λprocess_stream(stream:Stream[ℤ])→!IO Stream[ℤ] match {
   stream↦double⊳is_even
 }
 ```

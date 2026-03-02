@@ -15,7 +15,7 @@ Before this change, Sigil allowed `test` blocks anywhere:
 
 ```sigil
 // examples/fibonacci.sigil
-λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
+λfibonacci(n:ℤ)→ℤ match n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 
 test "fibonacci works" {  // Allowed but not canonical
   fibonacci(5)=5
@@ -120,7 +120,7 @@ The validator catches three violations with actionable error messages:
 
 ```sigil
 // examples/fibonacci.sigil
-λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
+λfibonacci(n:ℤ)→ℤ match n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 
 test "fibonacci works" {  // ❌ ERROR
   fibonacci(5)=5

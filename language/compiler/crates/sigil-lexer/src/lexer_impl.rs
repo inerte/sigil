@@ -468,7 +468,6 @@ impl Lexer {
             // Unicode keywords
             'λ' => self.add_token(tokens, TokenType::LAMBDA, "λ", start),
             '→' => self.add_token(tokens, TokenType::ARROW, "→", start),
-            '≡' => self.add_token(tokens, TokenType::MATCH, "≡", start),
 
             // Unicode type symbols
             'ℤ' => self.add_token(tokens, TokenType::TypeInt, "ℤ", start),
@@ -703,6 +702,7 @@ impl Lexer {
             "mockable" => TokenType::MOCKABLE,
             "with_mock" => TokenType::WithMock,
             "when" => TokenType::WHEN,
+            "match" => TokenType::MATCH,
             "true" => TokenType::TRUE,
             "false" => TokenType::FALSE,
             _ => {
@@ -808,7 +808,7 @@ mod tests {
 
     #[test]
     fn test_simple_tokens() {
-        let source = "λ → ≡";
+        let source = "λ → match";
         let tokens = tokenize(source).unwrap();
         assert_eq!(tokens.len(), 4); // 3 tokens + EOF
         assert_eq!(tokens[0].token_type, TokenType::LAMBDA);

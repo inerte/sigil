@@ -25,7 +25,7 @@ Used for expressions where type can be determined from the expression itself:
 - **Literals**: `5` ⇒ `ℤ`, `"hello"` ⇒ `𝕊`, `true` ⇒ `𝔹`
 - **Variables**: `x` ⇒ look up in environment
 - **Applications**: `f(x)` ⇒ synthesize `f`, check args, return result type
-- **Pattern matching**: `≡n{...}` ⇒ synthesize scrutinee, check arms have same type
+- **Pattern matching**: `match n{...}` ⇒ synthesize scrutinee, check arms have same type
 - **Binary operations**: `x + y` ⇒ check operands, return result type
 
 ### Checking (⇐): Verify against expected type
@@ -120,7 +120,7 @@ x : T ∈ Γ
 Γ, x₁:T₁,...,xₙ:Tₙ = match(p, T)
 Γ, x₁:T₁,...,xₙ:Tₙ ⊢ body ⇒ R
 ──────────────────────────────       (Match-Arm)
-Γ ⊢ ≡e{p→body|...} ⇒ R
+Γ ⊢ match e{p→body|...} ⇒ R
 ```
 
 ### Checking Rules
@@ -224,7 +224,7 @@ All these are **easier** to add with bidirectional typing than with Hindley-Miln
 Pattern matching is type-checked using bidirectional rules:
 
 ```sigil
-λlength(list:[ℤ])→ℤ≡list{
+λlength(list:[ℤ])→ℤ match list{
   []→0|
   [_,.rest]→1+length(rest)
 }
@@ -324,20 +324,20 @@ Sum types are deconstructed using pattern matching:
 
 ```sigil
 ⟦ Match on simple enum ⟧
-λcolorToInt(color:Color)→ℤ≡color{
+λcolorToInt(color:Color)→ℤ match color{
   Red→1|
   Green→2|
   Blue→3
 }
 
 ⟦ Extract values from constructors ⟧
-λprocessOption(opt:Option)→ℤ≡opt{
+λprocessOption(opt:Option)→ℤ match opt{
   Some(x)→x|
   None→0
 }
 
 ⟦ Nested patterns ⟧
-λprocessResult(res:Result)→𝕊≡res{
+λprocessResult(res:Result)→𝕊 match res{
   Ok(value)→"Success: "+value|
   Err(msg)→"Error: "+msg
 }
@@ -379,7 +379,7 @@ export function Blue() {
 }
 
 // Pattern matching compiles to:
-// ≡color{Red→1|...} becomes:
+// match color{Red→1|...} becomes:
 switch(color.__tag) {
   case "Red": return 1;
   // ...
@@ -395,7 +395,7 @@ The standard library provides two essential sum types:
 t Option[T]=Some(T)|None
 
 ⟦ Usage ⟧
-λdivide(a:ℤ,b:ℤ)→Option≡b{
+λdivide(a:ℤ,b:ℤ)→Option match b{
   0→None()|
   b→Some(a/b)
 }
@@ -406,7 +406,7 @@ t Option[T]=Some(T)|None
 t Result[T,E]=Ok(T)|Err(E)
 
 ⟦ Usage ⟧
-λparseInt(s:𝕊)→Result≡validInput(s){
+λparseInt(s:𝕊)→Result match validInput(s){
   true→Ok(parseInt(s))|
   false→Err("invalid input")
 }
@@ -469,13 +469,13 @@ The empty list literal `[]` requires type context to determine its element type.
 λemptyInts()→[ℤ]=[]
 
 ⟦ Pattern matching: first arm pattern infers from scrutinee, body from return type ⟧
-λreverse(xs:[ℤ])→[ℤ]≡xs{
+λreverse(xs:[ℤ])→[ℤ] match xs{
   []→[]|                 ⟦ OK: expected type is [ℤ] from function signature ⟧
   [x,.rest]→reverse(rest)⧺[x]
 }
 
 ⟦ Pattern matching: subsequent arms checked against first arm's type ⟧
-λfirstNonEmpty(a:[ℤ],b:[ℤ])→[ℤ]≡a{
+λfirstNonEmpty(a:[ℤ],b:[ℤ])→[ℤ] match a{
   [x,.xs] → a|      ⟦ First arm synthesizes to [ℤ] ⟧
   [] → b            ⟦ Second arm checked against [ℤ] from first arm ⟧
 }
@@ -483,7 +483,7 @@ The empty list literal `[]` requires type context to determine its element type.
 ⟦ Multiple empty arms work when return type provides context ⟧
 t Foo=A|B|C
 
-λtest(x:Foo)→[ℤ]≡x{
+λtest(x:Foo)→[ℤ] match x{
   A → [1,2,3]|      ⟦ First arm synthesizes to [ℤ] ⟧
   B → []|           ⟦ Checked against [ℤ] ⟧
   C → []            ⟦ Checked against [ℤ] ⟧
@@ -524,14 +524,14 @@ t ParseState={
 
 ```sigil
 ⟦ Factorial with pattern matching ⟧
-λfactorial(n:ℤ)→ℤ≡n{
+λfactorial(n:ℤ)→ℤ match n{
   0→1|
   1→1|
   n→n*factorial(n-1)
 }
 
 ⟦ GCD (multi-parameter recursion allowed) ⟧
-λgcd(a:ℤ,b:ℤ)→ℤ≡b{
+λgcd(a:ℤ,b:ℤ)→ℤ match b{
   0→a|
   b→gcd(b,a%b)
 }
@@ -554,7 +554,7 @@ t ParseState={
 ⟦ Error: Argument 0 type mismatch: expected ℤ, got 𝕊 ⟧
 
 ⟦ Error: Pattern match type mismatch ⟧
-λneg(b:𝔹)→𝔹≡b{5→false|_→true}
+λneg(b:𝔹)→𝔹 match b{5→false|_→true}
 ⟦ Error: Pattern type mismatch: expected 𝔹, got ℤ ⟧
 ```
 

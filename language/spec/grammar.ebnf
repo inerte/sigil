@@ -129,15 +129,17 @@ TypeList = Type , { "," , Type } ;
 (* FUNCTION DECLARATIONS                                                        *)
 (* ============================================================================ *)
 
-FunctionDecl = "λ" , Identifier , "(" , [ ParamList ] , ")" , [ "→" , Type ] , "=" , Expr ;
+FunctionDecl = "λ" , Identifier , "(" , [ ParamList ] , ")" , [ "→" , Type ] , ( "=" , Expr | MatchExpr ) ;
 
 ParamList = Param , { "," , Param } ;
 Param = Identifier , [ ":" , Type ] ;
 
 (* Examples:
    λadd(x:ℤ,y:ℤ)→ℤ=x+y
-   λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
+   λfibonacci(n:ℤ)→ℤ match n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 *)
+
+(* Note: Match bodies omit "=" as the canonical function-body form. *)
 
 (* ============================================================================ *)
 (* CONSTANT DECLARATIONS                                                        *)
@@ -164,7 +166,7 @@ Expr = MatchExpr
 (* PATTERN MATCHING (Primary Control Flow)                                     *)
 (* ============================================================================ *)
 
-MatchExpr = "≡" , Expr , "{" , MatchArm , { "|" , MatchArm } , "}" ;
+MatchExpr = "match" , Expr , "{" , MatchArm , { "|" , MatchArm } , "}" ;
 MatchArm = Pattern , "→" , Expr ;
 
 Pattern = LiteralPattern
@@ -186,9 +188,9 @@ FieldPatternList = FieldPattern , { "," , FieldPattern } ;
 FieldPattern = Identifier , [ ":" , Pattern ] ;
 
 (* Examples:
-   ≡x{0→"zero"|1→"one"|_→"many"}
-   ≡option{Some(v)→v|None→0}
-   ≡list{[]→0|[x,..]→x}
+   match x{0→"zero"|1→"one"|_→"many"}
+   match option{Some(v)→v|None→0}
+   match list{[]→0|[x,..]→x}
 *)
 
 (* ============================================================================ *)
@@ -211,10 +213,10 @@ LambdaExpr = "λ" , [ ParamList ] , "→" , Expr ;
 (* IF EXPRESSIONS (Syntactic Sugar for Match on Bool)                          *)
 (* ============================================================================ *)
 
-IfExpr = "≡" , Expr , "{" , "true" , "→" , Expr , "|" , "false" , "→" , Expr , "}" ;
+IfExpr = "match" , Expr , "{" , "true" , "→" , Expr , "|" , "false" , "→" , Expr , "}" ;
 
 (* Note: Could be removed in favor of pure match, keeping for convenience *)
-(* Example: ≡x>0{true→"positive"|false→"not positive"} *)
+(* Example: match x>0{true→"positive"|false→"not positive"} *)
 
 (* ============================================================================ *)
 (* BINARY EXPRESSIONS                                                           *)
@@ -382,7 +384,7 @@ Comment = "⟦" , { ? any Unicode character except ⟧ ? } , "⟧" ;
 (* Keywords:
    λ  - lambda (function)
    →  - arrow (returns, maps-to)
-   ≡  - equivalent (pattern match)
+   match - pattern match
 
    Types:
    ℤ  - integers (Z from number theory)
@@ -428,13 +430,13 @@ Comment = "⟦" , { ? any Unicode character except ⟧ ? } , "⟧" ;
 (* ============================================================================ *)
 
 (* Example 1: Fibonacci *)
-(* λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)} *)
+(* λfibonacci(n:ℤ)→ℤ match n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)} *)
 
 (* Example 2: Map function *)
-(* λmap[T,U](fn:λ(T)→U,list:[T])→[U]≡list{[]→[]|[x,.xs]→[fn(x),.map(fn,xs)]} *)
+(* λmap[T,U](fn:λ(T)→U,list:[T])→[U] match list{[]→[]|[x,.xs]→[fn(x),.map(fn,xs)]} *)
 
 (* Example 3: HTTP handler *)
-(* λhandle(req:Request)→Response!Error≡req.path{"/users"→get_users(req)|"/health"→Ok(Response{status:200,body:"OK"})|_→Err(Error{code:404,msg:"Not found"})} *)
+(* λhandle(req:Request)→Response!Error match req.path{"/users"→get_users(req)|"/health"→Ok(Response{status:200,body:"OK"})|_→Err(Error{code:404,msg:"Not found"})} *)
 
 (* Example 4: Type definitions *)
 (* t Option[T]=Some(T)|None *)

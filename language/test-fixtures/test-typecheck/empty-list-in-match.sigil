@@ -5,23 +5,23 @@ t Foo=A|B|C
 λmain()→𝕌=()
 
 ⟦ Case 1: First arm non-empty, second arm empty ⟧
-λtest1(x:Foo)→[ℤ]≡x{
+λtest1(x:Foo)→[ℤ] match x{
   A → [1,2,3]|
   B → []|
   C → [4,5]
 }
 
 ⟦ Case 2: Multiple empty arms after non-empty ⟧
-λtest2(x:Foo)→[𝕊]≡x{
+λtest2(x:Foo)→[𝕊] match x{
   A → ["hello"]|
   B → []|
   C → []
 }
 
 ⟦ Case 3: Nested match with empty list ⟧
-λtest3(x:Foo,y:Foo)→[ℤ]≡x{
+λtest3(x:Foo,y:Foo)→[ℤ] match x{
   A → [1]|
-  B → ≡y{
+  B → match y{
     A → [2]|
     B → []|
     C → [3]

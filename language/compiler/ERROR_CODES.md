@@ -190,13 +190,13 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 ### SIGIL-CANON-RECURSION-ACCUMULATOR
 **Description:** Accumulator-passing style detected.
 **Message:** "Accumulator-passing style detected in function 'name'"
-**Example:** `λfact(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→fact(n-1,n*acc)}`
+**Example:** `λfact(n:ℤ,acc:ℤ)→ℤ match n{0→acc|n→fact(n-1,n*acc)}`
 **How to fix:** Use simple recursion without accumulator parameters
 
 ### SIGIL-CANON-RECURSION-COLLECTION-NONSTRUCTURAL
 **Description:** Recursive function on collection doesn't use structural recursion.
 **Message:** "Recursive function 'name' has collection parameter but doesn't use structural recursion"
-**How to fix:** Match on list structure: `≡list{[]→...,[x⧺xs]→...}`
+**How to fix:** Match on list structure: `match list{[]→...,[x⧺xs]→...}`
 
 ### SIGIL-CANON-RECURSION-CPS
 **Description:** Continuation-Passing Style (CPS) detected.
@@ -206,7 +206,7 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 ### SIGIL-CANON-MATCH-BOOLEAN
 **Description:** Cannot pattern match on boolean expression.
 **Message:** "Cannot pattern match on boolean expression"
-**Example:** `≡(x<5){true→...|false→...}` → use `(x<5)→...|...`
+**Example:** `match (x<5){true→...|false→...}` → use `(x<5)→...|...`
 **How to fix:** Use if-expression syntax: `(condition)→thenBranch|elseBranch`
 
 ### SIGIL-CANON-MATCH-TUPLE-BOOLEAN

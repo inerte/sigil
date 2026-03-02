@@ -78,7 +78,7 @@ Where `σ` is the generalization of the type of `e₁`.
 Γ ⊢ e : τ    Γ ⊢ p₁ : τ    Γ, bindings(p₁) ⊢ e₁ : τ'
       Γ ⊢ p₂ : τ    Γ, bindings(p₂) ⊢ e₂ : τ'
 ──────────────────────────────────────────────────────
-Γ ⊢ ≡e{p₁→e₁|p₂→e₂} : τ'
+Γ ⊢ match e{p₁→e₁|p₂→e₂} : τ'
 ```
 
 All match arms must have the same result type `τ'`.
@@ -94,7 +94,7 @@ In synthesis mode (⇒), the first arm establishes the type that subsequent arms
 Γ, Δᵢ ⊢ pᵢ ⇐ τ_scrutinee ⇝ Δᵢ  (for i > 1)
 Γ, Δᵢ ⊢ eᵢ ⇐ τ                 (for i > 1)
 ─────────────────────────────────────────
-Γ ⊢ (e ≡ { p₁ → e₁ | ... | pₙ → eₙ }) ⇒ τ
+Γ ⊢ (match e { p₁ → e₁ | ... | pₙ → eₙ }) ⇒ τ
 ```
 
 Note: The first arm body is synthesized (⇒) to establish expected type τ. Remaining arm bodies are checked (⇐) against that type. This allows empty list `[]` in later arms when the first arm provides context.
@@ -296,13 +296,13 @@ Pattern matches must cover all possible values:
 
 ```sigil
 (* OK - exhaustive *)
-λsign(n:ℤ)→𝕊≡n{
+λsign(n:ℤ)→𝕊 match n{
   0→"zero"|
-  n→≡n>0{true→"positive"|false→"negative"}
+  n→match n>0{true→"positive"|false→"negative"}
 }
 
 (* ERROR - not exhaustive, missing None case *)
-λunwrap[T](opt:Option[T])→T≡opt{
+λunwrap[T](opt:Option[T])→T match opt{
   Some(v)→v
 }
 ```
@@ -312,7 +312,7 @@ Pattern matches must cover all possible values:
 Patterns introduce bindings with inferred types:
 
 ```sigil
-≡option{
+match option{
   Some(x)→x+1|    (* x : T where option : Option[T] *)
   None→0           (* return type must match: ℤ *)
 }
@@ -321,7 +321,7 @@ Patterns introduce bindings with inferred types:
 ### Type Constraints from Patterns
 
 ```sigil
-λlength[T](list:[T])→ℤ≡list{
+λlength[T](list:[T])→ℤ match list{
   []→0|
   [x,.xs]→1+length(xs)
 }
@@ -424,7 +424,7 @@ l w=&mut x;    (* ERROR - cannot have &mut while & exists *)
 Lifetimes are inferred automatically (no explicit annotation in Sigil v1.0):
 
 ```sigil
-λfirst[T](list:&[T])→Option[&T]=≡list{
+λfirst[T](list:&[T])→Option[&T]=match list{
   [x,..]→Some(&x)|
   []→None
 }
@@ -480,7 +480,7 @@ Common type errors:
 
 2. **Non-exhaustive pattern match**:
    ```sigil
-   λunwrap[T](opt:Option[T])→T≡opt{
+   λunwrap[T](opt:Option[T])→T match opt{
      Some(v)→v       (* ERROR: missing None case *)
    }
    ```
@@ -500,7 +500,7 @@ Common type errors:
 ### Example 1: List Map
 
 ```sigil
-λmap[T,U](fn:λ(T)→U,list:[T])→[U]≡list{
+λmap[T,U](fn:λ(T)→U,list:[T])→[U] match list{
   []→[]|
   [x,.xs]→[fn(x),.map(fn,xs)]
 }
@@ -519,7 +519,7 @@ Type inference:
 ### Example 2: Option Binding
 
 ```sigil
-λbind[T,U](opt:Option[T],fn:λ(T)→Option[U])→Option[U]≡opt{
+λbind[T,U](opt:Option[T],fn:λ(T)→Option[U])→Option[U] match opt{
   Some(v)→fn(v)|
   None→None
 }
@@ -537,10 +537,10 @@ Type inference:
 t Memo={cache:{ℤ:ℤ}}
 
 λfib_memo(n:ℤ,memo:&mut Memo)→ℤ=
-  ≡memo.cache.get(n){
+  match memo.cache.get(n){
     Some(result)→result|
     None→
-      l result=≡n{
+      l result=match n{
         0→0|
         1→1|
         n→fib_memo(n-1,memo)+fib_memo(n-2,memo)

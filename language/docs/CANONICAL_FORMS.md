@@ -278,15 +278,15 @@ The presence/absence of `=` depends on the function body type.
 **Match expressions forbid `=`:**
 ```sigil
 ✅ VALID:
-λfactorial(n:ℤ)→ℤ≡n{0→1|n→n*factorial(n-1)}
-λsign(n:ℤ)→𝕊≡(n>0,n<0){(true,false)→"positive"|...}
+λfactorial(n:ℤ)→ℤ match n{0→1|n→n*factorial(n-1)}
+λsign(n:ℤ)→𝕊 match (n>0,n<0){(true,false)→"positive"|...}
 
 ❌ REJECTED:
-λfactorial(n:ℤ)→ℤ=≡n{...}
-⟦ Error: Unexpected "=" before match expression (canonical form: λf()→T≡...) ⟧
+λfactorial(n:ℤ)→ℤ=match n{...}
+⟦ Error: Unexpected "=" before match expression (canonical form: λf()→T match ...) ⟧
 ```
 
-**Rationale:** The `≡` operator already signals "this is the body", making `=` redundant and non-canonical.
+**Rationale:** The `match` operator already signals "this is the body", making `=` redundant and non-canonical.
 
 #### Rule 5: Declaration Category Ordering
 
@@ -568,8 +568,8 @@ Line: 10
 Error: Parse error at line 3, column 15: Expected "=" before function body (canonical form: λf()→T=...)
 Got: IDENTIFIER (x)
 
-Error: Parse error at line 7, column 20: Unexpected "=" before match expression (canonical form: λf()→T≡...)
-Got: MATCH (≡)
+Error: Parse error at line 7, column 20: Unexpected "=" before match expression (canonical form: λf()→T match ...)
+Got: MATCH (match)
 ```
 
 ## Testing Your Code
@@ -584,7 +584,7 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compil
 # - Missing final newline → add newline at end
 # - Trailing spaces → remove spaces from line ends
 # - Multiple blank lines → remove extra blank lines
-# - Wrong = placement → check if using ≡ (match) or regular expression
+# - Wrong = placement → check if using match or regular expression
 ```
 
 ## For AI Agents and LLMs
@@ -595,7 +595,7 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compil
 2. Never add trailing spaces
 3. Use exactly one blank line between top-level declarations
 4. Use `=` for regular expressions: `λf()→T=expr`
-5. Omit `=` for match expressions: `λf()→T≡value{...}`
+5. Omit `=` for match expressions: `λf()→T match value{...}`
 6. Use spaces (never tabs)
 7. Use `\n` for line breaks (never `\r`)
 8. **Order declarations alphabetically within categories** (types, externs, imports, consts, functions, tests)

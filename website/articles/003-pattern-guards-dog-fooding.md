@@ -34,18 +34,18 @@ Here's what the code looked like **without** pattern guards:
 
 ```sigil
 ⟦ Hypothetical pre-guards syntax - deeply nested matches ⟧
-λparse_line(state:ParseState, line:𝕊)→(ParseState,[Block])≡state{
-  {in_code=true,..} → ≡is_code_fence(line){
+λparse_line(state:ParseState, line:𝕊)→(ParseState,[Block]) match state{
+  {in_code=true,..} → match is_code_fence(line){
     true → close_code_block(state)|
     false → accumulate_code_line(state,line)
   }|
-  {in_code=false,..} → ≡is_code_fence(line){
+  {in_code=false,..} → match is_code_fence(line){
     true → start_code_block(state,line)|
-    false → ≡is_header(line){
+    false → match is_header(line){
       true → parse_header(state,line)|
-      false → ≡is_hr(line){
+      false → match is_hr(line){
         true → parse_hr(state)|
-        false → ≡is_empty(line){
+        false → match is_empty(line){
           true → flush_paragraph(state)|
           false → accumulate_para(state,line)
         }
@@ -59,10 +59,10 @@ See the problem? **Deeply nested match expressions.** We're matching on state st
 
 ## The Gap
 
-Sigil only had pattern matching with `≡`:
+Sigil only had pattern matching with `match`:
 
 ```sigil
-≡value{
+match value{
   pattern1 → result1|
   pattern2 → result2
 }
@@ -71,7 +71,7 @@ Sigil only had pattern matching with `≡`:
 This is great for structural matching (destructuring records, unpacking tuples, matching sum types). But what if you need to **check a condition on the bindings**?
 
 You need to either:
-1. Nest another `≡` expression (ugly)
+1. Nest another `match` expression (ugly)
 2. Use an `if` inside the body (breaks the flow)
 3. Duplicate patterns for different conditions (verbose)
 
@@ -87,7 +87,7 @@ Other languages have solved this:
 We chose syntax closest to our philosophy: **explicit and canonical**.
 
 ```sigil
-≡value{
+match value{
   pattern when boolean_expr → result
 }
 ```
@@ -176,7 +176,7 @@ Now the markdown parser looks like this:
 
 ```sigil
 ⟦ With pattern guards - clean and linear ⟧
-λparse_line(state:ParseState, line:𝕊)→(ParseState,[Block])≡state{
+λparse_line(state:ParseState, line:𝕊)→(ParseState,[Block]) match state{
   {in_code=true,..} when is_code_fence(line) → close_code_block(state)|
   {in_code=true,..} → accumulate_code_line(state,line)|
   {in_code=false,..} when is_code_fence(line) → start_code_block(state,line)|
@@ -199,7 +199,7 @@ Pattern guards aren't just for parsers. They're useful anywhere you need to:
 ```sigil
 t User={name:𝕊,age:ℤ}
 
-λvalidate(u:User)→𝕊≡u{
+λvalidate(u:User)→𝕊 match u{
   {name,age} when age<0 → "invalid age"|
   {name,..} when #name=0 → "invalid name"|
   {name,age} → "valid"
@@ -208,7 +208,7 @@ t User={name:𝕊,age:ℤ}
 
 **Range checking:**
 ```sigil
-λclassify(n:ℤ)→𝕊≡n{
+λclassify(n:ℤ)→𝕊 match n{
   x when x>100 → "large"|
   x when x>10 → "medium"|
   x when x>0 → "small"|
@@ -220,7 +220,7 @@ t User={name:𝕊,age:ℤ}
 ```sigil
 t Result=Ok(ℤ)|Err(𝕊)
 
-λprocess(r:Result)→𝕊≡r{
+λprocess(r:Result)→𝕊 match r{
   Ok(n) when n>100 → "big success"|
   Ok(n) when n>0 → "success"|
   Ok(_) → "zero or negative"|
@@ -252,7 +252,7 @@ brew install sigil
 ```
 
 ```sigil
-λclassify(n:ℤ)→𝕊≡n{
+λclassify(n:ℤ)→𝕊 match n{
   x when x>10 → "big"|
   x when x>0 → "small"|
   _ → "non-positive"
@@ -267,7 +267,7 @@ Pattern guards suggest a broader pattern: **state machines as a language constru
 
 Right now we write:
 ```sigil
-≡state{
+match state{
   {mode:𝕊,..} when mode="active" → ...
 }
 ```

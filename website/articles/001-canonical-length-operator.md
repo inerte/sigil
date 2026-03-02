@@ -213,7 +213,7 @@ Every semantic concept has exactly ONE syntactic representation:
 - **String concatenation?** `++`
 - **List concatenation?** `⧺`
 - **Map over list?** `↦`
-- **Pattern matching?** `≡`
+- **Pattern matching?** `match`
 
 This isn't about human ergonomics - it's about **machine learning efficiency**. When 93% of code is AI-generated (2026 stats), we should optimize for the 93%, not the 7%.
 

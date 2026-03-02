@@ -10,17 +10,17 @@ fn test_all_unicode_operators() {
     assert_eq!(tokens[0].token_type, TokenType::LAMBDA);
     assert_eq!(tokens[1].token_type, TokenType::ARROW);
     assert_eq!(tokens[2].token_type, TokenType::MATCH);
-    assert_eq!(tokens[3].token_type, TokenType::NAMESPACE_SEP);
+    assert_eq!(tokens[3].token_type, TokenType::NamespaceSep);
     assert_eq!(tokens[4].token_type, TokenType::AND);
     assert_eq!(tokens[5].token_type, TokenType::OR);
     assert_eq!(tokens[6].token_type, TokenType::NOT);
-    assert_eq!(tokens[7].token_type, TokenType::LESS_EQ);
-    assert_eq!(tokens[8].token_type, TokenType::GREATER_EQ);
-    assert_eq!(tokens[9].token_type, TokenType::NOT_EQUAL);
+    assert_eq!(tokens[7].token_type, TokenType::LessEq);
+    assert_eq!(tokens[8].token_type, TokenType::GreaterEq);
+    assert_eq!(tokens[9].token_type, TokenType::NotEqual);
     assert_eq!(tokens[10].token_type, TokenType::MAP);
     assert_eq!(tokens[11].token_type, TokenType::FILTER);
     assert_eq!(tokens[12].token_type, TokenType::FOLD);
-    assert_eq!(tokens[13].token_type, TokenType::LIST_APPEND);
+    assert_eq!(tokens[13].token_type, TokenType::ListAppend);
 }
 
 #[test]
@@ -28,13 +28,13 @@ fn test_all_type_symbols() {
     let source = "ℤ ℝ 𝔹 𝕊 ℂ 𝕌 ∅";
     let tokens = tokenize(source).unwrap();
 
-    assert_eq!(tokens[0].token_type, TokenType::TYPE_INT);
-    assert_eq!(tokens[1].token_type, TokenType::TYPE_FLOAT);
-    assert_eq!(tokens[2].token_type, TokenType::TYPE_BOOL);
-    assert_eq!(tokens[3].token_type, TokenType::TYPE_STRING);
-    assert_eq!(tokens[4].token_type, TokenType::TYPE_CHAR);
-    assert_eq!(tokens[5].token_type, TokenType::TYPE_UNIT);
-    assert_eq!(tokens[6].token_type, TokenType::TYPE_NEVER);
+    assert_eq!(tokens[0].token_type, TokenType::TypeInt);
+    assert_eq!(tokens[1].token_type, TokenType::TypeFloat);
+    assert_eq!(tokens[2].token_type, TokenType::TypeBool);
+    assert_eq!(tokens[3].token_type, TokenType::TypeString);
+    assert_eq!(tokens[4].token_type, TokenType::TypeChar);
+    assert_eq!(tokens[5].token_type, TokenType::TypeUnit);
+    assert_eq!(tokens[6].token_type, TokenType::TypeNever);
 }
 
 #[test]
@@ -49,7 +49,7 @@ fn test_all_keywords() {
     assert_eq!(tokens[4].token_type, TokenType::WHEN);
     assert_eq!(tokens[5].token_type, TokenType::LET);
     assert_eq!(tokens[6].token_type, TokenType::MUT);
-    assert_eq!(tokens[7].token_type, TokenType::WITH_MOCK);
+    assert_eq!(tokens[7].token_type, TokenType::WithMock);
     assert_eq!(tokens[8].token_type, TokenType::TYPE);
 }
 
@@ -68,7 +68,7 @@ fn test_all_delimiters() {
     assert_eq!(tokens[7].token_type, TokenType::COLON);
     assert_eq!(tokens[8].token_type, TokenType::DOT);
     assert_eq!(tokens[9].token_type, TokenType::SEMICOLON);
-    assert_eq!(tokens[10].token_type, TokenType::PIPE_SEP);
+    assert_eq!(tokens[10].token_type, TokenType::PipeSep);
     assert_eq!(tokens[11].token_type, TokenType::UNDERSCORE);
     assert_eq!(tokens[12].token_type, TokenType::DOTDOT);
 }
@@ -185,7 +185,7 @@ fn test_identifiers_uppercase() {
     let tokens = tokenize(source).unwrap();
 
     for i in 0..6 {
-        assert_eq!(tokens[i].token_type, TokenType::UPPER_IDENTIFIER);
+        assert_eq!(tokens[i].token_type, TokenType::UpperIdentifier);
     }
     assert_eq!(tokens[0].value, "Foo");
     assert_eq!(tokens[5].value, "SomeType");
@@ -291,7 +291,7 @@ fn test_complex_expression() {
     assert_eq!(tokens[2].token_type, TokenType::LPAREN);
     assert_eq!(tokens[3].token_type, TokenType::IDENTIFIER);
     assert_eq!(tokens[4].token_type, TokenType::COLON);
-    assert_eq!(tokens[5].token_type, TokenType::TYPE_INT);
+    assert_eq!(tokens[5].token_type, TokenType::TypeInt);
     // ... rest of tokens
 }
 
@@ -301,9 +301,9 @@ fn test_namespace_separator() {
     let tokens = tokenize(source).unwrap();
 
     assert_eq!(tokens[0].token_type, TokenType::IDENTIFIER);
-    assert_eq!(tokens[1].token_type, TokenType::NAMESPACE_SEP);
+    assert_eq!(tokens[1].token_type, TokenType::NamespaceSep);
     assert_eq!(tokens[2].token_type, TokenType::IDENTIFIER);
-    assert_eq!(tokens[3].token_type, TokenType::NAMESPACE_SEP);
+    assert_eq!(tokens[3].token_type, TokenType::NamespaceSep);
     assert_eq!(tokens[4].token_type, TokenType::IDENTIFIER);
 }
 
@@ -332,9 +332,9 @@ fn test_effect_markers() {
     let source = "!IO !Network !Async !Error !Mut";
     let tokens = tokenize(source).unwrap();
 
-    // Each !X should be BANG followed by UPPER_IDENTIFIER
+    // Each !X should be BANG followed by UpperIdentifier
     assert_eq!(tokens[0].token_type, TokenType::BANG);
-    assert_eq!(tokens[1].token_type, TokenType::UPPER_IDENTIFIER);
+    assert_eq!(tokens[1].token_type, TokenType::UpperIdentifier);
     assert_eq!(tokens[1].value, "IO");
 }
 

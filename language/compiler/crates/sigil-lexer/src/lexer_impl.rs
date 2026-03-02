@@ -238,7 +238,7 @@ impl Lexer {
                     }
 
                     // Update position based on token text
-                    for ch in text.chars() {
+                    for _ in text.chars() {
                         column += 1;
                     }
                     byte_offset = end_offset;
@@ -382,7 +382,7 @@ impl Lexer {
             ':' => self.add_token(tokens, TokenType::COLON, ":", start),
             ';' => self.add_token(tokens, TokenType::SEMICOLON, ";", start),
             ',' => self.add_token(tokens, TokenType::COMMA, ",", start),
-            '⋅' => self.add_token(tokens, TokenType::NAMESPACE_SEP, "⋅", start),
+            '⋅' => self.add_token(tokens, TokenType::NamespaceSep, "⋅", start),
             '_' => self.add_token(tokens, TokenType::UNDERSCORE, "_", start),
             '!' => self.add_token(tokens, TokenType::BANG, "!", start),
             '&' => self.add_token(tokens, TokenType::AMPERSAND, "&", start),
@@ -404,14 +404,14 @@ impl Lexer {
             '-' => self.add_token(tokens, TokenType::MINUS, "-", start),
             '<' => {
                 if self.match_char('<') {
-                    self.add_token(tokens, TokenType::COMPOSE_BWD, "<<", start);
+                    self.add_token(tokens, TokenType::ComposeBwd, "<<", start);
                 } else {
                     self.add_token(tokens, TokenType::LESS, "<", start);
                 }
             }
             '>' => {
                 if self.match_char('>') {
-                    self.add_token(tokens, TokenType::COMPOSE_FWD, ">>", start);
+                    self.add_token(tokens, TokenType::ComposeFwd, ">>", start);
                 } else {
                     self.add_token(tokens, TokenType::GREATER, ">", start);
                 }
@@ -420,7 +420,7 @@ impl Lexer {
                 if self.match_char('>') {
                     self.add_token(tokens, TokenType::PIPE, "|>", start);
                 } else {
-                    self.add_token(tokens, TokenType::PIPE_SEP, "|", start);
+                    self.add_token(tokens, TokenType::PipeSep, "|", start);
                 }
             }
             '.' => {
@@ -432,16 +432,16 @@ impl Lexer {
             }
 
             // Unicode operators
-            '≠' => self.add_token(tokens, TokenType::NOT_EQUAL, "≠", start),
-            '≤' => self.add_token(tokens, TokenType::LESS_EQ, "≤", start),
-            '≥' => self.add_token(tokens, TokenType::GREATER_EQ, "≥", start),
+            '≠' => self.add_token(tokens, TokenType::NotEqual, "≠", start),
+            '≤' => self.add_token(tokens, TokenType::LessEq, "≤", start),
+            '≥' => self.add_token(tokens, TokenType::GreaterEq, "≥", start),
             '∧' => self.add_token(tokens, TokenType::AND, "∧", start),
             '∨' => self.add_token(tokens, TokenType::OR, "∨", start),
             '¬' => self.add_token(tokens, TokenType::NOT, "¬", start),
             '↦' => self.add_token(tokens, TokenType::MAP, "↦", start),
             '⊳' => self.add_token(tokens, TokenType::FILTER, "⊳", start),
             '⊕' => self.add_token(tokens, TokenType::FOLD, "⊕", start),
-            '⧺' => self.add_token(tokens, TokenType::LIST_APPEND, "⧺", start),
+            '⧺' => self.add_token(tokens, TokenType::ListAppend, "⧺", start),
 
             // Unicode keywords
             'λ' => self.add_token(tokens, TokenType::LAMBDA, "λ", start),
@@ -449,13 +449,13 @@ impl Lexer {
             '≡' => self.add_token(tokens, TokenType::MATCH, "≡", start),
 
             // Unicode type symbols
-            'ℤ' => self.add_token(tokens, TokenType::TYPE_INT, "ℤ", start),
-            'ℝ' => self.add_token(tokens, TokenType::TYPE_FLOAT, "ℝ", start),
-            '𝔹' => self.add_token(tokens, TokenType::TYPE_BOOL, "𝔹", start),
-            '𝕊' => self.add_token(tokens, TokenType::TYPE_STRING, "𝕊", start),
-            'ℂ' => self.add_token(tokens, TokenType::TYPE_CHAR, "ℂ", start),
-            '𝕌' => self.add_token(tokens, TokenType::TYPE_UNIT, "𝕌", start),
-            '∅' => self.add_token(tokens, TokenType::TYPE_NEVER, "∅", start),
+            'ℤ' => self.add_token(tokens, TokenType::TypeInt, "ℤ", start),
+            'ℝ' => self.add_token(tokens, TokenType::TypeFloat, "ℝ", start),
+            '𝔹' => self.add_token(tokens, TokenType::TypeBool, "𝔹", start),
+            '𝕊' => self.add_token(tokens, TokenType::TypeString, "𝕊", start),
+            'ℂ' => self.add_token(tokens, TokenType::TypeChar, "ℂ", start),
+            '𝕌' => self.add_token(tokens, TokenType::TypeUnit, "𝕌", start),
+            '∅' => self.add_token(tokens, TokenType::TypeNever, "∅", start),
 
             // Boolean literals
             '⊤' => self.add_token(tokens, TokenType::TRUE, "⊤", start),
@@ -663,11 +663,11 @@ impl Lexer {
             "c" => TokenType::CONST,
             "mut" => TokenType::MUT,
             "mockable" => TokenType::MOCKABLE,
-            "with_mock" => TokenType::WITH_MOCK,
+            "with_mock" => TokenType::WithMock,
             "when" => TokenType::WHEN,
             _ => {
                 if first_char.is_uppercase() {
-                    TokenType::UPPER_IDENTIFIER
+                    TokenType::UpperIdentifier
                 } else {
                     TokenType::IDENTIFIER
                 }
@@ -799,7 +799,7 @@ mod tests {
         let source = "foo Bar mut";
         let tokens = tokenize(source).unwrap();
         assert_eq!(tokens[0].token_type, TokenType::IDENTIFIER);
-        assert_eq!(tokens[1].token_type, TokenType::UPPER_IDENTIFIER);
+        assert_eq!(tokens[1].token_type, TokenType::UpperIdentifier);
         assert_eq!(tokens[2].token_type, TokenType::MUT);
     }
 

@@ -37,7 +37,7 @@ pub enum TokenType {
     IDENTIFIER,
 
     #[regex(r"[A-Z][a-zA-Z0-9_]*", priority = 1)]
-    UPPER_IDENTIFIER,
+    UpperIdentifier,
 
     // ========================================================================
     // KEYWORDS (Unicode symbols)
@@ -76,7 +76,7 @@ pub enum TokenType {
     MOCKABLE,
 
     #[token("with_mock")]
-    WITH_MOCK,
+    WithMock,
 
     #[token("when")]
     WHEN,
@@ -85,25 +85,25 @@ pub enum TokenType {
     // TYPE SYMBOLS
     // ========================================================================
     #[token("ℤ")]
-    TYPE_INT,
+    TypeInt,
 
     #[token("ℝ")]
-    TYPE_FLOAT,
+    TypeFloat,
 
     #[token("𝔹")]
-    TYPE_BOOL,
+    TypeBool,
 
     #[token("𝕊")]
-    TYPE_STRING,
+    TypeString,
 
     #[token("ℂ")]
-    TYPE_CHAR,
+    TypeChar,
 
     #[token("𝕌")]
-    TYPE_UNIT,
+    TypeUnit,
 
     #[token("∅")]
-    TYPE_NEVER,
+    TypeNever,
 
     // ========================================================================
     // OPERATORS
@@ -130,7 +130,7 @@ pub enum TokenType {
     EQUAL,
 
     #[token("≠")]
-    NOT_EQUAL,
+    NotEqual,
 
     #[token("<")]
     LESS,
@@ -139,10 +139,10 @@ pub enum TokenType {
     GREATER,
 
     #[token("≤")]
-    LESS_EQ,
+    LessEq,
 
     #[token("≥")]
-    GREATER_EQ,
+    GreaterEq,
 
     #[token("∧")]
     AND,
@@ -157,16 +157,16 @@ pub enum TokenType {
     PIPE,
 
     #[token(">>")]
-    COMPOSE_FWD,
+    ComposeFwd,
 
     #[token("<<")]
-    COMPOSE_BWD,
+    ComposeBwd,
 
     #[token("++")]
     APPEND,
 
     #[token("⧺")]
-    LIST_APPEND,
+    ListAppend,
 
     // ========================================================================
     // LIST OPERATIONS (built-in language constructs)
@@ -214,7 +214,7 @@ pub enum TokenType {
     COMMA,
 
     #[token("⋅")]
-    NAMESPACE_SEP,
+    NamespaceSep,
 
     #[token(".")]
     DOT,
@@ -223,7 +223,7 @@ pub enum TokenType {
     DOTDOT,
 
     #[token("|")]
-    PIPE_SEP,
+    PipeSep,
 
     #[token("_")]
     UNDERSCORE,

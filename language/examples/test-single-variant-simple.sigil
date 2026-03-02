@@ -1,0 +1,4 @@
+t Result=Ok(𝕊)
+
+λmain()→Result=test()
+λtest()→Result=Ok("hello")

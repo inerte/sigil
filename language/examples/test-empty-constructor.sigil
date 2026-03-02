@@ -1,0 +1,4 @@
+t Unit=Empty()
+
+λmain()→Unit=test()
+λtest()→Unit=Empty()

@@ -234,22 +234,6 @@ impl Parser {
             return self.product_type().map(TypeDef::Product);
         }
 
-        // Check if it's a type expression (tuple, list, map, etc.) rather than a variant
-        // These start with non-identifier tokens
-        if self.check(TokenType::LPAREN) || self.check(TokenType::LBRACKET) ||
-           self.check(TokenType::TYPE_INT) || self.check(TokenType::TYPE_FLOAT) ||
-           self.check(TokenType::TYPE_BOOL) || self.check(TokenType::TYPE_STRING) ||
-           self.check(TokenType::TYPE_CHAR) || self.check(TokenType::TYPE_UNIT) ||
-           self.check(TokenType::LAMBDA) {
-            let start = self.peek();
-            let aliased_type = self.parse_type()?;
-            let end = self.previous();
-            return Ok(TypeDef::Alias(TypeAlias {
-                aliased_type,
-                location: self.make_location(start.location.start, end.location.end),
-            }));
-        }
-
         // Sum type or type alias
         let start = self.peek();
         let first_variant = self.variant_or_type()?;
@@ -776,51 +760,6 @@ impl Parser {
 
             // Error: lowercase identifier without qualified path
             return Err(self.error("Expected type"));
-        }
-
-        // Tuple type: (T1, T2, T3)
-        if self.match_token(TokenType::LPAREN) {
-            let start = self.previous();
-
-            // Check for empty tuple: ()
-            if self.check(TokenType::RPAREN) {
-                self.advance();
-                let end = self.previous();
-                return Ok(Type::Tuple(TupleType {
-                    types: Vec::new(),
-                    location: self.make_location(start.location.start, end.location.end),
-                }));
-            }
-
-            // Parse first type
-            let first = self.parse_type()?;
-
-            // Check for comma - if no comma, it's a grouped type, not a tuple
-            if !self.match_token(TokenType::COMMA) {
-                self.consume(TokenType::RPAREN, "Expected \")\"")?;
-                return Ok(first); // Grouped type - return the inner type directly
-            }
-
-            // It's a tuple - parse remaining types
-            let mut types = vec![first];
-
-            // Continue parsing if there are more types (not just trailing comma)
-            if !self.check(TokenType::RPAREN) {
-                loop {
-                    types.push(self.parse_type()?);
-                    if !self.match_token(TokenType::COMMA) {
-                        break;
-                    }
-                }
-            }
-
-            self.consume(TokenType::RPAREN, "Expected \")\"")?;
-            let end = self.previous();
-
-            return Ok(Type::Tuple(TupleType {
-                types,
-                location: self.make_location(start.location.start, end.location.end),
-            }));
         }
 
         Err(self.error("Expected type"))

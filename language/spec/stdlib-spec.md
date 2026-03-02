@@ -34,11 +34,11 @@ t Option[T]=Some(T)|None
 **Functions:**
 
 ```sigil
-λmap_option[T,U](fn:λ(T)→U,opt:Option[T])→Option[U]≡opt{Some(v)→Some(fn(v))|None→None}
-λbind_option[T,U](opt:Option[T],fn:λ(T)→Option[U])→Option[U]≡opt{Some(v)→fn(v)|None→None}
-λunwrap_or[T](opt:Option[T],default:T)→T≡opt{Some(v)→v|None→default}
-λis_some[T](opt:Option[T])→𝔹≡opt{Some(_)→true|None→false}
-λis_none[T](opt:Option[T])→𝔹≡opt{Some(_)→false|None→true}
+λmap_option[T,U](fn:λ(T)→U,opt:Option[T])→Option[U] match opt{Some(v)→Some(fn(v))|None→None}
+λbind_option[T,U](opt:Option[T],fn:λ(T)→Option[U])→Option[U] match opt{Some(v)→fn(v)|None→None}
+λunwrap_or[T](opt:Option[T],default:T)→T match opt{Some(v)→v|None→default}
+λis_some[T](opt:Option[T])→𝔹 match opt{Some(_)→true|None→false}
+λis_none[T](opt:Option[T])→𝔹 match opt{Some(_)→false|None→true}
 ```
 
 ### Result[T,E]
@@ -56,11 +56,11 @@ t Result[T,E]=Ok(T)|Err(E)
 **Functions:**
 
 ```sigil
-λmap_result[T,U,E](fn:λ(T)→U,res:Result[T,E])→Result[U,E]≡res{Ok(v)→Ok(fn(v))|Err(e)→Err(e)}
-λbind_result[T,U,E](res:Result[T,E],fn:λ(T)→Result[U,E])→Result[U,E]≡res{Ok(v)→fn(v)|Err(e)→Err(e)}
-λunwrap_or_result[T,E](res:Result[T,E],default:T)→T≡res{Ok(v)→v|Err(_)→default}
-λis_ok[T,E](res:Result[T,E])→𝔹≡res{Ok(_)→true|Err(_)→false}
-λis_err[T,E](res:Result[T,E])→𝔹≡res{Ok(_)→false|Err(_)→true}
+λmap_result[T,U,E](fn:λ(T)→U,res:Result[T,E])→Result[U,E] match res{Ok(v)→Ok(fn(v))|Err(e)→Err(e)}
+λbind_result[T,U,E](res:Result[T,E],fn:λ(T)→Result[U,E])→Result[U,E] match res{Ok(v)→fn(v)|Err(e)→Err(e)}
+λunwrap_or_result[T,E](res:Result[T,E],default:T)→T match res{Ok(v)→v|Err(_)→default}
+λis_ok[T,E](res:Result[T,E])→𝔹 match res{Ok(_)→true|Err(_)→false}
+λis_err[T,E](res:Result[T,E])→𝔹 match res{Ok(_)→false|Err(_)→true}
 ```
 
 ## List Operations

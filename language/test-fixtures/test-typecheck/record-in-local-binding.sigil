@@ -5,7 +5,7 @@ t Outer={state:Inner}
 
 λmain()→𝕌=()
 
-λtest(x:𝔹)→Outer≡x{
+λtest(x:𝔹)→Outer match x{
   true →
     l dummy=(1:ℤ);
     {state:{items:[]}}|

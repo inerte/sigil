@@ -25,28 +25,28 @@ e console
 }
 
 ⟦ Test 1: Simple guards with literal patterns ⟧
-λtest1(x:ℤ)→𝕊≡x{
+λtest1(x:ℤ)→𝕊 match x{
   0 when true → "zero" |
   1 → "one" |
   _ → "other"
 }
 
 ⟦ Test 2: Guards with pattern bindings ⟧
-λtest2(x:ℤ)→𝕊≡x{
+λtest2(x:ℤ)→𝕊 match x{
   n when n>10 → "big" |
   n when n>0 → "small positive" |
   n → "zero or negative"
 }
 
 ⟦ Test 3: Fall-through when guard fails ⟧
-λtest3(flag:𝔹,x:ℤ)→𝕊≡x{
+λtest3(flag:𝔹,x:ℤ)→𝕊 match x{
   1 when flag → "one with flag" |
   1 → "one without flag" |
   _ → "other"
 }
 
 ⟦ Test 4: Sum type with guards ⟧
-λtest4(r:Result)→𝕊≡r{
+λtest4(r:Result)→𝕊 match r{
   Ok(n) when n>100 → "big success" |
   Ok(n) when n>0 → "small success" |
   Ok(_) → "zero or negative" |
@@ -54,14 +54,14 @@ e console
 }
 
 ⟦ Test 5: Complex guards ⟧
-λtest5(x:ℤ,y:ℤ)→𝕊≡x{
+λtest5(x:ℤ,y:ℤ)→𝕊 match x{
   a when a>0∧y>0 → "both positive" |
   a when a>0∨y>0 → "one positive" |
   _ → "neither positive"
 }
 
 ⟦ Test 6: Backward compatibility - no guards ⟧
-λtest6(x:ℤ)→𝕊≡x{
+λtest6(x:ℤ)→𝕊 match x{
   0 → "zero" |
   1 → "one" |
   _ → "other"

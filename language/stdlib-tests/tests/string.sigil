@@ -171,7 +171,7 @@ test "extract title from markdown" {
   l content="# Hello World\nContent here";
   l lines=stdlib⋅string.split("\n",content);
   l first=lines[0];
-  l title=≡stdlib⋅string.starts_with("# ",first){
+  l title=match stdlib⋅string.starts_with("# ",first){
     true→stdlib⋅string.substring(#first,first,2)|
     false→"Untitled"
   };

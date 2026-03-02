@@ -7,7 +7,7 @@
 //! # Design Principles
 //!
 //! - **Canonical Formatting**: No tabs, precise whitespace requirements
-//! - **Unicode Symbols**: λ, →, ≡, ⋅, ∧, ∨, ¬, ≤, ≥, ≠, etc.
+//! - **Canonical Symbols + Keywords**: λ, →, match, ⋅, ∧, ∨, ¬, ≤, ≥, ≠, etc.
 //! - **Deterministic**: Same input always produces same token stream
 //! - **Error Recovery**: Clear error messages with source locations
 

@@ -12,6 +12,6 @@ It is intentionally separate from:
 
 ## Latest Article
 
-📝 **[Why Sigil Uses true and false](./articles/012-why-sigil-uses-true-and-false.md)** (March 2, 2026)
+📝 **[Why Sigil Uses match](./articles/013-why-sigil-uses-match.md)** (March 2, 2026)
 
-Why Sigil replaced `⊤` and `⊥` with `true` and `false` after measuring whole-program token savings and optimizing for Claude Code / Codex priors instead of mathematical elegance
+Why Sigil replaced `≡` with `match` after measuring whole-program token savings and optimizing for Claude Code / Codex priors instead of symbolic elegance

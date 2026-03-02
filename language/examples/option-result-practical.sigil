@@ -12,19 +12,19 @@ t IntOption=IntSome(ℤ)|IntNone
 t IntResult=IntOk(ℤ)|IntErr(𝕊)
 
 ⟦ Extract value from IntResult with fallback ⟧
-λget_or_default(fallback:ℤ,res:IntResult)→ℤ≡res{
+λget_or_default(fallback:ℤ,res:IntResult)→ℤ match res{
   IntOk(value)→value|
   IntErr(_)→fallback
 }
 
 ⟦ Extract value from IntOption with default ⟧
-λget_or_zero(opt:IntOption)→ℤ≡opt{
+λget_or_zero(opt:IntOption)→ℤ match opt{
   IntSome(x)→x|
   IntNone→0
 }
 
 ⟦ Check if IntResult is ok ⟧
-λis_ok(res:IntResult)→𝔹≡res{
+λis_ok(res:IntResult)→𝔹 match res{
   IntOk(_)→true|
   IntErr(_)→false
 }
@@ -33,13 +33,13 @@ t IntResult=IntOk(ℤ)|IntErr(𝕊)
 λmain()→ℤ=get_or_zero(safe_head([1,2,3]))+get_or_default(0,safe_subtract(10,2))+get_or_default(999,safe_subtract(10,20))
 
 ⟦ Safe list head ⟧
-λsafe_head(xs:[ℤ])→IntOption≡xs{
+λsafe_head(xs:[ℤ])→IntOption match xs{
   []→IntNone()|
   [x,.rest]→IntSome(x)
 }
 
 ⟦ Safe subtraction with validation ⟧
-λsafe_subtract(num1:ℤ,num2:ℤ)→IntResult≡num2>10{
+λsafe_subtract(num1:ℤ,num2:ℤ)→IntResult match num2>10{
   true→IntErr("second number too large")|
   false→IntOk(num1-num2)
 }

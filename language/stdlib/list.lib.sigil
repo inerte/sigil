@@ -7,34 +7,34 @@
 ⟧
 
 ⟦ Check if all elements satisfy predicate ⟧
-λall(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹≡xs{
+λall(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹 match xs{
   []→true|
-  [x,.rest]→≡pred(x){
+  [x,.rest]→match pred(x){
     true→all(pred,rest)|
     false→false
   }
 }
 
 ⟦ Check if any element satisfies predicate ⟧
-λany(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹≡xs{
+λany(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹 match xs{
   []→false|
-  [x,.rest]→≡pred(x){
+  [x,.rest]→match pred(x){
     true→true|
     false→any(pred,rest)
   }
 }
 
 ⟦ Check if element is in list ⟧
-λcontains(item:ℤ,xs:[ℤ])→𝔹≡xs{
+λcontains(item:ℤ,xs:[ℤ])→𝔹 match xs{
   []→false|
-  [x,.rest]→≡(x=item){
+  [x,.rest]→match (x=item){
     true→true|
     false→contains(item,rest)
   }
 }
 
 ⟦ Get first element of list (unsafe - crashes on empty) ⟧
-λhead(xs:[ℤ])→ℤ≡xs{
+λhead(xs:[ℤ])→ℤ match xs{
   [x,.rest]→x
 }
 
@@ -42,56 +42,56 @@
 λin_bounds(idx:ℤ,xs:[ℤ])→𝔹=in_bounds_helper(idx,xs)
 
 ⟦ Helper: Check if index is in bounds ⟧
-λin_bounds_helper(idx:ℤ,xs:[ℤ])→𝔹≡(idx≥0){
+λin_bounds_helper(idx:ℤ,xs:[ℤ])→𝔹 match (idx≥0){
   true→idx<#xs|
   false→false
 }
 
 ⟦ Check if list is empty ⟧
-λis_empty(xs:[ℤ])→𝔹≡xs{
+λis_empty(xs:[ℤ])→𝔹 match xs{
   []→true|
   _→false
 }
 
 ⟦ Check if list is non-empty ⟧
-λis_non_empty(xs:[ℤ])→𝔹≡xs{
+λis_non_empty(xs:[ℤ])→𝔹 match xs{
   []→false|
   _→true
 }
 
 ⟦ Check if list is sorted in ascending order ⟧
-λsorted_asc(xs:[ℤ])→𝔹≡xs{
+λsorted_asc(xs:[ℤ])→𝔹 match xs{
   []→true|
   [_]→true|
   [a,.tail]→sorted_asc_check(a,tail)
 }
 
 ⟦ Helper: Check ascending order ⟧
-λsorted_asc_check(prev:ℤ,xs:[ℤ])→𝔹≡xs{
+λsorted_asc_check(prev:ℤ,xs:[ℤ])→𝔹 match xs{
   []→true|
-  [b,.rest]→≡(prev≤b){
+  [b,.rest]→match (prev≤b){
     true→sorted_asc_check(b,rest)|
     false→false
   }
 }
 
 ⟦ Check if list is sorted in descending order ⟧
-λsorted_desc(xs:[ℤ])→𝔹≡xs{
+λsorted_desc(xs:[ℤ])→𝔹 match xs{
   []→true|
   [_]→true|
   [a,.tail]→sorted_desc_check(a,tail)
 }
 
 ⟦ Helper: Check descending order ⟧
-λsorted_desc_check(prev:ℤ,xs:[ℤ])→𝔹≡xs{
+λsorted_desc_check(prev:ℤ,xs:[ℤ])→𝔹 match xs{
   []→true|
-  [b,.rest]→≡(prev≥b){
+  [b,.rest]→match (prev≥b){
     true→sorted_desc_check(b,rest)|
     false→false
   }
 }
 
 ⟦ Get all elements except first (unsafe - crashes on empty) ⟧
-λtail(xs:[ℤ])→[ℤ]≡xs{
+λtail(xs:[ℤ])→[ℤ] match xs{
   [x,.rest]→rest
 }

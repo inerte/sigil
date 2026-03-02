@@ -1,4 +1,4 @@
-λhanoi(aux:𝕊,from:𝕊,n:ℤ,to:𝕊)→𝕊≡n{
+λhanoi(aux:𝕊,from:𝕊,n:ℤ,to:𝕊)→𝕊 match n{
   1→"Move disk from "+from+" to "+to+"\n"|
   n→hanoi(to,from,n-1,aux)+
     "Move disk from "+from+" to "+to+"\n"+

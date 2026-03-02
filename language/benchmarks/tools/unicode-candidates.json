@@ -29,24 +29,6 @@
       }
     ]
   },
-  "MATCH": {
-    "symbol": "≡",
-    "category": "match_marker",
-    "candidates": [
-      {
-        "replacement": "match",
-        "commonalityScore": 0.95,
-        "semanticFit": "high",
-        "reason": "Common pattern matching keyword in Rust, OCaml, and many PL discussions."
-      },
-      {
-        "replacement": "switch",
-        "commonalityScore": 0.9,
-        "semanticFit": "medium",
-        "reason": "Widely known branching term, but weaker semantic fit than pattern matching."
-      }
-    ]
-  },
   "ARROW": {
     "symbol": "→",
     "category": "arrow",

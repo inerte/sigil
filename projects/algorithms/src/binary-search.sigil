@@ -1,10 +1,10 @@
-λbinary_search(high:ℤ,low:ℤ,target:ℤ,xs:[ℤ])→ℤ≡high<low{
+λbinary_search(high:ℤ,low:ℤ,target:ℤ,xs:[ℤ])→ℤ match high<low{
   true→-1|
   false→{
     l mid=(((low+high)-((low+high)%2))/2:ℤ);
-    ≡xs[mid]=target{
+    match xs[mid]=target{
       true→mid|
-      false→≡xs[mid]<target{
+      false→match xs[mid]<target{
         true→binary_search(high,mid+1,target,xs)|
         false→binary_search(mid-1,low,target,xs)
       }

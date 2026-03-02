@@ -166,7 +166,7 @@ fn test_const_declaration() {
 
 #[test]
 fn test_boolean_literals_parse() {
-    let source = "λpick(flag:𝔹)→𝔹≡flag{true→true|false→false}";
+    let source = "λpick(flag:𝔹)→𝔹 match flag{true→true|false→false}";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
@@ -800,7 +800,7 @@ fn test_complex_nested_expression() {
 fn test_tuple_matching_rejected() {
     // Tuple pattern matching in match expressions (not supported)
   let source = r#"λbinary_search(xs:[ℤ],target:ℤ,low:ℤ,high:ℤ)→ℤ=
-  ≡(high<low,xs[0]=target,xs[0]<target){
+  match (high<low,xs[0]=target,xs[0]<target){
     (true,_,_)→-1|
     (false,true,_)→0|
     (false,false,true)→binary_search(xs,target,1,high)|
@@ -821,7 +821,7 @@ fn test_tuple_matching_rejected() {
 #[test]
 fn test_deeply_nested_lambdas_parse() {
     // Complex nested lambda expression
-    let source = "λmain()→ℤ=(λ(x:ℤ)→≡x{0→1|x→x*(λ(y:ℤ)→≡y{0→1|y→y*1})(x-1)})(4)";
+    let source = "λmain()→ℤ=(λ(x:ℤ)→match x{0→1|x→x*(λ(y:ℤ)→match y{0→1|y→y*1})(x-1)})(4)";
 
     let tokens = tokenize(source).unwrap();
     let result = parse(tokens, "test.sigil");
@@ -839,7 +839,7 @@ fn test_deeply_nested_lambdas_parse() {
 #[test]
 fn test_y_combinator_parse() {
     // Y-combinator factorial implementation
-    let source = "λy(f:λ(λ(ℤ)→ℤ)→λ(ℤ)→ℤ)→λ(ℤ)→ℤ=λ(x:ℤ)→f(y(f))(x)\nλfactGen(rec:λ(ℤ)→ℤ)→λ(ℤ)→ℤ=λ(n:ℤ)→≡n{0→1|1→1|n→n*rec(n-1)}";
+    let source = "λy(f:λ(λ(ℤ)→ℤ)→λ(ℤ)→ℤ)→λ(ℤ)→ℤ=λ(x:ℤ)→f(y(f))(x)\nλfactGen(rec:λ(ℤ)→ℤ)→λ(ℤ)→ℤ=λ(n:ℤ)→match n{0→1|1→1|n→n*rec(n-1)}";
 
     let tokens = tokenize(source).unwrap();
     let result = parse(tokens, "test.sigil");

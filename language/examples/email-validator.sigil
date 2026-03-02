@@ -26,24 +26,24 @@ i stdlib⋅string
 ⟦ Helper: Count occurrences of character in string ⟧
 λcount_char(char:𝕊,str:𝕊)→ℤ=count_helper(0,char,0,str)
 
-λcount_helper(acc:ℤ,char:𝕊,idx:ℤ,str:𝕊)→ℤ≡idx<#str{
-  true → count_helper(acc+≡stdlib⋅string.char_at(idx,str)=char{true→1|false→0},char,idx+1,str) |
+λcount_helper(acc:ℤ,char:𝕊,idx:ℤ,str:𝕊)→ℤ match idx<#str{
+  true → count_helper(acc+match stdlib⋅string.char_at(idx,str)=char{true→1|false→0},char,idx+1,str) |
   false → acc
 }
 
 ⟦ Helper: Extract local and domain from split result ⟧
-λextract_parts(parts:[𝕊])→EmailParts≡#parts=2{
+λextract_parts(parts:[𝕊])→EmailParts match #parts=2{
   true → extract_two_parts(parts) |
   false → {local:"",domain:""}
 }
 
-λextract_two_parts(parts:[𝕊])→EmailParts≡parts{
+λextract_two_parts(parts:[𝕊])→EmailParts match parts{
   [local,domain] → {local:local,domain:domain} |
   _ → {local:"",domain:""}
 }
 
 ⟦ Helper: Format validation result for display ⟧
-λformat_result(email:𝕊,result:ValidationResult)→𝕊≡result{
+λformat_result(email:𝕊,result:ValidationResult)→𝕊 match result{
   Valid → "✓ '"++email++"' is valid" |
   Invalid(reason) → "✗ '"++email++"': "++reason
 }
@@ -97,17 +97,17 @@ i stdlib⋅string
 ⟦ Validate domain part (after @) ⟧
 λvalidate_domain(domain:𝕊)→ValidationResult=validate_domain_checks(domain,#domain)
 
-λvalidate_domain_checks(domain:𝕊,len:ℤ)→ValidationResult≡len=0{
+λvalidate_domain_checks(domain:𝕊,len:ℤ)→ValidationResult match len=0{
   true → Invalid("Domain cannot be empty") |
-  false → ≡len>255{
+  false → match len>255{
     true → Invalid("Domain too long (max 255 characters)") |
-    false → ≡stdlib⋅string.index_of(domain,".")<0{
+    false → match stdlib⋅string.index_of(domain,".")<0{
       true → Invalid("Domain must contain at least one dot") |
-      false → ≡stdlib⋅string.starts_with(domain,"."){
+      false → match stdlib⋅string.starts_with(domain,"."){
         true → Invalid("Domain cannot start with dot") |
-        false → ≡stdlib⋅string.ends_with(domain,"."){
+        false → match stdlib⋅string.ends_with(domain,"."){
           true → Invalid("Domain cannot end with dot") |
-          false → ≡stdlib⋅string.index_of(domain,"..")≥0{
+          false → match stdlib⋅string.index_of(domain,"..")≥0{
             true → Invalid("Domain cannot contain consecutive dots") |
             false → Valid()
           }
@@ -121,16 +121,16 @@ i stdlib⋅string
 λvalidate_email(email:𝕊)→ValidationResult=validate_email_with_parts(email,split_at(email))
 
 ⟦ Validate email parts after splitting ⟧
-λvalidate_email_parts(parts:EmailParts)→ValidationResult≡validate_local(parts.local){
+λvalidate_email_parts(parts:EmailParts)→ValidationResult match validate_local(parts.local){
   Invalid(msg) → Invalid(msg) |
   Valid → validate_domain(parts.domain)
 }
 
-λvalidate_email_with_parts(email:𝕊,parts:EmailParts)→ValidationResult≡#email=0{
+λvalidate_email_with_parts(email:𝕊,parts:EmailParts)→ValidationResult match #email=0{
   true → Invalid("Email cannot be empty") |
-  false → ≡#email>320{
+  false → match #email>320{
     true → Invalid("Email too long (max 320 characters)") |
-    false → ≡#parts.local=0∧#parts.domain=0{
+    false → match #parts.local=0∧#parts.domain=0{
       true → Invalid("Email must contain exactly one @ symbol") |
       false → validate_email_parts(parts)
     }
@@ -140,15 +140,15 @@ i stdlib⋅string
 ⟦ Validate local part (before @) ⟧
 λvalidate_local(local:𝕊)→ValidationResult=validate_local_checks(#local,local)
 
-λvalidate_local_checks(len:ℤ,local:𝕊)→ValidationResult≡len=0{
+λvalidate_local_checks(len:ℤ,local:𝕊)→ValidationResult match len=0{
   true → Invalid("Local part cannot be empty") |
-  false → ≡len>64{
+  false → match len>64{
     true → Invalid("Local part too long (max 64 characters)") |
-    false → ≡stdlib⋅string.starts_with(local,"."){
+    false → match stdlib⋅string.starts_with(local,"."){
       true → Invalid("Local part cannot start with dot") |
-      false → ≡stdlib⋅string.ends_with(local,"."){
+      false → match stdlib⋅string.ends_with(local,"."){
         true → Invalid("Local part cannot end with dot") |
-        false → ≡stdlib⋅string.index_of(local,"..")≥0{
+        false → match stdlib⋅string.index_of(local,"..")≥0{
           true → Invalid("Local part cannot contain consecutive dots") |
           false → Valid()
         }

@@ -28,7 +28,7 @@ Here's what the workflow looked like:
 ```
 Developer opens fibonacci.sigil in VS Code
   ↓
-VS Code syntax highlights: λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|...}
+VS Code syntax highlights: λfibonacci(n:ℤ)→ℤ match n{0→0|1→1|...}
   ↓
 Developer hovers over function
   ↓
@@ -117,7 +117,7 @@ Claude Code reads these diagnostics and explains them to humans in natural langu
 Sigil enforces one way to write anything:
 
 ```sigil
-λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
+λfibonacci(n:ℤ)→ℤ match n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 ```
 
 Not:
@@ -144,7 +144,7 @@ Strong type inference with mandatory annotations:
 ```sigil
 ⟦ Type error: Cannot pass 𝕊 where ℤ expected ⟧
 λadd(a:ℤ,b:ℤ)→ℤ=a+b
-test "add strings"=add("1","2")≡3  ⟦ Error here ⟧
+test "add strings"=add("1","2") match 3  ⟦ Error here ⟧
 ```
 
 The type checker catches mistakes before runtime. Claude Code uses type errors to self-correct.
@@ -212,7 +212,7 @@ Developer: "Create a function to validate email addresses"
 
 Claude Code: *generates dense canonical Sigil*
 λvalidate_email(email:𝕊)→𝔹=
-  ≡email{
+  match email{
     ""→false
     |s→contains(s,"@")∧contains(s,".")
   }
@@ -229,7 +229,7 @@ The developer never writes `λvalidate_email(email:𝕊)→𝔹=...` by hand. Th
 Developer: "What does fibonacci.sigil do?"
 
 Claude Code: *reads fibonacci.sigil*
-λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
+λfibonacci(n:ℤ)→ℤ match n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 
 Claude Code: "This is a recursive Fibonacci implementation:
 - Base case: fib(0)=0, fib(1)=1
@@ -265,7 +265,7 @@ Developer: "Add memoization to fibonacci"
 Claude Code: *edits fibonacci.sigil with canonical syntax*
 c memo={...}
 λfibonacci(n:ℤ)→ℤ=
-  ≡memo[n]{
+  match memo[n]{
     Some(cached)→cached
     |None→...
   }

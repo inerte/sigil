@@ -129,12 +129,12 @@ impl Parser {
 
         let return_type = Some(self.parse_type()?);
 
-        // Canonical form: = required UNLESS body starts with ≡ (match expression)
+        // Canonical form: = required UNLESS body starts with match expression
         let has_equal = self.match_token(TokenType::EQUAL);
         let is_match_expr = self.check(TokenType::MATCH);
 
         if is_match_expr && has_equal {
-            return Err(self.error("Unexpected \"=\" before match expression (canonical form: λf()→T≡...)"));
+            return Err(self.error("Unexpected \"=\" before match expression (canonical form: λf()→T match ...)"));
         } else if !is_match_expr && !has_equal {
             return Err(self.error("Expected \"=\" before function body (canonical form: λf()→T=...)"));
         }
@@ -1189,7 +1189,7 @@ impl Parser {
             return self.lambda_expression();
         }
 
-        // Match expression: value ≡ pattern → body | ...
+        // Match expression: match value{pattern→body|...}
         if self.match_token(TokenType::MATCH) {
             return self.match_expression();
         }
@@ -1278,12 +1278,12 @@ impl Parser {
         let effects = self.parse_effects()?;
         let return_type = self.parse_type()?;
 
-        // Canonical form: = required UNLESS body starts with ≡ (match expression)
+        // Canonical form: = required UNLESS body starts with match expression
         let has_equal = self.match_token(TokenType::EQUAL);
         let is_match_expr = self.check(TokenType::MATCH);
 
         if is_match_expr && has_equal {
-            return Err(self.error("Unexpected \"=\" before match expression (canonical form: λ()→T≡...)"));
+            return Err(self.error("Unexpected \"=\" before match expression (canonical form: λ()→T match ...)"));
         } else if !is_match_expr && !has_equal {
             return Err(self.error("Expected \"=\" before lambda body (canonical form: λ()→T=...)"));
         }
@@ -1301,7 +1301,7 @@ impl Parser {
     }
 
     fn match_expression(&mut self) -> Result<Expr, ParseError> {
-        // Match syntax: ≡scrutinee{pattern→body|pattern→body}
+        // Match syntax: match scrutinee{pattern→body|pattern→body}
         let start = self.previous();
         let scrutinee = self.expression()?;
         self.consume(TokenType::LBRACE, "Expected \"{\"")?;

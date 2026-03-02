@@ -26,7 +26,7 @@ c width=(48:ℤ)
   inH(centerY(a),x,centerX(a),centerX(b),y)∨
   inV(centerX(b),x,y,centerY(a),centerY(b))
 
-λhalfFloor(n:ℤ)→ℤ≡n{
+λhalfFloor(n:ℤ)→ℤ match n{
   0→0|
   1→0|
   n→1+halfFloor(n-2)
@@ -64,12 +64,12 @@ c width=(48:ℤ)
   World{room1:r1.room,room2:r2.room,room3:r3.room}
 }
 
-λmax2(a:ℤ,b:ℤ)→ℤ≡a>b{
+λmax2(a:ℤ,b:ℤ)→ℤ match a>b{
   true→a|
   _→b
 }
 
-λmin2(a:ℤ,b:ℤ)→ℤ≡a<b{
+λmin2(a:ℤ,b:ℤ)→ℤ match a<b{
   true→a|
   _→b
 }
@@ -93,21 +93,21 @@ c width=(48:ℤ)
   RoomRoll{rng:yRoll.rng,room:room}
 }
 
-λrenderRow(world:World,x:ℤ,y:ℤ)→𝕊≡width-x{
+λrenderRow(world:World,x:ℤ,y:ℤ)→𝕊 match width-x{
   0→""|
   _→tileAt(world,x,y)++renderRow(world,x+1,y)
 }
 
-λrenderRows(world:World,y:ℤ)→𝕊≡height-y{
+λrenderRows(world:World,y:ℤ)→𝕊 match height-y{
   0→""|
   _→renderRow(world,0,y)++"\n"++renderRows(world,y+1)
 }
 
-λtileAt(world:World,x:ℤ,y:ℤ)→𝕊≡isPlayer(world,x,y){
+λtileAt(world:World,x:ℤ,y:ℤ)→𝕊 match isPlayer(world,x,y){
   true→"@"|
-  _→≡isExit(world,x,y){
+  _→match isExit(world,x,y){
     true→">"|
-    _→≡isFloor(world,x,y){
+    _→match isFloor(world,x,y){
       true→"."|
       _→"#"
     }

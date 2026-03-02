@@ -15,7 +15,7 @@ tags: [compiler, type-system, pattern-matching]
 Consider this common Sigil pattern:
 
 ```sigil
-λtail(xs:[ℤ])→[ℤ]≡xs{
+λtail(xs:[ℤ])→[ℤ] match xs{
   []→[]|
   [x,.xs]→xs
 }
@@ -99,17 +99,17 @@ This fix unblocked 15 functions in `stdlib/list.sigil` that use empty list patte
 
 ```sigil
 ⟦ Get all but first element ⟧
-λtail(xs:[ℤ])→[ℤ]≡xs{[]→[]|[x,.xs]→xs}
+λtail(xs:[ℤ])→[ℤ] match xs{[]→[]|[x,.xs]→xs}
 
 ⟦ Get all but last element ⟧
-λinit(xs:[ℤ])→[ℤ]≡xs{
+λinit(xs:[ℤ])→[ℤ] match xs{
   []→[]|
   [x]→[]|
   [x,.xs]→[x,.init(xs)]
 }
 
 ⟦ Intersperse element between list elements ⟧
-λintersperse(xs:[ℤ],sep:ℤ)→[ℤ]≡xs{
+λintersperse(xs:[ℤ],sep:ℤ)→[ℤ] match xs{
   []→[]|
   [x]→[x]|
   [x,.xs]→[x,sep,.intersperse(xs,sep)]
@@ -198,7 +198,7 @@ Sigil now behaves consistently with these well-established type systems.
 Let's trace how `tail` typechecks now:
 
 ```sigil
-λtail(xs:[ℤ])→[ℤ]≡xs{
+λtail(xs:[ℤ])→[ℤ] match xs{
   []→[]|
   [x,.xs]→xs
 }
@@ -242,7 +242,7 @@ One important detail: this fix only works when the first arm has a non-empty lis
 **This still fails:**
 
 ```sigil
-λbad()→[ℤ]≡true{
+λbad()→[ℤ] match true{
   true→[]|
   false→[1,2,3]
 }
@@ -253,7 +253,7 @@ Why? The first arm `true→[]` is synthesized. The body `[]` has no context (the
 The fix: reorder the arms:
 
 ```sigil
-λgood()→[ℤ]≡true{
+λgood()→[ℤ] match true{
   false→[1,2,3]|
   true→[]
 }
@@ -282,7 +282,7 @@ For those interested in the formal semantics, here's the typing rule for match e
 Γ, (pₙ : T_scrutinee) ⊢ gₙ ⇐ 𝔹   (if guard present)
 Γ, (pₙ : T_scrutinee) ⊢ eₙ ⇐ T
 ────────────────────────────────────────────────
-Γ ⊢ (≡ e { p₁ [when g₁] → e₁ | ... | pₙ [when gₙ] → eₙ }) ⇒ T
+Γ ⊢ (match e { p₁ [when g₁] → e₁ | ... | pₙ [when gₙ] → eₙ }) ⇒ T
 ```
 
 The key detail: the first arm body `e₁` is **synthesized** (⇒), establishing type `T`. All subsequent arm bodies `e₂...eₙ` are **checked** (⇐) against `T`.
@@ -293,15 +293,15 @@ With empty list patterns working, Sigil can now express clean recursive list fun
 
 **List predicates:**
 ```sigil
-λis_empty(xs:[ℤ])→𝔹≡xs{[]→true|[x,.xs]→false}
-λis_singleton(xs:[ℤ])→𝔹≡xs{[x]→true|_→false}
+λis_empty(xs:[ℤ])→𝔹 match xs{[]→true|[x,.xs]→false}
+λis_singleton(xs:[ℤ])→𝔹 match xs{[x]→true|_→false}
 ```
 
 **List transformations:**
 ```sigil
 λreverse(xs:[ℤ])→[ℤ]=xs⊕(λ(acc:[ℤ],x:ℤ)→[ℤ]=[x,.acc])⊕[]
 
-λintersperse(xs:[ℤ],sep:ℤ)→[ℤ]≡xs{
+λintersperse(xs:[ℤ],sep:ℤ)→[ℤ] match xs{
   []→[]|
   [x]→[x]|
   [x,.xs]→[x,sep,.intersperse(xs,sep)]
@@ -310,7 +310,7 @@ With empty list patterns working, Sigil can now express clean recursive list fun
 
 **Parser combinators:**
 ```sigil
-λparse_blocks(lines:[𝕊],state:ParseState)→([Block],ParseState)≡lines{
+λparse_blocks(lines:[𝕊],state:ParseState)→([Block],ParseState) match lines{
   []→([],state)|
   [line,.rest]→parse_line(line,state,rest)
 }
@@ -337,7 +337,7 @@ The fix aligns Sigil with how ML languages work: first arm establishes type, sub
 Most importantly, it makes Sigil work as users expect. When you write:
 
 ```sigil
-λtail(xs:[ℤ])→[ℤ]≡xs{[]→[]|[x,.xs]→xs}
+λtail(xs:[ℤ])→[ℤ] match xs{[]→[]|[x,.xs]→xs}
 ```
 
 It just works. No type annotations, no workarounds, no surprises.

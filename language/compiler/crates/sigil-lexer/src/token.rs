@@ -48,7 +48,7 @@ pub enum TokenType {
     #[token("→")]
     ARROW,
 
-    #[token("≡")]
+    #[token("match", priority = 3)]
     MATCH,
 
     // ========================================================================

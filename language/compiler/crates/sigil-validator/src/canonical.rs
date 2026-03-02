@@ -699,7 +699,7 @@ mod tests {
 
     #[test]
     fn test_simple_recursion_allowed() {
-        // TODO: Parser bug - match expressions with scrutinee (≡n{...}) don't work yet
+        // TODO: Parser bug - match expressions with scrutinee (match n{...}) don't work yet
         // For now, test with a simple recursive function without pattern matching
         let source = r#"λfactorial(n:ℤ)→ℤ=factorial(n-1)"#;
         let tokens = tokenize(source).unwrap();

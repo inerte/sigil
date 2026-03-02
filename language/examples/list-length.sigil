@@ -1,4 +1,4 @@
-λlength(lst:[ℤ])→ℤ≡lst{
+λlength(lst:[ℤ])→ℤ match lst{
   []→0|
   [_,.xs]→1+length(xs)
 }

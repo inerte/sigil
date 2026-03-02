@@ -49,7 +49,7 @@ Sigil uses one comment syntax only:
 ```sigil
 ⟦ This is a comment ⟧
 
-λfactorial(n:ℤ)→ℤ≡n{
+λfactorial(n:ℤ)→ℤ match n{
   0→1|  ⟦ inline comment ⟧
   n→n*factorial(n-1)
 }
@@ -87,12 +87,12 @@ Rules:
 - parameter types are required
 - return type is required
 - `=` is required for regular expression bodies
-- `=` is omitted when body starts with match (`≡...`)
+- `=` is omitted when body starts with match (`match ...`)
 
 Match-body form:
 
 ```sigil
-λfactorial(n:ℤ)→ℤ≡n{
+λfactorial(n:ℤ)→ℤ match n{
   0→1|
   1→1|
   n→n*factorial(n-1)
@@ -280,10 +280,10 @@ add(1,2)
 factorial(n-1)
 ```
 
-## Pattern matching (`≡`)
+## Pattern matching (`match`)
 
 ```sigil
-≡value{
+match value{
   pattern1→result1|
   pattern2→result2|
   _→defaultResult
@@ -293,12 +293,12 @@ factorial(n-1)
 Examples:
 
 ```sigil
-λsign(n:ℤ)→𝕊≡n{
+λsign(n:ℤ)→𝕊 match n{
   0→"zero"|
   n→"non-zero"
 }
 
-λdescribeBoth(a:𝔹,b:𝔹)→𝕊≡(a,b){
+λdescribeBoth(a:𝔹,b:𝔹)→𝕊 match (a,b){
   (true,true)→"both"|
   (true,false)→"left"|
   (false,true)→"right"|
@@ -314,7 +314,7 @@ If the guard returns `false`, matching continues to the next arm.
 
 Syntax:
 ```sigil
-≡value{
+match value{
   pattern when guard_expr → result
 }
 ```
@@ -329,7 +329,7 @@ Examples:
 
 ```sigil
 ⟦ Range checking ⟧
-λclassify(n:ℤ)→𝕊≡n{
+λclassify(n:ℤ)→𝕊 match n{
   x when x>100 → "large"|
   x when x>10 → "medium"|
   x when x>0 → "small"|
@@ -339,7 +339,7 @@ Examples:
 ⟦ Conditional unpacking ⟧
 t Result=Ok(ℤ)|Err(𝕊)
 
-λprocess(r:Result)→𝕊≡r{
+λprocess(r:Result)→𝕊 match r{
   Ok(n) when n>0 → "positive success"|
   Ok(n) → "non-positive success"|
   Err(msg) when #msg>0 → "error: "++msg|
@@ -349,7 +349,7 @@ t Result=Ok(ℤ)|Err(𝕊)
 ⟦ Complex conditions ⟧
 t Point={x:ℤ,y:ℤ}
 
-λquadrant(p:Point)→𝕊≡p{
+λquadrant(p:Point)→𝕊 match p{
   {x,y} when x=0∧y=0 → "origin"|
   {x,y} when x>0∧y>0 → "quadrant I"|
   {x,y} when x<0∧y>0 → "quadrant II"|
@@ -374,7 +374,7 @@ List literals:
 List patterns:
 
 ```sigil
-≡xs{
+match xs{
   []→0|
   [x,.rest]→1
 }
@@ -474,6 +474,6 @@ Effectful lambda:
 - Final newline required
 - No tabs
 - `λf()→T=...` for regular bodies
-- `λf()→T≡...` for match bodies (no `=`)
+- `λf()→T match ...` for match bodies (no `=`)
 
 See `docs/CANONICAL_FORMS.md` for the full enforced rules.

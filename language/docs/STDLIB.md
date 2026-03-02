@@ -618,7 +618,7 @@ in_range(10,1,10)             ⟦ → true (inclusive bounds) ⟧
 
 ```sigil
 ⟦ Validate input before processing ⟧
-λprocess_positive(x:ℤ)→𝕊≡is_positive(x){
+λprocess_positive(x:ℤ)→𝕊 match is_positive(x){
   false→"Error: Must be positive"|
   true→"Processing..."
 }
@@ -642,7 +642,7 @@ in_range(10,1,10)             ⟦ → true (inclusive bounds) ⟧
 
 ```sigil
 ⟦ Algorithm that requires sorted input ⟧
-λbinary_search(xs:[ℤ],target:ℤ)→𝕊≡sorted_asc(xs){
+λbinary_search(xs:[ℤ],target:ℤ)→𝕊 match sorted_asc(xs){
   false→"Error: List must be sorted"|
   true→"Searching..."
 }
@@ -716,13 +716,13 @@ t Option[T]=Some(T)|None
 **Usage:**
 ```sigil
 ⟦ Pattern matching on Option ⟧
-λgetOrDefault(opt:Option,default:ℤ)→ℤ≡opt{
+λgetOrDefault(opt:Option,default:ℤ)→ℤ match opt{
   Some(x)→x|
   None→default
 }
 
 ⟦ Safe division returning Option ⟧
-λdivide(a:ℤ,b:ℤ)→Option≡b{
+λdivide(a:ℤ,b:ℤ)→Option match b{
   0→None()|
   b→Some(a/b)
 }
@@ -748,13 +748,13 @@ t Result[T,E]=Ok(T)|Err(E)
 **Usage:**
 ```sigil
 ⟦ Pattern matching on Result ⟧
-λprocessResult(res:Result)→𝕊≡res{
+λprocessResult(res:Result)→𝕊 match res{
   Ok(value)→"Success: "+value|
   Err(msg)→"Error: "+msg
 }
 
 ⟦ Safe parsing returning Result ⟧
-λparsePositive(s:𝕊)→Result≡validInput(s){
+λparsePositive(s:𝕊)→Result match validInput(s){
   true→Ok(parseInt(s))|
   false→Err("invalid input")
 }
@@ -798,7 +798,7 @@ Predicates will integrate with the future contract system:
 
 ```sigil
 ⟦ Today - manual validation ⟧
-λbinary_search(xs:[ℤ],target:ℤ)→ℤ≡sorted_asc(xs){
+λbinary_search(xs:[ℤ],target:ℤ)→ℤ match sorted_asc(xs){
   false→-1|
   true→...
 }

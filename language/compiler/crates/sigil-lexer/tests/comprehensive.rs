@@ -4,7 +4,7 @@ use sigil_lexer::{tokenize, LexError, TokenType};
 
 #[test]
 fn test_all_unicode_operators() {
-    let source = "λ → ≡ ⋅ ∧ ∨ ¬ ≤ ≥ ≠ ↦ ⊳ ⊕ ⧺";
+    let source = "λ → match ⋅ ∧ ∨ ¬ ≤ ≥ ≠ ↦ ⊳ ⊕ ⧺";
     let tokens = tokenize(source).unwrap();
 
     assert_eq!(tokens[0].token_type, TokenType::LAMBDA);

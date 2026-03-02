@@ -268,7 +268,7 @@ Filename validation ensures:
 Every convention in Sigil follows this principle:
 - **One comment syntax:** `⟦ ... ⟧`
 - **One namespace separator:** `⋅`
-- **One pattern matching syntax:** `≡scrutinee{pattern→body|...}`
+- **One pattern matching syntax:** `match scrutinee{pattern→body|...}`
 - **One filename format:** lowercase with hyphens
 
 By eliminating choices, we eliminate entire classes of bugs, style debates, and training data inconsistencies.

@@ -136,7 +136,7 @@ More code fits in LLM context windows = better understanding = better code gener
 **Token Savings:**
 - `λ` instead of `function` (1 char vs 8)
 - `→` instead of `:` or `=>` (1 char vs 1-2, but semantically richer)
-- `≡` instead of `match` or `switch` (1 char vs 5-6)
+- `match` instead of bespoke symbolic control-flow markers
 - Unicode type symbols: `ℤℝ𝔹𝕊` instead of `Int,Float,Bool,String`
 
 **Result:** Current benchmarks show ~10-15% fewer tokens than TypeScript on average (see `language/benchmarks/RESULTS.md`)
@@ -205,7 +205,7 @@ Code is machine-optimal → Claude Code explains → Humans understand via AI
 
 **Development Flow:**
 ```
-fibonacci.sigil       # Dense canonical code: λfibonacci(n:ℤ)→ℤ≡n{...}
+fibonacci.sigil       # Dense canonical code: λfibonacci(n:ℤ)→ℤ match n{...}
   ↓ (Claude Code reads via compiler CLI)
 Natural language explanation on demand
 ```

@@ -4,7 +4,7 @@ t Todo={done:𝔹,id:ℤ,text:𝕊}
 
 λaddTodo(id:ℤ,text:𝕊,todos:[Todo])→[Todo]=[Todo{done:false,id:id,text:text}]⧺todos
 
-λmain()→𝕌≡addTodo(1,"First",[Todo{done:false,id:2,text:"Second"}]){
+λmain()→𝕌 match addTodo(1,"First",[Todo{done:false,id:2,text:"Second"}]){
   [_,_]→()|
   _→()
 }

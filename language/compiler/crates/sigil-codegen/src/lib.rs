@@ -5,7 +5,7 @@
 //! Key transformations:
 //! - All functions become `async function`
 //! - All function calls use `await`
-//! - Pattern matching compiles to if/else chains with __match variables
+//! - Pattern matching compiles to if/else chains with `__match` variables
 //! - Sum type constructors compile to objects with __tag and __fields
 //! - Mock runtime helpers emitted at top of file
 

@@ -237,7 +237,7 @@ use sigil_validator::{validate_canonical_form, ValidationError};
 
 #[test]
 fn test_accumulator_blocked() {
-    let source = "λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}";
+    let source = "λfactorial(n:ℤ,acc:ℤ)→ℤ match n{0→acc|n→factorial(n-1,n*acc)}";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 

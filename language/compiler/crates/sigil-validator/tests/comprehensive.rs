@@ -87,7 +87,7 @@ fn test_recursive_single_param() {
 #[test]
 fn test_accumulator_blocked() {
     // Tail-recursive factorial with accumulator parameter (forbidden)
-    let source = "λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}";
+    let source = "λfactorial(n:ℤ,acc:ℤ)→ℤ match n{0→acc|n→factorial(n-1,n*acc)}";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.lib.sigil").unwrap();
 
@@ -100,7 +100,7 @@ fn test_accumulator_blocked() {
 #[test]
 fn test_tailrec_factorial_blocked() {
     // Full tail-recursive factorial program (forbidden)
-    let source = "λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}\nλmain()→ℤ=factorial(5,1)";
+    let source = "λfactorial(n:ℤ,acc:ℤ)→ℤ match n{0→acc|n→factorial(n-1,n*acc)}\nλmain()→ℤ=factorial(5,1)";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.lib.sigil").unwrap();
 
@@ -113,7 +113,7 @@ fn test_tailrec_factorial_blocked() {
 #[test]
 fn test_invalid_helper_pattern_blocked() {
     // Helper function with accumulator-passing style (forbidden)
-    let source = "λhelper(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→helper(n-1,n*acc)}\nλfactorial(n:ℤ)→ℤ=helper(n,1)\nλmain()→ℤ=factorial(5)";
+    let source = "λhelper(n:ℤ,acc:ℤ)→ℤ match n{0→acc|n→helper(n-1,n*acc)}\nλfactorial(n:ℤ)→ℤ=helper(n,1)\nλmain()→ℤ=factorial(5)";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.lib.sigil").unwrap();
 
@@ -126,7 +126,7 @@ fn test_invalid_helper_pattern_blocked() {
 #[test]
 fn test_cps_rejected() {
     // Continuation-passing style factorial (forbidden)
-    let source = "λfactorial(n:ℤ)→λ(ℤ)→ℤ≡n{0→λ(k:ℤ)→k|n→λ(k:ℤ)→factorial(n-1)(n*k)}";
+    let source = "λfactorial(n:ℤ)→λ(ℤ)→ℤ match n{0→λ(k:ℤ)→k|n→λ(k:ℤ)→factorial(n-1)(n*k)}";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.lib.sigil").unwrap();
 
@@ -139,7 +139,7 @@ fn test_cps_rejected() {
 #[test]
 fn test_cps_factorial_blocked() {
     // Full CPS factorial program (forbidden)
-    let source = "λfactorial(n:ℤ)→λ(ℤ)→ℤ≡n{0→λ(k:ℤ)→k|n→λ(k:ℤ)→factorial(n-1)(n*k)}\nλmain()→ℤ=factorial(5)(1)";
+    let source = "λfactorial(n:ℤ)→λ(ℤ)→ℤ match n{0→λ(k:ℤ)→k|n→λ(k:ℤ)→factorial(n-1)(n*k)}\nλmain()→ℤ=factorial(5)(1)";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.lib.sigil").unwrap();
 

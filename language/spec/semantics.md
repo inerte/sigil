@@ -137,16 +137,16 @@ l x=2+3;x*2
 ```
 e → e'
 ────────────────────────────────
-≡e{p₁→e₁|...|pₙ→eₙ} → ≡e'{p₁→e₁|...|pₙ→eₙ}
+match e{p₁→e₁|...|pₙ→eₙ} → match e'{p₁→e₁|...|pₙ→eₙ}
 
-≡v{p₁→e₁|...|pₙ→eₙ} → eᵢ[bindings(pᵢ,v)]
+match v{p₁→e₁|...|pₙ→eₙ} → eᵢ[bindings(pᵢ,v)]
   (where pᵢ is the first pattern that matches v)
 ```
 
 **Example**:
 ```sigil
-≡2+3{0→"zero"|5→"five"|_→"other"}
-→ ≡5{0→"zero"|5→"five"|_→"other"}    (* Evaluate scrutinee *)
+match 2+3{0→"zero"|5→"five"|_→"other"}
+→ match 5{0→"zero"|5→"five"|_→"other"}    (* Evaluate scrutinee *)
 → "five"                              (* Match second pattern *)
 ```
 
@@ -158,8 +158,8 @@ e → e'
 [x,.xs] ++ ys → [x,.xs++ys]
 
 // List pattern matching
-≡[]{[]→e₁|[x,.xs]→e₂} → e₁
-≡[v,.vs]{[]→e₁|[x,.xs]→e₂} → e₂[x:=v,xs:=vs]
+match []{[]→e₁|[x,.xs]→e₂} → e₁
+match [v,.vs]{[]→e₁|[x,.xs]→e₂} → e₂[x:=v,xs:=vs]
 ```
 
 **Example**:
@@ -269,7 +269,7 @@ Lambdas are values (closures would capture Γ in implementation).
 ```
 Γ ⊢ e ⇓ v    match(pᵢ,v) = θ    Γ ∪ θ ⊢ eᵢ ⇓ v'
 ─────────────────────────────────────────────────
-Γ ⊢ ≡e{p₁→e₁|...|pₙ→eₙ} ⇓ v'
+Γ ⊢ match e{p₁→e₁|...|pₙ→eₙ} ⇓ v'
 ```
 
 Where `match(p,v)` returns bindings if pattern `p` matches value `v`.
@@ -482,15 +482,15 @@ function identity(x) { return x; }
 ### Example 1: Fibonacci
 
 ```sigil
-λfibonacci(n:ℤ)→ℤ≡n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
+λfibonacci(n:ℤ)→ℤ match n{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 
 // Evaluate fibonacci(3):
 fibonacci(3)
-→ ≡3{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
+→ match 3{0→0|1→1|n→fibonacci(n-1)+fibonacci(n-2)}
 → fibonacci(3-1)+fibonacci(3-2)
 → fibonacci(2)+fibonacci(1)
-→ (≡2{...} → fibonacci(1)+fibonacci(0)) + fibonacci(1)
-→ ((≡1{...} → 1) + (≡0{...} → 0)) + (≡1{...} → 1)
+→ (match 2{...} → fibonacci(1)+fibonacci(0)) + fibonacci(1)
+→ ((match 1{...} → 1) + (match 0{...} → 0)) + (match 1{...} → 1)
 → (1 + 0) + 1
 → 1 + 1
 → 2
@@ -499,14 +499,14 @@ fibonacci(3)
 ### Example 2: List Map
 
 ```sigil
-λmap[T,U](fn:λ(T)→U,list:[T])→[U]≡list{
+λmap[T,U](fn:λ(T)→U,list:[T])→[U] match list{
   []→[]|
   [x,.xs]→[fn(x),.map(fn,xs)]
 }
 
 // Evaluate map(λn→n*2,[1,2,3]):
 map(λn→n*2,[1,2,3])
-→ ≡[1,2,3]{[]→[]|[x,.xs]→[fn(x),.map(fn,xs)]}
+→ match [1,2,3]{[]→[]|[x,.xs]→[fn(x),.map(fn,xs)]}
 → [(λn→n*2)(1),.map(λn→n*2,[2,3])]
 → [2,.map(λn→n*2,[2,3])]
 → [2,[(λn→n*2)(2),.map(λn→n*2,[3])]]
@@ -583,7 +583,7 @@ function add(x, y) {
 ### Pattern Matching
 
 ```sigil
-≡option{Some(v)→v|None→0}
+match option{Some(v)→v|None→0}
 ```
 
 Compiles to:

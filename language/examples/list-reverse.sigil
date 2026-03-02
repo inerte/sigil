@@ -1,6 +1,6 @@
 λmain()→[ℤ]=reverse([1,2,3,4,5])
 
-λreverse(lst:[ℤ])→[ℤ]≡lst{
+λreverse(lst:[ℤ])→[ℤ] match lst{
   []→[]|
   [x,.xs]→reverse(xs)⧺[x]
 }

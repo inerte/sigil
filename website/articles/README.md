@@ -42,6 +42,12 @@ Why Sigil replaced `⊤` and `⊥` with `true` and `false`, and why token effici
 
 **Key topics:** Boolean literals, token efficiency, Claude Code, Codex, canonical syntax, AI-first language design
 
+**March 2, 2026** - [Why Sigil Uses match](./013-why-sigil-uses-match.md)
+
+Why Sigil replaced `≡` with `match`, and why common pattern-matching keywords are a better fit than symbolic elegance for AI-generated code.
+
+**Key topics:** Pattern matching, token efficiency, Claude Code, Codex, canonical syntax, AI-first language design
+
 ---
 
 ## About These Articles

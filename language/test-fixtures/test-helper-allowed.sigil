@@ -5,12 +5,12 @@
 
 λmain()→𝕊=process_a(50)++" and "++process_b(-5)
 
-λprocess_a(x:ℤ)→𝕊≡is_positive(x){
+λprocess_a(x:ℤ)→𝕊 match is_positive(x){
   true→"positive"|
   false→"negative"
 }
 
-λprocess_b(y:ℤ)→𝕊≡is_positive(y){
+λprocess_b(y:ℤ)→𝕊 match is_positive(y){
   true→"yes"|
   false→"no"
 }

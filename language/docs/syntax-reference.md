@@ -158,6 +158,61 @@ Some(42)
 Err("not found")
 ```
 
+## Type aliases
+
+### Tuple types
+
+Tuples are fixed-size heterogeneous collections defined with parentheses:
+
+```sigil
+t Pair=(ℤ,𝕊)
+t Triple=(ℤ,𝕊,𝔹)
+t Headers=[(𝕊,𝕊)]
+t Nested=((ℤ,𝕊),𝔹)
+```
+
+Tuple values use the same syntax:
+
+```sigil
+(42,"hello")
+(1,"world",⊤)
+[("Content-Type","application/json"),("Accept","text/html")]
+((7,"test"),⊥)
+```
+
+Pattern matching on tuples:
+
+```sigil
+λfirst(pair:(ℤ,𝕊))→ℤ≡pair{(x,y)→x}
+λswap(pair:(ℤ,𝕊))→(𝕊,ℤ)≡pair{(a,b)→(b,a)}
+```
+
+**Use cases:**
+- **HTTP headers**: `[(𝕊,𝕊)]` - preserves order, deterministic
+- **Key-value pairs**: `(𝕊,T)` - when order matters
+- **Multiple returns**: `(ℤ,𝕊,𝔹)` - return multiple values from functions
+
+**Edge cases:**
+- `(T)` is a **grouped type**, not a single-element tuple (parses as just `T`)
+- `()` in type position is an **empty tuple** (distinct from unit type `𝕌`)
+
+### List types
+
+```sigil
+t Numbers=[ℤ]
+t Names=[𝕊]
+t Todos=[Todo]
+```
+
+### Other type aliases
+
+Type aliases can reference any type expression:
+
+```sigil
+t UserId=𝕊
+t Callback=λ(ℤ)→𝕊
+```
+
 ## Constants (`c`)
 
 ```sigil
@@ -360,6 +415,37 @@ t Point={x:ℤ,y:ℤ}
 Pattern guards are **backward compatible**: patterns without guards work exactly as before.
 
 See `language/examples/pattern-guards.sigil` for more examples.
+
+## Tuples
+
+Tuple literals:
+
+```sigil
+(42,"hello")
+(1,"a",⊤)
+[("key1","value1"),("key2","value2")]
+```
+
+Tuple patterns:
+
+```sigil
+≡pair{
+  (x,y)→x+y
+}
+
+≡triple{
+  (a,b,c)→a
+}
+```
+
+Nested tuples:
+
+```sigil
+((1,"a"),⊤)
+≡nested{
+  ((x,y),z)→x
+}
+```
 
 ## Lists
 

@@ -190,6 +190,22 @@ export class Parser {
       return this.productType();
     }
 
+    // Check if it's a type expression (tuple, list, map, etc.) rather than a variant
+    // These start with non-identifier tokens
+    if (this.check(TokenType.LPAREN) || this.check(TokenType.LBRACKET) ||
+        this.check(TokenType.TYPE_INT) || this.check(TokenType.TYPE_FLOAT) ||
+        this.check(TokenType.TYPE_BOOL) || this.check(TokenType.TYPE_STRING) ||
+        this.check(TokenType.TYPE_CHAR) || this.check(TokenType.TYPE_UNIT) ||
+        this.check(TokenType.LAMBDA)) {
+      const start = this.peek();
+      const aliasedType = this.type();
+      return {
+        type: 'TypeAlias',
+        aliasedType,
+        location: this.makeLocation(start, this.previous()),
+      };
+    }
+
     // Sum type or type alias
     const start = this.peek();
     const firstVariant = this.variantOrType();
@@ -575,6 +591,47 @@ export class Parser {
         paramTypes,
         effects,
         returnType,
+        location: this.makeLocation(start, this.previous()),
+      };
+    }
+
+    // Tuple type: (T1, T2, T3)
+    if (this.match(TokenType.LPAREN)) {
+      const start = this.previous();
+
+      // Check for empty tuple: ()
+      if (this.check(TokenType.RPAREN)) {
+        this.advance();
+        return {
+          type: 'TupleType',
+          types: [],
+          location: this.makeLocation(start, this.previous()),
+        };
+      }
+
+      // Parse first type
+      const first = this.type();
+
+      // Check for comma - if no comma, it's a grouped type, not a tuple
+      if (!this.match(TokenType.COMMA)) {
+        this.consume(TokenType.RPAREN, 'Expected ")"');
+        return first; // Grouped type - return the inner type directly
+      }
+
+      // It's a tuple - parse remaining types
+      const types = [first];
+
+      // Continue parsing if there are more types (not just trailing comma)
+      if (!this.check(TokenType.RPAREN)) {
+        do {
+          types.push(this.type());
+        } while (this.match(TokenType.COMMA));
+      }
+
+      this.consume(TokenType.RPAREN, 'Expected ")"');
+      return {
+        type: 'TupleType',
+        types,
         location: this.makeLocation(start, this.previous()),
       };
     }

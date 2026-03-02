@@ -1,0 +1,16 @@
+t Headers=[(𝕊,𝕊)]
+t Nested=((ℤ,𝕊),𝔹)
+t Pair=(ℤ,𝕊)
+t Triple=(ℤ,𝕊,𝔹)
+
+λfirst(pair:(ℤ,𝕊))→ℤ≡pair{(x,y)→x}
+
+λmain()→Pair=(42,"hello")
+
+λswap(pair:(ℤ,𝕊))→(𝕊,ℤ)≡pair{(a,b)→(b,a)}
+
+λtest()→Triple=(1,"world",⊤)
+
+λtestHeaders()→Headers=[("Content-Type","application/json"),("Accept","text/html")]
+
+λtestNested()→Nested=((7,"test"),⊥)

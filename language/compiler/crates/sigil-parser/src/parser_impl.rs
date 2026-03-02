@@ -199,13 +199,13 @@ impl Parser {
 
     fn type_declaration(&mut self) -> Result<Declaration, ParseError> {
         let start = self.previous();
-        let name = self.consume(TokenType::UPPER_IDENTIFIER, "Expected type name")?.value.clone();
+        let name = self.consume(TokenType::UpperIdentifier, "Expected type name")?.value.clone();
 
         let mut type_params = Vec::new();
         if self.match_token(TokenType::LBRACKET) {
             loop {
                 type_params.push(
-                    self.consume(TokenType::UPPER_IDENTIFIER, "Expected type parameter")?.value.clone(),
+                    self.consume(TokenType::UpperIdentifier, "Expected type parameter")?.value.clone(),
                 );
                 if !self.match_token(TokenType::COMMA) {
                     break;
@@ -243,7 +243,7 @@ impl Parser {
         let is_constructor = self.previous().token_type == TokenType::RPAREN;
 
         // If followed by |, it's a sum type
-        if self.check(TokenType::PIPE_SEP) {
+        if self.check(TokenType::PipeSep) {
             return self.sum_type(first_variant).map(TypeDef::Sum);
         }
 
@@ -270,7 +270,7 @@ impl Parser {
 
     fn variant_or_type(&mut self) -> Result<TypeConstructor, ParseError> {
         let start = self.peek();
-        let name = self.consume(TokenType::UPPER_IDENTIFIER, "Expected type or variant name")?.value.clone();
+        let name = self.consume(TokenType::UpperIdentifier, "Expected type or variant name")?.value.clone();
 
         let mut type_args = Vec::new();
         if self.match_token(TokenType::LPAREN) {
@@ -301,7 +301,7 @@ impl Parser {
             location: first_variant.location,
         }];
 
-        while self.match_token(TokenType::PIPE_SEP) {
+        while self.match_token(TokenType::PipeSep) {
             let var_start = self.peek();
             let variant = self.variant_or_type()?;
             let var_end = self.previous();
@@ -356,7 +356,7 @@ impl Parser {
     fn const_declaration(&mut self) -> Result<Declaration, ParseError> {
         let start = self.previous();
 
-        if self.check(TokenType::UPPER_IDENTIFIER) {
+        if self.check(TokenType::UpperIdentifier) {
             let bad = self.peek();
             return Err(ParseError::InvalidConstantName {
                 file: self.filename.clone(),
@@ -403,7 +403,7 @@ impl Parser {
         // Parse module path: i stdlib⋅list
         loop {
             module_path.push(self.module_path_segment()?);
-            if !self.match_token(TokenType::NAMESPACE_SEP) {
+            if !self.match_token(TokenType::NamespaceSep) {
                 break;
             }
         }
@@ -434,7 +434,7 @@ impl Parser {
         module_path.push(self.module_path_segment()?);
 
         // Handle namespace separators: fs⋅promises
-        while self.match_token(TokenType::NAMESPACE_SEP) {
+        while self.match_token(TokenType::NamespaceSep) {
             module_path.push(self.module_path_segment()?);
         }
 
@@ -497,7 +497,7 @@ impl Parser {
 
         // Consume first part
         if self.match_token(TokenType::IDENTIFIER)
-            || self.match_token(TokenType::UPPER_IDENTIFIER)
+            || self.match_token(TokenType::UpperIdentifier)
             || self.match_token(TokenType::INTEGER)
         {
             parts.push(self.previous().value.clone());
@@ -509,7 +509,7 @@ impl Parser {
         while self.match_token(TokenType::MINUS) {
             parts.push("-".to_string());
             if self.match_token(TokenType::IDENTIFIER)
-                || self.match_token(TokenType::UPPER_IDENTIFIER)
+                || self.match_token(TokenType::UpperIdentifier)
                 || self.match_token(TokenType::INTEGER)
             {
                 parts.push(self.previous().value.clone());
@@ -553,7 +553,7 @@ impl Parser {
         let valid_effects = vec!["IO", "Network", "Async", "Error", "Mut"];
 
         while self.match_token(TokenType::BANG) {
-            if self.match_token(TokenType::UPPER_IDENTIFIER) {
+            if self.match_token(TokenType::UpperIdentifier) {
                 let effect = self.previous().value.clone();
 
                 if !valid_effects.contains(&effect.as_str()) {
@@ -582,42 +582,42 @@ impl Parser {
 
     fn parse_type(&mut self) -> Result<Type, ParseError> {
         // Primitive types
-        if self.match_token(TokenType::TYPE_INT) {
+        if self.match_token(TokenType::TypeInt) {
             let loc = self.previous().location;
             return Ok(Type::Primitive(PrimitiveType {
                 name: PrimitiveName::Int,
                 location: loc,
             }));
         }
-        if self.match_token(TokenType::TYPE_FLOAT) {
+        if self.match_token(TokenType::TypeFloat) {
             let loc = self.previous().location;
             return Ok(Type::Primitive(PrimitiveType {
                 name: PrimitiveName::Float,
                 location: loc,
             }));
         }
-        if self.match_token(TokenType::TYPE_BOOL) {
+        if self.match_token(TokenType::TypeBool) {
             let loc = self.previous().location;
             return Ok(Type::Primitive(PrimitiveType {
                 name: PrimitiveName::Bool,
                 location: loc,
             }));
         }
-        if self.match_token(TokenType::TYPE_STRING) {
+        if self.match_token(TokenType::TypeString) {
             let loc = self.previous().location;
             return Ok(Type::Primitive(PrimitiveType {
                 name: PrimitiveName::String,
                 location: loc,
             }));
         }
-        if self.match_token(TokenType::TYPE_CHAR) {
+        if self.match_token(TokenType::TypeChar) {
             let loc = self.previous().location;
             return Ok(Type::Primitive(PrimitiveType {
                 name: PrimitiveName::Char,
                 location: loc,
             }));
         }
-        if self.match_token(TokenType::TYPE_UNIT) {
+        if self.match_token(TokenType::TypeUnit) {
             let loc = self.previous().location;
             return Ok(Type::Primitive(PrimitiveType {
                 name: PrimitiveName::Unit,
@@ -683,16 +683,16 @@ impl Parser {
         }
 
         // Qualified type or type constructor/variable
-        if self.match_token(TokenType::IDENTIFIER) || self.match_token(TokenType::UPPER_IDENTIFIER) {
+        if self.match_token(TokenType::IDENTIFIER) || self.match_token(TokenType::UpperIdentifier) {
             let start = self.previous();
             let first_segment = start.value.clone();
-            let is_upper = start.token_type == TokenType::UPPER_IDENTIFIER;
+            let is_upper = start.token_type == TokenType::UpperIdentifier;
 
             // Check for qualified type
-            if self.check(TokenType::NAMESPACE_SEP) {
+            if self.check(TokenType::NamespaceSep) {
                 let mut module_path = vec![first_segment];
 
-                while self.match_token(TokenType::NAMESPACE_SEP) {
+                while self.match_token(TokenType::NamespaceSep) {
                     module_path.push(self.module_path_segment()?);
                 }
 
@@ -705,7 +705,7 @@ impl Parser {
                     ),
                 )?;
 
-                let type_name = self.consume(TokenType::UPPER_IDENTIFIER, "Expected type name after \".\"")?.value.clone();
+                let type_name = self.consume(TokenType::UpperIdentifier, "Expected type name after \".\"")?.value.clone();
 
                 // Check for type arguments
                 let mut type_args = Vec::new();
@@ -864,19 +864,19 @@ impl Parser {
 
         while self.match_any(&[
             TokenType::EQUAL,
-            TokenType::NOT_EQUAL,
+            TokenType::NotEqual,
             TokenType::LESS,
             TokenType::GREATER,
-            TokenType::LESS_EQ,
-            TokenType::GREATER_EQ,
+            TokenType::LessEq,
+            TokenType::GreaterEq,
         ]) {
             let op = match self.previous().token_type {
                 TokenType::EQUAL => BinaryOperator::Equal,
-                TokenType::NOT_EQUAL => BinaryOperator::NotEqual,
+                TokenType::NotEqual => BinaryOperator::NotEqual,
                 TokenType::LESS => BinaryOperator::Less,
                 TokenType::GREATER => BinaryOperator::Greater,
-                TokenType::LESS_EQ => BinaryOperator::LessEq,
-                TokenType::GREATER_EQ => BinaryOperator::GreaterEq,
+                TokenType::LessEq => BinaryOperator::LessEq,
+                TokenType::GreaterEq => BinaryOperator::GreaterEq,
                 _ => unreachable!(),
             };
             let right = self.additive()?;
@@ -900,13 +900,13 @@ impl Parser {
             TokenType::PLUS,
             TokenType::MINUS,
             TokenType::APPEND,
-            TokenType::LIST_APPEND,
+            TokenType::ListAppend,
         ]) {
             let op = match self.previous().token_type {
                 TokenType::PLUS => BinaryOperator::Add,
                 TokenType::MINUS => BinaryOperator::Subtract,
                 TokenType::APPEND => BinaryOperator::Append,
-                TokenType::LIST_APPEND => BinaryOperator::ListAppend,
+                TokenType::ListAppend => BinaryOperator::ListAppend,
                 _ => unreachable!(),
             };
             let right = self.multiplicative()?;
@@ -1155,15 +1155,15 @@ impl Parser {
         }
 
         // Identifier
-        if self.match_token(TokenType::IDENTIFIER) || self.match_token(TokenType::UPPER_IDENTIFIER) {
+        if self.match_token(TokenType::IDENTIFIER) || self.match_token(TokenType::UpperIdentifier) {
             let tok = self.previous();
 
             // Check for member access (FFI): module⋅path.member
-            if self.check(TokenType::NAMESPACE_SEP) {
+            if self.check(TokenType::NamespaceSep) {
                 let mut namespace = vec![tok.value.clone()];
                 let start = tok.location.start;
 
-                while self.match_token(TokenType::NAMESPACE_SEP) {
+                while self.match_token(TokenType::NamespaceSep) {
                     namespace.push(self.module_path_segment()?);
                 }
 
@@ -1261,7 +1261,7 @@ impl Parser {
         }
 
         // with_mock expression
-        if self.match_token(TokenType::WITH_MOCK) {
+        if self.match_token(TokenType::WithMock) {
             return self.with_mock_expression();
         }
 
@@ -1329,7 +1329,7 @@ impl Parser {
                 location: self.make_location(arm_start.location.start, arm_end.location.end),
             });
 
-            if !self.match_token(TokenType::PIPE_SEP) {
+            if !self.match_token(TokenType::PipeSep) {
                 break;
             }
         }
@@ -1445,11 +1445,14 @@ impl Parser {
 
     fn with_mock_expression(&mut self) -> Result<Expr, ParseError> {
         let start = self.previous();
-        let target = self.primary()?;
-        let replacement = self.primary()?;
-        self.consume(TokenType::LBRACE, "Expected \"{\"")?;
+        self.consume(TokenType::LPAREN, "Expected \"(\" after with_mock")?;
+        let target = self.expression()?;
+        self.consume(TokenType::COMMA, "Expected \",\" after mock target")?;
+        let replacement = self.expression()?;
+        self.consume(TokenType::RPAREN, "Expected \")\" after mock replacement")?;
+        self.consume(TokenType::LBRACE, "Expected \"{\" before with_mock body")?;
         let body = self.expression()?;
-        self.consume(TokenType::RBRACE, "Expected \"}\"")?;
+        self.consume(TokenType::RBRACE, "Expected \"}\" after with_mock body")?;
 
         let end = self.previous();
         Ok(Expr::WithMock(Box::new(WithMockExpr {
@@ -1520,7 +1523,7 @@ impl Parser {
         }
 
         // Constructor pattern or identifier: Some x, None, x
-        if self.match_token(TokenType::UPPER_IDENTIFIER) {
+        if self.match_token(TokenType::UpperIdentifier) {
             let start = self.previous();
             let name = start.value.clone();
 
@@ -1753,18 +1756,6 @@ impl Parser {
             line: location.start.line,
             column: location.start.column,
             location,
-        }
-    }
-
-    fn error_at_current(&self, message: &str) -> ParseError {
-        let tok = self.peek();
-        ParseError::UnexpectedToken {
-            file: self.filename.clone(),
-            expected: message.to_string(),
-            found: format!("{:?}", tok.token_type),
-            line: tok.location.start.line,
-            column: tok.location.start.column,
-            location: tok.location,
         }
     }
 

@@ -10,10 +10,24 @@ test "mockable function can be overridden" →!IO {
   }
 }
 
+test "nested with_mock uses inner replacement lexically" →!IO {
+  with_mock(ping, λ()→!IO 𝕊="outer") {
+    with_mock(ping, λ()→!IO 𝕊="inner") {
+      ping()="inner"
+    }
+  }
+}
+
 test "numeric predicates are available in projects" {
   stdlib⋅numeric.is_even(2)=⊤∧stdlib⋅numeric.is_odd(3)=⊤
 }
 
 test "pure boolean passes" {
   1+1=2
+}
+
+test "with_mock can be used in boolean expressions" →!IO {
+  with_mock(ping, λ()→!IO 𝕊="pong") {
+    ping()="pong"∧ping()≠"real"
+  }
 }

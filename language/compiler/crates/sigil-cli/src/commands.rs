@@ -2,7 +2,7 @@
 
 use crate::module_graph::{ModuleGraph, ModuleGraphError, LoadedModule};
 use rayon::prelude::*;
-use sigil_ast::{Declaration, Program};
+use sigil_ast::{Declaration, Program, Type, TypeDef};
 use sigil_codegen::{CodegenOptions, TypeScriptGenerator};
 use sigil_lexer::Lexer;
 use sigil_parser::Parser;
@@ -272,7 +272,10 @@ pub fn compile_command(
 
         // Track for dependents
         compiled_modules.insert(module_id.clone(), inferred_types);
-        type_registries.insert(module_id.clone(), extract_type_registry(&module.ast, &module.file_path));
+        type_registries.insert(
+            module_id.clone(),
+            extract_type_registry(&module.ast, &module.file_path, module_id),
+        );
     }
 
     // Find entry module output
@@ -391,7 +394,10 @@ pub fn run_command(file: &Path, human: bool) -> Result<(), CliError> {
 
         // Track for dependents
         compiled_modules.insert(module_id.clone(), inferred_types);
-        type_registries.insert(module_id.clone(), extract_type_registry(&module.ast, &module.file_path));
+        type_registries.insert(
+            module_id.clone(),
+            extract_type_registry(&module.ast, &module.file_path, module_id),
+        );
     }
 
     // Create runner file
@@ -729,7 +735,10 @@ fn compile_and_run_tests(
 
         // Track for dependents
         compiled_modules.insert(module_id.clone(), inferred_types);
-        type_registries.insert(module_id.clone(), extract_type_registry(&module.ast, &module.file_path));
+        type_registries.insert(
+            module_id.clone(),
+            extract_type_registry(&module.ast, &module.file_path, module_id),
+        );
     }
 
     // Run test runner on the test module
@@ -926,14 +935,185 @@ fn build_imported_type_registries(
     imported
 }
 
+fn qualify_type_in_context(
+    ast_type: &Type,
+    module_id: &str,
+    local_type_registry: &HashMap<String, TypeInfo>,
+    type_params: &[String],
+) -> Type {
+    match ast_type {
+        Type::Primitive(_) => ast_type.clone(),
+        Type::Qualified(qualified) => Type::Qualified(sigil_ast::QualifiedType {
+            module_path: qualified.module_path.clone(),
+            type_name: qualified.type_name.clone(),
+            type_args: qualified
+                .type_args
+                .iter()
+                .map(|ty| qualify_type_in_context(ty, module_id, local_type_registry, type_params))
+                .collect(),
+            location: qualified.location,
+        }),
+        Type::List(list_type) => Type::List(Box::new(sigil_ast::ListType {
+            element_type: qualify_type_in_context(
+                &list_type.element_type,
+                module_id,
+                local_type_registry,
+                type_params,
+            ),
+            location: list_type.location,
+        })),
+        Type::Map(map_type) => Type::Map(Box::new(sigil_ast::MapType {
+            key_type: qualify_type_in_context(
+                &map_type.key_type,
+                module_id,
+                local_type_registry,
+                type_params,
+            ),
+            value_type: qualify_type_in_context(
+                &map_type.value_type,
+                module_id,
+                local_type_registry,
+                type_params,
+            ),
+            location: map_type.location,
+        })),
+        Type::Function(func_type) => Type::Function(Box::new(sigil_ast::FunctionType {
+            param_types: func_type
+                .param_types
+                .iter()
+                .map(|ty| qualify_type_in_context(ty, module_id, local_type_registry, type_params))
+                .collect(),
+            effects: func_type.effects.clone(),
+            return_type: qualify_type_in_context(
+                &func_type.return_type,
+                module_id,
+                local_type_registry,
+                type_params,
+            ),
+            location: func_type.location,
+        })),
+        Type::Tuple(tuple_type) => Type::Tuple(sigil_ast::TupleType {
+            types: tuple_type
+                .types
+                .iter()
+                .map(|ty| qualify_type_in_context(ty, module_id, local_type_registry, type_params))
+                .collect(),
+            location: tuple_type.location,
+        }),
+        Type::Variable(var_type) => {
+            if type_params.contains(&var_type.name) || !local_type_registry.contains_key(&var_type.name) {
+                return ast_type.clone();
+            }
+
+            Type::Qualified(sigil_ast::QualifiedType {
+                module_path: module_id.split('⋅').map(|s| s.to_string()).collect(),
+                type_name: var_type.name.clone(),
+                type_args: vec![],
+                location: var_type.location,
+            })
+        }
+        Type::Constructor(constructor) => {
+            let qualified_args = constructor
+                .type_args
+                .iter()
+                .map(|ty| qualify_type_in_context(ty, module_id, local_type_registry, type_params))
+                .collect();
+
+            if local_type_registry.contains_key(&constructor.name) && !type_params.contains(&constructor.name) {
+                Type::Qualified(sigil_ast::QualifiedType {
+                    module_path: module_id.split('⋅').map(|s| s.to_string()).collect(),
+                    type_name: constructor.name.clone(),
+                    type_args: qualified_args,
+                    location: constructor.location,
+                })
+            } else {
+                Type::Constructor(sigil_ast::TypeConstructor {
+                    name: constructor.name.clone(),
+                    type_args: qualified_args,
+                    location: constructor.location,
+                })
+            }
+        }
+    }
+}
+
+fn qualify_type_def(
+    type_def: &TypeDef,
+    module_id: &str,
+    local_type_registry: &HashMap<String, TypeInfo>,
+    type_params: &[String],
+) -> TypeDef {
+    match type_def {
+        TypeDef::Product(product) => TypeDef::Product(sigil_ast::ProductType {
+            fields: product
+                .fields
+                .iter()
+                .map(|field| sigil_ast::Field {
+                    name: field.name.clone(),
+                    field_type: qualify_type_in_context(
+                        &field.field_type,
+                        module_id,
+                        local_type_registry,
+                        type_params,
+                    ),
+                    location: field.location,
+                })
+                .collect(),
+            location: product.location,
+        }),
+        TypeDef::Alias(alias) => TypeDef::Alias(sigil_ast::TypeAlias {
+            aliased_type: qualify_type_in_context(
+                &alias.aliased_type,
+                module_id,
+                local_type_registry,
+                type_params,
+            ),
+            location: alias.location,
+        }),
+        TypeDef::Sum(sum) => TypeDef::Sum(sigil_ast::SumType {
+            variants: sum
+                .variants
+                .iter()
+                .map(|variant| sigil_ast::Variant {
+                    name: variant.name.clone(),
+                    types: variant
+                        .types
+                        .iter()
+                        .map(|ty| qualify_type_in_context(ty, module_id, local_type_registry, type_params))
+                        .collect(),
+                    location: variant.location,
+                })
+                .collect(),
+            location: sum.location,
+        }),
+    }
+}
+
 /// Extract type registry from a module's AST
 ///
 /// Collects all exported type definitions for use by dependent modules
-fn extract_type_registry(ast: &Program, file_path: &std::path::Path) -> HashMap<String, TypeInfo> {
+fn extract_type_registry(
+    ast: &Program,
+    file_path: &std::path::Path,
+    module_id: &str,
+) -> HashMap<String, TypeInfo> {
     let mut registry = HashMap::new();
 
     // Only .lib.sigil files export types
     let is_lib_file = file_path.to_string_lossy().ends_with(".lib.sigil");
+
+    let mut local_type_registry = HashMap::new();
+    for decl in &ast.declarations {
+        if let Declaration::Type(type_decl) = decl {
+            local_type_registry.insert(
+                type_decl.name.clone(),
+                TypeInfo {
+                    type_params: type_decl.type_params.clone(),
+                    definition: type_decl.definition.clone(),
+                },
+            );
+        }
+    }
 
     for decl in &ast.declarations {
         if let Declaration::Type(type_decl) = decl {
@@ -942,7 +1122,12 @@ fn extract_type_registry(ast: &Program, file_path: &std::path::Path) -> HashMap<
                     type_decl.name.clone(),
                     TypeInfo {
                         type_params: type_decl.type_params.clone(),
-                        definition: type_decl.definition.clone(),
+                        definition: qualify_type_def(
+                            &type_decl.definition,
+                            module_id,
+                            &local_type_registry,
+                            &type_decl.type_params,
+                        ),
                     },
                 );
             }

@@ -9,7 +9,7 @@
 
 use crate::environment::{BindingMeta, TypeEnvironment, TypeInfo};
 use crate::errors::{format_type, TypeError};
-use crate::types::{ast_type_to_inference_type, types_equal, InferenceType, TFunction, TPrimitive};
+use crate::types::{ast_type_to_inference_type, types_equal, InferenceType, TConstructor, TFunction, TPrimitive, TRecord};
 use crate::TypeCheckOptions;
 use sigil_ast::{
     BinaryOperator, Declaration, Expr, FunctionDecl, LiteralType, PrimitiveName, Program, Type,
@@ -54,10 +54,11 @@ pub fn type_check(
                 if let sigil_ast::TypeDef::Sum(sum_type) = &type_decl.definition {
                     for variant in &sum_type.variants {
                         let constructor_type = create_constructor_type(
+                            &env,
                             variant,
                             &type_decl.type_params,
                             &type_decl.name,
-                        );
+                        )?;
                         env.bind(variant.name.clone(), constructor_type);
                     }
                 }
@@ -68,18 +69,17 @@ pub fn type_check(
                 let params: Vec<InferenceType> = func_decl
                     .params
                     .iter()
-                    .map(|p| {
-                        p.type_annotation
-                            .as_ref()
-                            .map(ast_type_to_inference_type)
-                            .unwrap_or(InferenceType::Any)
+                    .map(|p| match &p.type_annotation {
+                        Some(ty) => ast_type_to_inference_type_resolved(&env, ty),
+                        None => Ok(InferenceType::Any),
                     })
-                    .collect();
+                    .collect::<Result<_, _>>()?;
 
                 let return_type = func_decl
                     .return_type
                     .as_ref()
-                    .map(ast_type_to_inference_type)
+                    .map(|ty| ast_type_to_inference_type_resolved(&env, ty))
+                    .transpose()?
                     .unwrap_or(InferenceType::Any);
 
                 let effects = if func_decl.effects.is_empty() {
@@ -115,7 +115,8 @@ pub fn type_check(
                 let const_type = const_decl
                     .type_annotation
                     .as_ref()
-                    .map(ast_type_to_inference_type)
+                    .map(|ty| ast_type_to_inference_type_resolved(&env, ty))
+                    .transpose()?
                     .unwrap_or(InferenceType::Any);
 
                 env.bind(const_decl.name.clone(), const_type.clone());
@@ -174,7 +175,7 @@ pub fn type_check(
             // Type check constant value
             let value_type = synthesize(&env, &const_decl.value)?;
             if let Some(ref annotation) = const_decl.type_annotation {
-                let expected_type = ast_type_to_inference_type(annotation);
+                let expected_type = ast_type_to_inference_type_resolved(&env, annotation)?;
                 let (normalized_value, normalized_expected) =
                     canonical_pair(&env, &value_type, &expected_type);
                 if !types_equal(&normalized_value, &normalized_expected) {
@@ -206,6 +207,226 @@ fn canonical_pair(
     right: &InferenceType,
 ) -> (InferenceType, InferenceType) {
     (env.normalize_type(left), env.normalize_type(right))
+}
+
+fn resolve_qualified_type(
+    env: &TypeEnvironment,
+    qualified: &sigil_ast::QualifiedType,
+) -> Result<InferenceType, TypeError> {
+    let module_id = qualified.module_path.join("⋅");
+    let type_info = env.lookup_qualified_type(&qualified.module_path, &qualified.type_name);
+
+    let Some(type_info) = type_info else {
+        if let Some(available_types) = env.get_imported_module_type_names(&module_id) {
+            if !available_types.is_empty() {
+                return Err(TypeError::new(
+                    format!(
+                        "Undefined type: {}.{}\n\nModule '{}' is imported, but it does not export a type named '{}'.\n\nAvailable exported types:\n{}",
+                        module_id,
+                        qualified.type_name,
+                        module_id,
+                        qualified.type_name,
+                        available_types
+                            .iter()
+                            .map(|name| format!("  - {}", name))
+                            .collect::<Vec<_>>()
+                            .join("\n")
+                    ),
+                    Some(qualified.location),
+                ));
+            }
+        }
+
+        return Err(TypeError::new(
+            format!(
+                "Module '{}' is not imported or does not export any types.\n\nAdd this import: i {}",
+                module_id, module_id
+            ),
+            Some(qualified.location),
+        ));
+    };
+
+    let type_args = qualified
+        .type_args
+        .iter()
+        .map(|arg| ast_type_to_inference_type_resolved(env, arg))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    if type_args.len() != type_info.type_params.len() {
+        return Err(TypeError::new(
+            format!(
+                "Type argument mismatch: {} expects {} type argument{}, but got {}",
+                qualified.type_name,
+                type_info.type_params.len(),
+                if type_info.type_params.len() == 1 { "" } else { "s" },
+                type_args.len()
+            ),
+            Some(qualified.location),
+        ));
+    }
+
+    let qualified_name = format!("{}.{}", module_id, qualified.type_name);
+    if type_info.type_params.is_empty() {
+        match &type_info.definition {
+            TypeDef::Product(product) => {
+                let mut fields = HashMap::new();
+                for field in &product.fields {
+                    fields.insert(
+                        field.name.clone(),
+                        ast_type_to_inference_type_resolved(env, &field.field_type)?,
+                    );
+                }
+
+                return Ok(InferenceType::Record(TRecord {
+                    fields,
+                    name: Some(qualified_name),
+                }));
+            }
+            TypeDef::Alias(alias) => {
+                return ast_type_to_inference_type_resolved(env, &alias.aliased_type);
+            }
+            TypeDef::Sum(_) => {}
+        }
+    }
+
+    Ok(InferenceType::Constructor(TConstructor {
+        name: qualified_name,
+        type_args,
+    }))
+}
+
+fn split_qualified_constructor_name(name: &str) -> Option<(Vec<String>, String)> {
+    let dot_index = name.rfind('.')?;
+    let module_id = &name[..dot_index];
+    let type_name = &name[dot_index + 1..];
+    Some((
+        module_id.split('⋅').map(|part| part.to_string()).collect(),
+        type_name.to_string(),
+    ))
+}
+
+fn resolve_named_type(
+    env: &TypeEnvironment,
+    inference_type: &InferenceType,
+) -> Result<InferenceType, TypeError> {
+    match inference_type {
+        InferenceType::Constructor(constructor) if constructor.type_args.is_empty() => {
+            if let Some((module_path, type_name)) = split_qualified_constructor_name(&constructor.name) {
+                if let Some(type_info) = env.lookup_qualified_type(&module_path, &type_name) {
+                    if type_info.type_params.is_empty() {
+                        return match &type_info.definition {
+                            TypeDef::Product(product) => {
+                                let mut fields = HashMap::new();
+                                for field in &product.fields {
+                                    fields.insert(
+                                        field.name.clone(),
+                                        ast_type_to_inference_type_resolved(env, &field.field_type)?,
+                                    );
+                                }
+                                Ok(InferenceType::Record(TRecord {
+                                    fields,
+                                    name: Some(constructor.name.clone()),
+                                }))
+                            }
+                            TypeDef::Alias(alias) => {
+                                ast_type_to_inference_type_resolved(env, &alias.aliased_type)
+                            }
+                            TypeDef::Sum(_) => Ok(inference_type.clone()),
+                        };
+                    }
+                }
+            }
+
+            if let Some(type_info) = env.lookup_type(&constructor.name) {
+                if type_info.type_params.is_empty() {
+                    return match &type_info.definition {
+                        TypeDef::Product(product) => {
+                            let mut fields = HashMap::new();
+                            for field in &product.fields {
+                                fields.insert(
+                                    field.name.clone(),
+                                    ast_type_to_inference_type_resolved(env, &field.field_type)?,
+                                );
+                            }
+                            Ok(InferenceType::Record(TRecord {
+                                fields,
+                                name: Some(constructor.name.clone()),
+                            }))
+                        }
+                        TypeDef::Alias(alias) => {
+                            ast_type_to_inference_type_resolved(env, &alias.aliased_type)
+                        }
+                        TypeDef::Sum(_) => Ok(inference_type.clone()),
+                    };
+                }
+            }
+
+            Ok(inference_type.clone())
+        }
+        InferenceType::List(list) => Ok(InferenceType::List(Box::new(crate::types::TList {
+            element_type: resolve_named_type(env, &list.element_type)?,
+        }))),
+        InferenceType::Tuple(tuple) => Ok(InferenceType::Tuple(crate::types::TTuple {
+            types: tuple
+                .types
+                .iter()
+                .map(|ty| resolve_named_type(env, ty))
+                .collect::<Result<Vec<_>, _>>()?,
+        })),
+        InferenceType::Function(func) => Ok(InferenceType::Function(Box::new(TFunction {
+            params: func
+                .params
+                .iter()
+                .map(|ty| resolve_named_type(env, ty))
+                .collect::<Result<Vec<_>, _>>()?,
+            return_type: resolve_named_type(env, &func.return_type)?,
+            effects: func.effects.clone(),
+        }))),
+        InferenceType::Record(record) => {
+            let mut fields = HashMap::new();
+            for (name, field_type) in &record.fields {
+                fields.insert(name.clone(), resolve_named_type(env, field_type)?);
+            }
+            Ok(InferenceType::Record(TRecord {
+                fields,
+                name: record.name.clone(),
+            }))
+        }
+        _ => Ok(inference_type.clone()),
+    }
+}
+
+fn ast_type_to_inference_type_resolved(
+    env: &TypeEnvironment,
+    ast_type: &Type,
+) -> Result<InferenceType, TypeError> {
+    match ast_type {
+        Type::Qualified(qualified) => resolve_qualified_type(env, qualified),
+        Type::List(list_type) => Ok(InferenceType::List(Box::new(crate::types::TList {
+            element_type: ast_type_to_inference_type_resolved(env, &list_type.element_type)?,
+        }))),
+        Type::Tuple(tuple_type) => Ok(InferenceType::Tuple(crate::types::TTuple {
+            types: tuple_type
+                .types
+                .iter()
+                .map(|ty| ast_type_to_inference_type_resolved(env, ty))
+                .collect::<Result<Vec<_>, _>>()?,
+        })),
+        Type::Function(func_type) => Ok(InferenceType::Function(Box::new(TFunction {
+            params: func_type
+                .param_types
+                .iter()
+                .map(|ty| ast_type_to_inference_type_resolved(env, ty))
+                .collect::<Result<Vec<_>, _>>()?,
+            return_type: ast_type_to_inference_type_resolved(env, &func_type.return_type)?,
+            effects: if func_type.effects.is_empty() {
+                None
+            } else {
+                Some(func_type.effects.iter().cloned().collect())
+            },
+        }))),
+        _ => resolve_named_type(env, &ast_type_to_inference_type(ast_type)),
+    }
 }
 
 fn validate_surface_types(program: &Program) -> Result<(), TypeError> {
@@ -415,10 +636,11 @@ fn validate_surface_type(ty: &Type) -> Result<(), TypeError> {
 ///
 /// For example, Some : T → Option[T]
 fn create_constructor_type(
+    env: &TypeEnvironment,
     variant: &sigil_ast::Variant,
     type_params: &[String],
     type_name: &str,
-) -> InferenceType {
+) -> Result<InferenceType, TypeError> {
     // Convert variant field types to inference types
     let params: Vec<InferenceType> = variant
         .types
@@ -427,12 +649,12 @@ fn create_constructor_type(
             // True type parameters become Any for now; named types should stay named.
             if let sigil_ast::Type::Variable(var_type) = field_type {
                 if type_params.contains(&var_type.name) {
-                    return InferenceType::Any;
+                    return Ok(InferenceType::Any);
                 }
             }
-            ast_type_to_inference_type(field_type)
+            ast_type_to_inference_type_resolved(env, field_type)
         })
-        .collect();
+        .collect::<Result<_, _>>()?;
 
     // Result type is the constructor with empty type args for now
     let result_type = InferenceType::Constructor(crate::types::TConstructor {
@@ -440,11 +662,11 @@ fn create_constructor_type(
         type_args: vec![],
     });
 
-    InferenceType::Function(Box::new(TFunction {
+    Ok(InferenceType::Function(Box::new(TFunction {
         params,
         return_type: result_type,
         effects: None,
-    }))
+    })))
 }
 
 /// Type check a function declaration
@@ -456,7 +678,8 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
         let param_type = param
             .type_annotation
             .as_ref()
-            .map(ast_type_to_inference_type)
+            .map(|ty| ast_type_to_inference_type_resolved(env, ty))
+            .transpose()?
             .unwrap_or(InferenceType::Any);
         func_env.bind(param.name.clone(), param_type);
     }
@@ -465,7 +688,8 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
     let expected_return_type = func_decl
         .return_type
         .as_ref()
-        .map(ast_type_to_inference_type)
+        .map(|ty| ast_type_to_inference_type_resolved(env, ty))
+        .transpose()?
         .unwrap_or(InferenceType::Any);
 
     // Type check body
@@ -1307,15 +1531,13 @@ fn synthesize_lambda(
     let param_types: Vec<InferenceType> = lambda_expr
         .params
         .iter()
-        .map(|p| {
-            p.type_annotation
-                .as_ref()
-                .map(ast_type_to_inference_type)
-                .unwrap_or(InferenceType::Any)
+        .map(|p| match &p.type_annotation {
+            Some(ty) => ast_type_to_inference_type_resolved(env, ty),
+            None => Ok(InferenceType::Any),
         })
-        .collect();
+        .collect::<Result<_, _>>()?;
 
-    let return_type = ast_type_to_inference_type(&lambda_expr.return_type);
+    let return_type = ast_type_to_inference_type_resolved(env, &lambda_expr.return_type)?;
 
     let effects = if lambda_expr.effects.is_empty() {
         None
@@ -1543,7 +1765,7 @@ fn synthesize_type_ascription(
     type_asc: &sigil_ast::TypeAscriptionExpr,
 ) -> Result<InferenceType, TypeError> {
     // Convert ascribed type from AST to inference type
-    let ascribed_type = ast_type_to_inference_type(&type_asc.ascribed_type);
+    let ascribed_type = ast_type_to_inference_type_resolved(env, &type_asc.ascribed_type)?;
 
     // Check that the expression matches the ascribed type
     check(env, &type_asc.expr, &ascribed_type)?;
@@ -1598,8 +1820,13 @@ fn check(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
     use sigil_lexer::tokenize;
     use sigil_parser::parse;
+
+    fn synthetic_loc() -> sigil_ast::SourceLocation {
+        sigil_ast::SourceLocation::single(sigil_ast::Position::new(1, 1, 0))
+    }
 
     #[test]
     fn test_simple_integer_function() {
@@ -1720,6 +1947,82 @@ mod tests {
 
         let result = type_check(&program, source, TypeCheckOptions::default());
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_qualified_imported_product_type_resolves_for_field_access() {
+        let source = "i src⋅types\nλslug_len(meta:src⋅types.ArticleMeta)→ℤ=#meta.slug";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let mut imported_type_registries = HashMap::new();
+        imported_type_registries.insert(
+            "src⋅types".to_string(),
+            HashMap::from([(
+                "ArticleMeta".to_string(),
+                TypeInfo {
+                    type_params: vec![],
+                    definition: TypeDef::Product(sigil_ast::ProductType {
+                        fields: vec![
+                            sigil_ast::Field {
+                                name: "title".to_string(),
+                                field_type: Type::Primitive(sigil_ast::PrimitiveType {
+                                    name: PrimitiveName::String,
+                                    location: synthetic_loc(),
+                                }),
+                                location: synthetic_loc(),
+                            },
+                            sigil_ast::Field {
+                                name: "date".to_string(),
+                                field_type: Type::Primitive(sigil_ast::PrimitiveType {
+                                    name: PrimitiveName::String,
+                                    location: synthetic_loc(),
+                                }),
+                                location: synthetic_loc(),
+                            },
+                            sigil_ast::Field {
+                                name: "author".to_string(),
+                                field_type: Type::Primitive(sigil_ast::PrimitiveType {
+                                    name: PrimitiveName::String,
+                                    location: synthetic_loc(),
+                                }),
+                                location: synthetic_loc(),
+                            },
+                            sigil_ast::Field {
+                                name: "slug".to_string(),
+                                field_type: Type::Primitive(sigil_ast::PrimitiveType {
+                                    name: PrimitiveName::String,
+                                    location: synthetic_loc(),
+                                }),
+                                location: synthetic_loc(),
+                            },
+                        ],
+                        location: synthetic_loc(),
+                    }),
+                },
+            )]),
+        );
+
+        let result = type_check(
+            &program,
+            source,
+            TypeCheckOptions {
+                imported_namespaces: None,
+                imported_type_registries: Some(imported_type_registries),
+                source_file: None,
+            },
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_local_named_product_return_type_resolves_for_field_access() {
+        let source = "t ParseResult={content:𝕊}\nλparse()→ParseResult={content:\"x\"}\nλmain()→ℤ=#(parse().content)";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_ok());
     }
 
     // TODO: Add list pattern test when parser fully supports match expression syntax

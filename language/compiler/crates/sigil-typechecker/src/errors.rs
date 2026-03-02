@@ -2,7 +2,7 @@
 //!
 //! Type error messages optimized for clarity (both for LLMs and humans)
 
-use crate::types::{prune, InferenceType, TPrimitive, TVar};
+use crate::types::{prune, InferenceType};
 use sigil_ast::PrimitiveName;
 use sigil_diagnostics::{codes, Diagnostic, SigilPhase, SourcePoint, SourceSpan};
 use sigil_lexer::SourceLocation;
@@ -195,6 +195,7 @@ impl From<TypeError> for Diagnostic {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::TPrimitive;
 
     #[test]
     fn test_format_primitive() {

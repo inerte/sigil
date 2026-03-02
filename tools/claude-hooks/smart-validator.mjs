@@ -1,15 +1,16 @@
 #!/usr/bin/env node
 
 /**
- * Smart validation hook for Sigil development
- * Runs only the most relevant tests/checks for each file change
+ * Smart validation hook for Sigil development.
+ * Runs the narrowest useful Rust compiler checks for each edit.
  */
 
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import fs from 'node:fs';
 
-// ===== Helpers =====
+const COMPILER_MANIFEST = 'language/compiler/Cargo.toml';
+const COMPILER_BINARY = 'language/compiler/target/debug/sigil';
 
 function readStdin() {
   return new Promise((resolve, reject) => {
@@ -56,20 +57,7 @@ function normalizeRelPath(projectDir, filePath) {
   return rel.split(path.sep).join('/');
 }
 
-function run(cmd, args, cwd, label) {
-  console.log(`\n🔍 ${label}`);
-  const result = spawnSync(cmd, args, {
-    cwd,
-    stdio: 'inherit',
-    shell: process.platform === 'win32',
-  });
-  return result.status === 0;
-}
-
-// ===== Validation Strategies =====
-
 function shouldSkipPath(relPath) {
-  // Skip these paths entirely
   const skipPrefixes = [
     '.local/',
     'node_modules/',
@@ -79,9 +67,9 @@ function shouldSkipPath(relPath) {
   ];
 
   const skipExtensions = [
-    '.md',      // Markdown docs
-    '.json',    // Config files (usually)
-    '.map',     // Source maps
+    '.md',
+    '.json',
+    '.map',
     '.log',
   ];
 
@@ -102,142 +90,152 @@ function getValidationPlan(relPath, projectDir) {
     description: '',
   };
 
-  // ===== COMPILER SOURCE =====
-  if (relPath.startsWith('language/compiler/src/')) {
-    const component = relPath.split('/')[3]; // lexer, parser, validator, etc.
-
-    plan.description = `Compiler change: ${component}`;
-
-    // Quick syntax check first
+  if (relPath.startsWith('language/compiler/crates/')) {
+    const crateName = relPath.split('/')[3];
+    plan.description = `Compiler change: ${crateName}`;
     plan.checks.push({
-      label: 'Checking TypeScript compilation',
-      cmd: 'pnpm',
-      args: ['--filter', '@sigil-lang/compiler', 'build'],
-      critical: true, // If this fails, skip other tests
+      label: 'Building compiler',
+      cmd: 'cargo',
+      args: ['build', '--manifest-path', COMPILER_MANIFEST, '-p', 'sigil-cli'],
+      critical: true,
     });
-
-    // Run unit tests for the specific component if possible
-    if (component && fs.existsSync(path.join(projectDir, `language/compiler/test/${component}.test.ts`))) {
+    if (crateName && fs.existsSync(path.join(projectDir, `language/compiler/crates/${crateName}/Cargo.toml`))) {
       plan.checks.push({
-        label: `Running ${component} unit tests`,
-        cmd: 'pnpm',
-        args: ['--filter', '@sigil-lang/compiler', 'exec', 'node', '--import', 'tsx', '--test', `test/${component}.test.ts`],
+        label: `Running ${crateName} tests`,
+        cmd: 'cargo',
+        args: ['test', '--manifest-path', COMPILER_MANIFEST, '-p', crateName],
       });
     } else {
       plan.checks.push({
-        label: 'Running all compiler unit tests',
-        cmd: 'pnpm',
-        args: ['--filter', '@sigil-lang/compiler', 'test:unit'],
+        label: 'Running compiler tests',
+        cmd: 'cargo',
+        args: ['test', '--manifest-path', COMPILER_MANIFEST],
       });
     }
-
     return plan;
   }
 
-  // ===== STDLIB =====
+  if (relPath === 'language/compiler/Cargo.toml' || relPath === 'language/compiler/Cargo.lock') {
+    plan.description = 'Compiler workspace manifest change';
+    plan.checks.push({
+      label: 'Building compiler',
+      cmd: 'cargo',
+      args: ['build', '--manifest-path', COMPILER_MANIFEST, '-p', 'sigil-cli'],
+      critical: true,
+    });
+    plan.checks.push({
+      label: 'Running compiler tests',
+      cmd: 'cargo',
+      args: ['test', '--manifest-path', COMPILER_MANIFEST],
+    });
+    return plan;
+  }
+
   if (relPath.startsWith('language/stdlib/')) {
     const moduleName = path.basename(relPath, '.sigil');
-
     plan.description = `Stdlib module: ${moduleName}`;
     plan.checks.push({
-      label: `Compiling ${moduleName}`,
-      cmd: 'node',
-      args: ['language/compiler/dist/cli.js', 'compile', relPath],
+      label: 'Building compiler',
+      cmd: 'cargo',
+      args: ['build', '--manifest-path', COMPILER_MANIFEST, '-p', 'sigil-cli'],
       critical: true,
     });
-
+    plan.checks.push({
+      label: `Compiling ${moduleName}`,
+      cmd: COMPILER_BINARY,
+      args: ['compile', relPath],
+      critical: true,
+    });
     plan.checks.push({
       label: 'Running stdlib tests',
-      cmd: 'pnpm',
-      args: ['sigil:test:stdlib'],
+      cmd: COMPILER_BINARY,
+      args: ['test', 'language/stdlib-tests/tests'],
     });
-
     return plan;
   }
 
-  // ===== EXAMPLES =====
   if (relPath.startsWith('language/examples/') && relPath.endsWith('.sigil')) {
     const exampleName = path.basename(relPath, '.sigil');
-
     plan.description = `Example: ${exampleName}`;
     plan.checks.push({
-      label: `Compiling ${exampleName}`,
-      cmd: 'node',
-      args: ['language/compiler/dist/cli.js', 'compile', relPath],
+      label: 'Building compiler',
+      cmd: 'cargo',
+      args: ['build', '--manifest-path', COMPILER_MANIFEST, '-p', 'sigil-cli'],
       critical: true,
     });
-
+    plan.checks.push({
+      label: `Compiling ${exampleName}`,
+      cmd: COMPILER_BINARY,
+      args: ['compile', relPath],
+      critical: true,
+    });
     plan.checks.push({
       label: `Running ${exampleName}`,
-      cmd: 'node',
-      args: ['language/compiler/dist/cli.js', 'run', relPath],
+      cmd: COMPILER_BINARY,
+      args: ['run', relPath],
     });
-
     return plan;
   }
 
-  // ===== TEST FIXTURES =====
   if (relPath.startsWith('language/test-fixtures/')) {
     plan.description = 'Test fixture updated';
-
-    // Try to compile it first (may intentionally fail for negative tests)
+    plan.checks.push({
+      label: 'Building compiler',
+      cmd: 'cargo',
+      args: ['build', '--manifest-path', COMPILER_MANIFEST, '-p', 'sigil-cli'],
+      critical: true,
+    });
     plan.checks.push({
       label: 'Checking fixture compiles/fails as expected',
-      cmd: 'node',
-      args: ['language/compiler/dist/cli.js', 'compile', relPath],
-      allowFailure: true, // Some fixtures are meant to fail
+      cmd: COMPILER_BINARY,
+      args: ['compile', relPath],
+      allowFailure: true,
     });
-
     plan.checks.push({
       label: 'Running canonical form tests',
       cmd: 'bash',
       args: ['language/test-canonical.sh'],
     });
-
     return plan;
   }
 
-  // ===== PROJECT CODE =====
   if (relPath.startsWith('projects/')) {
-    const projectMatch = relPath.match(/^projects\/([^\/]+)/);
+    const projectMatch = relPath.match(/^projects\/([^/]+)/);
     const projectName = projectMatch ? projectMatch[1] : null;
 
     if (projectName && relPath.endsWith('.sigil')) {
       plan.description = `Project: ${projectName}`;
-
       plan.checks.push({
-        label: `Compiling ${relPath}`,
-        cmd: 'node',
-        args: ['language/compiler/dist/cli.js', 'compile', relPath],
+        label: 'Building compiler',
+        cmd: 'cargo',
+        args: ['build', '--manifest-path', COMPILER_MANIFEST, '-p', 'sigil-cli'],
         critical: true,
       });
-
-      // If project has tests, run them
+      plan.checks.push({
+        label: `Compiling ${relPath}`,
+        cmd: COMPILER_BINARY,
+        args: ['compile', relPath],
+        critical: true,
+      });
       const testPath = `projects/${projectName}/tests`;
       if (fs.existsSync(path.join(projectDir, testPath))) {
         plan.checks.push({
           label: `Running ${projectName} tests`,
-          cmd: 'node',
-          args: ['language/compiler/dist/cli.js', 'test', testPath],
+          cmd: COMPILER_BINARY,
+          args: ['test', testPath],
         });
       }
-
       return plan;
     }
   }
 
-  // ===== DOCS/SPEC =====
   if (relPath.startsWith('language/docs/') || relPath.startsWith('language/spec/')) {
     plan.description = 'Documentation updated (no tests)';
-    plan.checks = []; // No validation needed for docs
     return plan;
   }
 
-  // Default: unknown file
   return null;
 }
-
-// ===== Main =====
 
 async function main() {
   const raw = await readStdin();
@@ -249,7 +247,7 @@ async function main() {
   let payload;
   try {
     payload = JSON.parse(raw);
-  } catch (err) {
+  } catch {
     console.log('[validator] Skipping (invalid JSON payload)');
     return 0;
   }
@@ -262,23 +260,18 @@ async function main() {
 
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   const editedPath = getEditedPath(payload);
-
   if (!editedPath) {
     console.log('[validator] Skipping (no file path)');
     return 0;
   }
 
   const relPath = normalizeRelPath(projectDir, editedPath);
-
-  // Check if we should skip this path
   if (shouldSkipPath(relPath)) {
     console.log(`[validator] Skipping (irrelevant file): ${relPath}`);
     return 0;
   }
 
-  // Get validation plan
   const plan = getValidationPlan(relPath, projectDir);
-
   if (!plan) {
     console.log(`[validator] No validation plan for: ${relPath}`);
     return 0;
@@ -289,7 +282,6 @@ async function main() {
     return 0;
   }
 
-  // Execute validation plan
   console.log('\n' + '='.repeat(60));
   console.log(`🎯 ${plan.description}`);
   console.log('   File: ' + relPath);
@@ -305,14 +297,12 @@ async function main() {
     });
 
     const passed = result.status === 0;
-
     if (!passed) {
       if (check.allowFailure) {
         console.log(`⚠️  ${check.label} - Failed (expected for some fixtures)`);
       } else {
         console.log(`❌ ${check.label} - FAILED`);
         allPassed = false;
-
         if (check.critical) {
           console.log('\n⛔ Critical check failed, skipping remaining checks');
           break;
@@ -324,14 +314,13 @@ async function main() {
   }
 
   console.log('='.repeat(60));
-
   if (allPassed) {
     console.log('✨ All validations passed!');
     return 0;
-  } else {
-    console.log('⚠️  Some validations failed');
-    return 1;
   }
+
+  console.log('⚠️  Some validations failed');
+  return 1;
 }
 
 main()

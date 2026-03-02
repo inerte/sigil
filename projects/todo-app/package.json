@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "sigil:compile": "node ../../language/compiler/dist/cli.js compile src/todo-domain.sigil -o web/src/generated/todo-domain.ts",
+    "sigil:compile": "cargo build --quiet --manifest-path ../../language/compiler/Cargo.toml -p sigil-cli && ../../language/compiler/target/debug/sigil compile src/todo-domain.sigil -o web/src/generated/todo-domain.ts",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"

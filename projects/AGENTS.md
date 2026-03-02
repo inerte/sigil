@@ -68,15 +68,15 @@ If a fix requires compiler work, make the compiler change in `language/` and the
 Compile or run a single project file:
 
 ```bash
-node language/compiler/dist/cli.js compile projects/<project>/src/<file>.sigil
-node language/compiler/dist/cli.js run projects/<project>/src/<file>.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile projects/<project>/src/<file>.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run projects/<project>/src/<file>.sigil
 ```
 
 Run project tests:
 
 ```bash
-node language/compiler/dist/cli.js test projects/algorithms/tests
-node language/compiler/dist/cli.js test projects/todo-app/tests
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/todo-app/tests
 ```
 
 ## Common Pitfalls in `projects/`

@@ -18,7 +18,7 @@ React stays idiomatic in TypeScript/JSX for UI rendering, list updates, hooks, e
 pnpm install
 pnpm sigil:compile
 pnpm dev
-node ../../language/compiler/dist/cli.js test tests
+cargo run -q -p sigil-cli --manifest-path ../../language/compiler/Cargo.toml -- test tests
 ```
 
 ## Recompile Sigil after changing the domain logic

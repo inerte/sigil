@@ -48,13 +48,13 @@ Sigil includes first-class `test` declarations and a built-in test runner:
 
 ```bash
 # JSON output by default (machine-readable)
-node language/compiler/dist/cli.js test
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
 
 # Human-readable output
-node language/compiler/dist/cli.js test --human
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --human
 
 # Run a subset by description substring
-node language/compiler/dist/cli.js test --match "toggle"
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --match "toggle"
 ```
 
 - Tests must live under `./tests`
@@ -261,7 +261,7 @@ Git: Commits .sigil file
 
 ```bash
 # Compile code (machine-readable JSON output)
-node language/compiler/dist/cli.js compile src/main.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile src/main.sigil
 
 # Ask Claude Code to explain any code
 "Claude, what does this function do?"
@@ -269,7 +269,7 @@ node language/compiler/dist/cli.js compile src/main.sigil
 "Claude, add error logging to main.sigil"
 
 # Run tests
-node language/compiler/dist/cli.js test --human
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --human
 ```
 
 **No IDE tooling needed** - Claude Code uses the compiler CLI directly:

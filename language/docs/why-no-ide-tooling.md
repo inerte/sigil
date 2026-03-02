@@ -82,7 +82,7 @@ Compiler provides diagnostics, AI interprets
 When you think about it, this makes perfect sense:
 
 - **Claude Code already knows how to read source files** - it doesn't need `.sigil.map` files
-- **Claude Code invokes the compiler directly** - `node language/compiler/dist/cli.js compile`
+- **Claude Code invokes the compiler directly** - `cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile`
 - **Claude Code provides better explanations** than static documentation - contextualized, interactive, always current
 
 The semantic maps were documentation frozen at compile time. Claude Code's explanations are generated on-demand from live source code.
@@ -132,7 +132,7 @@ There's only one valid token sequence. No ambiguity. No style debates. Claude Co
 The compiler has built-in test discovery and execution:
 
 ```bash
-node language/compiler/dist/cli.js test projects/algorithms/tests
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests
 ```
 
 Claude Code uses this to verify correctness after generating code.
@@ -483,13 +483,13 @@ The Sigil compiler is open source. No LSP server. No VS Code extension. Just:
 
 ```bash
 # Compile Sigil code
-node language/compiler/dist/cli.js compile fibonacci.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile fibonacci.sigil
 
 # Run Sigil code
-node language/compiler/dist/cli.js run fibonacci.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run fibonacci.sigil
 
 # Run tests
-node language/compiler/dist/cli.js test projects/algorithms/tests
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests
 ```
 
 Use Claude Code (or your AI assistant of choice) to:
@@ -517,7 +517,7 @@ Complete list of deletions across 5 commits:
 - Files: `cli.ts`, `diagnostics/types.ts`
 
 ### Commit 2: Delete semantic map generator source
-- Deleted: `compiler/src/mapgen/` (6 files, 374 lines)
+- Deleted: compiler map generation code (6 files, 374 lines)
   - `enhance.ts` (78 lines)
   - `extractor.ts` (54 lines)
   - `generator.ts` (135 lines)

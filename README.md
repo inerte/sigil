@@ -18,6 +18,9 @@ This repo contains three distinct things:
 # Build the compiler
 pnpm build
 
+# Compile a file through the root convenience wrapper
+pnpm sigil -- compile language/examples/fibonacci.sigil
+
 # Run Sigil tests in the algorithms example project
 pnpm sigil:test:algorithms
 
@@ -27,5 +30,7 @@ pnpm sigil:test:todo
 
 ## Notes
 
+- Root `pnpm` scripts are convenience wrappers around the Rust compiler.
+- `pnpm test` is for JS/workspace tests that exist; Sigil test runs are the explicit `sigil:test:*` scripts.
 - Sigil user projects should use the canonical layout: `sigil.json`, `src/`, `tests/` (and optional `web/`)
 - This monorepo mixes language implementation and projects intentionally, but the user-facing layout is demonstrated under `projects/`

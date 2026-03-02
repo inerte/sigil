@@ -86,7 +86,7 @@ When adding or relying on stdlib functions:
 ### 5) Comments/docs can be stale; compiler/tests are source of truth
 
 Before assuming syntax is valid, verify with:
-- `node language/compiler/dist/cli.js compile <file>`
+- `cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile <file>`
 - parser/validator/typechecker tests
 
 If docs disagree with implementation, either:
@@ -109,32 +109,32 @@ For non-trivial language changes (syntax, semantics, codegen contracts):
 Build compiler:
 
 ```bash
-pnpm --filter @sigil-lang/compiler build
+cargo build --manifest-path language/compiler/Cargo.toml -p sigil-cli
 ```
 
 Compile one Sigil file:
 
 ```bash
-node language/compiler/dist/cli.js compile language/examples/fibonacci.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile language/examples/fibonacci.sigil
 ```
 
 Run one Sigil file:
 
 ```bash
-node language/compiler/dist/cli.js run language/examples/fibonacci.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run language/examples/fibonacci.sigil
 ```
 
 Run project tests:
 
 ```bash
-node language/compiler/dist/cli.js test projects/algorithms/tests
-node language/compiler/dist/cli.js test projects/todo-app/tests
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/todo-app/tests
 ```
 
-Run compiler unit tests:
+Run compiler tests:
 
 ```bash
-pnpm --filter @sigil-lang/compiler test
+cargo test --manifest-path language/compiler/Cargo.toml
 ```
 
 ### File Naming Conventions
@@ -203,9 +203,8 @@ Test files must:
 
 Run tests:
 ```bash
-cd language/compiler-rs
-cargo build
-./target/debug/sigil test ../tests/
+cargo build --manifest-path language/compiler/Cargo.toml -p sigil-cli
+language/compiler/target/debug/sigil test projects/algorithms/tests
 ```
 
 Create new test file:
@@ -224,50 +223,7 @@ test "my feature works" {
 
 **IMPORTANT**: All `.sigil` files in the repository should compile successfully.
 
-To test that the compiler correctly rejects invalid code patterns (accumulator-passing style, CPS, etc.), use the **string-based compilation API** instead of creating `.sigil` files:
-
-#### TypeScript Compiler
-
-```typescript
-import { compileFromString } from '@sigil-lang/compiler';
-
-// Test that accumulator-passing is rejected
-const result = compileFromString(
-  'λfactorial(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→factorial(n-1,n*acc)}'
-);
-
-if (!result.ok) {
-  console.log(result.error.code); // SIGIL-CANON-RECURSION-ACCUMULATOR
-}
-```
-
-TypeScript test files go in `language/compiler/test/*.test.ts` and use Node's built-in test runner:
-
-```typescript
-import { describe, test } from 'node:test';
-import assert from 'node:assert';
-import { compileFromString } from '../src/api.js';
-
-test('rejects accumulator-passing style', () => {
-  const code = 'λf(n:ℤ,acc:ℤ)→ℤ≡n{0→acc|n→f(n-1,n*acc)}';
-  const result = compileFromString(code);
-
-  assert.strictEqual(result.ok, false);
-  if (!result.ok) {
-    assert.strictEqual(result.error.code, 'SIGIL-CANON-RECURSION-ACCUMULATOR');
-  }
-});
-```
-
-Run TypeScript compiler tests:
-```bash
-cd language/compiler
-pnpm test
-```
-
-#### Rust Compiler
-
-The Rust compiler already uses string-based compilation internally for tests:
+To test that the compiler correctly rejects invalid code patterns (accumulator-passing style, CPS, etc.), use Rust crate-level string-input tests instead of creating invalid `.sigil` files:
 
 ```rust
 use sigil_lexer::tokenize;
@@ -287,31 +243,30 @@ fn test_accumulator_blocked() {
 ```
 
 Rust tests go in:
-- `language/compiler-rs/crates/sigil-validator/tests/comprehensive.rs` - canonical form validation
-- `language/compiler-rs/crates/sigil-parser/tests/comprehensive.rs` - parser rejection tests
+- `language/compiler/crates/sigil-validator/tests/comprehensive.rs` - canonical form validation
+- `language/compiler/crates/sigil-parser/tests/comprehensive.rs` - parser rejection tests
 
-Run Rust compiler tests:
+Run compiler tests:
 ```bash
-cd language/compiler-rs
-cargo test
+cargo test --manifest-path language/compiler/Cargo.toml
 ```
 
 ## Directory-Specific Notes
 
-### `compiler/src/lexer` and `compiler/src/parser`
+### `compiler/crates/sigil-lexer` and `compiler/crates/sigil-parser`
 - Syntax changes usually start here.
 - Be explicit about token meaning and precedence.
 - Avoid introducing context-sensitive parsing when a dedicated token/form can remove ambiguity.
 
-### `compiler/src/validator`
+### `compiler/crates/sigil-validator`
 - Canonical form rules live here.
 - If parser accepts multiple forms but Sigil only allows one, validator must reject non-canonical forms clearly.
 
-### `compiler/src/typechecker`
+### `compiler/crates/sigil-typechecker`
 - If syntax/module naming changes affect namespaces/imports, update user-facing error text to match canonical Sigil syntax.
 - Keep internal representations stable when possible (e.g., filesystem/module resolution formats).
 
-### `compiler/src/codegen`
+### `compiler/crates/sigil-codegen`
 - Generated output should remain deterministic.
 - Comments/examples in codegen should reflect current Sigil syntax even when emitted JS uses different separators/conventions.
 

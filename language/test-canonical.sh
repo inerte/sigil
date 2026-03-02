@@ -7,6 +7,8 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SIGIL="$SCRIPT_DIR/compiler/target/debug/sigil"
 
 PASSED=0
 FAILED=0
@@ -18,7 +20,7 @@ test_should_fail() {
   
   echo -n "Testing $(basename $file) (should fail)... "
   
-  if output=$(node compiler/dist/cli.js compile "$file" --human 2>&1); then
+  if output=$("$SIGIL" compile "$file" --human 2>&1); then
     echo -e "${RED}✗ FAILED${NC} - Compiled successfully (should have been blocked!)"
     echo "  This loophole is NOT blocked!"
     ((FAILED++))
@@ -45,7 +47,7 @@ test_should_pass() {
   local file=$1
   echo -n "Testing $(basename $file) (should compile)... "
   
-  if output=$(node compiler/dist/cli.js compile "$file" --human 2>&1); then
+  if output=$("$SIGIL" compile "$file" --human 2>&1); then
     echo -e "${GREEN}✓ PASSED${NC} - Compiled successfully"
     ((PASSED++))
     return 0
@@ -61,6 +63,13 @@ echo "════════════════════════�
 echo "  Sigil Canonical Form Enforcement - Test Suite"
 echo "═══════════════════════════════════════════════════════════"
 echo ""
+
+cd "$SCRIPT_DIR" || exit 1
+
+if [ ! -x "$SIGIL" ]; then
+  echo "Building compiler..."
+  cargo build --quiet --manifest-path "$SCRIPT_DIR/compiler/Cargo.toml" -p sigil-cli || exit 1
+fi
 
 # Tests that should be blocked
 echo "Tests that should be BLOCKED:"

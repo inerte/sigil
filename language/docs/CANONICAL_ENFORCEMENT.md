@@ -154,7 +154,7 @@ Use simple recursion without accumulator parameters.
 
 ## Implementation
 
-**Location:** `compiler/src/validator/canonical.ts`
+**Location:** `compiler/crates/sigil-validator/src/canonical.rs`
 
 **Pipeline:**
 ```
@@ -200,11 +200,11 @@ Test files in `src/test-tailrec/`:
 Try them:
 ```bash
 # This works
-node compiler/dist/cli.js run src/test-tailrec/test12-valid-canonical.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run language/test-fixtures/test-tailrec/test12-valid-canonical.sigil
 
 # These fail with helpful errors
-node compiler/dist/cli.js compile src/test-tailrec/test18-factorial-acc-blocked.sigil
-node compiler/dist/cli.js compile src/test-tailrec/test13-boolean-match-blocked.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile language/test-fixtures/test-tailrec/test18-factorial-acc-blocked.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile language/test-fixtures/test-tailrec/test13-boolean-match-blocked.sigil
 ```
 
 ## Philosophy

@@ -578,7 +578,7 @@ All files must pass canonical validation:
 
 ```bash
 # This will fail if formatting is wrong
-node compiler/dist/cli.js compile myfile.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile myfile.sigil
 
 # Common failures:
 # - Missing final newline → add newline at end

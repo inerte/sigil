@@ -7,7 +7,7 @@
 //! 4. No CPS (continuation passing style)
 
 use sigil_ast::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use crate::error::ValidationError;
 use sigil_lexer::{SourceLocation, Position};
 
@@ -625,14 +625,14 @@ fn is_recursive(expr: &Expr, function_name: &str) -> bool {
 }
 
 /// Detect parameters that might be accumulators (simplified heuristic)
-fn detect_accumulator_params(func: &FunctionDecl) -> Vec<String> {
+fn detect_accumulator_params(_func: &FunctionDecl) -> Vec<String> {
     // Simplified: In a real implementation, we would analyze how parameters
     // are used in recursive calls to classify them as STRUCTURAL, QUERY, or ACCUMULATOR
 
     // For now, we'll use a simple heuristic: if a parameter appears in a binary
     // operation in a recursive call argument, it might be an accumulator
 
-    let mut suspicious = Vec::new();
+    let suspicious = Vec::new();
 
     // This is a placeholder - full implementation would need data flow analysis
     // to determine if parameters grow during recursion

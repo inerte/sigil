@@ -1,7 +1,7 @@
 //! Parser error types
 
 use sigil_diagnostics::{codes, Diagnostic, SigilPhase, SourcePoint, SourceSpan};
-use sigil_lexer::{SourceLocation, TokenType};
+use sigil_lexer::SourceLocation;
 use thiserror::Error;
 
 /// Parser errors
@@ -110,8 +110,8 @@ impl From<ParseError> for Diagnostic {
                 file,
                 expected,
                 found,
-                line,
-                column,
+                line: _,
+                column: _,
                 location,
             } => Diagnostic::new(
                 codes::parser::UNEXPECTED_TOKEN,
@@ -134,8 +134,8 @@ impl From<ParseError> for Diagnostic {
             ParseError::InvalidConstantName {
                 file,
                 found,
-                line,
-                column,
+                line: _,
+                column: _,
                 location,
             } => Diagnostic::new(
                 codes::parser::CONST_NAME,
@@ -148,8 +148,8 @@ impl From<ParseError> for Diagnostic {
             ParseError::UntypedConstant {
                 file,
                 name,
-                line,
-                column,
+                line: _,
+                column: _,
                 location,
             } => Diagnostic::new(
                 codes::parser::CONST_UNTYPED,
@@ -162,8 +162,8 @@ impl From<ParseError> for Diagnostic {
             ParseError::InvalidNamespaceSeparator {
                 file,
                 found,
-                line,
-                column,
+                line: _,
+                column: _,
                 location,
             } => Diagnostic::new(
                 codes::parser::NS_SEP,
@@ -176,8 +176,8 @@ impl From<ParseError> for Diagnostic {
             ParseError::InvalidLocalBinding {
                 file,
                 found,
-                line,
-                column,
+                line: _,
+                column: _,
                 location,
             } => Diagnostic::new(
                 codes::parser::LOCAL_BINDING,
@@ -190,8 +190,8 @@ impl From<ParseError> for Diagnostic {
             ParseError::CannotExport {
                 file,
                 what,
-                line,
-                column,
+                line: _,
+                column: _,
                 location,
             } => Diagnostic::new(
                 codes::parser::UNEXPECTED_TOKEN,
@@ -205,8 +205,8 @@ impl From<ParseError> for Diagnostic {
                 file,
                 effect,
                 valid,
-                line,
-                column,
+                line: _,
+                column: _,
                 location,
             } => Diagnostic::new(
                 codes::parser::UNEXPECTED_TOKEN,

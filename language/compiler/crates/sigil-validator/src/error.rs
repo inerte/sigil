@@ -300,7 +300,7 @@ impl From<ValidationError> for Diagnostic {
                 .with_details("first_location", format!("{}:{}", first_location.start.line, first_location.start.column))
             }
 
-            ValidationError::ParameterOrder { function_name, param_name, prev_param, position, expected_order, location } => {
+            ValidationError::ParameterOrder { function_name, param_name, prev_param, position: _, expected_order, location } => {
                 Diagnostic::new(
                     codes::canonical::PARAM_ORDER,
                     SigilPhase::Canonical,
@@ -311,7 +311,7 @@ impl From<ValidationError> for Diagnostic {
                 .with_details("expected_order", format!("{:?}", expected_order))
             }
 
-            ValidationError::EffectOrder { function_name, effect_name, prev_effect, position, expected_order, location } => {
+            ValidationError::EffectOrder { function_name, effect_name, prev_effect, position: _, expected_order, location } => {
                 Diagnostic::new(
                     codes::canonical::EFFECT_ORDER,
                     SigilPhase::Canonical,
@@ -342,7 +342,7 @@ impl From<ValidationError> for Diagnostic {
                 .with_found_expected(&current_name, &prev_name)
             }
 
-            ValidationError::ExternMemberOrder { member_name, prev_member, position, location } => {
+            ValidationError::ExternMemberOrder { member_name, prev_member, position: _, location } => {
                 Diagnostic::new(
                     codes::canonical::EXTERN_MEMBER_ORDER,
                     SigilPhase::Canonical,

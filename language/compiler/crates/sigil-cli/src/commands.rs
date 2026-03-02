@@ -13,9 +13,7 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::Mutex;
 use std::time::Instant;
-use std::io::Write;
 use serde_json::json;
 use thiserror::Error;
 
@@ -253,7 +251,6 @@ pub fn compile_command(
         let codegen_options = CodegenOptions {
             source_file: Some(module.file_path.to_string_lossy().to_string()),
             output_file: Some(output_path.to_string_lossy().to_string()),
-            project_root: None,
         };
         let mut codegen = TypeScriptGenerator::new(codegen_options);
         let ts_code = codegen
@@ -372,7 +369,6 @@ pub fn run_command(file: &Path, human: bool) -> Result<(), CliError> {
         let codegen_options = CodegenOptions {
             source_file: Some(module.file_path.to_string_lossy().to_string()),
             output_file: Some(output_path.to_string_lossy().to_string()),
-            project_root: None,
         };
         let mut codegen = TypeScriptGenerator::new(codegen_options);
         let ts_code = codegen
@@ -713,7 +709,6 @@ fn compile_and_run_tests(
         let codegen_options = CodegenOptions {
             source_file: Some(module.file_path.to_string_lossy().to_string()),
             output_file: Some(output_path.to_string_lossy().to_string()),
-            project_root: None,
         };
         let mut codegen = TypeScriptGenerator::new(codegen_options);
         let ts_code = codegen

@@ -22,7 +22,6 @@ pub enum CodegenError {
 pub struct CodegenOptions {
     pub source_file: Option<String>,
     pub output_file: Option<String>,
-    pub project_root: Option<String>,
 }
 
 impl Default for CodegenOptions {
@@ -30,7 +29,6 @@ impl Default for CodegenOptions {
         Self {
             source_file: None,
             output_file: None,
-            project_root: None,
         }
     }
 }
@@ -40,7 +38,6 @@ pub struct TypeScriptGenerator {
     output: Vec<String>,
     source_file: Option<String>,
     output_file: Option<String>,
-    project_root: Option<String>,
     test_meta_entries: Vec<String>,
     mockable_functions: HashSet<String>,
 }
@@ -52,7 +49,6 @@ impl TypeScriptGenerator {
             output: Vec::new(),
             source_file: options.source_file,
             output_file: options.output_file,
-            project_root: options.project_root,
             test_meta_entries: Vec::new(),
             mockable_functions: HashSet::new(),
         }

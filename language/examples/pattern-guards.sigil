@@ -104,9 +104,9 @@ conditional list processing.
   l _=(console.log(processResult(Err("timeout"))):𝕌);
 
   l _=(console.log("\n=== Priority Tasks ==="):𝕌);
-  l _=(console.log(prioritizeTask(5,⊤)):𝕌);
-  l _=(console.log(prioritizeTask(5,⊥)):𝕌);
-  l _=(console.log(prioritizeTask(9,⊥)):𝕌);
+  l _=(console.log(prioritizeTask(5,true)):𝕌);
+  l _=(console.log(prioritizeTask(5,false)):𝕌);
+  l _=(console.log(prioritizeTask(9,false)):𝕌);
 
   l _=(console.log("\n=== Point Classification ==="):𝕌);
   l _=(console.log(classifyPoint({x:0,y:0})):𝕌);

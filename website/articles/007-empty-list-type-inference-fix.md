@@ -242,24 +242,24 @@ One important detail: this fix only works when the first arm has a non-empty lis
 **This still fails:**
 
 ```sigil
-λbad()→[ℤ]≡⊤{
-  ⊤→[]|
-  ⊥→[1,2,3]
+λbad()→[ℤ]≡true{
+  true→[]|
+  false→[1,2,3]
 }
 ```
 
-Why? The first arm `⊤→[]` is synthesized. The body `[]` has no context (the pattern `⊤` is a boolean, not a list). The typechecker can't infer what type of list `[]` should be, even though the function return type is `[ℤ]`.
+Why? The first arm `true→[]` is synthesized. The body `[]` has no context (the pattern `true` is a boolean, not a list). The typechecker can't infer what type of list `[]` should be, even though the function return type is `[ℤ]`.
 
 The fix: reorder the arms:
 
 ```sigil
-λgood()→[ℤ]≡⊤{
-  ⊥→[1,2,3]|
-  ⊤→[]
+λgood()→[ℤ]≡true{
+  false→[1,2,3]|
+  true→[]
 }
 ```
 
-Now the first arm `⊥→[1,2,3]` synthesizes to `[ℤ]`, and the second arm `⊤→[]` is checked against that type. Success.
+Now the first arm `false→[1,2,3]` synthesizes to `[ℤ]`, and the second arm `true→[]` is checked against that type. Success.
 
 This is acceptable because:
 1. Sigil doesn't guarantee arm order independence (that would require more complex type inference)
@@ -293,8 +293,8 @@ With empty list patterns working, Sigil can now express clean recursive list fun
 
 **List predicates:**
 ```sigil
-λis_empty(xs:[ℤ])→𝔹≡xs{[]→⊤|[x,.xs]→⊥}
-λis_singleton(xs:[ℤ])→𝔹≡xs{[x]→⊤|_→⊥}
+λis_empty(xs:[ℤ])→𝔹≡xs{[]→true|[x,.xs]→false}
+λis_singleton(xs:[ℤ])→𝔹≡xs{[x]→true|_→false}
 ```
 
 **List transformations:**

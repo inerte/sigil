@@ -9,7 +9,7 @@ e fs⋅promises : {
 }
 
 ⟦ Create typed options using the named product type; the checker normalizes it ⟧
-c opts=({recursive:⊤}:MkdirOptions)
+c opts=({recursive:true}:MkdirOptions)
 
 ⟦ Now this typechecks! ⟧
 λensureDir(dir:𝕊)→𝕌=

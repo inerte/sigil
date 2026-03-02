@@ -65,12 +65,12 @@ c width=(48:ℤ)
 }
 
 λmax2(a:ℤ,b:ℤ)→ℤ≡a>b{
-  ⊤→a|
+  true→a|
   _→b
 }
 
 λmin2(a:ℤ,b:ℤ)→ℤ≡a<b{
-  ⊤→a|
+  true→a|
   _→b
 }
 
@@ -104,11 +104,11 @@ c width=(48:ℤ)
 }
 
 λtileAt(world:World,x:ℤ,y:ℤ)→𝕊≡isPlayer(world,x,y){
-  ⊤→"@"|
+  true→"@"|
   _→≡isExit(world,x,y){
-    ⊤→">"|
+    true→">"|
     _→≡isFloor(world,x,y){
-      ⊤→"."|
+      true→"."|
       _→"#"
     }
   }

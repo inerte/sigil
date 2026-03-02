@@ -106,10 +106,10 @@ Check if a list is sorted in ascending order.
 
 **Examples:**
 ```sigil
-sorted_asc([1,2,3])    ⟦ → ⊤ ⟧
-sorted_asc([3,2,1])    ⟦ → ⊥ ⟧
-sorted_asc([])         ⟦ → ⊤ (empty is sorted) ⟧
-sorted_asc([5])        ⟦ → ⊤ (single element is sorted) ⟧
+sorted_asc([1,2,3])    ⟦ → true ⟧
+sorted_asc([3,2,1])    ⟦ → false ⟧
+sorted_asc([])         ⟦ → true (empty is sorted) ⟧
+sorted_asc([5])        ⟦ → true (single element is sorted) ⟧
 ```
 
 **Use case:** Validate precondition for binary search or other sorted-list algorithms.
@@ -124,8 +124,8 @@ Check if a list is sorted in descending order.
 
 **Examples:**
 ```sigil
-sorted_desc([3,2,1])   ⟦ → ⊤ ⟧
-sorted_desc([1,2,3])   ⟦ → ⊥ ⟧
+sorted_desc([3,2,1])   ⟦ → true ⟧
+sorted_desc([1,2,3])   ⟦ → false ⟧
 ```
 
 ### is_empty
@@ -138,8 +138,8 @@ Check if a list is empty.
 
 **Examples:**
 ```sigil
-is_empty([])           ⟦ → ⊤ ⟧
-is_empty([1])          ⟦ → ⊥ ⟧
+is_empty([])           ⟦ → true ⟧
+is_empty([1])          ⟦ → false ⟧
 ```
 
 ### is_non_empty
@@ -152,8 +152,8 @@ Check if a list is non-empty.
 
 **Examples:**
 ```sigil
-is_non_empty([1,2])    ⟦ → ⊤ ⟧
-is_non_empty([])       ⟦ → ⊥ ⟧
+is_non_empty([1,2])    ⟦ → true ⟧
+is_non_empty([])       ⟦ → false ⟧
 ```
 
 ### all
@@ -166,9 +166,9 @@ Check if all elements in a list satisfy a predicate.
 
 **Examples:**
 ```sigil
-all(is_positive,[1,2,3])      ⟦ → ⊤ ⟧
-all(is_positive,[1,-2,3])     ⟦ → ⊥ ⟧
-all(is_even,[2,4,6])          ⟦ → ⊤ ⟧
+all(is_positive,[1,2,3])      ⟦ → true ⟧
+all(is_positive,[1,-2,3])     ⟦ → false ⟧
+all(is_even,[2,4,6])          ⟦ → true ⟧
 ```
 
 **Use case:** Validate that all elements meet a requirement.
@@ -183,9 +183,9 @@ Check if any element in a list satisfies a predicate.
 
 **Examples:**
 ```sigil
-any(is_even,[1,3,5])          ⟦ → ⊥ ⟧
-any(is_even,[1,2,3])          ⟦ → ⊤ ⟧
-any(is_prime,[4,6,8,7])       ⟦ → ⊤ (7 is prime) ⟧
+any(is_even,[1,3,5])          ⟦ → false ⟧
+any(is_even,[1,2,3])          ⟦ → true ⟧
+any(is_prime,[4,6,8,7])       ⟦ → true (7 is prime) ⟧
 ```
 
 **Use case:** Check if at least one element meets a requirement.
@@ -200,9 +200,9 @@ Check if an element exists in a list.
 
 **Examples:**
 ```sigil
-contains(3,[1,2,3,4])         ⟦ → ⊤ ⟧
-contains(5,[1,2,3,4])         ⟦ → ⊥ ⟧
-contains(1,[])                ⟦ → ⊥ ⟧
+contains(3,[1,2,3,4])         ⟦ → true ⟧
+contains(5,[1,2,3,4])         ⟦ → false ⟧
+contains(1,[])                ⟦ → false ⟧
 ```
 
 **Use case:** Membership testing.
@@ -217,11 +217,11 @@ Check if an index is valid for a list (in range [0, len-1]).
 
 **Examples:**
 ```sigil
-in_bounds(0,[1,2,3])          ⟦ → ⊤ ⟧
-in_bounds(2,[1,2,3])          ⟦ → ⊤ ⟧
-in_bounds(3,[1,2,3])          ⟦ → ⊥ (out of bounds) ⟧
-in_bounds(-1,[1,2,3])         ⟦ → ⊥ (negative index) ⟧
-in_bounds(0,[])               ⟦ → ⊥ (empty list) ⟧
+in_bounds(0,[1,2,3])          ⟦ → true ⟧
+in_bounds(2,[1,2,3])          ⟦ → true ⟧
+in_bounds(3,[1,2,3])          ⟦ → false (out of bounds) ⟧
+in_bounds(-1,[1,2,3])         ⟦ → false (negative index) ⟧
+in_bounds(0,[])               ⟦ → false (empty list) ⟧
 ```
 
 **Use case:** Validate array/list access before indexing. Prevents out-of-bounds errors.
@@ -445,8 +445,8 @@ Check if string starts with prefix.
 
 **Examples:**
 ```sigil
-stdlib⋅string.starts_with("# Title","# ")    ⟦ → ⊤ ⟧
-stdlib⋅string.starts_with("Title","# ")      ⟦ → ⊥ ⟧
+stdlib⋅string.starts_with("# Title","# ")    ⟦ → true ⟧
+stdlib⋅string.starts_with("Title","# ")      ⟦ → false ⟧
 ```
 
 **Codegen:** `s.startsWith(prefix)`
@@ -463,8 +463,8 @@ Check if string ends with suffix.
 
 **Examples:**
 ```sigil
-stdlib⋅string.ends_with("test.sigil",".sigil")    ⟦ → ⊤ ⟧
-stdlib⋅string.ends_with("test.txt",".sigil")      ⟦ → ⊥ ⟧
+stdlib⋅string.ends_with("test.sigil",".sigil")    ⟦ → true ⟧
+stdlib⋅string.ends_with("test.txt",".sigil")      ⟦ → false ⟧
 ```
 
 **Codegen:** `s.endsWith(suffix)`
@@ -492,9 +492,9 @@ Check if a number is positive (> 0).
 
 **Examples:**
 ```sigil
-is_positive(5)                ⟦ → ⊤ ⟧
-is_positive(-3)               ⟦ → ⊥ ⟧
-is_positive(0)                ⟦ → ⊥ ⟧
+is_positive(5)                ⟦ → true ⟧
+is_positive(-3)               ⟦ → false ⟧
+is_positive(0)                ⟦ → false ⟧
 ```
 
 ### is_negative
@@ -507,9 +507,9 @@ Check if a number is negative (< 0).
 
 **Examples:**
 ```sigil
-is_negative(-5)               ⟦ → ⊤ ⟧
-is_negative(3)                ⟦ → ⊥ ⟧
-is_negative(0)                ⟦ → ⊥ ⟧
+is_negative(-5)               ⟦ → true ⟧
+is_negative(3)                ⟦ → false ⟧
+is_negative(0)                ⟦ → false ⟧
 ```
 
 ### is_zero
@@ -522,8 +522,8 @@ Check if a number is zero.
 
 **Examples:**
 ```sigil
-is_zero(0)                    ⟦ → ⊤ ⟧
-is_zero(5)                    ⟦ → ⊥ ⟧
+is_zero(0)                    ⟦ → true ⟧
+is_zero(5)                    ⟦ → false ⟧
 ```
 
 ### is_non_negative
@@ -536,9 +536,9 @@ Check if a number is non-negative (>= 0).
 
 **Examples:**
 ```sigil
-is_non_negative(0)            ⟦ → ⊤ ⟧
-is_non_negative(5)            ⟦ → ⊤ ⟧
-is_non_negative(-1)           ⟦ → ⊥ ⟧
+is_non_negative(0)            ⟦ → true ⟧
+is_non_negative(5)            ⟦ → true ⟧
+is_non_negative(-1)           ⟦ → false ⟧
 ```
 
 ### is_even
@@ -551,9 +551,9 @@ Check if a number is even.
 
 **Examples:**
 ```sigil
-is_even(4)                    ⟦ → ⊤ ⟧
-is_even(5)                    ⟦ → ⊥ ⟧
-is_even(0)                    ⟦ → ⊤ ⟧
+is_even(4)                    ⟦ → true ⟧
+is_even(5)                    ⟦ → false ⟧
+is_even(0)                    ⟦ → true ⟧
 ```
 
 ### is_odd
@@ -566,8 +566,8 @@ Check if a number is odd.
 
 **Examples:**
 ```sigil
-is_odd(3)                     ⟦ → ⊤ ⟧
-is_odd(4)                     ⟦ → ⊥ ⟧
+is_odd(3)                     ⟦ → true ⟧
+is_odd(4)                     ⟦ → false ⟧
 ```
 
 **Implementation:** Uses negation of `is_even` for correctness.
@@ -582,12 +582,12 @@ Check if a number is prime.
 
 **Examples:**
 ```sigil
-is_prime(2)                   ⟦ → ⊤ ⟧
-is_prime(7)                   ⟦ → ⊤ ⟧
-is_prime(8)                   ⟦ → ⊥ ⟧
-is_prime(17)                  ⟦ → ⊤ ⟧
-is_prime(1)                   ⟦ → ⊥ (1 is not prime) ⟧
-is_prime(0)                   ⟦ → ⊥ ⟧
+is_prime(2)                   ⟦ → true ⟧
+is_prime(7)                   ⟦ → true ⟧
+is_prime(8)                   ⟦ → false ⟧
+is_prime(17)                  ⟦ → true ⟧
+is_prime(1)                   ⟦ → false (1 is not prime) ⟧
+is_prime(0)                   ⟦ → false ⟧
 ```
 
 **Algorithm:** Trial division up to sqrt(n). Uses helper function `is_prime_helper`.
@@ -604,10 +604,10 @@ Check if a number is in the inclusive range [min, max].
 
 **Examples:**
 ```sigil
-in_range(5,1,10)              ⟦ → ⊤ ⟧
-in_range(0,1,10)              ⟦ → ⊥ ⟧
-in_range(1,1,10)              ⟦ → ⊤ (inclusive bounds) ⟧
-in_range(10,1,10)             ⟦ → ⊤ (inclusive bounds) ⟧
+in_range(5,1,10)              ⟦ → true ⟧
+in_range(0,1,10)              ⟦ → false ⟧
+in_range(1,1,10)              ⟦ → true (inclusive bounds) ⟧
+in_range(10,1,10)             ⟦ → true (inclusive bounds) ⟧
 ```
 
 **Use case:** Bounds validation, input checking.
@@ -619,8 +619,8 @@ in_range(10,1,10)             ⟦ → ⊤ (inclusive bounds) ⟧
 ```sigil
 ⟦ Validate input before processing ⟧
 λprocess_positive(x:ℤ)→𝕊≡is_positive(x){
-  ⊥→"Error: Must be positive"|
-  ⊤→"Processing..."
+  false→"Error: Must be positive"|
+  true→"Processing..."
 }
 ```
 
@@ -643,8 +643,8 @@ in_range(10,1,10)             ⟦ → ⊤ (inclusive bounds) ⟧
 ```sigil
 ⟦ Algorithm that requires sorted input ⟧
 λbinary_search(xs:[ℤ],target:ℤ)→𝕊≡sorted_asc(xs){
-  ⊥→"Error: List must be sorted"|
-  ⊤→"Searching..."
+  false→"Error: List must be sorted"|
+  true→"Searching..."
 }
 ```
 
@@ -755,8 +755,8 @@ t Result[T,E]=Ok(T)|Err(E)
 
 ⟦ Safe parsing returning Result ⟧
 λparsePositive(s:𝕊)→Result≡validInput(s){
-  ⊤→Ok(parseInt(s))|
-  ⊥→Err("invalid input")
+  true→Ok(parseInt(s))|
+  false→Err("invalid input")
 }
 ```
 
@@ -799,8 +799,8 @@ Predicates will integrate with the future contract system:
 ```sigil
 ⟦ Today - manual validation ⟧
 λbinary_search(xs:[ℤ],target:ℤ)→ℤ≡sorted_asc(xs){
-  ⊥→-1|
-  ⊤→...
+  false→-1|
+  true→...
 }
 
 ⟦ Future - contracts with predicates ⟧

@@ -84,15 +84,15 @@ i stdlib⋅list
 λmain()→𝕌=()
 
 test "list.in_bounds checks valid and invalid indexes" {
-  stdlib⋅list.in_bounds(0,[10,20,30])=⊤∧stdlib⋅list.in_bounds(3,[10,20,30])=⊥
+  stdlib⋅list.in_bounds(0,[10,20,30])=true∧stdlib⋅list.in_bounds(3,[10,20,30])=false
 }
 
 test "list.sorted_asc accepts ascending list" {
-  stdlib⋅list.sorted_asc([1,2,3,4])=⊤
+  stdlib⋅list.sorted_asc([1,2,3,4])=true
 }
 
 test "list.sorted_desc accepts descending list" {
-  stdlib⋅list.sorted_desc([4,3,2,1])=⊤
+  stdlib⋅list.sorted_desc([4,3,2,1])=true
 }
 ```
 
@@ -182,7 +182,7 @@ Sigil enforces ONE way: every file has exactly one purpose.
 // tests/my-test.sigil
 export λhelper()→ℤ=42  // ❌ ERROR: exports in test file
 
-test "example" { ⊤ }
+test "example" { true }
 
 λmain()→𝕌=()
 ```
@@ -322,7 +322,7 @@ These were already in `tests/` directories but lacked the executable marker:
 + λmain()→𝕌=()
 
   test "list.in_bounds checks valid indexes" {
-    stdlib⋅list.in_bounds(0,[10,20,30])=⊤
+    stdlib⋅list.in_bounds(0,[10,20,30])=true
   }
 ```
 
@@ -557,7 +557,7 @@ We verified all three enforcement rules work correctly:
 
 ```bash
 # Create test outside tests/ directory
-echo 'test "x" { ⊤ }' > /tmp/bad-test.sigil
+echo 'test "x" { true }' > /tmp/bad-test.sigil
 ./target/debug/sigil compile /tmp/bad-test.sigil
 ```
 
@@ -575,7 +575,7 @@ File: /tmp/bad-test.sigil
 ```bash
 # Create test file without main()
 mkdir -p /tmp/tests
-echo 'test "x" { ⊤ }' > /tmp/tests/no-main.sigil
+echo 'test "x" { true }' > /tmp/tests/no-main.sigil
 ./target/debug/sigil compile /tmp/tests/no-main.sigil
 ```
 
@@ -594,7 +594,7 @@ Test files must have λmain()→𝕌=()
 # Create test file with exports
 cat > /tmp/tests/with-export.sigil << 'EOF'
 export λf()→ℤ=1
-test "x" { ⊤ }
+test "x" { true }
 λmain()→𝕌=()
 EOF
 ./target/debug/sigil compile /tmp/tests/with-export.sigil

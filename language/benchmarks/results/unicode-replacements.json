@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "generatedAt": "2026-03-02T19:06:21.001Z",
+  "generatedAt": "2026-03-02T22:05:42.118Z",
   "corpus": {
     "files": 109,
     "paths": [
@@ -974,300 +974,6 @@
       }
     },
     {
-      "symbol": "⊥",
-      "tokenType": "FALSE",
-      "category": "boolean_literal",
-      "occurrences": 144,
-      "filesAffected": 24,
-      "sampleFiles": [
-        "language/examples/email-validator.sigil",
-        "language/examples/option-result-practical.sigil",
-        "language/examples/pattern-guards.sigil",
-        "language/stdlib-tests/tests/list-predicates.sigil",
-        "language/stdlib-tests/tests/numeric-predicates.sigil"
-      ],
-      "candidates": [
-        {
-          "replacement": "false",
-          "commonalityScore": 1,
-          "semanticFit": "high",
-          "reason": "Common boolean literal across mainstream languages.",
-          "standaloneTokenCounts": {
-            "openai_cl100k_base": {
-              "before": 3,
-              "after": 1
-            },
-            "llama_sentencepiece_proxy": {
-              "before": 2,
-              "after": 1
-            },
-            "anthropic_legacy_proxy": {
-              "before": 2,
-              "after": 1
-            }
-          },
-          "boundarySnippet": {
-            "before": "x,str)=char{⊤→1|⊥→0},char,idx+1,s",
-            "after": "x,str)=char{⊤→1|false→0},char,idx+1,s"
-          },
-          "boundarySnippetTokenCounts": {
-            "before": {
-              "openai_cl100k_base": 22,
-              "llama_sentencepiece_proxy": 27,
-              "anthropic_legacy_proxy": 27
-            },
-            "after": {
-              "openai_cl100k_base": 20,
-              "llama_sentencepiece_proxy": 26,
-              "anthropic_legacy_proxy": 26
-            }
-          },
-          "corpusDelta": {
-            "openai_cl100k_base": -234,
-            "llama_sentencepiece_proxy": -130,
-            "anthropic_legacy_proxy": -130
-          },
-          "topFileImpacts": [
-            {
-              "file": "language/stdlib/markdown.lib.sigil",
-              "delta": {
-                "openai_cl100k_base": -46,
-                "llama_sentencepiece_proxy": -23,
-                "anthropic_legacy_proxy": -23
-              }
-            },
-            {
-              "file": "language/stdlib/markdown-simple.lib.sigil",
-              "delta": {
-                "openai_cl100k_base": -41,
-                "llama_sentencepiece_proxy": -26,
-                "anthropic_legacy_proxy": -26
-              }
-            },
-            {
-              "file": "projects/todo-app/tests/todo-domain.sigil",
-              "delta": {
-                "openai_cl100k_base": -39,
-                "llama_sentencepiece_proxy": -14,
-                "anthropic_legacy_proxy": -14
-              }
-            },
-            {
-              "file": "language/stdlib/list.lib.sigil",
-              "delta": {
-                "openai_cl100k_base": -22,
-                "llama_sentencepiece_proxy": -14,
-                "anthropic_legacy_proxy": -14
-              }
-            },
-            {
-              "file": "language/examples/email-validator.sigil",
-              "delta": {
-                "openai_cl100k_base": -18,
-                "llama_sentencepiece_proxy": -17,
-                "anthropic_legacy_proxy": -17
-              }
-            },
-            {
-              "file": "language/stdlib/numeric.lib.sigil",
-              "delta": {
-                "openai_cl100k_base": -17,
-                "llama_sentencepiece_proxy": -10,
-                "anthropic_legacy_proxy": -10
-              }
-            },
-            {
-              "file": "language/stdlib-tests/tests/string.sigil",
-              "delta": {
-                "openai_cl100k_base": -11,
-                "llama_sentencepiece_proxy": -6,
-                "anthropic_legacy_proxy": -6
-              }
-            },
-            {
-              "file": "language/examples/pattern-guards.sigil",
-              "delta": {
-                "openai_cl100k_base": -6,
-                "llama_sentencepiece_proxy": -2,
-                "anthropic_legacy_proxy": -2
-              }
-            },
-            {
-              "file": "language/stdlib/string.lib.sigil",
-              "delta": {
-                "openai_cl100k_base": -4,
-                "llama_sentencepiece_proxy": 4,
-                "anthropic_legacy_proxy": 4
-              }
-            },
-            {
-              "file": "language/test-fixtures/test-typecheck/markdown-parse-result.sigil",
-              "delta": {
-                "openai_cl100k_base": -4,
-                "llama_sentencepiece_proxy": -2,
-                "anthropic_legacy_proxy": -2
-              }
-            }
-          ],
-          "agreement": "high",
-          "aggregateScore": 332.5,
-          "decision": "candidate"
-        }
-      ],
-      "recommendation": {
-        "replacement": "false",
-        "confidence": "high",
-        "reason": "Common boolean literal across mainstream languages. Baseline delta: -234. Agreement: high."
-      }
-    },
-    {
-      "symbol": "⊤",
-      "tokenType": "TRUE",
-      "category": "boolean_literal",
-      "occurrences": 137,
-      "filesAffected": 26,
-      "sampleFiles": [
-        "language/examples/email-validator.sigil",
-        "language/examples/option-result-practical.sigil",
-        "language/examples/pattern-guards.sigil",
-        "language/stdlib-tests/tests/list-predicates.sigil",
-        "language/stdlib-tests/tests/numeric-predicates.sigil"
-      ],
-      "candidates": [
-        {
-          "replacement": "true",
-          "commonalityScore": 1,
-          "semanticFit": "high",
-          "reason": "Common boolean literal across mainstream languages.",
-          "standaloneTokenCounts": {
-            "openai_cl100k_base": {
-              "before": 3,
-              "after": 1
-            },
-            "llama_sentencepiece_proxy": {
-              "before": 2,
-              "after": 1
-            },
-            "anthropic_legacy_proxy": {
-              "before": 2,
-              "after": 1
-            }
-          },
-          "boundarySnippet": {
-            "before": ")→ℤ≡idx<#str{\n  ⊤ → count_helper(",
-            "after": ")→ℤ≡idx<#str{\n  true → count_helper("
-          },
-          "boundarySnippetTokenCounts": {
-            "before": {
-              "openai_cl100k_base": 18,
-              "llama_sentencepiece_proxy": 21,
-              "anthropic_legacy_proxy": 20
-            },
-            "after": {
-              "openai_cl100k_base": 17,
-              "llama_sentencepiece_proxy": 20,
-              "anthropic_legacy_proxy": 19
-            }
-          },
-          "corpusDelta": {
-            "openai_cl100k_base": -219,
-            "llama_sentencepiece_proxy": -134,
-            "anthropic_legacy_proxy": -134
-          },
-          "topFileImpacts": [
-            {
-              "file": "language/stdlib/markdown-simple.lib.sigil",
-              "delta": {
-                "openai_cl100k_base": -33,
-                "llama_sentencepiece_proxy": -24,
-                "anthropic_legacy_proxy": -24
-              }
-            },
-            {
-              "file": "language/stdlib/markdown.lib.sigil",
-              "delta": {
-                "openai_cl100k_base": -29,
-                "llama_sentencepiece_proxy": -13,
-                "anthropic_legacy_proxy": -13
-              }
-            },
-            {
-              "file": "language/stdlib/list.lib.sigil",
-              "delta": {
-                "openai_cl100k_base": -28,
-                "llama_sentencepiece_proxy": -17,
-                "anthropic_legacy_proxy": -17
-              }
-            },
-            {
-              "file": "projects/todo-app/tests/todo-domain.sigil",
-              "delta": {
-                "openai_cl100k_base": -22,
-                "llama_sentencepiece_proxy": -8,
-                "anthropic_legacy_proxy": -8
-              }
-            },
-            {
-              "file": "language/examples/email-validator.sigil",
-              "delta": {
-                "openai_cl100k_base": -18,
-                "llama_sentencepiece_proxy": -17,
-                "anthropic_legacy_proxy": -17
-              }
-            },
-            {
-              "file": "language/stdlib-tests/tests/string.sigil",
-              "delta": {
-                "openai_cl100k_base": -11,
-                "llama_sentencepiece_proxy": -6,
-                "anthropic_legacy_proxy": -6
-              }
-            },
-            {
-              "file": "language/stdlib/numeric.lib.sigil",
-              "delta": {
-                "openai_cl100k_base": -11,
-                "llama_sentencepiece_proxy": -7,
-                "anthropic_legacy_proxy": -7
-              }
-            },
-            {
-              "file": "language/stdlib-tests/tests/numeric-predicates.sigil",
-              "delta": {
-                "openai_cl100k_base": -10,
-                "llama_sentencepiece_proxy": -5,
-                "anthropic_legacy_proxy": -5
-              }
-            },
-            {
-              "file": "projects/ssg/src/build.lib.sigil",
-              "delta": {
-                "openai_cl100k_base": -7,
-                "llama_sentencepiece_proxy": -5,
-                "anthropic_legacy_proxy": -5
-              }
-            },
-            {
-              "file": "projects/todo-app/src/todo-domain.lib.sigil",
-              "delta": {
-                "openai_cl100k_base": -7,
-                "llama_sentencepiece_proxy": -5,
-                "anthropic_legacy_proxy": -5
-              }
-            }
-          ],
-          "agreement": "high",
-          "aggregateScore": 320.5,
-          "decision": "candidate"
-        }
-      ],
-      "recommendation": {
-        "replacement": "true",
-        "confidence": "high",
-        "reason": "Common boolean literal across mainstream languages. Baseline delta: -219. Agreement: high."
-      }
-    },
-    {
       "symbol": "≡",
       "tokenType": "MATCH",
       "category": "match_marker",
@@ -1831,7 +1537,7 @@
             }
           },
           "corpusDelta": {
-            "openai_cl100k_base": -39,
+            "openai_cl100k_base": -37,
             "llama_sentencepiece_proxy": 49,
             "anthropic_legacy_proxy": 48
           },
@@ -1918,14 +1624,14 @@
             }
           ],
           "agreement": "mixed",
-          "aggregateScore": 3.45,
+          "aggregateScore": 1.45,
           "decision": "candidate"
         }
       ],
       "recommendation": {
         "replacement": "bool",
         "confidence": "low",
-        "reason": "Common boolean type name in mainstream typed languages. Baseline delta: -39. Agreement: mixed."
+        "reason": "Common boolean type name in mainstream typed languages. Baseline delta: -37. Agreement: mixed."
       }
     },
     {
@@ -3137,19 +2843,19 @@
             }
           },
           "boundarySnippet": {
-            "before": "[b,.rest]→≡(prev≤b){\n    ⊤→sorted",
-            "after": "[b,.rest]→≡(prev<=b){\n    ⊤→sorted"
+            "before": "[b,.rest]→≡(prev≤b){\n    true→sor",
+            "after": "[b,.rest]→≡(prev<=b){\n    true→sor"
           },
           "boundarySnippetTokenCounts": {
             "before": {
               "openai_cl100k_base": 18,
-              "llama_sentencepiece_proxy": 23,
-              "anthropic_legacy_proxy": 23
+              "llama_sentencepiece_proxy": 21,
+              "anthropic_legacy_proxy": 21
             },
             "after": {
               "openai_cl100k_base": 17,
-              "llama_sentencepiece_proxy": 22,
-              "anthropic_legacy_proxy": 22
+              "llama_sentencepiece_proxy": 20,
+              "anthropic_legacy_proxy": 20
             }
           },
           "corpusDelta": {
@@ -3236,19 +2942,19 @@
             }
           },
           "boundarySnippet": {
-            "before": "\n  ⊥→≡(n%divisor≠0){\n    ⊤→is_pri",
-            "after": "\n  ⊥→≡(n%divisor!=0){\n    ⊤→is_pri"
+            "before": "alse→≡(n%divisor≠0){\n    true→is_",
+            "after": "alse→≡(n%divisor!=0){\n    true→is_"
           },
           "boundarySnippetTokenCounts": {
             "before": {
-              "openai_cl100k_base": 22,
-              "llama_sentencepiece_proxy": 22,
-              "anthropic_legacy_proxy": 22
+              "openai_cl100k_base": 18,
+              "llama_sentencepiece_proxy": 19,
+              "anthropic_legacy_proxy": 19
             },
             "after": {
-              "openai_cl100k_base": 21,
-              "llama_sentencepiece_proxy": 21,
-              "anthropic_legacy_proxy": 21
+              "openai_cl100k_base": 17,
+              "llama_sentencepiece_proxy": 18,
+              "anthropic_legacy_proxy": 18
             }
           },
           "corpusDelta": {
@@ -3432,19 +3138,19 @@
             }
           },
           "boundarySnippet": {
-            "before": "_of(domain,\"..\")≥0{\n            ⊤",
-            "after": "_of(domain,\"..\")>=0{\n            ⊤"
+            "before": "_of(domain,\"..\")≥0{\n            t",
+            "after": "_of(domain,\"..\")>=0{\n            t"
           },
           "boundarySnippetTokenCounts": {
             "before": {
-              "openai_cl100k_base": 12,
-              "llama_sentencepiece_proxy": 18,
-              "anthropic_legacy_proxy": 18
-            },
-            "after": {
               "openai_cl100k_base": 11,
               "llama_sentencepiece_proxy": 17,
               "anthropic_legacy_proxy": 17
+            },
+            "after": {
+              "openai_cl100k_base": 10,
+              "llama_sentencepiece_proxy": 16,
+              "anthropic_legacy_proxy": 16
             }
           },
           "corpusDelta": {

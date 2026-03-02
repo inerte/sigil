@@ -146,7 +146,7 @@ Alongside the `#` operator, we added comprehensive string operations as **compil
 ```sigil
 stdlib⋅string.to_upper("hello")              ⟦ → "HELLO" ⟧
 stdlib⋅string.substring("hello world",6,11)  ⟦ → "world" ⟧
-stdlib⋅string.starts_with("# Title","# ")  ⟦ → ⊤ ⟧
+stdlib⋅string.starts_with("# Title","# ")  ⟦ → true ⟧
 ```
 
 These are not implemented in Sigil - they're recognized by the compiler and emit optimized JavaScript:

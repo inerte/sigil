@@ -21,7 +21,7 @@ e fs⋅promises
 
 λensureDir(dir:𝕊)→𝕌={
   ⟦ What type is opts? The compiler doesn't know! ⟧
-  l opts = {recursive:⊤};
+  l opts = {recursive:true};
   fs⋅promises.mkdir(dir, opts)  ⟦ No type checking here ⟧
 }
 ```
@@ -46,7 +46,7 @@ e fs⋅promises : {
   mkdir : λ(𝕊, MkdirOptions) → 𝕌
 }
 
-c opts:MkdirOptions={recursive:⊤}
+c opts:MkdirOptions={recursive:true}
 
 λensureDir(dir:𝕊)→𝕌=
   fs⋅promises.mkdir(dir, opts)  ⟦ Now type-checked! ⟧
@@ -168,7 +168,7 @@ c DEFAULT_USER:User={name:"Guest",age:0}
 
 ⟦ 5. Functions - Can reference everything ⟧
 λensureDir(dir:𝕊)→𝕌=
-  fs⋅promises.mkdir(dir, {recursive:⊤})
+  fs⋅promises.mkdir(dir, {recursive:true})
 ```
 
 Everything flows **top-to-bottom**. Types are declared first because everything else can reference them.
@@ -270,7 +270,7 @@ e fs⋅promises : {
 
 t MkdirOptions = { recursive: 𝔹 }
 
-c opts:MkdirOptions={recursive:⊤}
+c opts:MkdirOptions={recursive:true}
 
 λensureDir(dir:𝕊)→𝕌=
   fs⋅promises.mkdir(dir, opts)
@@ -287,7 +287,7 @@ e fs⋅promises : {
 }
 
 ⟦ Use it ⟧
-c opts:MkdirOptions={recursive:⊤}
+c opts:MkdirOptions={recursive:true}
 
 λensureDir(dir:𝕊)→𝕌=
   fs⋅promises.mkdir(dir, opts)

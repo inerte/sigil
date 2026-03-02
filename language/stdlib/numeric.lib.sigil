@@ -24,8 +24,8 @@
 
 ⟦ Helper: Range checking ⟧
 λin_range_helper(max:ℤ,min:ℤ,x:ℤ)→𝔹≡(x≥min){
-  ⊤→x≤max|
-  ⊥→⊥
+  true→x≤max|
+  false→false
 }
 
 ⟦ Check if value is even ⟧
@@ -45,17 +45,17 @@
 
 ⟦ Check if value is prime ⟧
 λis_prime(n:ℤ)→𝔹≡n{
-  0→⊥|
-  1→⊥|
+  0→false|
+  1→false|
   n→is_prime_helper(2,n)
 }
 
 ⟦ Helper: Prime checking ⟧
 λis_prime_helper(divisor:ℤ,n:ℤ)→𝔹≡(divisor*divisor>n){
-  ⊤→⊤|
-  ⊥→≡(n%divisor≠0){
-    ⊤→is_prime_helper(divisor+1,n)|
-    ⊥→⊥
+  true→true|
+  false→≡(n%divisor≠0){
+    true→is_prime_helper(divisor+1,n)|
+    false→false
   }
 }
 
@@ -63,10 +63,10 @@
 λis_zero(x:ℤ)→𝔹=x=0
 
 ⟦ Maximum of two numbers ⟧
-λmax(a:ℤ,b:ℤ)→ℤ≡a>b{⊤→a|⊥→b}
+λmax(a:ℤ,b:ℤ)→ℤ≡a>b{true→a|false→b}
 
 ⟦ Minimum of two numbers ⟧
-λmin(a:ℤ,b:ℤ)→ℤ≡a<b{⊤→a|⊥→b}
+λmin(a:ℤ,b:ℤ)→ℤ≡a<b{true→a|false→b}
 
 ⟦ Integer power (exponentiation) ⟧
 λpow(base:ℤ,exp:ℤ)→ℤ≡exp{
@@ -75,7 +75,7 @@
 }
 
 ⟦ Sum of integers from a to b ⟧
-λsum_range(a:ℤ,b:ℤ)→ℤ≡a>b{⊤→0|⊥→a+sum_range(a+1,b)}
+λsum_range(a:ℤ,b:ℤ)→ℤ≡a>b{true→0|false→a+sum_range(a+1,b)}
 
 ⟦ Sum of integers from 1 to n ⟧
 λsum_to(n:ℤ)→ℤ≡n{0→0|n→n+sum_to(n-1)}

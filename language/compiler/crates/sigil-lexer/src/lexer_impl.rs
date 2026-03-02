@@ -75,6 +75,15 @@ pub enum LexError {
         line: usize,
         column: usize,
     },
+
+    #[error("SIGIL-LEX-LEGACY-BOOL {file}:{line}:{column} legacy boolean literal '{legacy}' is not allowed; use '{replacement}'")]
+    LegacyBoolLiteral {
+        file: String,
+        legacy: char,
+        replacement: &'static str,
+        line: usize,
+        column: usize,
+    },
 }
 
 impl From<LexError> for Diagnostic {
@@ -151,6 +160,19 @@ impl From<LexError> for Diagnostic {
                 codes::lexer::UNEXPECTED_CHAR,
                 SigilPhase::Lexer,
                 format!("unexpected character: {} (U+{:04X})", ch, code),
+            )
+            .with_location(SourceSpan::new(file, SourcePoint::new(line, column))),
+
+            LexError::LegacyBoolLiteral {
+                file,
+                legacy,
+                replacement,
+                line,
+                column,
+            } => Diagnostic::new(
+                codes::lexer::LEGACY_BOOL,
+                SigilPhase::Lexer,
+                format!("use \"{}\" instead of \"{}\"", replacement, legacy),
             )
             .with_location(SourceSpan::new(file, SourcePoint::new(line, column))),
         }
@@ -457,9 +479,25 @@ impl Lexer {
             '𝕌' => self.add_token(tokens, TokenType::TypeUnit, "𝕌", start),
             '∅' => self.add_token(tokens, TokenType::TypeNever, "∅", start),
 
-            // Boolean literals
-            '⊤' => self.add_token(tokens, TokenType::TRUE, "⊤", start),
-            '⊥' => self.add_token(tokens, TokenType::FALSE, "⊥", start),
+            // Legacy boolean literals
+            '⊤' => {
+                return Err(LexError::LegacyBoolLiteral {
+                    file: self.filename.clone(),
+                    legacy: '⊤',
+                    replacement: "true",
+                    line: start.line,
+                    column: start.column,
+                });
+            }
+            '⊥' => {
+                return Err(LexError::LegacyBoolLiteral {
+                    file: self.filename.clone(),
+                    legacy: '⊥',
+                    replacement: "false",
+                    line: start.line,
+                    column: start.column,
+                });
+            }
 
             // Comments
             '⟦' => {
@@ -665,6 +703,8 @@ impl Lexer {
             "mockable" => TokenType::MOCKABLE,
             "with_mock" => TokenType::WithMock,
             "when" => TokenType::WHEN,
+            "true" => TokenType::TRUE,
+            "false" => TokenType::FALSE,
             _ => {
                 if first_char.is_uppercase() {
                     TokenType::UpperIdentifier

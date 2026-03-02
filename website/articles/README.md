@@ -36,6 +36,12 @@ Why Sigil compares aliases and named product types by their canonical normalized
 
 **Key topics:** Canonical semantics, structural typing, named product types, AI-first language design, typechecker determinism
 
+**March 2, 2026** - [Why Sigil Uses true and false](./012-why-sigil-uses-true-and-false.md)
+
+Why Sigil replaced `⊤` and `⊥` with `true` and `false`, and why token efficiency plus model-prior alignment matters more than mathematical elegance in an AI-first language.
+
+**Key topics:** Boolean literals, token efficiency, Claude Code, Codex, canonical syntax, AI-first language design
+
 ---
 
 ## About These Articles

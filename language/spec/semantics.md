@@ -46,7 +46,7 @@ A **value** is an expression that cannot be reduced further:
 ```
 v ::= n                  (* integer literal *)
     | f                  (* float literal *)
-    | ⊤ | ⊥              (* boolean literals *)
+    | true | false              (* boolean literals *)
     | "s"                (* string literal *)
     | 'c'                (* char literal *)
     | ()                 (* unit *)
@@ -231,7 +231,7 @@ Lookup variable `x` in environment `Γ`.
 Γ ⊢ n ⇓ n
 
 ─────────────
-Γ ⊢ ⊤ ⇓ ⊤
+Γ ⊢ true ⇓ true
 
 ─────────────
 Γ ⊢ "s" ⇓ "s"

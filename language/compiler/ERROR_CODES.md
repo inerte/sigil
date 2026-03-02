@@ -62,6 +62,11 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Message:** "unexpected character: X (U+XXXX)"
 **How to fix:** Remove or replace the unexpected character
 
+### SIGIL-LEX-LEGACY-BOOL
+**Description:** Legacy Unicode boolean literal is no longer valid Sigil syntax.
+**Message:** "use \"true\" instead of \"⊤\"" or "use \"false\" instead of \"⊥\""
+**How to fix:** Replace `⊤` with `true` and `⊥` with `false`
+
 ## Parser Errors (SIGIL-PARSE-*)
 
 ### SIGIL-PARSE-CONST-NAME
@@ -201,7 +206,7 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 ### SIGIL-CANON-MATCH-BOOLEAN
 **Description:** Cannot pattern match on boolean expression.
 **Message:** "Cannot pattern match on boolean expression"
-**Example:** `≡(x<5){⊤→...|⊥→...}` → use `(x<5)→...|...`
+**Example:** `≡(x<5){true→...|false→...}` → use `(x<5)→...|...`
 **How to fix:** Use if-expression syntax: `(condition)→thenBranch|elseBranch`
 
 ### SIGIL-CANON-MATCH-TUPLE-BOOLEAN

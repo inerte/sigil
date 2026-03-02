@@ -14,6 +14,7 @@ pub mod lexer {
     pub const UNTERMINATED_CHAR: &str = "SIGIL-LEX-UNTERMINATED-CHAR";
     pub const INVALID_ESCAPE: &str = "SIGIL-LEX-INVALID-ESCAPE";
     pub const UNEXPECTED_CHAR: &str = "SIGIL-LEX-UNEXPECTED-CHAR";
+    pub const LEGACY_BOOL: &str = "SIGIL-LEX-LEGACY-BOOL";
 }
 
 /// Parser error codes (SIGIL-PARSE-*)
@@ -119,6 +120,7 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     lexer::UNTERMINATED_CHAR,
     lexer::INVALID_ESCAPE,
     lexer::UNEXPECTED_CHAR,
+    lexer::LEGACY_BOOL,
     // Parser (5 codes)
     parser::CONST_NAME,
     parser::CONST_UNTYPED,

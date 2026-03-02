@@ -7,6 +7,6 @@ t Result={data:Outer}
 λmain()→𝕌=()
 
 λtest(x:𝔹)→Result≡x{
-  ⊤ → {data:{inner:{items:[]},name:"test"}}|
-  ⊥ → {data:{inner:{items:[1,2,3]},name:"other"}}
+  true → {data:{inner:{items:[]},name:"test"}}|
+  false → {data:{inner:{items:[1,2,3]},name:"other"}}
 }

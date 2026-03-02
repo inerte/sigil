@@ -35,19 +35,19 @@ Here's what the code looked like **without** pattern guards:
 ```sigil
 ⟦ Hypothetical pre-guards syntax - deeply nested matches ⟧
 λparse_line(state:ParseState, line:𝕊)→(ParseState,[Block])≡state{
-  {in_code=⊤,..} → ≡is_code_fence(line){
-    ⊤ → close_code_block(state)|
-    ⊥ → accumulate_code_line(state,line)
+  {in_code=true,..} → ≡is_code_fence(line){
+    true → close_code_block(state)|
+    false → accumulate_code_line(state,line)
   }|
-  {in_code=⊥,..} → ≡is_code_fence(line){
-    ⊤ → start_code_block(state,line)|
-    ⊥ → ≡is_header(line){
-      ⊤ → parse_header(state,line)|
-      ⊥ → ≡is_hr(line){
-        ⊤ → parse_hr(state)|
-        ⊥ → ≡is_empty(line){
-          ⊤ → flush_paragraph(state)|
-          ⊥ → accumulate_para(state,line)
+  {in_code=false,..} → ≡is_code_fence(line){
+    true → start_code_block(state,line)|
+    false → ≡is_header(line){
+      true → parse_header(state,line)|
+      false → ≡is_hr(line){
+        true → parse_hr(state)|
+        false → ≡is_empty(line){
+          true → flush_paragraph(state)|
+          false → accumulate_para(state,line)
         }
       }
     }
@@ -97,7 +97,7 @@ The `when` keyword makes it crystal clear: "match this pattern, AND check this c
 **Design decisions:**
 1. **Guard after pattern:** Bindings are established before guard evaluation
 2. **Must be boolean:** Type checker enforces `𝔹` type for guards
-3. **Fall-through:** If guard is `⊥`, try the next arm
+3. **Fall-through:** If guard is `false`, try the next arm
 4. **Backward compatible:** Patterns without guards work exactly as before
 
 ## The Implementation
@@ -177,13 +177,13 @@ Now the markdown parser looks like this:
 ```sigil
 ⟦ With pattern guards - clean and linear ⟧
 λparse_line(state:ParseState, line:𝕊)→(ParseState,[Block])≡state{
-  {in_code=⊤,..} when is_code_fence(line) → close_code_block(state)|
-  {in_code=⊤,..} → accumulate_code_line(state,line)|
-  {in_code=⊥,..} when is_code_fence(line) → start_code_block(state,line)|
-  {in_code=⊥,..} when is_header(line) → parse_header(state,line)|
-  {in_code=⊥,..} when is_hr(line) → parse_hr(state)|
-  {in_code=⊥,..} when is_empty(line) → flush_paragraph(state)|
-  {in_code=⊥,..} → accumulate_para(state,line)
+  {in_code=true,..} when is_code_fence(line) → close_code_block(state)|
+  {in_code=true,..} → accumulate_code_line(state,line)|
+  {in_code=false,..} when is_code_fence(line) → start_code_block(state,line)|
+  {in_code=false,..} when is_header(line) → parse_header(state,line)|
+  {in_code=false,..} when is_hr(line) → parse_hr(state)|
+  {in_code=false,..} when is_empty(line) → flush_paragraph(state)|
+  {in_code=false,..} → accumulate_para(state,line)
 }
 ```
 

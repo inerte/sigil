@@ -162,7 +162,7 @@ e fs⋅promises : {
 }
 
 λensureDir(dir:𝕊)→𝕌={
-  l opts=({recursive:⊤}:MkdirOptions);
+  l opts=({recursive:true}:MkdirOptions);
   fs⋅promises.mkdir(dir, opts)
 }
 ```

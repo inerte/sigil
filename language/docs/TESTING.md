@@ -36,7 +36,7 @@ test "adds numbers" {
 ```
 
 - Test body must evaluate to `𝔹`
-- `⊤` passes, `⊥` fails
+- `true` passes, `false` fails
 
 ## Effectful tests
 

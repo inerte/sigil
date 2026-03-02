@@ -39,11 +39,11 @@ test "drop with 0" {
 }
 
 test "ends_with actual suffix" {
-  stdlib⋅string.ends_with("file.txt",".txt")=⊤
+  stdlib⋅string.ends_with("file.txt",".txt")=true
 }
 
 test "ends_with non-suffix" {
-  stdlib⋅string.ends_with("hello",".txt")=⊥
+  stdlib⋅string.ends_with("hello",".txt")=false
 }
 
 test "index_of finds occurrence" {
@@ -67,27 +67,27 @@ test "int_to_string zero" {
 }
 
 test "is_digit letter" {
-  stdlib⋅string.is_digit("a")=⊥
+  stdlib⋅string.is_digit("a")=false
 }
 
 test "is_digit multi-character" {
-  stdlib⋅string.is_digit("42")=⊥
+  stdlib⋅string.is_digit("42")=false
 }
 
 test "is_digit single" {
-  stdlib⋅string.is_digit("5")=⊤
+  stdlib⋅string.is_digit("5")=true
 }
 
 test "is_whitespace empty" {
-  stdlib⋅string.is_whitespace("")=⊤
+  stdlib⋅string.is_whitespace("")=true
 }
 
 test "is_whitespace non-whitespace" {
-  stdlib⋅string.is_whitespace("hello")=⊥
+  stdlib⋅string.is_whitespace("hello")=false
 }
 
 test "is_whitespace spaces" {
-  stdlib⋅string.is_whitespace("   ")=⊤
+  stdlib⋅string.is_whitespace("   ")=true
 }
 
 test "join empty list" {
@@ -115,11 +115,11 @@ test "split single element" {
 }
 
 test "starts_with non-prefix" {
-  stdlib⋅string.starts_with("hello","abc")=⊥
+  stdlib⋅string.starts_with("hello","abc")=false
 }
 
 test "starts_with prefix" {
-  stdlib⋅string.starts_with("hello","hel")=⊤
+  stdlib⋅string.starts_with("hello","hel")=true
 }
 
 test "substring full string" {
@@ -172,8 +172,8 @@ test "extract title from markdown" {
   l lines=stdlib⋅string.split("\n",content);
   l first=lines[0];
   l title=≡stdlib⋅string.starts_with("# ",first){
-    ⊤→stdlib⋅string.substring(#first,2,first)|
-    ⊥→"Untitled"
+    true→stdlib⋅string.substring(#first,2,first)|
+    false→"Untitled"
   };
   title="Hello World"
 }

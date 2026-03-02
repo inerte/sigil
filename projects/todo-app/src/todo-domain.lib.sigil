@@ -1,33 +1,33 @@
 t Todo={id:ℤ,text:𝕊,done:𝔹}
 
-λaddTodo(id:ℤ,text:𝕊,todos:[Todo])→[Todo]=[Todo{id:id,text:text,done:⊥}]⧺todos
+λaddTodo(id:ℤ,text:𝕊,todos:[Todo])→[Todo]=[Todo{id:id,text:text,done:false}]⧺todos
 
 λcanAdd(text:𝕊)→𝔹=text≠""
 
 λclearCompleted(todos:[Todo])→[Todo]=todos⊳λ(todo:Todo)→𝔹=¬todo.done
 
 λcompletedCount(todos:[Todo])→ℤ=todos⊕(λ(acc:ℤ,todo:Todo)→ℤ≡todo.done{
-  ⊤→acc+1|
-  ⊥→acc
+  true→acc+1|
+  false→acc
 })⊕0
 
 λdeleteTodo(targetId:ℤ,todos:[Todo])→[Todo]=todos⊳λ(todo:Todo)→𝔹=todo.id≠targetId
 
 λeditTodo(newText:𝕊,targetId:ℤ,todos:[Todo])→[Todo]=todos↦λ(todo:Todo)→Todo≡todo.id=targetId{
-  ⊤→Todo{id:todo.id,text:newText,done:todo.done}|
-  ⊥→todo
+  true→Todo{id:todo.id,text:newText,done:todo.done}|
+  false→todo
 }
 
 λisVisible(done:𝔹,filter:𝕊)→𝔹≡filter{
-  "all"→⊤|
+  "all"→true|
   "active"→¬done|
   "completed"→done|
-  _→⊤
+  _→true
 }
 
 λremainingCount(completed:ℤ,total:ℤ)→ℤ=total-completed
 
 λtoggleTodo(targetId:ℤ,todos:[Todo])→[Todo]=todos↦λ(todo:Todo)→Todo≡todo.id=targetId{
-  ⊤→Todo{id:todo.id,text:todo.text,done:¬todo.done}|
-  ⊥→todo
+  true→Todo{id:todo.id,text:todo.text,done:¬todo.done}|
+  false→todo
 }

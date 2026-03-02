@@ -17,14 +17,14 @@ That produced behavior like this:
 
 ```sigil
 t MkdirOptions={recursive:𝔹}
-c opts=({recursive:⊤}:MkdirOptions)
+c opts=({recursive:true}:MkdirOptions)
 ```
 
 and:
 
 ```sigil
 t Todo={done:𝔹,id:ℤ,text:𝕊}
-λaddTodo(id:ℤ,text:𝕊,todos:[Todo])→[Todo]=[Todo{done:⊥,id:id,text:text}]⧺todos
+λaddTodo(id:ℤ,text:𝕊,todos:[Todo])→[Todo]=[Todo{done:false,id:id,text:text}]⧺todos
 ```
 
 Both examples are obviously the same explicit type relation:

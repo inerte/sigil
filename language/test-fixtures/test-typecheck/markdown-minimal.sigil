@@ -7,8 +7,8 @@ t ParseState={in_code_block:𝔹}
 λempty_blocks()→[Block]=[]
 
 λflush_code_block(state:ParseState)→[Block]≡state.in_code_block{
-  ⊤ → [Paragraph("test")]|
-  ⊥ → empty_blocks()
+  true → [Paragraph("test")]|
+  false → empty_blocks()
 }
 
 λmain()→𝕌=()

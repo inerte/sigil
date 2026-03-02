@@ -95,7 +95,7 @@ This repo also includes a dedicated benchmark for asking:
 
 The benchmark:
 - inventories syntax-only Unicode usage in `.sigil` files
-- proposes common replacement candidates like `⊤ -> true`
+- proposes common replacement candidates like `λ -> function`
 - rewrites whole source files in memory
 - retokenizes the rewritten corpus under all configured tokenizers
 - counts separator costs like `λname -> function name`
@@ -106,7 +106,7 @@ Commands:
 node benchmarks/tools/unicode-benchmark.js inventory
 node benchmarks/tools/unicode-benchmark.js candidates
 node benchmarks/tools/unicode-benchmark.js measure
-node benchmarks/tools/unicode-benchmark.js explain "⊤"
+node benchmarks/tools/unicode-benchmark.js explain "λ"
 ```
 
 The authoritative metric is **whole-file rewrite + retokenize**, not isolated symbol counts.
@@ -116,13 +116,13 @@ The default JSON report is written to `language/benchmarks/results/unicode-repla
 Example:
 
 ```sigil
-λends_with(s:𝕊,suffix:𝕊)→𝔹=⊥
+λends_with(s:𝕊,suffix:𝕊)→𝔹=false
 ```
 
 may become:
 
 ```sigil
-function ends_with(s:𝕊,suffix:𝕊)→𝔹=⊥
+function ends_with(s:𝕊,suffix:𝕊)→𝔹=false
 ```
 
 The inserted space is part of the real replacement cost and must be measured.

@@ -165,6 +165,15 @@ fn test_const_declaration() {
 }
 
 #[test]
+fn test_boolean_literals_parse() {
+    let source = "λpick(flag:𝔹)→𝔹≡flag{true→true|false→false}";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    assert_eq!(program.declarations.len(), 1);
+}
+
+#[test]
 fn test_import_declaration() {
     let source = "i stdlib⋅list";
     let tokens = tokenize(source).unwrap();
@@ -790,12 +799,12 @@ fn test_complex_nested_expression() {
 #[test]
 fn test_tuple_matching_rejected() {
     // Tuple pattern matching in match expressions (not supported)
-    let source = r#"λbinary_search(xs:[ℤ],target:ℤ,low:ℤ,high:ℤ)→ℤ=
+  let source = r#"λbinary_search(xs:[ℤ],target:ℤ,low:ℤ,high:ℤ)→ℤ=
   ≡(high<low,xs[0]=target,xs[0]<target){
-    (⊤,_,_)→-1|
-    (⊥,⊤,_)→0|
-    (⊥,⊥,⊤)→binary_search(xs,target,1,high)|
-    (⊥,⊥,⊥)→binary_search(xs,target,low,0)
+    (true,_,_)→-1|
+    (false,true,_)→0|
+    (false,false,true)→binary_search(xs,target,1,high)|
+    (false,false,false)→binary_search(xs,target,low,0)
   }"#;
 
     let tokens = tokenize(source).unwrap();

@@ -6,11 +6,11 @@
 λmain()→𝕊=process_a(50)++" and "++process_b(-5)
 
 λprocess_a(x:ℤ)→𝕊≡is_positive(x){
-  ⊤→"positive"|
-  ⊥→"negative"
+  true→"positive"|
+  false→"negative"
 }
 
 λprocess_b(y:ℤ)→𝕊≡is_positive(y){
-  ⊤→"yes"|
-  ⊥→"no"
+  true→"yes"|
+  false→"no"
 }

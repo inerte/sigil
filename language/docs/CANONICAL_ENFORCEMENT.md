@@ -129,14 +129,14 @@ Use simple recursion without accumulator parameters.
 ```sigil
 ❌ COMPILE ERROR - Boolean matching when value matching works:
 λisZero(n:ℤ)→𝔹≡(n=0){
-  ⊤→⊤|
-  ⊥→⊥
+  true→true|
+  false→false
 }
 
 ✅ COMPILES - Direct value matching:
 λisZero(n:ℤ)→𝔹≡n{
-  0→⊤|
-  _→⊥
+  0→true|
+  _→false
 }
 ```
 
@@ -145,10 +145,10 @@ Use simple recursion without accumulator parameters.
 ```sigil
 ✅ COMPILES - Complex conditions (no simpler form exists):
 λclassify(x:ℤ,y:ℤ)→𝕊≡(x>0,y>0){
-  (⊤,⊤)→"quadrant 1"|
-  (⊤,⊥)→"quadrant 4"|
-  (⊥,⊤)→"quadrant 2"|
-  (⊥,⊥)→"quadrant 3"
+  (true,true)→"quadrant 1"|
+  (true,false)→"quadrant 4"|
+  (false,true)→"quadrant 2"|
+  (false,false)→"quadrant 3"
 }
 ```
 

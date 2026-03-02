@@ -14,8 +14,8 @@ i stdlib⋅string
 
 ⟦ Add file to list if markdown ⟧
 λadd_if_markdown(file:𝕊,md_files:[𝕊])→[𝕊]≡is_markdown_file(file){
-  ⊤ → md_files⧺[file]|
-  ⊥ → md_files
+  true → md_files⧺[file]|
+  false → md_files
 }
 
 ⟦ Main build function ⟧
@@ -31,12 +31,12 @@ i stdlib⋅string
 
 ⟦ Ensure directory exists ⟧
 λensure_dir(dir:𝕊)→!IO 𝕌=
-  fs⋅promises.mkdir(dir,{recursive:⊤})
+  fs⋅promises.mkdir(dir,{recursive:true})
 
 ⟦ Filter markdown files helper ⟧
 λfilter_md_files_inner(all_files:[𝕊],idx:ℤ,md_files:[𝕊],num_files:ℤ)→[𝕊]≡idx≥num_files{
-  ⊤ → md_files|
-  ⊥ →
+  true → md_files|
+  false →
     l file=(all_files[idx]:𝕊);
     l next_list=(add_if_markdown(file,md_files):[𝕊]);
     filter_md_files_inner(all_files,idx+1,next_list,num_files)
@@ -57,8 +57,8 @@ i stdlib⋅string
 
 ⟦ Process all articles helper ⟧
 λprocess_all_articles(articles:[src⋅types.Article],idx:ℤ,input_dir:𝕊,markdown_files:[𝕊],num_articles:ℤ)→!IO [src⋅types.Article]≡idx≥num_articles{
-  ⊤ → articles|
-  ⊥ →
+  true → articles|
+  false →
     l filename=(markdown_files[idx]:𝕊);
     l article=(process_article(filename,input_dir):src⋅types.Article);
     process_all_articles(articles⧺[article],idx+1,input_dir,markdown_files,num_articles)
@@ -80,8 +80,8 @@ i stdlib⋅string
 
 ⟦ Write all articles helper ⟧
 λwrite_all_articles(articles:[src⋅types.Article],idx:ℤ,num_articles:ℤ,output_dir:𝕊)→!IO 𝕌≡idx≥num_articles{
-  ⊤ → ()|
-  ⊥ →
+  true → ()|
+  false →
     l _=(write_article(articles[idx],output_dir):𝕌);
     write_all_articles(articles,idx+1,num_articles,output_dir)
 }

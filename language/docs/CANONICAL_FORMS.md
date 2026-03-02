@@ -161,7 +161,7 @@ i stdlib⋅list
 λmain()→𝕌=()
 
 test "list.in_bounds checks valid indexes" {
-  stdlib⋅list.in_bounds(0,[10,20,30])=⊤
+  stdlib⋅list.in_bounds(0,[10,20,30])=true
 }
 
 ❌ REJECTED - Test blocks outside tests/ directory:
@@ -174,14 +174,14 @@ test "fibonacci works" {  // ERROR: SIGIL-CANON-TEST-LOCATION
 
 ❌ REJECTED - Test file without main():
 // tests/my-test.sigil
-test "example" { ⊤ }
+test "example" { true }
 // ERROR: SIGIL-CANON-FILE-PURPOSE-NONE
 // Hint: Test files are executables and must have a main() function.
 
 ❌ REJECTED - Test file with exports (not applicable with .lib.sigil convention):
 // tests/my-test.sigil
 // Test files are .sigil executables, not .lib.sigil libraries
-test "example" { ⊤ }
+test "example" { true }
 λmain()→𝕌=()
 ```
 
@@ -279,7 +279,7 @@ The presence/absence of `=` depends on the function body type.
 ```sigil
 ✅ VALID:
 λfactorial(n:ℤ)→ℤ≡n{0→1|n→n*factorial(n-1)}
-λsign(n:ℤ)→𝕊≡(n>0,n<0){(⊤,⊥)→"positive"|...}
+λsign(n:ℤ)→𝕊≡(n>0,n<0){(true,false)→"positive"|...}
 
 ❌ REJECTED:
 λfactorial(n:ℤ)→ℤ=≡n{...}

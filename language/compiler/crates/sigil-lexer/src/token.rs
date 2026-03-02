@@ -17,10 +17,10 @@ pub enum TokenType {
     #[regex(r"[0-9]+\.[0-9]+", priority = 4)]
     FLOAT,
 
-    #[token("⊤")]
+    #[token("true")]
     TRUE,
 
-    #[token("⊥")]
+    #[token("false")]
     FALSE,
 
     #[token("()")]

@@ -101,8 +101,8 @@ Field meanings:
 - `files`: number of `.sigil` test files executed
 - `discovered`: total tests discovered before filtering
 - `selected`: tests selected after `--match` filtering
-- `passed`: tests returning `⊤`
-- `failed`: tests returning `⊥`
+- `passed`: tests returning `true`
+- `failed`: tests returning `false`
 - `errored`: tests that threw exceptions / runner execution errors at test level
 - `skipped`: reserved (currently always `0`)
 - `durationMs`: total wall-clock duration for the `sigilc test` command
@@ -152,7 +152,7 @@ When a test body is a top-level comparison (e.g. `a=b`, `x<y`, `a≠b`), Sigil e
 {
   "failure": {
     "kind": "assert_false",
-    "message": "Test body evaluated to ⊥"
+    "message": "Test body evaluated to false"
   }
 }
 ```

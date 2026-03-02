@@ -14,7 +14,7 @@
 λdrop(n:ℤ,s:𝕊)→𝕊=substring(#s,s,n)
 
 ⟦ Check if string ends with suffix - compiler intrinsic ⟧
-λends_with(s:𝕊,suffix:𝕊)→𝔹=⊥
+λends_with(s:𝕊,suffix:𝕊)→𝔹=false
 
 ⟦ Find index of first occurrence (-1 if not found) - compiler intrinsic ⟧
 λindex_of(s:𝕊,search:𝕊)→ℤ=-1
@@ -23,10 +23,10 @@
 λint_to_string(n:ℤ)→𝕊=""
 
 ⟦ Check if string is a single digit character (0-9) - compiler intrinsic ⟧
-λis_digit(s:𝕊)→𝔹=⊥
+λis_digit(s:𝕊)→𝔹=false
 
 ⟦ Check if string is empty or only whitespace - compiler intrinsic ⟧
-λis_whitespace(s:𝕊)→𝔹=⊥
+λis_whitespace(s:𝕊)→𝔹=false
 
 ⟦ Join list of strings with separator - compiler intrinsic ⟧
 λjoin(separator:𝕊,strings:[𝕊])→𝕊=""
@@ -38,7 +38,7 @@
 λsplit(delimiter:𝕊,s:𝕊)→[𝕊]=[""]
 
 ⟦ Check if string starts with prefix - compiler intrinsic ⟧
-λstarts_with(prefix:𝕊,s:𝕊)→𝔹=⊥
+λstarts_with(prefix:𝕊,s:𝕊)→𝔹=false
 
 ⟦ Get substring from start to end - compiler intrinsic ⟧
 λsubstring(end:ℤ,s:𝕊,start:ℤ)→𝕊=""

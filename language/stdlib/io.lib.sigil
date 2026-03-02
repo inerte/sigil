@@ -24,11 +24,11 @@ e process
 ⟦ Check if file exists ⟧
 λfile_exists(path:𝕊)→!IO 𝔹=file_exists_helper(path)
 
-λfile_exists_false()→𝔹=⊥
+λfile_exists_false()→𝔹=false
 
 λfile_exists_helper(path:𝕊)→!IO 𝔹=fs⋅promises.access(path).then(file_exists_true).catch(file_exists_false)
 
-λfile_exists_true()→𝔹=⊤
+λfile_exists_true()→𝔹=true
 
 ⟦ List directory contents ⟧
 λlist_dir(path:𝕊)→!IO [𝕊]=fs⋅promises.readdir(path)

@@ -22,7 +22,7 @@ This makes Hindley-Milner's primary feature (inferring types with minimal annota
 ### Synthesis (⇒): Infer type from structure
 
 Used for expressions where type can be determined from the expression itself:
-- **Literals**: `5` ⇒ `ℤ`, `"hello"` ⇒ `𝕊`, `⊤` ⇒ `𝔹`
+- **Literals**: `5` ⇒ `ℤ`, `"hello"` ⇒ `𝕊`, `true` ⇒ `𝔹`
 - **Variables**: `x` ⇒ look up in environment
 - **Applications**: `f(x)` ⇒ synthesize `f`, check args, return result type
 - **Pattern matching**: `≡n{...}` ⇒ synthesize scrutinee, check arms have same type
@@ -179,10 +179,10 @@ t MkdirOptions={recursive:𝔹}
 t Todo={done:𝔹,id:ℤ,text:𝕊}
 
 ⟦ Named product type and structural record are the same after normalization ⟧
-c opts=({recursive:⊤}:MkdirOptions)
+c opts=({recursive:true}:MkdirOptions)
 
 ⟦ [Todo] and [{done:𝔹,id:ℤ,text:𝕊}] compare by canonical form ⟧
-λaddTodo(id:ℤ,text:𝕊,todos:[Todo])→[Todo]=[Todo{done:⊥,id:id,text:text}]⧺todos
+λaddTodo(id:ℤ,text:𝕊,todos:[Todo])→[Todo]=[Todo{done:false,id:id,text:text}]⧺todos
 ```
 
 Sigil keeps **sum types nominal**. A sum type does not normalize into a structural
@@ -407,8 +407,8 @@ t Result[T,E]=Ok(T)|Err(E)
 
 ⟦ Usage ⟧
 λparseInt(s:𝕊)→Result≡validInput(s){
-  ⊤→Ok(parseInt(s))|
-  ⊥→Err("invalid input")
+  true→Ok(parseInt(s))|
+  false→Err("invalid input")
 }
 ```
 
@@ -554,7 +554,7 @@ t ParseState={
 ⟦ Error: Argument 0 type mismatch: expected ℤ, got 𝕊 ⟧
 
 ⟦ Error: Pattern match type mismatch ⟧
-λneg(b:𝔹)→𝔹≡b{5→⊥|_→⊤}
+λneg(b:𝔹)→𝔹≡b{5→false|_→true}
 ⟦ Error: Pattern type mismatch: expected 𝔹, got ℤ ⟧
 ```
 

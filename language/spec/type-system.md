@@ -39,8 +39,8 @@ If variable `x` has type scheme `σ` in environment `Γ`, then `x` has type `σ`
 ```
 Γ ⊢ n : ℤ           (integer literals)
 Γ ⊢ f : ℝ           (float literals)
-Γ ⊢ ⊤ : 𝔹           (true)
-Γ ⊢ ⊥ : 𝔹           (false)
+Γ ⊢ true : 𝔹           (true)
+Γ ⊢ false : 𝔹           (false)
 Γ ⊢ "s" : 𝕊         (string literals)
 Γ ⊢ 'c' : ℂ         (char literals)
 Γ ⊢ () : 𝕌          (unit)
@@ -158,7 +158,7 @@ id("hi")     (* T instantiated to 𝕊 *)
 |--------|------|-------------|--------|
 | `ℤ` | Integer | Whole numbers | `-2147483648` to `2147483647` |
 | `ℝ` | Float | Floating point | IEEE 754 double precision |
-| `𝔹` | Boolean | Truth values | `⊤` (true), `⊥` (false) |
+| `𝔹` | Boolean | Truth values | `true` (true), `false` (false) |
 | `𝕊` | String | UTF-8 strings | `"hello"` |
 | `ℂ` | Character | Unicode character | `'a'` |
 | `𝕌` | Unit | Empty type | `()` |
@@ -298,7 +298,7 @@ Pattern matches must cover all possible values:
 (* OK - exhaustive *)
 λsign(n:ℤ)→𝕊≡n{
   0→"zero"|
-  n→≡n>0{⊤→"positive"|⊥→"negative"}
+  n→≡n>0{true→"positive"|false→"negative"}
 }
 
 (* ERROR - not exhaustive, missing None case *)

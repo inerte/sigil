@@ -17,7 +17,7 @@ e console
 λmain()→ℤ={
   l r1=(test1(0):𝕊);
   l r2=(test2(15):𝕊);
-  l r3=(test3(⊤,1):𝕊);
+  l r3=(test3(true,1):𝕊);
   l r4=(test4(Ok(150)):𝕊);
   l r5=(test5(5,10):𝕊);
   l r6=(test6(0):𝕊);
@@ -26,7 +26,7 @@ e console
 
 ⟦ Test 1: Simple guards with literal patterns ⟧
 λtest1(x:ℤ)→𝕊≡x{
-  0 when ⊤ → "zero" |
+  0 when true → "zero" |
   1 → "one" |
   _ → "other"
 }

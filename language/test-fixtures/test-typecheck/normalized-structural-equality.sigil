@@ -6,4 +6,4 @@ t Todo={done:𝔹,id:ℤ,text:𝕊}
 
 λmain()→𝕌=()
 
-λtest()→[Todo]=[{done:⊥,id:1,text:"one"}]↦keep
+λtest()→[Todo]=[{done:false,id:1,text:"one"}]↦keep

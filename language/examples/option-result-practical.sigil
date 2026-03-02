@@ -25,8 +25,8 @@ t IntResult=IntOk(ℤ)|IntErr(𝕊)
 
 ⟦ Check if IntResult is ok ⟧
 λis_ok(res:IntResult)→𝔹≡res{
-  IntOk(_)→⊤|
-  IntErr(_)→⊥
+  IntOk(_)→true|
+  IntErr(_)→false
 }
 
 ⟦ Main - demonstrate usage ⟧
@@ -40,6 +40,6 @@ t IntResult=IntOk(ℤ)|IntErr(𝕊)
 
 ⟦ Safe subtraction with validation ⟧
 λsafe_subtract(num1:ℤ,num2:ℤ)→IntResult≡num2>10{
-  ⊤→IntErr("second number too large")|
-  ⊥→IntOk(num1-num2)
+  true→IntErr("second number too large")|
+  false→IntOk(num1-num2)
 }

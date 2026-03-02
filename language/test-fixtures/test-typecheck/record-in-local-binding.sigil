@@ -6,8 +6,8 @@ t Outer={state:Inner}
 λmain()→𝕌=()
 
 λtest(x:𝔹)→Outer≡x{
-  ⊤ →
+  true →
     l dummy=(1:ℤ);
     {state:{items:[]}}|
-  ⊥ → {state:{items:[1,2,3]}}
+  false → {state:{items:[1,2,3]}}
 }

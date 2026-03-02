@@ -8,28 +8,28 @@
 
 ⟦ Check if all elements satisfy predicate ⟧
 λall(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹≡xs{
-  []→⊤|
+  []→true|
   [x,.rest]→≡pred(x){
-    ⊤→all(pred,rest)|
-    ⊥→⊥
+    true→all(pred,rest)|
+    false→false
   }
 }
 
 ⟦ Check if any element satisfies predicate ⟧
 λany(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹≡xs{
-  []→⊥|
+  []→false|
   [x,.rest]→≡pred(x){
-    ⊤→⊤|
-    ⊥→any(pred,rest)
+    true→true|
+    false→any(pred,rest)
   }
 }
 
 ⟦ Check if element is in list ⟧
 λcontains(item:ℤ,xs:[ℤ])→𝔹≡xs{
-  []→⊥|
+  []→false|
   [x,.rest]→≡(x=item){
-    ⊤→⊤|
-    ⊥→contains(item,rest)
+    true→true|
+    false→contains(item,rest)
   }
 }
 
@@ -43,51 +43,51 @@
 
 ⟦ Helper: Check if index is in bounds ⟧
 λin_bounds_helper(idx:ℤ,xs:[ℤ])→𝔹≡(idx≥0){
-  ⊤→idx<#xs|
-  ⊥→⊥
+  true→idx<#xs|
+  false→false
 }
 
 ⟦ Check if list is empty ⟧
 λis_empty(xs:[ℤ])→𝔹≡xs{
-  []→⊤|
-  _→⊥
+  []→true|
+  _→false
 }
 
 ⟦ Check if list is non-empty ⟧
 λis_non_empty(xs:[ℤ])→𝔹≡xs{
-  []→⊥|
-  _→⊤
+  []→false|
+  _→true
 }
 
 ⟦ Check if list is sorted in ascending order ⟧
 λsorted_asc(xs:[ℤ])→𝔹≡xs{
-  []→⊤|
-  [_]→⊤|
+  []→true|
+  [_]→true|
   [a,.tail]→sorted_asc_check(a,tail)
 }
 
 ⟦ Helper: Check ascending order ⟧
 λsorted_asc_check(prev:ℤ,xs:[ℤ])→𝔹≡xs{
-  []→⊤|
+  []→true|
   [b,.rest]→≡(prev≤b){
-    ⊤→sorted_asc_check(b,rest)|
-    ⊥→⊥
+    true→sorted_asc_check(b,rest)|
+    false→false
   }
 }
 
 ⟦ Check if list is sorted in descending order ⟧
 λsorted_desc(xs:[ℤ])→𝔹≡xs{
-  []→⊤|
-  [_]→⊤|
+  []→true|
+  [_]→true|
   [a,.tail]→sorted_desc_check(a,tail)
 }
 
 ⟦ Helper: Check descending order ⟧
 λsorted_desc_check(prev:ℤ,xs:[ℤ])→𝔹≡xs{
-  []→⊤|
+  []→true|
   [b,.rest]→≡(prev≥b){
-    ⊤→sorted_desc_check(b,rest)|
-    ⊥→⊥
+    true→sorted_desc_check(b,rest)|
+    false→false
   }
 }
 

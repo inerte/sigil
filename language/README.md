@@ -152,7 +152,7 @@ Unicode symbols for ultimate density:
 - `⊕` for fold/reduce (1 char vs 7)
 - `∈` for iteration "in"
 - `∅` for None/empty
-- `⊤` for true, `⊥` for false
+- `true` for true, `false` for false
 
 ### 5. Functional-First Paradigm
 **"It's all about the data"**

@@ -1901,7 +1901,7 @@ mod tests {
 
     #[test]
     fn test_const_annotation_normalizes_named_product_type() {
-        let source = "t MkdirOptions={recursive:𝔹}\nc opts=({recursive:⊤}:MkdirOptions)\nλmain()→𝕌=()";
+        let source = "t MkdirOptions={recursive:𝔹}\nc opts=({recursive:true}:MkdirOptions)\nλmain()→𝕌=()";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
@@ -1911,7 +1911,7 @@ mod tests {
 
     #[test]
     fn test_list_append_normalizes_named_product_type() {
-        let source = "t Todo={done:𝔹,id:ℤ,text:𝕊}\nλmain()→[Todo]=[{done:⊥,id:1,text:\"a\"}]⧺[Todo{done:⊥,id:2,text:\"b\"}]";
+        let source = "t Todo={done:𝔹,id:ℤ,text:𝕊}\nλmain()→[Todo]=[{done:false,id:1,text:\"a\"}]⧺[Todo{done:false,id:2,text:\"b\"}]";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
@@ -1921,7 +1921,7 @@ mod tests {
 
     #[test]
     fn test_map_normalizes_named_product_type() {
-        let source = "t Todo={done:𝔹,id:ℤ,text:𝕊}\nλkeep(todo:Todo)→Todo=todo\nλmain()→[Todo]=[{done:⊥,id:1,text:\"a\"}]↦keep";
+        let source = "t Todo={done:𝔹,id:ℤ,text:𝕊}\nλkeep(todo:Todo)→Todo=todo\nλmain()→[Todo]=[{done:false,id:1,text:\"a\"}]↦keep";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
@@ -1931,7 +1931,7 @@ mod tests {
 
     #[test]
     fn test_named_product_equality_uses_canonical_form() {
-        let source = "t Todo={done:𝔹,id:ℤ,text:𝕊}\nλmain()→𝔹=(({done:⊥,id:1,text:\"a\"}:Todo)={done:⊥,id:1,text:\"a\"})";
+        let source = "t Todo={done:𝔹,id:ℤ,text:𝕊}\nλmain()→𝔹=(({done:false,id:1,text:\"a\"}:Todo)={done:false,id:1,text:\"a\"})";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 

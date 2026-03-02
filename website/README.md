@@ -12,6 +12,6 @@ It is intentionally separate from:
 
 ## Latest Article
 
-📝 **[Canonical Type Equality: Why Sigil Normalizes Structural Types Everywhere](./articles/011-canonical-type-equality.md)** (March 2, 2026)
+📝 **[Why Sigil Uses true and false](./articles/012-why-sigil-uses-true-and-false.md)** (March 2, 2026)
 
-How Sigil extends its ONE-way philosophy from syntax into semantics by normalizing aliases and named product types before every equality-sensitive type comparison
+Why Sigil replaced `⊤` and `⊥` with `true` and `false` after measuring whole-program token savings and optimizing for Claude Code / Codex priors instead of mathematical elegance

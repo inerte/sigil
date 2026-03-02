@@ -102,7 +102,7 @@ Usage:
   ⟦ Create HTTP server with request handler ⟧
   (http.createServer(λ(node_req:NodeRequest,node_res:NodeResponse)→!IO 𝕌={
     ⟦ Parse URL to extract path ⟧
-    l parsed_url=(url.parse(node_req.url,⊤):ParsedUrl);
+    l parsed_url=(url.parse(node_req.url,true):ParsedUrl);
     l path=(parsed_url.pathname:𝕊);
 
     ⟦ Extract method ⟧

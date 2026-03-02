@@ -87,10 +87,10 @@ i stdlib⋅string
 
 ⟦ Initial empty state ⟧
 λempty_state()→ParserState={
-  in_code_block:⊥,
+  in_code_block:false,
   code_lang:"",
   code_lines:[],
-  in_list:⊥,
+  in_list:false,
   list_type:"",
   list_items:[],
   para_lines:[]
@@ -126,13 +126,13 @@ i stdlib⋅string
 
 ⟦ Flush accumulated content to blocks ⟧
 λflush_code_block(state:ParserState)→[Block]≡state.in_code_block{
-  ⊤ → [CodeBlock(state.code_lang,stdlib⋅string.join("\n",state.code_lines))]|
-  ⊥ → empty_blocks()
+  true → [CodeBlock(state.code_lang,stdlib⋅string.join("\n",state.code_lines))]|
+  false → empty_blocks()
 }
 
 λflush_list(state:ParserState)→[Block]≡state.in_list{
-  ⊥ → empty_blocks()|
-  ⊤ → flush_list_by_type(state.list_items,state.list_type)
+  false → empty_blocks()|
+  true → flush_list_by_type(state.list_items,state.list_type)
 }
 
 λflush_list_by_type(list_items:[𝕊],list_type:𝕊)→[Block]≡list_type{
@@ -160,10 +160,10 @@ i stdlib⋅string
   stdlib⋅string.starts_with("#",line)
 
 λis_hr(line:𝕊)→𝔹≡line{
-  "---" → ⊤|
-  "***" → ⊤|
-  "___" → ⊤|
-  _ → ⊥
+  "---" → true|
+  "***" → true|
+  "___" → true|
+  _ → false
 }
 
 λis_ordered_list(line:𝕊)→𝔹=
@@ -188,77 +188,77 @@ Uses field access in pattern guards for the one canonical way to inspect state.
 ⟧
 λparse_line(line:𝕊,state:ParserState)→ParsingResult≡state.in_code_block{
   ⟦ Inside code block - check for closing fence ⟧
-  ⊤ when is_code_fence(line) →
+  true when is_code_fence(line) →
     {state:empty_state(),blocks:flush_code_block(state)}|
 
   ⟦ Inside code block - accumulate code lines ⟧
-  ⊤ →
-    {state:{in_code_block:⊤,code_lang:state.code_lang,code_lines:state.code_lines⧺[line],
-      in_list:⊥,list_type:"",list_items:[],para_lines:[]},blocks:[]}|
+  true →
+    {state:{in_code_block:true,code_lang:state.code_lang,code_lines:state.code_lines⧺[line],
+      in_list:false,list_type:"",list_items:[],para_lines:[]},blocks:[]}|
 
   ⟦ Not in code block - check for opening fence ⟧
-  ⊥ when is_code_fence(line) →
+  false when is_code_fence(line) →
     l lang=(extract_code_lang(line):𝕊);
     l flushed=(flush_list(state)⧺flush_paragraph(state):[Block]);
-    {state:{in_code_block:⊤,code_lang:lang,code_lines:[],
-      in_list:⊥,list_type:"",list_items:[],para_lines:[]},blocks:flushed}|
+    {state:{in_code_block:true,code_lang:lang,code_lines:[],
+      in_list:false,list_type:"",list_items:[],para_lines:[]},blocks:flushed}|
 
   ⟦ Header line ⟧
-  ⊥ when is_header(line) →
+  false when is_header(line) →
     l level=(extract_header_level(line):ℤ);
     l text=(extract_header_text(level,line):𝕊);
     l flushed=(flush_list(state)⧺flush_paragraph(state):[Block]);
     {state:empty_state(),blocks:flushed⧺[Header(level,text)]}|
 
   ⟦ Horizontal rule ⟧
-  ⊥ when is_hr(line) →
+  false when is_hr(line) →
     l flushed=(flush_list(state)⧺flush_paragraph(state):[Block]);
     {state:empty_state(),blocks:flushed⧺[HorizontalRule()]}|
 
   ⟦ Unordered list item - continuing existing ul ⟧
-  ⊥ when state.in_list∧state.list_type="ul"∧is_unordered_list(line) →
+  false when state.in_list∧state.list_type="ul"∧is_unordered_list(line) →
     l item=(extract_list_item(line):𝕊);
     l flushed=(flush_paragraph(state):[Block]);
-    {state:{in_code_block:⊥,code_lang:"",code_lines:[],
-      in_list:⊤,list_type:"ul",list_items:state.list_items⧺[item],para_lines:[]},blocks:flushed}|
+    {state:{in_code_block:false,code_lang:"",code_lines:[],
+      in_list:true,list_type:"ul",list_items:state.list_items⧺[item],para_lines:[]},blocks:flushed}|
 
   ⟦ Unordered list item - starting new ul ⟧
-  ⊥ when is_unordered_list(line) →
+  false when is_unordered_list(line) →
     l item=(extract_list_item(line):𝕊);
     l flushed=(flush_paragraph(state):[Block]);
-    {state:{in_code_block:⊥,code_lang:"",code_lines:[],
-      in_list:⊤,list_type:"ul",list_items:[item],para_lines:[]},blocks:flushed}|
+    {state:{in_code_block:false,code_lang:"",code_lines:[],
+      in_list:true,list_type:"ul",list_items:[item],para_lines:[]},blocks:flushed}|
 
   ⟦ Ordered list item - continuing existing ol ⟧
-  ⊥ when state.in_list∧state.list_type="ol"∧is_ordered_list(line) →
+  false when state.in_list∧state.list_type="ol"∧is_ordered_list(line) →
     l item=(extract_list_item(line):𝕊);
     l flushed=(flush_paragraph(state):[Block]);
-    {state:{in_code_block:⊥,code_lang:"",code_lines:[],
-      in_list:⊤,list_type:"ol",list_items:state.list_items⧺[item],para_lines:[]},blocks:flushed}|
+    {state:{in_code_block:false,code_lang:"",code_lines:[],
+      in_list:true,list_type:"ol",list_items:state.list_items⧺[item],para_lines:[]},blocks:flushed}|
 
   ⟦ Ordered list item - starting new ol ⟧
-  ⊥ when is_ordered_list(line) →
+  false when is_ordered_list(line) →
     l item=(extract_list_item(line):𝕊);
     l flushed=(flush_paragraph(state):[Block]);
-    {state:{in_code_block:⊥,code_lang:"",code_lines:[],
-      in_list:⊤,list_type:"ol",list_items:[item],para_lines:[]},blocks:flushed}|
+    {state:{in_code_block:false,code_lang:"",code_lines:[],
+      in_list:true,list_type:"ol",list_items:[item],para_lines:[]},blocks:flushed}|
 
   ⟦ Blockquote ⟧
-  ⊥ when is_blockquote(line) →
+  false when is_blockquote(line) →
     l text=(extract_blockquote_text(line):𝕊);
     l flushed=(flush_list(state)⧺flush_paragraph(state):[Block]);
     {state:empty_state(),blocks:flushed⧺[Blockquote(text)]}|
 
   ⟦ Empty line - flush paragraph and list ⟧
-  ⊥ when is_empty(line) →
+  false when is_empty(line) →
     l flushed=(flush_list(state)⧺flush_paragraph(state):[Block]);
     {state:empty_state(),blocks:flushed}|
 
   ⟦ Regular text - accumulate paragraph ⟧
-  ⊥ →
+  false →
     l flushed=(flush_list(state):[Block]);
-    {state:{in_code_block:⊥,code_lang:"",code_lines:[],
-      in_list:⊥,list_type:"",list_items:[],para_lines:state.para_lines⧺[line]},blocks:flushed}
+    {state:{in_code_block:false,code_lang:"",code_lines:[],
+      in_list:false,list_type:"",list_items:[],para_lines:state.para_lines⧺[line]},blocks:flushed}
 }
 
 ⟦ Parse all lines into blocks ⟧

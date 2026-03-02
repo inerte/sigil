@@ -106,6 +106,17 @@ fn test_integer_literals() {
 }
 
 #[test]
+fn test_boolean_literals() {
+    let source = "true false";
+    let tokens = tokenize(source).unwrap();
+
+    assert_eq!(tokens[0].token_type, TokenType::TRUE);
+    assert_eq!(tokens[0].value, "true");
+    assert_eq!(tokens[1].token_type, TokenType::FALSE);
+    assert_eq!(tokens[1].value, "false");
+}
+
+#[test]
 fn test_float_literals() {
     let source = "0.0 3.14 123.456 0.1 99.99";
     let tokens = tokenize(source).unwrap();
@@ -279,6 +290,52 @@ fn test_error_empty_char() {
 
     assert!(result.is_err());
     matches!(result.unwrap_err(), LexError::EmptyChar { .. });
+}
+
+#[test]
+fn test_error_legacy_true_literal() {
+    let source = "⊤";
+    let result = tokenize(source);
+
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        LexError::LegacyBoolLiteral {
+            legacy,
+            replacement,
+            line,
+            column,
+            ..
+        } => {
+            assert_eq!(legacy, '⊤');
+            assert_eq!(replacement, "true");
+            assert_eq!(line, 1);
+            assert_eq!(column, 1);
+        }
+        _ => panic!("Expected LegacyBoolLiteral error"),
+    }
+}
+
+#[test]
+fn test_error_legacy_false_literal() {
+    let source = "⊥";
+    let result = tokenize(source);
+
+    assert!(result.is_err());
+    match result.unwrap_err() {
+        LexError::LegacyBoolLiteral {
+            legacy,
+            replacement,
+            line,
+            column,
+            ..
+        } => {
+            assert_eq!(legacy, '⊥');
+            assert_eq!(replacement, "false");
+            assert_eq!(line, 1);
+            assert_eq!(column, 1);
+        }
+        _ => panic!("Expected LegacyBoolLiteral error"),
+    }
 }
 
 #[test]

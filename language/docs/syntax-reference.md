@@ -259,8 +259,8 @@ Primitive types:
 - `𝕌` unit
 
 Boolean values:
-- `⊤`
-- `⊥`
+- `true`
+- `false`
 
 Examples:
 
@@ -268,8 +268,8 @@ Examples:
 42
 3.14
 "hello"
-⊤
-⊥
+true
+false
 ()
 ```
 
@@ -299,10 +299,10 @@ Examples:
 }
 
 λdescribeBoth(a:𝔹,b:𝔹)→𝕊≡(a,b){
-  (⊤,⊤)→"both"|
-  (⊤,⊥)→"left"|
-  (⊥,⊤)→"right"|
-  (⊥,⊥)→"none"
+  (true,true)→"both"|
+  (true,false)→"left"|
+  (false,true)→"right"|
+  (false,false)→"none"
 }
 ```
 
@@ -310,7 +310,7 @@ Examples:
 
 Pattern guards add conditional checks to pattern matching.
 After a pattern binds variables, the guard expression is evaluated.
-If the guard returns `⊥`, matching continues to the next arm.
+If the guard returns `false`, matching continues to the next arm.
 
 Syntax:
 ```sigil
@@ -323,7 +323,7 @@ The guard expression:
 - Is evaluated **after** pattern bindings are established
 - Has access to all bindings from the pattern
 - Must have type `𝔹` (boolean)
-- If `⊥`, matching falls through to the next arm
+- If `false`, matching falls through to the next arm
 
 Examples:
 
@@ -390,7 +390,7 @@ Concatenation:
 ## Records and field access
 
 ```sigil
-User{id:1,name:"A",active:⊤}
+User{id:1,name:"A",active:true}
 todo.done
 todo.text
 ```

@@ -27,14 +27,14 @@ i stdlib⋅string
 λcount_char(char:𝕊,str:𝕊)→ℤ=count_helper(0,char,0,str)
 
 λcount_helper(acc:ℤ,char:𝕊,idx:ℤ,str:𝕊)→ℤ≡idx<#str{
-  ⊤ → count_helper(acc+≡stdlib⋅string.char_at(idx,str)=char{⊤→1|⊥→0},char,idx+1,str) |
-  ⊥ → acc
+  true → count_helper(acc+≡stdlib⋅string.char_at(idx,str)=char{true→1|false→0},char,idx+1,str) |
+  false → acc
 }
 
 ⟦ Helper: Extract local and domain from split result ⟧
 λextract_parts(parts:[𝕊])→EmailParts≡#parts=2{
-  ⊤ → extract_two_parts(parts) |
-  ⊥ → {local:"",domain:""}
+  true → extract_two_parts(parts) |
+  false → {local:"",domain:""}
 }
 
 λextract_two_parts(parts:[𝕊])→EmailParts≡parts{
@@ -98,18 +98,18 @@ i stdlib⋅string
 λvalidate_domain(domain:𝕊)→ValidationResult=validate_domain_checks(domain,#domain)
 
 λvalidate_domain_checks(domain:𝕊,len:ℤ)→ValidationResult≡len=0{
-  ⊤ → Invalid("Domain cannot be empty") |
-  ⊥ → ≡len>255{
-    ⊤ → Invalid("Domain too long (max 255 characters)") |
-    ⊥ → ≡stdlib⋅string.index_of(domain,".")<0{
-      ⊤ → Invalid("Domain must contain at least one dot") |
-      ⊥ → ≡stdlib⋅string.starts_with(domain,"."){
-        ⊤ → Invalid("Domain cannot start with dot") |
-        ⊥ → ≡stdlib⋅string.ends_with(domain,"."){
-          ⊤ → Invalid("Domain cannot end with dot") |
-          ⊥ → ≡stdlib⋅string.index_of(domain,"..")≥0{
-            ⊤ → Invalid("Domain cannot contain consecutive dots") |
-            ⊥ → Valid()
+  true → Invalid("Domain cannot be empty") |
+  false → ≡len>255{
+    true → Invalid("Domain too long (max 255 characters)") |
+    false → ≡stdlib⋅string.index_of(domain,".")<0{
+      true → Invalid("Domain must contain at least one dot") |
+      false → ≡stdlib⋅string.starts_with(domain,"."){
+        true → Invalid("Domain cannot start with dot") |
+        false → ≡stdlib⋅string.ends_with(domain,"."){
+          true → Invalid("Domain cannot end with dot") |
+          false → ≡stdlib⋅string.index_of(domain,"..")≥0{
+            true → Invalid("Domain cannot contain consecutive dots") |
+            false → Valid()
           }
         }
       }
@@ -127,12 +127,12 @@ i stdlib⋅string
 }
 
 λvalidate_email_with_parts(email:𝕊,parts:EmailParts)→ValidationResult≡#email=0{
-  ⊤ → Invalid("Email cannot be empty") |
-  ⊥ → ≡#email>320{
-    ⊤ → Invalid("Email too long (max 320 characters)") |
-    ⊥ → ≡#parts.local=0∧#parts.domain=0{
-      ⊤ → Invalid("Email must contain exactly one @ symbol") |
-      ⊥ → validate_email_parts(parts)
+  true → Invalid("Email cannot be empty") |
+  false → ≡#email>320{
+    true → Invalid("Email too long (max 320 characters)") |
+    false → ≡#parts.local=0∧#parts.domain=0{
+      true → Invalid("Email must contain exactly one @ symbol") |
+      false → validate_email_parts(parts)
     }
   }
 }
@@ -141,16 +141,16 @@ i stdlib⋅string
 λvalidate_local(local:𝕊)→ValidationResult=validate_local_checks(#local,local)
 
 λvalidate_local_checks(len:ℤ,local:𝕊)→ValidationResult≡len=0{
-  ⊤ → Invalid("Local part cannot be empty") |
-  ⊥ → ≡len>64{
-    ⊤ → Invalid("Local part too long (max 64 characters)") |
-    ⊥ → ≡stdlib⋅string.starts_with(local,"."){
-      ⊤ → Invalid("Local part cannot start with dot") |
-      ⊥ → ≡stdlib⋅string.ends_with(local,"."){
-        ⊤ → Invalid("Local part cannot end with dot") |
-        ⊥ → ≡stdlib⋅string.index_of(local,"..")≥0{
-          ⊤ → Invalid("Local part cannot contain consecutive dots") |
-          ⊥ → Valid()
+  true → Invalid("Local part cannot be empty") |
+  false → ≡len>64{
+    true → Invalid("Local part too long (max 64 characters)") |
+    false → ≡stdlib⋅string.starts_with(local,"."){
+      true → Invalid("Local part cannot start with dot") |
+      false → ≡stdlib⋅string.ends_with(local,"."){
+        true → Invalid("Local part cannot end with dot") |
+        false → ≡stdlib⋅string.index_of(local,"..")≥0{
+          true → Invalid("Local part cannot contain consecutive dots") |
+          false → Valid()
         }
       }
     }

@@ -1,28 +1,4 @@
 {
-  "TRUE": {
-    "symbol": "⊤",
-    "category": "boolean_literal",
-    "candidates": [
-      {
-        "replacement": "true",
-        "commonalityScore": 1.0,
-        "semanticFit": "high",
-        "reason": "Common boolean literal across mainstream languages."
-      }
-    ]
-  },
-  "FALSE": {
-    "symbol": "⊥",
-    "category": "boolean_literal",
-    "candidates": [
-      {
-        "replacement": "false",
-        "commonalityScore": 1.0,
-        "semanticFit": "high",
-        "reason": "Common boolean literal across mainstream languages."
-      }
-    ]
-  },
   "LAMBDA": {
     "symbol": "λ",
     "category": "function_marker",

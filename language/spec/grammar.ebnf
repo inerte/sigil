@@ -211,10 +211,10 @@ LambdaExpr = "λ" , [ ParamList ] , "→" , Expr ;
 (* IF EXPRESSIONS (Syntactic Sugar for Match on Bool)                          *)
 (* ============================================================================ *)
 
-IfExpr = "≡" , Expr , "{" , "⊤" , "→" , Expr , "|" , "⊥" , "→" , Expr , "}" ;
+IfExpr = "≡" , Expr , "{" , "true" , "→" , Expr , "|" , "false" , "→" , Expr , "}" ;
 
 (* Note: Could be removed in favor of pure match, keeping for convenience *)
-(* Example: ≡x>0{⊤→"positive"|⊥→"not positive"} *)
+(* Example: ≡x>0{true→"positive"|false→"not positive"} *)
 
 (* ============================================================================ *)
 (* BINARY EXPRESSIONS                                                           *)
@@ -281,7 +281,7 @@ Literal = IntLiteral
 
 IntLiteral = [ "-" ] , Digit , { Digit } ;
 FloatLiteral = [ "-" ] , Digit , { Digit } , "." , Digit , { Digit } ;
-BoolLiteral = "⊤" | "⊥" ;
+BoolLiteral = "true" | "false" ;
 StringLiteral = '"' , { StringChar } , '"' ;
 CharLiteral = "'" , Char , "'" ;
 UnitLiteral = "()" ;
@@ -299,8 +299,8 @@ FieldValue = Identifier , ":" , Expr ;
 
 (* Examples:
    [1,2,3]
-   {id:42,name:"Alice",active:⊤}
-   (1,"hello",⊤)
+   {id:42,name:"Alice",active:true}
+   (1,"hello",true)
 *)
 
 (* ============================================================================ *)
@@ -400,8 +400,8 @@ Comment = "⟦" , { ? any Unicode character except ⟧ ? } , "⟧" ;
    ∨  - logical or
    ¬  - logical not
    ∈  - element of (for iteration)
-   ⊤  - true (top)
-   ⊥  - false (bottom)
+   true  - true (top)
+   false  - false (bottom)
    ∅  - empty/never (empty set)
 
    Composition:

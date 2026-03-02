@@ -155,7 +155,7 @@ impl TypeScriptGenerator {
         self.emit("}");
         self.emit("async function __sigil_test_bool_result(ok) {");
         self.emit("  const result = await ok;");
-        self.emit("  return result === true ? { ok: true } : { ok: false, failure: { kind: 'assert_false', message: 'Test body evaluated to ⊥' } };");
+        self.emit("  return result === true ? { ok: true } : { ok: false, failure: { kind: 'assert_false', message: 'Test body evaluated to false' } };");
         self.emit("}");
         self.emit("async function __sigil_test_compare_result(op, leftFn, rightFn) {");
         self.emit("  const actual = await leftFn();");

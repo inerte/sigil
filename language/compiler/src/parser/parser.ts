@@ -194,9 +194,26 @@ export class Parser {
     const start = this.peek();
     const firstVariant = this.variantOrType();
 
+    // Check if firstVariant is a constructor (has parentheses)
+    // If previous token is ), then parentheses were present
+    const isConstructor = this.previous().type === TokenType.RPAREN;
+
     // If followed by |, it's a sum type
     if (this.check(TokenType.PIPE_SEP)) {
       return this.sumType(firstVariant);
+    }
+
+    // If it's a constructor (has parentheses), treat as single-variant sum type
+    if (isConstructor) {
+      return {
+        type: 'SumType',
+        variants: [{
+          name: firstVariant.name,
+          types: firstVariant.typeArgs,
+          location: firstVariant.location,
+        }],
+        location: this.makeLocation(start, this.previous()),
+      };
     }
 
     // Otherwise, type alias

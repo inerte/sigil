@@ -238,9 +238,26 @@ impl Parser {
         let start = self.peek();
         let first_variant = self.variant_or_type()?;
 
+        // Check if first_variant is a constructor (has parentheses)
+        // If previous token is ), then parentheses were present
+        let is_constructor = self.previous().token_type == TokenType::RPAREN;
+
         // If followed by |, it's a sum type
         if self.check(TokenType::PIPE_SEP) {
             return self.sum_type(first_variant).map(TypeDef::Sum);
+        }
+
+        // If it's a constructor (has parentheses), treat as single-variant sum type
+        if is_constructor {
+            let end = self.previous();
+            return Ok(TypeDef::Sum(SumType {
+                variants: vec![Variant {
+                    name: first_variant.name.clone(),
+                    types: first_variant.type_args.clone(),
+                    location: first_variant.location.clone(),
+                }],
+                location: self.make_location(start.location.start, end.location.end),
+            }));
         }
 
         // Otherwise, type alias

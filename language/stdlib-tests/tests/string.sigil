@@ -23,19 +23,19 @@ test "# returns list length" {
 }
 
 test "char_at at index 0" {
-  stdlib⋅string.char_at("hello",0)="h"
+  stdlib⋅string.char_at(0,"hello")="h"
 }
 
 test "char_at at middle index" {
-  stdlib⋅string.char_at("hello",2)="l"
+  stdlib⋅string.char_at(2,"hello")="l"
 }
 
 test "drop first n characters" {
-  stdlib⋅string.drop("hello",2)="llo"
+  stdlib⋅string.drop(2,"hello")="llo"
 }
 
 test "drop with 0" {
-  stdlib⋅string.drop("hello",0)="hello"
+  stdlib⋅string.drop(0,"hello")="hello"
 }
 
 test "ends_with actual suffix" {
@@ -91,51 +91,51 @@ test "is_whitespace spaces" {
 }
 
 test "join empty list" {
-  stdlib⋅string.join([],",")=""
+  stdlib⋅string.join(",",[])=""
 }
 
 test "join with separator" {
-  stdlib⋅string.join(["a","b","c"],",")="a,b,c"
+  stdlib⋅string.join(",",["a","b","c"])="a,b,c"
 }
 
 test "replace_all all occurrences" {
-  stdlib⋅string.replace_all("hello world","o","0")="hell0 w0rld"
+  stdlib⋅string.replace_all("o","0","hello world")="hell0 w0rld"
 }
 
 test "replace_all no matches" {
-  stdlib⋅string.replace_all("hello","z","x")="hello"
+  stdlib⋅string.replace_all("z","x","hello")="hello"
 }
 
 test "split by delimiter" {
-  stdlib⋅string.split("a,b,c",",")=["a","b","c"]
+  stdlib⋅string.split(",","a,b,c")=["a","b","c"]
 }
 
 test "split single element" {
-  stdlib⋅string.split("hello",",")=["hello"]
+  stdlib⋅string.split(",","hello")=["hello"]
 }
 
 test "starts_with non-prefix" {
-  stdlib⋅string.starts_with("hello","abc")=false
+  stdlib⋅string.starts_with("abc","hello")=false
 }
 
 test "starts_with prefix" {
-  stdlib⋅string.starts_with("hello","hel")=true
+  stdlib⋅string.starts_with("hel","hello")=true
 }
 
 test "substring full string" {
-  stdlib⋅string.substring("hello",0,5)="hello"
+  stdlib⋅string.substring(5,"hello",0)="hello"
 }
 
 test "substring portion" {
-  stdlib⋅string.substring("hello",1,4)="ell"
+  stdlib⋅string.substring(4,"hello",1)="ell"
 }
 
 test "take first n" {
-  stdlib⋅string.take("hello",3)="hel"
+  stdlib⋅string.take(3,"hello")="hel"
 }
 
 test "take n greater than length" {
-  stdlib⋅string.take("hi",10)="hi"
+  stdlib⋅string.take(10,"hi")="hi"
 }
 
 test "to_lower converts uppercase" {
@@ -172,7 +172,7 @@ test "extract title from markdown" {
   l lines=stdlib⋅string.split("\n",content);
   l first=lines[0];
   l title=≡stdlib⋅string.starts_with("# ",first){
-    true→stdlib⋅string.substring(#first,2,first)|
+    true→stdlib⋅string.substring(#first,first,2)|
     false→"Untitled"
   };
   title="Hello World"

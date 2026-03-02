@@ -11,6 +11,7 @@
 
 use sigil_ast::*;
 use std::collections::HashSet;
+use std::path::{Component, Path, PathBuf};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -173,7 +174,7 @@ impl TypeScriptGenerator {
         self.emit("  if (ok) { return { ok: true }; }");
         self.emit("  return { ok: false, failure: { kind: 'comparison_mismatch', message: 'Comparison test failed', operator: op, actual: __sigil_preview(actual), expected: __sigil_preview(expected), diffHint: __sigil_diff_hint(actual, expected) } };");
         self.emit("}");
-        self.emit("async function __sigil_call(key, actualFn, args) {");
+        self.emit("async function __sigil_call(key, actualFn, args = []) {");
         self.emit("  const mockFn = __sigil_mocks.get(key);");
         self.emit("  const fn = mockFn ?? actualFn;");
         self.emit("  return await fn(...args);");
@@ -315,45 +316,22 @@ impl TypeScriptGenerator {
         // For src⋅utils, create:
         //   - namespace: src_utils (matches member access generation)
         //   - import path: relative to current output file
-        let namespace = import.module_path.join("_");
-
-        // Calculate relative import path
-        // Module path like src⋅utils becomes .local/src/utils.ts
-        let target_path = import.module_path.join("/");
-
-        // Calculate relative path from current output file
+        let namespace = sanitize_js_identifier(&import.module_path.join("_"));
         let import_path = if let Some(ref output_file) = self.output_file {
-            // Get directory of current output file
-            let current_dir = std::path::Path::new(output_file)
-                .parent()
-                .and_then(|p| p.to_str())
-                .unwrap_or(".local");
-
-            // Get directory of target module
-            let target_dir = std::path::Path::new(&target_path)
-                .parent()
-                .and_then(|p| p.to_str())
-                .unwrap_or("");
-
-            let target_file = std::path::Path::new(&target_path)
-                .file_name()
-                .and_then(|f| f.to_str())
-                .unwrap_or(import.module_path.last().unwrap());
-
-            // Calculate relative path
-            if current_dir.ends_with(target_dir) || target_dir.is_empty() {
-                // Same directory
-                format!("./{}.js", target_file)
-            } else if current_dir.contains(target_dir) {
-                // Target is in parent directory
-                format!("../{}.js", target_file)
+            let output_path = Path::new(output_file);
+            if let Some(local_root) = find_output_root(output_path) {
+                let target_abs = local_root
+                    .join(import.module_path.join("/"))
+                    .with_extension("js");
+                relative_import_path(
+                    output_path.parent().unwrap_or_else(|| Path::new(".")),
+                    &target_abs,
+                )
             } else {
-                // Different directory tree - use relative path segments
-                format!("../{}.js", target_path)
+                format!("./{}.js", import.module_path.join("/"))
             }
         } else {
-            // Fallback: use module path directly
-            format!("./{}.js", target_path)
+            format!("./{}.js", import.module_path.join("/"))
         };
 
         self.emit(&format!("import * as {} from '{}';", namespace, import_path));
@@ -400,8 +378,14 @@ impl TypeScriptGenerator {
         // Add to test metadata
         let description = test.description.replace('\"', "\\\"");
         self.test_meta_entries.push(format!(
-            "{{ name: '{}', description: '{}', fn: __test_{} }}",
-            test_name, description, test_name
+            "{{ id: '{}::{}', name: '{}', description: '{}', location: {{ start: {{ line: {}, column: {} }} }}, fn: __test_{} }}",
+            self.source_file.as_deref().unwrap_or("<unknown>"),
+            test_name,
+            test_name,
+            description,
+            test.location.start.line,
+            test.location.start.column,
+            test_name
         ));
 
         Ok(())
@@ -475,9 +459,11 @@ impl TypeScriptGenerator {
                 member_access.member);
 
             // Generate the function reference
-            let func_ref = format!("{}.{}",
-                member_access.namespace.join("_"),
-                member_access.member);
+            let func_ref = format!(
+                "{}.{}",
+                sanitize_js_identifier(&member_access.namespace.join("_")),
+                member_access.member
+            );
 
             // Generate arguments
             let args: Result<Vec<String>, CodegenError> = app.args.iter()
@@ -514,10 +500,10 @@ impl TypeScriptGenerator {
 
             match member.as_str() {
                 "char_at" if generated_args.len() == 2 => {
-                    return Ok(Some(format!("(await {}).charAt(await {})", generated_args[0], generated_args[1])));
+                    return Ok(Some(format!("(await {}).charAt(await {})", generated_args[1], generated_args[0])));
                 }
                 "substring" if generated_args.len() == 3 => {
-                    return Ok(Some(format!("(await {}).substring(await {}, await {})", generated_args[0], generated_args[1], generated_args[2])));
+                    return Ok(Some(format!("(await {}).substring(await {}, await {})", generated_args[1], generated_args[2], generated_args[0])));
                 }
                 "to_upper" if generated_args.len() == 1 => {
                     return Ok(Some(format!("(await {}).toUpperCase()", generated_args[0])));
@@ -532,25 +518,25 @@ impl TypeScriptGenerator {
                     return Ok(Some(format!("(await {}).indexOf(await {})", generated_args[0], generated_args[1])));
                 }
                 "split" if generated_args.len() == 2 => {
-                    return Ok(Some(format!("(await {}).split(await {})", generated_args[0], generated_args[1])));
+                    return Ok(Some(format!("(await {}).split(await {})", generated_args[1], generated_args[0])));
                 }
                 "replace_all" if generated_args.len() == 3 => {
-                    return Ok(Some(format!("(await {}).replaceAll(await {}, await {})", generated_args[0], generated_args[1], generated_args[2])));
+                    return Ok(Some(format!("(await {}).replaceAll(await {}, await {})", generated_args[2], generated_args[0], generated_args[1])));
                 }
                 "int_to_string" if generated_args.len() == 1 => {
                     return Ok(Some(format!("String(await {})", generated_args[0])));
                 }
                 "join" if generated_args.len() == 2 => {
-                    return Ok(Some(format!("(await {}).join(await {})", generated_args[0], generated_args[1])));
+                    return Ok(Some(format!("(await {}).join(await {})", generated_args[1], generated_args[0])));
                 }
                 "take" if generated_args.len() == 2 => {
-                    return Ok(Some(format!("(await {}).substring(0, await {})", generated_args[0], generated_args[1])));
+                    return Ok(Some(format!("(await {}).substring(0, await {})", generated_args[1], generated_args[0])));
                 }
                 "drop" if generated_args.len() == 2 => {
-                    return Ok(Some(format!("(await {}).substring(await {})", generated_args[0], generated_args[1])));
+                    return Ok(Some(format!("(await {}).substring(await {})", generated_args[1], generated_args[0])));
                 }
                 "starts_with" if generated_args.len() == 2 => {
-                    return Ok(Some(format!("(await {}).startsWith(await {})", generated_args[0], generated_args[1])));
+                    return Ok(Some(format!("(await {}).startsWith(await {})", generated_args[1], generated_args[0])));
                 }
                 "ends_with" if generated_args.len() == 2 => {
                     return Ok(Some(format!("(await {}).endsWith(await {})", generated_args[0], generated_args[1])));
@@ -579,8 +565,8 @@ impl TypeScriptGenerator {
             BinaryOperator::Divide => "/",
             BinaryOperator::Modulo => "%",
             BinaryOperator::Power => "**",
-            BinaryOperator::Equal => "===",
-            BinaryOperator::NotEqual => "!==",
+            BinaryOperator::Equal => "",
+            BinaryOperator::NotEqual => "",
             BinaryOperator::Less => "<",
             BinaryOperator::Greater => ">",
             BinaryOperator::LessEq => "<=",
@@ -599,7 +585,11 @@ impl TypeScriptGenerator {
             }
         };
 
-        if bin.operator == BinaryOperator::ListAppend {
+        if bin.operator == BinaryOperator::Equal {
+            Ok(format!("__sigil_deep_equal({}, {})", left, right))
+        } else if bin.operator == BinaryOperator::NotEqual {
+            Ok(format!("!__sigil_deep_equal({}, {})", left, right))
+        } else if bin.operator == BinaryOperator::ListAppend {
             Ok(format!("{}.concat({})", left, right))
         } else {
             Ok(format!("({} {} {})", left, op, right))
@@ -690,18 +680,18 @@ impl TypeScriptGenerator {
 
     fn generate_field_access(&mut self, field_access: &FieldAccessExpr) -> Result<String, CodegenError> {
         let object = self.generate_expression(&field_access.object)?;
-        Ok(format!("{}.{}", object, field_access.field))
+        Ok(format!("({}).{}", object, field_access.field))
     }
 
     fn generate_index(&mut self, index: &IndexExpr) -> Result<String, CodegenError> {
         let object = self.generate_expression(&index.object)?;
         let idx = self.generate_expression(&index.index)?;
-        Ok(format!("{}[{}]", object, idx))
+        Ok(format!("({})[{}]", object, idx))
     }
 
     fn generate_member_access(&mut self, member_access: &MemberAccessExpr) -> Result<String, CodegenError> {
         // Convert namespace⋅path to namespace_path.member
-        let namespace = member_access.namespace.join("_");
+        let namespace = sanitize_js_identifier(&member_access.namespace.join("_"));
         Ok(format!("{}.{}", namespace, member_access.member))
     }
 
@@ -925,6 +915,66 @@ impl TypeScriptGenerator {
     }
 }
 
+fn sanitize_js_identifier(raw: &str) -> String {
+    let mut sanitized = String::with_capacity(raw.len());
+
+    for ch in raw.chars() {
+        if ch.is_ascii_alphanumeric() || ch == '_' {
+            sanitized.push(ch);
+        } else {
+            sanitized.push('_');
+        }
+    }
+
+    if sanitized.is_empty() {
+        "_".to_string()
+    } else if sanitized.chars().next().unwrap().is_ascii_digit() {
+        format!("_{}", sanitized)
+    } else {
+        sanitized
+    }
+}
+
+fn find_output_root(output_path: &Path) -> Option<PathBuf> {
+    let mut root = PathBuf::new();
+
+    for component in output_path.components() {
+        root.push(component.as_os_str());
+        if matches!(component, Component::Normal(name) if name == ".local") {
+            return Some(root);
+        }
+    }
+
+    None
+}
+
+fn relative_import_path(from_dir: &Path, target_file: &Path) -> String {
+    let from_components: Vec<_> = from_dir.components().collect();
+    let target_components: Vec<_> = target_file.components().collect();
+    let common_len = from_components
+        .iter()
+        .zip(target_components.iter())
+        .take_while(|(left, right)| left == right)
+        .count();
+
+    let mut relative = PathBuf::new();
+
+    for _ in common_len..from_components.len() {
+        relative.push("..");
+    }
+
+    for component in &target_components[common_len..] {
+        relative.push(component.as_os_str());
+    }
+
+    let relative_str = relative.to_string_lossy().replace('\\', "/");
+    if relative_str.starts_with("../") {
+        relative_str
+    } else {
+        format!("./{}", relative_str)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -933,13 +983,13 @@ mod tests {
 
     #[test]
     fn test_empty_program() {
-        let program = Program {
-            declarations: vec![],
-            location: sigil_lexer::SourceLocation {
+        let program = Program::new(
+            vec![],
+            sigil_lexer::SourceLocation {
                 start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
                 end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
             },
-        };
+        );
 
         let mut gen = TypeScriptGenerator::new(CodegenOptions::default());
         let result = gen.generate(&program);
@@ -978,5 +1028,64 @@ mod tests {
         assert!(result.contains("async function Blue"));
         // Should use __tag pattern
         assert!(result.contains("__tag"));
+    }
+
+    #[test]
+    fn test_mockable_zero_arg_wrapper_uses_default_args() {
+        let source = "mockable λping()→𝕊=\"real\"";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let mut gen = TypeScriptGenerator::new(CodegenOptions::default());
+        let result = gen.generate(&program).unwrap();
+
+        assert!(result.contains("async function __sigil_call(key, actualFn, args = [])"));
+        assert!(result.contains("return await __sigil_call('ping', __sigil_impl_ping);"));
+    }
+
+    #[test]
+    fn test_generate_import_sanitizes_alias_and_uses_relative_path() {
+        let source = "i src⋅rot13-encoder\nλmain()→𝕌=()";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let mut gen = TypeScriptGenerator::new(CodegenOptions {
+            source_file: Some("projects/algorithms/tests/rot13-encoder.sigil".to_string()),
+            output_file: Some("/tmp/projects/algorithms/.local/tests/rot13-encoder.ts".to_string()),
+        });
+        let result = gen.generate(&program).unwrap();
+
+        assert!(result.contains("import * as src_rot13_encoder from '../src/rot13-encoder.js';"));
+    }
+
+    #[test]
+    fn test_generate_import_uses_local_root_for_stdlib_test_outputs() {
+        let source = "i stdlib⋅numeric\nλmain()→𝕌=()";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let mut gen = TypeScriptGenerator::new(CodegenOptions {
+            source_file: Some("language/stdlib-tests/tests/numeric-predicates.sigil".to_string()),
+            output_file: Some("/tmp/language/stdlib-tests/.local/tests/numeric-predicates.ts".to_string()),
+        });
+        let result = gen.generate(&program).unwrap();
+
+        assert!(result.contains("import * as stdlib_numeric from '../stdlib/numeric.js';"));
+    }
+
+    #[test]
+    fn test_generate_test_metadata_includes_id_and_location() {
+        let source = "λmain()→𝕌=()\n\ntest \"smoke\" { true }";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "tests/smoke.sigil").unwrap();
+
+        let mut gen = TypeScriptGenerator::new(CodegenOptions {
+            source_file: Some("tests/smoke.sigil".to_string()),
+            output_file: Some("/tmp/tests/smoke.ts".to_string()),
+        });
+        let result = gen.generate(&program).unwrap();
+
+        assert!(result.contains("id: 'tests/smoke.sigil::smoke'"));
+        assert!(result.contains("location: { start: { line: 3, column: 1 } }"));
     }
 }

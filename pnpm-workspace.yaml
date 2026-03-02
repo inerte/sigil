@@ -1,5 +1,4 @@
 packages:
-  - 'language/compiler'
   - 'language/tools/*'
   - 'language/benchmarks/tools'
   - 'projects/todo-app'

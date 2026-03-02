@@ -82,16 +82,16 @@ Test files run in parallel by default (results are sorted deterministically in f
 
 ```bash
 # Run all tests in ./tests
-node language/compiler/dist/cli.js test
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
 
 # Run a file or subdirectory under ./tests
-node language/compiler/dist/cli.js test projects/algorithms/tests/basic-testing.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests/basic-testing.sigil
 
 # Filter by test description substring
-node language/compiler/dist/cli.js test --match "cache"
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --match "cache"
 
 # Human-readable output
-node language/compiler/dist/cli.js test --human
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --human
 ```
 
 ## JSON output (default)

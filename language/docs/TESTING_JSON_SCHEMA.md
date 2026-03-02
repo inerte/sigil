@@ -3,7 +3,7 @@
 This document defines the machine-readable JSON emitted by:
 
 ```bash
-node language/compiler/dist/cli.js test
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
 ```
 
 JSON is the default output mode for Sigil tests (agent-first design).

@@ -54,7 +54,10 @@ function shouldRunForPath(relPath) {
   if (relPath.startsWith('.local/')) return false;
   if (relPath.startsWith('node_modules/')) return false;
   if (relPath.startsWith('language/stdlib/')) return true;
-  if (relPath.startsWith('language/compiler/src/')) return true;
+  if (relPath.startsWith('language/compiler/crates/')) return true;
+  if (relPath === 'language/compiler/Cargo.toml') return true;
+  if (relPath === 'language/compiler/Cargo.lock') return true;
+  if (relPath === 'language/compiler/ERROR_CODES.md') return true;
   return false;
 }
 
@@ -67,7 +70,7 @@ if (!raw.trim()) {
 let payload;
 try {
   payload = JSON.parse(raw);
-} catch (err) {
+} catch {
   console.log('[stdlib-hook] Skipping (invalid hook JSON payload)');
   process.exit(0);
 }
@@ -91,8 +94,19 @@ if (!shouldRunForPath(relPath)) {
   process.exit(0);
 }
 
-console.log(`[stdlib-hook] Running stdlib tests (changed: ${relPath})`);
-const result = spawnSync('pnpm', ['sigil:test:stdlib'], {
+console.log(`[stdlib-hook] Building compiler (changed: ${relPath})`);
+const build = spawnSync('cargo', ['build', '--quiet', '--manifest-path', 'language/compiler/Cargo.toml', '-p', 'sigil-cli'], {
+  cwd: projectDir,
+  stdio: 'inherit',
+  shell: process.platform === 'win32',
+});
+
+if (build.status !== 0) {
+  process.exit(typeof build.status === 'number' ? build.status : 1);
+}
+
+console.log('[stdlib-hook] Running stdlib tests');
+const result = spawnSync('language/compiler/target/debug/sigil', ['test', 'language/stdlib-tests/tests'], {
   cwd: projectDir,
   stdio: 'inherit',
   shell: process.platform === 'win32',
@@ -102,5 +116,5 @@ if (typeof result.status === 'number') {
   process.exit(result.status);
 }
 
-console.error('[stdlib-hook] Failed to run pnpm sigil:test:stdlib');
+console.error('[stdlib-hook] Failed to run stdlib tests');
 process.exit(1);

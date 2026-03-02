@@ -5,16 +5,16 @@
   "description": "Sigil - A machine-first programming language optimized for AI code generation",
   "private": true,
   "workspaces": [
-    "language/compiler",
     "projects/todo-app"
   ],
   "scripts": {
-    "build": "pnpm --filter @sigil-lang/compiler build",
-    "test": "pnpm -r test",
-    "lex": "node language/compiler/dist/cli.js lex",
-    "sigil:test:stdlib": "node language/compiler/dist/cli.js test language/stdlib-tests/tests",
-    "sigil:test:algorithms": "node language/compiler/dist/cli.js test projects/algorithms/tests",
-    "sigil:test:todo": "node language/compiler/dist/cli.js test projects/todo-app/tests",
+    "build": "cargo build --manifest-path language/compiler/Cargo.toml -p sigil-cli",
+    "test": "pnpm -r --if-present test",
+    "sigil": "cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml --",
+    "lex": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil lex",
+    "sigil:test:stdlib": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test language/stdlib-tests/tests",
+    "sigil:test:algorithms": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test projects/algorithms/tests",
+    "sigil:test:todo": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test projects/todo-app/tests",
     "sigil:test:all": "pnpm sigil:test:stdlib && pnpm sigil:test:algorithms && pnpm sigil:test:todo"
   },
   "packageManager": "pnpm@9.0.0",
@@ -32,8 +32,5 @@
     "llm-optimized"
   ],
   "author": "",
-  "license": "MIT",
-  "devDependencies": {
-    "tsx": "^4.20.5"
-  }
+  "license": "MIT"
 }

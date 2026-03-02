@@ -142,11 +142,11 @@ x : T ∈ Γ
 
 The bidirectional type checker is fully implemented and integrated into the compiler pipeline.
 
-**Location:** `compiler/src/typechecker/`
-- `index.ts` - Main entry point
-- `types.ts` - Type representations
-- `errors.ts` - Error formatting
-- `bidirectional.ts` - Core type checking algorithm
+**Location:** `compiler/crates/sigil-typechecker/src/`
+- `lib.rs` - Main entry point
+- `types.rs` - Type representations
+- `errors.rs` - Error formatting
+- `bidirectional.rs` - Core type checking algorithm
 
 ### Current Phase: Monomorphic Types
 

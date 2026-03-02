@@ -10,6 +10,6 @@ Layout:
 Commands (from repo root):
 
 ```bash
-node language/compiler/dist/cli.js compile projects/algorithms/src/collatz-conjecture.sigil
-node language/compiler/dist/cli.js test projects/algorithms/tests
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile projects/algorithms/src/collatz-conjecture.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests
 ```

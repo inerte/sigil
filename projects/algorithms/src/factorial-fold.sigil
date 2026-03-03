@@ -1,9 +1,9 @@
-λfactorial(n:ℤ)→ℤ=fold(multiply,1,range(n))
+i stdlib⋅numeric
+
+λfactorial(n:ℤ)→ℤ=fold(multiply,1,stdlib⋅numeric.range_inclusive(1,n))
 
 λfold(fn:λ(ℤ,ℤ)→ℤ,init:ℤ,list:[ℤ])→ℤ match list{[]→init|[x,.xs]→fold(fn,fn(init,x),xs)}
 
 λmain()→ℤ=factorial(5)
 
 λmultiply(acc:ℤ,x:ℤ)→ℤ=acc*x
-
-λrange(n:ℤ)→[ℤ] match n{0→[]|value→[value]⧺range(value-1)}

@@ -6,12 +6,7 @@ i src⋅types
 λbase_path()→𝕊=base_path_from_property(process.env.hasOwnProperty("sigil_site_base_path"))
 
 λbase_path_from_property(has_value:𝔹)→𝕊 match has_value{
-  true→
-    l value=((process.env.sigil_site_base_path):𝕊);
-    match #value>0{
-      true→value|
-      false→"/"
-    }|
+  true→(process.env.sigil_site_base_path:𝕊)|
   false→"/"
 }
 
@@ -27,11 +22,6 @@ i src⋅types
 λrepo_url()→𝕊=repo_url_from_property(process.env.hasOwnProperty("sigil_site_repo_url"))
 
 λrepo_url_from_property(has_value:𝔹)→𝕊 match has_value{
-  true→
-    l value=((process.env.sigil_site_repo_url):𝕊);
-    match #value>0{
-      true→value|
-      false→""
-    }|
+  true→(process.env.sigil_site_repo_url:𝕊)|
   false→""
 }

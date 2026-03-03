@@ -9,13 +9,22 @@
 
 use crate::environment::{BindingMeta, TypeEnvironment, TypeInfo};
 use crate::errors::{format_type, TypeError};
-use crate::types::{ast_type_to_inference_type, types_equal, InferenceType, TConstructor, TFunction, TPrimitive, TRecord};
-use crate::TypeCheckOptions;
+use crate::typed_ir::{
+    MethodSelector, PurityClass, StrictnessClass, TypeCheckResult, TypedBinaryExpr, TypedCallExpr,
+    TypedConstDecl, TypedConstructorCallExpr, TypedDeclaration, TypedExpr, TypedExprKind,
+    TypedExternCallExpr, TypedExternDecl, TypedFieldAccessExpr, TypedFilterExpr, TypedFoldExpr,
+    TypedFunctionDecl, TypedIfExpr, TypedImportDecl, TypedIndexExpr, TypedLambdaExpr, TypedLetExpr,
+    TypedListExpr, TypedMapExpr, TypedMatchArm, TypedMatchExpr, TypedMethodCallExpr,
+    TypedPipelineExpr, TypedProgram, TypedRecordExpr, TypedRecordField, TypedTestDecl,
+    TypedTupleExpr, TypedTypeDecl, TypedUnaryExpr, TypedWithMockExpr, WithMockTarget,
+};
+use crate::types::{ast_type_to_inference_type, EffectSet, types_equal, InferenceType, TConstructor, TFunction, TPrimitive, TRecord};
+use crate::{TypeCheckOptions};
 use sigil_ast::{
     BinaryOperator, Declaration, Expr, FunctionDecl, LiteralType, PrimitiveName, Program, Type,
     TypeDef,
 };
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Type check a Sigil program
 ///
@@ -24,7 +33,7 @@ pub fn type_check(
     program: &Program,
     _source_code: &str,
     options: TypeCheckOptions,
-) -> Result<HashMap<String, InferenceType>, TypeError> {
+) -> Result<TypeCheckResult, TypeError> {
     validate_surface_types(program)?;
 
     let mut env = TypeEnvironment::create_initial();
@@ -126,11 +135,16 @@ pub fn type_check(
             Declaration::Extern(extern_decl) => {
                 let namespace_name = extern_decl.module_path.join("⋅");
 
-                if let Some(_members) = &extern_decl.members {
-                    // TODO: Create record type with typed members
+                if let Some(members) = &extern_decl.members {
+                    let mut fields = HashMap::new();
+                    for member in members {
+                        let member_type =
+                            ast_type_to_inference_type_resolved(&env, &member.member_type)?;
+                        fields.insert(member.name.clone(), member_type);
+                    }
                     env.bind_with_meta(
                         namespace_name,
-                        InferenceType::Any,
+                        InferenceType::Record(TRecord { fields, name: None }),
                         BindingMeta {
                             is_mockable_function: false,
                             is_extern_namespace: true,
@@ -154,7 +168,7 @@ pub fn type_check(
                 let imported_type = options
                     .imported_namespaces
                     .as_ref()
-                    .and_then(|ns| ns.get(&namespace_name))
+                    .and_then(|ns: &HashMap<String, InferenceType>| ns.get(&namespace_name))
                     .cloned()
                     .unwrap_or(InferenceType::Any);
 
@@ -167,10 +181,13 @@ pub fn type_check(
         }
     }
 
-    // Second pass: Type check function bodies
+    let mut typed_declarations = Vec::new();
+
+    // Second pass: Type check function bodies and build typed IR
     for decl in &program.declarations {
         if let Declaration::Function(func_decl) = decl {
             check_function_decl(&env, func_decl)?;
+            typed_declarations.push(TypedDeclaration::Function(build_typed_function_decl(&env, func_decl)?));
         } else if let Declaration::Const(const_decl) = decl {
             // Type check constant value
             let value_type = synthesize(&env, &const_decl.value)?;
@@ -190,10 +207,24 @@ pub fn type_check(
                     ));
                 }
             }
+            typed_declarations.push(TypedDeclaration::Const(build_typed_const_decl(&env, const_decl)?));
+        } else if let Declaration::Type(type_decl) = decl {
+            typed_declarations.push(TypedDeclaration::Type(TypedTypeDecl { ast: type_decl.clone() }));
+        } else if let Declaration::Import(import_decl) = decl {
+            typed_declarations.push(TypedDeclaration::Import(TypedImportDecl { ast: import_decl.clone() }));
+        } else if let Declaration::Extern(extern_decl) = decl {
+            typed_declarations.push(TypedDeclaration::Extern(TypedExternDecl { ast: extern_decl.clone() }));
+        } else if let Declaration::Test(test_decl) = decl {
+            typed_declarations.push(TypedDeclaration::Test(build_typed_test_decl(&env, test_decl)?));
         }
     }
 
-    Ok(types)
+    Ok(TypeCheckResult {
+        declaration_types: types,
+        typed_program: TypedProgram {
+            declarations: typed_declarations,
+        },
+    })
 }
 
 /// Canonicalize two types before any structural equality-sensitive comparison.
@@ -737,6 +768,576 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
     check(&func_env, &func_decl.body, &expected_return_type)?;
 
     Ok(())
+}
+
+fn effects_option_to_set(effects: &Option<EffectSet>) -> EffectSet {
+    effects.clone().unwrap_or_default()
+}
+
+fn effects_vec_to_set(effects: &[String]) -> EffectSet {
+    effects.iter().cloned().collect()
+}
+
+fn merge_effects(values: impl IntoIterator<Item = EffectSet>) -> EffectSet {
+    let mut merged = HashSet::new();
+    for value in values {
+        merged.extend(value);
+    }
+    merged
+}
+
+fn purity_from_effects(effects: &EffectSet) -> PurityClass {
+    if effects.is_empty() {
+        PurityClass::Pure
+    } else {
+        PurityClass::Effectful
+    }
+}
+
+fn typed_expr(
+    kind: TypedExprKind,
+    typ: InferenceType,
+    effects: EffectSet,
+    strictness: StrictnessClass,
+    location: sigil_ast::SourceLocation,
+) -> TypedExpr {
+    TypedExpr {
+        kind,
+        typ,
+        purity: purity_from_effects(&effects),
+        effects,
+        strictness,
+        location,
+    }
+}
+
+fn build_typed_function_decl(
+    env: &TypeEnvironment,
+    func_decl: &FunctionDecl,
+) -> Result<TypedFunctionDecl, TypeError> {
+    let mut lambda_env_bindings = HashMap::new();
+    for param in &func_decl.params {
+        if let Some(ref ty) = param.type_annotation {
+            lambda_env_bindings.insert(param.name.clone(), ast_type_to_inference_type_resolved(env, ty)?);
+        }
+    }
+    let function_env = env.extend(Some(lambda_env_bindings));
+    let body = build_typed_expr(&function_env, &func_decl.body)?;
+
+    let return_type = func_decl
+        .return_type
+        .as_ref()
+        .map(|ty| ast_type_to_inference_type_resolved(env, ty))
+        .transpose()?
+        .unwrap_or(InferenceType::Any);
+
+    Ok(TypedFunctionDecl {
+        name: func_decl.name.clone(),
+        is_mockable: func_decl.is_mockable,
+        params: func_decl.params.clone(),
+        return_type,
+        effects: if func_decl.effects.is_empty() {
+            None
+        } else {
+            Some(effects_vec_to_set(&func_decl.effects))
+        },
+        body,
+        location: func_decl.location,
+    })
+}
+
+fn build_typed_const_decl(
+    env: &TypeEnvironment,
+    const_decl: &sigil_ast::ConstDecl,
+) -> Result<TypedConstDecl, TypeError> {
+    let value = build_typed_expr(env, &const_decl.value)?;
+    let typ = const_decl
+        .type_annotation
+        .as_ref()
+        .map(|ty| ast_type_to_inference_type_resolved(env, ty))
+        .transpose()?
+        .unwrap_or_else(|| value.typ.clone());
+
+    Ok(TypedConstDecl {
+        name: const_decl.name.clone(),
+        type_annotation: const_decl.type_annotation.clone(),
+        typ,
+        value,
+        location: const_decl.location,
+    })
+}
+
+fn build_typed_test_decl(
+    env: &TypeEnvironment,
+    test_decl: &sigil_ast::TestDecl,
+) -> Result<TypedTestDecl, TypeError> {
+    let body = build_typed_expr(env, &test_decl.body)?;
+    Ok(TypedTestDecl {
+        description: test_decl.description.clone(),
+        effects: if test_decl.effects.is_empty() {
+            None
+        } else {
+            Some(effects_vec_to_set(&test_decl.effects))
+        },
+        body,
+        location: test_decl.location,
+    })
+}
+
+fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, TypeError> {
+    let typ = synthesize(env, expr)?;
+    match expr {
+        Expr::Literal(lit) => Ok(typed_expr(
+            TypedExprKind::Literal(lit.clone()),
+            typ,
+            HashSet::new(),
+            StrictnessClass::Deferred,
+            lit.location,
+        )),
+        Expr::Identifier(id) => Ok(typed_expr(
+            TypedExprKind::Identifier(id.clone()),
+            typ,
+            HashSet::new(),
+            StrictnessClass::Deferred,
+            id.location,
+        )),
+        Expr::MemberAccess(member_access) => {
+            if lookup_constructor_type(env, &member_access.namespace, &member_access.member)?.is_some() {
+                Ok(typed_expr(
+                    TypedExprKind::NamespaceMember {
+                        namespace: member_access.namespace.clone(),
+                        member: member_access.member.clone(),
+                    },
+                    typ,
+                    HashSet::new(),
+                    StrictnessClass::Deferred,
+                    member_access.location,
+                ))
+            } else {
+                let mut effects = HashSet::new();
+                if let InferenceType::Function(tfunc) = &typ {
+                    effects.extend(effects_option_to_set(&tfunc.effects));
+                }
+                Ok(typed_expr(
+                    TypedExprKind::NamespaceMember {
+                        namespace: member_access.namespace.clone(),
+                        member: member_access.member.clone(),
+                    },
+                    typ,
+                    effects,
+                    StrictnessClass::Deferred,
+                    member_access.location,
+                ))
+            }
+        }
+        Expr::Lambda(lambda) => {
+            let mut lambda_env_bindings = HashMap::new();
+            for param in &lambda.params {
+                if let Some(ref ty) = param.type_annotation {
+                    lambda_env_bindings.insert(param.name.clone(), ast_type_to_inference_type_resolved(env, ty)?);
+                }
+            }
+            let lambda_env = env.extend(Some(lambda_env_bindings));
+            let body = build_typed_expr(&lambda_env, &lambda.body)?;
+            let effects = effects_vec_to_set(&lambda.effects);
+            Ok(typed_expr(
+                TypedExprKind::Lambda(TypedLambdaExpr {
+                    params: lambda.params.clone(),
+                    effects: if effects.is_empty() { None } else { Some(effects.clone()) },
+                    return_type: ast_type_to_inference_type_resolved(env, &lambda.return_type)?,
+                    body: Box::new(body),
+                }),
+                typ,
+                effects,
+                StrictnessClass::Deferred,
+                lambda.location,
+            ))
+        }
+        Expr::Application(app) => build_typed_application(env, app, typ),
+        Expr::Binary(bin) => {
+            let left = build_typed_expr(env, &bin.left)?;
+            let right = build_typed_expr(env, &bin.right)?;
+            let effects = merge_effects([left.effects.clone(), right.effects.clone()]);
+            Ok(typed_expr(
+                TypedExprKind::Binary(TypedBinaryExpr {
+                    left: Box::new(left),
+                    operator: bin.operator,
+                    right: Box::new(right),
+                }),
+                typ,
+                effects,
+                StrictnessClass::Strict,
+                bin.location,
+            ))
+        }
+        Expr::Unary(un) => {
+            let operand = build_typed_expr(env, &un.operand)?;
+            let effects = operand.effects.clone();
+            Ok(typed_expr(
+                TypedExprKind::Unary(TypedUnaryExpr {
+                    operand: Box::new(operand),
+                    operator: un.operator,
+                }),
+                typ,
+                effects,
+                StrictnessClass::Strict,
+                un.location,
+            ))
+        }
+        Expr::If(if_expr) => {
+            let condition = build_typed_expr(env, &if_expr.condition)?;
+            let then_branch = build_typed_expr(env, &if_expr.then_branch)?;
+            let else_branch = if_expr
+                .else_branch
+                .as_ref()
+                .map(|branch| build_typed_expr(env, branch).map(Box::new))
+                .transpose()?;
+            let mut effect_sets = vec![condition.effects.clone(), then_branch.effects.clone()];
+            if let Some(ref branch) = else_branch {
+                effect_sets.push(branch.effects.clone());
+            }
+            Ok(typed_expr(
+                TypedExprKind::If(TypedIfExpr {
+                    condition: Box::new(condition),
+                    then_branch: Box::new(then_branch),
+                    else_branch,
+                }),
+                typ,
+                merge_effects(effect_sets),
+                StrictnessClass::Strict,
+                if_expr.location,
+            ))
+        }
+        Expr::Let(let_expr) => {
+            let value = build_typed_expr(env, &let_expr.value)?;
+            let mut bindings = HashMap::new();
+            if let sigil_ast::Pattern::Identifier(id_pattern) = &let_expr.pattern {
+                bindings.insert(id_pattern.name.clone(), value.typ.clone());
+            }
+            let body_env = env.extend(Some(bindings));
+            let body = build_typed_expr(&body_env, &let_expr.body)?;
+            Ok(typed_expr(
+                TypedExprKind::Let(TypedLetExpr {
+                    pattern: let_expr.pattern.clone(),
+                    value: Box::new(value.clone()),
+                    body: Box::new(body.clone()),
+                }),
+                typ,
+                merge_effects([value.effects, body.effects]),
+                StrictnessClass::Deferred,
+                let_expr.location,
+            ))
+        }
+        Expr::Match(match_expr) => {
+            let scrutinee = build_typed_expr(env, &match_expr.scrutinee)?;
+            let mut arm_effects = vec![scrutinee.effects.clone()];
+            let mut arms = Vec::new();
+            let scrutinee_type = synthesize(env, &match_expr.scrutinee)?;
+            for arm in &match_expr.arms {
+                let mut bindings = HashMap::new();
+                check_pattern(env, &arm.pattern, &scrutinee_type, &mut bindings)?;
+                let arm_env = env.extend(Some(bindings));
+                let guard = arm.guard.as_ref().map(|g| build_typed_expr(&arm_env, g).map(Box::new)).transpose()?;
+                let body = Box::new(build_typed_expr(&arm_env, &arm.body)?);
+                if let Some(ref guard_expr) = guard {
+                    arm_effects.push(guard_expr.effects.clone());
+                }
+                arm_effects.push(body.effects.clone());
+                arms.push(TypedMatchArm {
+                    pattern: arm.pattern.clone(),
+                    guard,
+                    body,
+                    location: arm.location,
+                });
+            }
+            Ok(typed_expr(
+                TypedExprKind::Match(TypedMatchExpr {
+                    scrutinee: Box::new(scrutinee),
+                    arms,
+                }),
+                typ,
+                merge_effects(arm_effects),
+                StrictnessClass::Strict,
+                match_expr.location,
+            ))
+        }
+        Expr::List(list) => {
+            let elements = list.elements.iter().map(|element| build_typed_expr(env, element)).collect::<Result<Vec<_>, _>>()?;
+            let effects = merge_effects(elements.iter().map(|element| element.effects.clone()));
+            Ok(typed_expr(
+                TypedExprKind::List(TypedListExpr { elements }),
+                typ,
+                effects,
+                StrictnessClass::Deferred,
+                list.location,
+            ))
+        }
+        Expr::Tuple(tuple) => {
+            let elements = tuple.elements.iter().map(|element| build_typed_expr(env, element)).collect::<Result<Vec<_>, _>>()?;
+            let effects = merge_effects(elements.iter().map(|element| element.effects.clone()));
+            Ok(typed_expr(
+                TypedExprKind::Tuple(TypedTupleExpr { elements }),
+                typ,
+                effects,
+                StrictnessClass::Deferred,
+                tuple.location,
+            ))
+        }
+        Expr::Record(record) => {
+            let fields = record.fields.iter().map(|field| {
+                Ok(TypedRecordField {
+                    name: field.name.clone(),
+                    value: build_typed_expr(env, &field.value)?,
+                    location: field.location,
+                })
+            }).collect::<Result<Vec<_>, TypeError>>()?;
+            let effects = merge_effects(fields.iter().map(|field| field.value.effects.clone()));
+            Ok(typed_expr(
+                TypedExprKind::Record(TypedRecordExpr { fields }),
+                typ,
+                effects,
+                StrictnessClass::Deferred,
+                record.location,
+            ))
+        }
+        Expr::FieldAccess(field_access) => {
+            let object = build_typed_expr(env, &field_access.object)?;
+            let effects = object.effects.clone();
+            Ok(typed_expr(
+                TypedExprKind::FieldAccess(TypedFieldAccessExpr {
+                    object: Box::new(object),
+                    field: field_access.field.clone(),
+                }),
+                typ,
+                effects,
+                StrictnessClass::Strict,
+                field_access.location,
+            ))
+        }
+        Expr::Index(index_expr) => {
+            let object = build_typed_expr(env, &index_expr.object)?;
+            let index = build_typed_expr(env, &index_expr.index)?;
+            let effects = merge_effects([object.effects.clone(), index.effects.clone()]);
+            Ok(typed_expr(
+                TypedExprKind::Index(TypedIndexExpr {
+                    object: Box::new(object),
+                    index: Box::new(index),
+                }),
+                typ,
+                effects,
+                StrictnessClass::Strict,
+                index_expr.location,
+            ))
+        }
+        Expr::Map(map_expr) => {
+            let list = build_typed_expr(env, &map_expr.list)?;
+            let func = build_typed_expr(env, &map_expr.func)?;
+            let effects = merge_effects([list.effects.clone(), func.effects.clone()]);
+            Ok(typed_expr(
+                TypedExprKind::Map(TypedMapExpr {
+                    list: Box::new(list),
+                    func: Box::new(func),
+                }),
+                typ,
+                effects,
+                StrictnessClass::Deferred,
+                map_expr.location,
+            ))
+        }
+        Expr::Filter(filter_expr) => {
+            let list = build_typed_expr(env, &filter_expr.list)?;
+            let predicate = build_typed_expr(env, &filter_expr.predicate)?;
+            let effects = merge_effects([list.effects.clone(), predicate.effects.clone()]);
+            Ok(typed_expr(
+                TypedExprKind::Filter(TypedFilterExpr {
+                    list: Box::new(list),
+                    predicate: Box::new(predicate),
+                }),
+                typ,
+                effects,
+                StrictnessClass::Deferred,
+                filter_expr.location,
+            ))
+        }
+        Expr::Fold(fold_expr) => {
+            let list = build_typed_expr(env, &fold_expr.list)?;
+            let func = build_typed_expr(env, &fold_expr.func)?;
+            let init = build_typed_expr(env, &fold_expr.init)?;
+            let effects = merge_effects([list.effects.clone(), func.effects.clone(), init.effects.clone()]);
+            Ok(typed_expr(
+                TypedExprKind::Fold(TypedFoldExpr {
+                    list: Box::new(list),
+                    func: Box::new(func),
+                    init: Box::new(init),
+                }),
+                typ,
+                effects,
+                StrictnessClass::Strict,
+                fold_expr.location,
+            ))
+        }
+        Expr::Pipeline(pipeline) => {
+            let left = build_typed_expr(env, &pipeline.left)?;
+            let right = build_typed_expr(env, &pipeline.right)?;
+            let effects = merge_effects([left.effects.clone(), right.effects.clone()]);
+            Ok(typed_expr(
+                TypedExprKind::Pipeline(TypedPipelineExpr {
+                    left: Box::new(left),
+                    operator: pipeline.operator,
+                    right: Box::new(right),
+                }),
+                typ,
+                effects,
+                StrictnessClass::Deferred,
+                pipeline.location,
+            ))
+        }
+        Expr::WithMock(with_mock) => {
+            let replacement = build_typed_expr(env, &with_mock.replacement)?;
+            let body = build_typed_expr(env, &with_mock.body)?;
+            let target = match &with_mock.target {
+                Expr::Identifier(id) => WithMockTarget::LocalFunction(id.name.clone()),
+                Expr::MemberAccess(member_access) => WithMockTarget::ExternMember {
+                    namespace: member_access.namespace.clone(),
+                    member: member_access.member.clone(),
+                    mock_key: format!("extern:{}.{}", member_access.namespace.join("/"), member_access.member),
+                },
+                _ => {
+                    return Err(TypeError::new(
+                        "with_mock target must be an identifier or imported member access".to_string(),
+                        Some(with_mock.location),
+                    ))
+                }
+            };
+            Ok(typed_expr(
+                TypedExprKind::WithMock(TypedWithMockExpr {
+                    target,
+                    replacement: Box::new(replacement.clone()),
+                    body: Box::new(body.clone()),
+                }),
+                typ,
+                merge_effects([replacement.effects, body.effects]),
+                StrictnessClass::Deferred,
+                with_mock.location,
+            ))
+        }
+        Expr::TypeAscription(type_asc) => build_typed_expr(env, &type_asc.expr),
+    }
+}
+
+fn build_typed_application(
+    env: &TypeEnvironment,
+    app: &sigil_ast::ApplicationExpr,
+    typ: InferenceType,
+) -> Result<TypedExpr, TypeError> {
+    let args = app.args.iter().map(|arg| build_typed_expr(env, arg)).collect::<Result<Vec<_>, _>>()?;
+
+    if let Expr::MemberAccess(member_access) = &app.func {
+        if member_access.member.chars().next().is_some_and(|ch| ch.is_uppercase()) {
+            let effects = merge_effects(args.iter().map(|arg| arg.effects.clone()));
+            return Ok(typed_expr(
+                TypedExprKind::ConstructorCall(TypedConstructorCallExpr {
+                    module_path: Some(member_access.namespace.clone()),
+                    constructor: member_access.member.clone(),
+                    args,
+                }),
+                typ,
+                effects,
+                StrictnessClass::Deferred,
+                app.location,
+            ));
+        }
+
+        let mut effects = merge_effects(args.iter().map(|arg| arg.effects.clone()));
+        if let InferenceType::Function(tfunc) = synthesize_member_access(env, member_access)? {
+            effects.extend(effects_option_to_set(&tfunc.effects));
+        }
+        return Ok(typed_expr(
+            TypedExprKind::ExternCall(TypedExternCallExpr {
+                namespace: member_access.namespace.clone(),
+                member: member_access.member.clone(),
+                mock_key: format!("extern:{}.{}", member_access.namespace.join("/"), member_access.member),
+                args,
+            }),
+            typ,
+            effects,
+            StrictnessClass::Deferred,
+            app.location,
+        ));
+    }
+
+    if let Expr::Identifier(id) = &app.func {
+        if id.name.chars().next().is_some_and(|ch| ch.is_uppercase()) {
+            let effects = merge_effects(args.iter().map(|arg| arg.effects.clone()));
+            return Ok(typed_expr(
+                TypedExprKind::ConstructorCall(TypedConstructorCallExpr {
+                    module_path: None,
+                    constructor: id.name.clone(),
+                    args,
+                }),
+                typ,
+                effects,
+                StrictnessClass::Deferred,
+                app.location,
+            ));
+        }
+    }
+
+    if let Expr::FieldAccess(field_access) = &app.func {
+        let receiver = build_typed_expr(env, &field_access.object)?;
+        let mut effects = merge_effects(args.iter().map(|arg| arg.effects.clone()));
+        effects.extend(receiver.effects.clone());
+        if let InferenceType::Function(tfunc) = synthesize_field_access(env, field_access)? {
+            effects.extend(effects_option_to_set(&tfunc.effects));
+        }
+        return Ok(typed_expr(
+            TypedExprKind::MethodCall(TypedMethodCallExpr {
+                receiver: Box::new(receiver),
+                selector: MethodSelector::Field(field_access.field.clone()),
+                args,
+            }),
+            typ,
+            effects,
+            StrictnessClass::Deferred,
+            app.location,
+        ));
+    }
+
+    if let Expr::Index(index_expr) = &app.func {
+        let receiver = build_typed_expr(env, &index_expr.object)?;
+        let index = build_typed_expr(env, &index_expr.index)?;
+        let mut effects = merge_effects(args.iter().map(|arg| arg.effects.clone()));
+        effects.extend(receiver.effects.clone());
+        effects.extend(index.effects.clone());
+        return Ok(typed_expr(
+            TypedExprKind::MethodCall(TypedMethodCallExpr {
+                receiver: Box::new(receiver),
+                selector: MethodSelector::Index(Box::new(index)),
+                args,
+            }),
+            typ,
+            effects,
+            StrictnessClass::Deferred,
+            app.location,
+        ));
+    }
+
+    let func = build_typed_expr(env, &app.func)?;
+    let mut effects = merge_effects(args.iter().map(|arg| arg.effects.clone()));
+    effects.extend(func.effects.clone());
+    if let InferenceType::Function(tfunc) = &func.typ {
+        effects.extend(effects_option_to_set(&tfunc.effects));
+    }
+    Ok(typed_expr(
+        TypedExprKind::Call(TypedCallExpr {
+            func: Box::new(func),
+            args,
+        }),
+        typ,
+        effects,
+        StrictnessClass::Deferred,
+        app.location,
+    ))
 }
 
 // ============================================================================
@@ -1921,8 +2522,8 @@ mod tests {
         assert!(result.is_ok());
 
         let types = result.unwrap();
-        assert_eq!(types.len(), 1);
-        assert!(types.contains_key("add"));
+        assert_eq!(types.declaration_types.len(), 1);
+        assert!(types.declaration_types.contains_key("add"));
     }
 
     #[test]

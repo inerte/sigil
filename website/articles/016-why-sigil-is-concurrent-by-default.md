@@ -96,3 +96,18 @@ On the JavaScript backend, concurrent-by-default means:
 It does **not** mean automatic CPU parallelism.
 
 That distinction matters. Sigil is making the generated code truly asynchronous, not pretending JavaScript can run CPU-bound pure code on multiple threads by itself.
+
+## Compiler follow-through
+
+This change is not only a documentation claim. The compiler now treats concurrency as a semantic rule instead of a code generation trick.
+
+The typechecker produces typed semantic information for whole programs, and code generation lowers that semantic view directly. That matters because the compiler no longer has to guess from raw syntax whether something is:
+
+- a pure value that can stay deferred
+- a strict demand point that must join results
+- an effectful operation that must still start in source order
+- a constructor call, extern call, or ordinary function call
+
+That keeps the public language model and the compiler architecture aligned.
+
+Sigil still has one surface language. The difference is that the implementation now reflects that model more honestly: semantic analysis decides what kind of work an expression represents, and code generation turns that into concurrent runtime behavior.

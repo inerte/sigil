@@ -23,8 +23,10 @@ i stdlib⋅string
   ⟦ Test string predicates ⟧
   l has_prefix=(stdlib⋅string.starts_with("Hello World","Hello"):𝔹);
   l has_suffix=(stdlib⋅string.ends_with("test.sigil",".sigil"):𝔹);
-  l _=(console.log("Has prefix Hello: "++stdlib⋅string.bool_to_string(has_prefix)):𝕌);
-  l _=(console.log("Has suffix .sigil: "++stdlib⋅string.bool_to_string(has_suffix)):𝕌);
+  l prefix_text=(match has_prefix{true→"true"|false→"false"}:𝕊);
+  l suffix_text=(match has_suffix{true→"true"|false→"false"}:𝕊);
+  l _=(console.log("Has prefix Hello: "++prefix_text):𝕌);
+  l _=(console.log("Has suffix .sigil: "++suffix_text):𝕌);
 
   ⟦ Test split ⟧
   l parts=(stdlib⋅string.split("a,b,c",","):[𝕊]);

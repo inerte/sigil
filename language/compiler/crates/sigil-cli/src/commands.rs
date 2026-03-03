@@ -7,7 +7,7 @@ use sigil_codegen::{CodegenOptions, TypeScriptGenerator};
 use sigil_lexer::Lexer;
 use sigil_parser::Parser;
 use sigil_typechecker::{type_check, TypeError, TypeCheckOptions, TypeInfo};
-use sigil_typechecker::types::{InferenceType, TRecord};
+use sigil_typechecker::types::{InferenceType, TConstructor, TFunction, TList, TRecord, TTuple};
 use sigil_validator::{validate_canonical_form, ValidationError};
 use std::collections::HashMap;
 use std::fs;
@@ -227,7 +227,7 @@ pub fn compile_command(
         let imported_type_regs = build_imported_type_registries(&module.ast, &type_registries);
 
         // Type check with cross-module context
-        let inferred_types = type_check(
+        let typecheck_result = type_check(
             &module.ast,
             &module.source,
             Some(TypeCheckOptions {
@@ -254,7 +254,7 @@ pub fn compile_command(
         };
         let mut codegen = TypeScriptGenerator::new(codegen_options);
         let ts_code = codegen
-            .generate(&module.ast)
+            .generate(&typecheck_result.typed_program)
             .map_err(|e| CliError::Codegen(format!("{}", e)))?;
 
         // Create output directory
@@ -268,7 +268,7 @@ pub fn compile_command(
         module_outputs.insert(module_id.clone(), output_path);
 
         // Track for dependents
-        compiled_modules.insert(module_id.clone(), inferred_types);
+        compiled_modules.insert(module_id.clone(), typecheck_result.declaration_types);
         type_registries.insert(
             module_id.clone(),
             extract_type_registry(&module.ast, &module.file_path, module_id),
@@ -351,7 +351,7 @@ pub fn run_command(file: &Path, human: bool) -> Result<(), CliError> {
         let imported_type_regs = build_imported_type_registries(&module.ast, &type_registries);
 
         // Type check with cross-module context
-        let inferred_types = type_check(
+        let typecheck_result = type_check(
             &module.ast,
             &module.source,
             Some(TypeCheckOptions {
@@ -372,7 +372,7 @@ pub fn run_command(file: &Path, human: bool) -> Result<(), CliError> {
         };
         let mut codegen = TypeScriptGenerator::new(codegen_options);
         let ts_code = codegen
-            .generate(&module.ast)
+            .generate(&typecheck_result.typed_program)
             .map_err(|e| CliError::Codegen(format!("{}", e)))?;
 
         // Create output directory
@@ -389,7 +389,7 @@ pub fn run_command(file: &Path, human: bool) -> Result<(), CliError> {
         }
 
         // Track for dependents
-        compiled_modules.insert(module_id.clone(), inferred_types);
+        compiled_modules.insert(module_id.clone(), typecheck_result.declaration_types);
         type_registries.insert(
             module_id.clone(),
             extract_type_registry(&module.ast, &module.file_path, module_id),
@@ -691,7 +691,7 @@ fn compile_and_run_tests(
         let imported_type_regs = build_imported_type_registries(&module.ast, &type_registries);
 
         // Type check with cross-module context
-        let inferred_types = type_check(
+        let typecheck_result = type_check(
             &module.ast,
             &module.source,
             Some(TypeCheckOptions {
@@ -712,7 +712,7 @@ fn compile_and_run_tests(
         };
         let mut codegen = TypeScriptGenerator::new(codegen_options);
         let ts_code = codegen
-            .generate(&module.ast)
+            .generate(&typecheck_result.typed_program)
             .map_err(|e| CliError::Codegen(format!("{}", e)))?;
 
         // Create output directory
@@ -729,7 +729,7 @@ fn compile_and_run_tests(
         }
 
         // Track for dependents
-        compiled_modules.insert(module_id.clone(), inferred_types);
+        compiled_modules.insert(module_id.clone(), typecheck_result.declaration_types);
         type_registries.insert(
             module_id.clone(),
             extract_type_registry(&module.ast, &module.file_path, module_id),
@@ -891,7 +891,7 @@ fn build_imported_namespaces(
                 // Build namespace type from exported functions/consts
                 let mut fields = HashMap::new();
                 for (name, typ) in types {
-                    fields.insert(name.clone(), typ.clone());
+                    fields.insert(name.clone(), qualify_inference_type_in_context(typ, &module_id));
                 }
 
                 imported.insert(
@@ -906,6 +906,64 @@ fn build_imported_namespaces(
     }
 
     imported
+}
+
+fn qualify_inference_type_in_context(typ: &InferenceType, module_id: &str) -> InferenceType {
+    match typ {
+        InferenceType::Primitive(_) | InferenceType::Var(_) | InferenceType::Any => typ.clone(),
+        InferenceType::Function(func) => InferenceType::Function(Box::new(TFunction {
+            params: func
+                .params
+                .iter()
+                .map(|param| qualify_inference_type_in_context(param, module_id))
+                .collect(),
+            return_type: qualify_inference_type_in_context(&func.return_type, module_id),
+            effects: func.effects.clone(),
+        })),
+        InferenceType::List(list) => InferenceType::List(Box::new(TList {
+            element_type: qualify_inference_type_in_context(&list.element_type, module_id),
+        })),
+        InferenceType::Tuple(tuple) => InferenceType::Tuple(TTuple {
+            types: tuple
+                .types
+                .iter()
+                .map(|item| qualify_inference_type_in_context(item, module_id))
+                .collect(),
+        }),
+        InferenceType::Record(record) => InferenceType::Record(TRecord {
+            fields: record
+                .fields
+                .iter()
+                .map(|(name, field_type)| {
+                    (
+                        name.clone(),
+                        qualify_inference_type_in_context(field_type, module_id),
+                    )
+                })
+                .collect(),
+            name: record.name.as_ref().map(|name| {
+                if name.contains('⋅') {
+                    name.clone()
+                } else if name.contains('.') {
+                    name.clone()
+                } else {
+                    format!("{}.{}", module_id, name)
+                }
+            }),
+        }),
+        InferenceType::Constructor(constructor) => InferenceType::Constructor(TConstructor {
+            name: if constructor.name.contains('⋅') || constructor.name.contains('.') {
+                constructor.name.clone()
+            } else {
+                format!("{}.{}", module_id, constructor.name)
+            },
+            type_args: constructor
+                .type_args
+                .iter()
+                .map(|arg| qualify_inference_type_in_context(arg, module_id))
+                .collect(),
+        }),
+    }
 }
 
 /// Build imported type registries from dependencies

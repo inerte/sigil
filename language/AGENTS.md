@@ -304,10 +304,13 @@ cargo test --manifest-path language/compiler/Cargo.toml
 ### `compiler/crates/sigil-typechecker`
 - If syntax/module naming changes affect namespaces/imports, update user-facing error text to match canonical Sigil syntax.
 - Keep internal representations stable when possible (e.g., filesystem/module resolution formats).
+- The typechecker-to-codegen contract is `TypeCheckResult`, not a raw declaration-type map.
+- Build new semantic facts into the typed IR (`typed_program`) instead of teaching codegen to rediscover them from raw AST shape.
 
 ### `compiler/crates/sigil-codegen`
 - Generated output should remain deterministic.
 - Comments/examples in codegen should reflect current Sigil syntax even when emitted JS uses different separators/conventions.
+- Codegen consumes typed semantic IR. Prefer lowering `TypedExprKind` directly over adding new AST-shape heuristics.
 
 ### `stdlib/`
 - Prefer small, canonical modules.

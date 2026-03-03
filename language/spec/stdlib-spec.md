@@ -457,13 +457,6 @@ Parse float from string.
 - Complexity: O(n)
 - Pure: Yes
 
-```sigil
-λbool_to_string(b:𝔹)→𝕊
-```
-Convert bool to string ("true" or "false").
-- Complexity: O(1)
-- Pure: Yes
-
 ## Composition Operators
 
 ```sigil

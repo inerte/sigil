@@ -73,29 +73,30 @@ t Result[T,E]=Ok(T)|Err(E)
 λcontains(item:ℤ,xs:[ℤ])→𝔹
 λcount(item:ℤ,xs:[ℤ])→ℤ
 λdrop(n:ℤ,xs:[ℤ])→[ℤ]
+λfind(pred:λ(ℤ)→𝔹,xs:[ℤ])→IntOption
 λfold(acc:ℤ,fn:λ(ℤ,ℤ)→ℤ,xs:[ℤ])→ℤ
-λhead(xs:[ℤ])→ℤ
 λin_bounds(idx:ℤ,xs:[ℤ])→𝔹
-λis_empty(xs:[ℤ])→𝔹
-λis_non_empty(xs:[ℤ])→𝔹
  t IntOption=IntNone|IntSome(ℤ)
 λlast(xs:[ℤ])→IntOption
+λmax(xs:[ℤ])→IntOption
+λmin(xs:[ℤ])→IntOption
 λnth(idx:ℤ,xs:[ℤ])→IntOption
+λproduct(xs:[ℤ])→ℤ
 λremove_first(item:ℤ,xs:[ℤ])→[ℤ]
 λreverse(xs:[ℤ])→[ℤ]
 λsorted_asc(xs:[ℤ])→𝔹
 λsorted_desc(xs:[ℤ])→𝔹
 λsum(xs:[ℤ])→ℤ
-λtail(xs:[ℤ])→[ℤ]
 λtake(n:ℤ,xs:[ℤ])→[ℤ]
 ```
 
 Safe element access uses `IntOption`:
 - `last([])→IntNone()`
+- `find(pred,[])→IntNone()`
+- `max([])→IntNone()`
+- `min([])→IntNone()`
 - `nth(-1,xs)→IntNone()`
 - `nth(idx,xs)→IntNone()` when out of bounds
-
-Unsafe `head` and `tail` remain concrete convenience functions.
 
 ### Implemented `stdlib⋅numeric` Helpers
 

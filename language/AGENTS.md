@@ -250,7 +250,7 @@ i stdlib⋅list
 λmain()→𝕌=()
 
 test "my feature works" {
-  stdlib⋅list.length([1,2,3])=3
+  #[1,2,3]=3
 }
 ```
 

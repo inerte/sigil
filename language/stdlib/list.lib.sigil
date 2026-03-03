@@ -53,15 +53,22 @@ t IntOption=IntNone|IntSome(ℤ)
   }
 }
 
+⟦ Find the first element that satisfies predicate ⟧
+λfind(pred:λ(ℤ)→𝔹,xs:[ℤ])→IntOption=find_helper(pred,xs)
+
+⟦ Helper: Find the first matching element ⟧
+λfind_helper(pred:λ(ℤ)→𝔹,xs:[ℤ])→IntOption match xs{
+  []→IntNone()|
+  [x,.rest]→match pred(x){
+    true→IntSome(x)|
+    false→find_helper(pred,rest)
+  }
+}
+
 ⟦ Reduce a list to a single value by threading an accumulator left to right ⟧
 λfold(acc:ℤ,fn:λ(ℤ,ℤ)→ℤ,xs:[ℤ])→ℤ match xs{
   []→acc|
   [x,.rest]→fold(fn(acc,x),fn,rest)
-}
-
-⟦ Get first element of list (unsafe - crashes on empty) ⟧
-λhead(xs:[ℤ])→ℤ match xs{
-  [x,.rest]→x
 }
 
 ⟦ Check if index is valid for list [0, len-1] ⟧
@@ -71,18 +78,6 @@ t IntOption=IntNone|IntSome(ℤ)
 λin_bounds_helper(idx:ℤ,xs:[ℤ])→𝔹 match (idx≥0){
   true→idx<#xs|
   false→false
-}
-
-⟦ Check if list is empty ⟧
-λis_empty(xs:[ℤ])→𝔹 match xs{
-  []→true|
-  _→false
-}
-
-⟦ Check if list is non-empty ⟧
-λis_non_empty(xs:[ℤ])→𝔹 match xs{
-  []→false|
-  _→true
 }
 
 ⟦ Get last element of list safely ⟧
@@ -97,6 +92,36 @@ t IntOption=IntNone|IntSome(ℤ)
   [x,.rest]→last_non_empty(x,rest)
 }
 
+⟦ Get maximum element safely ⟧
+λmax(xs:[ℤ])→IntOption match xs{
+  []→IntNone()|
+  [x,.rest]→max_non_empty(x,rest)
+}
+
+⟦ Helper: Get maximum element from a non-empty list ⟧
+λmax_non_empty(current:ℤ,xs:[ℤ])→IntOption match xs{
+  []→IntSome(current)|
+  [x,.rest]→match x>current{
+    true→max_non_empty(x,rest)|
+    false→max_non_empty(current,rest)
+  }
+}
+
+⟦ Get minimum element safely ⟧
+λmin(xs:[ℤ])→IntOption match xs{
+  []→IntNone()|
+  [x,.rest]→min_non_empty(x,rest)
+}
+
+⟦ Helper: Get minimum element from a non-empty list ⟧
+λmin_non_empty(current:ℤ,xs:[ℤ])→IntOption match xs{
+  []→IntSome(current)|
+  [x,.rest]→match x<current{
+    true→min_non_empty(x,rest)|
+    false→min_non_empty(current,rest)
+  }
+}
+
 ⟦ Get item at index safely ⟧
 λnth(idx:ℤ,xs:[ℤ])→IntOption match idx<0{
   true→IntNone()|
@@ -108,6 +133,12 @@ t IntOption=IntNone|IntSome(ℤ)
     }
   }
 }
+
+⟦ Multiply all integers in a list ⟧
+λproduct(xs:[ℤ])→ℤ=fold(1,product_step,xs)
+
+⟦ Helper: Multiply current item into running product ⟧
+λproduct_step(acc:ℤ,x:ℤ)→ℤ=acc*x
 
 ⟦ Remove first occurrence of item from list ⟧
 λremove_first(item:ℤ,xs:[ℤ])→[ℤ] match xs{
@@ -164,11 +195,6 @@ t IntOption=IntNone|IntSome(ℤ)
 
 ⟦ Helper: Add current item into running sum ⟧
 λsum_step(acc:ℤ,x:ℤ)→ℤ=acc+x
-
-⟦ Get all elements except first (unsafe - crashes on empty) ⟧
-λtail(xs:[ℤ])→[ℤ] match xs{
-  [x,.rest]→rest
-}
 
 ⟦ Take first n elements from list ⟧
 λtake(n:ℤ,xs:[ℤ])→[ℤ] match n≤0{

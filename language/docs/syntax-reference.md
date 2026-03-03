@@ -205,7 +205,7 @@ Use imported members with fully qualified namespace access:
 
 ```sigil
 src⋅todo-domain.completedCount(todos)
-stdlib⋅list.len([1,2,3])
+#[1,2,3]
 src⋅graph-types.Ordering([1,2,3])
 ```
 

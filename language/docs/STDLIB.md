@@ -127,34 +127,6 @@ sorted_desc([3,2,1])   ⟦ → true ⟧
 sorted_desc([1,2,3])   ⟦ → false ⟧
 ```
 
-### is_empty
-
-Check if a list is empty.
-
-```sigil
-λis_empty(xs:[ℤ])→𝔹
-```
-
-**Examples:**
-```sigil
-is_empty([])           ⟦ → true ⟧
-is_empty([1])          ⟦ → false ⟧
-```
-
-### is_non_empty
-
-Check if a list is non-empty.
-
-```sigil
-λis_non_empty(xs:[ℤ])→𝔹
-```
-
-**Examples:**
-```sigil
-is_non_empty([1,2])    ⟦ → true ⟧
-is_non_empty([])       ⟦ → false ⟧
-```
-
 ### all
 
 Check if all elements in a list satisfy a predicate.
@@ -222,6 +194,20 @@ Drop the first `n` elements.
 λdrop(n:ℤ,xs:[ℤ])→[ℤ]
 ```
 
+### find
+
+Find the first element that satisfies a predicate.
+
+```sigil
+λfind(pred:λ(ℤ)→𝔹,xs:[ℤ])→stdlib⋅list.IntOption
+```
+
+Examples:
+```sigil
+stdlib⋅list.find(stdlib⋅numeric.is_even,[1,3,4,6])   ⟦ → stdlib⋅list.IntSome(4) ⟧
+stdlib⋅list.find(stdlib⋅numeric.is_even,[1,3,5])     ⟦ → stdlib⋅list.IntNone() ⟧
+```
+
 ### fold
 
 Reduce a list to a single integer by threading an accumulator from left to right.
@@ -263,22 +249,6 @@ in_bounds(0,[])               ⟦ → false (empty list) ⟧
 
 **Note:** Use the `#` operator for list length instead of a function (e.g., `#[1,2,3]` → `3`).
 
-### head
-
-Get the first element of a list.
-
-```sigil
-λhead(xs:[ℤ])→ℤ
-```
-
-**Examples:**
-```sigil
-head([1,2,3])              ⟦ → 1 ⟧
-head([42])                 ⟦ → 42 ⟧
-```
-
-**Warning:** Unsafe - crashes on empty list. Check with `is_non_empty` first.
-
 ### IntOption
 
 Concrete optional integer used by safe integer-list access helpers.
@@ -301,6 +271,34 @@ stdlib⋅list.last([])         ⟦ → stdlib⋅list.IntNone() ⟧
 stdlib⋅list.last([1,2,3])    ⟦ → stdlib⋅list.IntSome(3) ⟧
 ```
 
+### max
+
+Get the maximum element safely.
+
+```sigil
+λmax(xs:[ℤ])→stdlib⋅list.IntOption
+```
+
+Examples:
+```sigil
+stdlib⋅list.max([])          ⟦ → stdlib⋅list.IntNone() ⟧
+stdlib⋅list.max([3,9,4])     ⟦ → stdlib⋅list.IntSome(9) ⟧
+```
+
+### min
+
+Get the minimum element safely.
+
+```sigil
+λmin(xs:[ℤ])→stdlib⋅list.IntOption
+```
+
+Examples:
+```sigil
+stdlib⋅list.min([])          ⟦ → stdlib⋅list.IntNone() ⟧
+stdlib⋅list.min([3,9,4])     ⟦ → stdlib⋅list.IntSome(3) ⟧
+```
+
 ### nth
 
 Get the item at a zero-based index safely.
@@ -313,6 +311,20 @@ Examples:
 ```sigil
 stdlib⋅list.nth(0,[7,8])     ⟦ → stdlib⋅list.IntSome(7) ⟧
 stdlib⋅list.nth(2,[7,8])     ⟦ → stdlib⋅list.IntNone() ⟧
+```
+
+### product
+
+Multiply all integers in a list.
+
+```sigil
+λproduct(xs:[ℤ])→ℤ
+```
+
+Examples:
+```sigil
+stdlib⋅list.product([])         ⟦ → 1 ⟧
+stdlib⋅list.product([2,3,4])    ⟦ → 24 ⟧
 ```
 
 ### remove_first
@@ -344,22 +356,6 @@ Examples:
 stdlib⋅list.sum([])          ⟦ → 0 ⟧
 stdlib⋅list.sum([1,2,3,4])   ⟦ → 10 ⟧
 ```
-
-### tail
-
-Get all elements except the first.
-
-```sigil
-λtail(xs:[ℤ])→[ℤ]
-```
-
-**Examples:**
-```sigil
-tail([1,2,3])              ⟦ → [2,3] ⟧
-tail([42])                 ⟦ → [] ⟧
-```
-
-**Warning:** Unsafe - crashes on empty list. Check with `is_non_empty` first.
 
 ### take
 

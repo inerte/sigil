@@ -634,20 +634,6 @@ is_negative(3)                ⟦ → false ⟧
 is_negative(0)                ⟦ → false ⟧
 ```
 
-### is_zero
-
-Check if a number is zero.
-
-```sigil
-λis_zero(x:ℤ)→𝔹
-```
-
-**Examples:**
-```sigil
-is_zero(0)                    ⟦ → true ⟧
-is_zero(5)                    ⟦ → false ⟧
-```
-
 ### is_non_negative
 
 Check if a number is non-negative (>= 0).

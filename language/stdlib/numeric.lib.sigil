@@ -61,9 +61,6 @@ i stdlib⋅list
   }
 }
 
-⟦ Check if value is zero ⟧
-λis_zero(x:ℤ)→𝔹=x=0
-
 ⟦ Maximum of two numbers ⟧
 λmax(a:ℤ,b:ℤ)→ℤ match a>b{true→a|false→b}
 

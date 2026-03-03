@@ -112,7 +112,6 @@ Unsafe `head` and `tail` remain concrete convenience functions.
 λis_odd(x:ℤ)→𝔹
 λis_positive(x:ℤ)→𝔹
 λis_prime(n:ℤ)→𝔹
-λis_zero(x:ℤ)→𝔹
 λmax(a:ℤ,b:ℤ)→ℤ
 λmin(a:ℤ,b:ℤ)→ℤ
 λpow(base:ℤ,exp:ℤ)→ℤ

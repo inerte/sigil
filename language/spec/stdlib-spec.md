@@ -100,8 +100,11 @@ Unsafe `head` and `tail` remain concrete convenience functions.
 ### Implemented `stdlib⋅numeric` Helpers
 
 ```sigil
+t DivMod={quotient:ℤ,remainder:ℤ}
+λabs(x:ℤ)→ℤ
 λclamp(hi:ℤ,lo:ℤ,x:ℤ)→ℤ
 λdivisible(d:ℤ,n:ℤ)→𝔹
+λdivmod(a:ℤ,b:ℤ)→DivMod
 λgcd(a:ℤ,b:ℤ)→ℤ
 λin_range(max:ℤ,min:ℤ,x:ℤ)→𝔹
 λis_even(x:ℤ)→𝔹
@@ -110,10 +113,13 @@ Unsafe `head` and `tail` remain concrete convenience functions.
 λis_odd(x:ℤ)→𝔹
 λis_positive(x:ℤ)→𝔹
 λis_prime(n:ℤ)→𝔹
+λlcm(a:ℤ,b:ℤ)→ℤ
 λmax(a:ℤ,b:ℤ)→ℤ
 λmin(a:ℤ,b:ℤ)→ℤ
+λmod(a:ℤ,b:ℤ)→ℤ
 λpow(base:ℤ,exp:ℤ)→ℤ
 λrange(start:ℤ,stop:ℤ)→[ℤ]
+λsign(x:ℤ)→ℤ
 ```
 
 ## String Operations

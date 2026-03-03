@@ -4,11 +4,22 @@
    Part of Sigil standard library - canonical implementations only.
 ⟧
 
+t DivMod={quotient:ℤ,remainder:ℤ}
+
+⟦ Absolute value ⟧
+λabs(x:ℤ)→ℤ match x<0{true→-x|false→x}
+
 ⟦ Clamp value between min and max ⟧
 λclamp(hi:ℤ,lo:ℤ,x:ℤ)→ℤ=max(lo,min(x,hi))
 
 ⟦ Check if n is divisible by d ⟧
 λdivisible(d:ℤ,n:ℤ)→𝔹=n%d=0
+
+⟦ Quotient and Euclidean remainder pair ⟧
+λdivmod(a:ℤ,b:ℤ)→DivMod={
+  l remainder=(mod(a,b):ℤ);
+  DivMod{quotient:((a-remainder)/b),remainder:remainder}
+}
 
 ⟦ Greatest common divisor (Euclidean algorithm) ⟧
 λgcd(a:ℤ,b:ℤ)→ℤ match b{0→a|divisor→gcd(divisor,a%divisor)}
@@ -53,11 +64,29 @@
   }
 }
 
+⟦ Least common multiple ⟧
+λlcm(a:ℤ,b:ℤ)→ℤ match (a=0) or (b=0){
+  true→0|
+  false→{
+    l gcd_value=(abs(gcd(a,b)):ℤ);
+    abs((a/gcd_value)*b)
+  }
+}
+
 ⟦ Maximum of two numbers ⟧
 λmax(a:ℤ,b:ℤ)→ℤ match a>b{true→a|false→b}
 
 ⟦ Minimum of two numbers ⟧
 λmin(a:ℤ,b:ℤ)→ℤ match a<b{true→a|false→b}
+
+⟦ Euclidean modulo with non-negative remainder ⟧
+λmod(a:ℤ,b:ℤ)→ℤ={
+  l raw=((a%b):ℤ);
+  match raw<0{
+    true→raw+abs(b)|
+    false→raw
+  }
+}
 
 ⟦ Integer power (exponentiation) ⟧
 λpow(base:ℤ,exp:ℤ)→ℤ match exp{
@@ -69,4 +98,13 @@
 λrange(start:ℤ,stop:ℤ)→[ℤ] match start>stop{
   true→[]|
   false→[start]⧺range(start+1,stop)
+}
+
+⟦ Sign of an integer: -1, 0, or 1 ⟧
+λsign(x:ℤ)→ℤ match x<0{
+  true→-1|
+  false→match x=0{
+    true→0|
+    false→1
+  }
 }

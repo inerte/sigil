@@ -604,6 +604,42 @@ This follows Sigil's "ONE way to do things" philosophy.
 
 **Module:** `stdlib/numeric`
 
+### abs
+
+Absolute value of an integer.
+
+```sigil
+λabs(x:ℤ)→ℤ
+```
+
+Examples:
+```sigil
+stdlib⋅numeric.abs(-5)   ⟦ → 5 ⟧
+stdlib⋅numeric.abs(7)    ⟦ → 7 ⟧
+```
+
+### DivMod
+
+Quotient and remainder pair returned by `divmod`.
+
+```sigil
+t DivMod={quotient:ℤ,remainder:ℤ}
+```
+
+### divmod
+
+Return integer quotient and Euclidean remainder together.
+
+```sigil
+λdivmod(a:ℤ,b:ℤ)→stdlib⋅numeric.DivMod
+```
+
+Examples:
+```sigil
+stdlib⋅numeric.divmod(17,5)    ⟦ → DivMod{quotient:3,remainder:2} ⟧
+stdlib⋅numeric.divmod(-17,5)   ⟦ → DivMod{quotient:-4,remainder:3} ⟧
+```
+
 ### is_positive
 
 Check if a number is positive (> 0).
@@ -702,6 +738,36 @@ is_prime(0)                   ⟦ → false ⟧
 
 **Performance:** O(sqrt(n)) time complexity.
 
+### lcm
+
+Least common multiple.
+
+```sigil
+λlcm(a:ℤ,b:ℤ)→ℤ
+```
+
+Examples:
+```sigil
+stdlib⋅numeric.lcm(6,8)     ⟦ → 24 ⟧
+stdlib⋅numeric.lcm(-6,8)    ⟦ → 24 ⟧
+stdlib⋅numeric.lcm(0,7)     ⟦ → 0 ⟧
+```
+
+### mod
+
+Euclidean modulo with a non-negative remainder.
+
+```sigil
+λmod(a:ℤ,b:ℤ)→ℤ
+```
+
+Examples:
+```sigil
+stdlib⋅numeric.mod(17,5)     ⟦ → 2 ⟧
+stdlib⋅numeric.mod(-17,5)    ⟦ → 3 ⟧
+stdlib⋅numeric.mod(17,-5)    ⟦ → 2 ⟧
+```
+
 ### in_range
 
 Check if a number is in the inclusive range [min, max].
@@ -719,6 +785,21 @@ in_range(10,1,10)             ⟦ → true (inclusive bounds) ⟧
 ```
 
 **Use case:** Bounds validation, input checking.
+
+### sign
+
+Return `-1`, `0`, or `1` based on the sign of the input.
+
+```sigil
+λsign(x:ℤ)→ℤ
+```
+
+Examples:
+```sigil
+stdlib⋅numeric.sign(-8)    ⟦ → -1 ⟧
+stdlib⋅numeric.sign(0)     ⟦ → 0 ⟧
+stdlib⋅numeric.sign(12)    ⟦ → 1 ⟧
+```
 
 ## Common Patterns
 

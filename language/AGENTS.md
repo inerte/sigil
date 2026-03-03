@@ -66,6 +66,13 @@ Module scope is declaration-only:
 - use `c` for immutable module-level values
 - move setup bindings inside `main()` or another function body
 
+Record fields are alphabetical everywhere:
+- product type declarations
+- record literals
+- typed record constructors
+- record patterns
+- string-keyed record/map literals
+
 Do not land syntax changes that only update the parser.
 
 ### 2) Preserve canonicality

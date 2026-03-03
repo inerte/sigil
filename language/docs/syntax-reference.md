@@ -132,7 +132,7 @@ Canonical export forms:
 
 ```sigil
 export λdouble(x:ℤ)→ℤ=x*2
-export t Todo={id:ℤ,text:𝕊,done:𝔹}
+export t Todo={done:𝔹,id:ℤ,text:𝕊}
 export c version:𝕊="0.1"
 ```
 
@@ -145,8 +145,15 @@ Notes:
 ## Product type (record)
 
 ```sigil
-t User={id:ℤ,name:𝕊,active:𝔹}
+t User={active:𝔹,id:ℤ,name:𝕊}
 ```
+
+Record fields are canonically alphabetical in:
+- product type declarations
+- record literals
+- typed record construction
+- record patterns
+- string-keyed record/map literals
 
 ## Sum type (ADT)
 
@@ -396,7 +403,7 @@ Concatenation:
 ## Records and field access
 
 ```sigil
-User{id:1,name:"A",active:true}
+User{active:true,id:1,name:"A"}
 todo.done
 todo.text
 ```

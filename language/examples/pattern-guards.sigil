@@ -20,8 +20,8 @@ t Action=Increment|Decrement|Reset
 t Color=Red|Green|Blue
 t Point={x:ℤ,y:ℤ}
 t Result=Ok(ℤ)|Err(𝕊)
-t State={mode:𝕊,count:ℤ}
-t User={name:𝕊,age:ℤ}
+t State={count:ℤ,mode:𝕊}
+t User={age:ℤ,name:𝕊}
 
 e console
 
@@ -94,9 +94,9 @@ conditional list processing.
   l _=(console.log(classifyNumber(-5)):𝕌);
 
   l _=(console.log("\n=== User Validation ==="):𝕌);
-  l _=(console.log(validateUser({name:"Alice",age:30})):𝕌);
-  l _=(console.log(validateUser({name:"",age:25})):𝕌);
-  l _=(console.log(validateUser({name:"Bob",age:-5})):𝕌);
+  l _=(console.log(validateUser({age:30,name:"Alice"})):𝕌);
+  l _=(console.log(validateUser({age:25,name:""})):𝕌);
+  l _=(console.log(validateUser({age:-5,name:"Bob"})):𝕌);
 
   l _=(console.log("\n=== Result Processing ==="):𝕌);
   l _=(console.log(processResult(Ok(150))):𝕌);
@@ -153,11 +153,11 @@ Match on state structure, guard on input conditions.
 ⟧
 
 λstateTransition(action:Action,state:State)→State match action{
-  Increment when state.count<100 → {mode:state.mode,count:state.count+1} |
-  Increment → {mode:"maxed",count:100} |
-  Decrement when state.count>0 → {mode:state.mode,count:state.count-1} |
-  Decrement → {mode:"empty",count:0} |
-  Reset → {mode:"normal",count:0}
+  Increment when state.count<100 → {count:state.count+1,mode:state.mode} |
+  Increment → {count:100,mode:"maxed"} |
+  Decrement when state.count>0 → {count:state.count-1,mode:state.mode} |
+  Decrement → {count:0,mode:"empty"} |
+  Reset → {count:0,mode:"normal"}
 }
 
 ⟦ Example 2: Validating Data

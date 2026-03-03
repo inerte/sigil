@@ -156,6 +156,7 @@ The bidirectional type checker is fully implemented and integrated into the comp
 - List types: `[T]`
 - Tuple types: `(T₁,T₂,...,Tₙ)`
 - Record types: `{field₁:T₁, field₂:T₂, ...}`
+- Canonical form requires record fields to be alphabetically ordered everywhere records appear
 - No generics (each function is monomorphic)
 
 **Type equality** uses canonical structural comparison:

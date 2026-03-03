@@ -198,7 +198,7 @@ Err : ∀T,E.E → Result[T,E]
 ### Product Types (Records)
 
 ```sigil
-t User={id:ℤ,name:𝕊,email:𝕊}
+t User={email:𝕊,id:ℤ,name:𝕊}
 t Point={x:ℝ,y:ℝ}
 ```
 
@@ -206,6 +206,7 @@ t Point={x:ℝ,y:ℝ}
 - Fields have names and types
 - Field access: `user.name` has type `𝕊` if `user : User`
 - Record literals must include all fields
+- Canonical form requires record fields to be alphabetically ordered in declarations, literals, and patterns
 - Named product types participate in structural equality after normalization
 
 ### Type Aliases
@@ -577,7 +578,7 @@ t Vec[T,n:ℤ]=[T]  (* Vector of length n *)
 ### Row Polymorphism
 
 ```sigil
-t User={id:ℤ,name:𝕊,..r}  (* User with at least id and name *)
+t User={id:ℤ,name:𝕊,..r}  (* User with at least id and name; row tail follows fixed fields *)
 ```
 
 ## References

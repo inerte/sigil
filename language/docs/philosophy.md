@@ -54,6 +54,12 @@ const add = new Function('a', 'b', 'return a + b');
 λadd(a:ℤ,b:ℤ)→ℤ=a+b
 ```
 
+That applies to ordering as well:
+- parameters are alphabetical
+- effects are alphabetical
+- declarations are categorized then alphabetical
+- record fields are alphabetical everywhere they appear
+
 #### Parameter Classification for Canonical Forms
 
 Multi-parameter recursion is allowed if parameters are **algorithmically structural**, not accumulating state.

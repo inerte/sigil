@@ -14,7 +14,7 @@ Production email validation is more complex (RFC 5322).
 ⟧
 
 ⟦ Email components after splitting ⟧
-t EmailParts={local:𝕊,domain:𝕊}
+t EmailParts={domain:𝕊,local:𝕊}
 
 ⟦ Result type for validation ⟧
 t ValidationResult=Valid|Invalid(𝕊)
@@ -34,12 +34,12 @@ i stdlib⋅string
 ⟦ Helper: Extract local and domain from split result ⟧
 λextract_parts(parts:[𝕊])→EmailParts match #parts=2{
   true → extract_two_parts(parts) |
-  false → {local:"",domain:""}
+  false → {domain:"",local:""}
 }
 
 λextract_two_parts(parts:[𝕊])→EmailParts match parts{
-  [local,domain] → {local:local,domain:domain} |
-  _ → {local:"",domain:""}
+  [local,domain] → {domain:domain,local:local} |
+  _ → {domain:"",local:""}
 }
 
 ⟦ Helper: Format validation result for display ⟧

@@ -2,18 +2,18 @@
 
 t Block=Header(ℤ,𝕊)|Paragraph(𝕊)
 
-t ParseResult={state:ParseState,blocks:[Block]}
+t ParseResult={blocks:[Block],state:ParseState}
 
 t ParseState={
-  in_code_block:𝔹,
   code_lang:𝕊,
   code_lines:[𝕊],
+  in_code_block:𝔹,
   para_lines:[𝕊]
 }
 
 λmain()→𝕌=()
 
 λtest(x:𝔹)→ParseResult match x{
-  true → {state:{in_code_block:false,code_lang:"",code_lines:[],para_lines:[]},blocks:[]}|
-  false → {state:{in_code_block:true,code_lang:"js",code_lines:["test"],para_lines:[]},blocks:[Paragraph("hi")]}
+  true → {blocks:[],state:{code_lang:"",code_lines:[],in_code_block:false,para_lines:[]}}|
+  false → {blocks:[Paragraph("hi")],state:{code_lang:"js",code_lines:["test"],in_code_block:true,para_lines:[]}}
 }

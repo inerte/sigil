@@ -2,6 +2,6 @@ t Color=Red|Green|Blue
 t Option[T]=Some(T)|None
 t Result[T,E]=Ok(T)|Err(E)
 t Tree[T]=Leaf(T)|Node(Tree[T],T,Tree[T])
-t User={id:ℤ,name:𝕊,email:𝕊,active:𝔹}
+t User={active:𝔹,email:𝕊,id:ℤ,name:𝕊}
 
 λmain()→𝕌=()

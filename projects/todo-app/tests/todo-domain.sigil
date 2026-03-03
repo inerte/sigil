@@ -1,4 +1,4 @@
-t Todo={id:ℤ,text:𝕊,done:𝔹}
+t Todo={done:𝔹,id:ℤ,text:𝕊}
 
 i src⋅todo-domain
 i stdlib⋅numeric
@@ -18,36 +18,36 @@ test "todo add prepends item" {
 }
 
 test "todo clearCompleted keeps active only" {
-  match src⋅todo-domain.clearCompleted([Todo{id:1,text:"A",done:true},Todo{id:2,text:"B",done:false}]){
+  match src⋅todo-domain.clearCompleted([Todo{done:true,id:1,text:"A"},Todo{done:false,id:2,text:"B"}]){
     [todo]→todo.id=2 and todo.done=false|
     _→false
   }
 }
 
 test "todo completedCount counts completed" {
-  src⋅todo-domain.completedCount([Todo{id:1,text:"A",done:true},Todo{id:2,text:"B",done:false},Todo{id:3,text:"C",done:true}])=2
+  src⋅todo-domain.completedCount([Todo{done:true,id:1,text:"A"},Todo{done:false,id:2,text:"B"},Todo{done:true,id:3,text:"C"}])=2
 }
 
 test "todo completedCount result can use numeric predicates" {
-  l count=(src⋅todo-domain.completedCount([Todo{id:1,text:"A",done:true},Todo{id:2,text:"B",done:false},Todo{id:3,text:"C",done:true}]):ℤ);
+  l count=(src⋅todo-domain.completedCount([Todo{done:true,id:1,text:"A"},Todo{done:false,id:2,text:"B"},Todo{done:true,id:3,text:"C"}]):ℤ);
   stdlib⋅numeric.is_even(count)=true and stdlib⋅numeric.in_range(3,0,count)=true
 }
 
 test "todo delete reduces length" {
-  lenTodos(src⋅todo-domain.deleteTodo(1,[Todo{id:1,text:"A",done:false},Todo{id:2,text:"B",done:false}]))=1
+  lenTodos(src⋅todo-domain.deleteTodo(1,[Todo{done:false,id:1,text:"A"},Todo{done:false,id:2,text:"B"}]))=1
 }
 
 test "todo delete removes target" {
-  match src⋅todo-domain.deleteTodo(1,[Todo{id:1,text:"A",done:false},Todo{id:2,text:"B",done:false}]){
+  match src⋅todo-domain.deleteTodo(1,[Todo{done:false,id:1,text:"A"},Todo{done:false,id:2,text:"B"}]){
     [todo]→todo.id=2 and todo.text="B"|
     _→false
   }
 }
 
 test "todo edit updates text" {
-  src⋅todo-domain.editTodo("New",1,[Todo{id:1,text:"Old",done:false}])[0].text="New"
+  src⋅todo-domain.editTodo("New",1,[Todo{done:false,id:1,text:"Old"}])[0].text="New"
 }
 
 test "todo toggle flips done flag" {
-  src⋅todo-domain.toggleTodo(1,[Todo{id:1,text:"Task",done:false}])[0].done=true
+  src⋅todo-domain.toggleTodo(1,[Todo{done:false,id:1,text:"Task"}])[0].done=true
 }

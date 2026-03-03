@@ -126,6 +126,11 @@ pub fn validate_canonical_form(program: &Program, file_path: Option<&str>, sourc
         errors.extend(e);
     }
 
+    // Rule 8: Record fields - alphabetical everywhere
+    if let Err(e) = validate_record_field_ordering(program) {
+        errors.extend(e);
+    }
+
     if errors.is_empty() {
         Ok(())
     } else {
@@ -216,6 +221,226 @@ fn validate_function_signature_ordering(program: &Program) -> Result<(), Vec<Val
     }
 
     // TODO: Also walk lambda expressions in function bodies
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+fn first_out_of_order_field(fields: &[String]) -> Option<(usize, &str, &str, Vec<String>)> {
+    if fields.len() <= 1 {
+        return None;
+    }
+
+    for i in 1..fields.len() {
+        if fields[i] < fields[i - 1] {
+            let mut expected_order = fields.to_vec();
+            expected_order.sort();
+            return Some((i, &fields[i], &fields[i - 1], expected_order));
+        }
+    }
+
+    None
+}
+
+fn validate_record_type_field_ordering(
+    type_name: &str,
+    fields: &[Field],
+    location: SourceLocation,
+) -> Result<(), Vec<ValidationError>> {
+    let names: Vec<String> = fields.iter().map(|field| field.name.clone()).collect();
+
+    if let Some((index, field_name, prev_field, expected_order)) = first_out_of_order_field(&names) {
+        return Err(vec![ValidationError::RecordTypeFieldOrder {
+            type_name: type_name.to_string(),
+            field_name: field_name.to_string(),
+            prev_field: prev_field.to_string(),
+            position: index + 1,
+            expected_order,
+            location,
+        }]);
+    }
+
+    Ok(())
+}
+
+fn validate_record_literal_field_ordering(
+    fields: &[RecordField],
+    location: SourceLocation,
+) -> Result<(), Vec<ValidationError>> {
+    let names: Vec<String> = fields.iter().map(|field| field.name.clone()).collect();
+
+    if let Some((index, field_name, prev_field, expected_order)) = first_out_of_order_field(&names) {
+        return Err(vec![ValidationError::RecordLiteralFieldOrder {
+            field_name: field_name.to_string(),
+            prev_field: prev_field.to_string(),
+            position: index + 1,
+            expected_order,
+            location,
+        }]);
+    }
+
+    Ok(())
+}
+
+fn validate_record_pattern_field_ordering(
+    fields: &[RecordPatternField],
+    location: SourceLocation,
+) -> Result<(), Vec<ValidationError>> {
+    let names: Vec<String> = fields.iter().map(|field| field.name.clone()).collect();
+
+    if let Some((index, field_name, prev_field, expected_order)) = first_out_of_order_field(&names) {
+        return Err(vec![ValidationError::RecordPatternFieldOrder {
+            field_name: field_name.to_string(),
+            prev_field: prev_field.to_string(),
+            position: index + 1,
+            expected_order,
+            location,
+        }]);
+    }
+
+    Ok(())
+}
+
+fn validate_pattern_record_fields(pattern: &Pattern, errors: &mut Vec<ValidationError>) {
+    match pattern {
+        Pattern::Literal(_) | Pattern::Identifier(_) | Pattern::Wildcard(_) => {}
+        Pattern::Constructor(constructor) => {
+            for nested in &constructor.patterns {
+                validate_pattern_record_fields(nested, errors);
+            }
+        }
+        Pattern::List(list) => {
+            for nested in &list.patterns {
+                validate_pattern_record_fields(nested, errors);
+            }
+        }
+        Pattern::Record(record) => {
+            if let Err(e) = validate_record_pattern_field_ordering(&record.fields, record.location) {
+                errors.extend(e);
+            }
+
+            for field in &record.fields {
+                if let Some(pattern) = &field.pattern {
+                    validate_pattern_record_fields(pattern, errors);
+                }
+            }
+        }
+        Pattern::Tuple(tuple) => {
+            for nested in &tuple.patterns {
+                validate_pattern_record_fields(nested, errors);
+            }
+        }
+    }
+}
+
+fn validate_expr_record_fields(expr: &Expr, errors: &mut Vec<ValidationError>) {
+    match expr {
+        Expr::Literal(_) | Expr::Identifier(_) | Expr::MemberAccess(_) => {}
+        Expr::Lambda(lambda) => validate_expr_record_fields(&lambda.body, errors),
+        Expr::Application(application) => {
+            validate_expr_record_fields(&application.func, errors);
+            for arg in &application.args {
+                validate_expr_record_fields(arg, errors);
+            }
+        }
+        Expr::Binary(binary) => {
+            validate_expr_record_fields(&binary.left, errors);
+            validate_expr_record_fields(&binary.right, errors);
+        }
+        Expr::Unary(unary) => validate_expr_record_fields(&unary.operand, errors),
+        Expr::Match(match_expr) => {
+            validate_expr_record_fields(&match_expr.scrutinee, errors);
+            for arm in &match_expr.arms {
+                validate_pattern_record_fields(&arm.pattern, errors);
+                if let Some(guard) = &arm.guard {
+                    validate_expr_record_fields(guard, errors);
+                }
+                validate_expr_record_fields(&arm.body, errors);
+            }
+        }
+        Expr::Let(let_expr) => {
+            validate_pattern_record_fields(&let_expr.pattern, errors);
+            validate_expr_record_fields(&let_expr.value, errors);
+            validate_expr_record_fields(&let_expr.body, errors);
+        }
+        Expr::If(if_expr) => {
+            validate_expr_record_fields(&if_expr.condition, errors);
+            validate_expr_record_fields(&if_expr.then_branch, errors);
+            if let Some(else_branch) = &if_expr.else_branch {
+                validate_expr_record_fields(else_branch, errors);
+            }
+        }
+        Expr::List(list) => {
+            for element in &list.elements {
+                validate_expr_record_fields(element, errors);
+            }
+        }
+        Expr::Record(record) => {
+            if let Err(e) = validate_record_literal_field_ordering(&record.fields, record.location) {
+                errors.extend(e);
+            }
+
+            for field in &record.fields {
+                validate_expr_record_fields(&field.value, errors);
+            }
+        }
+        Expr::Tuple(tuple) => {
+            for element in &tuple.elements {
+                validate_expr_record_fields(element, errors);
+            }
+        }
+        Expr::FieldAccess(field_access) => validate_expr_record_fields(&field_access.object, errors),
+        Expr::Index(index) => {
+            validate_expr_record_fields(&index.object, errors);
+            validate_expr_record_fields(&index.index, errors);
+        }
+        Expr::Pipeline(pipeline) => {
+            validate_expr_record_fields(&pipeline.left, errors);
+            validate_expr_record_fields(&pipeline.right, errors);
+        }
+        Expr::Map(map) => {
+            validate_expr_record_fields(&map.list, errors);
+            validate_expr_record_fields(&map.func, errors);
+        }
+        Expr::Filter(filter) => {
+            validate_expr_record_fields(&filter.list, errors);
+            validate_expr_record_fields(&filter.predicate, errors);
+        }
+        Expr::Fold(fold) => {
+            validate_expr_record_fields(&fold.list, errors);
+            validate_expr_record_fields(&fold.func, errors);
+            validate_expr_record_fields(&fold.init, errors);
+        }
+        Expr::WithMock(with_mock) => {
+            validate_expr_record_fields(&with_mock.target, errors);
+            validate_expr_record_fields(&with_mock.replacement, errors);
+            validate_expr_record_fields(&with_mock.body, errors);
+        }
+        Expr::TypeAscription(type_ascription) => validate_expr_record_fields(&type_ascription.expr, errors),
+    }
+}
+
+fn validate_record_field_ordering(program: &Program) -> Result<(), Vec<ValidationError>> {
+    let mut errors = Vec::new();
+
+    for decl in &program.declarations {
+        match decl {
+            Declaration::Type(type_decl) => {
+                if let TypeDef::Product(product) = &type_decl.definition {
+                    if let Err(e) = validate_record_type_field_ordering(&type_decl.name, &product.fields, product.location) {
+                        errors.extend(e);
+                    }
+                }
+            }
+            Declaration::Function(function) => validate_expr_record_fields(&function.body, &mut errors),
+            Declaration::Const(const_decl) => validate_expr_record_fields(&const_decl.value, &mut errors),
+            Declaration::Test(test_decl) => validate_expr_record_fields(&test_decl.body, &mut errors),
+            Declaration::Extern(_) | Declaration::Import(_) => {}
+        }
+    }
 
     if errors.is_empty() {
         Ok(())

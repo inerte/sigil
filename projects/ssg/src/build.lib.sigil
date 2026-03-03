@@ -72,10 +72,10 @@ i stdlib⋅string
   l content=((src⋅frontmatter.parse_frontmatter(markdown_content)).content:𝕊);
   l html=(stdlib⋅markdown.parse(content):𝕊);
   {
-    meta:meta,
-    markdown:content,
+    filename:get_output_filename(filename,meta),
     html:html,
-    filename:get_output_filename(filename,meta)
+    markdown:content,
+    meta:meta
   }
 
 ⟦ Write all articles helper ⟧

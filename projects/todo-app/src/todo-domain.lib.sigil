@@ -1,6 +1,6 @@
-t Todo={id:ℤ,text:𝕊,done:𝔹}
+t Todo={done:𝔹,id:ℤ,text:𝕊}
 
-λaddTodo(id:ℤ,text:𝕊,todos:[Todo])→[Todo]=[Todo{id:id,text:text,done:false}]⧺todos
+λaddTodo(id:ℤ,text:𝕊,todos:[Todo])→[Todo]=[Todo{done:false,id:id,text:text}]⧺todos
 
 λcanAdd(text:𝕊)→𝔹=text≠""
 
@@ -14,7 +14,7 @@ t Todo={id:ℤ,text:𝕊,done:𝔹}
 λdeleteTodo(targetId:ℤ,todos:[Todo])→[Todo]=todos⊳λ(todo:Todo)→𝔹=todo.id≠targetId
 
 λeditTodo(newText:𝕊,targetId:ℤ,todos:[Todo])→[Todo]=todos↦λ(todo:Todo)→Todo match todo.id=targetId{
-  true→Todo{id:todo.id,text:newText,done:todo.done}|
+  true→Todo{done:todo.done,id:todo.id,text:newText}|
   false→todo
 }
 
@@ -28,6 +28,6 @@ t Todo={id:ℤ,text:𝕊,done:𝔹}
 λremainingCount(completed:ℤ,total:ℤ)→ℤ=total-completed
 
 λtoggleTodo(targetId:ℤ,todos:[Todo])→[Todo]=todos↦λ(todo:Todo)→Todo match todo.id=targetId{
-  true→Todo{id:todo.id,text:todo.text,done:¬todo.done}|
+  true→Todo{done:¬todo.done,id:todo.id,text:todo.text}|
   false→todo
 }

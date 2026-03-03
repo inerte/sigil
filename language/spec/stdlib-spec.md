@@ -407,7 +407,7 @@ Write string to file.
 
 ```sigil
 t IoError={kind:𝕊,msg:𝕊}
-t ParseError={line:ℤ,column:ℤ,msg:𝕊}
+t ParseError={column:ℤ,line:ℤ,msg:𝕊}
 ```
 
 ```sigil
@@ -536,8 +536,8 @@ HTTP client and server
 
 ```sigil
 t HttpMethod=GET|POST|PUT|DELETE|PATCH
-t HttpRequest={method:HttpMethod,url:𝕊,headers:{𝕊:𝕊},body:𝕊}
-t HttpResponse={status:ℤ,headers:{𝕊:𝕊},body:𝕊}
+t HttpRequest={body:𝕊,headers:{𝕊:𝕊},method:HttpMethod,url:𝕊}
+t HttpResponse={body:𝕊,headers:{𝕊:𝕊},status:ℤ}
 
 λhttp_get(url:𝕊)→Result[HttpResponse,HttpError]!Network
 λhttp_post(url:𝕊,body:𝕊)→Result[HttpResponse,HttpError]!Network

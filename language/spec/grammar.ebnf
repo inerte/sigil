@@ -89,7 +89,7 @@ TypeAlias = Type ;
 (* Examples:
    t Option[T]=Some(T)|None
    t Result[T,E]=Ok(T)|Err(E)
-   t User={id:ℤ,name:𝕊,email:𝕊}
+   t User={email:𝕊,id:ℤ,name:𝕊}
 *)
 
 (* ============================================================================ *)
@@ -304,7 +304,7 @@ FieldValue = Identifier , ":" , Expr ;
 
 (* Examples:
    [1,2,3]
-   {id:42,name:"Alice",active:true}
+   {active:true,id:42,name:"Alice"}
    (1,"hello",true)
 *)
 
@@ -439,12 +439,12 @@ Comment = "⟦" , { ? any Unicode character except ⟧ ? } , "⟧" ;
 (* λmap[T,U](fn:λ(T)→U,list:[T])→[U] match list{[]→[]|[x,.xs]→[fn(x),.map(fn,xs)]} *)
 
 (* Example 3: HTTP handler *)
-(* λhandle(req:Request)→Response!Error match req.path{"/users"→get_users(req)|"/health"→Ok(Response{status:200,body:"OK"})|_→Err(Error{code:404,msg:"Not found"})} *)
+(* λhandle(req:Request)→Response!Error match req.path{"/users"→get_users(req)|"/health"→Ok(Response{body:"OK",status:200})|_→Err(Error{code:404,msg:"Not found"})} *)
 
 (* Example 4: Type definitions *)
 (* t Option[T]=Some(T)|None *)
 (* t Result[T,E]=Ok(T)|Err(E) *)
-(* t User={id:ℤ,name:𝕊,email:𝕊,active:𝔹} *)
+(* t User={active:𝔹,email:𝕊,id:ℤ,name:𝕊} *)
 
 (* Example 5: Pipeline *)
 (* λprocess_users(users:[User])→[𝕊]=users|>filter(λu→u.active)|>map(λu→u.name) *)

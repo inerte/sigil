@@ -159,6 +159,34 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
+    #[error("SIGIL-CANON-RECORD-TYPE-FIELD-ORDER: Record type fields out of alphabetical order in '{type_name}'\n\nFound: {field_name} at position {position}\nAfter: {prev_field}\n\nRecord type fields must be alphabetically ordered.\nExpected '{field_name}' to come before '{prev_field}'.\n\nCorrect order: {expected_order:?}\n\nSigil enforces ONE WAY: canonical record field ordering.")]
+    RecordTypeFieldOrder {
+        type_name: String,
+        field_name: String,
+        prev_field: String,
+        position: usize,
+        expected_order: Vec<String>,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-RECORD-LITERAL-FIELD-ORDER: Record literal fields out of alphabetical order\n\nFound: {field_name} at position {position}\nAfter: {prev_field}\n\nRecord literal fields must be alphabetically ordered.\nExpected '{field_name}' to come before '{prev_field}'.\n\nCorrect order: {expected_order:?}\n\nSigil enforces ONE WAY: canonical record field ordering.")]
+    RecordLiteralFieldOrder {
+        field_name: String,
+        prev_field: String,
+        position: usize,
+        expected_order: Vec<String>,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-RECORD-PATTERN-FIELD-ORDER: Record pattern fields out of alphabetical order\n\nFound: {field_name} at position {position}\nAfter: {prev_field}\n\nRecord pattern fields must be alphabetically ordered.\nExpected '{field_name}' to come before '{prev_field}'.\n\nCorrect order: {expected_order:?}\n\nSigil enforces ONE WAY: canonical record field ordering.")]
+    RecordPatternFieldOrder {
+        field_name: String,
+        prev_field: String,
+        position: usize,
+        expected_order: Vec<String>,
+        location: SourceLocation,
+    },
+
     #[error("SIGIL-CANON-TEST-PATH: Test declarations only allowed under project tests/ directory\n\nFile: {file_path}")]
     TestPath {
         file_path: String,
@@ -263,6 +291,9 @@ impl ValidationError {
             ValidationError::BlankLines { location, .. } => *location,
             ValidationError::ParameterOrder { location, .. } => *location,
             ValidationError::EffectOrder { location, .. } => *location,
+            ValidationError::RecordTypeFieldOrder { location, .. } => *location,
+            ValidationError::RecordLiteralFieldOrder { location, .. } => *location,
+            ValidationError::RecordPatternFieldOrder { location, .. } => *location,
             ValidationError::TestPath { location, .. } => *location,
             ValidationError::DeclExportOrder { location, .. } => *location,
             ValidationError::ExternMemberOrder { location, .. } => *location,
@@ -319,6 +350,39 @@ impl From<ValidationError> for Diagnostic {
                 )
                 .with_location(source_location_to_span(get_file(), location))
                 .with_found_expected(&effect_name, &prev_effect)
+                .with_details("expected_order", format!("{:?}", expected_order))
+            }
+
+            ValidationError::RecordTypeFieldOrder { type_name, field_name, prev_field, position: _, expected_order, location } => {
+                Diagnostic::new(
+                    codes::canonical::RECORD_TYPE_FIELD_ORDER,
+                    SigilPhase::Canonical,
+                    format!("Record type field '{}' out of alphabetical order in '{}'", field_name, type_name),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_found_expected(&field_name, &prev_field)
+                .with_details("expected_order", format!("{:?}", expected_order))
+            }
+
+            ValidationError::RecordLiteralFieldOrder { field_name, prev_field, position: _, expected_order, location } => {
+                Diagnostic::new(
+                    codes::canonical::RECORD_LITERAL_FIELD_ORDER,
+                    SigilPhase::Canonical,
+                    format!("Record literal field '{}' out of alphabetical order", field_name),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_found_expected(&field_name, &prev_field)
+                .with_details("expected_order", format!("{:?}", expected_order))
+            }
+
+            ValidationError::RecordPatternFieldOrder { field_name, prev_field, position: _, expected_order, location } => {
+                Diagnostic::new(
+                    codes::canonical::RECORD_PATTERN_FIELD_ORDER,
+                    SigilPhase::Canonical,
+                    format!("Record pattern field '{}' out of alphabetical order", field_name),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_found_expected(&field_name, &prev_field)
                 .with_details("expected_order", format!("{:?}", expected_order))
             }
 

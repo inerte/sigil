@@ -2,23 +2,23 @@
 
 ⟦ Complete article with metadata and content ⟧
 t Article={
-  meta:ArticleMeta,
-  markdown:𝕊,
+  filename:𝕊,
   html:𝕊,
-  filename:𝕊
+  markdown:𝕊,
+  meta:ArticleMeta
 }
 
 ⟦ Article metadata extracted from frontmatter ⟧
 t ArticleMeta={
-  title:𝕊,
-  date:𝕊,
   author:𝕊,
-  slug:𝕊
+  date:𝕊,
+  slug:𝕊,
+  title:𝕊
 }
 
 ⟦ Site configuration ⟧
 t SiteConfig={
-  title:𝕊,
+  base_url:𝕊,
   description:𝕊,
-  base_url:𝕊
+  title:𝕊
 }

@@ -226,6 +226,24 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Example:** `λf()→!IO!Error 𝕌=()` → should be `λf()→!Error!IO 𝕌=()`
 **How to fix:** Sort effects alphabetically
 
+### SIGIL-CANON-RECORD-TYPE-FIELD-ORDER
+**Description:** Product type fields out of alphabetical order.
+**Message:** "Record type field 'X' out of alphabetical order in 'TypeName'"
+**Example:** `t User={name:𝕊,age:ℤ}` → should be `t User={age:ℤ,name:𝕊}`
+**How to fix:** Sort record type fields alphabetically by field name
+
+### SIGIL-CANON-RECORD-LITERAL-FIELD-ORDER
+**Description:** Record literal fields out of alphabetical order.
+**Message:** "Record literal field 'X' out of alphabetical order"
+**Example:** `User{name:\"A\",age:1}` → should be `User{age:1,name:\"A\"}`
+**How to fix:** Sort record literal fields alphabetically by field name
+
+### SIGIL-CANON-RECORD-PATTERN-FIELD-ORDER
+**Description:** Record pattern fields out of alphabetical order.
+**Message:** "Record pattern field 'X' out of alphabetical order"
+**Example:** `match p{{name,age}→...}` → should be `match p{{age,name}→...}`
+**How to fix:** Sort record pattern fields alphabetically by field name
+
 ### SIGIL-CANON-LET-UNTYPED
 **Description:** Let binding must have type ascription.
 **Message:** "Let binding 'name' must have type ascription"

@@ -8,7 +8,7 @@
 
 t IntRoll={rng:Rng,value:ℤ}
 t Rng={seed:ℤ}
-t Room={x:ℤ,y:ℤ,w:ℤ,h:ℤ}
+t Room={h:ℤ,w:ℤ,x:ℤ,y:ℤ}
 t RoomRoll={rng:Rng,room:Room}
 t World={room1:Room,room2:Room,room3:Room}
 
@@ -89,7 +89,7 @@ c width=(48:ℤ)
   l hRoll=(randInt(zh-1,4,wRoll.rng):IntRoll);
   l xRoll=(randInt((zx+zw)-wRoll.value,zx,hRoll.rng):IntRoll);
   l yRoll=(randInt((zy+zh)-hRoll.value,zy,xRoll.rng):IntRoll);
-  l room=(Room{x:xRoll.value,y:yRoll.value,w:wRoll.value,h:hRoll.value}:Room);
+  l room=(Room{h:hRoll.value,w:wRoll.value,x:xRoll.value,y:yRoll.value}:Room);
   RoomRoll{rng:yRoll.rng,room:room}
 }
 

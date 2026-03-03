@@ -13,23 +13,23 @@ t Headers={
 }
 
 t Request={
-  path:𝕊,
-  method:𝕊,
+  body:𝕊,
   headers:Headers,
-  body:𝕊
+  method:𝕊,
+  path:𝕊
 }
 
 ⟦ HTTP response type ⟧
 t Response={
-  status:ℤ,
   body:𝕊,
-  headers:Headers
+  headers:Headers,
+  status:ℤ
 }
 
 ⟦ Opaque Node callback adapter types ⟧
 t NodeRequest={
-  url:𝕊,
-  method:𝕊
+  method:𝕊,
+  url:𝕊
 }
 
 t NodeResponse={}
@@ -46,9 +46,9 @@ i stdlib⋅string
 
 ⟦ Helper: Create a JSON response ⟧
 λjson(body:𝕊,status:ℤ)→Response={
-  status:status,
   body:body,
-  headers:{content_type:"application/json; charset=utf-8"}
+  headers:{content_type:"application/json; charset=utf-8"},
+  status:status
 }
 
 ⟦ Helper: Log HTTP request to console ⟧
@@ -59,30 +59,30 @@ i stdlib⋅string
 
 ⟦ Helper: Create a 404 Not Found response ⟧
 λnot_found()→Response={
-  status:404,
   body:"<h1>404 Not Found</h1>",
-  headers:{content_type:"text/html; charset=utf-8"}
+  headers:{content_type:"text/html; charset=utf-8"},
+  status:404
 }
 
 ⟦ Helper: Create a 404 with custom message ⟧
 λnot_found_msg(path:𝕊)→Response={
-  status:404,
   body:"<h1>404 Not Found</h1><p>Path: "++path++"</p>",
-  headers:{content_type:"text/html; charset=utf-8"}
+  headers:{content_type:"text/html; charset=utf-8"},
+  status:404
 }
 
 ⟦ Helper: Create a 200 OK response ⟧
 λok(body:𝕊)→Response={
-  status:200,
   body:body,
-  headers:{content_type:"text/html; charset=utf-8"}
+  headers:{content_type:"text/html; charset=utf-8"},
+  status:200
 }
 
 ⟦ Helper: Create a custom response ⟧
 λresponse(body:𝕊,content_type:𝕊,status:ℤ)→Response={
-  status:status,
   body:body,
-  headers:{content_type:content_type}
+  headers:{content_type:content_type},
+  status:status
 }
 
 ⟦ Main Export: Start HTTP server on specified port
@@ -120,10 +120,10 @@ Usage:
 
     ⟦ Build Sigil Request object ⟧
     l sigil_request=({
-      path:path,
-      method:method,
+      body:body,
       headers:headers,
-      body:body
+      method:method,
+      path:path
     }:Request);
 
     ⟦ Call user-provided handler ⟧
@@ -152,7 +152,7 @@ Usage:
 
 ⟦ Helper: Create a 500 Internal Server Error response ⟧
 λserver_error(message:𝕊)→Response={
-  status:500,
   body:"<h1>500 Internal Server Error</h1><p>"++message++"</p>",
-  headers:{content_type:"text/html; charset=utf-8"}
+  headers:{content_type:"text/html; charset=utf-8"},
+  status:500
 }

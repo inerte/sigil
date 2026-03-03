@@ -296,16 +296,16 @@ Module-level declarations must appear in strict categorical order:
 
 ```sigil
 ✅ VALID:
-t User = { name: 𝕊, age: ℤ }
+t User={age:ℤ,name:𝕊}
 e console
 i stdlib⋅list
-c MAX_SIZE : ℤ = 100
+c MAX_SIZE:ℤ=100
 λmain()→ℤ=0
 test "example" { ... }
 
 ❌ REJECTED - extern before type:
 e console
-t User = { name: 𝕊, age: ℤ }
+t User={age:ℤ,name:𝕊}
 ⟦ Error: Type declarations must come before extern declarations ⟧
 ```
 
@@ -349,7 +349,31 @@ l config=("prod":𝕊)
 
 Use `c` for immutable module-level values. Use `l` only inside function bodies, test bodies, or nested expressions.
 
-#### Rule 7: Parameter Alphabetical Ordering
+#### Rule 7: Record Fields Are Alphabetical Everywhere
+
+Record fields must be alphabetically ordered in:
+- product type declarations
+- record literals
+- typed record construction
+- record patterns
+- string-keyed record/map literals
+
+```sigil
+✅ VALID:
+t Request={body:𝕊,headers:Headers,method:𝕊,path:𝕊}
+Request{body:body,headers:headers,method:method,path:path}
+match req{{body,headers,method,path}→...}
+
+❌ REJECTED:
+t Request={path:𝕊,method:𝕊,headers:Headers,body:𝕊}
+Request{path:path,method:method,headers:headers,body:body}
+match req{{path,method,headers,body}→...}
+```
+
+Use objective alphabetical ordering for record shapes the same way Sigil already
+does for parameters, effects, and declarations.
+
+#### Rule 8: Parameter Alphabetical Ordering
 
 Function parameters must be in alphabetical order by name.
 

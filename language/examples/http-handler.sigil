@@ -1,10 +1,10 @@
 t Error={code:ℤ,msg:𝕊}
-t Request={path:𝕊,method:𝕊,body:𝕊}
-t Response={status:ℤ,body:𝕊,headers:{𝕊:𝕊}}
+t Request={body:𝕊,method:𝕊,path:𝕊}
+t Response={body:𝕊,headers:{𝕊:𝕊},status:ℤ}
 t Result=Ok(Response)|Err(Error)
 
-λget_users(req:Request)→Result=Ok(Response{status:200,body:"[{\"id\":1,\"name\":\"Alice\"}]",headers:{"Content-Type":"application/json"}})
+λget_users(req:Request)→Result=Ok(Response{body:"[{\"id\":1,\"name\":\"Alice\"}]",headers:{"Content-Type":"application/json"},status:200})
 
-λhandle_request(req:Request)→Result match req.path{"/users"→get_users(req)|"/health"→Ok(Response{status:200,body:"OK",headers:{}})|_→Err(Error{code:404,msg:"Not found"})}
+λhandle_request(req:Request)→Result match req.path{"/users"→get_users(req)|"/health"→Ok(Response{body:"OK",headers:{},status:200})|_→Err(Error{code:404,msg:"Not found"})}
 
-λmain()→Result=handle_request(Request{path:"/users",method:"GET",body:""})
+λmain()→Result=handle_request(Request{body:"",method:"GET",path:"/users"})

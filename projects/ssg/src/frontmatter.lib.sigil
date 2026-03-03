@@ -1,7 +1,7 @@
-t ParseResult={meta:src⋅types.ArticleMeta,content:𝕊}
+t ParseResult={content:𝕊,meta:src⋅types.ArticleMeta}
 
 i src⋅types
 
 λparse_frontmatter(markdown:𝕊)→ParseResult=
-  l default_meta=({title:"Untitled",date:"",author:"",slug:""}:src⋅types.ArticleMeta);
-  {meta:default_meta,content:markdown}
+  l default_meta=({author:"",date:"",slug:"",title:"Untitled"}:src⋅types.ArticleMeta);
+  {content:markdown,meta:default_meta}

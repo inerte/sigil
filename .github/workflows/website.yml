@@ -44,8 +44,6 @@ jobs:
           node-version: 20
 
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
 
       - name: Build sigil-cli
         run: cargo build --manifest-path language/compiler/Cargo.toml -p sigil-cli

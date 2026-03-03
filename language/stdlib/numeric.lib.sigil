@@ -84,6 +84,3 @@ i stdlib⋅list
 
 ⟦ Sum of integers from a to b ⟧
 λsum_range(a:ℤ,b:ℤ)→ℤ=stdlib⋅list.sum(range(a,b))
-
-⟦ Sum of integers from 1 to n ⟧
-λsum_to(n:ℤ)→ℤ match n{0→0|value→value+sum_to(value-1)}

@@ -118,7 +118,6 @@ Unsafe `head` and `tail` remain concrete convenience functions.
 λpow(base:ℤ,exp:ℤ)→ℤ
 λrange(start:ℤ,stop:ℤ)→[ℤ]
 λsum_range(a:ℤ,b:ℤ)→ℤ
-λsum_to(n:ℤ)→ℤ
 ```
 
 ## String Operations

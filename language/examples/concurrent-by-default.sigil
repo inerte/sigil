@@ -1,0 +1,11 @@
+⟦ Concurrent-by-default evaluation.
+
+  Independent computations can be started before the final strict consumer joins them.
+  The source stays ordinary Sigil; the compiler handles overlap.
+⟧
+
+λleft()→ℤ=21
+
+λmain()→ℤ=left()+right()
+
+λright()→ℤ=21

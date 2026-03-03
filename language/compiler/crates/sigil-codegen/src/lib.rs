@@ -3,8 +3,8 @@
 //! Compiles Sigil AST to runnable TypeScript (ES2022-compatible output).
 //!
 //! Key transformations:
-//! - All functions become `async function`
-//! - All function calls use `await`
+//! - All functions return promise-shaped values
+//! - Ordinary function calls compose without eager `await`
 //! - Pattern matching compiles to if/else chains with `__match` variables
 //! - Sum type constructors compile to objects with __tag and __fields
 //! - Mock runtime helpers emitted at top of file
@@ -111,8 +111,22 @@ impl TypeScriptGenerator {
         self.output.push(format!("{}{}\n", indentation, line));
     }
 
+    fn js_ready(&self, expr: &str) -> String {
+        format!("__sigil_ready({})", expr)
+    }
+
+    fn js_all(&self, exprs: &[String]) -> String {
+        format!("__sigil_all([{}])", exprs.join(", "))
+    }
+
     fn emit_mock_runtime_helpers(&mut self) {
         self.emit("const __sigil_mocks = new Map();");
+        self.emit("function __sigil_ready(value) {");
+        self.emit("  return Promise.resolve(value);");
+        self.emit("}");
+        self.emit("function __sigil_all(values) {");
+        self.emit("  return Promise.all(values.map((value) => Promise.resolve(value)));");
+        self.emit("}");
         self.emit("function __sigil_deep_equal(a, b) {");
         self.emit("  if (a === b) return true;");
         self.emit("  if (a == null || b == null) return false;");
@@ -174,10 +188,10 @@ impl TypeScriptGenerator {
         self.emit("  if (ok) { return { ok: true }; }");
         self.emit("  return { ok: false, failure: { kind: 'comparison_mismatch', message: 'Comparison test failed', operator: op, actual: __sigil_preview(actual), expected: __sigil_preview(expected), diffHint: __sigil_diff_hint(actual, expected) } };");
         self.emit("}");
-        self.emit("async function __sigil_call(key, actualFn, args = []) {");
+        self.emit("function __sigil_call(key, actualFn, args = []) {");
         self.emit("  const mockFn = __sigil_mocks.get(key);");
         self.emit("  const fn = mockFn ?? actualFn;");
-        self.emit("  return await fn(...args);");
+        self.emit("  return Promise.resolve().then(() => fn(...args));");
         self.emit("}");
         self.emit("async function __sigil_with_mock(key, mockFn, body) {");
         self.emit("  const had = __sigil_mocks.has(key);");
@@ -228,9 +242,9 @@ impl TypeScriptGenerator {
         };
 
         let fn_keyword = if should_export {
-            "export async function"
+            "export function"
         } else {
-            "async function"
+            "function"
         };
 
         self.emit(&format!("{} {}({}) {{", fn_keyword, impl_name, params_str));
@@ -246,14 +260,14 @@ impl TypeScriptGenerator {
         if func.is_mockable {
             self.emit("");
             let export_keyword = if should_export { "export " } else { "" };
-            self.emit(&format!("{}async function {}({}) {{", export_keyword, func.name, params_str));
+            self.emit(&format!("{}function {}({}) {{", export_keyword, func.name, params_str));
             self.indent += 1;
             let args = if params.is_empty() {
                 String::new()
             } else {
                 format!(", {}", params_str)
             };
-            self.emit(&format!("return await __sigil_call('{}', {}{});", func.name, impl_name, args));
+            self.emit(&format!("return __sigil_call('{}', {}{});", func.name, impl_name, args));
             self.indent -= 1;
             self.emit("}");
         }
@@ -281,17 +295,21 @@ impl TypeScriptGenerator {
 
                 // Export constructors from .lib.sigil files
                 let ctor_keyword = if self.should_export_from_lib() {
-                    "export async function"
+                    "export function"
                 } else {
-                    "async function"
+                    "function"
                 };
 
                 self.emit(&format!("{} {}({}) {{", ctor_keyword, variant.name, params));
                 self.indent += 1;
-                self.emit(&format!(
-                    "return {{ __tag: \"{}\", __fields: [{}] }};",
-                    variant.name, params
-                ));
+                if param_names.is_empty() {
+                    self.emit(&format!(
+                        "return __sigil_ready({{ __tag: \"{}\", __fields: [] }});",
+                        variant.name
+                    ));
+                } else {
+                    self.emit(&format!("return {}.then((__fields) => ({{ __tag: \"{}\", __fields }}));", self.js_all(&param_names), variant.name));
+                }
                 self.indent -= 1;
                 self.emit("}");
             }
@@ -394,7 +412,7 @@ impl TypeScriptGenerator {
     fn generate_expression(&mut self, expr: &Expr) -> Result<String, CodegenError> {
         match expr {
             Expr::Literal(lit) => self.generate_literal(lit),
-            Expr::Identifier(id) => Ok(id.name.clone()),
+            Expr::Identifier(id) => Ok(self.js_ready(&id.name)),
             Expr::Lambda(lambda) => self.generate_lambda(lambda),
             Expr::Application(app) => self.generate_application(app),
             Expr::Binary(bin) => self.generate_binary(bin),
@@ -419,27 +437,22 @@ impl TypeScriptGenerator {
     }
 
     fn generate_literal(&mut self, lit: &LiteralExpr) -> Result<String, CodegenError> {
-        match &lit.value {
-            LiteralValue::Int(n) => Ok(n.to_string()),
-            LiteralValue::Float(f) => Ok(f.to_string()),
-            LiteralValue::String(s) => {
-                // Use JSON encoding to properly escape all special characters including newlines
-                Ok(serde_json::to_string(s).unwrap())
-            }
-            LiteralValue::Char(c) => {
-                // Chars are also strings in JavaScript, use JSON encoding
-                Ok(serde_json::to_string(&c.to_string()).unwrap())
-            }
-            LiteralValue::Bool(b) => Ok(b.to_string()),
-            LiteralValue::Unit => Ok("null".to_string()),
-        }
+        let value = match &lit.value {
+            LiteralValue::Int(n) => n.to_string(),
+            LiteralValue::Float(f) => f.to_string(),
+            LiteralValue::String(s) => serde_json::to_string(s).unwrap(),
+            LiteralValue::Char(c) => serde_json::to_string(&c.to_string()).unwrap(),
+            LiteralValue::Bool(b) => b.to_string(),
+            LiteralValue::Unit => "null".to_string(),
+        };
+        Ok(self.js_ready(&value))
     }
 
     fn generate_lambda(&mut self, lambda: &LambdaExpr) -> Result<String, CodegenError> {
         let params: Vec<String> = lambda.params.iter().map(|p| p.name.clone()).collect();
         let params_str = params.join(", ");
         let body = self.generate_expression(&lambda.body)?;
-        Ok(format!("(async ({}) => {})", params_str, body))
+        Ok(format!("(({}) => {})", params_str, body))
     }
 
     fn generate_application(&mut self, app: &ApplicationExpr) -> Result<String, CodegenError> {
@@ -463,13 +476,49 @@ impl TypeScriptGenerator {
                 .next()
                 .is_some_and(|ch| ch.is_uppercase())
             {
-                let func = self.generate_member_access(member_access)?;
-                let args: Result<Vec<String>, CodegenError> = app.args.iter()
+                let func = format!(
+                    "{}.{}",
+                    sanitize_js_identifier(&member_access.namespace.join("_")),
+                    member_access.member
+                );
+                let args: Vec<String> = app.args.iter()
                     .map(|arg| self.generate_expression(arg))
-                    .collect();
-                let args_str = args?.join(", ");
-                return Ok(format!("await {}({})", func, args_str));
+                    .collect::<Result<_, _>>()?;
+                let mut values = vec![func];
+                values.extend(args);
+                return Ok(format!(
+                    "{}.then(([__sigil_fn, ...__sigil_args]) => __sigil_fn(...__sigil_args))",
+                    self.js_all(&values)
+                ));
             }
+        }
+
+        if let Expr::FieldAccess(field_access) = &app.func {
+            let object = self.generate_expression(&field_access.object)?;
+            let args: Vec<String> = app.args.iter()
+                .map(|arg| self.generate_expression(arg))
+                .collect::<Result<_, _>>()?;
+            let mut values = vec![object];
+            values.extend(args);
+            return Ok(format!(
+                "{}.then(([__sigil_object, ...__sigil_args]) => __sigil_object.{}.call(__sigil_object, ...__sigil_args))",
+                self.js_all(&values),
+                field_access.field
+            ));
+        }
+
+        if let Expr::Index(index_expr) = &app.func {
+            let object = self.generate_expression(&index_expr.object)?;
+            let index = self.generate_expression(&index_expr.index)?;
+            let args: Vec<String> = app.args.iter()
+                .map(|arg| self.generate_expression(arg))
+                .collect::<Result<_, _>>()?;
+            let mut values = vec![object, index];
+            values.extend(args);
+            return Ok(format!(
+                "{}.then(([__sigil_object, __sigil_index, ...__sigil_args]) => __sigil_object[__sigil_index].call(__sigil_object, ...__sigil_args))",
+                self.js_all(&values)
+            ));
         }
 
         // Check if this is a call to an imported function (MemberAccess)
@@ -488,24 +537,30 @@ impl TypeScriptGenerator {
             );
 
             // Generate arguments
-            let args: Result<Vec<String>, CodegenError> = app.args.iter()
+            let args: Vec<String> = app.args.iter()
                 .map(|arg| self.generate_expression(arg))
-                .collect();
-            let args_list = args?.join(", ");
+                .collect::<Result<_, _>>()?;
 
             // Wrap in __sigil_call
-            Ok(format!("await __sigil_call(\"{}\", {}, [{}])",
-                mock_key, func_ref, args_list))
+            Ok(format!(
+                "{}.then((__sigil_args) => __sigil_call(\"{}\", {}, __sigil_args))",
+                self.js_all(&args),
+                mock_key,
+                func_ref
+            ))
         } else {
             // Regular function call
             let func = self.generate_expression(&app.func)?;
-            let args: Result<Vec<String>, CodegenError> = app.args.iter()
+            let args: Vec<String> = app.args.iter()
                 .map(|arg| self.generate_expression(arg))
-                .collect();
-            let args_str = args?.join(", ");
+                .collect::<Result<_, _>>()?;
+            let mut values = vec![func];
+            values.extend(args);
 
-            // All function calls use await
-            Ok(format!("await {}({})", func, args_str))
+            Ok(format!(
+                "{}.then(([__sigil_fn, ...__sigil_args]) => __sigil_fn(...__sigil_args))",
+                self.js_all(&values)
+            ))
         }
     }
 
@@ -541,49 +596,49 @@ impl TypeScriptGenerator {
 
         match member {
             "char_at" if generated_args.len() == 2 => {
-                Ok(Some(format!("(await {}).charAt(await {})", generated_args[1], generated_args[0])))
+                Ok(Some(format!("{}.then(([__index, __string]) => __sigil_ready(__string.charAt(__index)))", self.js_all(&generated_args))))
             }
             "substring" if generated_args.len() == 3 => {
-                Ok(Some(format!("(await {}).substring(await {}, await {})", generated_args[1], generated_args[2], generated_args[0])))
+                Ok(Some(format!("{}.then(([__end, __string, __start]) => __sigil_ready(__string.substring(__start, __end)))", self.js_all(&generated_args))))
             }
             "to_upper" if generated_args.len() == 1 => {
-                Ok(Some(format!("(await {}).toUpperCase()", generated_args[0])))
+                Ok(Some(format!("{}.then((__value) => __value.toUpperCase())", generated_args[0])))
             }
             "to_lower" if generated_args.len() == 1 => {
-                Ok(Some(format!("(await {}).toLowerCase()", generated_args[0])))
+                Ok(Some(format!("{}.then((__value) => __value.toLowerCase())", generated_args[0])))
             }
             "trim" if generated_args.len() == 1 => {
-                Ok(Some(format!("(await {}).trim()", generated_args[0])))
+                Ok(Some(format!("{}.then((__value) => __value.trim())", generated_args[0])))
             }
             "index_of" if generated_args.len() == 2 => {
-                Ok(Some(format!("(await {}).indexOf(await {})", generated_args[0], generated_args[1])))
+                Ok(Some(format!("{}.then(([__string, __needle]) => __string.indexOf(__needle))", self.js_all(&generated_args))))
             }
             "split" if generated_args.len() == 2 => {
-                Ok(Some(format!("(await {}).split(await {})", generated_args[1], generated_args[0])))
+                Ok(Some(format!("{}.then(([__separator, __string]) => __string.split(__separator))", self.js_all(&generated_args))))
             }
             "replace_all" if generated_args.len() == 3 => {
-                Ok(Some(format!("(await {}).replaceAll(await {}, await {})", generated_args[2], generated_args[0], generated_args[1])))
+                Ok(Some(format!("{}.then(([__search, __replacement, __string]) => __string.replaceAll(__search, __replacement))", self.js_all(&generated_args))))
             }
             "int_to_string" if generated_args.len() == 1 => {
-                Ok(Some(format!("String(await {})", generated_args[0])))
+                Ok(Some(format!("{}.then((__value) => String(__value))", generated_args[0])))
             }
             "join" if generated_args.len() == 2 => {
-                Ok(Some(format!("(await {}).join(await {})", generated_args[1], generated_args[0])))
+                Ok(Some(format!("{}.then(([__separator, __items]) => __items.join(__separator))", self.js_all(&generated_args))))
             }
             "take" if generated_args.len() == 2 => {
-                Ok(Some(format!("(await {}).substring(0, await {})", generated_args[1], generated_args[0])))
+                Ok(Some(format!("{}.then(([__count, __string]) => __string.substring(0, __count))", self.js_all(&generated_args))))
             }
             "drop" if generated_args.len() == 2 => {
-                Ok(Some(format!("(await {}).substring(await {})", generated_args[1], generated_args[0])))
+                Ok(Some(format!("{}.then(([__count, __string]) => __string.substring(__count))", self.js_all(&generated_args))))
             }
             "starts_with" if generated_args.len() == 2 => {
-                Ok(Some(format!("(await {}).startsWith(await {})", generated_args[1], generated_args[0])))
+                Ok(Some(format!("{}.then(([__prefix, __string]) => __string.startsWith(__prefix))", self.js_all(&generated_args))))
             }
             "ends_with" if generated_args.len() == 2 => {
-                Ok(Some(format!("(await {}).endsWith(await {})", generated_args[0], generated_args[1])))
+                Ok(Some(format!("{}.then(([__string, __suffix]) => __string.endsWith(__suffix))", self.js_all(&generated_args))))
             }
             "is_digit" if generated_args.len() == 1 => {
-                Ok(Some(format!("/^[0-9]$/.test(await {})", generated_args[0])))
+                Ok(Some(format!("{}.then((__value) => /^[0-9]$/.test(__value))", generated_args[0])))
             }
             _ => Ok(None),
         }
@@ -612,7 +667,10 @@ impl TypeScriptGenerator {
             BinaryOperator::ListAppend => ".concat",  // Will need special handling
             BinaryOperator::Pipe => {
                 // Pipeline operator - right(left)
-                return Ok(format!("(await {}({}))", right, left));
+                return Ok(format!(
+                    "{}.then(([__sigil_fn, __sigil_value]) => __sigil_fn(__sigil_value))",
+                    self.js_all(&[right, left])
+                ));
             }
             BinaryOperator::ComposeFwd | BinaryOperator::ComposeBwd => {
                 // Function composition - defer to helper
@@ -620,14 +678,32 @@ impl TypeScriptGenerator {
             }
         };
 
-        if bin.operator == BinaryOperator::Equal {
-            Ok(format!("__sigil_deep_equal({}, {})", left, right))
-        } else if bin.operator == BinaryOperator::NotEqual {
-            Ok(format!("!__sigil_deep_equal({}, {})", left, right))
-        } else if bin.operator == BinaryOperator::ListAppend {
-            Ok(format!("({}).concat({})", left, right))
-        } else {
-            Ok(format!("({} {} {})", left, op, right))
+        match bin.operator {
+            BinaryOperator::Equal => Ok(format!(
+                "{}.then(([__left, __right]) => __sigil_deep_equal(__left, __right))",
+                self.js_all(&[left, right])
+            )),
+            BinaryOperator::NotEqual => Ok(format!(
+                "{}.then(([__left, __right]) => !__sigil_deep_equal(__left, __right))",
+                self.js_all(&[left, right])
+            )),
+            BinaryOperator::ListAppend => Ok(format!(
+                "{}.then(([__left, __right]) => __left.concat(__right))",
+                self.js_all(&[left, right])
+            )),
+            BinaryOperator::And => Ok(format!(
+                "{}.then((__left) => __left ? {}.then((__right) => (__left && __right)) : false)",
+                left, right
+            )),
+            BinaryOperator::Or => Ok(format!(
+                "{}.then((__left) => __left ? true : {}.then((__right) => (__left || __right)))",
+                left, right
+            )),
+            _ => Ok(format!(
+                "{}.then(([__left, __right]) => (__left {} __right))",
+                self.js_all(&[left, right]),
+                op
+            )),
         }
     }
 
@@ -635,9 +711,9 @@ impl TypeScriptGenerator {
         let operand = self.generate_expression(&un.operand)?;
 
         match un.operator {
-            UnaryOperator::Negate => Ok(format!("(-{})", operand)),
-            UnaryOperator::Not => Ok(format!("(!{})", operand)),
-            UnaryOperator::Length => Ok(format!("(await {}).length", operand)),
+            UnaryOperator::Negate => Ok(format!("{}.then((__value) => (-__value))", operand)),
+            UnaryOperator::Not => Ok(format!("{}.then((__value) => (!__value))", operand)),
+            UnaryOperator::Length => Ok(format!("{}.then((__value) => __value.length)", operand)),
         }
     }
 
@@ -647,10 +723,10 @@ impl TypeScriptGenerator {
 
         if let Some(ref else_branch) = if_expr.else_branch {
             let else_code = self.generate_expression(else_branch)?;
-            Ok(format!("({} ? {} : {})", condition, then_branch, else_code))
+            Ok(format!("{}.then((__cond) => (__cond ? {} : {}))", condition, then_branch, else_code))
         } else {
             // No else branch - return null for the false case
-            Ok(format!("({} ? {} : null)", condition, then_branch))
+            Ok(format!("{}.then((__cond) => (__cond ? {} : __sigil_ready(null)))", condition, then_branch))
         }
     }
 
@@ -658,44 +734,63 @@ impl TypeScriptGenerator {
         let elements: Result<Vec<String>, CodegenError> = list.elements.iter()
             .map(|elem| self.generate_expression(elem))
             .collect();
-        Ok(format!("[{}]", elements?.join(", ")))
+        let elements = elements?;
+        Ok(format!("{}.then((__items) => __items)", self.js_all(&elements)))
     }
 
     fn generate_tuple(&mut self, tuple: &TupleExpr) -> Result<String, CodegenError> {
         let elements: Result<Vec<String>, CodegenError> = tuple.elements.iter()
             .map(|elem| self.generate_expression(elem))
             .collect();
-        Ok(format!("[{}]", elements?.join(", ")))
+        let elements = elements?;
+        Ok(format!("{}.then((__items) => __items)", self.js_all(&elements)))
     }
 
     fn generate_record(&mut self, record: &RecordExpr) -> Result<String, CodegenError> {
-        let fields: Result<Vec<String>, CodegenError> = record.fields.iter()
-            .map(|field| {
-                let value = self.generate_expression(&field.value)?;
-                // Always quote field names using JSON encoding (handles special chars like Content-Type)
-                let quoted_name = serde_json::to_string(&field.name)
+        let field_names: Vec<String> = record.fields.iter().map(|field| field.name.clone()).collect();
+        let values: Vec<String> = record.fields.iter()
+            .map(|field| self.generate_expression(&field.value))
+            .collect::<Result<_, _>>()?;
+
+        let assignments: Result<Vec<String>, CodegenError> = field_names
+            .iter()
+            .enumerate()
+            .map(|(index, field_name)| {
+                let quoted_name = serde_json::to_string(field_name)
                     .map_err(|e| CodegenError::General(format!("Failed to JSON-encode field name: {}", e)))?;
-                Ok(format!("{}: {}", quoted_name, value))
+                Ok(format!("{}: __values[{}]", quoted_name, index))
             })
             .collect();
-        Ok(format!("{{ {} }}", fields?.join(", ")))
+
+        Ok(format!(
+            "{}.then((__values) => ({{ {} }}))",
+            self.js_all(&values),
+            assignments?.join(", ")
+        ))
     }
 
     fn generate_field_access(&mut self, field_access: &FieldAccessExpr) -> Result<String, CodegenError> {
         let object = self.generate_expression(&field_access.object)?;
-        Ok(format!("({}).{}", object, field_access.field))
+        Ok(format!(
+            "{}.then((__value) => __value.{} )",
+            object,
+            field_access.field
+        ))
     }
 
     fn generate_index(&mut self, index: &IndexExpr) -> Result<String, CodegenError> {
         let object = self.generate_expression(&index.object)?;
         let idx = self.generate_expression(&index.index)?;
-        Ok(format!("({})[{}]", object, idx))
+        Ok(format!(
+            "{}.then(([__value, __index]) => __value[__index])",
+            self.js_all(&[object, idx])
+        ))
     }
 
     fn generate_member_access(&mut self, member_access: &MemberAccessExpr) -> Result<String, CodegenError> {
         // Convert namespace⋅path to namespace_path.member
         let namespace = sanitize_js_identifier(&member_access.namespace.join("_"));
-        Ok(format!("{}.{}", namespace, member_access.member))
+        Ok(self.js_ready(&format!("{}.{}", namespace, member_access.member)))
     }
 
     fn generate_let(&mut self, let_expr: &LetExpr) -> Result<String, CodegenError> {
@@ -859,7 +954,10 @@ impl TypeScriptGenerator {
     fn generate_map(&mut self, map: &MapExpr) -> Result<String, CodegenError> {
         let list = self.generate_expression(&map.list)?;
         let func = self.generate_expression(&map.func)?;
-        Ok(format!("(await Promise.all({}.map(async (x) => await {}(x))))", list, func))
+        Ok(format!(
+            "{}.then(([__items, __fn]) => Promise.all(__items.map((x) => __fn(x))))",
+            self.js_all(&[list, func])
+        ))
     }
 
     fn generate_filter(&mut self, filter: &FilterExpr) -> Result<String, CodegenError> {
@@ -867,8 +965,8 @@ impl TypeScriptGenerator {
         let predicate = self.generate_expression(&filter.predicate)?;
         // Inline filter expansion keeps generated output deterministic
         Ok(format!(
-            "(await Promise.all((await {}).map(async (x) => ({{ x, keep: await {}(x) }})))).filter(({{ keep }}) => keep).map(({{ x }}) => x)",
-            list, predicate
+            "{}.then(([__items, __predicate]) => Promise.all(__items.map((x) => Promise.resolve(__predicate(x)).then((keep) => ({{ x, keep }})))).then((__pairs) => __pairs.filter(({{ keep }}) => keep).map(({{ x }}) => x)))",
+            self.js_all(&[list, predicate])
         ))
     }
 
@@ -878,8 +976,8 @@ impl TypeScriptGenerator {
         let init = self.generate_expression(&fold.init)?;
         // Inline fold expansion keeps generated output deterministic
         Ok(format!(
-            "(await {}).reduce(async (accPromise, x) => await {}(await accPromise, x), await {})",
-            list, func, init
+            "{}.then(([__items, __fn, __init]) => __items.reduce((__acc, x) => __acc.then((acc) => __fn(acc, x)), Promise.resolve(__init)))",
+            self.js_all(&[list, func, init])
         ))
     }
 
@@ -889,8 +987,11 @@ impl TypeScriptGenerator {
 
         match pipeline.operator {
             PipelineOperator::Pipe => {
-                // a |> f becomes await f(a)
-                Ok(format!("(await {}({}))", right, left))
+                // a |> f becomes f(a) without eager await
+                Ok(format!(
+                    "{}.then(([__sigil_value, __sigil_fn]) => __sigil_fn(__sigil_value))",
+                    self.js_all(&[left, right])
+                ))
             }
             PipelineOperator::ComposeFwd | PipelineOperator::ComposeBwd => {
                 Err(CodegenError::General("Function composition not yet implemented".to_string()))
@@ -899,16 +1000,34 @@ impl TypeScriptGenerator {
     }
 
     fn generate_with_mock(&mut self, with_mock: &WithMockExpr) -> Result<String, CodegenError> {
-        let target = self.generate_expression(&with_mock.target)?;
         let replacement = self.generate_expression(&with_mock.replacement)?;
         let body = self.generate_expression(&with_mock.body)?;
-
-        // Extract function name from target for mock registration
-        // For now, simplified - assumes target is an identifier
-        Ok(format!(
-            "__sigil_with_mock('{}', {}, async () => {})",
-            target, replacement, body
-        ))
+        match &with_mock.target {
+            Expr::Identifier(id) => Ok(format!(
+                "__sigil_with_mock('{}', {}, async () => {})",
+                id.name,
+                replacement,
+                body
+            )),
+            Expr::MemberAccess(member_access) => {
+                let key = format!("extern:{}.{}", member_access.namespace.join("/"), member_access.member);
+                let func_ref = format!(
+                    "{}.{}",
+                    sanitize_js_identifier(&member_access.namespace.join("_")),
+                    member_access.member
+                );
+                Ok(format!(
+                    "__sigil_with_mock_extern('{}', {}, {}, async () => {})",
+                    key,
+                    func_ref,
+                    replacement,
+                    body
+                ))
+            }
+            _ => Err(CodegenError::General(
+                "with_mock target must be an identifier or imported member access".to_string(),
+            )),
+        }
     }
 }
 
@@ -1002,8 +1121,9 @@ mod tests {
         let mut gen = TypeScriptGenerator::new(CodegenOptions::default());
         let result = gen.generate(&program).unwrap();
 
-        // Should contain async function
-        assert!(result.contains("async function add"));
+        // Should contain a plain function that returns promise-shaped values
+        assert!(result.contains("function add"));
+        assert!(!result.contains("async function add"));
         // Should contain return statement
         assert!(result.contains("return"));
         // Should contain parameters
@@ -1019,10 +1139,11 @@ mod tests {
         let mut gen = TypeScriptGenerator::new(CodegenOptions::default());
         let result = gen.generate(&program).unwrap();
 
-        // Should contain constructor functions
-        assert!(result.contains("async function Red"));
-        assert!(result.contains("async function Green"));
-        assert!(result.contains("async function Blue"));
+        // Should contain constructor functions without eager async wrappers
+        assert!(result.contains("function Red"));
+        assert!(result.contains("function Green"));
+        assert!(result.contains("function Blue"));
+        assert!(!result.contains("async function Red"));
         // Should use __tag pattern
         assert!(result.contains("__tag"));
     }
@@ -1036,8 +1157,8 @@ mod tests {
         let mut gen = TypeScriptGenerator::new(CodegenOptions::default());
         let result = gen.generate(&program).unwrap();
 
-        assert!(result.contains("async function __sigil_call(key, actualFn, args = [])"));
-        assert!(result.contains("return await __sigil_call('ping', __sigil_impl_ping);"));
+        assert!(result.contains("function __sigil_call(key, actualFn, args = [])"));
+        assert!(result.contains("return __sigil_call('ping', __sigil_impl_ping);"));
     }
 
     #[test]
@@ -1104,7 +1225,7 @@ mod tests {
         let mut gen = TypeScriptGenerator::new(CodegenOptions::default());
         let result = gen.generate(&program).unwrap();
 
-        assert!(result.contains("return [xs];"));
+        assert!(result.contains(".then((__items) => __items)"));
         assert!(!result.contains("[].concat(xs)"));
     }
 
@@ -1133,7 +1254,7 @@ mod tests {
         });
         let result = gen.generate(&program).unwrap();
 
-        assert!(result.contains("await src_graph_types.Ordering([])"));
+        assert!(result.contains("src_graph_types.Ordering"));
         assert!(!result.contains("__sigil_call(\"extern:src/graph-types.Ordering\""));
     }
 

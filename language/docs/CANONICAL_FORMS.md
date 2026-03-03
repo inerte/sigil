@@ -450,15 +450,14 @@ Effect annotations must be in alphabetical order.
 
 ```sigil
 ✅ VALID - alphabetical order:
-λfetch()→!Async !IO !Network 𝕊="data"
+λfetch()→!Error !IO !Network 𝕊="data"
 
 ❌ REJECTED - non-alphabetical:
-λfetch()→!Network !IO !Async 𝕊="data"
+λfetch()→!Network !IO !Error 𝕊="data"
 ⟦ Error: Effect out of alphabetical order ⟧
 ```
 
 **Standard effect order (alphabetical):**
-- `!Async` before `!Error`
 - `!Error` before `!IO`
 - `!IO` before `!Mut`
 - `!Mut` before `!Network`
@@ -479,7 +478,7 @@ After: !Network at position 1
 Effects must be alphabetically ordered.
 Expected 'IO' to come before 'Network'.
 
-Correct order: !Async !IO !Network
+Correct order: !Error !IO !Network
 
 Sigil enforces ONE WAY: canonical effect ordering.
 ```
@@ -679,7 +678,7 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compil
 7. Use `\n` for line breaks (never `\r`)
 8. **Order declarations alphabetically within categories** (types, externs, imports, consts, functions, tests)
 9. **Order function parameters alphabetically by name** (`λfoo(a,b,z)` not `λfoo(z,b,a)`)
-10. **Order effect annotations alphabetically** (`!Async !IO !Network` not `!Network !IO !Async`)
+10. **Order effect annotations alphabetically** (`!Error !IO !Network` not `!Network !IO !Error`)
 
 **Remember:** There is exactly ONE valid way to write each program. If you generate non-canonical code, compilation will fail.
 

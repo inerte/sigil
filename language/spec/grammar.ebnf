@@ -431,7 +431,7 @@ Comment = "⟦" , { ? any Unicode character except ⟧ ? } , "⟧" ;
    λread_file(path:𝕊)→Result[𝕊,IoError]!IO
 
    Effect syntax: !EffectName
-   Multiple effects: !IO!Async!Network
+   Multiple effects: !Error!IO!Network
 
    Pure functions have no effect annotation (default)
 *)

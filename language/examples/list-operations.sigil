@@ -1,4 +1,8 @@
-⟦ Built-in list operations demonstration ⟧
+⟦ Built-in list operations demonstration.
+
+  `↦` and `⊳` are canonical pure operators.
+  Use `⊕` for ordered reductions.
+⟧
 
 ⟦ Map: [1,2,3] ↦ λ(x:ℤ)→ℤ=x*2 ⟧
 λdouble_all(xs:[ℤ])→[ℤ]=xs↦λ(x:ℤ)→ℤ=x*2

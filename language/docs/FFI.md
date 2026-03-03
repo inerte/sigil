@@ -205,9 +205,9 @@ This is why Sigil's canonical declaration ordering is: **`t → e → i → c �
 
 See [Canonical Declaration Ordering](/articles/canonical-declaration-ordering) for more details.
 
-## Async Behavior
+## Concurrent Behavior
 
-**ALL Sigil functions are async**, including FFI calls. This means Promise-returning FFI calls are automatically awaited:
+Sigil uses one promise-shaped runtime model for FFI too. Promise-returning FFI calls are started automatically and joined only when a strict consumer needs their values:
 
 ```sigil
 e fs⋅promises
@@ -222,19 +222,19 @@ Compiles to:
 ```typescript
 import * as fs_promises from 'fs/promises';
 
-async function read_file(path) {
-  return await __sigil_call("extern:fs/promises.readFile",
+function read_file(path) {
+  return __sigil_call("extern:fs/promises.readFile",
     fs_promises.readFile, [path, "utf8"]);
 }
 
-export async function main() {
-  return await read_file("data.txt");
+export function main() {
+  return read_file("data.txt");
 }
 ```
 
-**No Promise wrapping needed** - it just works! The `await` is added automatically by the compiler.
+**No Promise wrapping needed** - it just works. The compiler keeps FFI results pending until something strict needs them.
 
-See [ASYNC.md](./ASYNC.md) for complete details on Sigil's async-by-default design.
+See [ASYNC.md](./ASYNC.md) for the full concurrent-by-default model.
 
 ## Canonical Form
 

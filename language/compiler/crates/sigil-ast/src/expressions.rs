@@ -197,7 +197,7 @@ pub struct IdentifierExpr {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct LambdaExpr {
     pub params: Vec<Param>,
-    pub effects: Vec<String>,     // Effect annotations: ['IO', 'Network', 'Async', 'Error', 'Mut']
+    pub effects: Vec<String>,     // Effect annotations: ['IO', 'Network', 'Error', 'Mut']
     #[cfg_attr(feature = "serde", serde(rename = "returnType"))]
     pub return_type: Type,         // Mandatory (canonical form)
     pub body: Expr,

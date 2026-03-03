@@ -1,4 +1,7 @@
-⟦ FFI (Foreign Function Interface) Demo ⟧
+⟦ FFI (Foreign Function Interface) demo.
+
+  FFI calls use the same concurrent-by-default runtime model as ordinary Sigil code.
+⟧
 
 e console
 

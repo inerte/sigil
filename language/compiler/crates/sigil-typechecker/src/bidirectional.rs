@@ -1351,6 +1351,13 @@ fn synthesize_map(
     }
 
     if let (InferenceType::List(ref list), InferenceType::Function(ref func)) = (&list_type, &fn_type) {
+        if func.effects.as_ref().is_some_and(|effects| !effects.is_empty()) {
+            return Err(TypeError::new(
+                "Map (↦) callback must be pure. Sigil treats ↦ as a canonical data-parallel operator, so effectful callbacks are not allowed.".to_string(),
+                Some(map_expr.location),
+            ));
+        }
+
         // Function should take 1 parameter
         if func.params.len() != 1 {
             return Err(TypeError::new(
@@ -1406,6 +1413,13 @@ fn synthesize_filter(
     let bool_type = InferenceType::Primitive(TPrimitive { name: PrimitiveName::Bool });
 
     if let (InferenceType::List(ref list), InferenceType::Function(ref pred)) = (&list_type, &predicate_type) {
+        if pred.effects.as_ref().is_some_and(|effects| !effects.is_empty()) {
+            return Err(TypeError::new(
+                "Filter (⊳) predicate must be pure. Sigil treats ⊳ as a canonical data-parallel operator, so effectful callbacks are not allowed.".to_string(),
+                Some(filter_expr.location),
+            ));
+        }
+
         // Predicate should be T → 𝔹
         if pred.params.len() != 1 {
             return Err(TypeError::new(
@@ -1996,6 +2010,28 @@ mod tests {
 
         let result = type_check(&program, source, TypeCheckOptions::default());
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_map_rejects_effectful_callback() {
+        let source = "λdouble(x:ℤ)→!IO ℤ=x*2\nλmain()→[ℤ]=[1,2,3]↦double";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("Map (↦) callback must be pure"));
+    }
+
+    #[test]
+    fn test_filter_rejects_effectful_callback() {
+        let source = "λkeep(x:ℤ)→!IO 𝔹=x>0\nλmain()→[ℤ]=[1,2,3]⊳keep";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("Filter (⊳) predicate must be pure"));
     }
 
     #[test]

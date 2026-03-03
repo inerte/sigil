@@ -399,13 +399,13 @@ Comprehensive string manipulation functions. These are **compiler intrinsics** -
 Get character at index.
 
 ```sigil
-λchar_at(s:𝕊,idx:ℤ)→𝕊
+λchar_at(idx:ℤ,s:𝕊)→𝕊
 ```
 
 **Examples:**
 ```sigil
-stdlib⋅string.char_at("hello",0)    ⟦ → "h" ⟧
-stdlib⋅string.char_at("hello",4)    ⟦ → "o" ⟧
+stdlib⋅string.char_at(0,"hello")    ⟦ → "h" ⟧
+stdlib⋅string.char_at(4,"hello")    ⟦ → "o" ⟧
 ```
 
 **Codegen:** `s.charAt(idx)`
@@ -415,13 +415,13 @@ stdlib⋅string.char_at("hello",4)    ⟦ → "o" ⟧
 Get substring from start to end index.
 
 ```sigil
-λsubstring(s:𝕊,start:ℤ,end:ℤ)→𝕊
+λsubstring(end:ℤ,s:𝕊,start:ℤ)→𝕊
 ```
 
 **Examples:**
 ```sigil
-stdlib⋅string.substring("hello world",6,11)    ⟦ → "world" ⟧
-stdlib⋅string.substring("hello",0,3)           ⟦ → "hel" ⟧
+stdlib⋅string.substring(11,"hello world",6)    ⟦ → "world" ⟧
+stdlib⋅string.substring(3,"hello",0)           ⟦ → "hel" ⟧
 ```
 
 **Codegen:** `s.substring(start, end)`
@@ -431,32 +431,48 @@ stdlib⋅string.substring("hello",0,3)           ⟦ → "hel" ⟧
 Take first n characters.
 
 ```sigil
-λtake(s:𝕊,n:ℤ)→𝕊
+λtake(n:ℤ,s:𝕊)→𝕊
 ```
 
 **Examples:**
 ```sigil
-stdlib⋅string.take("hello",3)    ⟦ → "hel" ⟧
-stdlib⋅string.take("hi",5)       ⟦ → "hi" (takes available chars) ⟧
+stdlib⋅string.take(3,"hello")    ⟦ → "hel" ⟧
+stdlib⋅string.take(5,"hi")       ⟦ → "hi" (takes available chars) ⟧
 ```
 
-**Implementation:** `substring(s, 0, n)` (in Sigil)
+**Implementation:** `substring(n, s, 0)` (in Sigil)
 
 ### drop
 
 Drop first n characters.
 
 ```sigil
-λdrop(s:𝕊,n:ℤ)→𝕊
+λdrop(n:ℤ,s:𝕊)→𝕊
 ```
 
 **Examples:**
 ```sigil
-stdlib⋅string.drop("hello",2)    ⟦ → "llo" ⟧
-stdlib⋅string.drop("hi",5)       ⟦ → "" (drops all available) ⟧
+stdlib⋅string.drop(2,"hello")    ⟦ → "llo" ⟧
+stdlib⋅string.drop(5,"hi")       ⟦ → "" (drops all available) ⟧
 ```
 
-**Implementation:** `substring(s, n, #s)` (in Sigil, uses `#` operator)
+**Implementation:** `substring(#s, s, n)` (in Sigil, uses `#` operator)
+
+### lines
+
+Split a string on newline characters.
+
+```sigil
+λlines(s:𝕊)→[𝕊]
+```
+
+**Examples:**
+```sigil
+stdlib⋅string.lines("a\nb\nc")    ⟦ → ["a","b","c"] ⟧
+stdlib⋅string.lines("hello")      ⟦ → ["hello"] ⟧
+```
+
+**Implementation:** `split("\n", s)` (in Sigil)
 
 ### to_upper
 
@@ -525,13 +541,13 @@ stdlib⋅string.index_of("hello","xyz")            ⟦ → -1 ⟧
 Split string by delimiter.
 
 ```sigil
-λsplit(s:𝕊,delimiter:𝕊)→[𝕊]
+λsplit(delimiter:𝕊,s:𝕊)→[𝕊]
 ```
 
 **Examples:**
 ```sigil
-stdlib⋅string.split("a,b,c",",")           ⟦ → ["a","b","c"] ⟧
-stdlib⋅string.split("line1\nline2","\n")   ⟦ → ["line1","line2"] ⟧
+stdlib⋅string.split(",","a,b,c")           ⟦ → ["a","b","c"] ⟧
+stdlib⋅string.split("\n","line1\nline2")   ⟦ → ["line1","line2"] ⟧
 ```
 
 **Codegen:** `s.split(delimiter)`
@@ -541,15 +557,31 @@ stdlib⋅string.split("line1\nline2","\n")   ⟦ → ["line1","line2"] ⟧
 Replace all occurrences of pattern with replacement.
 
 ```sigil
-λreplace_all(s:𝕊,pattern:𝕊,replacement:𝕊)→𝕊
+λreplace_all(pattern:𝕊,replacement:𝕊,s:𝕊)→𝕊
 ```
 
 **Examples:**
 ```sigil
-stdlib⋅string.replace_all("hello hello","hello","hi")    ⟦ → "hi hi" ⟧
+stdlib⋅string.replace_all("hello","hi","hello hello")    ⟦ → "hi hi" ⟧
 ```
 
 **Codegen:** `s.replaceAll(pattern, replacement)`
+
+### repeat
+
+Repeat a string `count` times.
+
+```sigil
+λrepeat(count:ℤ,s:𝕊)→𝕊
+```
+
+**Examples:**
+```sigil
+stdlib⋅string.repeat(3,"ab")    ⟦ → "ababab" ⟧
+stdlib⋅string.repeat(0,"ab")    ⟦ → "" ⟧
+```
+
+**Implementation:** recursive concatenation in Sigil
 
 ## String Predicates
 
@@ -562,13 +594,13 @@ Boolean validation predicates for string properties. These are **compiler intrin
 Check if string starts with prefix.
 
 ```sigil
-λstarts_with(s:𝕊,prefix:𝕊)→𝔹
+λstarts_with(prefix:𝕊,s:𝕊)→𝔹
 ```
 
 **Examples:**
 ```sigil
-stdlib⋅string.starts_with("# Title","# ")    ⟦ → true ⟧
-stdlib⋅string.starts_with("Title","# ")      ⟦ → false ⟧
+stdlib⋅string.starts_with("# ","# Title")    ⟦ → true ⟧
+stdlib⋅string.starts_with("# ","Title")      ⟦ → false ⟧
 ```
 
 **Codegen:** `s.startsWith(prefix)`
@@ -592,6 +624,38 @@ stdlib⋅string.ends_with("test.txt",".sigil")      ⟦ → false ⟧
 **Codegen:** `s.endsWith(suffix)`
 
 **Use case:** File extension checking, URL validation.
+
+### is_digit
+
+Check whether a string is exactly one decimal digit.
+
+```sigil
+λis_digit(s:𝕊)→𝔹
+```
+
+**Examples:**
+```sigil
+stdlib⋅string.is_digit("5")     ⟦ → true ⟧
+stdlib⋅string.is_digit("42")    ⟦ → false ⟧
+```
+
+**Codegen:** `/^[0-9]$/.test(s)`
+
+### unlines
+
+Join lines with newline separators.
+
+```sigil
+λunlines(lines:[𝕊])→𝕊
+```
+
+**Examples:**
+```sigil
+stdlib⋅string.unlines(["a","b","c"])    ⟦ → "a\nb\nc" ⟧
+stdlib⋅string.unlines([])               ⟦ → "" ⟧
+```
+
+**Implementation:** `join("\n", lines)` (in Sigil)
 
 **Design Note:** No redundant predicates like `is_empty`, `is_whitespace`, or `contains`. Users compose these:
 - `is_empty(s)` → `#s = 0`

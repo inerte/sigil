@@ -78,24 +78,28 @@ test "is_digit single" {
   stdlib⋅string.is_digit("5")=true
 }
 
-test "is_whitespace empty" {
-  stdlib⋅string.is_whitespace("")=true
-}
-
-test "is_whitespace non-whitespace" {
-  stdlib⋅string.is_whitespace("hello")=false
-}
-
-test "is_whitespace spaces" {
-  stdlib⋅string.is_whitespace("   ")=true
-}
-
 test "join empty list" {
   stdlib⋅string.join(",",[])=""
 }
 
 test "join with separator" {
   stdlib⋅string.join(",",["a","b","c"])="a,b,c"
+}
+
+test "lines splits on newline" {
+  stdlib⋅string.lines("a\nb\nc")=["a","b","c"]
+}
+
+test "lines preserves single line" {
+  stdlib⋅string.lines("hello")=["hello"]
+}
+
+test "repeat repeats content" {
+  stdlib⋅string.repeat(3,"ab")="ababab"
+}
+
+test "repeat with non-positive count returns empty" {
+  stdlib⋅string.repeat(0,"ab")=""
 }
 
 test "replace_all all occurrences" {
@@ -164,6 +168,14 @@ test "trim leading" {
 
 test "trim trailing" {
   stdlib⋅string.trim("hello  ")="hello"
+}
+
+test "unlines joins with newline" {
+  stdlib⋅string.unlines(["a","b","c"])="a\nb\nc"
+}
+
+test "unlines on empty list" {
+  stdlib⋅string.unlines([])=""
 }
 
 ⟦ Integration test: parse markdown title ⟧

@@ -3,8 +3,8 @@
    Canonical string operations and predicates.
    Part of Sigil standard library - canonical implementations only.
 
-   These functions are compiler intrinsics - they have type signatures
-   but no bodies. The compiler emits optimized JavaScript directly.
+   Primitive operations are compiler intrinsics.
+   Derived helpers are implemented canonically in Sigil.
 ⟧
 
 ⟦ Get character at index - compiler intrinsic ⟧
@@ -25,11 +25,17 @@
 ⟦ Check if string is a single digit character (0-9) - compiler intrinsic ⟧
 λis_digit(s:𝕊)→𝔹=false
 
-⟦ Check if string is empty or only whitespace - compiler intrinsic ⟧
-λis_whitespace(s:𝕊)→𝔹=false
-
 ⟦ Join list of strings with separator - compiler intrinsic ⟧
 λjoin(separator:𝕊,strings:[𝕊])→𝕊=""
+
+⟦ Split string into lines ⟧
+λlines(s:𝕊)→[𝕊]=split("\n",s)
+
+⟦ Repeat string count times ⟧
+λrepeat(count:ℤ,s:𝕊)→𝕊 match count≤0{
+  true → ""|
+  false → s++repeat(count-1,s)
+}
 
 ⟦ Replace all occurrences - compiler intrinsic ⟧
 λreplace_all(pattern:𝕊,replacement:𝕊,s:𝕊)→𝕊=""
@@ -54,3 +60,6 @@
 
 ⟦ Remove leading/trailing whitespace - compiler intrinsic ⟧
 λtrim(s:𝕊)→𝕊=""
+
+⟦ Join lines with newline separators ⟧
+λunlines(lines:[𝕊])→𝕊=join("\n",lines)

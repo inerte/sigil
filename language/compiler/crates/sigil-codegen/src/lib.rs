@@ -450,6 +450,12 @@ impl TypeScriptGenerator {
             }
         }
 
+        if let Expr::Identifier(name) = &app.func {
+            if let Some(intrinsic) = self.try_generate_local_string_intrinsic(&name.name, &app.args)? {
+                return Ok(intrinsic);
+            }
+        }
+
         if let Expr::MemberAccess(member_access) = &app.func {
             if member_access
                 .member
@@ -509,65 +515,78 @@ impl TypeScriptGenerator {
 
         // String operations intrinsics for generated JavaScript output
         if module == "stdlib/string" {
-            let generated_args: Result<Vec<String>, CodegenError> = args.iter()
-                .map(|arg| self.generate_expression(arg))
-                .collect();
-            let generated_args = generated_args?;
-
-            match member.as_str() {
-                "char_at" if generated_args.len() == 2 => {
-                    return Ok(Some(format!("(await {}).charAt(await {})", generated_args[1], generated_args[0])));
-                }
-                "substring" if generated_args.len() == 3 => {
-                    return Ok(Some(format!("(await {}).substring(await {}, await {})", generated_args[1], generated_args[2], generated_args[0])));
-                }
-                "to_upper" if generated_args.len() == 1 => {
-                    return Ok(Some(format!("(await {}).toUpperCase()", generated_args[0])));
-                }
-                "to_lower" if generated_args.len() == 1 => {
-                    return Ok(Some(format!("(await {}).toLowerCase()", generated_args[0])));
-                }
-                "trim" if generated_args.len() == 1 => {
-                    return Ok(Some(format!("(await {}).trim()", generated_args[0])));
-                }
-                "index_of" if generated_args.len() == 2 => {
-                    return Ok(Some(format!("(await {}).indexOf(await {})", generated_args[0], generated_args[1])));
-                }
-                "split" if generated_args.len() == 2 => {
-                    return Ok(Some(format!("(await {}).split(await {})", generated_args[1], generated_args[0])));
-                }
-                "replace_all" if generated_args.len() == 3 => {
-                    return Ok(Some(format!("(await {}).replaceAll(await {}, await {})", generated_args[2], generated_args[0], generated_args[1])));
-                }
-                "int_to_string" if generated_args.len() == 1 => {
-                    return Ok(Some(format!("String(await {})", generated_args[0])));
-                }
-                "join" if generated_args.len() == 2 => {
-                    return Ok(Some(format!("(await {}).join(await {})", generated_args[1], generated_args[0])));
-                }
-                "take" if generated_args.len() == 2 => {
-                    return Ok(Some(format!("(await {}).substring(0, await {})", generated_args[1], generated_args[0])));
-                }
-                "drop" if generated_args.len() == 2 => {
-                    return Ok(Some(format!("(await {}).substring(await {})", generated_args[1], generated_args[0])));
-                }
-                "starts_with" if generated_args.len() == 2 => {
-                    return Ok(Some(format!("(await {}).startsWith(await {})", generated_args[1], generated_args[0])));
-                }
-                "ends_with" if generated_args.len() == 2 => {
-                    return Ok(Some(format!("(await {}).endsWith(await {})", generated_args[0], generated_args[1])));
-                }
-                "is_digit" if generated_args.len() == 1 => {
-                    return Ok(Some(format!("/^[0-9]$/.test(await {})", generated_args[0])));
-                }
-                "is_whitespace" if generated_args.len() == 1 => {
-                    return Ok(Some(format!("(await {}).trim().length === 0", generated_args[0])));
-                }
-                _ => {}
-            }
+            return self.generate_string_intrinsic(member, args);
         }
 
         Ok(None)
+    }
+
+    fn try_generate_local_string_intrinsic(&mut self, name: &str, args: &[Expr]) -> Result<Option<String>, CodegenError> {
+        if self
+            .source_file
+            .as_deref()
+            .is_some_and(|path| path.ends_with("language/stdlib/string.lib.sigil"))
+        {
+            return self.generate_string_intrinsic(name, args);
+        }
+
+        Ok(None)
+    }
+
+    fn generate_string_intrinsic(&mut self, member: &str, args: &[Expr]) -> Result<Option<String>, CodegenError> {
+        let generated_args: Result<Vec<String>, CodegenError> = args.iter()
+            .map(|arg| self.generate_expression(arg))
+            .collect();
+        let generated_args = generated_args?;
+
+        match member {
+            "char_at" if generated_args.len() == 2 => {
+                Ok(Some(format!("(await {}).charAt(await {})", generated_args[1], generated_args[0])))
+            }
+            "substring" if generated_args.len() == 3 => {
+                Ok(Some(format!("(await {}).substring(await {}, await {})", generated_args[1], generated_args[2], generated_args[0])))
+            }
+            "to_upper" if generated_args.len() == 1 => {
+                Ok(Some(format!("(await {}).toUpperCase()", generated_args[0])))
+            }
+            "to_lower" if generated_args.len() == 1 => {
+                Ok(Some(format!("(await {}).toLowerCase()", generated_args[0])))
+            }
+            "trim" if generated_args.len() == 1 => {
+                Ok(Some(format!("(await {}).trim()", generated_args[0])))
+            }
+            "index_of" if generated_args.len() == 2 => {
+                Ok(Some(format!("(await {}).indexOf(await {})", generated_args[0], generated_args[1])))
+            }
+            "split" if generated_args.len() == 2 => {
+                Ok(Some(format!("(await {}).split(await {})", generated_args[1], generated_args[0])))
+            }
+            "replace_all" if generated_args.len() == 3 => {
+                Ok(Some(format!("(await {}).replaceAll(await {}, await {})", generated_args[2], generated_args[0], generated_args[1])))
+            }
+            "int_to_string" if generated_args.len() == 1 => {
+                Ok(Some(format!("String(await {})", generated_args[0])))
+            }
+            "join" if generated_args.len() == 2 => {
+                Ok(Some(format!("(await {}).join(await {})", generated_args[1], generated_args[0])))
+            }
+            "take" if generated_args.len() == 2 => {
+                Ok(Some(format!("(await {}).substring(0, await {})", generated_args[1], generated_args[0])))
+            }
+            "drop" if generated_args.len() == 2 => {
+                Ok(Some(format!("(await {}).substring(await {})", generated_args[1], generated_args[0])))
+            }
+            "starts_with" if generated_args.len() == 2 => {
+                Ok(Some(format!("(await {}).startsWith(await {})", generated_args[1], generated_args[0])))
+            }
+            "ends_with" if generated_args.len() == 2 => {
+                Ok(Some(format!("(await {}).endsWith(await {})", generated_args[0], generated_args[1])))
+            }
+            "is_digit" if generated_args.len() == 1 => {
+                Ok(Some(format!("/^[0-9]$/.test(await {})", generated_args[0])))
+            }
+            _ => Ok(None),
+        }
     }
 
     fn generate_binary(&mut self, bin: &BinaryExpr) -> Result<String, CodegenError> {

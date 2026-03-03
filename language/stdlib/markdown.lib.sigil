@@ -154,7 +154,7 @@ i stdlib⋅string
   stdlib⋅string.starts_with("```",line)
 
 λis_empty(line:𝕊)→𝔹=
-  stdlib⋅string.is_whitespace(line)
+  stdlib⋅string.trim(line)=""
 
 λis_header(line:𝕊)→𝔹=
   stdlib⋅string.starts_with("#",line)

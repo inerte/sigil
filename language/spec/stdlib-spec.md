@@ -125,73 +125,128 @@ t DivMod={quotient:ℤ,remainder:ℤ}
 ## String Operations
 
 ```sigil
-λstr_length(s:𝕊)→ℤ
+λchar_at(idx:ℤ,s:𝕊)→𝕊
 ```
-Get string length (Unicode code points).
+Get character at index.
+- Complexity: O(1)
+- Pure: Yes
+
+```sigil
+λdrop(n:ℤ,s:𝕊)→𝕊
+```
+Drop first `n` characters.
 - Complexity: O(n)
 - Pure: Yes
 
 ```sigil
-λstr_concat(s1:𝕊,s2:𝕊)→𝕊
+λends_with(s:𝕊,suffix:𝕊)→𝔹
 ```
-Concatenate strings.
-- Complexity: O(n+m)
-- Pure: Yes
-- Operator: `+`
-
-```sigil
-λstr_split(s:𝕊,sep:𝕊)→[𝕊]
-```
-Split string by separator.
+Check if string ends with suffix.
 - Complexity: O(n)
 - Pure: Yes
 
 ```sigil
-λstr_join(sep:𝕊,parts:[𝕊])→𝕊
+λindex_of(s:𝕊,search:𝕊)→ℤ
 ```
-Join strings with separator.
+Find index of first occurrence, or `-1` if missing.
 - Complexity: O(n)
 - Pure: Yes
 
 ```sigil
-λstr_trim(s:𝕊)→𝕊
+λint_to_string(n:ℤ)→𝕊
 ```
-Remove leading/trailing whitespace.
+Convert an integer to a string.
 - Complexity: O(n)
 - Pure: Yes
 
 ```sigil
-λstr_to_upper(s:𝕊)→𝕊
+λis_digit(s:𝕊)→𝔹
 ```
-Convert to uppercase.
+Check whether a string is exactly one decimal digit.
+- Complexity: O(1)
+- Pure: Yes
+
+```sigil
+λjoin(separator:𝕊,strings:[𝕊])→𝕊
+```
+Join strings with a separator.
 - Complexity: O(n)
 - Pure: Yes
 
 ```sigil
-λstr_to_lower(s:𝕊)→𝕊
+λlines(s:𝕊)→[𝕊]
 ```
-Convert to lowercase.
+Split a string on newline characters.
 - Complexity: O(n)
 - Pure: Yes
 
 ```sigil
-λstr_contains(s:𝕊,substr:𝕊)→𝔹
+λreplace_all(pattern:𝕊,replacement:𝕊,s:𝕊)→𝕊
 ```
-Check if string contains substring.
-- Complexity: O(n*m)
+Replace all occurrences of a pattern with a replacement string.
+- Complexity: O(n)
 - Pure: Yes
 
 ```sigil
-λstr_starts_with(s:𝕊,prefix:𝕊)→𝔹
+λrepeat(count:ℤ,s:𝕊)→𝕊
+```
+Repeat a string `count` times.
+- Complexity: O(n)
+- Pure: Yes
+
+```sigil
+λsplit(delimiter:𝕊,s:𝕊)→[𝕊]
+```
+Split a string by delimiter.
+- Complexity: O(n)
+- Pure: Yes
+
+```sigil
+λstarts_with(prefix:𝕊,s:𝕊)→𝔹
 ```
 Check if string starts with prefix.
 - Complexity: O(n)
 - Pure: Yes
 
 ```sigil
-λstr_ends_with(s:𝕊,suffix:𝕊)→𝔹
+λsubstring(end:ℤ,s:𝕊,start:ℤ)→𝕊
 ```
-Check if string ends with suffix.
+Get substring from `start` to `end`.
+- Complexity: O(n)
+- Pure: Yes
+
+```sigil
+λtake(n:ℤ,s:𝕊)→𝕊
+```
+Take first `n` characters.
+- Complexity: O(n)
+- Pure: Yes
+
+```sigil
+λto_lower(s:𝕊)→𝕊
+```
+Convert to lowercase.
+- Complexity: O(n)
+- Pure: Yes
+
+```sigil
+λto_upper(s:𝕊)→𝕊
+```
+Convert to uppercase.
+- Complexity: O(n)
+- Pure: Yes
+
+```sigil
+λtrim(s:𝕊)→𝕊
+```
+Remove leading/trailing whitespace.
+- Complexity: O(n)
+- Pure: Yes
+
+```sigil
+λunlines(lines:[𝕊])→𝕊
+```
+Join lines with newline separators.
 - Complexity: O(n)
 - Pure: Yes
 
@@ -526,7 +581,7 @@ Testing utilities
 
 - List operations are functional (immutable) - use sparingly for large lists
 - For performance-critical code, consider using mutable collections explicitly
-- String concatenation in loops is O(n²) - use str_join instead
+- String concatenation in loops is O(n²) - prefer stdlib⋅string.join when building from parts
 
 ### Effect System
 

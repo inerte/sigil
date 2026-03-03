@@ -93,6 +93,8 @@ Current constructor and list invariants:
 - canonical imported nullary pattern example: `src⋅graph-types.CycleDetected()`
 - list literals preserve nesting exactly as written
 - use `⧺` only for explicit concatenation; never rely on list literals to flatten values
+- if a canonical helper exists in `stdlib`, prefer it over project-local reimplementation
+- for safe integer list lookup/end access, prefer `stdlib⋅list.nth` and `stdlib⋅list.last`
 
 ### 3) Keep user-facing errors actionable
 

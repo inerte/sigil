@@ -65,115 +65,59 @@ t Result[T,E]=Ok(T)|Err(E)
 
 ## List Operations
 
-### Core List Functions
+### Implemented `stdlib⋅list` Functions
 
 ```sigil
-λmap[T,U](fn:λ(T)→U,list:[T])→[U]
+λall(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹
+λany(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹
+λcontains(item:ℤ,xs:[ℤ])→𝔹
+λcount(item:ℤ,xs:[ℤ])→ℤ
+λdrop(n:ℤ,xs:[ℤ])→[ℤ]
+λhead(xs:[ℤ])→ℤ
+λin_bounds(idx:ℤ,xs:[ℤ])→𝔹
+λis_empty(xs:[ℤ])→𝔹
+λis_non_empty(xs:[ℤ])→𝔹
+ t IntOption=IntNone|IntSome(ℤ)
+λlast(xs:[ℤ])→IntOption
+λnth(idx:ℤ,xs:[ℤ])→IntOption
+λremove_first(item:ℤ,xs:[ℤ])→[ℤ]
+λreverse(xs:[ℤ])→[ℤ]
+λsorted_asc(xs:[ℤ])→𝔹
+λsorted_desc(xs:[ℤ])→𝔹
+λtail(xs:[ℤ])→[ℤ]
+λtake(n:ℤ,xs:[ℤ])→[ℤ]
 ```
-Apply function to each element, return new list.
-- Complexity: O(n)
-- Pure: Yes
+
+Safe element access uses `IntOption`:
+- `last([])→IntNone()`
+- `nth(-1,xs)→IntNone()`
+- `nth(idx,xs)→IntNone()` when out of bounds
+
+Unsafe `head` and `tail` remain concrete convenience functions.
+
+### Implemented `stdlib⋅numeric` Helpers
 
 ```sigil
-λfilter[T](pred:λ(T)→𝔹,list:[T])→[T]
+λclamp(hi:ℤ,lo:ℤ,x:ℤ)→ℤ
+λdivisible(d:ℤ,n:ℤ)→𝔹
+λfactorial(n:ℤ)→ℤ
+λfib(n:ℤ)→ℤ
+λgcd(a:ℤ,b:ℤ)→ℤ
+λin_range(max:ℤ,min:ℤ,x:ℤ)→𝔹
+λis_even(x:ℤ)→𝔹
+λis_negative(x:ℤ)→𝔹
+λis_non_negative(x:ℤ)→𝔹
+λis_odd(x:ℤ)→𝔹
+λis_positive(x:ℤ)→𝔹
+λis_prime(n:ℤ)→𝔹
+λis_zero(x:ℤ)→𝔹
+λmax(a:ℤ,b:ℤ)→ℤ
+λmin(a:ℤ,b:ℤ)→ℤ
+λpow(base:ℤ,exp:ℤ)→ℤ
+λrange_inclusive(start:ℤ,stop:ℤ)→[ℤ]
+λsum_range(a:ℤ,b:ℤ)→ℤ
+λsum_to(n:ℤ)→ℤ
 ```
-Keep only elements where predicate is true.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λreduce[T,U](fn:λ(U,T)→U,init:U,list:[T])→U
-```
-Reduce list to single value by repeatedly applying function.
-- Also known as: fold, accumulate
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λlength[T](list:[T])→ℤ
-```
-Return number of elements in list.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λreverse[T](list:[T])→[T]
-```
-Reverse the list.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λappend[T](list1:[T],list2:[T])→[T]
-```
-Concatenate two lists.
-- Complexity: O(n) where n = length(list1)
-- Pure: Yes
-- Operator: `++`
-
-```sigil
-λhead[T](list:[T])→Option[T]
-```
-Get first element, None if empty.
-- Complexity: O(1)
-- Pure: Yes
-
-```sigil
-λtail[T](list:[T])→Option[[T]]
-```
-Get all elements except first, None if empty.
-- Complexity: O(1)
-- Pure: Yes
-
-```sigil
-λtake[T](n:ℤ,list:[T])→[T]
-```
-Take first n elements.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λdrop[T](n:ℤ,list:[T])→[T]
-```
-Drop first n elements.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λzip[T,U](list1:[T],list2:[U])→[(T,U)]
-```
-Zip two lists into list of pairs. Stops at shorter list.
-- Complexity: O(min(n,m))
-- Pure: Yes
-
-```sigil
-λfind[T](pred:λ(T)→𝔹,list:[T])→Option[T]
-```
-Find first element satisfying predicate.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λany[T](pred:λ(T)→𝔹,list:[T])→𝔹
-```
-Check if any element satisfies predicate.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λall[T](pred:λ(T)→𝔹,list:[T])→𝔹
-```
-Check if all elements satisfy predicate.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λsort[T](cmp:λ(T,T)→𝔹,list:[T])→[T]
-```
-Sort list using comparison function.
-- Algorithm: Introsort (quicksort + heapsort + insertion sort)
-- Complexity: O(n log n) average and worst case
-- Pure: Yes
 
 ## String Operations
 

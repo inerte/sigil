@@ -1,0 +1,7 @@
+i stdlib⋅numeric
+
+λmain()→𝕌=()
+
+test "numeric.range_inclusive builds ascending ranges" {
+  stdlib⋅numeric.range_inclusive(2,5)=[2,3,4,5] and stdlib⋅numeric.range_inclusive(3,3)=[3] and stdlib⋅numeric.range_inclusive(5,2)=[]
+}

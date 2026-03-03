@@ -1,0 +1,31 @@
+i stdlib⋅list
+
+λmain()→𝕌=()
+
+test "list.count counts duplicates" {
+  stdlib⋅list.count(3,[3,1,3,2,3])=3 and stdlib⋅list.count(9,[])=0 and stdlib⋅list.count(7,[1,2,3])=0
+}
+
+test "list.drop clamps naturally" {
+  stdlib⋅list.drop(0,[1,2,3])=[1,2,3] and stdlib⋅list.drop(2,[1,2,3,4])=[3,4] and stdlib⋅list.drop(10,[1,2])=[] and stdlib⋅list.drop(-1,[1,2])=[1,2]
+}
+
+test "list.last returns option" {
+  stdlib⋅list.last([])=stdlib⋅list.IntNone() and stdlib⋅list.last([9])=stdlib⋅list.IntSome(9) and stdlib⋅list.last([1,2,3])=stdlib⋅list.IntSome(3)
+}
+
+test "list.nth returns option" {
+  stdlib⋅list.nth(0,[7,8])=stdlib⋅list.IntSome(7) and stdlib⋅list.nth(1,[7,8])=stdlib⋅list.IntSome(8) and stdlib⋅list.nth(2,[7,8])=stdlib⋅list.IntNone() and stdlib⋅list.nth(-1,[7,8])=stdlib⋅list.IntNone()
+}
+
+test "list.remove_first removes only first match" {
+  stdlib⋅list.remove_first(2,[1,2,3,2])=[1,3,2] and stdlib⋅list.remove_first(9,[1,2,3])=[1,2,3] and stdlib⋅list.remove_first(9,[])=[]
+}
+
+test "list.reverse reverses list" {
+  stdlib⋅list.reverse([])=[] and stdlib⋅list.reverse([1])=[1] and stdlib⋅list.reverse([1,2,3])=[3,2,1]
+}
+
+test "list.take clamps naturally" {
+  stdlib⋅list.take(0,[1,2,3])=[] and stdlib⋅list.take(2,[1,2,3,4])=[1,2] and stdlib⋅list.take(10,[1,2])=[1,2] and stdlib⋅list.take(-1,[1,2])=[]
+}

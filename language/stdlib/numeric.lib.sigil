@@ -74,6 +74,12 @@
   remaining_exp→base*pow(base,remaining_exp-1)
 }
 
+⟦ Inclusive integer range from start to stop ⟧
+λrange_inclusive(start:ℤ,stop:ℤ)→[ℤ] match start>stop{
+  true→[]|
+  false→[start]⧺range_inclusive(start+1,stop)
+}
+
 ⟦ Sum of integers from a to b ⟧
 λsum_range(a:ℤ,b:ℤ)→ℤ match a>b{true→0|false→a+sum_range(a+1,b)}
 

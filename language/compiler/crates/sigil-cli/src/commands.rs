@@ -1142,7 +1142,7 @@ fn get_module_output_path(module: &LoadedModule) -> PathBuf {
     use std::fs;
 
     // Check if this is a project file
-    if let Some(project) = crate::project::get_project_config(&module.file_path) {
+    if let Some(project) = module.project.clone().or_else(|| crate::project::get_project_config(&module.file_path)) {
         // Use project's output directory
         let path_str = module.id.replace('⋅', "/");
         return project.root.join(&project.layout.out).join(format!("{}.ts", path_str));

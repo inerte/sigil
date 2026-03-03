@@ -6,6 +6,8 @@
    Note: Use # operator for length instead of a function (e.g., #[1,2,3] → 3)
 ⟧
 
+t IntOption=IntNone|IntSome(ℤ)
+
 ⟦ Check if all elements satisfy predicate ⟧
 λall(pred:λ(ℤ)→𝔹,xs:[ℤ])→𝔹 match xs{
   []→true|
@@ -33,6 +35,24 @@
   }
 }
 
+⟦ Count occurrences of item in list ⟧
+λcount(item:ℤ,xs:[ℤ])→ℤ match xs{
+  []→0|
+  [x,.rest]→match x=item{
+    true→1+count(item,rest)|
+    false→count(item,rest)
+  }
+}
+
+⟦ Drop first n elements from list ⟧
+λdrop(n:ℤ,xs:[ℤ])→[ℤ] match n≤0{
+  true→xs|
+  false→match xs{
+    []→[]|
+    [_,.rest]→drop(n-1,rest)
+  }
+}
+
 ⟦ Get first element of list (unsafe - crashes on empty) ⟧
 λhead(xs:[ℤ])→ℤ match xs{
   [x,.rest]→x
@@ -57,6 +77,48 @@
 λis_non_empty(xs:[ℤ])→𝔹 match xs{
   []→false|
   _→true
+}
+
+⟦ Get last element of list safely ⟧
+λlast(xs:[ℤ])→IntOption match xs{
+  []→IntNone()|
+  [x,.rest]→last_non_empty(x,rest)
+}
+
+⟦ Helper: Get last element of non-empty list safely ⟧
+λlast_non_empty(current:ℤ,xs:[ℤ])→IntOption match xs{
+  []→IntSome(current)|
+  [x,.rest]→last_non_empty(x,rest)
+}
+
+⟦ Get item at index safely ⟧
+λnth(idx:ℤ,xs:[ℤ])→IntOption match idx<0{
+  true→IntNone()|
+  false→match xs{
+    []→IntNone()|
+    [x,.rest]→match idx=0{
+      true→IntSome(x)|
+      false→nth(idx-1,rest)
+    }
+  }
+}
+
+⟦ Remove first occurrence of item from list ⟧
+λremove_first(item:ℤ,xs:[ℤ])→[ℤ] match xs{
+  []→[]|
+  [x,.rest]→match x=item{
+    true→rest|
+    false→[x]⧺remove_first(item,rest)
+  }
+}
+
+⟦ Reverse list ⟧
+λreverse(xs:[ℤ])→[ℤ]=reverse_helper([],xs)
+
+⟦ Helper: Reverse with accumulator ⟧
+λreverse_helper(acc:[ℤ],xs:[ℤ])→[ℤ] match xs{
+  []→acc|
+  [x,.rest]→reverse_helper([x]⧺acc,rest)
 }
 
 ⟦ Check if list is sorted in ascending order ⟧
@@ -94,4 +156,13 @@
 ⟦ Get all elements except first (unsafe - crashes on empty) ⟧
 λtail(xs:[ℤ])→[ℤ] match xs{
   [x,.rest]→rest
+}
+
+⟦ Take first n elements from list ⟧
+λtake(n:ℤ,xs:[ℤ])→[ℤ] match n≤0{
+  true→[]|
+  false→match xs{
+    []→[]|
+    [x,.rest]→[x]⧺take(n-1,rest)
+  }
 }

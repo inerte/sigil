@@ -1,4 +1,4 @@
-i src⋅int-list-helpers
+i stdlib⋅numeric
 
 λfilter_multiples(prime:ℤ,xs:[ℤ])→[ℤ] match xs{
   []→[]|
@@ -10,7 +10,7 @@ i src⋅int-list-helpers
 
 λsieve(limit:ℤ)→[ℤ] match limit<2{
   true→[]|
-  false→sieve_candidates(src⋅int-list-helpers.range_inclusive(2,limit))
+  false→sieve_candidates(stdlib⋅numeric.range_inclusive(2,limit))
 }
 
 λsieve_candidates(candidates:[ℤ])→[ℤ] match candidates{

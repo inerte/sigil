@@ -1,6 +1,6 @@
 i src⋅graph-helpers
 i src⋅graph-types
-i src⋅int-list-helpers
+i stdlib⋅list
 
 λdepth_first_search(graph:src⋅graph-types.Graph,start:ℤ)→[ℤ] match src⋅graph-helpers.has_vertex(graph,start){
   true→dfs_visit(graph,start,[])|
@@ -15,7 +15,7 @@ i src⋅int-list-helpers
   }
 }
 
-λdfs_visit(graph:src⋅graph-types.Graph,vertex:ℤ,visited:[ℤ])→[ℤ] match src⋅int-list-helpers.contains_int(vertex,visited){
+λdfs_visit(graph:src⋅graph-types.Graph,vertex:ℤ,visited:[ℤ])→[ℤ] match stdlib⋅list.contains(vertex,visited){
   true→visited|
   false→{
     l next_visited=(visited⧺[vertex]:[ℤ]);

@@ -1,8 +1,8 @@
 i src⋅graph-helpers
 i src⋅graph-types
-i src⋅int-list-helpers
+i stdlib⋅list
 
-λcount_edges_to_vertex(neighbors:[ℤ],target:ℤ)→ℤ=src⋅int-list-helpers.count(target,neighbors)
+λcount_edges_to_vertex(neighbors:[ℤ],target:ℤ)→ℤ=stdlib⋅list.count(target,neighbors)
 
 λindegree_from_sources(graph:src⋅graph-types.Graph,sources:[ℤ],target:ℤ)→ℤ match sources{
   []→0|
@@ -25,7 +25,7 @@ i src⋅int-list-helpers
     l next_vertex=(pick_zero_indegree(graph,remaining):ℤ);
     match next_vertex=-1{
       true→src⋅graph-types.CycleDetected()|
-      false→topological_loop(graph,ordered⧺[next_vertex],src⋅int-list-helpers.remove_first(next_vertex,remaining))
+      false→topological_loop(graph,ordered⧺[next_vertex],stdlib⋅list.remove_first(next_vertex,remaining))
     }
   }
 }

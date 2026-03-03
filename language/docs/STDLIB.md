@@ -8,15 +8,14 @@ The Sigil standard library provides core utility functions and predicates for co
 
 **Implemented:**
 - ✅ List predicates (validation, checking) - `stdlib/list`
-- ✅ Numeric predicates (range checking, properties) - `stdlib/numeric`
-- ✅ List utilities (head, tail) - `stdlib/list`
+- ✅ Numeric predicates and ranges - `stdlib/numeric`
+- ✅ List utilities (head, tail, take/drop/reverse, safe lookup) - `stdlib/list`
 - ✅ String operations (manipulation, searching) - `stdlib/string`
 - ✅ String predicates (prefix/suffix checking) - `stdlib/string`
 - ✅ Sum types (Option, Result) - `stdlib/option`, `stdlib/result`
 - ✅ Length operator (`#`) - works on strings and lists
 
 **Not yet implemented:**
-- ⏳ Option/Result utility functions (requires generic type inference)
 - ⏳ I/O operations
 - ⏳ JSON parsing/serialization
 
@@ -31,7 +30,7 @@ i stdlib⋅list
 ⟦ Use with fully qualified names ⟧
 λmain()→𝕌=console.log(
   stdlib⋅list.sorted_asc([1,2,3]) ++ " " ++
-  ("" + stdlib⋅list.len([1,2,3]))
+  stdlib⋅string.int_to_string(#[1,2,3])
 )
 ```
 
@@ -207,6 +206,22 @@ contains(1,[])                ⟦ → false ⟧
 
 **Use case:** Membership testing.
 
+### count
+
+Count occurrences of an element in a list.
+
+```sigil
+λcount(item:ℤ,xs:[ℤ])→ℤ
+```
+
+### drop
+
+Drop the first `n` elements.
+
+```sigil
+λdrop(n:ℤ,xs:[ℤ])→[ℤ]
+```
+
 ### in_bounds
 
 Check if an index is valid for a list (in range [0, len-1]).
@@ -226,7 +241,7 @@ in_bounds(0,[])               ⟦ → false (empty list) ⟧
 
 **Use case:** Validate array/list access before indexing. Prevents out-of-bounds errors.
 
-**Implementation:** Uses `len()` function to check bounds.
+**Implementation:** Uses `#xs` to check bounds.
 
 ## List Utilities
 
@@ -250,6 +265,58 @@ head([42])                 ⟦ → 42 ⟧
 
 **Warning:** Unsafe - crashes on empty list. Check with `is_non_empty` first.
 
+### IntOption
+
+Concrete optional integer used by safe integer-list access helpers.
+
+```sigil
+t IntOption=IntNone|IntSome(ℤ)
+```
+
+### last
+
+Get the last element safely.
+
+```sigil
+λlast(xs:[ℤ])→stdlib⋅list.IntOption
+```
+
+Examples:
+```sigil
+stdlib⋅list.last([])         ⟦ → stdlib⋅list.IntNone() ⟧
+stdlib⋅list.last([1,2,3])    ⟦ → stdlib⋅list.IntSome(3) ⟧
+```
+
+### nth
+
+Get the item at a zero-based index safely.
+
+```sigil
+λnth(idx:ℤ,xs:[ℤ])→stdlib⋅list.IntOption
+```
+
+Examples:
+```sigil
+stdlib⋅list.nth(0,[7,8])     ⟦ → stdlib⋅list.IntSome(7) ⟧
+stdlib⋅list.nth(2,[7,8])     ⟦ → stdlib⋅list.IntNone() ⟧
+```
+
+### remove_first
+
+Remove the first occurrence of an element.
+
+```sigil
+λremove_first(item:ℤ,xs:[ℤ])→[ℤ]
+```
+
+### reverse
+
+Reverse a list.
+
+```sigil
+λreverse(xs:[ℤ])→[ℤ]
+```
+
 ### tail
 
 Get all elements except the first.
@@ -265,6 +332,33 @@ tail([42])                 ⟦ → [] ⟧
 ```
 
 **Warning:** Unsafe - crashes on empty list. Check with `is_non_empty` first.
+
+### take
+
+Take the first `n` elements.
+
+```sigil
+λtake(n:ℤ,xs:[ℤ])→[ℤ]
+```
+
+## Numeric Helpers
+
+**Module:** `stdlib/numeric`
+
+### range_inclusive
+
+Build an inclusive ascending integer range.
+
+```sigil
+λrange_inclusive(start:ℤ,stop:ℤ)→[ℤ]
+```
+
+Examples:
+```sigil
+stdlib⋅numeric.range_inclusive(2,5)   ⟦ → [2,3,4,5] ⟧
+stdlib⋅numeric.range_inclusive(3,3)   ⟦ → [3] ⟧
+stdlib⋅numeric.range_inclusive(5,2)   ⟦ → [] ⟧
+```
 
 ## String Operations
 

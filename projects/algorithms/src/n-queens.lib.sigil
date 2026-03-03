@@ -1,4 +1,4 @@
-i src⋅int-list-helpers
+i stdlib⋅list
 
 λn_queens(size:ℤ)→[[ℤ]] match size≤0{
   true→[]|
@@ -6,7 +6,7 @@ i src⋅int-list-helpers
 }
 
 λplace_queens(placed_rev:[ℤ],row:ℤ,size:ℤ)→[[ℤ]] match row=size{
-  true→wrap_solution(src⋅int-list-helpers.reverse(placed_rev))|
+  true→wrap_solution(stdlib⋅list.reverse(placed_rev))|
   false→try_columns(0,placed_rev,row,size)
 }
 

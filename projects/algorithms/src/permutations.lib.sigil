@@ -1,7 +1,5 @@
 t Selection={chosen:ℤ,rest:[ℤ]}
 
-i src⋅int-list-helpers
-
 λpermutations(xs:[ℤ])→[[ℤ]] match xs{
   []→[[]]|
   _→permutations_from_selections(selections(xs))

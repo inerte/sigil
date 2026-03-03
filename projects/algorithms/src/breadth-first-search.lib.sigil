@@ -1,10 +1,10 @@
 i src⋅graph-helpers
 i src⋅graph-types
-i src⋅int-list-helpers
+i stdlib⋅list
 
 λbfs_loop(graph:src⋅graph-types.Graph,queue:[ℤ],visited:[ℤ])→[ℤ] match queue{
   []→visited|
-  [head,.tail]→match src⋅int-list-helpers.contains_int(head,visited){
+  [head,.tail]→match stdlib⋅list.contains(head,visited){
     true→bfs_loop(graph,tail,visited)|
     false→{
       l next_queue=(tail⧺src⋅graph-helpers.neighbors_of(graph,head):[ℤ]);

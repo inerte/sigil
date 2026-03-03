@@ -37,13 +37,14 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: Swatinem/rust-cache@v2
-
       - uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - uses: pnpm/action-setup@v4
+
+      - name: Install Node dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Build sigil-cli
         run: cargo build --manifest-path language/compiler/Cargo.toml -p sigil-cli

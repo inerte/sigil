@@ -114,7 +114,7 @@ Unsafe `head` and `tail` remain concrete convenience functions.
 λmax(a:ℤ,b:ℤ)→ℤ
 λmin(a:ℤ,b:ℤ)→ℤ
 λpow(base:ℤ,exp:ℤ)→ℤ
-λrange_inclusive(start:ℤ,stop:ℤ)→[ℤ]
+λrange(start:ℤ,stop:ℤ)→[ℤ]
 λsum_range(a:ℤ,b:ℤ)→ℤ
 λsum_to(n:ℤ)→ℤ
 ```

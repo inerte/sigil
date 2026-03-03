@@ -10,7 +10,7 @@ i stdlib⋅numeric
 
 λsieve(limit:ℤ)→[ℤ] match limit<2{
   true→[]|
-  false→sieve_candidates(stdlib⋅numeric.range_inclusive(2,limit))
+  false→sieve_candidates(stdlib⋅numeric.range(2,limit))
 }
 
 λsieve_candidates(candidates:[ℤ])→[ℤ] match candidates{

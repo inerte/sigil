@@ -1,6 +1,6 @@
 i stdlib⋅numeric
 
-λfactorial(n:ℤ)→ℤ=fold(multiply,1,stdlib⋅numeric.range_inclusive(1,n))
+λfactorial(n:ℤ)→ℤ=fold(multiply,1,stdlib⋅numeric.range(1,n))
 
 λfold(fn:λ(ℤ,ℤ)→ℤ,init:ℤ,list:[ℤ])→ℤ match list{[]→init|[x,.xs]→fold(fn,fn(init,x),xs)}
 

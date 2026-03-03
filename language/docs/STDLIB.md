@@ -345,19 +345,19 @@ Take the first `n` elements.
 
 **Module:** `stdlib/numeric`
 
-### range_inclusive
+### range
 
-Build an inclusive ascending integer range.
+Build an ascending integer range, inclusive at both ends.
 
 ```sigil
-λrange_inclusive(start:ℤ,stop:ℤ)→[ℤ]
+λrange(start:ℤ,stop:ℤ)→[ℤ]
 ```
 
 Examples:
 ```sigil
-stdlib⋅numeric.range_inclusive(2,5)   ⟦ → [2,3,4,5] ⟧
-stdlib⋅numeric.range_inclusive(3,3)   ⟦ → [3] ⟧
-stdlib⋅numeric.range_inclusive(5,2)   ⟦ → [] ⟧
+stdlib⋅numeric.range(2,5)   ⟦ → [2,3,4,5] ⟧
+stdlib⋅numeric.range(3,3)   ⟦ → [3] ⟧
+stdlib⋅numeric.range(5,2)   ⟦ → [] ⟧
 ```
 
 ## String Operations

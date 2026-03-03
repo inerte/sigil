@@ -76,13 +76,12 @@ i src⋅todo-domain
 i stdlib⋅list
 ```
 
-Canonical exports are explicit:
+Exports are determined by file extension:
 
-```sigil
-export λaddTodo(...)→...
-export t Todo={...}
-export c version:𝕊="1"
-```
+- **`.lib.sigil` files**: ALL declarations are automatically exported (libraries)
+- **`.sigil` files**: NOTHING is exported (executables with `main()` function)
+
+No `export` keyword exists - the file extension declares the intent.
 
 - Only `src/...` and `stdlib/...` are valid Sigil import roots
 - Import cycles are compile errors

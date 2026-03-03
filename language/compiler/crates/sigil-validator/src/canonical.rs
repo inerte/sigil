@@ -7,7 +7,7 @@
 //! 4. No CPS (continuation passing style)
 
 use sigil_ast::*;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use crate::error::ValidationError;
 use sigil_lexer::{SourceLocation, Position};
 
@@ -128,6 +128,11 @@ pub fn validate_canonical_form(program: &Program, file_path: Option<&str>, sourc
 
     // Rule 8: Record fields - alphabetical everywhere
     if let Err(e) = validate_record_field_ordering(program) {
+        errors.extend(e);
+    }
+
+    // Rule 9: One local name, one meaning
+    if let Err(e) = validate_no_shadowing(program) {
         errors.extend(e);
     }
 
@@ -439,6 +444,293 @@ fn validate_record_field_ordering(program: &Program) -> Result<(), Vec<Validatio
             Declaration::Const(const_decl) => validate_expr_record_fields(&const_decl.value, &mut errors),
             Declaration::Test(test_decl) => validate_expr_record_fields(&test_decl.body, &mut errors),
             Declaration::Extern(_) | Declaration::Import(_) => {}
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+#[derive(Clone, Copy)]
+enum BindingKind {
+    FunctionParam,
+    LambdaParam,
+    LocalBinding,
+    PatternBinding,
+    ListRestBinding,
+}
+
+impl BindingKind {
+    fn as_str(&self) -> &'static str {
+        match self {
+            BindingKind::FunctionParam => "function parameter",
+            BindingKind::LambdaParam => "lambda parameter",
+            BindingKind::LocalBinding => "local binding",
+            BindingKind::PatternBinding => "pattern binding",
+            BindingKind::ListRestBinding => "list rest binding",
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct BindingInfo {
+    kind: BindingKind,
+    location: SourceLocation,
+}
+
+type ScopeFrame = HashMap<String, BindingInfo>;
+
+fn first_existing_binding(name: &str, local: &ScopeFrame, scopes: &[ScopeFrame]) -> Option<BindingInfo> {
+    if let Some(info) = local.get(name) {
+        return Some(*info);
+    }
+
+    for scope in scopes.iter().rev() {
+        if let Some(info) = scope.get(name) {
+            return Some(*info);
+        }
+    }
+
+    None
+}
+
+fn try_bind_name(
+    name: &str,
+    kind: BindingKind,
+    location: SourceLocation,
+    local: &mut ScopeFrame,
+    scopes: &[ScopeFrame],
+    errors: &mut Vec<ValidationError>,
+) {
+    if let Some(previous) = first_existing_binding(name, local, scopes) {
+        errors.push(ValidationError::NoShadowing {
+            name: name.to_string(),
+            current_kind: kind.as_str().to_string(),
+            previous_kind: previous.kind.as_str().to_string(),
+            location,
+            previous_location: previous.location,
+            previous_line: previous.location.start.line,
+            previous_column: previous.location.start.column,
+        });
+        return;
+    }
+
+    local.insert(name.to_string(), BindingInfo { kind, location });
+}
+
+fn validate_pattern_no_shadowing(
+    pattern: &Pattern,
+    local: &mut ScopeFrame,
+    scopes: &[ScopeFrame],
+    errors: &mut Vec<ValidationError>,
+) {
+    match pattern {
+        Pattern::Literal(_) | Pattern::Wildcard(_) => {}
+        Pattern::Identifier(identifier) => {
+            try_bind_name(
+                &identifier.name,
+                BindingKind::PatternBinding,
+                identifier.location,
+                local,
+                scopes,
+                errors,
+            );
+        }
+        Pattern::Constructor(constructor) => {
+            for nested in &constructor.patterns {
+                validate_pattern_no_shadowing(nested, local, scopes, errors);
+            }
+        }
+        Pattern::List(list) => {
+            for nested in &list.patterns {
+                validate_pattern_no_shadowing(nested, local, scopes, errors);
+            }
+            if let Some(rest) = &list.rest {
+                try_bind_name(
+                    rest,
+                    BindingKind::ListRestBinding,
+                    list.location,
+                    local,
+                    scopes,
+                    errors,
+                );
+            }
+        }
+        Pattern::Record(record) => {
+            let mut shorthand_seen = HashSet::new();
+
+            for field in &record.fields {
+                if let Some(pattern) = &field.pattern {
+                    validate_pattern_no_shadowing(pattern, local, scopes, errors);
+                } else if shorthand_seen.insert(field.name.clone()) {
+                    try_bind_name(
+                        &field.name,
+                        BindingKind::PatternBinding,
+                        field.location,
+                        local,
+                        scopes,
+                        errors,
+                    );
+                }
+            }
+        }
+        Pattern::Tuple(tuple) => {
+            for nested in &tuple.patterns {
+                validate_pattern_no_shadowing(nested, local, scopes, errors);
+            }
+        }
+    }
+}
+
+fn validate_expr_no_shadowing(expr: &Expr, scopes: &mut Vec<ScopeFrame>, errors: &mut Vec<ValidationError>) {
+    match expr {
+        Expr::Literal(_) | Expr::Identifier(_) | Expr::MemberAccess(_) => {}
+        Expr::Lambda(lambda) => {
+            let mut local = ScopeFrame::new();
+            for param in &lambda.params {
+                try_bind_name(
+                    &param.name,
+                    BindingKind::LambdaParam,
+                    param.location,
+                    &mut local,
+                    scopes,
+                    errors,
+                );
+            }
+            scopes.push(local);
+            validate_expr_no_shadowing(&lambda.body, scopes, errors);
+            scopes.pop();
+        }
+        Expr::Application(application) => {
+            validate_expr_no_shadowing(&application.func, scopes, errors);
+            for arg in &application.args {
+                validate_expr_no_shadowing(arg, scopes, errors);
+            }
+        }
+        Expr::Binary(binary) => {
+            validate_expr_no_shadowing(&binary.left, scopes, errors);
+            validate_expr_no_shadowing(&binary.right, scopes, errors);
+        }
+        Expr::Unary(unary) => validate_expr_no_shadowing(&unary.operand, scopes, errors),
+        Expr::Match(match_expr) => {
+            validate_expr_no_shadowing(&match_expr.scrutinee, scopes, errors);
+            for arm in &match_expr.arms {
+                let mut local = ScopeFrame::new();
+                validate_pattern_no_shadowing(&arm.pattern, &mut local, scopes, errors);
+                scopes.push(local);
+                if let Some(guard) = &arm.guard {
+                    validate_expr_no_shadowing(guard, scopes, errors);
+                }
+                validate_expr_no_shadowing(&arm.body, scopes, errors);
+                scopes.pop();
+            }
+        }
+        Expr::Let(let_expr) => {
+            validate_expr_no_shadowing(&let_expr.value, scopes, errors);
+            let mut local = ScopeFrame::new();
+            match &let_expr.pattern {
+                Pattern::Identifier(identifier) => {
+                    try_bind_name(
+                        &identifier.name,
+                        BindingKind::LocalBinding,
+                        identifier.location,
+                        &mut local,
+                        scopes,
+                        errors,
+                    );
+                }
+                _ => validate_pattern_no_shadowing(&let_expr.pattern, &mut local, scopes, errors),
+            }
+            scopes.push(local);
+            validate_expr_no_shadowing(&let_expr.body, scopes, errors);
+            scopes.pop();
+        }
+        Expr::If(if_expr) => {
+            validate_expr_no_shadowing(&if_expr.condition, scopes, errors);
+            validate_expr_no_shadowing(&if_expr.then_branch, scopes, errors);
+            if let Some(else_branch) = &if_expr.else_branch {
+                validate_expr_no_shadowing(else_branch, scopes, errors);
+            }
+        }
+        Expr::List(list) => {
+            for element in &list.elements {
+                validate_expr_no_shadowing(element, scopes, errors);
+            }
+        }
+        Expr::Record(record) => {
+            for field in &record.fields {
+                validate_expr_no_shadowing(&field.value, scopes, errors);
+            }
+        }
+        Expr::Tuple(tuple) => {
+            for element in &tuple.elements {
+                validate_expr_no_shadowing(element, scopes, errors);
+            }
+        }
+        Expr::FieldAccess(field_access) => validate_expr_no_shadowing(&field_access.object, scopes, errors),
+        Expr::Index(index) => {
+            validate_expr_no_shadowing(&index.object, scopes, errors);
+            validate_expr_no_shadowing(&index.index, scopes, errors);
+        }
+        Expr::Pipeline(pipeline) => {
+            validate_expr_no_shadowing(&pipeline.left, scopes, errors);
+            validate_expr_no_shadowing(&pipeline.right, scopes, errors);
+        }
+        Expr::Map(map) => {
+            validate_expr_no_shadowing(&map.list, scopes, errors);
+            validate_expr_no_shadowing(&map.func, scopes, errors);
+        }
+        Expr::Filter(filter) => {
+            validate_expr_no_shadowing(&filter.list, scopes, errors);
+            validate_expr_no_shadowing(&filter.predicate, scopes, errors);
+        }
+        Expr::Fold(fold) => {
+            validate_expr_no_shadowing(&fold.list, scopes, errors);
+            validate_expr_no_shadowing(&fold.func, scopes, errors);
+            validate_expr_no_shadowing(&fold.init, scopes, errors);
+        }
+        Expr::WithMock(with_mock) => {
+            validate_expr_no_shadowing(&with_mock.target, scopes, errors);
+            validate_expr_no_shadowing(&with_mock.replacement, scopes, errors);
+            validate_expr_no_shadowing(&with_mock.body, scopes, errors);
+        }
+        Expr::TypeAscription(type_ascription) => validate_expr_no_shadowing(&type_ascription.expr, scopes, errors),
+    }
+}
+
+fn validate_no_shadowing(program: &Program) -> Result<(), Vec<ValidationError>> {
+    let mut errors = Vec::new();
+
+    for decl in &program.declarations {
+        match decl {
+            Declaration::Function(function) => {
+                let mut function_scope = ScopeFrame::new();
+                for param in &function.params {
+                    try_bind_name(
+                        &param.name,
+                        BindingKind::FunctionParam,
+                        param.location,
+                        &mut function_scope,
+                        &[],
+                        &mut errors,
+                    );
+                }
+
+                let mut scopes = vec![function_scope];
+                validate_expr_no_shadowing(&function.body, &mut scopes, &mut errors);
+            }
+            Declaration::Const(const_decl) => {
+                let mut scopes = Vec::new();
+                validate_expr_no_shadowing(&const_decl.value, &mut scopes, &mut errors);
+            }
+            Declaration::Test(test_decl) => {
+                let mut scopes = Vec::new();
+                validate_expr_no_shadowing(&test_decl.body, &mut scopes, &mut errors);
+            }
+            Declaration::Type(_) | Declaration::Extern(_) | Declaration::Import(_) => {}
         }
     }
 

@@ -54,6 +54,12 @@ Why Sigil replaced `∧` and `∨` with `and` and `or`, and why common boolean o
 
 **Key topics:** Boolean operators, token efficiency, Claude Code, Codex, canonical syntax, AI-first language design
 
+**March 3, 2026** - [Why Sigil Bans Shadowing](./015-why-sigil-bans-shadowing.md)
+
+Why Sigil rejects local shadowing so one name keeps one meaning, and why that matters both for refactoring safety and for AI-generated code.
+
+**Key topics:** Canonical bindings, shadowing, refactoring safety, Claude Code, Codex, AI-first language design
+
 ---
 
 ## About These Articles

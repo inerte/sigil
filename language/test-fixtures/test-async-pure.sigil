@@ -1,5 +1,5 @@
 ⟦ Test that pure functions work correctly when async ⟧
 
-λfactorial(n:ℤ)→ℤ match n{0→1|1→1|n→n*factorial(n-1)}
+λfactorial(n:ℤ)→ℤ match n{0→1|1→1|value→value*factorial(value-1)}
 
 λmain()→ℤ=factorial(5)

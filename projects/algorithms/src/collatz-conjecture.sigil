@@ -1,6 +1,6 @@
 λcollatz(n:ℤ)→[ℤ] match n{
   1→[1]|
-  n→[n]⧺collatz(nextCollatz(n))
+  value→[value]⧺collatz(nextCollatz(value))
 }
 
 λmain()→[ℤ]=collatz(13)

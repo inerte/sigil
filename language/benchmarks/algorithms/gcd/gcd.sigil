@@ -1,2 +1,2 @@
-λgcd(a:ℤ,b:ℤ)→ℤ match b{0→a|b→gcd(b,a%b)}
+λgcd(a:ℤ,b:ℤ)→ℤ match b{0→a|divisor→gcd(divisor,a%divisor)}
 λmain()→ℤ=gcd(48,18)

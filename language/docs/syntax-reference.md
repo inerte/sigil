@@ -155,6 +155,14 @@ Record fields are canonically alphabetical in:
 - record patterns
 - string-keyed record/map literals
 
+Local bindings are canonically non-shadowing:
+- function parameters
+- lambda parameters
+- `l` bindings
+- pattern bindings
+
+Once a local name is introduced, nested scopes must use a fresh name instead of rebinding it.
+
 ## Sum type (ADT)
 
 ```sigil

@@ -34,6 +34,8 @@ TopLevelDecl = TypeDecl
 
 (* Module scope is declaration-only.
    Local bindings use LetExpr and are only valid inside expressions, never as TopLevelDecl. *)
+(* Canonical validation also requires local bindings to avoid shadowing names from
+   the same or any enclosing lexical scope. This is not encoded in the grammar. *)
 
 (* ============================================================================ *)
 (* IMPORTS                                                                      *)
@@ -143,6 +145,7 @@ Param = Identifier , [ ":" , Type ] ;
 *)
 
 (* Note: Match bodies omit "=" as the canonical function-body form. *)
+(* Canonical validation also forbids parameter, let, and pattern shadowing. *)
 
 (* ============================================================================ *)
 (* CONSTANT DECLARATIONS                                                        *)

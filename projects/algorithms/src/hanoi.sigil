@@ -1,8 +1,8 @@
 λhanoi(aux:𝕊,from:𝕊,n:ℤ,to:𝕊)→𝕊 match n{
   1→"Move disk from "+from+" to "+to+"\n"|
-  n→hanoi(to,from,n-1,aux)+
+  count→hanoi(to,from,count-1,aux)+
     "Move disk from "+from+" to "+to+"\n"+
-    hanoi(from,aux,n-1,to)
+    hanoi(from,aux,count-1,to)
 }
 
 λmain()→𝕊=hanoi("B","A",3,"C")

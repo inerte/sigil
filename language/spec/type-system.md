@@ -114,6 +114,18 @@ In checking mode (⇐), record fields are checked against the expected field typ
 
 Note: Each field value eᵢ is checked (⇐) against the expected field type τᵢ from the record type. This allows empty list `[]` in record fields when the record type specifies list types for those fields.
 
+### Canonical Binding Rule
+
+Sigil canonical validation forbids local shadowing.
+
+If a binding name is already present in the active lexical environment, a nested:
+- function parameter
+- lambda parameter
+- `l` binding
+- pattern binding
+
+must use a fresh name instead of rebinding the existing one.
+
 ### Type Schemes
 
 Type schemes represent polymorphic types:

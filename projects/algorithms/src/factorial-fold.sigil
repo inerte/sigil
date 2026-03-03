@@ -6,4 +6,4 @@
 
 λmultiply(acc:ℤ,x:ℤ)→ℤ=acc*x
 
-λrange(n:ℤ)→[ℤ] match n{0→[]|n→[n]⧺range(n-1)}
+λrange(n:ℤ)→[ℤ] match n{0→[]|value→[value]⧺range(value-1)}

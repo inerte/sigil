@@ -29,7 +29,7 @@ c width=(48:ℤ)
 λhalfFloor(n:ℤ)→ℤ match n{
   0→0|
   1→0|
-  n→1+halfFloor(n-2)
+  value→1+halfFloor(value-2)
 }
 
 λinH(cy:ℤ,x:ℤ,x1:ℤ,x2:ℤ,y:ℤ)→𝔹=((y=cy) and (x≥min2(x1,x2))) and (x≤max2(x1,x2))

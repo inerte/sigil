@@ -65,6 +65,9 @@ Module scope is declaration-only:
 - never generate top-level `l`
 - use `c` for immutable module-level values
 - move setup bindings inside `main()` or another function body
+- module scope is declaration-only
+- local names must not shadow names from the same or any enclosing lexical scope
+- prefer fresh descriptive names like `normalized_name`, `next_result`, or `item_count`
 
 Record fields are alphabetical everywhere:
 - product type declarations

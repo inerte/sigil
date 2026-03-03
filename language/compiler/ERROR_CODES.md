@@ -244,6 +244,12 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Example:** `match p{{name,age}→...}` → should be `match p{{age,name}→...}`
 **How to fix:** Sort record pattern fields alphabetically by field name
 
+### SIGIL-CANON-NO-SHADOWING
+**Description:** Local binding shadows an existing local binding from the same or an enclosing lexical scope.
+**Message:** "Binding 'name' shadows an existing X binding"
+**Example:** `λf(value:ℤ)→ℤ=l value=(2:ℤ);value`
+**How to fix:** Use a new name instead of rebinding an existing local, parameter, lambda parameter, or pattern binding
+
 ### SIGIL-CANON-LET-UNTYPED
 **Description:** Let binding must have type ascription.
 **Message:** "Let binding 'name' must have type ascription"

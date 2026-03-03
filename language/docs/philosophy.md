@@ -59,6 +59,7 @@ That applies to ordering as well:
 - effects are alphabetical
 - declarations are categorized then alphabetical
 - record fields are alphabetical everywhere they appear
+- local bindings never shadow names from enclosing scopes
 
 #### Parameter Classification for Canonical Forms
 
@@ -139,6 +140,33 @@ Module scope is declaration-only:
 Local bindings (`l`) belong inside expressions and function bodies, not at top level.
 
 This keeps module interfaces explicit and prevents hidden writable state from becoming part of the language surface. For Claude Code and Codex, that means fewer invisible dependencies and less context-sensitive state to reason about.
+
+### One Local Name, One Meaning
+
+Sigil bans local shadowing.
+
+If a name is already bound in a function, lambda, or match scope, nested scopes must use a fresh name instead of rebinding it.
+
+```sigil
+⟦ GOOD ⟧
+λprocess_user(name:𝕊)→𝕊={
+  l normalized_name=(stdlib⋅string.trim(name):𝕊);
+  normalized_name
+}
+
+⟦ BAD ⟧
+λprocess_user(name:𝕊)→𝕊={
+  l name=(stdlib⋅string.trim(name):𝕊);
+  name
+}
+```
+
+This is both a safety rule and an AI-generation rule:
+- refactoring is safer when each local name has one identity
+- match bindings do not silently override outer locals
+- Claude Code and Codex do not need to track lexical rebinding tricks
+
+Sigil prefers explicit renamed stages like `normalized_name`, `validated_name`, and `final_result` over reusing the same short name through nested scopes.
 
 **Trade-offs:**
 - Slight performance overhead on pure functions (~microseconds)

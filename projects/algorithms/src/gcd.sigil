@@ -1,6 +1,6 @@
 λgcd(a:ℤ,b:ℤ)→ℤ match b{
   0→a|
-  b→gcd(b,a%b)
+  divisor→gcd(divisor,a%divisor)
 }
 
 λlcm(a:ℤ,b:ℤ)→ℤ=(a*b)/gcd(a,b)

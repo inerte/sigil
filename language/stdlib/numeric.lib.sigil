@@ -11,13 +11,13 @@
 λdivisible(d:ℤ,n:ℤ)→𝔹=n%d=0
 
 ⟦ Product of integers from 1 to n (factorial) ⟧
-λfactorial(n:ℤ)→ℤ match n{0→1|1→1|n→n*factorial(n-1)}
+λfactorial(n:ℤ)→ℤ match n{0→1|1→1|value→value*factorial(value-1)}
 
 ⟦ Fibonacci number ⟧
-λfib(n:ℤ)→ℤ match n{0→0|1→1|n→fib(n-1)+fib(n-2)}
+λfib(n:ℤ)→ℤ match n{0→0|1→1|value→fib(value-1)+fib(value-2)}
 
 ⟦ Greatest common divisor (Euclidean algorithm) ⟧
-λgcd(a:ℤ,b:ℤ)→ℤ match b{0→a|b→gcd(b,a%b)}
+λgcd(a:ℤ,b:ℤ)→ℤ match b{0→a|divisor→gcd(divisor,a%divisor)}
 
 ⟦ Check if value is in range [min, max] (inclusive) ⟧
 λin_range(max:ℤ,min:ℤ,x:ℤ)→𝔹=in_range_helper(max,min,x)
@@ -47,7 +47,7 @@
 λis_prime(n:ℤ)→𝔹 match n{
   0→false|
   1→false|
-  n→is_prime_helper(2,n)
+  value→is_prime_helper(2,value)
 }
 
 ⟦ Helper: Prime checking ⟧
@@ -71,11 +71,11 @@
 ⟦ Integer power (exponentiation) ⟧
 λpow(base:ℤ,exp:ℤ)→ℤ match exp{
   0→1|
-  exp→base*pow(base,exp-1)
+  remaining_exp→base*pow(base,remaining_exp-1)
 }
 
 ⟦ Sum of integers from a to b ⟧
 λsum_range(a:ℤ,b:ℤ)→ℤ match a>b{true→0|false→a+sum_range(a+1,b)}
 
 ⟦ Sum of integers from 1 to n ⟧
-λsum_to(n:ℤ)→ℤ match n{0→0|n→n+sum_to(n-1)}
+λsum_to(n:ℤ)→ℤ match n{0→0|value→value+sum_to(value-1)}

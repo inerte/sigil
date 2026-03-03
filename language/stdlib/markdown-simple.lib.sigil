@@ -14,11 +14,11 @@ i stdlib⋅string
 
 ⟦ Tail-recursive helper for count_hashes ⟧
 λcount_hashes_loop(idx:ℤ,len:ℤ,text:𝕊)→ℤ match idx{
-  idx when idx<len→match (stdlib⋅string.char_at(idx,text)="#"){
-    true→count_hashes_loop(idx+1,len,text)|
-    false→idx
+  current_idx when current_idx<len→match (stdlib⋅string.char_at(current_idx,text)="#"){
+    true→count_hashes_loop(current_idx+1,len,text)|
+    false→current_idx
   }|
-  idx→idx
+  current_idx→current_idx
 }
 
 ⟦ Extract header text after ## ⟧

@@ -26,7 +26,7 @@ t Result[T,E]=Ok(T)|Err(E)
 ⟦ Example 2: Safe division using Result ⟧
 λdivide(a:ℤ,b:ℤ)→Result match b{
   0→Err("division by zero")|
-  b→Ok(a/b)
+  divisor→Ok(a/divisor)
 }
 
 ⟦ Example 4: Working with Option ⟧

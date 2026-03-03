@@ -87,7 +87,7 @@ fn test_recursive_single_param() {
 #[test]
 fn test_accumulator_blocked() {
     // Current validator heuristic does not yet reject accumulator-style recursion.
-    let source = "λfactorial(acc:ℤ,n:ℤ)→ℤ match n{0→acc|n→factorial(n*acc,n-1)}";
+    let source = "λfactorial(acc:ℤ,n:ℤ)→ℤ match n{0→acc|value→factorial(acc*value,value-1)}";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.lib.sigil").unwrap();
 
@@ -97,7 +97,7 @@ fn test_accumulator_blocked() {
 #[test]
 fn test_tailrec_factorial_blocked() {
     // Current validator heuristic does not yet reject accumulator-style recursion.
-    let source = "λfactorial(acc:ℤ,n:ℤ)→ℤ match n{0→acc|n→factorial(n*acc,n-1)}\nλmain()→ℤ=factorial(1,5)";
+    let source = "λfactorial(acc:ℤ,n:ℤ)→ℤ match n{0→acc|value→factorial(acc*value,value-1)}\nλmain()→ℤ=factorial(1,5)";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
@@ -107,7 +107,7 @@ fn test_tailrec_factorial_blocked() {
 #[test]
 fn test_invalid_helper_pattern_blocked() {
     // Current validator heuristic does not yet reject accumulator-style recursion.
-    let source = "λfactorial(n:ℤ)→ℤ=helper(1,n)\nλhelper(acc:ℤ,n:ℤ)→ℤ match n{0→acc|n→helper(n*acc,n-1)}\nλmain()→ℤ=factorial(5)";
+    let source = "λfactorial(n:ℤ)→ℤ=helper(1,n)\nλhelper(acc:ℤ,n:ℤ)→ℤ match n{0→acc|value→helper(acc*value,value-1)}\nλmain()→ℤ=factorial(5)";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
@@ -340,6 +340,79 @@ fn test_record_pattern_field_order_invalid() {
     assert!(result.is_err());
     let errors = result.unwrap_err();
     assert!(matches!(errors[0], ValidationError::RecordPatternFieldOrder { .. }));
+}
+
+// ============================================================================
+// NO SHADOWING TESTS
+// ============================================================================
+
+#[test]
+fn test_no_shadowing_valid_distinct_names() {
+    let source = "λmain()→ℤ=l value=(1:ℤ);l doubled=(value*2:ℤ);doubled";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    assert!(validate_canonical_form(&program, Some("test.sigil"), None).is_ok());
+}
+
+#[test]
+fn test_no_shadowing_rejects_rebinding_in_same_function() {
+    let source = "λmain()→ℤ=l x=(1:ℤ);l x=(2:ℤ);x";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("test.sigil"), None);
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(matches!(errors[0], ValidationError::NoShadowing { .. }));
+}
+
+#[test]
+fn test_no_shadowing_rejects_let_shadowing_function_param() {
+    let source = "λecho(value:ℤ)→ℤ=l value=(2:ℤ);value";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("test.sigil"), None);
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(errors.iter().any(|error| matches!(error, ValidationError::NoShadowing { name, .. } if name == "value")));
+}
+
+#[test]
+fn test_no_shadowing_rejects_lambda_param_shadowing_outer_local() {
+    let source = "λmain()→ℤ=l x=(1:ℤ);(λ(x:ℤ)→ℤ=x)(2)";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("test.sigil"), None);
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(errors.iter().any(|error| matches!(error, ValidationError::NoShadowing { name, .. } if name == "x")));
+}
+
+#[test]
+fn test_no_shadowing_rejects_pattern_binding_shadowing_outer_local() {
+    let source = "λmain()→ℤ=l item=(1:ℤ);match [2]{[item]→item|_→0}";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("test.sigil"), None);
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(errors.iter().any(|error| matches!(error, ValidationError::NoShadowing { name, .. } if name == "item")));
+}
+
+#[test]
+fn test_no_shadowing_rejects_duplicate_names_inside_pattern() {
+    let source = "λmain()→ℤ match (1,2){(item,item)→item}";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("test.sigil"), None);
+    assert!(result.is_err());
+    let errors = result.unwrap_err();
+    assert!(errors.iter().any(|error| matches!(error, ValidationError::NoShadowing { name, .. } if name == "item")));
 }
 
 // ============================================================================

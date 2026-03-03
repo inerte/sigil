@@ -187,6 +187,17 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
+    #[error("SIGIL-CANON-NO-SHADOWING: Binding '{name}' shadows an existing {previous_kind} binding.\n\nPrevious binding: {previous_kind} '{name}' at line {previous_line}, column {previous_column}\n\nSigil requires ONE WAY: one local name, one meaning.\nUse a new name instead of rebinding '{name}'.")]
+    NoShadowing {
+        name: String,
+        current_kind: String,
+        previous_kind: String,
+        location: SourceLocation,
+        previous_location: SourceLocation,
+        previous_line: usize,
+        previous_column: usize,
+    },
+
     #[error("SIGIL-CANON-TEST-PATH: Test declarations only allowed under project tests/ directory\n\nFile: {file_path}")]
     TestPath {
         file_path: String,
@@ -294,6 +305,7 @@ impl ValidationError {
             ValidationError::RecordTypeFieldOrder { location, .. } => *location,
             ValidationError::RecordLiteralFieldOrder { location, .. } => *location,
             ValidationError::RecordPatternFieldOrder { location, .. } => *location,
+            ValidationError::NoShadowing { location, .. } => *location,
             ValidationError::TestPath { location, .. } => *location,
             ValidationError::DeclExportOrder { location, .. } => *location,
             ValidationError::ExternMemberOrder { location, .. } => *location,
@@ -384,6 +396,30 @@ impl From<ValidationError> for Diagnostic {
                 .with_location(source_location_to_span(get_file(), location))
                 .with_found_expected(&field_name, &prev_field)
                 .with_details("expected_order", format!("{:?}", expected_order))
+            }
+
+            ValidationError::NoShadowing {
+                name,
+                current_kind,
+                previous_kind,
+                location,
+                previous_location,
+                previous_line,
+                previous_column,
+            } => {
+                Diagnostic::new(
+                    codes::canonical::NO_SHADOWING,
+                    SigilPhase::Canonical,
+                    format!("{} '{}' shadows an existing {} binding", current_kind, name, previous_kind),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_details("name", name)
+                .with_details("previous_kind", previous_kind)
+                .with_details("previous_location", format!("{}:{}", previous_line, previous_column))
+                .with_details(
+                    "previous_binding_end",
+                    format!("{}:{}", previous_location.end.line, previous_location.end.column),
+                )
             }
 
             ValidationError::TestPath { file_path, location } => {

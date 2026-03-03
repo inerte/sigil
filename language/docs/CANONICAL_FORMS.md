@@ -373,7 +373,33 @@ match req{{path,method,headers,body}→...}
 Use objective alphabetical ordering for record shapes the same way Sigil already
 does for parameters, effects, and declarations.
 
-#### Rule 8: Parameter Alphabetical Ordering
+#### Rule 8: No Shadowing
+
+Local names must not be rebound in the same or any enclosing lexical scope.
+
+```sigil
+✅ VALID:
+λformat_user(name:𝕊)→𝕊={
+  l normalized_name=(stdlib⋅string.trim(name):𝕊);
+  normalized_name
+}
+
+❌ REJECTED:
+λformat_user(name:𝕊)→𝕊={
+  l name=(stdlib⋅string.trim(name):𝕊);
+  name
+}
+```
+
+This applies to:
+- function parameters
+- lambda parameters
+- `l` bindings
+- pattern bindings introduced by `match`
+
+Use a fresh descriptive name instead of rebinding an existing one.
+
+#### Rule 9: Parameter Alphabetical Ordering
 
 Function parameters must be in alphabetical order by name.
 
@@ -416,7 +442,7 @@ Reorder parameters: a, b, c
 Sigil enforces ONE WAY: canonical parameter ordering.
 ```
 
-#### Rule 8: Effect Alphabetical Ordering
+#### Rule 10: Effect Alphabetical Ordering
 
 Effect annotations must be in alphabetical order.
 

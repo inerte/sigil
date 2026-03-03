@@ -12,6 +12,6 @@ It is intentionally separate from:
 
 ## Latest Article
 
-📝 **[Why Sigil Uses and and or](./articles/014-why-sigil-uses-and-and-or.md)** (March 2, 2026)
+📝 **[Why Sigil Bans Shadowing](./articles/015-why-sigil-bans-shadowing.md)** (March 3, 2026)
 
-Why Sigil replaced `∧` and `∨` with `and` and `or` after measuring whole-program token savings and optimizing for Claude Code / Codex priors instead of symbolic elegance
+Why Sigil rejects local shadowing so one local name keeps one meaning for both safer refactoring and more deterministic AI-generated code

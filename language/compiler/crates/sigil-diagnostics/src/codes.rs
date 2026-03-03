@@ -69,6 +69,7 @@ pub mod canonical {
     pub const RECORD_TYPE_FIELD_ORDER: &str = "SIGIL-CANON-RECORD-TYPE-FIELD-ORDER";
     pub const RECORD_LITERAL_FIELD_ORDER: &str = "SIGIL-CANON-RECORD-LITERAL-FIELD-ORDER";
     pub const RECORD_PATTERN_FIELD_ORDER: &str = "SIGIL-CANON-RECORD-PATTERN-FIELD-ORDER";
+    pub const NO_SHADOWING: &str = "SIGIL-CANON-NO-SHADOWING";
 
     // Local bindings
     pub const LET_UNTYPED: &str = "SIGIL-CANON-LET-UNTYPED";
@@ -158,6 +159,7 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     canonical::RECORD_TYPE_FIELD_ORDER,
     canonical::RECORD_LITERAL_FIELD_ORDER,
     canonical::RECORD_PATTERN_FIELD_ORDER,
+    canonical::NO_SHADOWING,
     canonical::LET_UNTYPED,
     canonical::DECL_CATEGORY_ORDER,
     canonical::DECL_EXPORT_ORDER,
@@ -210,13 +212,13 @@ mod tests {
 
     #[test]
     fn count_error_codes() {
-        // As of implementation: 60 error codes total
-        // 10 lexer + 5 parser + 32 canonical + 2 typecheck + 1 mutability + 8 CLI + 2 runtime = 60
-        // (canonical has 32 because both TEST_LOCATION and TEST_PATH exist)
+        // As of implementation: 61 error codes total
+        // 10 lexer + 5 parser + 33 canonical + 2 typecheck + 1 mutability + 8 CLI + 2 runtime = 61
+        // (canonical has 33 because both TEST_LOCATION and TEST_PATH exist)
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            60,
-            "Expected 60 error codes, found {}",
+            61,
+            "Expected 61 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

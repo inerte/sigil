@@ -1,2 +1,2 @@
 λmain()→ℤ=power(2,10)
-λpower(base:ℤ,exp:ℤ)→ℤ match exp{0→1|exp→base*power(base,exp-1)}
+λpower(base:ℤ,exp:ℤ)→ℤ match exp{0→1|remaining_exp→base*power(base,remaining_exp-1)}

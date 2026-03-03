@@ -114,6 +114,8 @@ Effects are declared between `→` and the return type:
 λmain()→!IO 𝕌=console.log("hello")
 ```
 
+Valid built-in effects are currently `!Error`, `!IO`, `!Mut`, and `!Network`.
+
 ## Mockable function declarations (tests)
 
 ```sigil
@@ -481,6 +483,8 @@ Filter:
 ```sigil
 [1,2,3,4]⊳λ(x:ℤ)→𝔹=x%2=0
 ```
+
+`↦` and `⊳` require pure callbacks. Use `⊕` for ordered reductions that depend on sequential accumulator flow.
 
 Fold:
 

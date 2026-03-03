@@ -1,0 +1,17 @@
+⟦ Effect ordering stays source-ordered.
+
+  `first()` is initiated before `second()`, even though the runtime may overlap
+  their resolution before the final record is observed.
+⟧
+
+t Pair={a:𝕊,b:𝕊}
+
+λfirst()→!IO 𝕊="first"
+
+λmain()→!IO Pair={
+  l a=first();
+  l b=second();
+  {a:a,b:b}
+}
+
+λsecond()→!IO 𝕊="second"

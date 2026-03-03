@@ -100,7 +100,7 @@ pub type Substitution = HashMap<u32, InferenceType>;
 
 /// Effect system for tracking side effects
 /// Tracks compile-time effects for function calls
-pub type EffectSet = HashSet<String>; // {'IO', 'Network', 'Async', 'Error', 'Mut'}
+pub type EffectSet = HashSet<String>; // {'IO', 'Network', 'Error', 'Mut'}
 
 // ============================================================================
 // TYPE VARIABLE GENERATION

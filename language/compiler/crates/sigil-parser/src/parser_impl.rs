@@ -550,7 +550,7 @@ impl Parser {
 
     fn parse_effects(&mut self) -> Result<Vec<String>, ParseError> {
         let mut effects = Vec::new();
-        let valid_effects = vec!["IO", "Network", "Async", "Error", "Mut"];
+        let valid_effects = vec!["IO", "Network", "Error", "Mut"];
 
         while self.match_token(TokenType::BANG) {
             if self.match_token(TokenType::UpperIdentifier) {

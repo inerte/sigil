@@ -546,18 +546,6 @@ t HttpResponse={body:𝕊,headers:{𝕊:𝕊},status:ℤ}
 λhttp_post(url:𝕊,body:𝕊)→Result[HttpResponse,HttpError]!Network
 ```
 
-### std/async
-
-Async/await primitives (Future type)
-
-```sigil
-t Future[T]
-
-λasync[T](fn:λ()→T)→Future[T]!Async
-λawait[T](future:Future[T])→T!Async
-λfuture_map[T,U](fn:λ(T)→U,future:Future[T])→Future[U]
-```
-
 ### std/test
 
 Testing utilities
@@ -589,7 +577,6 @@ Testing utilities
 Effects are tracked at type level:
 - `!IO` - Input/output operations
 - `!Network` - Network requests
-- `!Async` - Asynchronous operations
 - `!Test` - Test operations
 - Pure functions have no effect annotation
 

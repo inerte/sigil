@@ -95,6 +95,10 @@ Current constructor and list invariants:
 - use `⧺` only for explicit concatenation; never rely on list literals to flatten values
 - if a canonical helper exists in `stdlib`, prefer it over project-local reimplementation
 - for safe integer list lookup/end access, prefer `stdlib⋅list.nth` and `stdlib⋅list.last`
+- Sigil is concurrent by default; do not describe it as "await every call"
+- effectful operations start in source order, even when their resolution overlaps
+- `↦` and `⊳` require pure callbacks; `⊕` is the ordered reduction form
+- `!Async` is not a valid effect annotation
 
 ### 3) Keep user-facing errors actionable
 

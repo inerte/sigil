@@ -115,14 +115,13 @@ Sigil also enforces alphabetical ordering for effect annotations:
 
 ```sigil
 ✅ VALID - alphabetical order:
-λfetch_data()→!Async !IO !Network 𝕊=...
+λfetch_data()→!Error !IO !Network 𝕊=...
 
 ❌ REJECTED - non-alphabetical:
-λfetch_data()→!Network !IO !Async 𝕊=...
+λfetch_data()→!Network !IO !Error 𝕊=...
 ```
 
 Standard effects in alphabetical order:
-- `!Async`
 - `!Error`
 - `!IO`
 - `!Mut`

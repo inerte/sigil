@@ -369,7 +369,7 @@ Functions can declare effects:
 
 ```sigil
 λread_file(path:𝕊)→Result[𝕊,IoError]!IO
-λfetch_url(url:𝕊)→Result[𝕊,HttpError]!Network!Async
+λfetch_url(url:𝕊)→Result[𝕊,HttpError]!Network
 ```
 
 **Syntax**: `!EffectName`

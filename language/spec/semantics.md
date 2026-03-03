@@ -5,36 +5,33 @@ Last Updated: 2026-02-21
 
 ## Overview
 
-This document defines the **operational semantics** of Sigil - how programs execute and evaluate. Sigil uses **eager evaluation** (call-by-value) with **immutable data** by default.
+This document defines the **operational semantics** of Sigil - how programs execute and evaluate. Sigil uses **immutable data** and a **concurrent-by-default, demand-driven** execution model.
 
 ## Evaluation Strategy
 
-### Call-by-Value (Eager Evaluation)
+### Demand-Driven Execution
 
-Sigil evaluates arguments **before** passing them to functions:
+Sigil starts independent work early and joins results only when a strict construct needs a concrete value:
 
 ```sigil
 λadd(x:ℤ,y:ℤ)→ℤ=x+y
 
 add(2+3,4+5)
-// Evaluates to: add(5,9) → 14
-// NOT: add(2+3,4+5) → (2+3)+(4+5)
+// The arithmetic subexpressions may be started independently
+// The call result is joined only when a strict consumer needs it
 ```
 
-**Rationale**: Simpler for AI to reason about, predictable performance, easier debugging.
+**Rationale**: one runtime model, better overlap for async work, and no sync/async surface split.
 
-### Evaluation Order
+### Effect Initiation Order
 
-**Left-to-right, innermost-first**:
+Effectful sibling expressions are initiated **left-to-right**:
 
 ```sigil
 f(g(x),h(y))
-// Evaluation order:
-// 1. x (if not already a value)
-// 2. g(x)
-// 3. y (if not already a value)
-// 4. h(y)
-// 5. f(result_of_g, result_of_h)
+// If g and h are pure, the implementation may overlap them.
+// If g and h are effectful, g starts first, then h starts.
+// The call to f joins the values only when it needs them.
 ```
 
 ## Values
@@ -366,13 +363,15 @@ Functions with effects (`!IO`, `!Network`, etc.) have observable behavior:
 
 ### Effect Ordering
 
-Effects execute in **evaluation order** (left-to-right):
+Effects are initiated in **evaluation order** (left-to-right):
 
 ```sigil
 l content1=read_file("a.txt");   (* Executes first *)
 l content2=read_file("b.txt");   (* Executes second *)
 print(content1++content2)        (* Executes third *)
 ```
+
+Sigil preserves source-order effect initiation, but effect resolution may overlap when the backend supports it.
 
 ### Effect Isolation
 

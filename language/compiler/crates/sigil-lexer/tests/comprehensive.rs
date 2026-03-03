@@ -401,7 +401,7 @@ fn test_dotdot_in_list() {
 
 #[test]
 fn test_effect_markers() {
-    let source = "!IO !Network !Async !Error !Mut";
+    let source = "!IO !Network !Error !Mut";
     let tokens = tokenize(source).unwrap();
 
     // Each !X should be BANG followed by UpperIdentifier

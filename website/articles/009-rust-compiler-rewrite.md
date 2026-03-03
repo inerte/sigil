@@ -248,7 +248,7 @@ fn validate_declaration_ordering(program: &Program) -> Result<(), ValidatorError
 - Type synthesis (⇒) and checking (⇐) modes
 - Unification algorithm with path compression
 - Type schemes for polymorphism (`∀α.τ`)
-- Effect tracking (IO, Network, Async, Error, Mut)
+- Effect tracking (IO, Network, Error, Mut)
 - Sum type constructor registration
 
 **Code:**

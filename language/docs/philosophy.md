@@ -90,40 +90,36 @@ Legitimate multi-parameter algorithms like GCD, binary search, and nth element h
 
 This makes Sigil **more principled** (precise distinction) while **more practical** (enables O(log n) algorithms) - a rare win-win.
 
-#### Async-by-Default: The Ultimate Canonical Form
+#### Concurrent-by-Default: The Canonical Runtime Model
 
-**"ALL functions are async. No exceptions."**
+**"One function model, concurrent execution by default."**
 
-In 2026, modern JavaScript is async-first:
-- Node.js fs/promises (not fs)
-- fetch() API (browsers and Node.js)
-- Database clients return Promises
-- Most npm packages are async
+In 2026, modern JavaScript interop is promise-shaped:
+- Node.js fs/promises
+- fetch() in browsers and Node.js
+- database clients
+- HTTP and streaming APIs
 
-Yet developers still choose between sync and async implementations, creating:
-- Two ways to write every function
-- Mental overhead switching between modes
-- API surface duplication (readFileSync vs readFile)
-- Integration friction (mixing sync/async code)
+The problem with a naive async-first language is not the Promise boundary. It is the tendency to compile every call to `await`, which keeps the language uniform on paper while leaving the generated code mostly sequential.
 
-**Sigil's solution:** Make async the ONLY option.
+**Sigil's solution:** keep one function model, but join values only when a strict construct actually needs them.
 
 ```sigil
-⟦ Pure function - async ⟧
+⟦ Pure function - still promise-shaped ⟧
 λadd(a:ℤ,b:ℤ)→ℤ=a+b
 
-⟦ I/O function - async ⟧
+⟦ I/O function - same surface form ⟧
 e fs⋅promises
 λread(path:𝕊)→!IO 𝕊=fs⋅promises.readFile(path,"utf8")
 ```
 
-Both compile to `async function`. ALL calls use `await`. No choice, no ambiguity.
+Both use the same source form. The compiler starts work early and only joins it at strict demand points like arithmetic, branching, matching, indexing, and final observable results.
 
 **Benefits:**
 - **Canonical forms preserved** - ONE way to write functions
-- **FFI just works** - Promise-returning APIs automatically awaited
-- **Future-proof** - Ecosystem moving toward async-first anyway
-- **No mental overhead** - Never decide "should this be async?"
+- **FFI just works** - Promise-returning APIs compose directly
+- **Real overlap** - generated code stops eagerly awaiting every call
+- **No mental overhead** - users never choose between sync and async spellings
 
 ### Declaration-Only Module Scope
 

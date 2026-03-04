@@ -251,56 +251,56 @@ Join lines with newline separators.
 ## Map Operations
 
 ```sigil
-λmap_empty[K,V]()→{K:V}
+λempty[K,V]()→{K↦V}
 ```
 Create empty map.
 - Complexity: O(1)
 - Pure: Yes
 
 ```sigil
-λmap_insert[K,V](key:K,value:V,map:{K:V})→{K:V}
+λinsert[K,V](key:K,map:{K↦V},value:V)→{K↦V}
 ```
 Insert key-value pair. Returns new map.
 - Complexity: O(log n)
 - Pure: Yes
 
 ```sigil
-λmap_get[K,V](key:K,map:{K:V})→Option[V]
+λget[K,V](key:K,map:{K↦V})→Option[V]
 ```
 Get value for key.
 - Complexity: O(log n)
 - Pure: Yes
 
 ```sigil
-λmap_remove[K,V](key:K,map:{K:V})→{K:V}
+λremove[K,V](key:K,map:{K↦V})→{K↦V}
 ```
 Remove key. Returns new map.
 - Complexity: O(log n)
 - Pure: Yes
 
 ```sigil
-λmap_has[K,V](key:K,map:{K:V})→𝔹
+λhas[K,V](key:K,map:{K↦V})→𝔹
 ```
 Check if key exists.
 - Complexity: O(log n)
 - Pure: Yes
 
 ```sigil
-λmap_keys[K,V](map:{K:V})→[K]
+λkeys[K,V](map:{K↦V})→[K]
 ```
 Get all keys.
 - Complexity: O(n)
 - Pure: Yes
 
 ```sigil
-λmap_values[K,V](map:{K:V})→[V]
+λvalues[K,V](map:{K↦V})→[V]
 ```
 Get all values.
 - Complexity: O(n)
 - Pure: Yes
 
 ```sigil
-λmap_entries[K,V](map:{K:V})→[(K,V)]
+λentries[K,V](map:{K↦V})→[(K,V)]
 ```
 Get all key-value pairs.
 - Complexity: O(n)
@@ -477,7 +477,7 @@ Pipe value through function.
 ```sigil
 i stdlib⋅io
 i stdlib⋅list
-i stdlib⋅result
+i core⋅result
 ```
 
 ### Export Visibility
@@ -496,9 +496,15 @@ No selective imports, no aliasing, no export lists.
 
 ## Standard Library Modules
 
-### std/prelude
+### core/prelude
 
-Auto-imported. Contains all core types and functions listed above.
+Auto-imported. Contains the foundational vocabulary types:
+- `Option[T]`
+- `Result[T,E]`
+- `Some`
+- `None`
+- `Ok`
+- `Err`
 
 ### std/io
 
@@ -585,7 +591,7 @@ Planned for future stdlib versions:
 
 - [Type System](type-system.md) - Type inference and checking
 - [Grammar](grammar.ebnf) - Language syntax
-- Implementation: stdlib/prelude.lib.sigil
+- Implementation: core/prelude.lib.sigil
 
 ---
 

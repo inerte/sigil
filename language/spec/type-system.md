@@ -183,7 +183,7 @@ id("hi")     (* T instantiated to 𝕊 *)
 
 ```sigil
 [T]          (* List of T *)
-{K:V}        (* Map from K to V *)
+{K↦V}        (* Map from K to V *)
 (T₁,T₂,...) (* Tuple *)
 ```
 

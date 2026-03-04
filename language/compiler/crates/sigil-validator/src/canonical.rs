@@ -392,6 +392,12 @@ fn validate_expr_record_fields(expr: &Expr, errors: &mut Vec<ValidationError>) {
                 validate_expr_record_fields(&field.value, errors);
             }
         }
+        Expr::MapLiteral(map) => {
+            for entry in &map.entries {
+                validate_expr_record_fields(&entry.key, errors);
+                validate_expr_record_fields(&entry.value, errors);
+            }
+        }
         Expr::Tuple(tuple) => {
             for element in &tuple.elements {
                 validate_expr_record_fields(element, errors);
@@ -663,6 +669,12 @@ fn validate_expr_no_shadowing(expr: &Expr, scopes: &mut Vec<ScopeFrame>, errors:
         Expr::Record(record) => {
             for field in &record.fields {
                 validate_expr_no_shadowing(&field.value, scopes, errors);
+            }
+        }
+        Expr::MapLiteral(map) => {
+            for entry in &map.entries {
+                validate_expr_no_shadowing(&entry.key, scopes, errors);
+                validate_expr_no_shadowing(&entry.value, scopes, errors);
             }
         }
         Expr::Tuple(tuple) => {
@@ -1102,6 +1114,12 @@ fn is_recursive(expr: &Expr, function_name: &str) -> bool {
         Expr::List(l) => l.elements.iter().any(|e| is_recursive(e, function_name)),
 
         Expr::Record(r) => r.fields.iter().any(|f| is_recursive(&f.value, function_name)),
+
+        Expr::MapLiteral(m) => {
+            m.entries.iter().any(|entry| {
+                is_recursive(&entry.key, function_name) || is_recursive(&entry.value, function_name)
+            })
+        }
 
         Expr::Tuple(t) => t.elements.iter().any(|e| is_recursive(e, function_name)),
 

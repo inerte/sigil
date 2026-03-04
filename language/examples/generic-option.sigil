@@ -1,4 +1,4 @@
-i stdlib⋅option
+i core⋅option
 
-λmain()→stdlib⋅option.Option[ℤ]=
-  stdlib⋅option.map_option(λ(x:ℤ)→ℤ=x*2,stdlib⋅option.Some(21))
+λmain()→Option[ℤ]=
+  core⋅option.map_option(λ(x:ℤ)→ℤ=x*2,Some(21))

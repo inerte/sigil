@@ -29,6 +29,8 @@ pub enum Expr {
     List(ListExpr),
     #[cfg_attr(feature = "serde", serde(rename = "RecordExpr"))]
     Record(RecordExpr),
+    #[cfg_attr(feature = "serde", serde(rename = "MapLiteralExpr"))]
+    MapLiteral(MapLiteralExpr),
     #[cfg_attr(feature = "serde", serde(rename = "TupleExpr"))]
     Tuple(TupleExpr),
     #[cfg_attr(feature = "serde", serde(rename = "FieldAccessExpr"))]
@@ -391,6 +393,23 @@ pub struct RecordExpr {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct RecordField {
     pub name: String,
+    pub value: Expr,
+    pub location: SourceLocation,
+}
+
+/// Map literal expression: {"k"↦1, "v"↦2}
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct MapLiteralExpr {
+    pub entries: Vec<MapEntryExpr>,
+    pub location: SourceLocation,
+}
+
+/// Map entry: key↦value
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct MapEntryExpr {
+    pub key: Expr,
     pub value: Expr,
     pub location: SourceLocation,
 }

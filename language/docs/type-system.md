@@ -158,6 +158,7 @@ Implemented today:
 - List types: `[T]`
 - Tuple types: `(T₁,T₂,...,Tₙ)`
 - Record types: `{field₁:T₁, field₂:T₂, ...}`
+- Map types: `{K↦V}`
 - Generic type declarations: `Option[T]`, `Result[T,E]`, user-defined generic ADTs
 - Generic top-level function declarations: `λmap[T,U](fn:λ(T)→U,list:[T])→[U]`
 - Canonical form requires record fields to be alphabetically ordered everywhere records appear
@@ -203,6 +204,14 @@ Generic instantiation is driven by ordinary bidirectional typing:
 - expected return types
 - type ascriptions
 - pattern-match scrutinee types
+
+`Option[T]`, `Result[T,E]`, `Some`, `None`, `Ok`, and `Err` are part of the implicit `core⋅prelude`.
+`Map` is a core collection concept with:
+- type syntax `{K↦V}`
+- literal syntax `{key↦value,...}` and `{↦}`
+
+Records remain fixed-shape products using `:`.
+Maps remain dynamic keyed collections using `↦`.
 
 ### Future Phase: Advanced Features
 

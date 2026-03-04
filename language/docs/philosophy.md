@@ -61,6 +61,32 @@ That applies to ordering as well:
 - record fields are alphabetical everywhere they appear
 - local bindings never shadow names from enclosing scopes
 
+#### Canonical Ownership Matters More Than Prefixes
+
+Sigil does not treat namespace prefixes as morally important.
+
+What matters is:
+- one canonical owner for each concept
+- one canonical spelling
+- no duplicate surfaces that force models to choose between synonyms
+
+That is why Sigil now distinguishes:
+- **core**: foundational vocabulary and collection concepts
+- **stdlib**: broader libraries and operational helpers
+- **runtime/backend**: implementation detail only
+
+Examples:
+- `Option[T]`, `Result[T,E]`, `Some`, `None`, `Ok`, and `Err` are implicit core vocabulary
+- `core⋅map` owns map operations
+- `stdlib⋅string` owns string helpers like `join`
+
+The design rule is pragmatic:
+- a large stdlib is fine
+- prefixes are fine
+- duplicate or half-core / half-stdlib surfaces are not
+
+Future language changes should decide intentionally whether a concept belongs in core vocabulary or in a namespaced module surface.
+
 #### Parameter Classification for Canonical Forms
 
 Multi-parameter recursion is allowed if parameters are **algorithmically structural**, not accumulating state.

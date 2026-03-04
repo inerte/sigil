@@ -1,5 +1,4 @@
 i stdlib⋅list
-i stdlib⋅option
 
-λmain()→stdlib⋅option.Option[𝕊]=
+λmain()→Option[𝕊]=
   stdlib⋅list.find(λ(item:𝕊)→𝔹=#item>4,["sigil","ai","language"])

@@ -356,7 +356,6 @@ Record fields must be alphabetically ordered in:
 - record literals
 - typed record construction
 - record patterns
-- string-keyed record/map literals
 
 ```sigil
 ✅ VALID:
@@ -372,6 +371,27 @@ match req{{path,method,headers,body}→...}
 
 Use objective alphabetical ordering for record shapes the same way Sigil already
 does for parameters, effects, and declarations.
+
+#### Rule 7a: Records And Maps Are Different Shapes
+
+Records are fixed-shape products and use `:`:
+
+```sigil
+t Request={body:𝕊,method:𝕊,path:𝕊}
+Request{body:body,method:method,path:path}
+```
+
+Maps are dynamic keyed collections and use `↦`:
+
+```sigil
+{"content-type"↦"text/plain","x-id"↦"42"}
+({↦}:{𝕊↦𝕊})
+```
+
+Rules:
+- records use alphabetical field ordering
+- maps do not use record-style alphabetical ordering
+- records and maps are intentionally different concepts
 
 #### Rule 8: No Shadowing
 

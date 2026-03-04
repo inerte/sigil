@@ -66,7 +66,7 @@ pub struct ListType {
     pub location: SourceLocation,
 }
 
-/// Map type: Map[K, V]
+/// Map type: {K↦V}
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MapType {

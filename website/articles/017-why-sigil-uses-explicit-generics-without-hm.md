@@ -46,20 +46,20 @@ Generic top-level functions:
 }
 ```
 
-Imported constructors use the same qualified form as everything else:
+Imported constructors use the same qualified form as everything else when they are not part of the implicit core prelude:
 
 ```sigil
-i stdlib⋅option
+i core⋅option
 
-λmain()→stdlib⋅option.Option[ℤ]=stdlib⋅option.Some(42)
+λmain()→Option[ℤ]=Some(42)
 ```
 
 Pattern matching keeps the same shape:
 
 ```sigil
 match opt{
-  stdlib⋅option.Some(value)→value|
-  stdlib⋅option.None()→0
+  Some(value)→value|
+  None()→0
 }
 ```
 

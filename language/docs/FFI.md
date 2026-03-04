@@ -179,6 +179,12 @@ That means `MkdirOptions` and `{recursive:𝔹}` are treated as the same explici
 meaning when validating the `mkdir` call. This is canonical semantic comparison, not
 type inference.
 
+When modeling JavaScript data:
+- fixed-shape objects should use records like `{recursive:𝔹}`
+- dynamic dictionaries should use core maps like `{𝕊↦𝕊}`
+
+Example: HTTP headers are maps, not records.
+
 **Syntax:**
 ```sigil
 e module⋅path : {

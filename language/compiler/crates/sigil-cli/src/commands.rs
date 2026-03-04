@@ -7,7 +7,7 @@ use sigil_codegen::{CodegenOptions, TypeScriptGenerator};
 use sigil_lexer::Lexer;
 use sigil_parser::Parser;
 use sigil_typechecker::{type_check, TypeError, TypeCheckOptions, TypeInfo, TypeScheme};
-use sigil_typechecker::types::{InferenceType, TConstructor, TFunction, TList, TRecord, TTuple};
+use sigil_typechecker::types::{InferenceType, TConstructor, TFunction, TList, TMap, TRecord, TTuple};
 use sigil_validator::{validate_canonical_form, ValidationError};
 use std::collections::HashMap;
 use std::fs;
@@ -920,6 +920,10 @@ fn build_imported_namespaces(
     imported
 }
 
+fn is_core_prelude_name(name: &str) -> bool {
+    matches!(name, "Option" | "Result" | "Some" | "None" | "Ok" | "Err")
+}
+
 fn qualify_inference_type_in_context(typ: &InferenceType, module_id: &str) -> InferenceType {
     match typ {
         InferenceType::Primitive(_) | InferenceType::Var(_) | InferenceType::Any => typ.clone(),
@@ -934,6 +938,10 @@ fn qualify_inference_type_in_context(typ: &InferenceType, module_id: &str) -> In
         })),
         InferenceType::List(list) => InferenceType::List(Box::new(TList {
             element_type: qualify_inference_type_in_context(&list.element_type, module_id),
+        })),
+        InferenceType::Map(map) => InferenceType::Map(Box::new(TMap {
+            key_type: qualify_inference_type_in_context(&map.key_type, module_id),
+            value_type: qualify_inference_type_in_context(&map.value_type, module_id),
         })),
         InferenceType::Tuple(tuple) => InferenceType::Tuple(TTuple {
             types: tuple
@@ -954,7 +962,9 @@ fn qualify_inference_type_in_context(typ: &InferenceType, module_id: &str) -> In
                 })
                 .collect(),
             name: record.name.as_ref().map(|name| {
-                if name.contains('⋅') {
+                if is_core_prelude_name(name) {
+                    name.clone()
+                } else if name.contains('⋅') {
                     name.clone()
                 } else if name.contains('.') {
                     name.clone()
@@ -964,7 +974,9 @@ fn qualify_inference_type_in_context(typ: &InferenceType, module_id: &str) -> In
             }),
         }),
         InferenceType::Constructor(constructor) => InferenceType::Constructor(TConstructor {
-            name: if constructor.name.contains('⋅') || constructor.name.contains('.') {
+            name: if is_core_prelude_name(&constructor.name) {
+                constructor.name.clone()
+            } else if constructor.name.contains('⋅') || constructor.name.contains('.') {
                 constructor.name.clone()
             } else {
                 format!("{}.{}", module_id, constructor.name)
@@ -987,6 +999,10 @@ fn build_imported_type_registries(
 ) -> HashMap<String, HashMap<String, TypeInfo>> {
     let mut imported = HashMap::new();
 
+    if let Some(registry) = type_registries.get("core⋅prelude") {
+        imported.insert("core⋅prelude".to_string(), registry.clone());
+    }
+
     for decl in &ast.declarations {
         if let Declaration::Import(import_decl) = decl {
             let module_id = import_decl.module_path.join("⋅");
@@ -1005,6 +1021,16 @@ fn build_imported_value_schemes(
     compiled_schemes: &HashMap<String, HashMap<String, TypeScheme>>,
 ) -> HashMap<String, HashMap<String, TypeScheme>> {
     let mut imported = HashMap::new();
+
+    if let Some(schemes) = compiled_schemes.get("core⋅prelude") {
+        imported.insert(
+            "core⋅prelude".to_string(),
+            schemes
+                .iter()
+                .map(|(name, scheme)| (name.clone(), scheme.clone()))
+                .collect(),
+        );
+    }
 
     for decl in &ast.declarations {
         if let Declaration::Import(import_decl) = decl {
@@ -1059,6 +1085,10 @@ fn qualify_inference_type_for_module(
         InferenceType::List(list) => InferenceType::List(Box::new(TList {
             element_type: qualify_inference_type_for_module(module_id, &list.element_type),
         })),
+        InferenceType::Map(map) => InferenceType::Map(Box::new(TMap {
+            key_type: qualify_inference_type_for_module(module_id, &map.key_type),
+            value_type: qualify_inference_type_for_module(module_id, &map.value_type),
+        })),
         InferenceType::Tuple(tuple) => InferenceType::Tuple(TTuple {
             types: tuple
                 .types
@@ -1078,7 +1108,9 @@ fn qualify_inference_type_for_module(
                 })
                 .collect(),
             name: record.name.as_ref().map(|name| {
-                if name.contains('.') {
+                if is_core_prelude_name(name) {
+                    name.clone()
+                } else if name.contains('.') {
                     name.clone()
                 } else {
                     format!("{}.{}", module_id, name)
@@ -1086,7 +1118,9 @@ fn qualify_inference_type_for_module(
             }),
         }),
         InferenceType::Constructor(constructor) => InferenceType::Constructor(TConstructor {
-            name: if constructor.name.contains('.') {
+            name: if is_core_prelude_name(&constructor.name) {
+                constructor.name.clone()
+            } else if constructor.name.contains('.') {
                 constructor.name.clone()
             } else {
                 format!("{}.{}", module_id, constructor.name)
@@ -1173,7 +1207,10 @@ fn qualify_type_in_context(
             location: tuple_type.location,
         }),
         Type::Variable(var_type) => {
-            if type_params.contains(&var_type.name) || !local_type_registry.contains_key(&var_type.name) {
+            if is_core_prelude_name(&var_type.name)
+                || type_params.contains(&var_type.name)
+                || !local_type_registry.contains_key(&var_type.name)
+            {
                 return ast_type.clone();
             }
 

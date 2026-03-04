@@ -120,6 +120,7 @@ pub enum TypedExprKind {
     List(TypedListExpr),
     Tuple(TypedTupleExpr),
     Record(TypedRecordExpr),
+    MapLiteral(TypedMapLiteralExpr),
     FieldAccess(TypedFieldAccessExpr),
     Index(TypedIndexExpr),
     Map(TypedMapExpr),
@@ -226,6 +227,18 @@ pub struct TypedRecordField {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedRecordExpr {
     pub fields: Vec<TypedRecordField>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypedMapEntryExpr {
+    pub key: TypedExpr,
+    pub value: TypedExpr,
+    pub location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypedMapLiteralExpr {
+    pub entries: Vec<TypedMapEntryExpr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

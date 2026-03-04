@@ -237,9 +237,37 @@ impl Parser {
     }
 
     fn type_definition(&mut self) -> Result<TypeDef, ParseError> {
-        // Product type (record): { field: Type, ... }
+        // Braced type definitions are either:
+        // - Product types: {field:Type,...}
+        // - Type aliases to map/record types: {K↦V} or similar
         if self.check(TokenType::LBRACE) {
-            return self.product_type().map(TypeDef::Product);
+            let checkpoint = self.current;
+            self.advance(); // consume {
+
+            let is_product = if self.check(TokenType::RBRACE) {
+                true
+            } else if self.check(TokenType::IDENTIFIER) {
+                matches!(
+                    self.tokens.get(self.current + 1).map(|t| &t.token_type),
+                    Some(TokenType::COLON)
+                )
+            } else {
+                false
+            };
+
+            self.current = checkpoint;
+
+            if is_product {
+                return self.product_type().map(TypeDef::Product);
+            }
+
+            let start = self.peek();
+            let aliased_type = self.parse_type()?;
+            let end = self.previous();
+            return Ok(TypeDef::Alias(TypeAlias {
+                aliased_type,
+                location: self.make_location(start.location.start, end.location.end),
+            }));
         }
 
         // Sum type or type alias
@@ -645,11 +673,15 @@ impl Parser {
             })));
         }
 
-        // Map type: {K:V} or Function type: λ(T1,T2)→R
+        // Map type: {K↦V} or Function type: λ(T1,T2)→R
         if self.match_token(TokenType::LBRACE) {
             let start = self.previous();
+            if self.match_token(TokenType::MAP) {
+                self.consume(TokenType::RBRACE, "Expected \"}\" after empty map type")?;
+                return Err(self.error("Empty map types are not valid. Use {K↦V} with explicit key and value types."));
+            }
             let key_type = self.parse_type()?;
-            self.consume(TokenType::COLON, "Expected \":\" in map type")?;
+            self.consume(TokenType::MAP, "Expected \"↦\" in map type")?;
             let value_type = self.parse_type()?;
             self.consume(TokenType::RBRACE, "Expected \"}\"")?;
             let end = self.previous();
@@ -1408,30 +1440,69 @@ impl Parser {
             }));
         }
 
-        // Try to parse as record/map field (id:expr or "key":expr)
-        if self.check(TokenType::IDENTIFIER) || self.check(TokenType::STRING) {
-            let checkpoint = self.current;
-            let name_token = self.advance();
-            let name = name_token.value.clone();
+        // Empty map: {↦}
+        if self.match_token(TokenType::MAP) {
+            self.consume(TokenType::RBRACE, "Expected \"}\" after empty map literal")?;
+            return Ok(Expr::MapLiteral(MapLiteralExpr {
+                entries: Vec::new(),
+                location: self.make_location(start.location.start, self.previous().location.end),
+            }));
+        }
 
-            if self.match_token(TokenType::COLON) {
-                // It's a record or map literal
-                let value = self.expression()?;
+        // Try to parse as record or map literal.
+        if self.check(TokenType::IDENTIFIER)
+            || self.check(TokenType::STRING)
+            || self.check(TokenType::INTEGER)
+            || self.check(TokenType::FLOAT)
+            || self.check(TokenType::CHAR)
+            || self.check(TokenType::TRUE)
+            || self.check(TokenType::FALSE)
+            || self.check(TokenType::LPAREN)
+            || self.check(TokenType::LBRACKET)
+            || self.check(TokenType::LBRACE)
+        {
+            let checkpoint = self.current;
+            let first_expr = self.logical()?;
+
+            if self.match_token(TokenType::MAP) {
+                let mut entries = vec![MapEntryExpr {
+                    key: first_expr,
+                    value: self.expression()?,
+                    location: self.make_location(start.location.start, self.previous().location.end),
+                }];
+
+                while self.match_token(TokenType::COMMA) {
+                    let entry_start = self.peek();
+                    let key = self.logical()?;
+                    self.consume(TokenType::MAP, "Expected \"↦\" in map literal")?;
+                    let value = self.expression()?;
+                    entries.push(MapEntryExpr {
+                        key,
+                        value,
+                        location: self.make_location(entry_start.location.start, self.previous().location.end),
+                    });
+                }
+
+                self.consume(TokenType::RBRACE, "Expected \"}\"")?;
+                return Ok(Expr::MapLiteral(MapLiteralExpr {
+                    entries,
+                    location: self.make_location(start.location.start, self.previous().location.end),
+                }));
+            } else if self.match_token(TokenType::COLON) {
+                let Expr::Identifier(name_token) = first_expr else {
+                    return Err(self.error("Record literals require identifier field names. Use ↦ for map literals."));
+                };
+
                 let mut fields = vec![RecordField {
-                    name,
-                    value,
+                    name: name_token.name,
+                    value: self.expression()?,
                     location: self.make_location(name_token.location.start, self.previous().location.end),
                 }];
 
                 while self.match_token(TokenType::COMMA) {
                     let field_start = self.peek();
-                    // Field names can be identifiers OR strings (for map literals)
-                    let field_name = if self.check(TokenType::STRING) {
-                        self.advance().value.clone()
-                    } else {
-                        self.consume(TokenType::IDENTIFIER, "Expected field name")?.value.clone()
-                    };
-                    self.consume(TokenType::COLON, "Expected \":\"")?;
+                    let field_name = self.consume(TokenType::IDENTIFIER, "Expected record field name")?.value.clone();
+                    self.consume(TokenType::COLON, "Expected \":\" in record literal")?;
                     let field_value = self.expression()?;
                     fields.push(RecordField {
                         name: field_name,
@@ -1446,7 +1517,6 @@ impl Parser {
                     location: self.make_location(start.location.start, self.previous().location.end),
                 }));
             } else {
-                // Backtrack - it's a grouped/block expression
                 self.current = checkpoint;
             }
         }
@@ -1897,6 +1967,7 @@ impl HasLocation for Expr {
             Expr::If(e) => e.location,
             Expr::List(e) => e.location,
             Expr::Record(e) => e.location,
+            Expr::MapLiteral(e) => e.location,
             Expr::Tuple(e) => e.location,
             Expr::FieldAccess(e) => e.location,
             Expr::Index(e) => e.location,

@@ -4,7 +4,7 @@ i src⋅types
 λarticle_page(date:𝕊,slug:𝕊)→src⋅types.SitePage=
   src⋅content.blank_page(
     "",
-    {author:"Sigil",date:date,slug:slug,title:slug},
+    {author:"Sigil",category:"",date:date,description:"",slug:slug,title:slug},
     "articles/"++slug,
     src⋅types.Article(),
     "website/articles/"++slug++".md"

@@ -278,6 +278,13 @@ i stdlib⋅string
   src⋅types.Spec()→"Spec"
 }
 
+λsection_name_lowercase(section:src⋅types.Section)→𝕊 match section{
+  src⋅types.Article()→"article"|
+  src⋅types.Doc()→"doc"|
+  src⋅types.Home()→"home"|
+  src⋅types.Spec()→"spec"
+}
+
 λsort_char_rank(ch:𝕊)→ℤ match ch{
   "-"→0|
   "."→1|

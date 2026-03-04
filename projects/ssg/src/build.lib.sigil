@@ -16,6 +16,7 @@ i stdlib⋅string
   l data=(render_site_data(alias_routes,config.base_path,raw_data):src⋅types.SiteData);
   l _=(copy_static_assets(asset_output_dir(config)):𝕌);
   l _=(write_page(config,src⋅templates.home_page(data.articles,config,data.docs,data.home,data.spec),data.home):𝕌);
+  l _=(write_standalone_pages(alias_routes,config):𝕌);
   l _=(write_page(config,src⋅templates.articles_index(config,data.articles_intro.body_html,data.articles),data.articles_intro):𝕌);
   l _=(write_pages(config,data.articles):𝕌);
   l _=(write_index_html(join_path(config.output_dir,"docs"),src⋅templates.docs_index(config,data.docs)):𝕌);
@@ -173,3 +174,16 @@ i stdlib⋅string
     l _=(write_page(config,html,page):𝕌);
     write_pages(config,rest)
 }
+
+λwrite_standalone_pages(alias_routes:[src⋅types.AliasRoute],config:src⋅types.SiteBuildConfig)→!IO 𝕌=
+  l about_page=(load_page(config,src⋅types.Home(),"website/about-site.md"):src⋅types.SitePage);
+  l rendered_page=(src⋅content.render_page(alias_routes,config.base_path,{
+    body_html:about_page.body_html,
+    body_markdown:about_page.body_markdown,
+    meta:about_page.meta,
+    output_dir:"about-site",
+    section:about_page.section,
+    source_path:about_page.source_path
+  }):src⋅types.SitePage);
+  l html=(src⋅templates.article_page(config,rendered_page):𝕊);
+  write_page(config,html,rendered_page)

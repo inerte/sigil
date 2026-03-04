@@ -90,7 +90,12 @@ i src⋅types
   )
 
 λpage_card(config:src⋅types.SiteBuildConfig,page:src⋅types.SitePage)→𝕊=
-  "<li class=\"page-card\"><a class=\"page-link\" href=\""++site_url(config.base_path,src⋅content.canonical_route(page))++"\">"++page.meta.title++"</a>"++page_card_meta(page)++"</li>"
+  "<li class=\"page-card\" data-section=\""++src⋅content.section_name_lowercase(page.section)++"\"><a class=\"page-link\" href=\""++site_url(config.base_path,src⋅content.canonical_route(page))++"\">"++page.meta.title++"</a>"++page_card_meta(page)++page_card_description(page)++"</li>"
+
+λpage_card_description(page:src⋅types.SitePage)→𝕊 match #page.meta.description>0{
+  true→"<div class=\"page-card-desc\">"++page.meta.description++"</div>"|
+  false→""
+}
 
 λpage_card_meta(page:src⋅types.SitePage)→𝕊 match #page.meta.date>0{
   true→"<div class=\"page-card-meta\">"++page.meta.date++"</div>"|

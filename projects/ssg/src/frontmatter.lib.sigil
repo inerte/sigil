@@ -13,10 +13,12 @@ i stdlib⋅string
       l raw_value=(stdlib⋅string.substring(#line,line,separator_idx+1):𝕊);
       l value=(strip_quotes(stdlib⋅string.trim(raw_value)):𝕊);
       match key{
-        "author"→{author:value,date:meta.date,slug:meta.slug,title:meta.title}|
-        "date"→{author:meta.author,date:value,slug:meta.slug,title:meta.title}|
-        "slug"→{author:meta.author,date:meta.date,slug:value,title:meta.title}|
-        "title"→{author:meta.author,date:meta.date,slug:meta.slug,title:value}|
+        "author"→{author:value,category:meta.category,date:meta.date,description:meta.description,slug:meta.slug,title:meta.title}|
+        "category"→{author:meta.author,category:value,date:meta.date,description:meta.description,slug:meta.slug,title:meta.title}|
+        "date"→{author:meta.author,category:meta.category,date:value,description:meta.description,slug:meta.slug,title:meta.title}|
+        "description"→{author:meta.author,category:meta.category,date:meta.date,description:value,slug:meta.slug,title:meta.title}|
+        "slug"→{author:meta.author,category:meta.category,date:meta.date,description:meta.description,slug:value,title:meta.title}|
+        "title"→{author:meta.author,category:meta.category,date:meta.date,description:meta.description,slug:meta.slug,title:value}|
         _→meta
       }
   }
@@ -53,7 +55,7 @@ i stdlib⋅string
   }
 }
 
-λdefault_meta()→src⋅types.PageMeta={author:"",date:"",slug:"",title:""}
+λdefault_meta()→src⋅types.PageMeta={author:"",category:"",date:"",description:"",slug:"",title:""}
 
 λderive_slug(meta:src⋅types.PageMeta,source_path:𝕊)→𝕊 match #meta.slug>0{
   true→normalize_slug(meta.slug)|
@@ -122,19 +124,19 @@ i stdlib⋅string
     l meta=(default_meta():src⋅types.PageMeta);
     l title=(derive_title(markdown,meta,source_path):𝕊);
     l slug=(derive_slug(meta,source_path):𝕊);
-    {content:markdown,meta:{author:"",date:"",slug:slug,title:title}}|
+    {content:markdown,meta:{author:"",category:"",date:"",description:"",slug:slug,title:title}}|
   [line,.rest]→match line{
     "---"→
       l parsed=(consume_frontmatter(rest,default_meta()):ParseLinesResult);
       l content=(stdlib⋅string.join("\n",parsed.content_lines):𝕊);
       l title=(derive_title(content,parsed.meta,source_path):𝕊);
       l slug=(derive_slug(parsed.meta,source_path):𝕊);
-      {content:content,meta:{author:parsed.meta.author,date:parsed.meta.date,slug:slug,title:title}}|
+      {content:content,meta:{author:parsed.meta.author,category:parsed.meta.category,date:parsed.meta.date,description:parsed.meta.description,slug:slug,title:title}}|
     _→
       l meta=(default_meta():src⋅types.PageMeta);
       l title=(derive_title(markdown,meta,source_path):𝕊);
       l slug=(derive_slug(meta,source_path):𝕊);
-      {content:markdown,meta:{author:"",date:"",slug:slug,title:title}}
+      {content:markdown,meta:{author:"",category:"",date:"",description:"",slug:slug,title:title}}
   }
 }
 

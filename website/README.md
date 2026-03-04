@@ -1,21 +1,35 @@
-# Sigil Website
+# Sigil
 
-This website is built from markdown that already lives in the repo. Docs stay in `language/docs`, the spec stays in `language/spec`, and articles stay in `website/articles`; the site generator renders those files in place instead of keeping a mirrored copy.
+Machine-first programming language designed for canonical code generation.
 
-## Sections
+## Why Sigil?
 
-- [articles/](./articles/) - Design articles documenting language evolution and decisions
-- [language/docs/](../language/docs/) - Reference docs rendered into the site
-- [language/spec/](../language/spec/) - Normative language and stdlib specs rendered into the site
+**Radical Canonicalization** - ONE way to write everything. No style debates, no formatting discussions. The compiler enforces canonical forms for filenames, declarations, parameters, even whitespace.
 
-## Build
+**Zero Ambiguity** - Explicit types, no shadowing, deterministic execution. Code means exactly what it says. Perfect for AI code generation.
 
-```bash
-language/compiler/target/debug/sigil run projects/ssg/src/main.sigil
+**Concurrent by Default** - Built for async I/O without await syntax. Functions compose naturally with effects tracked in the type system.
+
+## Quick Example
+
+```sigil
+i stdlib⋅list
+
+λsum(numbers:[ℤ])→ℤ match numbers{
+  []→0|
+  [first,.rest]→first+sum(rest)
+}
+
+test sum_test()→Unit|AssertionFailure =
+  assert sum([1,2,3,4,5])=15
 ```
 
-Generated output goes to `website/.local/site/`.
+## Explore
 
-## Homepage
+- **[Articles](/articles/)** - Design decisions and language evolution
+- **[Docs](/docs/)** - Language guides and reference material
+- **[Spec](/spec/)** - Normative specifications
 
-The built homepage also includes generated article, docs, and spec indexes so the rendered site stays in sync with repo content automatically.
+---
+
+*This website is built from markdown that lives in the repo. Docs stay in `language/docs`, specs in `language/spec`. [Learn more](/about-site/).*

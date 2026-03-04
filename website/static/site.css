@@ -8,6 +8,9 @@
   --accent-soft:#f2d3c2;
   --code-bg:#f1e6d6;
   --shadow:0 18px 50px rgba(53,33,17,0.08);
+  --accent-doc:#2d5a8a;
+  --accent-spec:#5a6b2d;
+  --accent-article:#8a3b12;
 }
 
 *{
@@ -20,7 +23,7 @@ body{
     radial-gradient(circle at top left, rgba(138,59,18,0.14), transparent 28rem),
     linear-gradient(180deg, #fbf6ee 0%, var(--bg) 38%, #efe3d3 100%);
   color:var(--fg);
-  font:18px/1.65 "Georgia", "Iowan Old Style", serif;
+  font:18px/1.65 "Georgia", "Iowan Old Style", "Palatino", "Times New Roman", serif;
 }
 
 a{
@@ -39,6 +42,11 @@ pre{
   padding:1rem;
   border-radius:0.9rem;
   background:var(--code-bg);
+}
+
+pre code{
+  padding:0;
+  background:transparent;
 }
 
 .site-shell{
@@ -125,6 +133,12 @@ pre{
 .section-card{
   padding:1.4rem;
   border-radius:1rem;
+  transition:transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.section-card:hover{
+  transform:translateY(-2px);
+  box-shadow:0 22px 60px rgba(53,33,17,0.12);
 }
 
 .section-card h2{
@@ -171,6 +185,16 @@ pre{
   line-height:1.15;
 }
 
+.prose h2{
+  margin-top:2.5rem;
+  margin-bottom:1rem;
+}
+
+.prose h3{
+  margin-top:2rem;
+  margin-bottom:0.75rem;
+}
+
 .prose ul,
 .prose ol{
   padding-left:1.4rem;
@@ -197,6 +221,11 @@ pre{
 .page-card{
   padding:0.9rem 0;
   border-top:1px solid rgba(31,27,22,0.08);
+  transition:transform 0.2s ease;
+}
+
+.page-card:hover{
+  transform:translateX(2px);
 }
 
 .page-card:first-child{
@@ -215,10 +244,56 @@ pre{
   font-size:0.92rem;
 }
 
+.page-card-desc{
+  margin-top:0.3rem;
+  color:var(--muted);
+  font-size:0.94rem;
+}
+
+.page-card[data-section="article"] .page-link{
+  color:var(--accent-article);
+}
+
+.page-card[data-section="doc"] .page-link{
+  color:var(--accent-doc);
+}
+
+.page-card[data-section="spec"] .page-link{
+  color:var(--accent-spec);
+}
+
 .site-footer{
   width:min(72rem, calc(100% - 2rem));
   margin:0 auto;
   padding:0 0 2rem;
+}
+
+.features-grid{
+  display:grid;
+  gap:1.5rem;
+  margin:2rem 0;
+  grid-template-columns:repeat(auto-fit, minmax(18rem, 1fr));
+}
+
+.feature-card{
+  padding:1.5rem;
+  border-radius:1rem;
+  background:var(--bg-panel);
+  border:1px solid rgba(31,27,22,0.08);
+  box-shadow:var(--shadow);
+}
+
+.feature-card h3{
+  margin-top:0;
+  color:var(--accent);
+}
+
+.code-showcase{
+  margin:2rem 0;
+}
+
+.code-showcase pre{
+  border-left:3px solid var(--accent);
 }
 
 @media (max-width: 720px){
@@ -234,5 +309,11 @@ pre{
   .site-main{
     width:min(100% - 1.25rem, 72rem);
     padding-top:1.25rem;
+  }
+}
+
+@media (max-width: 480px){
+  .features-grid{
+    grid-template-columns:1fr;
   }
 }

@@ -4,7 +4,9 @@ t AliasRoute={alias:𝕊,route:𝕊}
 
 t PageMeta={
   author:𝕊,
+  category:𝕊,
   date:𝕊,
+  description:𝕊,
   slug:𝕊,
   title:𝕊
 }

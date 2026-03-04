@@ -1,5 +1,3 @@
-i stdlib⋅option
-
 λmain()→𝕌=()
 
-λuse_option()→stdlib⋅option.Option[ℤ]=stdlib⋅option.Some(42)
+λuse_option()→Option[ℤ]=Some(42)

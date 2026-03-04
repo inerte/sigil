@@ -1,6 +1,3 @@
-i stdlib⋅option
-i stdlib⋅result
-
 ⟦ Practical Sum Types Example
 
 Demonstrates practical Option[T] and Result[T,E] usage with Sigil's explicit
@@ -8,34 +5,34 @@ generics.
 ⟧
 
 ⟦ Extract value from Result with fallback ⟧
-λget_or_default(fallback:ℤ,res:stdlib⋅result.Result[ℤ,𝕊])→ℤ match res{
-  stdlib⋅result.Ok(value)→value|
-  stdlib⋅result.Err(_)→fallback
+λget_or_default(fallback:ℤ,res:Result[ℤ,𝕊])→ℤ match res{
+  Ok(value)→value|
+  Err(_)→fallback
 }
 
 ⟦ Extract value from Option with default ⟧
-λget_or_zero(opt:stdlib⋅option.Option[ℤ])→ℤ match opt{
-  stdlib⋅option.Some(x)→x|
-  stdlib⋅option.None()→0
+λget_or_zero(opt:Option[ℤ])→ℤ match opt{
+  Some(x)→x|
+  None()→0
 }
 
 ⟦ Check if Result is ok ⟧
-λis_ok(res:stdlib⋅result.Result[ℤ,𝕊])→𝔹 match res{
-  stdlib⋅result.Ok(_)→true|
-  stdlib⋅result.Err(_)→false
+λis_ok(res:Result[ℤ,𝕊])→𝔹 match res{
+  Ok(_)→true|
+  Err(_)→false
 }
 
 ⟦ Main - demonstrate usage ⟧
 λmain()→ℤ=get_or_zero(safe_head([1,2,3]))+get_or_default(0,safe_subtract(10,2))+get_or_default(999,safe_subtract(10,20))
 
 ⟦ Safe list head ⟧
-λsafe_head(xs:[ℤ])→stdlib⋅option.Option[ℤ] match xs{
-  []→stdlib⋅option.None()|
-  [x,.rest]→stdlib⋅option.Some(x)
+λsafe_head(xs:[ℤ])→Option[ℤ] match xs{
+  []→None()|
+  [x,.rest]→Some(x)
 }
 
 ⟦ Safe subtraction with validation ⟧
-λsafe_subtract(num1:ℤ,num2:ℤ)→stdlib⋅result.Result[ℤ,𝕊] match num2>10{
-  true→stdlib⋅result.Err("second number too large")|
-  false→stdlib⋅result.Ok(num1-num2)
+λsafe_subtract(num1:ℤ,num2:ℤ)→Result[ℤ,𝕊] match num2>10{
+  true→Err("second number too large")|
+  false→Ok(num1-num2)
 }

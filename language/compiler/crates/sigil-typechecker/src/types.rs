@@ -23,6 +23,7 @@ pub enum InferenceType {
     Var(Box<TVar>),
     Function(Box<TFunction>),
     List(Box<TList>),
+    Map(Box<TMap>),
     Tuple(TTuple),
     Record(TRecord),
     Constructor(TConstructor),
@@ -51,6 +52,12 @@ pub struct TFunction {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TList {
     pub element_type: InferenceType,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TMap {
+    pub key_type: InferenceType,
+    pub value_type: InferenceType,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -162,6 +169,13 @@ pub fn apply_subst(subst: &Substitution, typ: &InferenceType) -> InferenceType {
             }))
         }
 
+        InferenceType::Map(tmap) => {
+            InferenceType::Map(Box::new(TMap {
+                key_type: apply_subst(subst, &tmap.key_type),
+                value_type: apply_subst(subst, &tmap.value_type),
+            }))
+        }
+
         InferenceType::Tuple(ttuple) => {
             InferenceType::Tuple(TTuple {
                 types: ttuple.types.iter().map(|t| apply_subst(subst, t)).collect(),
@@ -263,6 +277,9 @@ fn occurs_in(id: u32, typ: &InferenceType, subst: &Substitution) -> bool {
                 || occurs_in(id, &func.return_type, subst)
         }
         InferenceType::List(list) => occurs_in(id, &list.element_type, subst),
+        InferenceType::Map(map) => {
+            occurs_in(id, &map.key_type, subst) || occurs_in(id, &map.value_type, subst)
+        }
         InferenceType::Tuple(tuple) => tuple.types.iter().any(|item| occurs_in(id, item, subst)),
         InferenceType::Record(record) => record
             .fields
@@ -290,6 +307,10 @@ fn unify_into(
         (InferenceType::Primitive(p1), InferenceType::Primitive(p2)) if p1.name == p2.name => Ok(()),
         (InferenceType::List(l1), InferenceType::List(l2)) => {
             unify_into(&l1.element_type, &l2.element_type, subst)
+        }
+        (InferenceType::Map(m1), InferenceType::Map(m2)) => {
+            unify_into(&m1.key_type, &m2.key_type, subst)?;
+            unify_into(&m1.value_type, &m2.value_type, subst)
         }
         (InferenceType::Tuple(t1), InferenceType::Tuple(t2)) if t1.types.len() == t2.types.len() => {
             for (left_item, right_item) in t1.types.iter().zip(&t2.types) {
@@ -345,6 +366,11 @@ fn format_inference_type(typ: &InferenceType) -> String {
             format!("λ({})→{}", params, format_inference_type(&func.return_type))
         }
         InferenceType::List(list) => format!("[{}]", format_inference_type(&list.element_type)),
+        InferenceType::Map(map) => format!(
+            "{{{}↦{}}}",
+            format_inference_type(&map.key_type),
+            format_inference_type(&map.value_type)
+        ),
         InferenceType::Tuple(tuple) => format!(
             "({})",
             tuple
@@ -407,6 +433,11 @@ pub fn types_equal(t1: &InferenceType, t2: &InferenceType) -> bool {
             types_equal(&l1.element_type, &l2.element_type)
         }
 
+        (InferenceType::Map(m1), InferenceType::Map(m2)) => {
+            types_equal(&m1.key_type, &m2.key_type)
+                && types_equal(&m1.value_type, &m2.value_type)
+        }
+
         (InferenceType::Tuple(t1), InferenceType::Tuple(t2)) => {
             t1.types.len() == t2.types.len()
                 && t1.types.iter().zip(&t2.types).all(|(ty1, ty2)| types_equal(ty1, ty2))
@@ -448,6 +479,11 @@ pub fn ast_type_to_inference_type_with_params(
 
         AstType::List(list_type) => InferenceType::List(Box::new(TList {
             element_type: ast_type_to_inference_type_with_params(&list_type.element_type, type_params),
+        })),
+
+        AstType::Map(map_type) => InferenceType::Map(Box::new(TMap {
+            key_type: ast_type_to_inference_type_with_params(&map_type.key_type, type_params),
+            value_type: ast_type_to_inference_type_with_params(&map_type.value_type, type_params),
         })),
 
         AstType::Tuple(tuple_type) => InferenceType::Tuple(TTuple {

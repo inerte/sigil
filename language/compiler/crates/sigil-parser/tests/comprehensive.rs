@@ -870,6 +870,82 @@ fn test_type_constructor() {
     }
 }
 
+#[test]
+fn test_map_literal_and_type_parse() {
+    let source = "λf()→{𝕊↦ℤ}={\"a\"↦1,\"b\"↦2}";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    match &program.declarations[0] {
+        Declaration::Function(f) => {
+            match &f.return_type {
+                Some(Type::Map(map_type)) => {
+                    assert!(matches!(&map_type.key_type, Type::Primitive(_)));
+                    assert!(matches!(&map_type.value_type, Type::Primitive(_)));
+                }
+                _ => panic!("Expected map return type"),
+            }
+
+            match &f.body {
+                Expr::MapLiteral(map) => {
+                    assert_eq!(map.entries.len(), 2);
+                }
+                _ => panic!("Expected map literal body"),
+            }
+        }
+        _ => panic!("Expected function"),
+    }
+}
+
+#[test]
+fn test_empty_map_literal_parse() {
+    let source = "λf()→{𝕊↦ℤ}={↦}";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    match &program.declarations[0] {
+        Declaration::Function(f) => match &f.body {
+            Expr::MapLiteral(map) => assert!(map.entries.is_empty()),
+            _ => panic!("Expected empty map literal body"),
+        },
+        _ => panic!("Expected function"),
+    }
+}
+
+#[test]
+fn test_map_type_alias_parses() {
+    let source = "t Headers={𝕊↦𝕊}";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    match &program.declarations[0] {
+        Declaration::Type(t) => match &t.definition {
+            TypeDef::Alias(alias) => match &alias.aliased_type {
+                Type::Map(_) => {}
+                other => panic!("Expected map type alias, got {:?}", other),
+            },
+            other => panic!("Expected alias definition, got {:?}", other),
+        },
+        _ => panic!("Expected type declaration"),
+    }
+}
+
+#[test]
+fn test_record_literal_rejects_string_key_with_colon() {
+    let source = "λf()→𝕌={\"content-type\":\"text/plain\"}";
+    let tokens = tokenize(source).unwrap();
+    let err = parse(tokens, "test.sigil").unwrap_err();
+    let message = format!("{:?}", err);
+    assert!(message.contains("Record literals require identifier field names"));
+}
+
+#[test]
+fn test_record_map_literal_cannot_mix_colon_and_map_arrow() {
+    let source = "λf()→𝕌={foo:1,\"bar\"↦2}";
+    let tokens = tokenize(source).unwrap();
+    assert!(parse(tokens, "test.sigil").is_err());
+}
+
 // ============================================================================
 // ERROR TESTS
 // ============================================================================

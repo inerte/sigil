@@ -165,7 +165,6 @@ Record fields are canonically alphabetical in:
 - record literals
 - typed record construction
 - record patterns
-- string-keyed record/map literals
 
 Local bindings are canonically non-shadowing:
 - function parameters
@@ -183,6 +182,8 @@ t Option[T]=Some(T)|None
 t Result[T,E]=Ok(T)|Err(E)
 ```
 
+`Option[T]`, `Result[T,E]`, `Some`, `None`, `Ok`, and `Err` come from the implicit `core⋅prelude`. No import is required to use them.
+
 Constructor usage:
 
 ```sigil
@@ -190,6 +191,24 @@ Red()
 Some(42)
 Err("not found")
 ```
+
+## Map types and literals
+
+Maps are dynamic keyed collections. They use `↦`, not `:`.
+
+```sigil
+t Headers={𝕊↦𝕊}
+
+λdefault_headers()→{𝕊↦𝕊}={"content-type"↦"text/plain"}
+λempty_headers()→{𝕊↦𝕊}=({↦}:{𝕊↦𝕊})
+```
+
+Rules:
+- record literals use `:`
+- map literals use `↦`
+- `{}` is an empty record literal
+- `{↦}` is an empty map literal
+- `{"foo":1}` is invalid
 
 ## Constants (`c`)
 
@@ -209,6 +228,7 @@ Current parser behavior:
 Sigil-to-Sigil imports are namespace imports only.
 
 ```sigil
+i core⋅map
 i src⋅todo-domain
 i stdlib⋅list
 ```
@@ -231,6 +251,7 @@ Imported sum-type constructors use the same fully qualified namespace style in b
 ```
 
 Canonical Sigil import roots:
+- `core⋅...`
 - `src⋅...`
 - `stdlib⋅...`
 

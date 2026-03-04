@@ -124,6 +124,10 @@ pub fn format_type(typ: &InferenceType) -> String {
             format!("[{}]", format_type(&tlist.element_type))
         }
 
+        InferenceType::Map(tmap) => {
+            format!("{{{} ↦ {}}}", format_type(&tmap.key_type), format_type(&tmap.value_type))
+        }
+
         InferenceType::Tuple(ttuple) => {
             let types = ttuple
                 .types

@@ -1,0 +1,6 @@
+i core⋅map
+
+λmain()→Option[𝕊]={
+  l headers=({"content-type"↦"application/json","x-request-id"↦"abc-123"}:{𝕊↦𝕊});
+  core⋅map.get("content-type",headers)
+}

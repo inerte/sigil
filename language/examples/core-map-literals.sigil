@@ -1,0 +1,10 @@
+i core⋅map
+
+λmain()→𝔹={
+  l left=({"content-type"↦"text/plain","x-id"↦"42"}:{𝕊↦𝕊});
+  l right=({"x-id"↦"42","content-type"↦"text/plain"}:{𝕊↦𝕊});
+  match core⋅map.get("content-type",left){
+    Some(value)→value="text/plain" and #left=2 and left=right|
+    None()→false
+  }
+}

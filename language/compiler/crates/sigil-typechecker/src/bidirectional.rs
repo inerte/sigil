@@ -16,13 +16,14 @@ use crate::typed_ir::{
     TypedConstDecl, TypedConstructorCallExpr, TypedDeclaration, TypedExpr, TypedExprKind,
     TypedExternCallExpr, TypedExternDecl, TypedFieldAccessExpr, TypedFilterExpr, TypedFoldExpr,
     TypedFunctionDecl, TypedIfExpr, TypedImportDecl, TypedIndexExpr, TypedLambdaExpr, TypedLetExpr,
-    TypedListExpr, TypedMapExpr, TypedMatchArm, TypedMatchExpr, TypedMethodCallExpr,
-    TypedPipelineExpr, TypedProgram, TypedRecordExpr, TypedRecordField, TypedTestDecl,
-    TypedTupleExpr, TypedTypeDecl, TypedUnaryExpr, TypedWithMockExpr, WithMockTarget,
+    TypedListExpr, TypedMapEntryExpr, TypedMapExpr, TypedMapLiteralExpr, TypedMatchArm,
+    TypedMatchExpr, TypedMethodCallExpr, TypedPipelineExpr, TypedProgram, TypedRecordExpr,
+    TypedRecordField, TypedTestDecl, TypedTupleExpr, TypedTypeDecl, TypedUnaryExpr,
+    TypedWithMockExpr, WithMockTarget,
 };
 use crate::types::{
     ast_type_to_inference_type_with_params, apply_subst, unify, EffectSet, InferenceType,
-    TConstructor, TFunction, TPrimitive, TRecord, types_equal,
+    TConstructor, TFunction, TMap, TPrimitive, TRecord, types_equal,
 };
 use crate::{TypeCheckOptions};
 use sigil_ast::{
@@ -48,15 +49,36 @@ pub fn type_check(
     let mut schemes = HashMap::new();
 
     // Register imported type registries
-    if let Some(imported_type_registries) = options.imported_type_registries {
+    if let Some(imported_type_registries) = options.imported_type_registries.as_ref() {
         for (module_id, type_registry) in imported_type_registries {
-            env.register_imported_types(module_id, type_registry);
+            env.register_imported_types(module_id.clone(), type_registry.clone());
         }
     }
 
-    if let Some(imported_value_schemes) = options.imported_value_schemes {
+    if let Some(imported_value_schemes) = options.imported_value_schemes.as_ref() {
         for (module_id, value_schemes) in imported_value_schemes {
-            env.register_imported_value_schemes(module_id, value_schemes);
+            env.register_imported_value_schemes(module_id.clone(), value_schemes.clone());
+        }
+    }
+
+    // Seed the implicit core prelude into the unqualified environment.
+    if let Some(prelude_types) = options
+        .imported_type_registries
+        .as_ref()
+        .and_then(|registries| registries.get("core⋅prelude"))
+    {
+        for (name, info) in prelude_types {
+            env.register_type(name.clone(), info.clone());
+        }
+    }
+
+    if let Some(prelude_schemes) = options
+        .imported_value_schemes
+        .as_ref()
+        .and_then(|schemes| schemes.get("core⋅prelude"))
+    {
+        for (name, scheme) in prelude_schemes {
+            env.bind_scheme(name.clone(), scheme.clone());
         }
     }
 
@@ -83,10 +105,20 @@ pub fn type_check(
                             &type_decl.name,
                         )?;
                         if type_decl.type_params.is_empty() {
-                            env.bind(variant.name.clone(), constructor_type);
+                            env.bind(variant.name.clone(), constructor_type.clone());
+                            types.insert(variant.name.clone(), constructor_type.clone());
+                            schemes.insert(
+                                variant.name.clone(),
+                                explicit_scheme(&constructor_type, &HashSet::new()),
+                            );
                         } else {
                             let mut quantified_vars = HashSet::new();
                             collect_type_var_ids(&constructor_type, &mut quantified_vars);
+                            types.insert(variant.name.clone(), constructor_type.clone());
+                            schemes.insert(
+                                variant.name.clone(),
+                                explicit_scheme(&constructor_type, &quantified_vars),
+                            );
                             env.bind_scheme(
                                 variant.name.clone(),
                                 explicit_scheme(&constructor_type, &quantified_vars),
@@ -672,6 +704,13 @@ fn validate_expr_surface_types(expr: &Expr) -> Result<(), TypeError> {
             }
             Ok(())
         }
+        Expr::MapLiteral(map) => {
+            for entry in &map.entries {
+                validate_expr_surface_types(&entry.key)?;
+                validate_expr_surface_types(&entry.value)?;
+            }
+            Ok(())
+        }
         Expr::Tuple(tuple) => {
             for elem in &tuple.elements {
                 validate_expr_surface_types(elem)?;
@@ -1174,6 +1213,26 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
                 record.location,
             ))
         }
+        Expr::MapLiteral(map) => {
+            let entries = map.entries.iter().map(|entry| {
+                Ok(TypedMapEntryExpr {
+                    key: build_typed_expr(env, &entry.key)?,
+                    value: build_typed_expr(env, &entry.value)?,
+                    location: entry.location,
+                })
+            }).collect::<Result<Vec<_>, TypeError>>()?;
+            let effects = merge_effects(entries.iter().flat_map(|entry| [
+                entry.key.effects.clone(),
+                entry.value.effects.clone(),
+            ]));
+            Ok(typed_expr(
+                TypedExprKind::MapLiteral(TypedMapLiteralExpr { entries }),
+                typ,
+                effects,
+                StrictnessClass::Deferred,
+                map.location,
+            ))
+        }
         Expr::FieldAccess(field_access) => {
             let object = build_typed_expr(env, &field_access.object)?;
             let effects = object.effects.clone();
@@ -1295,7 +1354,24 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
                 with_mock.location,
             ))
         }
-        Expr::TypeAscription(type_asc) => build_typed_expr(env, &type_asc.expr),
+        Expr::TypeAscription(type_asc) => {
+            let ascribed_type =
+                ast_type_to_inference_type_resolved(env, None, &type_asc.ascribed_type)?;
+            match &type_asc.expr {
+                Expr::MapLiteral(map_expr) if map_expr.entries.is_empty() => Ok(typed_expr(
+                    TypedExprKind::MapLiteral(TypedMapLiteralExpr { entries: Vec::new() }),
+                    ascribed_type,
+                    HashSet::new(),
+                    StrictnessClass::Deferred,
+                    type_asc.location,
+                )),
+                _ => {
+                    let mut inner = build_typed_expr(env, &type_asc.expr)?;
+                    inner.typ = ascribed_type;
+                    Ok(inner)
+                }
+            }
+        }
     }
 }
 
@@ -1452,6 +1528,8 @@ fn synthesize(env: &TypeEnvironment, expr: &Expr) -> Result<InferenceType, TypeE
         Expr::Tuple(tuple_expr) => synthesize_tuple(env, tuple_expr),
 
         Expr::Record(record_expr) => synthesize_record(env, record_expr),
+
+        Expr::MapLiteral(map_expr) => synthesize_map_literal(env, map_expr),
 
         Expr::FieldAccess(field_access) => synthesize_field_access(env, field_access),
 
@@ -1621,14 +1699,15 @@ fn synthesize_unary(
             Ok(bool_type)
         }
         sigil_ast::UnaryOperator::Length => {
-            // Length operator # - works on strings and lists
+            // Length operator # - works on strings, lists, and maps
             let operand_type = synthesize(env, &un.operand)?;
             match operand_type {
                 InferenceType::Primitive(ref p) if p.name == PrimitiveName::String => Ok(int_type),
                 InferenceType::List(_) => Ok(int_type),
+                InferenceType::Map(_) => Ok(int_type),
                 _ => Err(TypeError::new(
                     format!(
-                        "Length operator # requires string or list, got {}",
+                        "Length operator # requires string, list, or map, got {}",
                         format_type(&operand_type)
                     ),
                     Some(un.location),
@@ -1900,6 +1979,31 @@ fn synthesize_record(
         fields,
         name: None, // Anonymous record
     }))
+}
+
+fn synthesize_map_literal(
+    env: &TypeEnvironment,
+    map_expr: &sigil_ast::MapLiteralExpr,
+) -> Result<InferenceType, TypeError> {
+    if map_expr.entries.is_empty() {
+        return Err(TypeError::new(
+            "Cannot infer empty map literal type. Add contextual type information for {↦}.".to_string(),
+            Some(map_expr.location),
+        ));
+    }
+
+    let key_type = synthesize(env, &map_expr.entries[0].key)?;
+    let value_type = synthesize(env, &map_expr.entries[0].value)?;
+
+    for entry in map_expr.entries.iter().skip(1) {
+        check(env, &entry.key, &key_type)?;
+        check(env, &entry.value, &value_type)?;
+    }
+
+    Ok(InferenceType::Map(Box::new(TMap {
+        key_type,
+        value_type,
+    })))
 }
 
 fn synthesize_field_access(
@@ -2587,6 +2691,25 @@ fn check(
         return Ok(());
     }
 
+    if let Expr::MapLiteral(map_expr) = expr {
+        if map_expr.entries.is_empty() {
+            return match expected_type {
+                InferenceType::Map(_) => Ok(()),
+                _ => Err(TypeError::new(
+                    format!(
+                        "Empty map literal requires a map type context, got {}",
+                        format_type(expected_type)
+                    ),
+                    None,
+                )),
+            };
+        }
+    }
+
+    if let Expr::Application(app) = expr {
+        return check_application(env, app, expected_type);
+    }
+
     // For most expressions: synthesize then verify equality
     let actual_type = synthesize(env, expr)?;
 
@@ -2621,6 +2744,71 @@ fn check(
     Ok(())
 }
 
+fn check_application(
+    env: &TypeEnvironment,
+    app: &sigil_ast::ApplicationExpr,
+    expected_type: &InferenceType,
+) -> Result<(), TypeError> {
+    let fn_type = synthesize(env, &app.func)?;
+
+    if matches!(fn_type, InferenceType::Any) {
+        return Ok(());
+    }
+
+    let InferenceType::Function(tfunc) = fn_type else {
+        return Err(TypeError::new(
+            format!("Expected function type, got {}", format_type(&fn_type)),
+            Some(app.location),
+        ));
+    };
+
+    if app.args.len() != tfunc.params.len() {
+        return Err(TypeError::new(
+            format!(
+                "Function expects {} arguments, got {}",
+                tfunc.params.len(),
+                app.args.len()
+            ),
+            Some(app.location),
+        ));
+    }
+
+    let mut subst = HashMap::new();
+    for (arg, param_type) in app.args.iter().zip(&tfunc.params) {
+        let arg_type = synthesize(env, arg)?;
+        let expected_param = apply_subst(&subst, param_type);
+        let (normalized_arg, normalized_param) = canonical_pair(env, &arg_type, &expected_param);
+        let next_subst = unify(&normalized_arg, &normalized_param).map_err(|message| {
+            TypeError::new(
+                format!(
+                    "Function argument type mismatch: expected {}, got {} ({})",
+                    format_type(&normalized_param),
+                    format_type(&normalized_arg),
+                    message
+                ),
+                Some(app.location),
+            )
+        })?;
+        subst.extend(next_subst);
+    }
+
+    let actual_return = apply_subst(&subst, &tfunc.return_type);
+    let (normalized_actual, normalized_expected) = canonical_pair(env, &actual_return, expected_type);
+    let next_subst = unify(&normalized_actual, &normalized_expected).map_err(|message| {
+        TypeError::new(
+            format!(
+                "Type mismatch: expected {}, got {} ({})",
+                format_type(&normalized_expected),
+                format_type(&normalized_actual),
+                message
+            ),
+            Some(app.location),
+        )
+    })?;
+    subst.extend(next_subst);
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2630,6 +2818,126 @@ mod tests {
 
     fn synthetic_loc() -> sigil_ast::SourceLocation {
         sigil_ast::SourceLocation::single(sigil_ast::Position::new(1, 1, 0))
+    }
+
+    fn core_prelude_type_options() -> TypeCheckOptions {
+        let option_info = TypeInfo {
+            type_params: vec!["T".to_string()],
+            definition: TypeDef::Sum(sigil_ast::SumType {
+                variants: vec![
+                    sigil_ast::Variant {
+                        name: "Some".to_string(),
+                        types: vec![Type::Variable(sigil_ast::TypeVariable {
+                            name: "T".to_string(),
+                            location: synthetic_loc(),
+                        })],
+                        location: synthetic_loc(),
+                    },
+                    sigil_ast::Variant {
+                        name: "None".to_string(),
+                        types: vec![],
+                        location: synthetic_loc(),
+                    },
+                ],
+                location: synthetic_loc(),
+            }),
+        };
+
+        let result_info = TypeInfo {
+            type_params: vec!["T".to_string(), "E".to_string()],
+            definition: TypeDef::Sum(sigil_ast::SumType {
+                variants: vec![
+                    sigil_ast::Variant {
+                        name: "Ok".to_string(),
+                        types: vec![Type::Variable(sigil_ast::TypeVariable {
+                            name: "T".to_string(),
+                            location: synthetic_loc(),
+                        })],
+                        location: synthetic_loc(),
+                    },
+                    sigil_ast::Variant {
+                        name: "Err".to_string(),
+                        types: vec![Type::Variable(sigil_ast::TypeVariable {
+                            name: "E".to_string(),
+                            location: synthetic_loc(),
+                        })],
+                        location: synthetic_loc(),
+                    },
+                ],
+                location: synthetic_loc(),
+            }),
+        };
+
+        let prelude_registry = HashMap::from([
+            ("Option".to_string(), option_info.clone()),
+            ("Result".to_string(), result_info.clone()),
+        ]);
+
+        let option_some_type = create_constructor_type_with_result_name(
+            &TypeEnvironment::new(),
+            match &option_info.definition {
+                TypeDef::Sum(sum) => &sum.variants[0],
+                _ => unreachable!(),
+            },
+            &option_info.type_params,
+            "Option",
+        )
+        .unwrap();
+        let option_none_type = create_constructor_type_with_result_name(
+            &TypeEnvironment::new(),
+            match &option_info.definition {
+                TypeDef::Sum(sum) => &sum.variants[1],
+                _ => unreachable!(),
+            },
+            &option_info.type_params,
+            "Option",
+        )
+        .unwrap();
+        let result_ok_type = create_constructor_type_with_result_name(
+            &TypeEnvironment::new(),
+            match &result_info.definition {
+                TypeDef::Sum(sum) => &sum.variants[0],
+                _ => unreachable!(),
+            },
+            &result_info.type_params,
+            "Result",
+        )
+        .unwrap();
+        let result_err_type = create_constructor_type_with_result_name(
+            &TypeEnvironment::new(),
+            match &result_info.definition {
+                TypeDef::Sum(sum) => &sum.variants[1],
+                _ => unreachable!(),
+            },
+            &result_info.type_params,
+            "Result",
+        )
+        .unwrap();
+
+        let mut prelude_schemes = HashMap::new();
+        for (name, typ) in [
+            ("Some", option_some_type),
+            ("None", option_none_type),
+            ("Ok", result_ok_type),
+            ("Err", result_err_type),
+        ] {
+            let mut quantified_vars = HashSet::new();
+            collect_type_var_ids(&typ, &mut quantified_vars);
+            prelude_schemes.insert(name.to_string(), explicit_scheme(&typ, &quantified_vars));
+        }
+
+        TypeCheckOptions {
+            imported_namespaces: None,
+            imported_type_registries: Some(HashMap::from([(
+                "core⋅prelude".to_string(),
+                prelude_registry,
+            )])),
+            imported_value_schemes: Some(HashMap::from([(
+                "core⋅prelude".to_string(),
+                prelude_schemes,
+            )])),
+            source_file: None,
+        }
     }
 
     #[test]
@@ -2762,6 +3070,16 @@ mod tests {
         let program = parse(tokens, "test.sigil").unwrap();
 
         let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_named_product_normalizes_inside_generic_constructor_args() {
+        let source = "t Error={code:ℤ,msg:𝕊}\nt Response={body:𝕊,headers:{𝕊↦𝕊},status:ℤ}\nλmain()→Result[Response,Error]=Ok(Response{body:\"OK\",headers:({↦}:{𝕊↦𝕊}),status:200})";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, core_prelude_type_options());
         assert!(result.is_ok());
     }
 
@@ -2967,50 +3285,292 @@ mod tests {
 
     #[test]
     fn test_imported_generic_constructor_typechecks() {
-        let source =
-            "i stdlib⋅option\nλmain()→stdlib⋅option.Option[ℤ]=stdlib⋅option.Some(42)";
+        let source = "i core⋅prelude\nλmain()→Option[ℤ]=Some(42)";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
-        let mut imported_type_registries = HashMap::new();
-        imported_type_registries.insert(
-            "stdlib⋅option".to_string(),
-            HashMap::from([(
-                "Option".to_string(),
-                TypeInfo {
-                    type_params: vec!["T".to_string()],
-                    definition: TypeDef::Sum(sigil_ast::SumType {
-                        variants: vec![
-                            sigil_ast::Variant {
-                                name: "Some".to_string(),
-                                types: vec![Type::Variable(sigil_ast::TypeVariable {
-                                    name: "T".to_string(),
-                                    location: synthetic_loc(),
-                                })],
-                                location: synthetic_loc(),
-                            },
-                            sigil_ast::Variant {
-                                name: "None".to_string(),
-                                types: vec![],
-                                location: synthetic_loc(),
-                            },
-                        ],
-                        location: synthetic_loc(),
-                    }),
-                },
-            )]),
-        );
+        let result = type_check(&program, source, core_prelude_type_options());
+        assert!(result.is_ok());
+    }
 
-        let result = type_check(
-            &program,
-            source,
-            TypeCheckOptions {
-                imported_namespaces: None,
-                imported_type_registries: Some(imported_type_registries),
-                imported_value_schemes: None,
-                source_file: None,
-            },
-        );
+    #[test]
+    fn test_core_prelude_result_helper_typechecks() {
+        let source = "λnormalize[T,E](res:Result[T,E])→Result[T,E] match res{Ok(value)→Ok(value)|Err(error)→Err(error)}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, core_prelude_type_options());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_core_prelude_bind_result_typechecks() {
+        let source = "λbind_result[T,U,E](fn:λ(T)→Result[U,E],res:Result[T,E])→Result[U,E] match res{Ok(value)→fn(value)|Err(error)→Err(error)}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+
+        let result = type_check(&program, source, core_prelude_type_options());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_core_prelude_bind_result_call_expr_builds() {
+        let source = "λbind_result[T,U,E](fn:λ(T)→Result[U,E],res:Result[T,E])→Result[U,E] match res{Ok(value)→fn(value)|Err(error)→Err(error)}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+
+        let Declaration::Function(func_decl) = &program.declarations[0] else {
+            panic!("expected function declaration");
+        };
+        let sigil_ast::Expr::Match(match_expr) = &func_decl.body else {
+            panic!("expected match body");
+        };
+        let call_expr = &match_expr.arms[0].body;
+
+        let options = core_prelude_type_options();
+        let mut env = TypeEnvironment::new();
+        if let Some(prelude_types) = options
+            .imported_type_registries
+            .as_ref()
+            .and_then(|regs| regs.get("core⋅prelude"))
+        {
+            for (name, info) in prelude_types {
+                env.register_type(name.clone(), info.clone());
+            }
+        }
+        if let Some(prelude_schemes) = options
+            .imported_value_schemes
+            .as_ref()
+            .and_then(|schemes| schemes.get("core⋅prelude"))
+        {
+            for (name, scheme) in prelude_schemes {
+                env.bind_scheme(name.clone(), scheme.clone());
+            }
+        }
+
+        let type_param_env = make_type_param_env(&func_decl.type_params);
+        let fn_type = ast_type_to_inference_type_resolved(
+            &env,
+            Some(&type_param_env),
+            func_decl.params[0].type_annotation.as_ref().unwrap(),
+        )
+        .unwrap();
+        let value_type = type_param_env.get("T").unwrap().clone();
+
+        let mut bindings = HashMap::new();
+        bindings.insert("fn".to_string(), fn_type);
+        bindings.insert("value".to_string(), value_type);
+        let call_env = env.extend(Some(bindings));
+
+        let result = build_typed_expr(&call_env, call_expr);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_core_prelude_bind_result_match_expr_builds() {
+        let source = "λbind_result[T,U,E](fn:λ(T)→Result[U,E],res:Result[T,E])→Result[U,E] match res{Ok(value)→fn(value)|Err(error)→Err(error)}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+
+        let Declaration::Function(func_decl) = &program.declarations[0] else {
+            panic!("expected function declaration");
+        };
+
+        let options = core_prelude_type_options();
+        let mut env = TypeEnvironment::new();
+        if let Some(prelude_types) = options
+            .imported_type_registries
+            .as_ref()
+            .and_then(|regs| regs.get("core⋅prelude"))
+        {
+            for (name, info) in prelude_types {
+                env.register_type(name.clone(), info.clone());
+            }
+        }
+        if let Some(prelude_schemes) = options
+            .imported_value_schemes
+            .as_ref()
+            .and_then(|schemes| schemes.get("core⋅prelude"))
+        {
+            for (name, scheme) in prelude_schemes {
+                env.bind_scheme(name.clone(), scheme.clone());
+            }
+        }
+
+        let type_param_env = make_type_param_env(&func_decl.type_params);
+        let mut bindings = HashMap::new();
+        for param in &func_decl.params {
+            if let Some(ref ty) = param.type_annotation {
+                bindings.insert(
+                    param.name.clone(),
+                    ast_type_to_inference_type_resolved(&env, Some(&type_param_env), ty).unwrap(),
+                );
+            }
+        }
+        let function_env = env.extend(Some(bindings));
+
+        let result = build_typed_expr(&function_env, &func_decl.body);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_core_prelude_err_arm_expr_builds() {
+        let source = "λbind_result[T,U,E](fn:λ(T)→Result[U,E],res:Result[T,E])→Result[U,E] match res{Ok(value)→fn(value)|Err(error)→Err(error)}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+
+        let Declaration::Function(func_decl) = &program.declarations[0] else {
+            panic!("expected function declaration");
+        };
+        let sigil_ast::Expr::Match(match_expr) = &func_decl.body else {
+            panic!("expected match body");
+        };
+        let err_expr = &match_expr.arms[1].body;
+
+        let options = core_prelude_type_options();
+        let mut env = TypeEnvironment::new();
+        if let Some(prelude_types) = options
+            .imported_type_registries
+            .as_ref()
+            .and_then(|regs| regs.get("core⋅prelude"))
+        {
+            for (name, info) in prelude_types {
+                env.register_type(name.clone(), info.clone());
+            }
+        }
+        if let Some(prelude_schemes) = options
+            .imported_value_schemes
+            .as_ref()
+            .and_then(|schemes| schemes.get("core⋅prelude"))
+        {
+            for (name, scheme) in prelude_schemes {
+                env.bind_scheme(name.clone(), scheme.clone());
+            }
+        }
+
+        let type_param_env = make_type_param_env(&func_decl.type_params);
+        let error_type = type_param_env.get("E").unwrap().clone();
+        let mut bindings = HashMap::new();
+        bindings.insert("error".to_string(), error_type);
+        let err_env = env.extend(Some(bindings));
+
+        let result = build_typed_expr(&err_env, err_expr);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_core_prelude_err_arm_checks_against_result_ue() {
+        let source = "λbind_result[T,U,E](fn:λ(T)→Result[U,E],res:Result[T,E])→Result[U,E] match res{Ok(value)→fn(value)|Err(error)→Err(error)}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+
+        let Declaration::Function(func_decl) = &program.declarations[0] else {
+            panic!("expected function declaration");
+        };
+        let sigil_ast::Expr::Match(match_expr) = &func_decl.body else {
+            panic!("expected match body");
+        };
+        let err_expr = &match_expr.arms[1].body;
+
+        let options = core_prelude_type_options();
+        let mut env = TypeEnvironment::new();
+        if let Some(prelude_types) = options
+            .imported_type_registries
+            .as_ref()
+            .and_then(|regs| regs.get("core⋅prelude"))
+        {
+            for (name, info) in prelude_types {
+                env.register_type(name.clone(), info.clone());
+            }
+        }
+        if let Some(prelude_schemes) = options
+            .imported_value_schemes
+            .as_ref()
+            .and_then(|schemes| schemes.get("core⋅prelude"))
+        {
+            for (name, scheme) in prelude_schemes {
+                env.bind_scheme(name.clone(), scheme.clone());
+            }
+        }
+
+        let type_param_env = make_type_param_env(&func_decl.type_params);
+        let error_type = type_param_env.get("E").unwrap().clone();
+        let expected_type = ast_type_to_inference_type_resolved(
+            &env,
+            Some(&type_param_env),
+            func_decl.return_type.as_ref().unwrap(),
+        )
+        .unwrap();
+        let mut bindings = HashMap::new();
+        bindings.insert("error".to_string(), error_type);
+        let err_env = env.extend(Some(bindings));
+
+        let result = check(&err_env, err_expr, &expected_type);
+        assert!(result.is_ok());
+    }
+
+    fn assert_no_var_cycles(typ: &InferenceType, seen: &mut HashSet<u32>) {
+        match typ {
+            InferenceType::Primitive(_) | InferenceType::Any => {}
+            InferenceType::Var(var) => {
+                assert!(
+                    seen.insert(var.id),
+                    "cyclic type variable instance chain detected for var {}",
+                    var.id
+                );
+                if let Some(instance) = &var.instance {
+                    assert_no_var_cycles(instance, seen);
+                }
+                seen.remove(&var.id);
+            }
+            InferenceType::Function(function) => {
+                for param in &function.params {
+                    assert_no_var_cycles(param, seen);
+                }
+                assert_no_var_cycles(&function.return_type, seen);
+            }
+            InferenceType::List(list) => assert_no_var_cycles(&list.element_type, seen),
+            InferenceType::Map(map) => {
+                assert_no_var_cycles(&map.key_type, seen);
+                assert_no_var_cycles(&map.value_type, seen);
+            }
+            InferenceType::Tuple(tuple) => {
+                for item in &tuple.types {
+                    assert_no_var_cycles(item, seen);
+                }
+            }
+            InferenceType::Record(record) => {
+                for field_type in record.fields.values() {
+                    assert_no_var_cycles(field_type, seen);
+                }
+            }
+            InferenceType::Constructor(constructor) => {
+                for arg in &constructor.type_args {
+                    assert_no_var_cycles(arg, seen);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_core_prelude_bind_result_scheme_has_no_cycles() {
+        let source = "λbind_result[T,U,E](fn:λ(T)→Result[U,E],res:Result[T,E])→Result[U,E] match res{Ok(value)→fn(value)|Err(error)→Err(error)}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+
+        let result = type_check(&program, source, core_prelude_type_options()).unwrap();
+        let scheme = result.declaration_schemes.get("bind_result").unwrap();
+        let mut seen = HashSet::new();
+        assert_no_var_cycles(&scheme.typ, &mut seen);
+    }
+
+    #[test]
+    fn test_core_prelude_map_literal_typechecks() {
+        let source = "λmain()→{𝕊↦ℤ}={\"a\"↦1}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, core_prelude_type_options());
         assert!(result.is_ok());
     }
 

@@ -3,7 +3,7 @@
 //! Manages variable bindings during type checking.
 //! Uses explicit schemes for declared generic bindings without HM let-polymorphism.
 
-use crate::types::{apply_subst, fresh_type_var, InferenceType, Substitution, TypeScheme};
+use crate::types::{apply_subst, fresh_type_var, InferenceType, Substitution, TMap, TypeScheme};
 use sigil_ast::{TypeDef, Variant};
 use std::collections::{HashMap, HashSet};
 
@@ -277,10 +277,15 @@ impl TypeEnvironment {
                 let qualified_lookup = split_qualified_type_name(&ctor.name)
                     .and_then(|(module_path, type_name)| self.lookup_qualified_type(&module_path, &type_name));
                 let local_lookup = self.lookup_type(&ctor.name);
+                let normalized_type_args: Vec<InferenceType> = ctor
+                    .type_args
+                    .iter()
+                    .map(|arg| self.normalize_type(arg))
+                    .collect();
 
                 if let Some(type_info) = qualified_lookup.or(local_lookup) {
                     let type_param_bindings =
-                        build_type_param_bindings(&type_info.type_params, &ctor.type_args);
+                        build_type_param_bindings(&type_info.type_params, &normalized_type_args);
                     // Resolve type definition to its underlying structure
                     match &type_info.definition {
                         TypeDef::Alias(alias) => {
@@ -313,18 +318,35 @@ impl TypeEnvironment {
                             });
                         }
                         TypeDef::Sum(_) => {
-                            // Sum types cannot be normalized to records
+                            // Sum types remain nominal, but their type arguments still
+                            // normalize structurally so Result[Response,Error] can
+                            // compare canonical nested meanings.
+                            return InferenceType::Constructor(crate::types::TConstructor {
+                                name: ctor.name.clone(),
+                                type_args: normalized_type_args,
+                            });
                         }
                     }
                 }
-                // Not an alias, return as-is
-                ty.clone()
+                // Not a known alias/product/sum type; still normalize nested args.
+                InferenceType::Constructor(crate::types::TConstructor {
+                    name: ctor.name.clone(),
+                    type_args: normalized_type_args,
+                })
             }
             // For other types, recursively normalize nested types
             InferenceType::List(list) => {
                 let normalized_elem = self.normalize_type(&list.element_type);
                 InferenceType::List(Box::new(crate::types::TList {
                     element_type: normalized_elem,
+                }))
+            }
+            InferenceType::Map(map) => {
+                let normalized_key = self.normalize_type(&map.key_type);
+                let normalized_value = self.normalize_type(&map.value_type);
+                InferenceType::Map(Box::new(TMap {
+                    key_type: normalized_key,
+                    value_type: normalized_value,
                 }))
             }
             InferenceType::Tuple(tuple) => {
@@ -420,6 +442,10 @@ pub fn collect_type_var_ids(typ: &InferenceType, ids: &mut HashSet<u32>) {
             collect_type_var_ids(&func.return_type, ids);
         }
         InferenceType::List(list) => collect_type_var_ids(&list.element_type, ids),
+        InferenceType::Map(map) => {
+            collect_type_var_ids(&map.key_type, ids);
+            collect_type_var_ids(&map.value_type, ids);
+        }
         InferenceType::Tuple(tuple) => {
             for item in &tuple.types {
                 collect_type_var_ids(item, ids);

@@ -133,12 +133,20 @@ impl ModuleGraphBuilder {
         validate_canonical_form(&ast, Some(&filename), Some(&source))
             .map_err(|e| ModuleGraphError::Validation(e))?;
 
+        // Process implicit core prelude first for non-core modules.
+        if module_key != "core⋅prelude" {
+            let resolved = resolve_sigil_import(&abs_file, project.as_ref(), "core⋅prelude")?;
+            if resolved.file_path.exists() {
+                self.visit(&resolved.file_path, Some(resolved.module_id), resolved.project)?;
+            }
+        }
+
         // Process imports
         for decl in &ast.declarations {
             if let Declaration::Import(import_decl) = decl {
                 let module_id = import_decl.module_path.join("⋅");
 
-                // Only process Sigil imports (stdlib⋅ or src⋅)
+                // Only process Sigil imports (core⋅, stdlib⋅, or src⋅)
                 if !is_sigil_import_path(&module_id) {
                     continue;
                 }
@@ -181,11 +189,22 @@ impl ModuleGraphBuilder {
 }
 
 fn is_sigil_import_path(module_path: &str) -> bool {
-    module_path.starts_with("stdlib⋅") || module_path.starts_with("src⋅")
+    module_path.starts_with("core⋅")
+        || module_path.starts_with("stdlib⋅")
+        || module_path.starts_with("src⋅")
 }
 
 fn file_path_to_module_id(abs_path: &Path, project: &Option<ProjectConfig>) -> Option<String> {
     let path_str = abs_path.to_string_lossy();
+
+    // Check if it's a core module
+    if path_str.contains("/core/") {
+        if let Some(relative) = path_str.split("/core/").nth(1) {
+            if let Some(without_ext) = relative.strip_suffix(".sigil") {
+                return Some(format!("core⋅{}", without_ext.replace('/', "⋅")));
+            }
+        }
+    }
 
     // Check if it's a stdlib module
     if path_str.contains("/stdlib/") {
@@ -253,8 +272,8 @@ fn resolve_sigil_import(
             file_path,
             project: Some(project.clone()),
         })
-    } else if module_id.starts_with("stdlib⋅") {
-        // Stdlib import - find language root
+    } else if module_id.starts_with("stdlib⋅") || module_id.starts_with("core⋅") {
+        // Language import - find language root
         let language_root = find_language_root(importer_file)?;
         let file_path = resolve_import_path(&language_root, &file_path_str)?;
 
@@ -278,6 +297,18 @@ fn find_language_root(start_path: &Path) -> Result<PathBuf, ModuleGraphError> {
     loop {
         if current.is_file() {
             current = current.parent().unwrap().to_path_buf();
+        }
+
+        let is_generated_local_dir = current
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(|name| name == ".local");
+
+        if is_generated_local_dir {
+            if let Some(parent) = current.parent() {
+                current = parent.to_path_buf();
+                continue;
+            }
         }
 
         let stdlib_dir = current.join("stdlib");

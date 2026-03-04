@@ -319,15 +319,12 @@ fn test_record_literal_field_order_invalid() {
 }
 
 #[test]
-fn test_string_key_record_field_order_invalid() {
-    let source = "λmain()→𝕌={\"b\":1,\"a\":2}";
+fn test_map_literal_is_not_subject_to_record_field_ordering() {
+    let source = "λmain()→{𝕊↦ℤ}={\"b\"↦1,\"a\"↦2}";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
-    let result = validate_canonical_form(&program, Some("test.sigil"), None);
-    assert!(result.is_err());
-    let errors = result.unwrap_err();
-    assert!(matches!(errors[0], ValidationError::RecordLiteralFieldOrder { .. }));
+    assert!(validate_canonical_form(&program, Some("test.sigil"), None).is_ok());
 }
 
 #[test]

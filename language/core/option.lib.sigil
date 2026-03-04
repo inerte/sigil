@@ -1,19 +1,7 @@
-⟦ Sigil Standard Library - Option Type
+⟦ Sigil Core Option Helpers
 
-The Option type represents an optional value: every Option is either Some and
-contains a value, or None, and does not.
-
-This type is used for safe operations that may not return a value, such as:
-- Indexing into lists (head, tail, at)
-- String operations (charAt, substring)
-- Dictionary lookups
-- Parsing operations
-
-Option types are common in functional programming and provide a type-safe
-alternative to null/undefined.
+Canonical operations over the core Option type.
 ⟧
-
-t Option[T]=Some(T)|None
 
 λbind_option[T,U](fn:λ(T)→Option[U],opt:Option[T])→Option[U] match opt{
   Some(value)→fn(value)|

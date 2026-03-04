@@ -199,13 +199,13 @@ Drop the first `n` elements.
 Find the first element that satisfies a predicate.
 
 ```sigil
-λfind[T](pred:λ(T)→𝔹,xs:[T])→stdlib⋅option.Option[T]
+λfind[T](pred:λ(T)→𝔹,xs:[T])→Option[T]
 ```
 
 Examples:
 ```sigil
-stdlib⋅list.find(stdlib⋅numeric.is_even,[1,3,4,6])   ⟦ → stdlib⋅option.Some(4) ⟧
-stdlib⋅list.find(stdlib⋅numeric.is_even,[1,3,5])     ⟦ → stdlib⋅option.None() ⟧
+stdlib⋅list.find(stdlib⋅numeric.is_even,[1,3,4,6])   ⟦ → Some(4) ⟧
+stdlib⋅list.find(stdlib⋅numeric.is_even,[1,3,5])     ⟦ → None() ⟧
 ```
 
 ### fold
@@ -254,13 +254,13 @@ in_bounds(0,[])               ⟦ → false (empty list) ⟧
 Get the last element safely.
 
 ```sigil
-λlast[T](xs:[T])→stdlib⋅option.Option[T]
+λlast[T](xs:[T])→Option[T]
 ```
 
 Examples:
 ```sigil
-stdlib⋅list.last([])         ⟦ → stdlib⋅option.None() ⟧
-stdlib⋅list.last([1,2,3])    ⟦ → stdlib⋅option.Some(3) ⟧
+stdlib⋅list.last([])         ⟦ → None() ⟧
+stdlib⋅list.last([1,2,3])    ⟦ → Some(3) ⟧
 ```
 
 ### max
@@ -268,13 +268,13 @@ stdlib⋅list.last([1,2,3])    ⟦ → stdlib⋅option.Some(3) ⟧
 Get the maximum element safely.
 
 ```sigil
-λmax(xs:[ℤ])→stdlib⋅option.Option[ℤ]
+λmax(xs:[ℤ])→Option[ℤ]
 ```
 
 Examples:
 ```sigil
-stdlib⋅list.max([])          ⟦ → stdlib⋅option.None() ⟧
-stdlib⋅list.max([3,9,4])     ⟦ → stdlib⋅option.Some(9) ⟧
+stdlib⋅list.max([])          ⟦ → None() ⟧
+stdlib⋅list.max([3,9,4])     ⟦ → Some(9) ⟧
 ```
 
 ### min
@@ -282,13 +282,13 @@ stdlib⋅list.max([3,9,4])     ⟦ → stdlib⋅option.Some(9) ⟧
 Get the minimum element safely.
 
 ```sigil
-λmin(xs:[ℤ])→stdlib⋅option.Option[ℤ]
+λmin(xs:[ℤ])→Option[ℤ]
 ```
 
 Examples:
 ```sigil
-stdlib⋅list.min([])          ⟦ → stdlib⋅option.None() ⟧
-stdlib⋅list.min([3,9,4])     ⟦ → stdlib⋅option.Some(3) ⟧
+stdlib⋅list.min([])          ⟦ → None() ⟧
+stdlib⋅list.min([3,9,4])     ⟦ → Some(3) ⟧
 ```
 
 ### nth
@@ -296,13 +296,13 @@ stdlib⋅list.min([3,9,4])     ⟦ → stdlib⋅option.Some(3) ⟧
 Get the item at a zero-based index safely.
 
 ```sigil
-λnth[T](idx:ℤ,xs:[T])→stdlib⋅option.Option[T]
+λnth[T](idx:ℤ,xs:[T])→Option[T]
 ```
 
 Examples:
 ```sigil
-stdlib⋅list.nth(0,[7,8])     ⟦ → stdlib⋅option.Some(7) ⟧
-stdlib⋅list.nth(2,[7,8])     ⟦ → stdlib⋅option.None() ⟧
+stdlib⋅list.nth(0,[7,8])     ⟦ → Some(7) ⟧
+stdlib⋅list.nth(2,[7,8])     ⟦ → None() ⟧
 ```
 
 ### product
@@ -935,19 +935,13 @@ All predicates have explicit type signatures:
 
 **Resolution:** Unicode operators now fully supported in typechecker. Predicates updated to use cleaner Unicode syntax.
 
-## Sum Types
+## Core Prelude
 
-**Modules:** `stdlib/option`, `stdlib/result`
+`Option[T]`, `Result[T,E]`, `Some`, `None`, `Ok`, and `Err` are part of the implicit `core⋅prelude`. They do not require imports.
 
 ### Option[T]
 
 Represents an optional value - either `Some(T)` or `None`.
-
-```sigil
-i stdlib⋅option
-
-t Option[T]=Some(T)|None
-```
 
 **Type declaration:**
 ```sigil
@@ -982,12 +976,6 @@ t Option[T]=Some(T)|None
 
 Represents success (`Ok(T)`) or failure (`Err(E)`).
 
-```sigil
-i stdlib⋅result
-
-t Result[T,E]=Ok(T)|Err(E)
-```
-
 **Type declaration:**
 ```sigil
 t Result[T,E]=Ok(T)|Err(E)
@@ -1018,6 +1006,34 @@ t Result[T,E]=Ok(T)|Err(E)
 ```
 
 **See also:** `examples/sum-types-demo.sigil` for comprehensive examples.
+
+### Core Helper Modules
+
+Use these when you need operational helpers:
+
+```sigil
+i core⋅map
+i core⋅option
+i core⋅result
+```
+
+### Core Map
+
+`Map` is a core collection concept, not a stdlib-only add-on.
+
+Canonical type and literal forms:
+
+```sigil
+{𝕊↦𝕊}
+{"content-type"↦"text/plain"}
+({↦}:{𝕊↦𝕊})
+```
+
+Canonical helper module:
+
+```sigil
+i core⋅map
+```
 
 ## Future Additions
 

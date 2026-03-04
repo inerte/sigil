@@ -8,9 +8,7 @@ No npm dependencies, no library choices - just import and use.
 ⟧
 
 ⟦ HTTP request type ⟧
-t Headers={
-  content_type:𝕊
-}
+t Headers={𝕊↦𝕊}
 
 t Request={
   body:𝕊,
@@ -42,12 +40,13 @@ t ParsedUrl={
 e console
 e http
 e url
+i core⋅map
 i stdlib⋅string
 
 ⟦ Helper: Create a JSON response ⟧
 λjson(body:𝕊,status:ℤ)→Response={
   body:body,
-  headers:{content_type:"application/json; charset=utf-8"},
+  headers:{"content-type"↦"application/json; charset=utf-8"},
   status:status
 }
 
@@ -60,28 +59,28 @@ i stdlib⋅string
 ⟦ Helper: Create a 404 Not Found response ⟧
 λnot_found()→Response={
   body:"<h1>404 Not Found</h1>",
-  headers:{content_type:"text/html; charset=utf-8"},
+  headers:{"content-type"↦"text/html; charset=utf-8"},
   status:404
 }
 
 ⟦ Helper: Create a 404 with custom message ⟧
 λnot_found_msg(path:𝕊)→Response={
   body:"<h1>404 Not Found</h1><p>Path: "++path++"</p>",
-  headers:{content_type:"text/html; charset=utf-8"},
+  headers:{"content-type"↦"text/html; charset=utf-8"},
   status:404
 }
 
 ⟦ Helper: Create a 200 OK response ⟧
 λok(body:𝕊)→Response={
   body:body,
-  headers:{content_type:"text/html; charset=utf-8"},
+  headers:{"content-type"↦"text/html; charset=utf-8"},
   status:200
 }
 
 ⟦ Helper: Create a custom response ⟧
 λresponse(body:𝕊,content_type:𝕊,status:ℤ)→Response={
   body:body,
-  headers:{content_type:content_type},
+  headers:{"content-type"↦content_type},
   status:status
 }
 
@@ -108,9 +107,8 @@ Usage:
     ⟦ Extract method ⟧
     l method=(node_req.method:𝕊);
 
-    ⟦ For v1, use empty headers map ⟧
-    ⟦ TODO: Convert Node.js headers object to Sigil map ⟧
-    l headers=({content_type:""}:Headers);
+    ⟦ For v1, use a placeholder header map until Node header conversion is wired in ⟧
+    l headers=({"content-type"↦""}:Headers);
 
     ⟦ Collect request body chunks (TODO: typed chunk handling) ⟧
     ⟦ For now, body parsing is stubbed to keep the canonical HTTP wrapper compiling ⟧
@@ -138,7 +136,7 @@ Usage:
     l body_html=(sigil_response.body:𝕊);
     l noop=(status:ℤ);
     l noop2=(body_html:𝕊);
-    l noop3=(response_headers.content_type:𝕊);
+    l noop3=(core⋅map.get("content-type",response_headers):Option[𝕊]);
 
     ()
   })).listen(port,λ()→!IO 𝕌={
@@ -153,6 +151,6 @@ Usage:
 ⟦ Helper: Create a 500 Internal Server Error response ⟧
 λserver_error(message:𝕊)→Response={
   body:"<h1>500 Internal Server Error</h1><p>"++message++"</p>",
-  headers:{content_type:"text/html; charset=utf-8"},
+  headers:{"content-type"↦"text/html; charset=utf-8"},
   status:500
 }

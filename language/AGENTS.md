@@ -74,7 +74,6 @@ Record fields are alphabetical everywhere:
 - record literals
 - typed record constructors
 - record patterns
-- string-keyed record/map literals
 
 Do not land syntax changes that only update the parser.
 
@@ -103,6 +102,18 @@ Current constructor and list invariants:
 - do not describe Sigil as using Hindley-Milner let-polymorphism
 - prefer canonical `Option[T]` / `Result[T,E]` over monomorphic wrappers like `IntOption`
 - generic lambdas and call-site type arguments like `f[ℤ](x)` are not part of Sigil's surface
+- `Option`, `Result`, `Some`, `None`, `Ok`, and `Err` are implicit core vocabulary from `core⋅prelude`
+- `Map` is a core collection concept with type syntax `{K↦V}` and literal syntax `{key↦value,...}` / `{↦}`
+- helper operations for foundational core types stay namespaced under `core⋅...`
+- prefixes are not intrinsically valuable; canonical ownership is
+- future changes should decide intentionally whether a concept belongs in:
+  - implicit core vocabulary
+  - a namespaced module surface
+  - backend/runtime only
+- records and maps are distinct:
+  - records are fixed-shape structural products using `:`
+  - maps are dynamic keyed collections using `↦`
+  - never blur them in syntax, docs, examples, or future features
 
 ### 3) Keep user-facing errors actionable
 

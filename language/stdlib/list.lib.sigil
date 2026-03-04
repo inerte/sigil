@@ -1,5 +1,3 @@
-i stdlib⋅option
-
 ⟦ Sigil Standard Library - List Operations
 
 Generic list helpers that work across element types, plus integer-specialized
@@ -30,10 +28,10 @@ reducers and order predicates.
   }
 }
 
-λfind[T](pred:λ(T)→𝔹,xs:[T])→stdlib⋅option.Option[T] match xs{
-  []→stdlib⋅option.None()|
+λfind[T](pred:λ(T)→𝔹,xs:[T])→Option[T] match xs{
+  []→None()|
   [x,.rest]→match pred(x){
-    true→stdlib⋅option.Some(x)|
+    true→Some(x)|
     false→find(pred,rest)
   }
 }
@@ -45,41 +43,41 @@ reducers and order predicates.
 
 λin_bounds[T](idx:ℤ,xs:[T])→𝔹=idx≥0 and idx<#xs
 
-λlast[T](xs:[T])→stdlib⋅option.Option[T]=last_helper(stdlib⋅option.None(),xs)
+λlast[T](xs:[T])→Option[T]=last_helper(None(),xs)
 
-λlast_helper[T](result:stdlib⋅option.Option[T],xs:[T])→stdlib⋅option.Option[T] match xs{
+λlast_helper[T](result:Option[T],xs:[T])→Option[T] match xs{
   []→result|
-  [x,.rest]→last_helper(stdlib⋅option.Some(x),rest)
+  [x,.rest]→last_helper(Some(x),rest)
 }
 
-λmax(xs:[ℤ])→stdlib⋅option.Option[ℤ] match xs{
-  []→stdlib⋅option.None()|
+λmax(xs:[ℤ])→Option[ℤ] match xs{
+  []→None()|
   [x,.rest]→match max(rest){
-    stdlib⋅option.Some(rest_max)→match x>rest_max{
-      true→stdlib⋅option.Some(x)|
-      false→stdlib⋅option.Some(rest_max)
+    Some(rest_max)→match x>rest_max{
+      true→Some(x)|
+      false→Some(rest_max)
     }|
-    stdlib⋅option.None()→stdlib⋅option.Some(x)
+    None()→Some(x)
   }
 }
 
-λmin(xs:[ℤ])→stdlib⋅option.Option[ℤ] match xs{
-  []→stdlib⋅option.None()|
+λmin(xs:[ℤ])→Option[ℤ] match xs{
+  []→None()|
   [x,.rest]→match min(rest){
-    stdlib⋅option.Some(rest_min)→match x<rest_min{
-      true→stdlib⋅option.Some(x)|
-      false→stdlib⋅option.Some(rest_min)
+    Some(rest_min)→match x<rest_min{
+      true→Some(x)|
+      false→Some(rest_min)
     }|
-    stdlib⋅option.None()→stdlib⋅option.Some(x)
+    None()→Some(x)
   }
 }
 
-λnth[T](idx:ℤ,xs:[T])→stdlib⋅option.Option[T] match idx<0{
-  true→stdlib⋅option.None()|
+λnth[T](idx:ℤ,xs:[T])→Option[T] match idx<0{
+  true→None()|
   false→match xs{
-    []→stdlib⋅option.None()|
+    []→None()|
     [x,.rest]→match idx=0{
-      true→stdlib⋅option.Some(x)|
+      true→Some(x)|
       false→nth(idx-1,rest)
     }
   }

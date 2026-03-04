@@ -366,26 +366,20 @@ Comment = "⟦" , { ? any Unicode character except ⟧ ? } , "⟧" ;
 *)
 
 (* ============================================================================ *)
-(* STANDARD LIBRARY PRELUDE (Auto-imported)                                    *)
+(* CORE PRELUDE (Auto-imported)                                                *)
 (* ============================================================================ *)
 
-(* The following types and functions are automatically available:
+(* The following foundational names are automatically available:
 
    Types:
    - Option[T] = Some(T) | None
    - Result[T,E] = Ok(T) | Err(E)
-   - List[T]
-   - Map[K,V]
-   - Set[T]
+   - Some
+   - None
+   - Ok
+   - Err
 
-   Functions:
-   - map: λmap[T,U](fn:λ(T)→U,list:[T])→[U]
-   - filter: λfilter[T](pred:λ(T)→𝔹,list:[T])→[T]
-   - reduce: λreduce[T,U](fn:λ(U,T)→U,init:U,list:[T])→U
-   - print: λprint(value:𝕊)→𝕌!IO
-   - panic: λpanic(msg:𝕊)→∅
-
-   See stdlib/prelude.sigil for full prelude.
+   See core/prelude.lib.sigil for the actual implicit prelude.
 *)
 
 (* ============================================================================ *)

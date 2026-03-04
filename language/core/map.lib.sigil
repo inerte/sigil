@@ -1,0 +1,37 @@
+⟦ Sigil Core Map Helpers
+
+Canonical operations over the core map type {K↦V}.
+Primitive operations are compiler intrinsics backed by the JS runtime.
+⟧
+
+t Entry[K,V]={key:K,value:V}
+
+λempty[K,V]()→{K↦V}=({↦}:{K↦V})
+
+λentries[K,V](map:{K↦V})→[Entry[K,V]]=[]
+
+λfilter[K,V](map:{K↦V},pred:λ(K,V)→𝔹)→{K↦V}=({↦}:{K↦V})
+
+λfold[K,V,U](fn:λ(U,K,V)→U,init:U,map:{K↦V})→U=init
+
+λfrom_list[K,V](entries:[Entry[K,V]])→{K↦V}=({↦}:{K↦V})
+
+λget[K,V](key:K,map:{K↦V})→Option[V]=None()
+
+λhas[K,V](key:K,map:{K↦V})→𝔹=false
+
+λinsert[K,V](key:K,map:{K↦V},value:V)→{K↦V}=({↦}:{K↦V})
+
+λkeys[K,V](map:{K↦V})→[K]=[]
+
+λmap_values[K,V,U](fn:λ(V)→U,map:{K↦V})→{K↦U}=({↦}:{K↦U})
+
+λmerge[K,V](left:{K↦V},right:{K↦V})→{K↦V}=({↦}:{K↦V})
+
+λremove[K,V](key:K,map:{K↦V})→{K↦V}=({↦}:{K↦V})
+
+λsingleton[K,V](key:K,value:V)→{K↦V}=({↦}:{K↦V})
+
+λsize[K,V](map:{K↦V})→ℤ=0
+
+λvalues[K,V](map:{K↦V})→[V]=[]

@@ -83,9 +83,15 @@ Exports are determined by file extension:
 
 No `export` keyword exists - the file extension declares the intent.
 
-- Only `src/...` and `stdlib/...` are valid Sigil import roots
+- Only `src/...`, `core/...`, and `stdlib/...` are valid Sigil import roots
 - Import cycles are compile errors
 - FFI (`e module⋅path`) remains trust-mode and link-time validated
+
+Sigil also has a very small implicit core prelude:
+- `Option[T]`, `Result[T,E]`
+- `Some`, `None`, `Ok`, `Err`
+
+These are available without import because they define everyday control and data vocabulary. Most operational helpers still live in namespaced modules like `core⋅map` and `stdlib⋅string`.
 
 ## Why Machine-First Design?
 

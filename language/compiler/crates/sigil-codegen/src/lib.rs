@@ -17,9 +17,9 @@ use sigil_typechecker::typed_ir::{
     MethodSelector, TypedBinaryExpr, TypedCallExpr, TypedConstDecl, TypedConstructorCallExpr,
     TypedDeclaration, TypedExpr, TypedExprKind, TypedExternCallExpr, TypedFieldAccessExpr,
     TypedFilterExpr, TypedFoldExpr, TypedFunctionDecl, TypedIfExpr, TypedIndexExpr,
-    TypedLambdaExpr, TypedLetExpr, TypedListExpr, TypedMapExpr, TypedMatchExpr,
-    TypedMethodCallExpr, TypedPipelineExpr, TypedProgram, TypedRecordExpr, TypedTestDecl,
-    TypedTupleExpr, TypedUnaryExpr, TypedWithMockExpr, WithMockTarget,
+    TypedLambdaExpr, TypedLetExpr, TypedListExpr, TypedMapExpr, TypedMapLiteralExpr,
+    TypedMatchExpr, TypedMethodCallExpr, TypedPipelineExpr, TypedProgram, TypedRecordExpr,
+    TypedTestDecl, TypedTupleExpr, TypedUnaryExpr, TypedWithMockExpr, WithMockTarget,
 };
 use std::collections::HashSet;
 use std::path::{Component, Path, PathBuf};
@@ -95,6 +95,11 @@ impl TypeScriptGenerator {
         // Emit mock runtime helpers first
         self.emit_mock_runtime_helpers();
 
+        // Implicit core prelude constructors are available unqualified in every
+        // module except the prelude module itself, so runtime code needs the same
+        // bindings even though the typechecker injected them implicitly.
+        self.emit_core_prelude_runtime_import()?;
+
         // Generate code for all declarations
         for decl in &program.declarations {
             self.generate_declaration(decl)?;
@@ -115,6 +120,38 @@ impl TypeScriptGenerator {
         }
 
         Ok(self.output.join(""))
+    }
+
+    fn emit_core_prelude_runtime_import(&mut self) -> Result<(), CodegenError> {
+        let Some(source_file) = self.source_file.as_deref() else {
+            return Ok(());
+        };
+
+        if source_file.ends_with("language/core/prelude.lib.sigil") {
+            return Ok(());
+        }
+
+        let import_path = if let Some(ref output_file) = self.output_file {
+            let output_path = Path::new(output_file);
+            if let Some(local_root) = find_output_root(output_path) {
+                let target_abs = local_root.join("core/prelude.js");
+                relative_import_path(
+                    output_path.parent().unwrap_or_else(|| Path::new(".")),
+                    &target_abs,
+                )
+            } else {
+                "./core/prelude.js".to_string()
+            }
+        } else {
+            "./core/prelude.js".to_string()
+        };
+
+        self.emit(&format!(
+            "import {{ Some, None, Ok, Err }} from '{}';",
+            import_path
+        ));
+        self.output.push("\n".to_string());
+        Ok(())
     }
 
     fn emit(&mut self, line: &str) {
@@ -138,10 +175,59 @@ impl TypeScriptGenerator {
         self.emit("function __sigil_all(values) {");
         self.emit("  return Promise.all(values.map((value) => Promise.resolve(value)));");
         self.emit("}");
+        self.emit("function __sigil_map_empty() {");
+        self.emit("  return { __sigil_map: [] };");
+        self.emit("}");
+        self.emit("function __sigil_map_from_entries(entries) {");
+        self.emit("  let current = __sigil_map_empty();");
+        self.emit("  for (const [key, value] of entries) { current = __sigil_map_insert(current, key, value); }");
+        self.emit("  return current;");
+        self.emit("}");
+        self.emit("function __sigil_map_get(map, key) {");
+        self.emit("  for (const [entryKey, entryValue] of map.__sigil_map) { if (__sigil_deep_equal(entryKey, key)) return { __tag: \"Some\", __fields: [entryValue] }; }");
+        self.emit("  return { __tag: \"None\", __fields: [] };");
+        self.emit("}");
+        self.emit("function __sigil_map_has(map, key) {");
+        self.emit("  for (const [entryKey] of map.__sigil_map) { if (__sigil_deep_equal(entryKey, key)) return true; }");
+        self.emit("  return false;");
+        self.emit("}");
+        self.emit("function __sigil_map_insert(map, key, value) {");
+        self.emit("  const next = [];");
+        self.emit("  let replaced = false;");
+        self.emit("  for (const [entryKey, entryValue] of map.__sigil_map) {");
+        self.emit("    if (__sigil_deep_equal(entryKey, key)) { if (!replaced) { next.push([key, value]); replaced = true; } } else { next.push([entryKey, entryValue]); }");
+        self.emit("  }");
+        self.emit("  if (!replaced) next.push([key, value]);");
+        self.emit("  return { __sigil_map: next };");
+        self.emit("}");
+        self.emit("function __sigil_map_remove(map, key) {");
+        self.emit("  return { __sigil_map: map.__sigil_map.filter(([entryKey]) => !__sigil_deep_equal(entryKey, key)) };");
+        self.emit("}");
+        self.emit("function __sigil_map_entries(map) {");
+        self.emit("  return map.__sigil_map.slice();");
+        self.emit("}");
+        self.emit("function __sigil_is_map(value) {");
+        self.emit("  return !!value && typeof value === 'object' && Array.isArray(value.__sigil_map);");
+        self.emit("}");
         self.emit("function __sigil_deep_equal(a, b) {");
         self.emit("  if (a === b) return true;");
         self.emit("  if (a == null || b == null) return false;");
         self.emit("  if (typeof a !== typeof b) return false;");
+        self.emit("  if (__sigil_is_map(a) && __sigil_is_map(b)) {");
+        self.emit("    if (a.__sigil_map.length !== b.__sigil_map.length) return false;");
+        self.emit("    for (const [aKey, aValue] of a.__sigil_map) {");
+        self.emit("      let matched = false;");
+        self.emit("      for (const [bKey, bValue] of b.__sigil_map) {");
+        self.emit("        if (__sigil_deep_equal(aKey, bKey)) {");
+        self.emit("          if (!__sigil_deep_equal(aValue, bValue)) return false;");
+        self.emit("          matched = true;");
+        self.emit("          break;");
+        self.emit("        }");
+        self.emit("      }");
+        self.emit("      if (!matched) return false;");
+        self.emit("    }");
+        self.emit("    return true;");
+        self.emit("  }");
         self.emit("  if (Array.isArray(a) && Array.isArray(b)) {");
         self.emit("    if (a.length !== b.length) return false;");
         self.emit("    for (let i = 0; i < a.length; i++) {");
@@ -234,6 +320,16 @@ impl TypeScriptGenerator {
     }
 
     fn generate_function(&mut self, func: &TypedFunctionDecl) -> Result<(), CodegenError> {
+        if self
+            .source_file
+            .as_deref()
+            .is_some_and(|path| path.ends_with("language/core/map.lib.sigil"))
+        {
+            if self.generate_core_map_function(func)? {
+                return Ok(());
+            }
+        }
+
         let params: Vec<String> = func.params.iter().map(|p| p.name.clone()).collect();
         let params_str = params.join(", ");
 
@@ -284,6 +380,95 @@ impl TypeScriptGenerator {
         }
 
         Ok(())
+    }
+
+    fn generate_core_map_function(
+        &mut self,
+        func: &TypedFunctionDecl,
+    ) -> Result<bool, CodegenError> {
+        let params: Vec<String> = func.params.iter().map(|p| p.name.clone()).collect();
+        let params_str = params.join(", ");
+        let export_keyword = if self.should_export_from_lib() {
+            "export function"
+        } else {
+            "function"
+        };
+
+        let body = match (func.name.as_str(), params.as_slice()) {
+            ("empty", []) => Some("__sigil_ready(__sigil_map_empty())".to_string()),
+            ("entries", [map]) => Some(format!(
+                "{}.then((__map) => __sigil_map_entries(__map).map(([__key, __value]) => ({{ key: __key, value: __value }})))",
+                self.js_ready(map)
+            )),
+            ("filter", [map, pred]) => Some(format!(
+                "{}.then(async ([__map, __fn]) => {{ let __current = __sigil_map_empty(); for (const [__key, __value] of __sigil_map_entries(__map)) {{ if (await Promise.resolve(__fn(__key, __value))) {{ __current = __sigil_map_insert(__current, __key, __value); }} }} return __current; }})",
+                self.js_all(&[self.js_ready(map), self.js_ready(pred)])
+            )),
+            ("fold", [fn_name, init, map]) => Some(format!(
+                "{}.then(async ([__fn, __acc, __map]) => {{ let __current = __acc; for (const [__key, __value] of __sigil_map_entries(__map)) {{ __current = await Promise.resolve(__fn(__current, __key, __value)); }} return __current; }})",
+                self.js_all(&[self.js_ready(fn_name), self.js_ready(init), self.js_ready(map)])
+            )),
+            ("from_list", [entries]) => Some(format!(
+                "{}.then((__entries) => __sigil_map_from_entries(__entries.map((__entry) => [__entry.key, __entry.value])))",
+                self.js_ready(entries)
+            )),
+            ("get", [key, map]) => Some(format!(
+                "{}.then(([__key, __map]) => __sigil_map_get(__map, __key))",
+                self.js_all(&[self.js_ready(key), self.js_ready(map)])
+            )),
+            ("has", [key, map]) => Some(format!(
+                "{}.then(([__key, __map]) => __sigil_map_has(__map, __key))",
+                self.js_all(&[self.js_ready(key), self.js_ready(map)])
+            )),
+            ("insert", [key, map, value]) => Some(format!(
+                "{}.then(([__key, __map, __value]) => __sigil_map_insert(__map, __key, __value))",
+                self.js_all(&[
+                    self.js_ready(key),
+                    self.js_ready(map),
+                    self.js_ready(value),
+                ])
+            )),
+            ("keys", [map]) => Some(format!(
+                "{}.then((__map) => __sigil_map_entries(__map).map(([__key]) => __key))",
+                self.js_ready(map)
+            )),
+            ("map_values", [fn_name, map]) => Some(format!(
+                "{}.then(async ([__fn, __map]) => {{ let __current = __sigil_map_empty(); for (const [__key, __value] of __sigil_map_entries(__map)) {{ __current = __sigil_map_insert(__current, __key, await Promise.resolve(__fn(__value))); }} return __current; }})",
+                self.js_all(&[self.js_ready(fn_name), self.js_ready(map)])
+            )),
+            ("merge", [left, right]) => Some(format!(
+                "{}.then(([__left, __right]) => {{ let __current = __sigil_map_from_entries(__sigil_map_entries(__left)); for (const [__key, __value] of __sigil_map_entries(__right)) {{ __current.__sigil_map = __sigil_map_insert(__current, __key, __value).__sigil_map; }} return __current; }})",
+                self.js_all(&[self.js_ready(left), self.js_ready(right)])
+            )),
+            ("remove", [key, map]) => Some(format!(
+                "{}.then(([__key, __map]) => __sigil_map_remove(__map, __key))",
+                self.js_all(&[self.js_ready(key), self.js_ready(map)])
+            )),
+            ("singleton", [key, value]) => Some(format!(
+                "{}.then(([__key, __value]) => __sigil_map_insert(__sigil_map_empty(), __key, __value))",
+                self.js_all(&[self.js_ready(key), self.js_ready(value)])
+            )),
+            ("size", [map]) => Some(format!(
+                "{}.then((__map) => __map.__sigil_map.length)",
+                self.js_ready(map)
+            )),
+            ("values", [map]) => Some(format!(
+                "{}.then((__map) => __sigil_map_entries(__map).map(([_, __value]) => __value))",
+                self.js_ready(map)
+            )),
+            _ => None,
+        };
+
+        let Some(body) = body else {
+            return Ok(false);
+        };
+
+        self.emit(&format!("{} {}({}) {{", export_keyword, func.name, params_str));
+        self.indent += 1;
+        self.emit(&format!("return {};", body));
+        self.indent -= 1;
+        self.emit("}");
+        Ok(true)
     }
 
     fn generate_type_decl(&mut self, type_decl: &TypeDecl) -> Result<(), CodegenError> {
@@ -440,6 +625,7 @@ impl TypeScriptGenerator {
             TypedExprKind::List(list) => self.generate_list(list),
             TypedExprKind::Tuple(tuple) => self.generate_tuple(tuple),
             TypedExprKind::Record(record) => self.generate_record(record),
+            TypedExprKind::MapLiteral(map) => self.generate_map_literal(map),
             TypedExprKind::FieldAccess(field_access) => self.generate_field_access(field_access),
             TypedExprKind::Index(index) => self.generate_index(index),
             TypedExprKind::Map(map) => self.generate_map(map),
@@ -499,6 +685,9 @@ impl TypeScriptGenerator {
                 if module == "stdlib/string" {
                     return self.generate_string_intrinsic(member, args);
                 }
+                if module == "core/map" {
+                    return self.generate_map_intrinsic(member, args);
+                }
                 Ok(None)
             }
             TypedExprKind::Identifier(name) => {
@@ -508,6 +697,13 @@ impl TypeScriptGenerator {
                     .is_some_and(|path| path.ends_with("language/stdlib/string.lib.sigil"))
                 {
                     return self.generate_string_intrinsic(&name.name, args);
+                }
+                if self
+                    .source_file
+                    .as_deref()
+                    .is_some_and(|path| path.ends_with("language/core/map.lib.sigil"))
+                {
+                    return self.generate_map_intrinsic(&name.name, args);
                 }
                 Ok(None)
             }
@@ -566,6 +762,104 @@ impl TypeScriptGenerator {
             }
             "is_digit" if generated_args.len() == 1 => {
                 Ok(Some(format!("{}.then((__value) => /^[0-9]$/.test(__value))", generated_args[0])))
+            }
+            _ => Ok(None),
+        }
+    }
+
+    fn generate_map_intrinsic(&mut self, member: &str, args: &[TypedExpr]) -> Result<Option<String>, CodegenError> {
+        let generated_args = args
+            .iter()
+            .map(|arg| self.generate_expression(arg))
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+
+        match member {
+            "empty" if generated_args.is_empty() => {
+                Ok(Some("__sigil_ready(__sigil_map_empty())".to_string()))
+            }
+            "entries" if generated_args.len() == 1 => {
+                Ok(Some(format!(
+                    "{}.then((__map) => __sigil_map_entries(__map).map(([__key, __value]) => ({{ key: __key, value: __value }})))",
+                    generated_args[0]
+                )))
+            }
+            "filter" if generated_args.len() == 2 => {
+                Ok(Some(format!(
+                    "{}.then(async ([__map, __fn]) => {{ let __current = __sigil_map_empty(); for (const [__key, __value] of __sigil_map_entries(__map)) {{ if (await Promise.resolve(__fn(__key, __value))) {{ __current = __sigil_map_insert(__current, __key, __value); }} }} return __current; }})",
+                    self.js_all(&generated_args)
+                )))
+            }
+            "fold" if generated_args.len() == 3 => {
+                Ok(Some(format!(
+                    "{}.then(async ([__fn, __acc, __map]) => {{ let __current = __acc; for (const [__key, __value] of __sigil_map_entries(__map)) {{ __current = await Promise.resolve(__fn(__current, __key, __value)); }} return __current; }})",
+                    self.js_all(&generated_args)
+                )))
+            }
+            "from_list" if generated_args.len() == 1 => {
+                Ok(Some(format!(
+                    "{}.then((__entries) => __sigil_map_from_entries(__entries.map((__entry) => [__entry.key, __entry.value])))",
+                    generated_args[0]
+                )))
+            }
+            "get" if generated_args.len() == 2 => {
+                Ok(Some(format!(
+                    "{}.then(([__key, __map]) => __sigil_map_get(__map, __key))",
+                    self.js_all(&generated_args)
+                )))
+            }
+            "has" if generated_args.len() == 2 => {
+                Ok(Some(format!(
+                    "{}.then(([__key, __map]) => __sigil_map_has(__map, __key))",
+                    self.js_all(&generated_args)
+                )))
+            }
+            "insert" if generated_args.len() == 3 => {
+                Ok(Some(format!(
+                    "{}.then(([__key, __map, __value]) => __sigil_map_insert(__map, __key, __value))",
+                    self.js_all(&generated_args)
+                )))
+            }
+            "keys" if generated_args.len() == 1 => {
+                Ok(Some(format!(
+                    "{}.then((__map) => __sigil_map_entries(__map).map(([__key]) => __key))",
+                    generated_args[0]
+                )))
+            }
+            "map_values" if generated_args.len() == 2 => {
+                Ok(Some(format!(
+                    "{}.then(async ([__fn, __map]) => {{ let __current = __sigil_map_empty(); for (const [__key, __value] of __sigil_map_entries(__map)) {{ __current = __sigil_map_insert(__current, __key, await Promise.resolve(__fn(__value))); }} return __current; }})",
+                    self.js_all(&generated_args)
+                )))
+            }
+            "merge" if generated_args.len() == 2 => {
+                Ok(Some(format!(
+                    "{}.then(([__left, __right]) => {{ let __current = __left; for (const [__key, __value] of __sigil_map_entries(__right)) {{ __current = __sigil_map_insert(__current, __key, __value); }} return __current; }})",
+                    self.js_all(&generated_args)
+                )))
+            }
+            "remove" if generated_args.len() == 2 => {
+                Ok(Some(format!(
+                    "{}.then(([__key, __map]) => __sigil_map_remove(__map, __key))",
+                    self.js_all(&generated_args)
+                )))
+            }
+            "singleton" if generated_args.len() == 2 => {
+                Ok(Some(format!(
+                    "{}.then(([__key, __value]) => __sigil_map_insert(__sigil_map_empty(), __key, __value))",
+                    self.js_all(&generated_args)
+                )))
+            }
+            "size" if generated_args.len() == 1 => {
+                Ok(Some(format!(
+                    "{}.then((__map) => __map.__sigil_map.length)",
+                    generated_args[0]
+                )))
+            }
+            "values" if generated_args.len() == 1 => {
+                Ok(Some(format!(
+                    "{}.then((__map) => __sigil_map_entries(__map).map(([_, __value]) => __value))",
+                    generated_args[0]
+                )))
             }
             _ => Ok(None),
         }
@@ -720,7 +1014,7 @@ impl TypeScriptGenerator {
         match un.operator {
             UnaryOperator::Negate => Ok(format!("{}.then((__value) => (-__value))", operand)),
             UnaryOperator::Not => Ok(format!("{}.then((__value) => (!__value))", operand)),
-            UnaryOperator::Length => Ok(format!("{}.then((__value) => __value.length)", operand)),
+            UnaryOperator::Length => Ok(format!("{}.then((__value) => (__sigil_is_map(__value) ? __value.__sigil_map.length : __value.length))", operand)),
         }
     }
 
@@ -773,6 +1067,26 @@ impl TypeScriptGenerator {
             "{}.then((__values) => ({{ {} }}))",
             self.js_all(&values),
             assignments?.join(", ")
+        ))
+    }
+
+    fn generate_map_literal(&mut self, map: &TypedMapLiteralExpr) -> Result<String, CodegenError> {
+        let entries = map
+            .entries
+            .iter()
+            .map(|entry| {
+                let key = self.generate_expression(&entry.key)?;
+                let value = self.generate_expression(&entry.value)?;
+                Ok(format!(
+                    "{}.then(([__sigil_key, __sigil_value]) => [__sigil_key, __sigil_value])",
+                    self.js_all(&[key, value])
+                ))
+            })
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+
+        Ok(format!(
+            "{}.then((__entries) => __sigil_map_from_entries(__entries))",
+            self.js_all(&entries)
         ))
     }
 
@@ -1143,6 +1457,18 @@ mod tests {
         assert!(result.contains("function Blue"));
         assert!(!result.contains("async function Red"));
         // Should use __tag pattern
+        assert!(result.contains("__tag"));
+    }
+
+    #[test]
+    fn test_core_prelude_result_helper_codegen() {
+        let source = "t Result[T,E]=Ok(T)|Err(E)\nλnormalize[T,E](res:Result[T,E])→Result[T,E] match res{Ok(value)→Ok(value)|Err(error)→Err(error)}";
+        let program = typed_program_for(source, "test.lib.sigil");
+
+        let mut gen = TypeScriptGenerator::new(CodegenOptions::default());
+        let result = gen.generate(&program).unwrap();
+
+        assert!(result.contains("function normalize"));
         assert!(result.contains("__tag"));
     }
 

@@ -26,4 +26,4 @@ test sum_test()→Unit|AssertionFailure =
 
 ---
 
-*This website is built from markdown that lives in the repo. Docs stay in `language/docs`, specs in `language/spec`. [Learn more](/about-site/).*
+This website is built from markdown that lives in the repo. Docs stay in `language/docs`, specs in `language/spec`. <a href="/about-site/">Learn more about the site →</a>

@@ -1,6 +1,12 @@
 i src⋅content
 i src⋅types
 
+λall_docs_section(config:src⋅types.SiteBuildConfig,docs:[src⋅types.SitePage])→𝕊=
+  "<section class=\"listing\"><h2>Docs</h2><ul class=\"page-list\">"++page_cards(config,docs)++"</ul></section>"
+
+λall_specs_section(config:src⋅types.SiteBuildConfig,spec:[src⋅types.SitePage])→𝕊=
+  "<section class=\"listing\"><h2>Spec</h2><ul class=\"page-list\">"++page_cards(config,spec)++"</ul></section>"
+
 λarticle_listing(config:src⋅types.SiteBuildConfig,pages:[src⋅types.SitePage])→𝕊=
   "<section class=\"listing\"><h2>Latest Articles</h2><ul class=\"page-list\">"++page_cards(config,pages)++"</ul></section>"
 
@@ -68,13 +74,13 @@ i src⋅types
     "",
     config,
     section_intro(config.site_description,config.site_title),
-    "<div class=\"home-grid\">"++section_card("Design notes, decisions, and change logs.",config,"Browse articles","Articles","/articles/")++section_card("Language guides and reference material.",config,"Read docs","Docs","/docs/")++section_card("Normative language and stdlib specifications.",config,"Read spec","Spec","/spec/")++"</div>"++home.body_html++latest_articles(articles,config)++reference_lists(config,docs,spec),
+    home.body_html++latest_articles(articles,config)++all_docs_section(config,docs)++all_specs_section(config,spec),
     "",
     home.meta.title
   )
 
 λlatest_articles(articles:[src⋅types.SitePage],config:src⋅types.SiteBuildConfig)→𝕊=
-  "<section class=\"listing\"><h2>Latest Articles</h2><ul class=\"page-list\">"++page_cards(config,src⋅content.take_first(5,articles))++"</ul></section>"
+  "<section class=\"listing\"><h2>Latest Articles</h2><ul class=\"page-list\">"++page_cards(config,src⋅content.take_first(5,articles))++"</ul><p><a href=\""++site_url(config.base_path,"/articles/")++"\" class=\"view-all\">View all articles →</a></p></section>"
 
 λnav(config:src⋅types.SiteBuildConfig)→𝕊=
   "<header class=\"site-header\"><div class=\"site-brand\"><a href=\""++site_url(config.base_path,"/")++"\">"++config.site_title++"</a></div><nav class=\"site-nav\"><a href=\""++site_url(config.base_path,"/articles/")++"\">Articles</a><a href=\""++site_url(config.base_path,"/docs/")++"\">Docs</a><a href=\""++site_url(config.base_path,"/spec/")++"\">Spec</a>"++github_nav(config)++"</nav></header>"

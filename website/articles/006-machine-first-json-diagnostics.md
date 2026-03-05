@@ -1,6 +1,6 @@
 ---
 title: "Machine-First JSON Diagnostics: Making Errors Actionable for AI"
-date: February 25, 2026
+date: 2026-02-25
 author: Sigil Language Team
 slug: 006-machine-first-json-diagnostics
 ---

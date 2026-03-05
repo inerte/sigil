@@ -65,6 +65,7 @@ jobs:
           test -f website/.local/site/docs/index.html
           test -f website/.local/site/spec/index.html
           test -f website/.local/site/assets/site.css
+          test -f website/.local/site/site.json
           grep -Eq "Articles|Docs|Spec" website/.local/site/index.html
 
       - name: Upload Pages artifact

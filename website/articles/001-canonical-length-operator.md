@@ -1,6 +1,6 @@
 ---
 title: The # Operator: Why Sigil Has ONE Way to Get Length
-date: February 24, 2026
+date: 2026-02-24
 author: Sigil Language Team
 slug: 001-canonical-length-operator
 ---

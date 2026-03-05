@@ -1,6 +1,6 @@
 ---
 title: "Pattern Guards: How Dog-Fooding Evolved Sigil"
-date: February 24, 2026
+date: 2026-02-24
 author: Sigil Language Team
 slug: 003-pattern-guards-dog-fooding
 ---

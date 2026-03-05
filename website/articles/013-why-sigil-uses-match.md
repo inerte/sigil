@@ -1,6 +1,6 @@
 ---
 title: "Why Sigil Uses match"
-date: March 2, 2026
+date: 2026-03-02
 author: Sigil Language Team
 slug: why-sigil-uses-match
 ---

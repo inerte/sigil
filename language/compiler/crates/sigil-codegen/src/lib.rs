@@ -206,8 +206,76 @@ impl TypeScriptGenerator {
         self.emit("function __sigil_map_entries(map) {");
         self.emit("  return map.__sigil_map.slice();");
         self.emit("}");
+        self.emit("function __sigil_json_from_js(value) {");
+        self.emit("  if (value === null) return { __tag: \"JsonNull\", __fields: [] };");
+        self.emit("  if (Array.isArray(value)) return { __tag: \"JsonArray\", __fields: [value.map(__sigil_json_from_js)] };");
+        self.emit(
+            "  if (typeof value === 'boolean') return { __tag: \"JsonBool\", __fields: [value] };",
+        );
+        self.emit(
+            "  if (typeof value === 'number') return { __tag: \"JsonNumber\", __fields: [value] };",
+        );
+        self.emit(
+            "  if (typeof value === 'string') return { __tag: \"JsonString\", __fields: [value] };",
+        );
+        self.emit("  if (typeof value === 'object') {");
+        self.emit("    return { __tag: \"JsonObject\", __fields: [__sigil_map_from_entries(Object.entries(value).map(([k, v]) => [k, __sigil_json_from_js(v)]))] };");
+        self.emit("  }");
+        self.emit("  return { __tag: \"JsonNull\", __fields: [] };");
+        self.emit("}");
+        self.emit("function __sigil_json_to_js(value) {");
+        self.emit("  if (!value || typeof value !== 'object') return null;");
+        self.emit("  switch (value.__tag) {");
+        self.emit(
+            "    case 'JsonArray': return (value.__fields[0] ?? []).map(__sigil_json_to_js);",
+        );
+        self.emit("    case 'JsonBool': return !!value.__fields[0];");
+        self.emit("    case 'JsonNull': return null;");
+        self.emit("    case 'JsonNumber': return Number(value.__fields[0]);");
+        self.emit("    case 'JsonObject': {");
+        self.emit("      const result = {};");
+        self.emit("      for (const [k, v] of __sigil_map_entries(value.__fields[0] ?? __sigil_map_empty())) { result[String(k)] = __sigil_json_to_js(v); }");
+        self.emit("      return result;");
+        self.emit("    }");
+        self.emit("    case 'JsonString': return String(value.__fields[0] ?? '');");
+        self.emit("    default: return null;");
+        self.emit("  }");
+        self.emit("}");
+        self.emit("function __sigil_json_parse_result(input) {");
+        self.emit("  try {");
+        self.emit(
+            "    return { __tag: \"Ok\", __fields: [__sigil_json_from_js(JSON.parse(input))] };",
+        );
+        self.emit("  } catch (error) {");
+        self.emit("    return { __tag: \"Err\", __fields: [{ message: error instanceof Error ? error.message : String(error) }] };");
+        self.emit("  }");
+        self.emit("}");
+        self.emit("function __sigil_json_stringify_value(value) {");
+        self.emit("  return JSON.stringify(__sigil_json_to_js(value));");
+        self.emit("}");
+        self.emit("function __sigil_time_is_iso(input) {");
+        self.emit("  return /^\\d{4}-\\d{2}-\\d{2}(?:T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?(?:Z|[+-]\\d{2}:\\d{2}))?$/.test(input);");
+        self.emit("}");
+        self.emit("function __sigil_time_parse_iso_result(input) {");
+        self.emit("  if (!__sigil_time_is_iso(input)) {");
+        self.emit("    return { __tag: \"Err\", __fields: [{ message: \"invalid ISO-8601 timestamp\" }] };");
+        self.emit("  }");
+        self.emit("  const millis = Date.parse(input);");
+        self.emit("  if (Number.isNaN(millis)) {");
+        self.emit("    return { __tag: \"Err\", __fields: [{ message: \"invalid ISO-8601 timestamp\" }] };");
+        self.emit("  }");
+        self.emit("  return { __tag: \"Ok\", __fields: [{ epoch_millis: millis }] };");
+        self.emit("}");
+        self.emit("function __sigil_time_format_iso(instant) {");
+        self.emit("  return new Date(instant.epoch_millis).toISOString();");
+        self.emit("}");
+        self.emit("function __sigil_time_now_instant() {");
+        self.emit("  return { epoch_millis: Date.now() };");
+        self.emit("}");
         self.emit("function __sigil_is_map(value) {");
-        self.emit("  return !!value && typeof value === 'object' && Array.isArray(value.__sigil_map);");
+        self.emit(
+            "  return !!value && typeof value === 'object' && Array.isArray(value.__sigil_map);",
+        );
         self.emit("}");
         self.emit("function __sigil_deep_equal(a, b) {");
         self.emit("  if (a === b) return true;");
@@ -280,7 +348,9 @@ impl TypeScriptGenerator {
         self.emit("    case '>': ok = actual > expected; break;");
         self.emit("    case '≤': ok = actual <= expected; break;");
         self.emit("    case '≥': ok = actual >= expected; break;");
-        self.emit("    default: throw new Error('Unsupported test comparison operator: ' + String(op));");
+        self.emit(
+            "    default: throw new Error('Unsupported test comparison operator: ' + String(op));",
+        );
         self.emit("  }");
         self.emit("  if (ok) { return { ok: true }; }");
         self.emit("  return { ok: false, failure: { kind: 'comparison_mismatch', message: 'Comparison test failed', operator: op, actual: __sigil_preview(actual), expected: __sigil_preview(expected), diffHint: __sigil_diff_hint(actual, expected) } };");
@@ -297,7 +367,9 @@ impl TypeScriptGenerator {
         self.emit("  try {");
         self.emit("    return await body();");
         self.emit("  } finally {");
-        self.emit("    if (had) { __sigil_mocks.set(key, prev); } else { __sigil_mocks.delete(key); }");
+        self.emit(
+            "    if (had) { __sigil_mocks.set(key, prev); } else { __sigil_mocks.delete(key); }",
+        );
         self.emit("  }");
         self.emit("}");
         self.emit("async function __sigil_with_mock_extern(key, actualFn, mockFn, body) {");
@@ -367,14 +439,20 @@ impl TypeScriptGenerator {
         if func.is_mockable {
             self.emit("");
             let export_keyword = if should_export { "export " } else { "" };
-            self.emit(&format!("{}function {}({}) {{", export_keyword, func.name, params_str));
+            self.emit(&format!(
+                "{}function {}({}) {{",
+                export_keyword, func.name, params_str
+            ));
             self.indent += 1;
             let args = if params.is_empty() {
                 String::new()
             } else {
                 format!(", {}", params_str)
             };
-            self.emit(&format!("return __sigil_call('{}', {}{});", func.name, impl_name, args));
+            self.emit(&format!(
+                "return __sigil_call('{}', {}{});",
+                func.name, impl_name, args
+            ));
             self.indent -= 1;
             self.emit("}");
         }
@@ -463,7 +541,10 @@ impl TypeScriptGenerator {
             return Ok(false);
         };
 
-        self.emit(&format!("{} {}({}) {{", export_keyword, func.name, params_str));
+        self.emit(&format!(
+            "{} {}({}) {{",
+            export_keyword, func.name, params_str
+        ));
         self.indent += 1;
         self.emit(&format!("return {};", body));
         self.indent -= 1;
@@ -504,7 +585,11 @@ impl TypeScriptGenerator {
                         variant.name
                     ));
                 } else {
-                    self.emit(&format!("return {}.then((__fields) => ({{ __tag: \"{}\", __fields }}));", self.js_all(&param_names), variant.name));
+                    self.emit(&format!(
+                        "return {}.then((__fields) => ({{ __tag: \"{}\", __fields }}));",
+                        self.js_all(&param_names),
+                        variant.name
+                    ));
                 }
                 self.indent -= 1;
                 self.emit("}");
@@ -520,8 +605,15 @@ impl TypeScriptGenerator {
     fn generate_const(&mut self, const_decl: &TypedConstDecl) -> Result<(), CodegenError> {
         let value = self.generate_expression(&const_decl.value)?;
         // Export consts from .lib.sigil files
-        let export_keyword = if self.should_export_from_lib() { "export " } else { "" };
-        self.emit(&format!("{}const {} = {};", export_keyword, const_decl.name, value));
+        let export_keyword = if self.should_export_from_lib() {
+            "export "
+        } else {
+            ""
+        };
+        self.emit(&format!(
+            "{}const {} = {};",
+            export_keyword, const_decl.name, value
+        ));
         Ok(())
     }
 
@@ -548,7 +640,10 @@ impl TypeScriptGenerator {
             format!("./{}.js", import.module_path.join("/"))
         };
 
-        self.emit(&format!("import * as {} from '{}';", namespace, import_path));
+        self.emit(&format!(
+            "import * as {} from '{}';",
+            namespace, import_path
+        ));
         Ok(())
     }
 
@@ -558,11 +653,18 @@ impl TypeScriptGenerator {
 
         if let Some(ref members) = extern_decl.members {
             let member_names: Vec<String> = members.iter().map(|m| m.name.clone()).collect();
-            self.emit(&format!("import {{ {} }} from '{}';", member_names.join(", "), module_path));
+            self.emit(&format!(
+                "import {{ {} }} from '{}';",
+                member_names.join(", "),
+                module_path
+            ));
         } else {
             // Import entire namespace
             let namespace = sanitize_js_identifier(&extern_decl.module_path.join("_"));
-            self.emit(&format!("import * as {} from '{}';", namespace, module_path));
+            self.emit(&format!(
+                "import * as {} from '{}';",
+                namespace, module_path
+            ));
         }
 
         Ok(())
@@ -570,7 +672,8 @@ impl TypeScriptGenerator {
 
     fn generate_test(&mut self, test: &TypedTestDecl) -> Result<(), CodegenError> {
         // Generate a unique test name from the description
-        let test_name = test.description
+        let test_name = test
+            .description
             .chars()
             .filter(|c: &char| c.is_alphanumeric() || *c == '_')
             .collect::<String>()
@@ -609,9 +712,11 @@ impl TypeScriptGenerator {
         match &expr.kind {
             TypedExprKind::Literal(lit) => self.generate_literal(lit),
             TypedExprKind::Identifier(id) => Ok(self.js_ready(&id.name)),
-            TypedExprKind::NamespaceMember { namespace, member } => {
-                Ok(self.js_ready(&format!("{}.{}", sanitize_js_identifier(&namespace.join("_")), member)))
-            }
+            TypedExprKind::NamespaceMember { namespace, member } => Ok(self.js_ready(&format!(
+                "{}.{}",
+                sanitize_js_identifier(&namespace.join("_")),
+                member
+            ))),
             TypedExprKind::Lambda(lambda) => self.generate_lambda(lambda),
             TypedExprKind::Call(call) => self.generate_call(call),
             TypedExprKind::ConstructorCall(call) => self.generate_constructor_call(call),
@@ -685,6 +790,12 @@ impl TypeScriptGenerator {
                 if module == "stdlib/string" {
                     return self.generate_string_intrinsic(member, args);
                 }
+                if module == "stdlib/json" {
+                    return self.generate_json_intrinsic(member, args);
+                }
+                if module == "stdlib/time" {
+                    return self.generate_time_intrinsic(member, args);
+                }
                 if module == "core/map" {
                     return self.generate_map_intrinsic(member, args);
                 }
@@ -701,6 +812,20 @@ impl TypeScriptGenerator {
                 if self
                     .source_file
                     .as_deref()
+                    .is_some_and(|path| path.ends_with("language/stdlib/json.lib.sigil"))
+                {
+                    return self.generate_json_intrinsic(&name.name, args);
+                }
+                if self
+                    .source_file
+                    .as_deref()
+                    .is_some_and(|path| path.ends_with("language/stdlib/time.lib.sigil"))
+                {
+                    return self.generate_time_intrinsic(&name.name, args);
+                }
+                if self
+                    .source_file
+                    .as_deref()
                     .is_some_and(|path| path.ends_with("language/core/map.lib.sigil"))
                 {
                     return self.generate_map_intrinsic(&name.name, args);
@@ -711,8 +836,13 @@ impl TypeScriptGenerator {
         }
     }
 
-    fn generate_string_intrinsic(&mut self, member: &str, args: &[TypedExpr]) -> Result<Option<String>, CodegenError> {
-        let generated_args: Result<Vec<String>, CodegenError> = args.iter()
+    fn generate_string_intrinsic(
+        &mut self,
+        member: &str,
+        args: &[TypedExpr],
+    ) -> Result<Option<String>, CodegenError> {
+        let generated_args: Result<Vec<String>, CodegenError> = args
+            .iter()
             .map(|arg| self.generate_expression(arg))
             .collect();
         let generated_args = generated_args?;
@@ -767,7 +897,11 @@ impl TypeScriptGenerator {
         }
     }
 
-    fn generate_map_intrinsic(&mut self, member: &str, args: &[TypedExpr]) -> Result<Option<String>, CodegenError> {
+    fn generate_map_intrinsic(
+        &mut self,
+        member: &str,
+        args: &[TypedExpr],
+    ) -> Result<Option<String>, CodegenError> {
         let generated_args = args
             .iter()
             .map(|arg| self.generate_expression(arg))
@@ -865,6 +999,105 @@ impl TypeScriptGenerator {
         }
     }
 
+    fn generate_json_intrinsic(
+        &mut self,
+        member: &str,
+        args: &[TypedExpr],
+    ) -> Result<Option<String>, CodegenError> {
+        let generated_args = args
+            .iter()
+            .map(|arg| self.generate_expression(arg))
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+
+        match member {
+            "as_array" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__value) => __value?.__tag === 'JsonArray' ? {{ __tag: \"Some\", __fields: [__value.__fields[0]] }} : {{ __tag: \"None\", __fields: [] }})",
+                generated_args[0]
+            ))),
+            "as_bool" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__value) => __value?.__tag === 'JsonBool' ? {{ __tag: \"Some\", __fields: [__value.__fields[0]] }} : {{ __tag: \"None\", __fields: [] }})",
+                generated_args[0]
+            ))),
+            "as_number" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__value) => __value?.__tag === 'JsonNumber' ? {{ __tag: \"Some\", __fields: [__value.__fields[0]] }} : {{ __tag: \"None\", __fields: [] }})",
+                generated_args[0]
+            ))),
+            "as_object" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__value) => __value?.__tag === 'JsonObject' ? {{ __tag: \"Some\", __fields: [__value.__fields[0]] }} : {{ __tag: \"None\", __fields: [] }})",
+                generated_args[0]
+            ))),
+            "as_string" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__value) => __value?.__tag === 'JsonString' ? {{ __tag: \"Some\", __fields: [__value.__fields[0]] }} : {{ __tag: \"None\", __fields: [] }})",
+                generated_args[0]
+            ))),
+            "get_field" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__key, __obj]) => __sigil_map_get(__obj, __key))",
+                self.js_all(&generated_args)
+            ))),
+            "get_index" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__idx, __arr]) => (__idx >= 0 && __idx < __arr.length) ? {{ __tag: \"Some\", __fields: [__arr[__idx]] }} : {{ __tag: \"None\", __fields: [] }})",
+                self.js_all(&generated_args)
+            ))),
+            "is_null" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__value) => __value?.__tag === 'JsonNull')",
+                generated_args[0]
+            ))),
+            "parse" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__input) => __sigil_json_parse_result(__input))",
+                generated_args[0]
+            ))),
+            "stringify" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__value) => __sigil_json_stringify_value(__value))",
+                generated_args[0]
+            ))),
+            _ => Ok(None),
+        }
+    }
+
+    fn generate_time_intrinsic(
+        &mut self,
+        member: &str,
+        args: &[TypedExpr],
+    ) -> Result<Option<String>, CodegenError> {
+        let generated_args = args
+            .iter()
+            .map(|arg| self.generate_expression(arg))
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+
+        match member {
+            "compare" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__left, __right]) => (__left.epoch_millis < __right.epoch_millis ? -1 : (__left.epoch_millis > __right.epoch_millis ? 1 : 0)))",
+                self.js_all(&generated_args)
+            ))),
+            "format_iso" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__instant) => __sigil_time_format_iso(__instant))",
+                generated_args[0]
+            ))),
+            "from_epoch_millis" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__millis) => ({{ epoch_millis: __millis }}))",
+                generated_args[0]
+            ))),
+            "is_after" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__left, __right]) => __left.epoch_millis > __right.epoch_millis)",
+                self.js_all(&generated_args)
+            ))),
+            "is_before" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__left, __right]) => __left.epoch_millis < __right.epoch_millis)",
+                self.js_all(&generated_args)
+            ))),
+            "now" if generated_args.is_empty() => Ok(Some("__sigil_ready(__sigil_time_now_instant())".to_string())),
+            "parse_iso" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__input) => __sigil_time_parse_iso_result(__input))",
+                generated_args[0]
+            ))),
+            "to_epoch_millis" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__instant) => __instant.epoch_millis)",
+                generated_args[0]
+            ))),
+            _ => Ok(None),
+        }
+    }
+
     fn generate_constructor_call(
         &mut self,
         call: &TypedConstructorCallExpr,
@@ -893,6 +1126,16 @@ impl TypeScriptGenerator {
     fn generate_extern_call(&mut self, call: &TypedExternCallExpr) -> Result<String, CodegenError> {
         if call.namespace.join("/") == "stdlib/string" {
             if let Some(intrinsic) = self.generate_string_intrinsic(&call.member, &call.args)? {
+                return Ok(intrinsic);
+            }
+        }
+        if call.namespace.join("/") == "stdlib/json" {
+            if let Some(intrinsic) = self.generate_json_intrinsic(&call.member, &call.args)? {
+                return Ok(intrinsic);
+            }
+        }
+        if call.namespace.join("/") == "stdlib/time" {
+            if let Some(intrinsic) = self.generate_time_intrinsic(&call.member, &call.args)? {
                 return Ok(intrinsic);
             }
         }
@@ -964,8 +1207,8 @@ impl TypeScriptGenerator {
             BinaryOperator::GreaterEq => ">=",
             BinaryOperator::And => "&&",
             BinaryOperator::Or => "||",
-            BinaryOperator::Append => "+",  // String concatenation
-            BinaryOperator::ListAppend => ".concat",  // Will need special handling
+            BinaryOperator::Append => "+", // String concatenation
+            BinaryOperator::ListAppend => ".concat", // Will need special handling
             BinaryOperator::Pipe => {
                 // Pipeline operator - right(left)
                 return Ok(format!(
@@ -975,7 +1218,9 @@ impl TypeScriptGenerator {
             }
             BinaryOperator::ComposeFwd | BinaryOperator::ComposeBwd => {
                 // Function composition - defer to helper
-                return Err(CodegenError::General("Function composition not yet implemented".to_string()));
+                return Err(CodegenError::General(
+                    "Function composition not yet implemented".to_string(),
+                ));
             }
         };
 
@@ -1024,32 +1269,54 @@ impl TypeScriptGenerator {
 
         if let Some(ref else_branch) = if_expr.else_branch {
             let else_code = self.generate_expression(else_branch)?;
-            Ok(format!("{}.then((__cond) => (__cond ? {} : {}))", condition, then_branch, else_code))
+            Ok(format!(
+                "{}.then((__cond) => (__cond ? {} : {}))",
+                condition, then_branch, else_code
+            ))
         } else {
             // No else branch - return null for the false case
-            Ok(format!("{}.then((__cond) => (__cond ? {} : __sigil_ready(null)))", condition, then_branch))
+            Ok(format!(
+                "{}.then((__cond) => (__cond ? {} : __sigil_ready(null)))",
+                condition, then_branch
+            ))
         }
     }
 
     fn generate_list(&mut self, list: &TypedListExpr) -> Result<String, CodegenError> {
-        let elements: Result<Vec<String>, CodegenError> = list.elements.iter()
+        let elements: Result<Vec<String>, CodegenError> = list
+            .elements
+            .iter()
             .map(|elem| self.generate_expression(elem))
             .collect();
         let elements = elements?;
-        Ok(format!("{}.then((__items) => __items)", self.js_all(&elements)))
+        Ok(format!(
+            "{}.then((__items) => __items)",
+            self.js_all(&elements)
+        ))
     }
 
     fn generate_tuple(&mut self, tuple: &TypedTupleExpr) -> Result<String, CodegenError> {
-        let elements: Result<Vec<String>, CodegenError> = tuple.elements.iter()
+        let elements: Result<Vec<String>, CodegenError> = tuple
+            .elements
+            .iter()
             .map(|elem| self.generate_expression(elem))
             .collect();
         let elements = elements?;
-        Ok(format!("{}.then((__items) => __items)", self.js_all(&elements)))
+        Ok(format!(
+            "{}.then((__items) => __items)",
+            self.js_all(&elements)
+        ))
     }
 
     fn generate_record(&mut self, record: &TypedRecordExpr) -> Result<String, CodegenError> {
-        let field_names: Vec<String> = record.fields.iter().map(|field| field.name.clone()).collect();
-        let values: Vec<String> = record.fields.iter()
+        let field_names: Vec<String> = record
+            .fields
+            .iter()
+            .map(|field| field.name.clone())
+            .collect();
+        let values: Vec<String> = record
+            .fields
+            .iter()
             .map(|field| self.generate_expression(&field.value))
             .collect::<Result<_, _>>()?;
 
@@ -1057,8 +1324,9 @@ impl TypeScriptGenerator {
             .iter()
             .enumerate()
             .map(|(index, field_name)| {
-                let quoted_name = serde_json::to_string(field_name)
-                    .map_err(|e| CodegenError::General(format!("Failed to JSON-encode field name: {}", e)))?;
+                let quoted_name = serde_json::to_string(field_name).map_err(|e| {
+                    CodegenError::General(format!("Failed to JSON-encode field name: {}", e))
+                })?;
                 Ok(format!("{}: __values[{}]", quoted_name, index))
             })
             .collect();
@@ -1090,12 +1358,14 @@ impl TypeScriptGenerator {
         ))
     }
 
-    fn generate_field_access(&mut self, field_access: &TypedFieldAccessExpr) -> Result<String, CodegenError> {
+    fn generate_field_access(
+        &mut self,
+        field_access: &TypedFieldAccessExpr,
+    ) -> Result<String, CodegenError> {
         let object = self.generate_expression(&field_access.object)?;
         Ok(format!(
             "{}.then((__value) => __value.{} )",
-            object,
-            field_access.field
+            object, field_access.field
         ))
     }
 
@@ -1164,7 +1434,11 @@ impl TypeScriptGenerator {
         Ok(lines.join("\n"))
     }
 
-    fn generate_pattern_condition(&mut self, pattern: &Pattern, scrutinee: &str) -> Result<String, CodegenError> {
+    fn generate_pattern_condition(
+        &mut self,
+        pattern: &Pattern,
+        scrutinee: &str,
+    ) -> Result<String, CodegenError> {
         match pattern {
             Pattern::Literal(lit) => {
                 let value = match &lit.value {
@@ -1197,8 +1471,12 @@ impl TypeScriptGenerator {
                 }
             }
             Pattern::Tuple(tuple) => {
-                let length_check = format!("Array.isArray({}) && {}.length === {}",
-                    scrutinee, scrutinee, tuple.patterns.len());
+                let length_check = format!(
+                    "Array.isArray({}) && {}.length === {}",
+                    scrutinee,
+                    scrutinee,
+                    tuple.patterns.len()
+                );
                 // For now, just check length - could add element checks
                 Ok(length_check)
             }
@@ -1206,11 +1484,13 @@ impl TypeScriptGenerator {
         }
     }
 
-    fn generate_pattern_bindings(&mut self, pattern: &Pattern, scrutinee: &str) -> Result<Option<String>, CodegenError> {
+    fn generate_pattern_bindings(
+        &mut self,
+        pattern: &Pattern,
+        scrutinee: &str,
+    ) -> Result<Option<String>, CodegenError> {
         match pattern {
-            Pattern::Identifier(id) => {
-                Ok(Some(format!("const {} = {};", id.name, scrutinee)))
-            }
+            Pattern::Identifier(id) => Ok(Some(format!("const {} = {};", id.name, scrutinee))),
             Pattern::Constructor(ctor) => {
                 if ctor.patterns.is_empty() {
                     return Ok(None);
@@ -1218,7 +1498,9 @@ impl TypeScriptGenerator {
 
                 let mut bindings = Vec::new();
                 for (i, p) in ctor.patterns.iter().enumerate() {
-                    if let Some(b) = self.generate_pattern_bindings(p, &format!("{}.__fields[{}]", scrutinee, i))? {
+                    if let Some(b) = self
+                        .generate_pattern_bindings(p, &format!("{}.__fields[{}]", scrutinee, i))?
+                    {
                         bindings.push(b);
                     }
                 }
@@ -1233,13 +1515,20 @@ impl TypeScriptGenerator {
                 let mut bindings = Vec::new();
 
                 for (i, p) in list.patterns.iter().enumerate() {
-                    if let Some(b) = self.generate_pattern_bindings(p, &format!("{}[{}]", scrutinee, i))? {
+                    if let Some(b) =
+                        self.generate_pattern_bindings(p, &format!("{}[{}]", scrutinee, i))?
+                    {
                         bindings.push(b);
                     }
                 }
 
                 if let Some(ref rest) = list.rest {
-                    bindings.push(format!("const {} = {}.slice({});", rest, scrutinee, list.patterns.len()));
+                    bindings.push(format!(
+                        "const {} = {}.slice({});",
+                        rest,
+                        scrutinee,
+                        list.patterns.len()
+                    ));
                 }
 
                 if bindings.is_empty() {
@@ -1251,7 +1540,9 @@ impl TypeScriptGenerator {
             Pattern::Tuple(tuple) => {
                 let mut bindings = Vec::new();
                 for (i, p) in tuple.patterns.iter().enumerate() {
-                    if let Some(b) = self.generate_pattern_bindings(p, &format!("{}[{}]", scrutinee, i))? {
+                    if let Some(b) =
+                        self.generate_pattern_bindings(p, &format!("{}[{}]", scrutinee, i))?
+                    {
                         bindings.push(b);
                     }
                 }
@@ -1308,23 +1599,28 @@ impl TypeScriptGenerator {
                     self.js_all(&[left, right])
                 ))
             }
-            PipelineOperator::ComposeFwd | PipelineOperator::ComposeBwd => {
-                Err(CodegenError::General("Function composition not yet implemented".to_string()))
-            }
+            PipelineOperator::ComposeFwd | PipelineOperator::ComposeBwd => Err(
+                CodegenError::General("Function composition not yet implemented".to_string()),
+            ),
         }
     }
 
-    fn generate_with_mock(&mut self, with_mock: &TypedWithMockExpr) -> Result<String, CodegenError> {
+    fn generate_with_mock(
+        &mut self,
+        with_mock: &TypedWithMockExpr,
+    ) -> Result<String, CodegenError> {
         let replacement = self.generate_expression(&with_mock.replacement)?;
         let body = self.generate_expression(&with_mock.body)?;
         match &with_mock.target {
             WithMockTarget::LocalFunction(name) => Ok(format!(
                 "__sigil_with_mock('{}', {}, async () => {})",
-                name,
-                replacement,
-                body
+                name, replacement, body
             )),
-            WithMockTarget::ExternMember { namespace, member, mock_key } => {
+            WithMockTarget::ExternMember {
+                namespace,
+                member,
+                mock_key,
+            } => {
                 let func_ref = format!(
                     "{}.{}",
                     sanitize_js_identifier(&namespace.join("_")),
@@ -1332,10 +1628,7 @@ impl TypeScriptGenerator {
                 );
                 Ok(format!(
                     "__sigil_with_mock_extern('{}', {}, {}, async () => {})",
-                    mock_key,
-                    func_ref,
-                    replacement,
-                    body
+                    mock_key, func_ref, replacement, body
                 ))
             }
         }
@@ -1505,7 +1798,9 @@ mod tests {
 
         let mut gen = TypeScriptGenerator::new(CodegenOptions {
             source_file: Some("language/stdlib-tests/tests/numeric-predicates.sigil".to_string()),
-            output_file: Some("/tmp/language/stdlib-tests/.local/tests/numeric-predicates.ts".to_string()),
+            output_file: Some(
+                "/tmp/language/stdlib-tests/.local/tests/numeric-predicates.ts".to_string(),
+            ),
         });
         let result = gen.generate(&program).unwrap();
 
@@ -1566,7 +1861,9 @@ mod tests {
 
         let mut gen = TypeScriptGenerator::new(CodegenOptions {
             source_file: Some("projects/algorithms/src/topological-sort.sigil".to_string()),
-            output_file: Some("/tmp/projects/algorithms/.local/src/topological-sort.ts".to_string()),
+            output_file: Some(
+                "/tmp/projects/algorithms/.local/src/topological-sort.ts".to_string(),
+            ),
         });
         let result = gen.generate(&program).unwrap();
 

@@ -1,0 +1,29 @@
+⟦ Tests for stdlib⋅time ⟧
+
+i stdlib⋅time
+
+λmain()→𝕌=()
+
+test "time compare orders instants" {
+  match stdlib⋅time.parse_iso("2026-03-01"){
+    Ok(first)→match stdlib⋅time.parse_iso("2026-03-03"){
+      Ok(second)→stdlib⋅time.compare(first,second)<0|
+      Err(_)→false
+    }|
+    Err(_)→false
+  }
+}
+
+test "time parse rejects non-iso date" {
+  match stdlib⋅time.parse_iso("March 3, 2026"){
+    Ok(_)→false|
+    Err(_)→true
+  }
+}
+
+test "time parse accepts iso date" {
+  match stdlib⋅time.parse_iso("2026-03-03"){
+    Ok(_)→true|
+    Err(_)→false
+  }
+}

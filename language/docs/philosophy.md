@@ -79,6 +79,8 @@ Examples:
 - `Option[T]`, `Result[T,E]`, `Some`, `None`, `Ok`, and `Err` are implicit core vocabulary
 - `core⋅map` owns map operations
 - `stdlib⋅string` owns string helpers like `join`
+- `stdlib⋅json` owns JSON parsing/value helpers
+- `stdlib⋅time` owns clock and ISO timestamp handling
 
 The design rule is pragmatic:
 - a large stdlib is fine

@@ -9,9 +9,9 @@ test "frontmatter derives title and slug without header" {
 }
 
 test "frontmatter parses canonical metadata" {
-  l markdown=("---\ntitle: Batteries Included\ndate: March 3, 2026\nauthor: Sigil Language Team\nslug: ssg-notes\n---\n# Batteries Included\nBody":𝕊);
+  l markdown=("---\ntitle: Batteries Included\ndate: 2026-03-03\nauthor: Sigil Language Team\nslug: ssg-notes\n---\n# Batteries Included\nBody":𝕊);
   l result=(src⋅frontmatter.parse_frontmatter(markdown,"website/articles/ssg.md"):src⋅frontmatter.ParseResult);
-  result.content="# Batteries Included\nBody" and result.meta={author:"Sigil Language Team",category:"",date:"March 3, 2026",description:"",slug:"ssg-notes",title:"Batteries Included"}
+  result.content="# Batteries Included\nBody" and result.meta={author:"Sigil Language Team",category:"",date:"2026-03-03",description:"",slug:"ssg-notes",title:"Batteries Included"}
 }
 
 test "frontmatter strips quotes" {

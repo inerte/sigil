@@ -1,6 +1,6 @@
 ---
 title: "Why Sigil Is Concurrent by Default"
-date: March 3, 2026
+date: 2026-03-03
 author: Sigil Language Team
 slug: why-sigil-is-concurrent-by-default
 ---

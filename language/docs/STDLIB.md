@@ -12,25 +12,29 @@ The Sigil standard library provides core utility functions and predicates for co
 - ✅ List utilities (head, tail, take/drop/reverse, safe lookup) - `stdlib/list`
 - ✅ String operations (manipulation, searching) - `stdlib/string`
 - ✅ String predicates (prefix/suffix checking) - `stdlib/string`
-- ✅ Sum types (Option, Result) - `stdlib/option`, `stdlib/result`
+- ✅ JSON parsing/serialization - `stdlib/json`
+- ✅ Time parsing/comparison/clock - `stdlib/time`
+- ✅ Core prelude vocabulary (Option, Result) - `core/prelude` (implicit)
 - ✅ Length operator (`#`) - works on strings and lists
 
 **Not yet implemented:**
-- ⏳ I/O operations
-- ⏳ JSON parsing/serialization
+- ⏳ Regex utilities
+- ⏳ Crypto utilities
 
 ## Import Syntax
 
 ```sigil
 ⟦ Import modules (works like FFI - no selective imports) ⟧
 i stdlib⋅list
+i stdlib⋅json
 i stdlib⋅numeric
-i stdlib⋅list
+i stdlib⋅string
+i stdlib⋅time
 
 ⟦ Use with fully qualified names ⟧
 λmain()→𝕌=console.log(
-  stdlib⋅list.sorted_asc([1,2,3]) ++ " " ++
-  stdlib⋅string.int_to_string(#[1,2,3])
+  stdlib⋅string.int_to_string(#[1,2,3]) ++ " " ++
+  stdlib⋅time.format_iso(stdlib⋅time.from_epoch_millis(0))
 )
 ```
 
@@ -81,15 +85,42 @@ Empty lists `[]` infer their type from context:
 
 ## Module Exports
 
-Sigil modules use explicit exports. Standard library modules export the functions/types they expose via:
+Sigil uses file-based visibility:
+- `.lib.sigil` exports all top-level declarations automatically
+- `.sigil` files are executables and are not importable (outside tests)
+
+There is no `export` keyword.
+
+## JSON and Time
+
+`stdlib⋅json` exposes a typed JSON AST with safe parsing:
 
 ```sigil
-export λ...
-export t...
-export c...
+i stdlib⋅json
+
+λmain()→𝕌=
+  match stdlib⋅json.parse("{\"ok\":true}"){
+    Ok(value)→match stdlib⋅json.as_object(value){
+      Some(_)→()|
+      None→()
+    }|
+    Err(_)→()
+  }
 ```
 
-Imported modules only expose exported members. Accessing a non-exported member is a compile error.
+`stdlib⋅time` exposes strict ISO parsing and instant comparison:
+
+```sigil
+i stdlib⋅time
+
+λmain()→𝕌=
+  match stdlib⋅time.parse_iso("2026-03-03"){
+    Ok(instant)→
+      l _=(stdlib⋅time.to_epoch_millis(instant):ℤ);
+      ()|
+    Err(_)→()
+  }
+```
 
 ## List Predicates
 

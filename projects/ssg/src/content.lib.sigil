@@ -3,6 +3,7 @@ t LinkParts={fragment:𝕊,path:𝕊}
 i src⋅types
 i stdlib⋅markdown
 i stdlib⋅string
+i stdlib⋅time
 
 λadd_article_aliases(page:src⋅types.SitePage,routes:[src⋅types.AliasRoute])→[src⋅types.AliasRoute]=
   l bare_slug=(strip_numeric_prefix(page.meta.slug):𝕊);
@@ -101,17 +102,9 @@ i stdlib⋅string
 λcompare_title_pages(left:src⋅types.SitePage,right:src⋅types.SitePage)→𝔹=
   compare_text(left.meta.slug,right.meta.slug)
 
-λdate_sort_key(date:𝕊)→ℤ match stdlib⋅string.split(" ",date){
-  [month,day_with_comma,year]→
-    l day_text=(stdlib⋅string.replace_all(",","",day_with_comma):𝕊);
-    l month_value=(month_number(month):ℤ);
-    l day_value=(parse_int(day_text):ℤ);
-    l year_value=(parse_int(year):ℤ);
-    match month_value=0 or day_value=0 or year_value=0{
-      true→0|
-      false→(year_value*10000)+(month_value*100)+day_value
-    }|
-  _→0
+λdate_sort_key(date:𝕊)→ℤ match stdlib⋅time.parse_iso(date){
+  Ok(instant)→stdlib⋅time.to_epoch_millis(instant)|
+  Err(_)→0
 }
 
 λdrop_last(parts:[𝕊])→[𝕊] match parts{
@@ -131,20 +124,6 @@ i stdlib⋅string
 
 λfind_link_close(after_open:𝕊)→ℤ=stdlib⋅string.index_of(after_open,")")
 
-λint_of_digit(ch:𝕊)→ℤ match ch{
-  "0"→0|
-  "1"→1|
-  "2"→2|
-  "3"→3|
-  "4"→4|
-  "5"→5|
-  "6"→6|
-  "7"→7|
-  "8"→8|
-  "9"→9|
-  _→-1
-}
-
 λis_external_link(target:𝕊)→𝔹=
   stdlib⋅string.starts_with("#",target) or
   stdlib⋅string.starts_with("http://",target) or
@@ -157,22 +136,6 @@ i stdlib⋅string
     true→route.route|
     false→lookup_alias(alias,rest)
   }
-}
-
-λmonth_number(month:𝕊)→ℤ match month{
-  "January"→1|
-  "February"→2|
-  "March"→3|
-  "April"→4|
-  "May"→5|
-  "June"→6|
-  "July"→7|
-  "August"→8|
-  "September"→9|
-  "October"→10|
-  "November"→11|
-  "December"→12|
-  _→0
 }
 
 λnormalize_repo_path(path:𝕊)→𝕊=
@@ -199,18 +162,6 @@ i stdlib⋅string
 λpages_newest_first(pages:[src⋅types.SitePage])→[src⋅types.SitePage]=sort_pages_inner(compare_article_pages,pages)
 
 λpages_sorted_by_title(pages:[src⋅types.SitePage])→[src⋅types.SitePage]=sort_pages_inner(compare_title_pages,pages)
-
-λparse_int(text:𝕊)→ℤ=parse_int_inner(0,0,text)
-
-λparse_int_inner(acc:ℤ,idx:ℤ,text:𝕊)→ℤ match idx≥#text{
-  true→acc|
-  false→
-    l digit=(int_of_digit(stdlib⋅string.char_at(idx,text)):ℤ);
-    match digit<0{
-      true→0|
-      false→parse_int_inner((acc*10)+digit,idx+1,text)
-    }
-}
 
 λrender_page(alias_routes:[src⋅types.AliasRoute],base_path:𝕊,page:src⋅types.SitePage)→src⋅types.SitePage=
   l rewritten=(rewrite_internal_links(alias_routes,base_path,page.body_markdown,page.source_path):𝕊);

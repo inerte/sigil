@@ -1,6 +1,6 @@
 ---
 title: "Why Sigil Bans Shadowing"
-date: March 3, 2026
+date: 2026-03-03
 author: Sigil Language Team
 slug: why-sigil-bans-shadowing
 ---

@@ -1,6 +1,6 @@
 ---
 title: "Canonical Type Equality: Why Sigil Normalizes Structural Types Everywhere"
-date: March 2, 2026
+date: 2026-03-02
 author: Sigil Language Team
 slug: canonical-type-equality
 ---

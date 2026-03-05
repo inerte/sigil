@@ -1,6 +1,6 @@
 ---
 title: "Why Sigil Uses Explicit Generics Without Hindley-Milner"
-date: March 3, 2026
+date: 2026-03-03
 author: Sigil Language Team
 slug: why-sigil-uses-explicit-generics-without-hm
 ---

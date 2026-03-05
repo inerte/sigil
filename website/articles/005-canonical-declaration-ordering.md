@@ -1,6 +1,6 @@
 ---
 title: "Canonical Declaration Ordering: ONE Way to Organize Code"
-date: February 24, 2026
+date: 2026-02-24
 author: Sigil Language Team
 slug: 005-canonical-declaration-ordering
 ---

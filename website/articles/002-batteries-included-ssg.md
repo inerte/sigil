@@ -1,6 +1,6 @@
 ---
 title: Batteries Included: Building Sigil's SSG with Fat Stdlib
-date: February 24, 2026
+date: 2026-02-24
 author: Sigil Language Team
 slug: 002-batteries-included-ssg
 ---

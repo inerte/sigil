@@ -306,6 +306,48 @@ Get all key-value pairs.
 - Complexity: O(n)
 - Pure: Yes
 
+## JSON Operations
+
+```sigil
+t JsonError={message:𝕊}
+t JsonValue=JsonArray([JsonValue])|JsonBool(𝔹)|JsonNull|JsonNumber(ℝ)|JsonObject({𝕊↦JsonValue})|JsonString(𝕊)
+
+λparse(input:𝕊)→Result[JsonValue,JsonError]
+λstringify(value:JsonValue)→𝕊
+λget_field(key:𝕊,obj:{𝕊↦JsonValue})→Option[JsonValue]
+λget_index(arr:[JsonValue],idx:ℤ)→Option[JsonValue]
+λas_array(value:JsonValue)→Option[[JsonValue]]
+λas_bool(value:JsonValue)→Option[𝔹]
+λas_number(value:JsonValue)→Option[ℝ]
+λas_object(value:JsonValue)→Option[{𝕊↦JsonValue}]
+λas_string(value:JsonValue)→Option[𝕊]
+λis_null(value:JsonValue)→𝔹
+```
+
+Notes:
+- `parse` is exception-safe and returns `Err({message})` for invalid JSON.
+- `stringify` is canonical JSON output for the provided `JsonValue`.
+
+## Time Operations
+
+```sigil
+t Instant={epoch_millis:ℤ}
+t TimeError={message:𝕊}
+
+λparse_iso(input:𝕊)→Result[Instant,TimeError]
+λformat_iso(instant:Instant)→𝕊
+λnow()→!IO Instant
+λfrom_epoch_millis(millis:ℤ)→Instant
+λto_epoch_millis(instant:Instant)→ℤ
+λcompare(left:Instant,right:Instant)→ℤ
+λis_before(left:Instant,right:Instant)→𝔹
+λis_after(left:Instant,right:Instant)→𝔹
+```
+
+Notes:
+- `parse_iso` is strict ISO-8601 only.
+- Non-ISO text must be normalized before calling `parse_iso`.
+
 ## Math Operations
 
 ```sigil
@@ -520,13 +562,21 @@ Mathematical functions: sin, cos, tan, log, exp, etc.
 
 ### std/json
 
-JSON parsing and serialization
+Typed JSON parsing and serialization (`JsonValue`, `parse`, `stringify`)
 
 ```sigil
-t JsonValue=JsonNull|JsonBool(𝔹)|JsonInt(ℤ)|JsonFloat(ℝ)|JsonString(𝕊)|JsonArray([JsonValue])|JsonObject({𝕊:JsonValue})
+λparse(input:𝕊)→Result[JsonValue,JsonError]
+λstringify(value:JsonValue)→𝕊
+```
 
-λparse_json(s:𝕊)→Result[JsonValue,ParseError]
-λstringify_json(value:JsonValue)→𝕊
+### std/time
+
+Time and instant handling (`Instant`, strict ISO parsing, clock access)
+
+```sigil
+λparse_iso(input:𝕊)→Result[Instant,TimeError]
+λformat_iso(instant:Instant)→𝕊
+λnow()→!IO Instant
 ```
 
 ### std/http
@@ -582,7 +632,6 @@ Planned for future stdlib versions:
 
 - **std/regex** - Regular expressions
 - **std/crypto** - Cryptographic functions
-- **std/time** - Date and time handling
 - **std/random** - Random number generation
 - **std/stream** - Streaming I/O
 - **std/concurrency** - Threads and channels

@@ -1,0 +1,33 @@
+⟦ Tests for stdlib⋅json ⟧
+
+i stdlib⋅json
+
+λmain()→𝕌=()
+
+test "json parse returns Err for invalid input" {
+  match stdlib⋅json.parse("{bad"){
+    Ok(_)→false|
+    Err(_)→true
+  }
+}
+
+test "json parse returns object for valid input" {
+  match stdlib⋅json.parse("{\"name\":\"sigil\",\"ok\":true}"){
+    Ok(value)→match stdlib⋅json.as_object(value){
+      Some(_)→true|
+      None→false
+    }|
+    Err(_)→false
+  }
+}
+
+test "json stringify roundtrip preserves shape" {
+  l value=(stdlib⋅json.JsonObject({
+    "active"↦stdlib⋅json.JsonBool(true),
+    "name"↦stdlib⋅json.JsonString("sigil")
+  }):stdlib⋅json.JsonValue);
+  match stdlib⋅json.parse(stdlib⋅json.stringify(value)){
+    Ok(parsed)→parsed=value|
+    Err(_)→false
+  }
+}

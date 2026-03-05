@@ -1,6 +1,6 @@
 ---
 title: "Empty List Type Inference: How Bidirectional Typing Fixed Pattern Matching"
-date: February 25, 2026
+date: 2026-02-25
 author: Sigil Language Team
 slug: 007-empty-list-type-inference-fix
 tags: [compiler, type-system, pattern-matching]

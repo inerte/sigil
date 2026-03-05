@@ -1,6 +1,6 @@
 ---
 title: "Typed FFI and the t→e→i Declaration Order Change"
-date: February 25, 2026
+date: 2026-02-25
 author: Sigil Language Team
 slug: typed-ffi-and-declaration-ordering
 ---

@@ -15,6 +15,8 @@
 language/compiler/target/debug/sigil run projects/ssg/src/main.sigil
 ```
 
+This produces HTML pages plus `website/.local/site/site.json` with build metadata.
+
 Generated output goes to `website/.local/site/`.
 
 ## Validate

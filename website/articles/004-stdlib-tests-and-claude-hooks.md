@@ -1,6 +1,6 @@
 ---
 title: "Stdlib Tests + Claude Hooks: Making Sigil Dog-Food Itself Continuously"
-date: February 25, 2026
+date: 2026-02-25
 author: Sigil Language Team
 slug: 004-stdlib-tests-and-claude-hooks
 ---

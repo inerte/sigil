@@ -1,6 +1,6 @@
 ---
 title: "Rewriting the Sigil Compiler in Rust: 100% Feature Parity, 5-7x Faster"
-date: February 26, 2026
+date: 2026-02-26
 author: Sigil Language Team
 slug: 009-rust-compiler-rewrite
 ---

@@ -5,7 +5,9 @@ i src⋅content
 i src⋅frontmatter
 i src⋅templates
 i src⋅types
+i stdlib⋅json
 i stdlib⋅string
+i stdlib⋅time
 
 λasset_output_dir(config:src⋅types.SiteBuildConfig)→𝕊=join_path(config.output_dir,"assets")
 
@@ -23,7 +25,17 @@ i stdlib⋅string
   l _=(write_pages(config,data.docs):𝕌);
   l _=(write_index_html(join_path(config.output_dir,"spec"),src⋅templates.spec_index(config,data.spec)):𝕌);
   l _=(write_pages(config,data.spec):𝕌);
+  l _=(write_site_manifest(config,data):𝕌);
   write_not_found(config)
+
+λbuild_site_manifest_json(data:src⋅types.SiteData,generated_at:𝕊,repo_url:𝕊)→stdlib⋅json.JsonValue=
+  stdlib⋅json.JsonObject({
+    "articlesCount"↦stdlib⋅json.JsonString(stdlib⋅string.int_to_string(#data.articles)),
+    "docsCount"↦stdlib⋅json.JsonString(stdlib⋅string.int_to_string(#data.docs)),
+    "generatedAt"↦stdlib⋅json.JsonString(generated_at),
+    "repoUrl"↦stdlib⋅json.JsonString(repo_url),
+    "specCount"↦stdlib⋅json.JsonString(stdlib⋅string.int_to_string(#data.spec))
+  })
 
 λcopy_asset_files(asset_names:[𝕊],asset_source_dir:𝕊,asset_target_dir:𝕊)→!IO 𝕌 match asset_names{
   []→()|
@@ -174,6 +186,11 @@ i stdlib⋅string
     l _=(write_page(config,html,page):𝕌);
     write_pages(config,rest)
 }
+
+λwrite_site_manifest(config:src⋅types.SiteBuildConfig,data:src⋅types.SiteData)→!IO 𝕌=
+  l generated_at=(stdlib⋅time.format_iso(stdlib⋅time.now()):𝕊);
+  l manifest=(build_site_manifest_json(data,generated_at,config.repo_url):stdlib⋅json.JsonValue);
+  write_file(stdlib⋅json.stringify(manifest),join_path(config.output_dir,"site.json"))
 
 λwrite_standalone_pages(alias_routes:[src⋅types.AliasRoute],config:src⋅types.SiteBuildConfig)→!IO 𝕌=
   l about_page=(load_page(config,src⋅types.Home(),"website/about-site.md"):src⋅types.SitePage);

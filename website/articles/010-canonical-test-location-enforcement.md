@@ -1,6 +1,6 @@
 ---
 title: "Canonical Test Location: Enforcing ONE Way for Test Files"
-date: February 27, 2026
+date: 2026-02-27
 author: Sigil Language Team
 slug: 010-canonical-test-location-enforcement
 ---

@@ -1,6 +1,6 @@
 ---
 title: Simplifying Sigil - Merging SURFACE and CANON Validation
-date: February 27, 2026
+date: 2026-02-27
 author: Sigil Language Team
 slug: 007-unifying-canonical-validation
 ---

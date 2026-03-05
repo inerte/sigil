@@ -14,8 +14,8 @@ i src⋅types
 
 test "article ordering uses newest date first" {
   l pages=([
-    article_page("February 24, 2026","older"),
-    article_page("March 3, 2026","newer")
+    article_page("2026-02-24","older"),
+    article_page("2026-03-03","newer")
   ]:[src⋅types.SitePage]);
   l sorted=(src⋅content.pages_newest_first(pages):[src⋅types.SitePage]);
   sorted[0].meta.slug="newer" and sorted[1].meta.slug="older"

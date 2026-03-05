@@ -230,7 +230,9 @@ Sigil-to-Sigil imports are namespace imports only.
 ```sigil
 i core⋅map
 i src⋅todo-domain
+i stdlib⋅json
 i stdlib⋅list
+i stdlib⋅time
 ```
 
 Use imported members with fully qualified namespace access:

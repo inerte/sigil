@@ -1,6 +1,6 @@
 ---
 title: "Why Sigil Has a Core Prelude"
-date: March 4, 2026
+date: 2026-03-04
 author: Sigil Language Team
 slug: why-sigil-has-a-core-prelude
 ---

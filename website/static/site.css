@@ -250,6 +250,18 @@ pre code{
   font-size:0.94rem;
 }
 
+.view-all{
+  display:inline-block;
+  margin-top:1rem;
+  color:var(--accent);
+  text-decoration:none;
+  font-weight:600;
+}
+
+.view-all:hover{
+  text-decoration:underline;
+}
+
 .page-card[data-section="article"] .page-link{
   color:var(--accent-article);
 }

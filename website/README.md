@@ -1,6 +1,6 @@
 # Sigil
 
-Machine-first programming language designed for canonical code generation.
+A programming language for Claude Code and other AI coding agents.
 
 ## Why Sigil?
 
@@ -23,12 +23,6 @@ i stdlib⋅list
 test sum_test()→Unit|AssertionFailure =
   assert sum([1,2,3,4,5])=15
 ```
-
-## Explore
-
-- **[Articles](/articles/)** - Design decisions and language evolution
-- **[Docs](/docs/)** - Language guides and reference material
-- **[Spec](/spec/)** - Normative specifications
 
 ---
 

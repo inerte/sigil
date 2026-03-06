@@ -87,9 +87,9 @@ pre code{
 }
 
 .site-main{
-  width:min(72rem, calc(100% - 2rem));
+  max-width:100%;
   margin:0 auto;
-  padding:2rem 0 4rem;
+  padding:2rem 3rem 4rem;
 }
 
 .section-intro,
@@ -275,9 +275,9 @@ pre code{
 }
 
 .site-footer{
-  width:min(72rem, calc(100% - 2rem));
+  max-width:100%;
   margin:0 auto;
-  padding:0 0 2rem;
+  padding:0 3rem 2rem;
 }
 
 .features-grid{
@@ -319,8 +319,7 @@ pre code{
   }
 
   .site-main{
-    width:min(100% - 1.25rem, 72rem);
-    padding-top:1.25rem;
+    padding:1.25rem 1.5rem 4rem;
   }
 }
 

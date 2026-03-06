@@ -517,8 +517,9 @@ Pipe value through function.
 ### Import Syntax
 
 ```sigil
-i stdlib⋅io
+i stdlib⋅file
 i stdlib⋅list
+i stdlib⋅path
 i core⋅result
 ```
 
@@ -548,9 +549,32 @@ Auto-imported. Contains the foundational vocabulary types:
 - `Ok`
 - `Err`
 
+### std/file
+
+UTF-8 filesystem helpers:
+- `append_text`
+- `exists`
+- `list_dir`
+- `make_dir`
+- `make_dirs`
+- `read_text`
+- `remove`
+- `remove_tree`
+- `write_text`
+
+### std/path
+
+Filesystem path helpers:
+- `basename`
+- `dirname`
+- `extname`
+- `join`
+- `normalize`
+- `relative`
+
 ### std/io
 
-I/O operations (read_file, write_file, etc.)
+Console and process I/O only (`print`, `println`, `eprintln`, `warn`, `debug`)
 
 ### std/collections
 

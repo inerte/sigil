@@ -232,6 +232,8 @@ i core⋅map
 i src⋅todo-domain
 i stdlib⋅json
 i stdlib⋅list
+i stdlib⋅file
+i stdlib⋅path
 i stdlib⋅time
 i stdlib⋅url
 ```

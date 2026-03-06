@@ -8,15 +8,20 @@
     λreadConfig()→𝕊=fs⋅promises.readFile("config.json", "utf8")
 ⟧
 
+t MkdirOptions = { recursive: 𝔹 }
+t RmOptions = { force: 𝔹, recursive: 𝔹 }
+
+e fs : {
+  existsSync : λ(𝕊) → 𝔹
+}
+
 e fs⋅promises : {
+  access : λ(𝕊) → 𝕌,
   appendFile : λ(𝕊, 𝕊, 𝕊) → 𝕌,
+  mkdir : λ(𝕊, MkdirOptions) → 𝕌,
   readFile : λ(𝕊, 𝕊) → 𝕊,
   readdir : λ(𝕊) → [𝕊],
-  rm : λ(𝕊) → 𝕌,
+  rm : λ(𝕊, RmOptions) → 𝕌,
   unlink : λ(𝕊) → 𝕌,
   writeFile : λ(𝕊, 𝕊, 𝕊) → 𝕌
 }
-
-⟦ Note: mkdir is not included because it takes an options object parameter
-  that cannot be properly typed in Sigil yet. Use untyped 'e fs⋅promises'
-  if you need mkdir with options. ⟧

@@ -12,7 +12,9 @@ The Sigil standard library provides core utility functions and predicates for co
 - ✅ List utilities (head, tail, take/drop/reverse, safe lookup) - `stdlib/list`
 - ✅ String operations (manipulation, searching) - `stdlib/string`
 - ✅ String predicates (prefix/suffix checking) - `stdlib/string`
+- ✅ File system operations - `stdlib/file`
 - ✅ JSON parsing/serialization - `stdlib/json`
+- ✅ Path manipulation - `stdlib/path`
 - ✅ Time parsing/comparison/clock - `stdlib/time`
 - ✅ URL parsing/query helpers - `stdlib/url`
 - ✅ Core prelude vocabulary (Option, Result) - `core/prelude` (implicit)
@@ -28,7 +30,9 @@ The Sigil standard library provides core utility functions and predicates for co
 ⟦ Import modules (works like FFI - no selective imports) ⟧
 i stdlib⋅list
 i stdlib⋅json
+i stdlib⋅file
 i stdlib⋅numeric
+i stdlib⋅path
 i stdlib⋅string
 i stdlib⋅time
 i stdlib⋅url
@@ -93,7 +97,31 @@ Sigil uses file-based visibility:
 
 There is no `export` keyword.
 
-## JSON, Time, and URL
+## File, Path, JSON, Time, and URL
+
+`stdlib⋅file` exposes canonical UTF-8 filesystem helpers:
+
+```sigil
+i stdlib⋅file
+i stdlib⋅path
+
+λmain()→!IO 𝕌=
+  l out=(stdlib⋅path.join("/tmp","sigil.txt"):𝕊);
+  l _=(stdlib⋅file.write_text("hello",out):𝕌);
+  l _2=(stdlib⋅file.read_text(out):𝕊);
+  ()
+```
+
+`stdlib⋅path` exposes canonical filesystem path operations:
+
+```sigil
+i stdlib⋅path
+
+λmain()→𝕌=
+  l _=(stdlib⋅path.basename("website/articles/hello.md"):𝕊);
+  l _2=(stdlib⋅path.join("website","articles"):𝕊);
+  ()
+```
 
 `stdlib⋅json` exposes a typed JSON AST with safe parsing:
 

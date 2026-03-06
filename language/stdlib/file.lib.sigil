@@ -1,0 +1,29 @@
+⟦
+  Sigil Standard Library - File
+
+  Canonical UTF-8 filesystem helpers.
+⟧
+
+e fs
+
+e fs⋅promises
+
+i stdlib⋅path
+
+λappend_text(content:𝕊,path:𝕊)→!IO 𝕌=fs⋅promises.appendFile(path,content,"utf8")
+
+λexists(path:𝕊)→!IO 𝔹=fs.existsSync(path)
+
+λlist_dir(path:𝕊)→!IO [𝕊]=fs⋅promises.readdir(path)
+
+λmake_dir(path:𝕊)→!IO 𝕌=fs⋅promises.mkdir(path,{recursive:false})
+
+λmake_dirs(path:𝕊)→!IO 𝕌=fs⋅promises.mkdir(path,{recursive:true})
+
+λread_text(path:𝕊)→!IO 𝕊=fs⋅promises.readFile(path,"utf8")
+
+λremove(path:𝕊)→!IO 𝕌=fs⋅promises.unlink(path)
+
+λremove_tree(path:𝕊)→!IO 𝕌=fs⋅promises.rm(path,{force:true,recursive:true})
+
+λwrite_text(content:𝕊,path:𝕊)→!IO 𝕌=fs⋅promises.writeFile(path,content,"utf8")

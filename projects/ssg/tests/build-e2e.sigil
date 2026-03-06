@@ -1,8 +1,8 @@
-e fs
-
 i src⋅build
 i src⋅types
+i stdlib⋅file
 i stdlib⋅list
+i stdlib⋅path
 i stdlib⋅string
 
 λbase_config(output_dir:𝕊)→src⋅types.SiteBuildConfig={
@@ -15,26 +15,14 @@ i stdlib⋅string
 
 λcontains(haystack:𝕊,needle:𝕊)→𝔹=stdlib⋅string.index_of(haystack,needle)≥0
 
-λensure_dir(path:𝕊)→!IO 𝕌=fs.promises.mkdir(path,{recursive:true})
-
-λjoin_path(left:𝕊,right:𝕊)→𝕊=left++"/"++right
-
 λmain()→𝕌=()
-
-λread_utf8(path:𝕊)→!IO 𝕊=fs.promises.readFile(path,"utf8")
-
-λremove_dir(path:𝕊)→!IO 𝕌=
-  l _=((λ()→𝕌=fs.promises.rm(path,{force:true,recursive:true}))():𝕌);
-  ()
-
-λwrite_utf8(content:𝕊,path:𝕊)→!IO 𝕌=fs.promises.writeFile(path,content,"utf8")
 
 test "build site removes stale output files" →!IO {
   l output_dir=("/tmp/sigil-ssg-e2e-clean":𝕊);
-  l _=(remove_dir(output_dir):𝕌);
-  l _=(ensure_dir(output_dir):𝕌);
-  l stale_path=(join_path(output_dir,"stale.txt"):𝕊);
-  l _=(write_utf8("stale",stale_path):𝕌);
+  l _=(stdlib⋅file.remove_tree(output_dir):𝕌);
+  l _=(stdlib⋅file.make_dirs(output_dir):𝕌);
+  l stale_path=(stdlib⋅path.join(output_dir,"stale.txt"):𝕊);
+  l _=(stdlib⋅file.write_text("stale",stale_path):𝕌);
   l _=(src⋅build.build_site(base_config(output_dir)):𝕌);
   l root_entries=(src⋅build.list_dir(output_dir):[𝕊]);
   stdlib⋅list.contains("stale.txt",root_entries)=false
@@ -42,31 +30,31 @@ test "build site removes stale output files" →!IO {
 
 test "build site renders docs content page" →!IO {
   l output_dir=("/tmp/sigil-ssg-e2e-docs":𝕊);
-  l _=(remove_dir(output_dir):𝕌);
+  l _=(stdlib⋅file.remove_tree(output_dir):𝕌);
   l _=(src⋅build.build_site(base_config(output_dir)):𝕌);
-  l stdlib_doc=(read_utf8(join_path(output_dir,"docs/stdlib/index.html")):𝕊);
+  l stdlib_doc=(stdlib⋅file.read_text(stdlib⋅path.join(output_dir,"docs/stdlib/index.html")):𝕊);
   contains(stdlib_doc,"Sigil Standard Library")
 }
 
 test "build site renders nav sections on homepage" →!IO {
   l output_dir=("/tmp/sigil-ssg-e2e-home":𝕊);
-  l _=(remove_dir(output_dir):𝕌);
+  l _=(stdlib⋅file.remove_tree(output_dir):𝕌);
   l _=(src⋅build.build_site(base_config(output_dir)):𝕌);
-  l home=(read_utf8(join_path(output_dir,"index.html")):𝕊);
+  l home=(stdlib⋅file.read_text(stdlib⋅path.join(output_dir,"index.html")):𝕊);
   contains(home,">Articles<") and contains(home,">Docs<") and contains(home,">Spec<")
 }
 
 test "build site writes key output files" →!IO {
   l output_dir=("/tmp/sigil-ssg-e2e-files":𝕊);
-  l _=(remove_dir(output_dir):𝕌);
+  l _=(stdlib⋅file.remove_tree(output_dir):𝕌);
   l _=(src⋅build.build_site(base_config(output_dir)):𝕌);
-  l about=(read_utf8(join_path(output_dir,"about-site/index.html")):𝕊);
-  l articles=(read_utf8(join_path(output_dir,"articles/index.html")):𝕊);
-  l css=(read_utf8(join_path(output_dir,"assets/site.css")):𝕊);
-  l docs=(read_utf8(join_path(output_dir,"docs/index.html")):𝕊);
-  l not_found=(read_utf8(join_path(output_dir,"404.html")):𝕊);
-  l site_json=(read_utf8(join_path(output_dir,"site.json")):𝕊);
-  l spec=(read_utf8(join_path(output_dir,"spec/index.html")):𝕊);
+  l about=(stdlib⋅file.read_text(stdlib⋅path.join(output_dir,"about-site/index.html")):𝕊);
+  l articles=(stdlib⋅file.read_text(stdlib⋅path.join(output_dir,"articles/index.html")):𝕊);
+  l css=(stdlib⋅file.read_text(stdlib⋅path.join(output_dir,"assets/site.css")):𝕊);
+  l docs=(stdlib⋅file.read_text(stdlib⋅path.join(output_dir,"docs/index.html")):𝕊);
+  l not_found=(stdlib⋅file.read_text(stdlib⋅path.join(output_dir,"404.html")):𝕊);
+  l site_json=(stdlib⋅file.read_text(stdlib⋅path.join(output_dir,"site.json")):𝕊);
+  l spec=(stdlib⋅file.read_text(stdlib⋅path.join(output_dir,"spec/index.html")):𝕊);
   contains(about,"About This Site") and
   contains(articles,"Latest Articles") and
   #css>0 and
@@ -78,9 +66,9 @@ test "build site writes key output files" →!IO {
 
 test "build site writes manifest with repo url and counts" →!IO {
   l output_dir=("/tmp/sigil-ssg-e2e-manifest":𝕊);
-  l _=(remove_dir(output_dir):𝕌);
+  l _=(stdlib⋅file.remove_tree(output_dir):𝕌);
   l _=(src⋅build.build_site(base_config(output_dir)):𝕌);
-  l manifest=(read_utf8(join_path(output_dir,"site.json")):𝕊);
+  l manifest=(stdlib⋅file.read_text(stdlib⋅path.join(output_dir,"site.json")):𝕊);
   contains(manifest,"\"repoUrl\":\"https://github.com/inerte/sigil\"") and
   contains(manifest,"\"articlesCount\":\"") and
   contains(manifest,"\"docsCount\":\"") and

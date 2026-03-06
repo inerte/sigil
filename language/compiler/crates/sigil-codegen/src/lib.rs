@@ -695,21 +695,25 @@ impl TypeScriptGenerator {
     fn generate_extern(&mut self, extern_decl: &ExternDecl) -> Result<(), CodegenError> {
         // Extern declarations become ES module imports
         let module_path = extern_decl.module_path.join("/");
-
-        if let Some(ref members) = extern_decl.members {
-            let member_names: Vec<String> = members.iter().map(|m| m.name.clone()).collect();
-            self.emit(&format!(
-                "import {{ {} }} from '{}';",
-                member_names.join(", "),
-                module_path
-            ));
+        if extern_decl
+            .members
+            .as_ref()
+            .map(|members: &Vec<_>| !members.is_empty())
+            .unwrap_or(false)
+        {
+            // Typed extern with declared members: import only those members
+            if let Some(members) = &extern_decl.members {
+                let imports = members
+                    .iter()
+                    .map(|member| member.name.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                self.emit(&format!("import {{ {} }} from '{}';", imports, module_path));
+            }
         } else {
-            // Import entire namespace
+            // Untyped extern or no declared members: namespace import
             let namespace = sanitize_js_identifier(&extern_decl.module_path.join("_"));
-            self.emit(&format!(
-                "import * as {} from '{}';",
-                namespace, module_path
-            ));
+            self.emit(&format!("import * as {} from '{}';", namespace, module_path));
         }
 
         Ok(())
@@ -1197,11 +1201,14 @@ impl TypeScriptGenerator {
         call: &TypedConstructorCallExpr,
     ) -> Result<String, CodegenError> {
         let func = match &call.module_path {
-            Some(module_path) => format!(
-                "{}.{}",
-                sanitize_js_identifier(&module_path.join("_")),
-                call.constructor
-            ),
+            Some(module_path) => {
+                let namespace = module_path.iter().cloned().collect::<Vec<String>>().join("_");
+                format!(
+                    "{}.{}",
+                    sanitize_js_identifier(&namespace),
+                    call.constructor
+                )
+            }
             None => call.constructor.clone(),
         };
         let args: Vec<String> = call

@@ -79,6 +79,8 @@ Examples:
 - `Option[T]`, `Result[T,E]`, `Some`, `None`, `Ok`, and `Err` are implicit core vocabulary
 - `core⋅map` owns map operations
 - `stdlib⋅string` owns string helpers like `join`
+- `stdlib⋅file` owns UTF-8 filesystem helpers
+- `stdlib⋅path` owns filesystem path helpers
 - `stdlib⋅json` owns JSON parsing/value helpers
 - `stdlib⋅time` owns clock and ISO timestamp handling
 - `stdlib⋅url` owns URL parsing/query helpers

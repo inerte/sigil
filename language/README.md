@@ -91,7 +91,7 @@ Sigil also has a very small implicit core prelude:
 - `Option[T]`, `Result[T,E]`
 - `Some`, `None`, `Ok`, `Err`
 
-These are available without import because they define everyday control and data vocabulary. Most operational helpers still live in namespaced modules like `core⋅map` and `stdlib⋅string`.
+These are available without import because they define everyday control and data vocabulary. Most operational helpers still live in namespaced modules like `core⋅map`, `stdlib⋅string`, `stdlib⋅file`, and `stdlib⋅path`.
 
 ## Why Machine-First Design?
 

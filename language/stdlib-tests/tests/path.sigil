@@ -1,0 +1,29 @@
+⟦ Tests for stdlib⋅path ⟧
+
+i stdlib⋅path
+
+λmain()→𝕌=()
+
+test "path basename returns last segment" {
+  stdlib⋅path.basename("website/articles/hello.md")="hello.md"
+}
+
+test "path dirname returns parent directory" {
+  stdlib⋅path.dirname("website/articles/hello.md")="website/articles"
+}
+
+test "path extname returns file extension" {
+  stdlib⋅path.extname("website/articles/hello.md")=".md"
+}
+
+test "path join combines two segments" {
+  stdlib⋅path.join("website","articles")="website/articles"
+}
+
+test "path normalize removes redundant navigation" {
+  stdlib⋅path.normalize("website/articles/../static/./site.css")="website/static/site.css"
+}
+
+test "path relative computes sibling route" {
+  stdlib⋅path.relative("website/articles","website/spec/cli-json.md")="../spec/cli-json.md"
+}

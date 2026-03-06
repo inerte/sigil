@@ -6,7 +6,9 @@ A programming language for Claude Code and other AI coding agents.
 
 Here's how to write "Hello World" in Sigil:
 
-<img src="assets/hello-world.png" alt="Hello World in Sigil" style="width: 100%; max-width: 1200px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+<div style="text-align: center;">
+<img src="assets/hello-world.png" alt="Hello World in Sigil" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); display: inline-block;">
+</div>
 
 ## Why Sigil?
 

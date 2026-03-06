@@ -2,6 +2,12 @@
 
 A programming language for Claude Code and other AI coding agents.
 
+## Getting Started
+
+Here's how to write "Hello World" in Sigil:
+
+<img src="/assets/hello-world.png" alt="Hello World in Sigil" style="max-width: 600px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+
 ## Why Sigil?
 
 **Radical Canonicalization** - ONE way to write everything. No style debates, no formatting discussions. The compiler enforces canonical forms for filenames, declarations, parameters, even whitespace.

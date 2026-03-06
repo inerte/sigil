@@ -49,6 +49,16 @@ pre code{
   background:transparent;
 }
 
+.prose > pre{
+  background:#f6f8fa;
+  border:1px solid #d0d7de;
+}
+
+.prose > pre code{
+  font-family:"SF Mono", "Consolas", "Monaco", "Menlo", monospace;
+  font-size:0.9em;
+}
+
 .site-shell{
   min-height:100vh;
 }

@@ -133,7 +133,7 @@ i src⋅types
 }
 
 λshell(aside:𝕊,config:src⋅types.SiteBuildConfig,intro:𝕊,main_html:𝕊,meta:𝕊,title:𝕊)→𝕊=
-  "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>"++title++" · "++config.site_title++"</title><meta name=\"description\" content=\""++config.site_description++"\"><link rel=\"stylesheet\" href=\""++site_url(config.base_path,"/assets/site.css")++"\"></head><body><div class=\"site-shell\">"++nav(config)++"<main class=\"site-main\">"++intro++meta++"<article class=\"prose\">"++main_html++"</article>"++aside++"</main>"++footer(config)++"</div></body></html>"
+  "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>"++title++" · "++config.site_title++"</title><meta name=\"description\" content=\""++config.site_description++"\"><link rel=\"stylesheet\" href=\""++site_url(config.base_path,"/assets/site.css")++"\"><link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css\"></head><body><div class=\"site-shell\">"++nav(config)++"<main class=\"site-main\">"++intro++meta++"<article class=\"prose\">"++main_html++"</article>"++aside++"</main>"++footer(config)++"</div><script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js\"></script><script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js\"></script><script>hljs.highlightAll();</script></body></html>"
 
 λsite_url(base_path:𝕊,route:𝕊)→𝕊=src⋅content.base_path_prefix(base_path,route)
 

@@ -327,21 +327,25 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test -
 - ⏳ LLM generation accuracy tests
 - ⏳ Claude Code integration enhancements
 
-## Installation (Future)
+## Installation
 
 ```bash
-# Install Sigil compiler
-brew install sigil-lang
-
-# Create new project
-sigil new my-project
+# Download the native CLI archive for your platform from GitHub Releases
+# Extract the archive and move `sigil` onto your PATH
+sigil --version
 
 # Compile to TypeScript
-sigilc compile src/main.sigil --output dist/main.ts
+sigil compile src/main.sigil -o dist/main.ts
 
 # Run tests
-sigilc test
+sigil test
 ```
+
+GitHub Releases are the canonical installation path.
+
+- Official release versions use UTC timestamps in the format `YYYY-MM-DDTHH-mm-ssZ`
+- Source builds are for contributors and compiler development
+- Homebrew can be added later as a wrapper around the release artifacts
 
 ## Documentation
 

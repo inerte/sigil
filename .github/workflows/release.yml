@@ -1,0 +1,173 @@
+name: release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.sha }}
+  cancel-in-progress: false
+
+jobs:
+  prepare-release:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - id: version
+        name: Compute release version
+        shell: bash
+        run: |
+          commit_epoch="$(git show -s --format=%ct "$GITHUB_SHA")"
+          version="$(date -u -d "@${commit_epoch}" +"%Y-%m-%dT%H-%M-%SZ")"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Create release tag
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          if git rev-parse -q --verify "refs/tags/${VERSION}" >/dev/null; then
+            echo "Tag ${VERSION} already exists"
+            exit 0
+          fi
+
+          git tag "${VERSION}" "$GITHUB_SHA"
+          git push origin "refs/tags/${VERSION}"
+
+  build-binaries:
+    needs:
+      - prepare-release
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: darwin-arm64
+            runner: macos-14
+            target: aarch64-apple-darwin
+            archive_ext: tar.gz
+          - platform: darwin-x64
+            runner: macos-13
+            target: x86_64-apple-darwin
+            archive_ext: tar.gz
+          - platform: linux-arm64
+            runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+            archive_ext: tar.gz
+          - platform: linux-x64
+            runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive_ext: tar.gz
+          - platform: windows-x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive_ext: zip
+
+    runs-on: ${{ matrix.runner }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Build release binary
+        env:
+          SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
+        run: cargo build --locked --release --manifest-path language/compiler/Cargo.toml -p sigil-cli --target ${{ matrix.target }}
+
+      - name: Smoke test binary
+        if: runner.os != 'Windows'
+        env:
+          SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
+        shell: bash
+        run: |
+          binary="language/compiler/target/${{ matrix.target }}/release/sigil"
+          version="$("$binary" --version)"
+          test "$version" = "sigil ${SIGIL_VERSION}"
+
+      - name: Package unix archive
+        if: runner.os != 'Windows'
+        env:
+          SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
+        shell: bash
+        run: |
+          base="sigil-${SIGIL_VERSION}-${{ matrix.platform }}"
+          stage_dir="dist/${base}"
+          mkdir -p "${stage_dir}"
+          cp "language/compiler/target/${{ matrix.target }}/release/sigil" "${stage_dir}/sigil"
+          cp LICENSE "${stage_dir}/LICENSE"
+          printf "Sigil %s\n\nRun ./sigil --help\n" "${SIGIL_VERSION}" > "${stage_dir}/README.txt"
+          tar -C dist -czf "dist/${base}.tar.gz" "${base}"
+
+      - name: Smoke test binary
+        if: runner.os == 'Windows'
+        env:
+          SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
+        shell: pwsh
+        run: |
+          $binary = "language/compiler/target/${{ matrix.target }}/release/sigil.exe"
+          $version = & $binary --version
+          if ($version -ne "sigil $env:SIGIL_VERSION") {
+            throw "unexpected version output: $version"
+          }
+
+      - name: Package windows archive
+        if: runner.os == 'Windows'
+        env:
+          SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
+        shell: pwsh
+        run: |
+          $base = "sigil-$env:SIGIL_VERSION-${{ matrix.platform }}"
+          $stageDir = "dist/$base"
+          New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
+          Copy-Item "language/compiler/target/${{ matrix.target }}/release/sigil.exe" "$stageDir/sigil.exe"
+          Copy-Item "LICENSE" "$stageDir/LICENSE"
+          Set-Content -Path "$stageDir/README.txt" -Value "Sigil $env:SIGIL_VERSION`n`nRun .\\sigil.exe --help"
+          Compress-Archive -Path $stageDir -DestinationPath "dist/$base.zip" -Force
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.platform }}
+          path: dist/*.${{ matrix.archive_ext }}
+
+  publish-release:
+    needs:
+      - prepare-release
+      - build-binaries
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd dist
+          sha256sum sigil-* > SHA256SUMS
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+        shell: bash
+        run: |
+          if gh release view "${VERSION}" >/dev/null 2>&1; then
+            gh release upload "${VERSION}" dist/* --clobber
+          else
+            gh release create "${VERSION}" dist/* --title "${VERSION}" --latest --generate-notes
+          fi

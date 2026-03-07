@@ -13,8 +13,13 @@ mod project;
 
 use commands::{compile_command, lex_command, parse_command, run_command, test_command};
 
+const SIGIL_VERSION: &str = match option_env!("SIGIL_VERSION") {
+    Some(version) => version,
+    None => "dev",
+};
+
 #[derive(Parser)]
-#[command(name = "sigil", version = "0.1.0", about = "Sigil Compiler")]
+#[command(name = "sigil", version = SIGIL_VERSION, about = "Sigil Compiler")]
 struct Cli {
     #[command(subcommand)]
     command: Command,

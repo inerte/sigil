@@ -32,6 +32,25 @@ pnpm sigil:test:todo
 language/compiler/target/debug/sigil run projects/ssg/src/main.sigil
 ```
 
+## Installation
+
+Sigil is distributed as a native CLI binary through GitHub Releases.
+
+- Download the archive for your platform from the latest release
+- Extract `sigil`
+- Put it on your `PATH`
+- Run `sigil --version`
+
+Release versions use canonical UTC timestamps in the format `YYYY-MM-DDTHH-mm-ssZ`.
+
+If you are contributing to the compiler itself, build from source instead:
+
+```bash
+pnpm install
+pnpm build
+./language/compiler/target/debug/sigil --version
+```
+
 ## Notes
 
 - Root `pnpm` scripts are convenience wrappers around the Rust compiler.

@@ -248,7 +248,8 @@ And we finished `stdlib⋅markdown`, which we're using to build this website, wh
 Pattern guards are available in Sigil today:
 
 ```bash
-brew install sigil
+# Download the native CLI archive for your platform from GitHub Releases
+sigil --version
 ```
 
 ```sigil

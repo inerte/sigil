@@ -166,10 +166,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           VERSION: ${{ needs.prepare-release.outputs.version }}
+          REPO: ${{ github.repository }}
         shell: bash
         run: |
-          if gh release view "${VERSION}" >/dev/null 2>&1; then
-            gh release upload "${VERSION}" dist/* --clobber
+          if gh release view "${VERSION}" --repo "${REPO}" >/dev/null 2>&1; then
+            gh release upload "${VERSION}" dist/* --clobber --repo "${REPO}"
           else
-            gh release create "${VERSION}" dist/* --title "${VERSION}" --latest --generate-notes
+            gh release create "${VERSION}" dist/* --title "${VERSION}" --latest --generate-notes --repo "${REPO}"
           fi

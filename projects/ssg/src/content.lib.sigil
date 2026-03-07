@@ -4,241 +4,241 @@ i stdlib⋅string
 i stdlib⋅time
 i stdlib⋅url
 
-λadd_article_aliases(page:src⋅types.SitePage,routes:[src⋅types.AliasRoute])→[src⋅types.AliasRoute]=
-  l bare_slug=(strip_numeric_prefix(page.meta.slug):𝕊);
-  match bare_slug=page.meta.slug{
+λaddArticleAliases(page:src⋅types.SitePage,routes:[src⋅types.AliasRoute])→[src⋅types.AliasRoute]=
+  l bareSlug=(stripNumericPrefix(page.meta.slug):𝕊);
+  match bareSlug=page.meta.slug{
     true→routes|
     false→routes
-      ⧺[{alias:"/articles/"++bare_slug,route:canonical_route(page)}]
-      ⧺[{alias:"/articles/"++bare_slug++"/",route:canonical_route(page)}]
+      ⧺[{alias:"/articles/"++bareSlug,route:canonicalRoute(page)}]
+      ⧺[{alias:"/articles/"++bareSlug++"/",route:canonicalRoute(page)}]
   }
 
-λadd_known_aliases(page:src⋅types.SitePage,routes:[src⋅types.AliasRoute])→[src⋅types.AliasRoute] match page.section{
-  src⋅types.Article()→add_article_aliases(page,routes)|
+λaddKnownAliases(page:src⋅types.SitePage,routes:[src⋅types.AliasRoute])→[src⋅types.AliasRoute] match page.section{
+  src⋅types.Article()→addArticleAliases(page,routes)|
   src⋅types.Doc()→match page.meta.slug{
-    "philosophy"→routes⧺[{alias:"/about/philosophy",route:canonical_route(page)}]|
+    "philosophy"→routes⧺[{alias:"/about/philosophy",route:canonicalRoute(page)}]|
     _→routes
   }|
   _→routes
 }
 
-λalias_routes_for_page(page:src⋅types.SitePage)→[src⋅types.AliasRoute]=
-  l route=(canonical_route(page):𝕊);
-  l base_routes=([
-    {alias:page.source_path,route:route},
-    {alias:"/"++page.source_path,route:route},
+λaliasRoutesForPage(page:src⋅types.SitePage)→[src⋅types.AliasRoute]=
+  l route=(canonicalRoute(page):𝕊);
+  l baseRoutes=([
+    {alias:page.sourcePath,route:route},
+    {alias:"/"++page.sourcePath,route:route},
     {alias:route,route:route}
   ]:[src⋅types.AliasRoute]);
-  l with_source_dir=(match page.source_path{
-    "website/articles/README.md"→base_routes
+  l withSourceDir=(match page.sourcePath{
+    "website/articles/README.md"→baseRoutes
       ⧺[{alias:"website/articles",route:route}]
       ⧺[{alias:"website/articles/",route:route}]|
-    _→base_routes
+    _→baseRoutes
   }:[src⋅types.AliasRoute]);
-  l with_trailing=(match route{
-    "/"→with_source_dir|
-    _→with_source_dir⧺[{alias:trim_trailing_slash(route),route:route}]
+  l withTrailing=(match route{
+    "/"→withSourceDir|
+    _→withSourceDir⧺[{alias:trimTrailingSlash(route),route:route}]
   }:[src⋅types.AliasRoute]);
-  add_known_aliases(page,with_trailing)
+  addKnownAliases(page,withTrailing)
 
-λbase_path_prefix(base_path:𝕊,route:𝕊)→𝕊 match base_path{
+λbasePathPrefix(basePath:𝕊,route:𝕊)→𝕊 match basePath{
   "/"→route|
   ""→route|
-  _→trim_trailing_slash(base_path)++route
+  _→trimTrailingSlash(basePath)++route
 }
 
-λblank_page(markdown:𝕊,meta:src⋅types.PageMeta,output_dir:𝕊,section:src⋅types.Section,source_path:𝕊)→src⋅types.SitePage={
-  body_html:"",
-  body_markdown:markdown,
+λblankPage(markdown:𝕊,meta:src⋅types.PageMeta,outputDir:𝕊,section:src⋅types.Section,sourcePath:𝕊)→src⋅types.SitePage={
+  bodyHtml:"",
+  bodyMarkdown:markdown,
   meta:meta,
-  output_dir:output_dir,
+  outputDir:outputDir,
   section:section,
-  source_path:source_path
+  sourcePath:sourcePath
 }
 
-λbuild_alias_routes(data:src⋅types.SiteData)→[src⋅types.AliasRoute]=
-  l home_routes=(alias_routes_for_page(data.home):[src⋅types.AliasRoute]);
-  l intro_routes=(alias_routes_for_page(data.articles_intro):[src⋅types.AliasRoute]);
-  l article_routes=(pages_alias_routes(data.articles):[src⋅types.AliasRoute]);
-  l doc_routes=(pages_alias_routes(data.docs):[src⋅types.AliasRoute]);
-  l spec_routes=(pages_alias_routes(data.spec):[src⋅types.AliasRoute]);
-  home_routes⧺intro_routes⧺article_routes⧺doc_routes⧺spec_routes
+λbuildAliasRoutes(data:src⋅types.SiteData)→[src⋅types.AliasRoute]=
+  l homeRoutes=(aliasRoutesForPage(data.home):[src⋅types.AliasRoute]);
+  l introRoutes=(aliasRoutesForPage(data.articlesIntro):[src⋅types.AliasRoute]);
+  l articleRoutes=(pagesAliasRoutes(data.articles):[src⋅types.AliasRoute]);
+  l docRoutes=(pagesAliasRoutes(data.docs):[src⋅types.AliasRoute]);
+  l specRoutes=(pagesAliasRoutes(data.spec):[src⋅types.AliasRoute]);
+  homeRoutes⧺introRoutes⧺articleRoutes⧺docRoutes⧺specRoutes
 
-λcanonical_route(page:src⋅types.SitePage)→𝕊 match page.output_dir{
+λcanonicalRoute(page:src⋅types.SitePage)→𝕊 match page.outputDir{
   ""→"/"|
   dir→"/"++dir++"/"
 }
 
-λcompare_article_pages(left:src⋅types.SitePage,right:src⋅types.SitePage)→𝔹=
-  l left_key=(date_sort_key(left.meta.date):ℤ);
-  l right_key=(date_sort_key(right.meta.date):ℤ);
-  match left_key=right_key{
-    true→compare_text(right.source_path,left.source_path)|
-    false→left_key>right_key
+λcompareArticlePages(left:src⋅types.SitePage,right:src⋅types.SitePage)→𝔹=
+  l leftKey=(dateSortKey(left.meta.date):ℤ);
+  l rightKey=(dateSortKey(right.meta.date):ℤ);
+  match leftKey=rightKey{
+    true→compareText(right.sourcePath,left.sourcePath)|
+    false→leftKey>rightKey
   }
 
-λcompare_text(left:𝕊,right:𝕊)→𝔹=
-  compare_text_inner(
+λcompareText(left:𝕊,right:𝕊)→𝔹=
+  compareTextInner(
     0,
-    stdlib⋅string.to_lower(left),
-    stdlib⋅string.to_lower(right)
+    stdlib⋅string.toLower(left),
+    stdlib⋅string.toLower(right)
   )
 
-λcompare_text_inner(idx:ℤ,left:𝕊,right:𝕊)→𝔹 match idx≥#left{
+λcompareTextInner(idx:ℤ,left:𝕊,right:𝕊)→𝔹 match idx≥#left{
   true→idx<#right|
   false→match idx≥#right{
     true→false|
     false→
-      l left_rank=(sort_char_rank(stdlib⋅string.char_at(idx,left)):ℤ);
-      l right_rank=(sort_char_rank(stdlib⋅string.char_at(idx,right)):ℤ);
-      match left_rank=right_rank{
-        true→compare_text_inner(idx+1,left,right)|
-        false→left_rank<right_rank
+      l leftRank=(sortCharRank(stdlib⋅string.charAt(idx,left)):ℤ);
+      l rightRank=(sortCharRank(stdlib⋅string.charAt(idx,right)):ℤ);
+      match leftRank=rightRank{
+        true→compareTextInner(idx+1,left,right)|
+        false→leftRank<rightRank
       }
   }
 }
 
-λcompare_title_pages(left:src⋅types.SitePage,right:src⋅types.SitePage)→𝔹=
-  compare_text(left.meta.slug,right.meta.slug)
+λcompareTitlePages(left:src⋅types.SitePage,right:src⋅types.SitePage)→𝔹=
+  compareText(left.meta.slug,right.meta.slug)
 
-λdate_sort_key(date:𝕊)→ℤ match stdlib⋅time.parse_iso(date){
-  Ok(instant)→stdlib⋅time.to_epoch_millis(instant)|
+λdateSortKey(date:𝕊)→ℤ match stdlib⋅time.parseIso(date){
+  Ok(instant)→stdlib⋅time.toEpochMillis(instant)|
   Err(_)→0
 }
 
-λdrop_last(parts:[𝕊])→[𝕊] match parts{
+λdropLast(parts:[𝕊])→[𝕊] match parts{
   []→[]|
   [part,.rest]→match rest{
     []→[]|
-    _→[part]⧺drop_last(rest)
+    _→[part]⧺dropLast(rest)
   }
 }
 
-λdrop_numeric_prefix(slug:𝕊)→𝕊 match #slug>4 and stdlib⋅string.is_digit(stdlib⋅string.char_at(0,slug)) and stdlib⋅string.is_digit(stdlib⋅string.char_at(1,slug)) and stdlib⋅string.is_digit(stdlib⋅string.char_at(2,slug)) and stdlib⋅string.char_at(3,slug)="-"{
+λdropNumericPrefix(slug:𝕊)→𝕊 match #slug>4 and stdlib⋅string.isDigit(stdlib⋅string.charAt(0,slug)) and stdlib⋅string.isDigit(stdlib⋅string.charAt(1,slug)) and stdlib⋅string.isDigit(stdlib⋅string.charAt(2,slug)) and stdlib⋅string.charAt(3,slug)="-"{
   true→stdlib⋅string.substring(#slug,slug,4)|
   false→slug
 }
 
-λfile_dir(path:𝕊)→𝕊=stdlib⋅string.join("/",drop_last(stdlib⋅string.split("/",path)))
+λfileDir(path:𝕊)→𝕊=stdlib⋅string.join("/",dropLast(stdlib⋅string.split("/",path)))
 
-λfind_link_close(after_open:𝕊)→ℤ=stdlib⋅string.index_of(after_open,")")
+λfindLinkClose(afterOpen:𝕊)→ℤ=stdlib⋅string.indexOf(afterOpen,")")
 
-λis_external_link(target:stdlib⋅url.Url)→𝔹=
-  stdlib⋅url.is_anchor(target) or
+λisExternalLink(target:stdlib⋅url.Url)→𝔹=
+  stdlib⋅url.isAnchor(target) or
   target.protocol="http" or
   target.protocol="https" or
   target.protocol="mailto"
 
-λlookup_alias(alias:𝕊,alias_routes:[src⋅types.AliasRoute])→𝕊 match alias_routes{
+λlookupAlias(alias:𝕊,aliasRoutes:[src⋅types.AliasRoute])→𝕊 match aliasRoutes{
   []→""|
   [route,.rest]→match route.alias=alias{
     true→route.route|
-    false→lookup_alias(alias,rest)
+    false→lookupAlias(alias,rest)
   }
 }
 
-λnormalize_repo_path(path:𝕊)→𝕊=
-  stdlib⋅string.join("/",normalize_segments(stdlib⋅string.split("/",path),[]))
+λnormalizeRepoPath(path:𝕊)→𝕊=
+  stdlib⋅string.join("/",normalizeSegments(stdlib⋅string.split("/",path),[]))
 
-λnormalize_segments(parts:[𝕊],stack:[𝕊])→[𝕊] match parts{
+λnormalizeSegments(parts:[𝕊],stack:[𝕊])→[𝕊] match parts{
   []→stack|
   [part,.rest]→match part{
-    ""→normalize_segments(rest,stack)|
-    "."→normalize_segments(rest,stack)|
-    ".."→normalize_segments(rest,drop_last(stack))|
-    _→normalize_segments(rest,stack⧺[part])
+    ""→normalizeSegments(rest,stack)|
+    "."→normalizeSegments(rest,stack)|
+    ".."→normalizeSegments(rest,dropLast(stack))|
+    _→normalizeSegments(rest,stack⧺[part])
   }
 }
 
-λpages_alias_routes(pages:[src⋅types.SitePage])→[src⋅types.AliasRoute] match pages{
+λpagesAliasRoutes(pages:[src⋅types.SitePage])→[src⋅types.AliasRoute] match pages{
   []→[]|
   [page,.rest]→
-    l current=(alias_routes_for_page(page):[src⋅types.AliasRoute]);
-    l remaining=(pages_alias_routes(rest):[src⋅types.AliasRoute]);
+    l current=(aliasRoutesForPage(page):[src⋅types.AliasRoute]);
+    l remaining=(pagesAliasRoutes(rest):[src⋅types.AliasRoute]);
     current⧺remaining
 }
 
-λpages_newest_first(pages:[src⋅types.SitePage])→[src⋅types.SitePage]=sort_pages_inner(compare_article_pages,pages)
+λpagesNewestFirst(pages:[src⋅types.SitePage])→[src⋅types.SitePage]=sortPagesInner(compareArticlePages,pages)
 
-λpages_sorted_by_title(pages:[src⋅types.SitePage])→[src⋅types.SitePage]=sort_pages_inner(compare_title_pages,pages)
+λpagesSortedByTitle(pages:[src⋅types.SitePage])→[src⋅types.SitePage]=sortPagesInner(compareTitlePages,pages)
 
-λrender_page(alias_routes:[src⋅types.AliasRoute],base_path:𝕊,page:src⋅types.SitePage)→src⋅types.SitePage=
-  l rewritten=(rewrite_internal_links(alias_routes,base_path,page.body_markdown,page.source_path):𝕊);
+λrenderPage(aliasRoutes:[src⋅types.AliasRoute],basePath:𝕊,page:src⋅types.SitePage)→src⋅types.SitePage=
+  l rewritten=(rewriteInternalLinks(aliasRoutes,basePath,page.bodyMarkdown,page.sourcePath):𝕊);
   {
-    body_html:stdlib⋅markdown.parse(rewritten),
-    body_markdown:page.body_markdown,
+    bodyHtml:stdlib⋅markdown.parse(rewritten),
+    bodyMarkdown:page.bodyMarkdown,
     meta:page.meta,
-    output_dir:page.output_dir,
+    outputDir:page.outputDir,
     section:page.section,
-    source_path:page.source_path
+    sourcePath:page.sourcePath
   }
 
-λresolve_repo_path(source_path:𝕊,target_path:𝕊)→𝕊 match stdlib⋅string.starts_with("/",target_path){
-  true→normalize_repo_path(stdlib⋅string.substring(#target_path,target_path,1))|
-  false→match stdlib⋅string.starts_with("../docs/",target_path){
-    true→normalize_repo_path("language/docs/"++stdlib⋅string.substring(#target_path,target_path,8))|
-    false→match stdlib⋅string.starts_with("../language/",target_path){
-      true→normalize_repo_path(stdlib⋅string.substring(#target_path,target_path,3))|
-      false→match #file_dir(source_path)>0{
-        true→normalize_repo_path(file_dir(source_path)++"/"++target_path)|
-        false→normalize_repo_path(target_path)
+λresolveRepoPath(sourcePath:𝕊,targetPath:𝕊)→𝕊 match stdlib⋅string.startsWith("/",targetPath){
+  true→normalizeRepoPath(stdlib⋅string.substring(#targetPath,targetPath,1))|
+  false→match stdlib⋅string.startsWith("../docs/",targetPath){
+    true→normalizeRepoPath("language/docs/"++stdlib⋅string.substring(#targetPath,targetPath,8))|
+    false→match stdlib⋅string.startsWith("../language/",targetPath){
+      true→normalizeRepoPath(stdlib⋅string.substring(#targetPath,targetPath,3))|
+      false→match #fileDir(sourcePath)>0{
+        true→normalizeRepoPath(fileDir(sourcePath)++"/"++targetPath)|
+        false→normalizeRepoPath(targetPath)
       }
     }
   }
 }
 
-λrewrite_internal_links(alias_routes:[src⋅types.AliasRoute],base_path:𝕊,markdown:𝕊,source_path:𝕊)→𝕊=
-  l open_idx=(stdlib⋅string.index_of(markdown,"]("):ℤ);
-  match open_idx<0{
+λrewriteInternalLinks(aliasRoutes:[src⋅types.AliasRoute],basePath:𝕊,markdown:𝕊,sourcePath:𝕊)→𝕊=
+  l openIdx=(stdlib⋅string.indexOf(markdown,"]("):ℤ);
+  match openIdx<0{
     true→markdown|
     false→
-      l before=(stdlib⋅string.substring(open_idx+2,markdown,0):𝕊);
-      l after_open=(stdlib⋅string.substring(#markdown,markdown,open_idx+2):𝕊);
-      l close_idx=(find_link_close(after_open):ℤ);
-      match close_idx<0{
+      l before=(stdlib⋅string.substring(openIdx+2,markdown,0):𝕊);
+      l afterOpen=(stdlib⋅string.substring(#markdown,markdown,openIdx+2):𝕊);
+      l closeIdx=(findLinkClose(afterOpen):ℤ);
+      match closeIdx<0{
         true→markdown|
         false→
-          l target=(stdlib⋅string.substring(close_idx,after_open,0):𝕊);
-          l after=(stdlib⋅string.substring(#after_open,after_open,close_idx+1):𝕊);
-          before++rewrite_link_target(alias_routes,base_path,source_path,target)++")"++rewrite_internal_links(alias_routes,base_path,after,source_path)
+          l target=(stdlib⋅string.substring(closeIdx,afterOpen,0):𝕊);
+          l after=(stdlib⋅string.substring(#afterOpen,afterOpen,closeIdx+1):𝕊);
+          before++rewriteLinkTarget(aliasRoutes,basePath,sourcePath,target)++")"++rewriteInternalLinks(aliasRoutes,basePath,after,sourcePath)
       }
   }
 
-λrewrite_link_target(alias_routes:[src⋅types.AliasRoute],base_path:𝕊,source_path:𝕊,target:𝕊)→𝕊 match stdlib⋅url.parse(target){
+λrewriteLinkTarget(aliasRoutes:[src⋅types.AliasRoute],basePath:𝕊,sourcePath:𝕊,target:𝕊)→𝕊 match stdlib⋅url.parse(target){
   Err(_)→target|
-  Ok(parsed_target)→match is_external_link(parsed_target){
+  Ok(parsedTarget)→match isExternalLink(parsedTarget){
     true→target|
     false→
-      l suffix=(stdlib⋅url.suffix(parsed_target):𝕊);
-      l direct=(lookup_alias(parsed_target.path,alias_routes):𝕊);
+      l suffix=(stdlib⋅url.suffix(parsedTarget):𝕊);
+      l direct=(lookupAlias(parsedTarget.path,aliasRoutes):𝕊);
       match #direct>0{
-        true→base_path_prefix(base_path,direct)++suffix|
+        true→basePathPrefix(basePath,direct)++suffix|
         false→
-          l repo_path=(resolve_repo_path(source_path,parsed_target.path):𝕊);
-          l resolved=(lookup_alias(repo_path,alias_routes):𝕊);
+          l repoPath=(resolveRepoPath(sourcePath,parsedTarget.path):𝕊);
+          l resolved=(lookupAlias(repoPath,aliasRoutes):𝕊);
           match #resolved>0{
-            true→base_path_prefix(base_path,resolved)++suffix|
+            true→basePathPrefix(basePath,resolved)++suffix|
             false→target
           }
       }
   }
 }
 
-λsection_name(section:src⋅types.Section)→𝕊 match section{
+λsectionName(section:src⋅types.Section)→𝕊 match section{
   src⋅types.Article()→"Articles"|
   src⋅types.Doc()→"Docs"|
   src⋅types.Home()→"Home"|
   src⋅types.Spec()→"Spec"
 }
 
-λsection_name_lowercase(section:src⋅types.Section)→𝕊 match section{
+λsectionNameLowercase(section:src⋅types.Section)→𝕊 match section{
   src⋅types.Article()→"article"|
   src⋅types.Doc()→"doc"|
   src⋅types.Home()→"home"|
   src⋅types.Spec()→"spec"
 }
 
-λsort_char_rank(ch:𝕊)→ℤ match ch{
+λsortCharRank(ch:𝕊)→ℤ match ch{
   "-"→0|
   "."→1|
   "/"→2|
@@ -281,30 +281,30 @@ i stdlib⋅url
   _→90
 }
 
-λsort_insert(compare:λ(src⋅types.SitePage,src⋅types.SitePage)→𝔹,page:src⋅types.SitePage,pages:[src⋅types.SitePage])→[src⋅types.SitePage] match pages{
+λsortInsert(compare:λ(src⋅types.SitePage,src⋅types.SitePage)→𝔹,page:src⋅types.SitePage,pages:[src⋅types.SitePage])→[src⋅types.SitePage] match pages{
   []→[page]|
   [head,.rest]→match compare(page,head){
     true→[page,head]⧺rest|
-    false→[head]⧺sort_insert(compare,page,rest)
+    false→[head]⧺sortInsert(compare,page,rest)
   }
 }
 
-λsort_pages_inner(compare:λ(src⋅types.SitePage,src⋅types.SitePage)→𝔹,pages:[src⋅types.SitePage])→[src⋅types.SitePage] match pages{
+λsortPagesInner(compare:λ(src⋅types.SitePage,src⋅types.SitePage)→𝔹,pages:[src⋅types.SitePage])→[src⋅types.SitePage] match pages{
   []→[]|
-  [page,.rest]→sort_insert(compare,page,sort_pages_inner(compare,rest))
+  [page,.rest]→sortInsert(compare,page,sortPagesInner(compare,rest))
 }
 
-λstrip_numeric_prefix(slug:𝕊)→𝕊=drop_numeric_prefix(slug)
+λstripNumericPrefix(slug:𝕊)→𝕊=dropNumericPrefix(slug)
 
-λtake_first(count:ℤ,pages:[src⋅types.SitePage])→[src⋅types.SitePage] match count≤0{
+λtakeFirst(count:ℤ,pages:[src⋅types.SitePage])→[src⋅types.SitePage] match count≤0{
   true→[]|
   false→match pages{
     []→[]|
-    [page,.rest]→[page]⧺take_first(count-1,rest)
+    [page,.rest]→[page]⧺takeFirst(count-1,rest)
   }
 }
 
-λtrim_trailing_slash(path:𝕊)→𝕊 match (#path>1) and stdlib⋅string.ends_with(path,"/"){
-  true→trim_trailing_slash(stdlib⋅string.substring(#path-1,path,0))|
+λtrimTrailingSlash(path:𝕊)→𝕊 match (#path>1) and stdlib⋅string.endsWith(path,"/"){
+  true→trimTrailingSlash(stdlib⋅string.substring(#path-1,path,0))|
   false→path
 }

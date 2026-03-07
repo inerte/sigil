@@ -134,7 +134,7 @@ When we added this rule, we found:
 - **25 functions** reordered
 - **~50 function calls** updated to match
 
-Example from `stdlib⋅http-server`:
+Example from `stdlib⋅httpServer`:
 
 ```sigil
 # Before:
@@ -148,10 +148,10 @@ All calls were updated automatically:
 
 ```sigil
 # Before:
-stdlib⋅http-server.json(200, "{}")
+stdlib⋅httpServer.json(200, "{}")
 
 # After:
-stdlib⋅http-server.json("{}", 200)
+stdlib⋅httpServer.json("{}", 200)
 ```
 
 ## For AI Code Generation

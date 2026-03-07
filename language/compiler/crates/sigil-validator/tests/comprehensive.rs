@@ -243,8 +243,8 @@ fn test_import_valid() {
 }
 
 #[test]
-fn test_const_lowercase_name() {
-    let source = "c my_constant=(100:ℤ)";
+fn test_const_lower_camel_case_name() {
+    let source = "c myConstant=(100:ℤ)";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.lib.sigil").unwrap();
 
@@ -437,7 +437,7 @@ fn test_filename_underscore_rejected() {
     let result = validate_canonical_form(&program, Some("user_service.sigil"), None);
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(matches!(errors[0], ValidationError::FilenameInvalidChar { .. }));
+    assert!(matches!(errors[0], ValidationError::FilenameFormat { .. }));
 }
 
 #[test]
@@ -449,7 +449,7 @@ fn test_filename_special_char_rejected() {
     let result = validate_canonical_form(&program, Some("user@service.sigil"), None);
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(matches!(errors[0], ValidationError::FilenameInvalidChar { .. }));
+    assert!(matches!(errors[0], ValidationError::FilenameFormat { .. }));
 }
 
 #[test]
@@ -461,68 +461,56 @@ fn test_filename_space_rejected() {
     let result = validate_canonical_form(&program, Some("user service.sigil"), None);
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(matches!(errors[0], ValidationError::FilenameInvalidChar { .. }));
+    assert!(matches!(errors[0], ValidationError::FilenameFormat { .. }));
 }
 
 #[test]
-fn test_filename_hyphen_at_start_rejected() {
+fn test_filename_hyphen_rejected() {
     let source = "λmain()→𝕌=()";
     let tokens = tokenize(source).unwrap();
-    let program = parse(tokens, "-hello.sigil").unwrap();
+    let program = parse(tokens, "hello-world.sigil").unwrap();
 
-    let result = validate_canonical_form(&program, Some("-hello.sigil"), None);
+    let result = validate_canonical_form(&program, Some("hello-world.sigil"), None);
     assert!(result.is_err());
     let errors = result.unwrap_err();
     assert!(matches!(errors[0], ValidationError::FilenameFormat { .. }));
 }
 
 #[test]
-fn test_filename_hyphen_at_end_rejected() {
+fn test_filename_leading_digit_rejected() {
     let source = "λmain()→𝕌=()";
     let tokens = tokenize(source).unwrap();
-    let program = parse(tokens, "hello-.sigil").unwrap();
+    let program = parse(tokens, "01introduction.sigil").unwrap();
 
-    let result = validate_canonical_form(&program, Some("hello-.sigil"), None);
+    let result = validate_canonical_form(&program, Some("01introduction.sigil"), None);
     assert!(result.is_err());
     let errors = result.unwrap_err();
     assert!(matches!(errors[0], ValidationError::FilenameFormat { .. }));
 }
 
 #[test]
-fn test_filename_consecutive_hyphens_rejected() {
+fn test_filename_valid_lower_camel_case() {
     let source = "λmain()→𝕌=()";
     let tokens = tokenize(source).unwrap();
-    let program = parse(tokens, "hello--world.sigil").unwrap();
+    let program = parse(tokens, "userService.sigil").unwrap();
 
-    let result = validate_canonical_form(&program, Some("hello--world.sigil"), None);
-    assert!(result.is_err());
-    let errors = result.unwrap_err();
-    assert!(matches!(errors[0], ValidationError::FilenameFormat { .. }));
-}
-
-#[test]
-fn test_filename_valid_kebab_case() {
-    let source = "λmain()→𝕌=()";
-    let tokens = tokenize(source).unwrap();
-    let program = parse(tokens, "user-service.sigil").unwrap();
-
-    assert!(validate_canonical_form(&program, Some("user-service.sigil"), None).is_ok());
+    assert!(validate_canonical_form(&program, Some("userService.sigil"), None).is_ok());
 }
 
 #[test]
 fn test_filename_valid_with_numbers() {
     let source = "λmain()→𝕌=()";
     let tokens = tokenize(source).unwrap();
-    let program = parse(tokens, "01-introduction.sigil").unwrap();
+    let program = parse(tokens, "example01Introduction.sigil").unwrap();
 
-    assert!(validate_canonical_form(&program, Some("01-introduction.sigil"), None).is_ok());
+    assert!(validate_canonical_form(&program, Some("example01Introduction.sigil"), None).is_ok());
 }
 
 #[test]
 fn test_filename_valid_lib_extension() {
     let source = "";
     let tokens = tokenize(source).unwrap();
-    let program = parse(tokens, "ffi-node-console.lib.sigil").unwrap();
+    let program = parse(tokens, "ffiNodeConsole.lib.sigil").unwrap();
 
-    assert!(validate_canonical_form(&program, Some("ffi-node-console.lib.sigil"), None).is_ok());
+    assert!(validate_canonical_form(&program, Some("ffiNodeConsole.lib.sigil"), None).is_ok());
 }

@@ -1,9 +1,0 @@
-λlinear_search(target:ℤ,xs:[ℤ])→ℤ=linear_search_from(0,target,xs)
-
-λlinear_search_from(idx:ℤ,target:ℤ,xs:[ℤ])→ℤ match xs{
-  []→-1|
-  [head,.tail]→match head=target{
-    true→idx|
-    false→linear_search_from(idx+1,target,tail)
-  }
-}

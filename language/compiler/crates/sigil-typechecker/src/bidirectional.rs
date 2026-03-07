@@ -1337,7 +1337,7 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
                 },
                 _ => {
                     return Err(TypeError::new(
-                        "with_mock target must be an identifier or imported member access".to_string(),
+                        "withMock target must be an identifier or imported member access".to_string(),
                         Some(with_mock.location),
                     ))
                 }
@@ -2347,7 +2347,7 @@ fn synthesize_with_mock(
     if !matches!(replacement_type, InferenceType::Function(_) | InferenceType::Any) {
         return Err(TypeError::new(
             format!(
-                "with_mock replacement must be a function, got {}",
+                "withMock replacement must be a function, got {}",
                 format_type(&replacement_type)
             ),
             Some(with_mock.location),
@@ -2361,7 +2361,7 @@ fn synthesize_with_mock(
         if !types_equal(&normalized_target, &normalized_replacement) {
             return Err(TypeError::new(
                 format!(
-                    "with_mock replacement type {} does not match target type {}",
+                    "withMock replacement type {} does not match target type {}",
                     format_type(&normalized_replacement),
                     format_type(&normalized_target)
                 ),
@@ -3173,13 +3173,13 @@ mod tests {
     #[test]
     fn test_qualified_imported_constructor_expression_typechecks() {
         let source =
-            "i src⋅graph-types\nλmk()→src⋅graph-types.TopologicalSortResult=src⋅graph-types.Ordering([1,2,3])";
+            "i src⋅graphTypes\nλmk()→src⋅graphTypes.TopologicalSortResult=src⋅graphTypes.Ordering([1,2,3])";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
         let mut imported_type_registries = HashMap::new();
         imported_type_registries.insert(
-            "src⋅graph-types".to_string(),
+            "src⋅graphTypes".to_string(),
             HashMap::from([(
                 "TopologicalSortResult".to_string(),
                 TypeInfo {
@@ -3224,13 +3224,13 @@ mod tests {
 
     #[test]
     fn test_qualified_imported_constructor_pattern_typechecks() {
-        let source = "i src⋅graph-types\nλproject(result:src⋅graph-types.TopologicalSortResult)→[ℤ] match result{src⋅graph-types.Ordering(order)→order|src⋅graph-types.CycleDetected()→[]}";
+        let source = "i src⋅graphTypes\nλproject(result:src⋅graphTypes.TopologicalSortResult)→[ℤ] match result{src⋅graphTypes.Ordering(order)→order|src⋅graphTypes.CycleDetected()→[]}";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
         let mut imported_type_registries = HashMap::new();
         imported_type_registries.insert(
-            "src⋅graph-types".to_string(),
+            "src⋅graphTypes".to_string(),
             HashMap::from([(
                 "TopologicalSortResult".to_string(),
                 TypeInfo {

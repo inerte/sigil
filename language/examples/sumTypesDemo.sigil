@@ -1,0 +1,56 @@
+⟦ Sum Types Demo - Option and Result
+
+This example demonstrates Sigil's sum type system with practical examples.
+
+Sum types (also called tagged unions or algebraic data types) allow you to define
+types that can be one of several variants. They're essential for type-safe error
+handling and representing optional values.
+⟧
+
+⟦ Simple enum - no type parameters ⟧
+t Color=Red|Green|Blue
+
+⟦ Generic Option type - represents optional values ⟧
+t Option[T]=Some(T)|None
+
+⟦ Generic Result type - represents success or failure ⟧
+t Result[T,E]=Ok(T)|Err(E)
+
+⟦ Example 1: Working with simple enums ⟧
+λcolorToNumber(color:Color)→ℤ match color{
+  Red→1|
+  Green→2|
+  Blue→3
+}
+
+⟦ Example 2: Safe division using Result ⟧
+λdivide(a:ℤ,b:ℤ)→Result[ℤ,𝕊] match b{
+  0→Err("division by zero")|
+  divisor→Ok(a/divisor)
+}
+
+⟦ Example 4: Working with Option ⟧
+λfirst[T](list:[T])→Option[T] match list{
+  []→None()|
+  [x,.rest]→Some(x)
+}
+
+λgetOrDefault(default:ℤ,opt:Option[ℤ])→ℤ match opt{
+  Some(x)→x|
+  None()→default
+}
+
+⟦ Main - demonstrate all examples ⟧
+λmain()→ℤ={
+  l colorValue=(colorToNumber(Green()):ℤ);
+  l divOk=(processResult(divide(10,2)):ℤ);
+  l divErr=(processResult(divide(10,0)):ℤ);
+  l total=(colorValue+divOk+divErr:ℤ);
+  total
+}
+
+⟦ Example 3: Pattern matching on Result ⟧
+λprocessResult(result:Result[ℤ,𝕊])→ℤ match result{
+  Ok(value)→value|
+  Err(_)→0
+}

@@ -1,0 +1,3 @@
+i src⋅mergeSort
+
+λmain()→[ℤ]=src⋅mergeSort.mergeSort([8,2,7,3,1,6,4,5])

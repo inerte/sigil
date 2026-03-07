@@ -6,54 +6,54 @@
     "paths": [
       "language/benchmarks/algorithms/factorial/factorial.sigil",
       "language/benchmarks/algorithms/fibonacci/fibonacci.sigil",
-      "language/benchmarks/algorithms/filter-even/filter-even.sigil",
+      "language/benchmarks/algorithms/filterEven/filterEven.sigil",
       "language/benchmarks/algorithms/gcd/gcd.sigil",
-      "language/benchmarks/algorithms/is-palindrome/is-palindrome.sigil",
-      "language/benchmarks/algorithms/map-double/map-double.sigil",
+      "language/benchmarks/algorithms/isPalindrome/isPalindrome.sigil",
+      "language/benchmarks/algorithms/mapDouble/mapDouble.sigil",
       "language/benchmarks/algorithms/power/power.sigil",
-      "language/benchmarks/algorithms/sum-list/sum-list.sigil",
-      "language/examples/01-literals.sigil",
-      "language/examples/02-arithmetic.sigil",
-      "language/examples/03-string-concat.sigil",
-      "language/examples/04-list-construction.sigil",
-      "language/examples/05-nested-functions.sigil",
-      "language/examples/06-division.sigil",
-      "language/examples/07-subtraction.sigil",
-      "language/examples/09-negative-numbers.sigil",
-      "language/examples/10-simple-functions.sigil",
-      "language/examples/20-list-length.sigil",
-      "language/examples/41-modulo.sigil",
-      "language/examples/comments-demo.sigil",
-      "language/examples/effect-demo.sigil",
-      "language/examples/email-validator.sigil",
+      "language/benchmarks/algorithms/sumList/sumList.sigil",
+      "language/examples/example01Literals.sigil",
+      "language/examples/example02Arithmetic.sigil",
+      "language/examples/example03StringConcat.sigil",
+      "language/examples/example04ListConstruction.sigil",
+      "language/examples/example05NestedFunctions.sigil",
+      "language/examples/example06Division.sigil",
+      "language/examples/example07Subtraction.sigil",
+      "language/examples/example09NegativeNumbers.sigil",
+      "language/examples/example10SimpleFunctions.sigil",
+      "language/examples/example20ListLength.sigil",
+      "language/examples/example41Modulo.sigil",
+      "language/examples/commentsDemo.sigil",
+      "language/examples/effectDemo.sigil",
+      "language/examples/emailValidator.sigil",
       "language/examples/factorial.sigil",
-      "language/examples/ffi-demo.sigil",
+      "language/examples/ffiDemo.sigil",
       "language/examples/fibonacci.sigil",
-      "language/examples/http-handler.sigil",
-      "language/examples/list-length.sigil",
-      "language/examples/list-operations.sigil",
-      "language/examples/list-reverse.sigil",
-      "language/examples/mutability-demo.sigil",
-      "language/examples/mutability-errors.sigil",
-      "language/examples/option-result-practical.sigil",
-      "language/examples/pattern-guards.sigil",
-      "language/examples/string-demo.sigil",
-      "language/examples/sum-types-demo.sigil",
-      "language/examples/test-any-record.sigil",
-      "language/examples/test-empty-constructor.sigil",
-      "language/examples/test-single-variant-simple.sigil",
-      "language/examples/test-variant-any.sigil",
-      "language/examples/typed-ffi-demo.sigil",
-      "language/examples/typed-ffi-list-length.sigil",
+      "language/examples/httpHandler.sigil",
+      "language/examples/listLength.sigil",
+      "language/examples/listOperations.sigil",
+      "language/examples/listReverse.sigil",
+      "language/examples/mutabilityDemo.sigil",
+      "language/examples/mutabilityErrors.sigil",
+      "language/examples/optionResultPractical.sigil",
+      "language/examples/patternGuards.sigil",
+      "language/examples/stringDemo.sigil",
+      "language/examples/sumTypesDemo.sigil",
+      "language/examples/testAnyRecord.sigil",
+      "language/examples/testEmptyConstructor.sigil",
+      "language/examples/testSingleVariantSimple.sigil",
+      "language/examples/testVariantAny.sigil",
+      "language/examples/typed-ffiDemo.sigil",
+      "language/examples/typed-ffi-listLength.sigil",
       "language/examples/types.sigil",
-      "language/stdlib-tests/tests/list-predicates.sigil",
-      "language/stdlib-tests/tests/numeric-predicates.sigil",
+      "language/stdlib-tests/tests/listPredicates.sigil",
+      "language/stdlib-tests/tests/numericPredicates.sigil",
       "language/stdlib-tests/tests/string.sigil",
-      "language/stdlib/ffi-node-console.lib.sigil",
-      "language/stdlib/ffi-node-fs.lib.sigil",
-      "language/stdlib/ffi-node-path.lib.sigil",
-      "language/stdlib/ffi-node-process.lib.sigil",
-      "language/stdlib/http-server.lib.sigil",
+      "language/stdlib/ffiNodeConsole.lib.sigil",
+      "language/stdlib/ffiNodeFs.lib.sigil",
+      "language/stdlib/ffiNodePath.lib.sigil",
+      "language/stdlib/ffiNodeProcess.lib.sigil",
+      "language/stdlib/httpServer.lib.sigil",
       "language/stdlib/io.lib.sigil",
       "language/stdlib/list.lib.sigil",
       "language/stdlib/markdown-simple.lib.sigil",
@@ -62,47 +62,47 @@
       "language/stdlib/option.lib.sigil",
       "language/stdlib/result.lib.sigil",
       "language/stdlib/string.lib.sigil",
-      "language/test-fixtures/test-async-ffi.sigil",
-      "language/test-fixtures/test-async-list-ops.sigil",
-      "language/test-fixtures/test-async-pure.sigil",
-      "language/test-fixtures/test-ffi-console.sigil",
-      "language/test-fixtures/test-ffi-fs.sigil",
-      "language/test-fixtures/test-helper-allowed.sigil",
-      "language/test-fixtures/test-len-in-bounds.sigil",
-      "language/test-fixtures/test-pattern-guards.sigil",
-      "language/test-fixtures/test-typecheck/empty-list-function-body.sigil",
-      "language/test-fixtures/test-typecheck/empty-list-in-match.sigil",
-      "language/test-fixtures/test-typecheck/empty-list-in-record.sigil",
-      "language/test-fixtures/test-typecheck/markdown-minimal.sigil",
-      "language/test-fixtures/test-typecheck/markdown-parse-result.sigil",
-      "language/test-fixtures/test-typecheck/nested-record-in-match.sigil",
-      "language/test-fixtures/test-typecheck/normalized-structural-equality.sigil",
-      "language/test-fixtures/test-typecheck/record-in-local-binding.sigil",
-      "language/test-fixtures/test-typechecker.sigil",
-      "language/test-fixtures/test-typed-ffi-list.sigil",
-      "language/test-fixtures/test-typed-ffi-mkdir.sigil",
-      "language/test-fixtures/test-typed-ffi.sigil",
-      "language/test-fixtures/test-unicode-operators.sigil",
-      "language/test-fixtures/tests/test-with-mock.sigil",
-      "language/test-fixtures/type-alias-list-concat.sigil",
-      "projects/algorithms/src/99-bottles.sigil",
-      "projects/algorithms/src/binary-search.sigil",
+      "language/test-fixtures/testAsyncFfi.sigil",
+      "language/test-fixtures/testAsyncListOps.sigil",
+      "language/test-fixtures/testAsyncPure.sigil",
+      "language/test-fixtures/testFfiConsole.sigil",
+      "language/test-fixtures/testFfiFs.sigil",
+      "language/test-fixtures/testHelperAllowed.sigil",
+      "language/test-fixtures/testLenInBounds.sigil",
+      "language/test-fixtures/test-patternGuards.sigil",
+      "language/test-fixtures/test-typecheck/emptyListFunctionBody.sigil",
+      "language/test-fixtures/test-typecheck/emptyListInMatch.sigil",
+      "language/test-fixtures/test-typecheck/emptyListInRecord.sigil",
+      "language/test-fixtures/test-typecheck/markdownMinimal.sigil",
+      "language/test-fixtures/test-typecheck/markdownParseResult.sigil",
+      "language/test-fixtures/test-typecheck/nestedRecordInMatch.sigil",
+      "language/test-fixtures/test-typecheck/normalizedStructuralEquality.sigil",
+      "language/test-fixtures/test-typecheck/recordInLocalBinding.sigil",
+      "language/test-fixtures/testTypechecker.sigil",
+      "language/test-fixtures/testTypedFfiList.sigil",
+      "language/test-fixtures/testTypedFfiMkdir.sigil",
+      "language/test-fixtures/testTypedFfi.sigil",
+      "language/test-fixtures/testUnicodeOperators.sigil",
+      "language/test-fixtures/tests/testWithMock.sigil",
+      "language/test-fixtures/typeAliasListConcat.sigil",
+      "projects/algorithms/src/example99Bottles.sigil",
+      "projects/algorithms/src/binarySearch.sigil",
       "projects/algorithms/src/bottles99.lib.sigil",
-      "projects/algorithms/src/collatz-conjecture.sigil",
-      "projects/algorithms/src/factorial-fold.sigil",
-      "projects/algorithms/src/factorial-helper.sigil",
-      "projects/algorithms/src/factorial-mutual.sigil",
-      "projects/algorithms/src/factorial-valid.sigil",
+      "projects/algorithms/src/collatzConjecture.sigil",
+      "projects/algorithms/src/factorialFold.sigil",
+      "projects/algorithms/src/factorialHelper.sigil",
+      "projects/algorithms/src/factorialMutual.sigil",
+      "projects/algorithms/src/factorialValid.sigil",
       "projects/algorithms/src/factorial.sigil",
       "projects/algorithms/src/gcd.sigil",
       "projects/algorithms/src/hanoi.sigil",
       "projects/algorithms/src/hello.sigil",
       "projects/algorithms/src/palindrome.sigil",
-      "projects/algorithms/src/rot13-demo.sigil",
-      "projects/algorithms/src/rot13-encoder.lib.sigil",
-      "projects/algorithms/tests/99-bottles.sigil",
-      "projects/algorithms/tests/basic-testing.sigil",
-      "projects/algorithms/tests/rot13-encoder.sigil",
+      "projects/algorithms/src/rot13Demo.sigil",
+      "projects/algorithms/src/rot13Encoder.lib.sigil",
+      "projects/algorithms/tests/example99Bottles.sigil",
+      "projects/algorithms/tests/basicTesting.sigil",
+      "projects/algorithms/tests/rot13Encoder.sigil",
       "projects/dungeon-bsp/src/main.sigil",
       "projects/dungeon-caves/src/main.sigil",
       "projects/dungeon-random-rooms/src/main.sigil",
@@ -111,8 +111,8 @@
       "projects/ssg/src/server.lib.sigil",
       "projects/ssg/src/templates.lib.sigil",
       "projects/ssg/src/types.lib.sigil",
-      "projects/todo-app/src/todo-domain.lib.sigil",
-      "projects/todo-app/tests/todo-domain.sigil"
+      "projects/todo-app/src/todoDomain.lib.sigil",
+      "projects/todo-app/tests/todoDomain.sigil"
     ]
   },
   "tokenizers": [
@@ -142,9 +142,9 @@
       "sampleFiles": [
         "language/benchmarks/algorithms/factorial/factorial.sigil",
         "language/benchmarks/algorithms/fibonacci/fibonacci.sigil",
-        "language/benchmarks/algorithms/filter-even/filter-even.sigil",
+        "language/benchmarks/algorithms/filterEven/filterEven.sigil",
         "language/benchmarks/algorithms/gcd/gcd.sigil",
-        "language/benchmarks/algorithms/map-double/map-double.sigil"
+        "language/benchmarks/algorithms/mapDouble/mapDouble.sigil"
       ],
       "candidates": [
         {
@@ -213,7 +213,7 @@
               }
             },
             {
-              "file": "language/examples/list-operations.sigil",
+              "file": "language/examples/listOperations.sigil",
               "delta": {
                 "openai_cl100k_base": -22,
                 "llama_sentencepiece_proxy": -18,
@@ -221,7 +221,7 @@
               }
             },
             {
-              "file": "projects/algorithms/src/factorial-fold.sigil",
+              "file": "projects/algorithms/src/factorialFold.sigil",
               "delta": {
                 "openai_cl100k_base": -21,
                 "llama_sentencepiece_proxy": -14,
@@ -237,7 +237,7 @@
               }
             },
             {
-              "file": "language/examples/effect-demo.sigil",
+              "file": "language/examples/effectDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -17,
                 "llama_sentencepiece_proxy": -10,
@@ -245,7 +245,7 @@
               }
             },
             {
-              "file": "projects/todo-app/src/todo-domain.lib.sigil",
+              "file": "projects/todo-app/src/todoDomain.lib.sigil",
               "delta": {
                 "openai_cl100k_base": -17,
                 "llama_sentencepiece_proxy": -10,
@@ -253,7 +253,7 @@
               }
             },
             {
-              "file": "language/examples/sum-types-demo.sigil",
+              "file": "language/examples/sumTypesDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -15,
                 "llama_sentencepiece_proxy": -11,
@@ -261,7 +261,7 @@
               }
             },
             {
-              "file": "language/examples/option-result-practical.sigil",
+              "file": "language/examples/optionResultPractical.sigil",
               "delta": {
                 "openai_cl100k_base": -14,
                 "llama_sentencepiece_proxy": -9,
@@ -287,11 +287,11 @@
       "occurrences": 218,
       "filesAffected": 28,
       "sampleFiles": [
-        "language/examples/email-validator.sigil",
-        "language/examples/pattern-guards.sigil",
-        "language/examples/string-demo.sigil",
-        "language/examples/typed-ffi-demo.sigil",
-        "language/examples/typed-ffi-list-length.sigil"
+        "language/examples/emailValidator.sigil",
+        "language/examples/patternGuards.sigil",
+        "language/examples/stringDemo.sigil",
+        "language/examples/typed-ffiDemo.sigil",
+        "language/examples/typed-ffi-listLength.sigil"
       ],
       "candidates": [
         {
@@ -368,7 +368,7 @@
               }
             },
             {
-              "file": "language/examples/string-demo.sigil",
+              "file": "language/examples/stringDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -36,
                 "llama_sentencepiece_proxy": -12,
@@ -376,7 +376,7 @@
               }
             },
             {
-              "file": "projects/todo-app/tests/todo-domain.sigil",
+              "file": "projects/todo-app/tests/todoDomain.sigil",
               "delta": {
                 "openai_cl100k_base": -33,
                 "llama_sentencepiece_proxy": -12,
@@ -384,7 +384,7 @@
               }
             },
             {
-              "file": "language/examples/email-validator.sigil",
+              "file": "language/examples/emailValidator.sigil",
               "delta": {
                 "openai_cl100k_base": -26,
                 "llama_sentencepiece_proxy": -8,
@@ -392,7 +392,7 @@
               }
             },
             {
-              "file": "language/examples/pattern-guards.sigil",
+              "file": "language/examples/patternGuards.sigil",
               "delta": {
                 "openai_cl100k_base": -15,
                 "llama_sentencepiece_proxy": -5,
@@ -400,7 +400,7 @@
               }
             },
             {
-              "file": "language/stdlib-tests/tests/list-predicates.sigil",
+              "file": "language/stdlib-tests/tests/listPredicates.sigil",
               "delta": {
                 "openai_cl100k_base": -15,
                 "llama_sentencepiece_proxy": -5,
@@ -408,7 +408,7 @@
               }
             },
             {
-              "file": "language/stdlib-tests/tests/numeric-predicates.sigil",
+              "file": "language/stdlib-tests/tests/numericPredicates.sigil",
               "delta": {
                 "openai_cl100k_base": -14,
                 "llama_sentencepiece_proxy": -7,
@@ -494,7 +494,7 @@
               }
             },
             {
-              "file": "language/examples/string-demo.sigil",
+              "file": "language/examples/stringDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -24,
                 "llama_sentencepiece_proxy": -12,
@@ -502,7 +502,7 @@
               }
             },
             {
-              "file": "projects/todo-app/tests/todo-domain.sigil",
+              "file": "projects/todo-app/tests/todoDomain.sigil",
               "delta": {
                 "openai_cl100k_base": -24,
                 "llama_sentencepiece_proxy": -12,
@@ -510,7 +510,7 @@
               }
             },
             {
-              "file": "language/examples/email-validator.sigil",
+              "file": "language/examples/emailValidator.sigil",
               "delta": {
                 "openai_cl100k_base": -17,
                 "llama_sentencepiece_proxy": -8,
@@ -518,7 +518,7 @@
               }
             },
             {
-              "file": "language/stdlib-tests/tests/numeric-predicates.sigil",
+              "file": "language/stdlib-tests/tests/numericPredicates.sigil",
               "delta": {
                 "openai_cl100k_base": -14,
                 "llama_sentencepiece_proxy": -7,
@@ -526,7 +526,7 @@
               }
             },
             {
-              "file": "language/examples/pattern-guards.sigil",
+              "file": "language/examples/patternGuards.sigil",
               "delta": {
                 "openai_cl100k_base": -10,
                 "llama_sentencepiece_proxy": -5,
@@ -534,7 +534,7 @@
               }
             },
             {
-              "file": "language/stdlib-tests/tests/list-predicates.sigil",
+              "file": "language/stdlib-tests/tests/listPredicates.sigil",
               "delta": {
                 "openai_cl100k_base": -10,
                 "llama_sentencepiece_proxy": -5,
@@ -560,11 +560,11 @@
       "occurrences": 429,
       "filesAffected": 53,
       "sampleFiles": [
-        "language/benchmarks/algorithms/is-palindrome/is-palindrome.sigil",
-        "language/examples/effect-demo.sigil",
-        "language/examples/email-validator.sigil",
-        "language/examples/ffi-demo.sigil",
-        "language/examples/http-handler.sigil"
+        "language/benchmarks/algorithms/isPalindrome/isPalindrome.sigil",
+        "language/examples/effectDemo.sigil",
+        "language/examples/emailValidator.sigil",
+        "language/examples/ffiDemo.sigil",
+        "language/examples/httpHandler.sigil"
       ],
       "candidates": [
         {
@@ -625,7 +625,7 @@
               }
             },
             {
-              "file": "language/stdlib/http-server.lib.sigil",
+              "file": "language/stdlib/httpServer.lib.sigil",
               "delta": {
                 "openai_cl100k_base": -38,
                 "llama_sentencepiece_proxy": 21,
@@ -657,7 +657,7 @@
               }
             },
             {
-              "file": "language/examples/email-validator.sigil",
+              "file": "language/examples/emailValidator.sigil",
               "delta": {
                 "openai_cl100k_base": -22,
                 "llama_sentencepiece_proxy": 13,
@@ -673,7 +673,7 @@
               }
             },
             {
-              "file": "language/test-fixtures/test-pattern-guards.sigil",
+              "file": "language/test-fixtures/test-patternGuards.sigil",
               "delta": {
                 "openai_cl100k_base": -13,
                 "llama_sentencepiece_proxy": 11,
@@ -681,7 +681,7 @@
               }
             },
             {
-              "file": "language/examples/pattern-guards.sigil",
+              "file": "language/examples/patternGuards.sigil",
               "delta": {
                 "openai_cl100k_base": -11,
                 "llama_sentencepiece_proxy": 8,
@@ -709,9 +709,9 @@
       "sampleFiles": [
         "language/benchmarks/algorithms/factorial/factorial.sigil",
         "language/benchmarks/algorithms/fibonacci/fibonacci.sigil",
-        "language/benchmarks/algorithms/filter-even/filter-even.sigil",
+        "language/benchmarks/algorithms/filterEven/filterEven.sigil",
         "language/benchmarks/algorithms/gcd/gcd.sigil",
-        "language/benchmarks/algorithms/is-palindrome/is-palindrome.sigil"
+        "language/benchmarks/algorithms/isPalindrome/isPalindrome.sigil"
       ],
       "candidates": [
         {
@@ -788,7 +788,7 @@
               }
             },
             {
-              "file": "projects/todo-app/src/todo-domain.lib.sigil",
+              "file": "projects/todo-app/src/todoDomain.lib.sigil",
               "delta": {
                 "openai_cl100k_base": -10,
                 "llama_sentencepiece_proxy": -18,
@@ -796,7 +796,7 @@
               }
             },
             {
-              "file": "language/examples/list-operations.sigil",
+              "file": "language/examples/listOperations.sigil",
               "delta": {
                 "openai_cl100k_base": -9,
                 "llama_sentencepiece_proxy": -9,
@@ -804,7 +804,7 @@
               }
             },
             {
-              "file": "language/examples/option-result-practical.sigil",
+              "file": "language/examples/optionResultPractical.sigil",
               "delta": {
                 "openai_cl100k_base": -9,
                 "llama_sentencepiece_proxy": -16,
@@ -812,7 +812,7 @@
               }
             },
             {
-              "file": "language/examples/sum-types-demo.sigil",
+              "file": "language/examples/sumTypesDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -9,
                 "llama_sentencepiece_proxy": -17,
@@ -820,7 +820,7 @@
               }
             },
             {
-              "file": "language/examples/effect-demo.sigil",
+              "file": "language/examples/effectDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -8,
                 "llama_sentencepiece_proxy": -8,
@@ -828,7 +828,7 @@
               }
             },
             {
-              "file": "language/examples/pattern-guards.sigil",
+              "file": "language/examples/patternGuards.sigil",
               "delta": {
                 "openai_cl100k_base": -8,
                 "llama_sentencepiece_proxy": -47,
@@ -882,7 +882,7 @@
           },
           "topFileImpacts": [
             {
-              "file": "projects/algorithms/src/rot13-encoder.lib.sigil",
+              "file": "projects/algorithms/src/rot13Encoder.lib.sigil",
               "delta": {
                 "openai_cl100k_base": -105,
                 "llama_sentencepiece_proxy": -55,
@@ -930,7 +930,7 @@
               }
             },
             {
-              "file": "projects/todo-app/src/todo-domain.lib.sigil",
+              "file": "projects/todo-app/src/todoDomain.lib.sigil",
               "delta": {
                 "openai_cl100k_base": -9,
                 "llama_sentencepiece_proxy": -18,
@@ -938,7 +938,7 @@
               }
             },
             {
-              "file": "language/examples/effect-demo.sigil",
+              "file": "language/examples/effectDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -8,
                 "llama_sentencepiece_proxy": -8,
@@ -946,7 +946,7 @@
               }
             },
             {
-              "file": "language/examples/option-result-practical.sigil",
+              "file": "language/examples/optionResultPractical.sigil",
               "delta": {
                 "openai_cl100k_base": -8,
                 "llama_sentencepiece_proxy": -16,
@@ -954,7 +954,7 @@
               }
             },
             {
-              "file": "language/examples/sum-types-demo.sigil",
+              "file": "language/examples/sumTypesDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -8,
                 "llama_sentencepiece_proxy": -17,
@@ -980,11 +980,11 @@
       "occurrences": 24,
       "filesAffected": 8,
       "sampleFiles": [
-        "language/examples/list-reverse.sigil",
+        "language/examples/listReverse.sigil",
         "language/stdlib/markdown.lib.sigil",
-        "language/test-fixtures/type-alias-list-concat.sigil",
-        "projects/algorithms/src/collatz-conjecture.sigil",
-        "projects/algorithms/src/factorial-fold.sigil"
+        "language/test-fixtures/typeAliasListConcat.sigil",
+        "projects/algorithms/src/collatzConjecture.sigil",
+        "projects/algorithms/src/factorialFold.sigil"
       ],
       "candidates": [
         {
@@ -1045,7 +1045,7 @@
               }
             },
             {
-              "file": "language/examples/list-reverse.sigil",
+              "file": "language/examples/listReverse.sigil",
               "delta": {
                 "openai_cl100k_base": -2,
                 "llama_sentencepiece_proxy": -1,
@@ -1053,7 +1053,7 @@
               }
             },
             {
-              "file": "projects/algorithms/src/collatz-conjecture.sigil",
+              "file": "projects/algorithms/src/collatzConjecture.sigil",
               "delta": {
                 "openai_cl100k_base": -2,
                 "llama_sentencepiece_proxy": -1,
@@ -1061,7 +1061,7 @@
               }
             },
             {
-              "file": "projects/algorithms/src/factorial-fold.sigil",
+              "file": "projects/algorithms/src/factorialFold.sigil",
               "delta": {
                 "openai_cl100k_base": -2,
                 "llama_sentencepiece_proxy": -1,
@@ -1077,7 +1077,7 @@
               }
             },
             {
-              "file": "language/test-fixtures/type-alias-list-concat.sigil",
+              "file": "language/test-fixtures/typeAliasListConcat.sigil",
               "delta": {
                 "openai_cl100k_base": 1,
                 "llama_sentencepiece_proxy": 0,
@@ -1085,7 +1085,7 @@
               }
             },
             {
-              "file": "projects/todo-app/src/todo-domain.lib.sigil",
+              "file": "projects/todo-app/src/todoDomain.lib.sigil",
               "delta": {
                 "openai_cl100k_base": 1,
                 "llama_sentencepiece_proxy": 0,
@@ -1155,7 +1155,7 @@
               }
             },
             {
-              "file": "language/examples/list-reverse.sigil",
+              "file": "language/examples/listReverse.sigil",
               "delta": {
                 "openai_cl100k_base": -3,
                 "llama_sentencepiece_proxy": -1,
@@ -1171,7 +1171,7 @@
               }
             },
             {
-              "file": "projects/algorithms/src/collatz-conjecture.sigil",
+              "file": "projects/algorithms/src/collatzConjecture.sigil",
               "delta": {
                 "openai_cl100k_base": -2,
                 "llama_sentencepiece_proxy": -1,
@@ -1179,7 +1179,7 @@
               }
             },
             {
-              "file": "projects/algorithms/src/factorial-fold.sigil",
+              "file": "projects/algorithms/src/factorialFold.sigil",
               "delta": {
                 "openai_cl100k_base": -2,
                 "llama_sentencepiece_proxy": -1,
@@ -1187,7 +1187,7 @@
               }
             },
             {
-              "file": "language/test-fixtures/type-alias-list-concat.sigil",
+              "file": "language/test-fixtures/typeAliasListConcat.sigil",
               "delta": {
                 "openai_cl100k_base": 1,
                 "llama_sentencepiece_proxy": 0,
@@ -1195,7 +1195,7 @@
               }
             },
             {
-              "file": "projects/todo-app/src/todo-domain.lib.sigil",
+              "file": "projects/todo-app/src/todoDomain.lib.sigil",
               "delta": {
                 "openai_cl100k_base": 1,
                 "llama_sentencepiece_proxy": 0,
@@ -1221,11 +1221,11 @@
       "occurrences": 95,
       "filesAffected": 28,
       "sampleFiles": [
-        "language/benchmarks/algorithms/filter-even/filter-even.sigil",
-        "language/benchmarks/algorithms/is-palindrome/is-palindrome.sigil",
-        "language/examples/list-operations.sigil",
-        "language/examples/option-result-practical.sigil",
-        "language/examples/pattern-guards.sigil"
+        "language/benchmarks/algorithms/filterEven/filterEven.sigil",
+        "language/benchmarks/algorithms/isPalindrome/isPalindrome.sigil",
+        "language/examples/listOperations.sigil",
+        "language/examples/optionResultPractical.sigil",
+        "language/examples/patternGuards.sigil"
       ],
       "candidates": [
         {
@@ -1302,7 +1302,7 @@
               }
             },
             {
-              "file": "projects/todo-app/src/todo-domain.lib.sigil",
+              "file": "projects/todo-app/src/todoDomain.lib.sigil",
               "delta": {
                 "openai_cl100k_base": -3,
                 "llama_sentencepiece_proxy": 2,
@@ -1310,7 +1310,7 @@
               }
             },
             {
-              "file": "language/examples/string-demo.sigil",
+              "file": "language/examples/stringDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -2,
                 "llama_sentencepiece_proxy": 2,
@@ -1326,7 +1326,7 @@
               }
             },
             {
-              "file": "language/test-fixtures/test-typecheck/markdown-parse-result.sigil",
+              "file": "language/test-fixtures/test-typecheck/markdownParseResult.sigil",
               "delta": {
                 "openai_cl100k_base": -2,
                 "llama_sentencepiece_proxy": 2,
@@ -1334,7 +1334,7 @@
               }
             },
             {
-              "file": "language/examples/option-result-practical.sigil",
+              "file": "language/examples/optionResultPractical.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": 1,
@@ -1342,7 +1342,7 @@
               }
             },
             {
-              "file": "language/examples/pattern-guards.sigil",
+              "file": "language/examples/patternGuards.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": 1,
@@ -1370,9 +1370,9 @@
       "sampleFiles": [
         "language/benchmarks/algorithms/factorial/factorial.sigil",
         "language/benchmarks/algorithms/fibonacci/fibonacci.sigil",
-        "language/benchmarks/algorithms/filter-even/filter-even.sigil",
+        "language/benchmarks/algorithms/filterEven/filterEven.sigil",
         "language/benchmarks/algorithms/gcd/gcd.sigil",
-        "language/benchmarks/algorithms/is-palindrome/is-palindrome.sigil"
+        "language/benchmarks/algorithms/isPalindrome/isPalindrome.sigil"
       ],
       "candidates": [
         {
@@ -1441,7 +1441,7 @@
               }
             },
             {
-              "file": "language/examples/comments-demo.sigil",
+              "file": "language/examples/commentsDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -2,
@@ -1449,7 +1449,7 @@
               }
             },
             {
-              "file": "language/examples/effect-demo.sigil",
+              "file": "language/examples/effectDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -9,
@@ -1465,7 +1465,7 @@
               }
             },
             {
-              "file": "language/examples/ffi-demo.sigil",
+              "file": "language/examples/ffiDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -2,
@@ -1481,7 +1481,7 @@
               }
             },
             {
-              "file": "language/examples/list-operations.sigil",
+              "file": "language/examples/listOperations.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -10,
@@ -1489,7 +1489,7 @@
               }
             },
             {
-              "file": "language/stdlib/http-server.lib.sigil",
+              "file": "language/stdlib/httpServer.lib.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -11,
@@ -1551,7 +1551,7 @@
               }
             },
             {
-              "file": "language/stdlib/http-server.lib.sigil",
+              "file": "language/stdlib/httpServer.lib.sigil",
               "delta": {
                 "openai_cl100k_base": -2,
                 "llama_sentencepiece_proxy": -11,
@@ -1575,7 +1575,7 @@
               }
             },
             {
-              "file": "projects/algorithms/src/factorial-fold.sigil",
+              "file": "projects/algorithms/src/factorialFold.sigil",
               "delta": {
                 "openai_cl100k_base": -2,
                 "llama_sentencepiece_proxy": -6,
@@ -1591,7 +1591,7 @@
               }
             },
             {
-              "file": "language/examples/comments-demo.sigil",
+              "file": "language/examples/commentsDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -2,
@@ -1599,7 +1599,7 @@
               }
             },
             {
-              "file": "language/examples/effect-demo.sigil",
+              "file": "language/examples/effectDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -9,
@@ -1615,7 +1615,7 @@
               }
             },
             {
-              "file": "language/examples/ffi-demo.sigil",
+              "file": "language/examples/ffiDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -2,
@@ -1669,7 +1669,7 @@
           },
           "topFileImpacts": [
             {
-              "file": "language/stdlib/http-server.lib.sigil",
+              "file": "language/stdlib/httpServer.lib.sigil",
               "delta": {
                 "openai_cl100k_base": -3,
                 "llama_sentencepiece_proxy": -11,
@@ -1701,7 +1701,7 @@
               }
             },
             {
-              "file": "projects/algorithms/src/factorial-fold.sigil",
+              "file": "projects/algorithms/src/factorialFold.sigil",
               "delta": {
                 "openai_cl100k_base": -2,
                 "llama_sentencepiece_proxy": -6,
@@ -1717,7 +1717,7 @@
               }
             },
             {
-              "file": "language/examples/comments-demo.sigil",
+              "file": "language/examples/commentsDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -2,
@@ -1725,7 +1725,7 @@
               }
             },
             {
-              "file": "language/examples/effect-demo.sigil",
+              "file": "language/examples/effectDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -9,
@@ -1741,7 +1741,7 @@
               }
             },
             {
-              "file": "language/examples/ffi-demo.sigil",
+              "file": "language/examples/ffiDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -2,
@@ -1819,7 +1819,7 @@
               }
             },
             {
-              "file": "language/examples/comments-demo.sigil",
+              "file": "language/examples/commentsDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -2,
@@ -1827,7 +1827,7 @@
               }
             },
             {
-              "file": "language/examples/effect-demo.sigil",
+              "file": "language/examples/effectDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -9,
@@ -1843,7 +1843,7 @@
               }
             },
             {
-              "file": "language/examples/ffi-demo.sigil",
+              "file": "language/examples/ffiDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -2,
@@ -1859,7 +1859,7 @@
               }
             },
             {
-              "file": "language/examples/list-operations.sigil",
+              "file": "language/examples/listOperations.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -10,
@@ -1867,7 +1867,7 @@
               }
             },
             {
-              "file": "language/stdlib/http-server.lib.sigil",
+              "file": "language/stdlib/httpServer.lib.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -11,
@@ -1893,11 +1893,11 @@
       "occurrences": 10,
       "filesAffected": 5,
       "sampleFiles": [
-        "language/benchmarks/algorithms/sum-list/sum-list.sigil",
-        "language/examples/list-operations.sigil",
-        "language/examples/mutability-demo.sigil",
-        "language/test-fixtures/test-async-list-ops.sigil",
-        "projects/todo-app/src/todo-domain.lib.sigil"
+        "language/benchmarks/algorithms/sumList/sumList.sigil",
+        "language/examples/listOperations.sigil",
+        "language/examples/mutabilityDemo.sigil",
+        "language/test-fixtures/testAsyncListOps.sigil",
+        "projects/todo-app/src/todoDomain.lib.sigil"
       ],
       "candidates": [
         {
@@ -1942,7 +1942,7 @@
           },
           "topFileImpacts": [
             {
-              "file": "language/benchmarks/algorithms/sum-list/sum-list.sigil",
+              "file": "language/benchmarks/algorithms/sumList/sumList.sigil",
               "delta": {
                 "openai_cl100k_base": -3,
                 "llama_sentencepiece_proxy": -2,
@@ -1950,7 +1950,7 @@
               }
             },
             {
-              "file": "language/examples/list-operations.sigil",
+              "file": "language/examples/listOperations.sigil",
               "delta": {
                 "openai_cl100k_base": -3,
                 "llama_sentencepiece_proxy": -2,
@@ -1958,7 +1958,7 @@
               }
             },
             {
-              "file": "language/examples/mutability-demo.sigil",
+              "file": "language/examples/mutabilityDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -3,
                 "llama_sentencepiece_proxy": -2,
@@ -1966,7 +1966,7 @@
               }
             },
             {
-              "file": "language/test-fixtures/test-async-list-ops.sigil",
+              "file": "language/test-fixtures/testAsyncListOps.sigil",
               "delta": {
                 "openai_cl100k_base": -3,
                 "llama_sentencepiece_proxy": -2,
@@ -1974,7 +1974,7 @@
               }
             },
             {
-              "file": "projects/todo-app/src/todo-domain.lib.sigil",
+              "file": "projects/todo-app/src/todoDomain.lib.sigil",
               "delta": {
                 "openai_cl100k_base": -3,
                 "llama_sentencepiece_proxy": -2,
@@ -2028,7 +2028,7 @@
           },
           "topFileImpacts": [
             {
-              "file": "language/benchmarks/algorithms/sum-list/sum-list.sigil",
+              "file": "language/benchmarks/algorithms/sumList/sumList.sigil",
               "delta": {
                 "openai_cl100k_base": -3,
                 "llama_sentencepiece_proxy": -2,
@@ -2036,7 +2036,7 @@
               }
             },
             {
-              "file": "language/examples/list-operations.sigil",
+              "file": "language/examples/listOperations.sigil",
               "delta": {
                 "openai_cl100k_base": -3,
                 "llama_sentencepiece_proxy": -2,
@@ -2044,7 +2044,7 @@
               }
             },
             {
-              "file": "language/examples/mutability-demo.sigil",
+              "file": "language/examples/mutabilityDemo.sigil",
               "delta": {
                 "openai_cl100k_base": -3,
                 "llama_sentencepiece_proxy": -2,
@@ -2052,7 +2052,7 @@
               }
             },
             {
-              "file": "language/test-fixtures/test-async-list-ops.sigil",
+              "file": "language/test-fixtures/testAsyncListOps.sigil",
               "delta": {
                 "openai_cl100k_base": -3,
                 "llama_sentencepiece_proxy": -2,
@@ -2060,7 +2060,7 @@
               }
             },
             {
-              "file": "projects/todo-app/src/todo-domain.lib.sigil",
+              "file": "projects/todo-app/src/todoDomain.lib.sigil",
               "delta": {
                 "openai_cl100k_base": -3,
                 "llama_sentencepiece_proxy": -2,
@@ -2086,10 +2086,10 @@
       "occurrences": 6,
       "filesAffected": 4,
       "sampleFiles": [
-        "language/benchmarks/algorithms/filter-even/filter-even.sigil",
-        "language/examples/list-operations.sigil",
-        "language/test-fixtures/test-async-list-ops.sigil",
-        "projects/todo-app/src/todo-domain.lib.sigil"
+        "language/benchmarks/algorithms/filterEven/filterEven.sigil",
+        "language/examples/listOperations.sigil",
+        "language/test-fixtures/testAsyncListOps.sigil",
+        "projects/todo-app/src/todoDomain.lib.sigil"
       ],
       "candidates": [
         {
@@ -2134,7 +2134,7 @@
           },
           "topFileImpacts": [
             {
-              "file": "language/examples/list-operations.sigil",
+              "file": "language/examples/listOperations.sigil",
               "delta": {
                 "openai_cl100k_base": -4,
                 "llama_sentencepiece_proxy": -2,
@@ -2142,7 +2142,7 @@
               }
             },
             {
-              "file": "projects/todo-app/src/todo-domain.lib.sigil",
+              "file": "projects/todo-app/src/todoDomain.lib.sigil",
               "delta": {
                 "openai_cl100k_base": -4,
                 "llama_sentencepiece_proxy": -2,
@@ -2150,7 +2150,7 @@
               }
             },
             {
-              "file": "language/benchmarks/algorithms/filter-even/filter-even.sigil",
+              "file": "language/benchmarks/algorithms/filterEven/filterEven.sigil",
               "delta": {
                 "openai_cl100k_base": -2,
                 "llama_sentencepiece_proxy": -1,
@@ -2158,7 +2158,7 @@
               }
             },
             {
-              "file": "language/test-fixtures/test-async-list-ops.sigil",
+              "file": "language/test-fixtures/testAsyncListOps.sigil",
               "delta": {
                 "openai_cl100k_base": -2,
                 "llama_sentencepiece_proxy": -1,
@@ -2184,11 +2184,11 @@
       "occurrences": 10,
       "filesAffected": 6,
       "sampleFiles": [
-        "language/benchmarks/algorithms/map-double/map-double.sigil",
-        "language/examples/list-operations.sigil",
+        "language/benchmarks/algorithms/mapDouble/mapDouble.sigil",
+        "language/examples/listOperations.sigil",
         "language/stdlib/markdown.lib.sigil",
-        "language/test-fixtures/test-async-list-ops.sigil",
-        "language/test-fixtures/test-typecheck/normalized-structural-equality.sigil"
+        "language/test-fixtures/testAsyncListOps.sigil",
+        "language/test-fixtures/test-typecheck/normalizedStructuralEquality.sigil"
       ],
       "candidates": [
         {
@@ -2241,7 +2241,7 @@
               }
             },
             {
-              "file": "language/benchmarks/algorithms/map-double/map-double.sigil",
+              "file": "language/benchmarks/algorithms/mapDouble/mapDouble.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -1,
@@ -2249,7 +2249,7 @@
               }
             },
             {
-              "file": "language/examples/list-operations.sigil",
+              "file": "language/examples/listOperations.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -1,
@@ -2257,7 +2257,7 @@
               }
             },
             {
-              "file": "language/test-fixtures/test-async-list-ops.sigil",
+              "file": "language/test-fixtures/testAsyncListOps.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -1,
@@ -2265,7 +2265,7 @@
               }
             },
             {
-              "file": "language/test-fixtures/test-typecheck/normalized-structural-equality.sigil",
+              "file": "language/test-fixtures/test-typecheck/normalizedStructuralEquality.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -1,
@@ -2273,7 +2273,7 @@
               }
             },
             {
-              "file": "projects/todo-app/src/todo-domain.lib.sigil",
+              "file": "projects/todo-app/src/todoDomain.lib.sigil",
               "delta": {
                 "openai_cl100k_base": 0,
                 "llama_sentencepiece_proxy": -1,
@@ -2301,7 +2301,7 @@
       "sampleFiles": [
         "language/stdlib/list.lib.sigil",
         "language/stdlib/numeric.lib.sigil",
-        "language/test-fixtures/test-unicode-operators.sigil",
+        "language/test-fixtures/testUnicodeOperators.sigil",
         "projects/dungeon-random-rooms/src/main.sigil"
       ],
       "candidates": [
@@ -2371,7 +2371,7 @@
               }
             },
             {
-              "file": "language/test-fixtures/test-unicode-operators.sigil",
+              "file": "language/test-fixtures/testUnicodeOperators.sigil",
               "delta": {
                 "openai_cl100k_base": 1,
                 "llama_sentencepiece_proxy": 0,
@@ -2398,10 +2398,10 @@
       "filesAffected": 5,
       "sampleFiles": [
         "language/stdlib/numeric.lib.sigil",
-        "language/test-fixtures/test-unicode-operators.sigil",
-        "language/test-fixtures/tests/test-with-mock.sigil",
-        "projects/algorithms/tests/basic-testing.sigil",
-        "projects/todo-app/src/todo-domain.lib.sigil"
+        "language/test-fixtures/testUnicodeOperators.sigil",
+        "language/test-fixtures/tests/testWithMock.sigil",
+        "projects/algorithms/tests/basicTesting.sigil",
+        "projects/todo-app/src/todoDomain.lib.sigil"
       ],
       "candidates": [
         {
@@ -2446,7 +2446,7 @@
           },
           "topFileImpacts": [
             {
-              "file": "language/test-fixtures/tests/test-with-mock.sigil",
+              "file": "language/test-fixtures/tests/testWithMock.sigil",
               "delta": {
                 "openai_cl100k_base": -2,
                 "llama_sentencepiece_proxy": -1,
@@ -2454,7 +2454,7 @@
               }
             },
             {
-              "file": "projects/algorithms/tests/basic-testing.sigil",
+              "file": "projects/algorithms/tests/basicTesting.sigil",
               "delta": {
                 "openai_cl100k_base": -2,
                 "llama_sentencepiece_proxy": -1,
@@ -2470,7 +2470,7 @@
               }
             },
             {
-              "file": "language/test-fixtures/test-unicode-operators.sigil",
+              "file": "language/test-fixtures/testUnicodeOperators.sigil",
               "delta": {
                 "openai_cl100k_base": 1,
                 "llama_sentencepiece_proxy": 0,
@@ -2478,7 +2478,7 @@
               }
             },
             {
-              "file": "projects/todo-app/src/todo-domain.lib.sigil",
+              "file": "projects/todo-app/src/todoDomain.lib.sigil",
               "delta": {
                 "openai_cl100k_base": 4,
                 "llama_sentencepiece_proxy": 3,
@@ -2505,8 +2505,8 @@
       "filesAffected": 3,
       "sampleFiles": [
         "language/stdlib/numeric.lib.sigil",
-        "language/test-fixtures/test-unicode-operators.sigil",
-        "projects/todo-app/src/todo-domain.lib.sigil"
+        "language/test-fixtures/testUnicodeOperators.sigil",
+        "projects/todo-app/src/todoDomain.lib.sigil"
       ],
       "candidates": [
         {
@@ -2551,7 +2551,7 @@
           },
           "topFileImpacts": [
             {
-              "file": "projects/todo-app/src/todo-domain.lib.sigil",
+              "file": "projects/todo-app/src/todoDomain.lib.sigil",
               "delta": {
                 "openai_cl100k_base": -1,
                 "llama_sentencepiece_proxy": -2,
@@ -2567,7 +2567,7 @@
               }
             },
             {
-              "file": "language/test-fixtures/test-unicode-operators.sigil",
+              "file": "language/test-fixtures/testUnicodeOperators.sigil",
               "delta": {
                 "openai_cl100k_base": 1,
                 "llama_sentencepiece_proxy": 1,
@@ -2593,7 +2593,7 @@
       "occurrences": 17,
       "filesAffected": 8,
       "sampleFiles": [
-        "language/examples/email-validator.sigil",
+        "language/examples/emailValidator.sigil",
         "language/stdlib/list.lib.sigil",
         "language/stdlib/markdown-simple.lib.sigil",
         "language/stdlib/markdown.lib.sigil",
@@ -2642,7 +2642,7 @@
           },
           "topFileImpacts": [
             {
-              "file": "language/examples/email-validator.sigil",
+              "file": "language/examples/emailValidator.sigil",
               "delta": {
                 "openai_cl100k_base": -2,
                 "llama_sentencepiece_proxy": -2,
@@ -2690,7 +2690,7 @@
               }
             },
             {
-              "file": "language/test-fixtures/test-unicode-operators.sigil",
+              "file": "language/test-fixtures/testUnicodeOperators.sigil",
               "delta": {
                 "openai_cl100k_base": 1,
                 "llama_sentencepiece_proxy": 0,
@@ -2724,11 +2724,11 @@
       "occurrences": 124,
       "filesAffected": 43,
       "sampleFiles": [
-        "language/examples/03-string-concat.sigil",
-        "language/examples/effect-demo.sigil",
-        "language/examples/email-validator.sigil",
-        "language/examples/ffi-demo.sigil",
-        "language/examples/pattern-guards.sigil"
+        "language/examples/example03StringConcat.sigil",
+        "language/examples/effectDemo.sigil",
+        "language/examples/emailValidator.sigil",
+        "language/examples/ffiDemo.sigil",
+        "language/examples/patternGuards.sigil"
       ],
       "candidates": [
         {
@@ -2773,7 +2773,7 @@
           },
           "topFileImpacts": [
             {
-              "file": "language/examples/03-string-concat.sigil",
+              "file": "language/examples/example03StringConcat.sigil",
               "delta": {
                 "openai_cl100k_base": 0,
                 "llama_sentencepiece_proxy": 1,
@@ -2781,7 +2781,7 @@
               }
             },
             {
-              "file": "language/examples/email-validator.sigil",
+              "file": "language/examples/emailValidator.sigil",
               "delta": {
                 "openai_cl100k_base": 0,
                 "llama_sentencepiece_proxy": 16,
@@ -2789,7 +2789,7 @@
               }
             },
             {
-              "file": "language/examples/pattern-guards.sigil",
+              "file": "language/examples/patternGuards.sigil",
               "delta": {
                 "openai_cl100k_base": 0,
                 "llama_sentencepiece_proxy": 23,
@@ -2797,7 +2797,7 @@
               }
             },
             {
-              "file": "language/examples/string-demo.sigil",
+              "file": "language/examples/stringDemo.sigil",
               "delta": {
                 "openai_cl100k_base": 0,
                 "llama_sentencepiece_proxy": 9,
@@ -2813,7 +2813,7 @@
               }
             },
             {
-              "file": "language/stdlib-tests/tests/list-predicates.sigil",
+              "file": "language/stdlib-tests/tests/listPredicates.sigil",
               "delta": {
                 "openai_cl100k_base": 0,
                 "llama_sentencepiece_proxy": 1,
@@ -2821,7 +2821,7 @@
               }
             },
             {
-              "file": "language/stdlib-tests/tests/numeric-predicates.sigil",
+              "file": "language/stdlib-tests/tests/numericPredicates.sigil",
               "delta": {
                 "openai_cl100k_base": 0,
                 "llama_sentencepiece_proxy": 1,
@@ -2837,7 +2837,7 @@
               }
             },
             {
-              "file": "language/stdlib/ffi-node-process.lib.sigil",
+              "file": "language/stdlib/ffiNodeProcess.lib.sigil",
               "delta": {
                 "openai_cl100k_base": 0,
                 "llama_sentencepiece_proxy": 1,
@@ -2845,7 +2845,7 @@
               }
             },
             {
-              "file": "language/stdlib/http-server.lib.sigil",
+              "file": "language/stdlib/httpServer.lib.sigil",
               "delta": {
                 "openai_cl100k_base": 0,
                 "llama_sentencepiece_proxy": 4,

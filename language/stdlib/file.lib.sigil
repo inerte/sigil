@@ -10,20 +10,20 @@ e fs⋅promises
 
 i stdlib⋅path
 
-λappend_text(content:𝕊,path:𝕊)→!IO 𝕌=fs⋅promises.appendFile(path,content,"utf8")
+λappendText(content:𝕊,path:𝕊)→!IO 𝕌=fs⋅promises.appendFile(path,content,"utf8")
 
 λexists(path:𝕊)→!IO 𝔹=fs.existsSync(path)
 
-λlist_dir(path:𝕊)→!IO [𝕊]=fs⋅promises.readdir(path)
+λlistDir(path:𝕊)→!IO [𝕊]=fs⋅promises.readdir(path)
 
-λmake_dir(path:𝕊)→!IO 𝕌=fs⋅promises.mkdir(path,{recursive:false})
+λmakeDir(path:𝕊)→!IO 𝕌=fs⋅promises.mkdir(path,{recursive:false})
 
-λmake_dirs(path:𝕊)→!IO 𝕌=fs⋅promises.mkdir(path,{recursive:true})
+λmakeDirs(path:𝕊)→!IO 𝕌=fs⋅promises.mkdir(path,{recursive:true})
 
-λread_text(path:𝕊)→!IO 𝕊=fs⋅promises.readFile(path,"utf8")
+λreadText(path:𝕊)→!IO 𝕊=fs⋅promises.readFile(path,"utf8")
 
 λremove(path:𝕊)→!IO 𝕌=fs⋅promises.unlink(path)
 
-λremove_tree(path:𝕊)→!IO 𝕌=fs⋅promises.rm(path,{force:true,recursive:true})
+λremoveTree(path:𝕊)→!IO 𝕌=fs⋅promises.rm(path,{force:true,recursive:true})
 
-λwrite_text(content:𝕊,path:𝕊)→!IO 𝕌=fs⋅promises.writeFile(path,content,"utf8")
+λwriteText(content:𝕊,path:𝕊)→!IO 𝕌=fs⋅promises.writeFile(path,content,"utf8")

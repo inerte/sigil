@@ -1,0 +1,40 @@
+i src⋅content
+i src⋅types
+
+λdocPage(slug:𝕊)→src⋅types.SitePage=
+  src⋅content.blankPage(
+    "",
+    {author:"",category:"",date:"",description:"",slug:slug,title:slug},
+    "docs/"++slug,
+    src⋅types.Doc(),
+    "language/docs/"++slug++".md"
+  )
+
+λhomePage()→src⋅types.SitePage=
+  src⋅content.blankPage(
+    "",
+    {author:"",category:"",date:"",description:"",slug:"home",title:"Home"},
+    "",
+    src⋅types.Home(),
+    "website/README.md"
+  )
+
+λmain()→𝕌=()
+
+test "article route uses section slug" {
+  l page=(src⋅content.blankPage("",{author:"",category:"",date:"",description:"",slug:"hello-world",title:"Hello World"},"articles/hello-world",src⋅types.Article(),"website/articles/hello-world.md"):src⋅types.SitePage);
+  src⋅content.canonicalRoute(page)="/articles/hello-world/"
+}
+
+test "docs sort uses canonical slug order" {
+  l pages=([
+    docPage("stdlib"),
+    docPage("async")
+  ]:[src⋅types.SitePage]);
+  l sorted=(src⋅content.pagesSortedByTitle(pages):[src⋅types.SitePage]);
+  sorted[0].meta.slug="async" and sorted[1].meta.slug="stdlib"
+}
+
+test "home route is canonical root" {
+  src⋅content.canonicalRoute(homePage())="/"
+}

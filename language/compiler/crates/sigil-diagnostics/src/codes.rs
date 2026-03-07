@@ -52,6 +52,13 @@ pub mod canonical {
     pub const FILENAME_CASE: &str = "SIGIL-CANON-FILENAME-CASE";
     pub const FILENAME_INVALID_CHAR: &str = "SIGIL-CANON-FILENAME-INVALID-CHAR";
     pub const FILENAME_FORMAT: &str = "SIGIL-CANON-FILENAME-FORMAT";
+    pub const IDENTIFIER_FORM: &str = "SIGIL-CANON-IDENTIFIER-FORM";
+    pub const TYPE_NAME_FORM: &str = "SIGIL-CANON-TYPE-NAME-FORM";
+    pub const CONSTRUCTOR_NAME_FORM: &str = "SIGIL-CANON-CONSTRUCTOR-NAME-FORM";
+    pub const TYPE_VAR_FORM: &str = "SIGIL-CANON-TYPE-VAR-FORM";
+    pub const RECORD_FIELD_FORM: &str = "SIGIL-CANON-RECORD-FIELD-FORM";
+    pub const MODULE_PATH_FORM: &str = "SIGIL-CANON-MODULE-PATH-FORM";
+    pub const KEYWORD_LEGACY: &str = "SIGIL-CANON-KEYWORD-LEGACY";
 
     // Recursion patterns
     pub const RECURSION_ACCUMULATOR: &str = "SIGIL-CANON-RECURSION-ACCUMULATOR";
@@ -149,6 +156,13 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     canonical::FILENAME_CASE,
     canonical::FILENAME_INVALID_CHAR,
     canonical::FILENAME_FORMAT,
+    canonical::IDENTIFIER_FORM,
+    canonical::TYPE_NAME_FORM,
+    canonical::CONSTRUCTOR_NAME_FORM,
+    canonical::TYPE_VAR_FORM,
+    canonical::RECORD_FIELD_FORM,
+    canonical::MODULE_PATH_FORM,
+    canonical::KEYWORD_LEGACY,
     canonical::RECURSION_ACCUMULATOR,
     canonical::RECURSION_COLLECTION_NONSTRUCTURAL,
     canonical::RECURSION_CPS,
@@ -212,13 +226,12 @@ mod tests {
 
     #[test]
     fn count_error_codes() {
-        // As of implementation: 61 error codes total
-        // 10 lexer + 5 parser + 33 canonical + 2 typecheck + 1 mutability + 8 CLI + 2 runtime = 61
-        // (canonical has 33 because both TEST_LOCATION and TEST_PATH exist)
+        // As of implementation: 68 error codes total
+        // 10 lexer + 5 parser + 40 canonical + 2 typecheck + 1 mutability + 8 CLI + 2 runtime = 68
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            61,
-            "Expected 61 error codes, found {}",
+            68,
+            "Expected 68 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

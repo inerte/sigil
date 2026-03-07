@@ -1,0 +1,19 @@
+i stdlib⋅numeric
+
+λfilterMultiples(prime:ℤ,xs:[ℤ])→[ℤ] match xs{
+  []→[]|
+  [head,.tail]→match head%prime=0{
+    true→filterMultiples(prime,tail)|
+    false→[head]⧺filterMultiples(prime,tail)
+  }
+}
+
+λsieve(limit:ℤ)→[ℤ] match limit<2{
+  true→[]|
+  false→sieveCandidates(stdlib⋅numeric.range(2,limit))
+}
+
+λsieveCandidates(candidates:[ℤ])→[ℤ] match candidates{
+  []→[]|
+  [head,.tail]→[head]⧺sieveCandidates(filterMultiples(head,tail))
+}

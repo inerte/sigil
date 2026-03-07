@@ -1,0 +1,51 @@
+i src⋅breadthFirstSearch
+i src⋅depthFirstSearch
+i src⋅graphTypes
+i src⋅linearSearch
+i src⋅topologicalSort
+
+λcyclicGraph()→src⋅graphTypes.Graph={
+  nodes:[
+    {neighbors:[2],vertex:1},
+    {neighbors:[3],vertex:2},
+    {neighbors:[1],vertex:3}
+  ]
+}
+
+λdagGraph()→src⋅graphTypes.Graph={
+  nodes:[
+    {neighbors:[2,3],vertex:1},
+    {neighbors:[4],vertex:2},
+    {neighbors:[4],vertex:3},
+    {neighbors:[],vertex:4}
+  ]
+}
+
+λmain()→𝕌=()
+
+λorderRespects(from:ℤ,order:[ℤ],to:ℤ)→𝔹=
+  src⋅linearSearch.linearSearch(from,order)<src⋅linearSearch.linearSearch(to,order)
+
+test "depth first search is deterministic" {
+  src⋅depthFirstSearch.depthFirstSearch(dagGraph(),1)=[1,2,4,3]
+}
+
+test "breadth first search is deterministic" {
+  src⋅breadthFirstSearch.breadthFirstSearch(dagGraph(),1)=[1,2,3,4]
+}
+
+test "missing start vertex returns empty traversal" {
+  src⋅depthFirstSearch.depthFirstSearch(dagGraph(),99)=[] and src⋅breadthFirstSearch.breadthFirstSearch(dagGraph(),99)=[]
+}
+
+test "topological sort returns ordering for dag" {
+  l result=(src⋅topologicalSort.topologicalSort(dagGraph()):src⋅graphTypes.TopologicalSortResult);
+  match result{
+    src⋅graphTypes.Ordering(order)→orderRespects(1,order,2) and orderRespects(1,order,3) and orderRespects(2,order,4) and orderRespects(3,order,4)|
+    src⋅graphTypes.CycleDetected()→false
+  }
+}
+
+test "topological sort returns cycle detected for cyclic graph" {
+  src⋅topologicalSort.topologicalSort(cyclicGraph())=src⋅graphTypes.CycleDetected()
+}

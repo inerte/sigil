@@ -1,0 +1,16 @@
+⟦ Test that helper functions are now allowed ⟧
+
+⟦ Utility function used by multiple functions ⟧
+λisPositive(x:ℤ)→𝔹=x>0
+
+λmain()→𝕊=processA(50)++" and "++processB(-5)
+
+λprocessA(x:ℤ)→𝕊 match isPositive(x){
+  true→"positive"|
+  false→"negative"
+}
+
+λprocessB(y:ℤ)→𝕊 match isPositive(y){
+  true→"yes"|
+  false→"no"
+}

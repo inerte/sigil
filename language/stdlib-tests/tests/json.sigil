@@ -13,7 +13,7 @@ test "json parse returns Err for invalid input" {
 
 test "json parse returns object for valid input" {
   match stdlib⋅json.parse("{\"name\":\"sigil\",\"ok\":true}"){
-    Ok(value)→match stdlib⋅json.as_object(value){
+    Ok(value)→match stdlib⋅json.asObject(value){
       Some(_)→true|
       None→false
     }|

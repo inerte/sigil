@@ -1,0 +1,9 @@
+t Error={code:ℤ,msg:𝕊}
+t Request={body:𝕊,method:𝕊,path:𝕊}
+t Response={body:𝕊,headers:{𝕊↦𝕊},status:ℤ}
+
+λgetUsers(req:Request)→Result[Response,Error]=Ok(Response{body:"[{\"id\":1,\"name\":\"Alice\"}]",headers:{"Content-Type"↦"application/json"},status:200})
+
+λhandleRequest(req:Request)→Result[Response,Error] match req.path{"/users"→getUsers(req)|"/health"→Ok(Response{body:"OK",headers:({↦}:{𝕊↦𝕊}),status:200})|_→Err(Error{code:404,msg:"Not found"})}
+
+λmain()→Result[Response,Error]=handleRequest(Request{body:"",method:"GET",path:"/users"})

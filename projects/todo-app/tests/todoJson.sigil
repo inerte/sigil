@@ -1,0 +1,33 @@
+i src⋅todoJson
+i src⋅todoDomain
+
+λmain()→𝕌=()
+
+test "todo json decode rejects invalid payload" {
+  match src⋅todoJson.decodeState("{bad"){
+    Ok(_)→false|
+    Err(_)→true
+  }
+}
+
+test "todo json decode rejects missing fields" {
+  match src⋅todoJson.decodeState("{\"todos\":[]}"){
+    Ok(_)→false|
+    Err(_)→true
+  }
+}
+
+test "todo json roundtrip preserves state" {
+  l state=({
+    nextId:9,
+    todos:[
+      {done:false,id:1,text:"Ship JSON stdlib"},
+      {done:true,id:2,text:"Write tests"}
+    ]
+  }:src⋅todoJson.PersistedState);
+  l encoded=(src⋅todoJson.encodeState(state):𝕊);
+  match src⋅todoJson.decodeState(encoded){
+    Ok(decoded)→decoded=state|
+    Err(_)→false
+  }
+}

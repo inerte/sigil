@@ -11,6 +11,100 @@ use std::collections::{HashMap, HashSet};
 use crate::error::ValidationError;
 use sigil_lexer::{SourceLocation, Position};
 
+fn is_lower_camel_case(name: &str) -> bool {
+    let mut chars = name.chars();
+    match chars.next() {
+        Some(first) if first.is_ascii_lowercase() => {}
+        _ => return false,
+    }
+
+    chars.all(|ch| ch.is_ascii_alphanumeric())
+}
+
+fn is_upper_camel_case(name: &str) -> bool {
+    let mut chars = name.chars();
+    match chars.next() {
+        Some(first) if first.is_ascii_uppercase() => {}
+        _ => return false,
+    }
+
+    chars.all(|ch| ch.is_ascii_alphanumeric())
+}
+
+fn split_words(name: &str) -> Vec<String> {
+    let mut words = Vec::new();
+    let mut current = String::new();
+    let mut previous_was_lower_or_digit = false;
+
+    for ch in name.chars() {
+        if matches!(ch, '_' | '-' | ' ' | '.') {
+            if !current.is_empty() {
+                words.push(current.to_ascii_lowercase());
+                current.clear();
+            }
+            previous_was_lower_or_digit = false;
+            continue;
+        }
+
+        if ch.is_ascii_uppercase() && previous_was_lower_or_digit && !current.is_empty() {
+            words.push(current.to_ascii_lowercase());
+            current.clear();
+        }
+
+        current.push(ch);
+        previous_was_lower_or_digit = ch.is_ascii_lowercase() || ch.is_ascii_digit();
+    }
+
+    if !current.is_empty() {
+        words.push(current.to_ascii_lowercase());
+    }
+
+    words
+}
+
+fn to_lower_camel_case(name: &str) -> String {
+    let words = split_words(name);
+    if words.is_empty() {
+        return name.to_string();
+    }
+
+    let mut result = String::new();
+    result.push_str(&words[0]);
+    for word in words.iter().skip(1) {
+        let mut chars = word.chars();
+        if let Some(first) = chars.next() {
+            result.push(first.to_ascii_uppercase());
+            result.extend(chars);
+        }
+    }
+    result
+}
+
+fn to_upper_camel_case(name: &str) -> String {
+    let words = split_words(name);
+    if words.is_empty() {
+        return name.to_string();
+    }
+
+    let mut result = String::new();
+    for word in words {
+        let mut chars = word.chars();
+        if let Some(first) = chars.next() {
+            result.push(first.to_ascii_uppercase());
+            result.extend(chars);
+        }
+    }
+    result
+}
+
+fn suggestion_suffix(found: &str, suggested: String) -> String {
+    if suggested.is_empty() || suggested == found {
+        String::new()
+    } else {
+        format!("\nSuggested: {}", suggested)
+    }
+}
+
 /// Validate EOF newline requirement
 fn validate_eof_newline(source: &str, file_path: &str) -> Result<(), Vec<ValidationError>> {
     if source.is_empty() {
@@ -97,7 +191,7 @@ pub fn validate_canonical_form(program: &Program, file_path: Option<&str>, sourc
         errors.extend(e);
     }
 
-    // Rule 3: Filename format - lowercase with hyphens only
+    // Rule 3: Filename format - lowerCamelCase only
     if let Some(path) = file_path {
         if let Err(e) = validate_filename_format(path) {
             errors.extend(e);
@@ -135,6 +229,9 @@ pub fn validate_canonical_form(program: &Program, file_path: Option<&str>, sourc
     if let Err(e) = validate_no_shadowing(program) {
         errors.extend(e);
     }
+
+    // Rule 10: Naming forms - lowerCamelCase / UpperCamelCase only
+    validate_naming_forms(program, &mut errors);
 
     if errors.is_empty() {
         Ok(())
@@ -907,7 +1004,7 @@ fn validate_file_purpose(program: &Program, file_path: Option<&str>) -> Result<(
     Ok(())
 }
 
-/// Validate filename format - lowercase, hyphens only
+/// Validate filename format - lowerCamelCase only
 fn validate_filename_format(file_path: &str) -> Result<(), Vec<ValidationError>> {
     // Extract basename (without extension)
     let basename = file_path
@@ -921,44 +1018,19 @@ fn validate_filename_format(file_path: &str) -> Result<(), Vec<ValidationError>>
         end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
     };
 
-    // Check for uppercase
-    if basename != basename.to_lowercase() {
+    if basename
+        .chars()
+        .next()
+        .is_some_and(|ch| ch.is_ascii_uppercase())
+    {
         return Err(vec![ValidationError::FilenameCase {
             filename: file_path.to_string(),
             basename: basename.to_string(),
-            suggested: format!("{}.{{sigil,lib.sigil}}", basename.to_lowercase()),
+            suggested: format!("{}.{{sigil,lib.sigil}}", to_lower_camel_case(basename)),
             location,
         }]);
     }
 
-    // Check for underscores
-    if basename.contains('_') {
-        return Err(vec![ValidationError::FilenameInvalidChar {
-            filename: file_path.to_string(),
-            basename: basename.to_string(),
-            suggested: format!("{}.{{sigil,lib.sigil}}", basename.replace('_', "-")),
-            invalid_char: "underscores".to_string(),
-            location,
-        }]);
-    }
-
-    // Check for invalid characters
-    let invalid_chars: Vec<char> = basename
-        .chars()
-        .filter(|c| !c.is_ascii_lowercase() && !c.is_ascii_digit() && *c != '-')
-        .collect();
-
-    if !invalid_chars.is_empty() {
-        return Err(vec![ValidationError::FilenameInvalidChar {
-            filename: file_path.to_string(),
-            basename: basename.to_string(),
-            suggested: basename.to_string(),
-            invalid_char: format!("{:?}", invalid_chars),
-            location,
-        }]);
-    }
-
-    // Check format
     if basename.is_empty() {
         return Err(vec![ValidationError::FilenameFormat {
             filename: file_path.to_string(),
@@ -967,23 +1039,567 @@ fn validate_filename_format(file_path: &str) -> Result<(), Vec<ValidationError>>
         }]);
     }
 
-    if basename.starts_with('-') || basename.ends_with('-') {
+    if basename.starts_with(|ch: char| !ch.is_ascii_lowercase()) {
         return Err(vec![ValidationError::FilenameFormat {
             filename: file_path.to_string(),
-            message: "Filename cannot start or end with hyphen".to_string(),
+            message: format!(
+                "Filenames must start with a lowercase ASCII letter.\nSuggested: {}",
+                to_lower_camel_case(basename)
+            ),
             location,
         }]);
     }
 
-    if basename.contains("--") {
+    if basename.contains('_') || basename.contains('-') {
         return Err(vec![ValidationError::FilenameFormat {
             filename: file_path.to_string(),
-            message: "Filename cannot contain consecutive hyphens".to_string(),
+            message: format!(
+                "Filenames must be lowerCamelCase with no underscores or hyphens.\nSuggested: {}",
+                to_lower_camel_case(basename)
+            ),
+            location,
+        }]);
+    }
+
+    if !basename.chars().all(|ch| ch.is_ascii_alphanumeric()) {
+        return Err(vec![ValidationError::FilenameFormat {
+            filename: file_path.to_string(),
+            message: format!(
+                "Filenames may only contain ASCII letters and digits.\nSuggested: {}",
+                to_lower_camel_case(basename)
+            ),
+            location,
+        }]);
+    }
+
+    if !is_lower_camel_case(basename) {
+        return Err(vec![ValidationError::FilenameFormat {
+            filename: file_path.to_string(),
+            message: format!(
+                "Filenames must be lowerCamelCase.\nSuggested: {}",
+                to_lower_camel_case(basename)
+            ),
             location,
         }]);
     }
 
     Ok(())
+}
+
+fn validate_identifier_forms_in_type(ty: &Type, errors: &mut Vec<ValidationError>) {
+    match ty {
+        Type::Primitive(_) => {}
+        Type::List(list) => validate_identifier_forms_in_type(&list.element_type, errors),
+        Type::Map(map) => {
+            validate_identifier_forms_in_type(&map.key_type, errors);
+            validate_identifier_forms_in_type(&map.value_type, errors);
+        }
+        Type::Function(function) => {
+            for param in &function.param_types {
+                validate_identifier_forms_in_type(param, errors);
+            }
+            validate_identifier_forms_in_type(&function.return_type, errors);
+        }
+        Type::Constructor(constructor) => {
+            if !is_upper_camel_case(&constructor.name) {
+                errors.push(ValidationError::TypeNameForm {
+                    found: constructor.name.clone(),
+                    suggestion: suggestion_suffix(
+                        &constructor.name,
+                        to_upper_camel_case(&constructor.name),
+                    ),
+                    location: constructor.location,
+                });
+            }
+            for arg in &constructor.type_args {
+                validate_identifier_forms_in_type(arg, errors);
+            }
+        }
+        Type::Variable(variable) => {
+            if !is_upper_camel_case(&variable.name) {
+                errors.push(ValidationError::TypeVarForm {
+                    found: variable.name.clone(),
+                    suggestion: suggestion_suffix(
+                        &variable.name,
+                        to_upper_camel_case(&variable.name),
+                    ),
+                    location: variable.location,
+                });
+            }
+        }
+        Type::Tuple(tuple) => {
+            for item in &tuple.types {
+                validate_identifier_forms_in_type(item, errors);
+            }
+        }
+        Type::Qualified(qualified) => {
+            for segment in &qualified.module_path {
+                if !is_lower_camel_case(segment) {
+                    errors.push(ValidationError::ModulePathForm {
+                        found: segment.clone(),
+                        suggestion: suggestion_suffix(segment, to_lower_camel_case(segment)),
+                        location: qualified.location,
+                    });
+                }
+            }
+            if !is_upper_camel_case(&qualified.type_name) {
+                errors.push(ValidationError::TypeNameForm {
+                    found: qualified.type_name.clone(),
+                    suggestion: suggestion_suffix(
+                        &qualified.type_name,
+                        to_upper_camel_case(&qualified.type_name),
+                    ),
+                    location: qualified.location,
+                });
+            }
+            for arg in &qualified.type_args {
+                validate_identifier_forms_in_type(arg, errors);
+            }
+        }
+    }
+}
+
+fn validate_identifier_forms_in_pattern(pattern: &Pattern, errors: &mut Vec<ValidationError>) {
+    match pattern {
+        Pattern::Literal(_) | Pattern::Wildcard(_) => {}
+        Pattern::Identifier(identifier) => {
+            if !is_lower_camel_case(&identifier.name) {
+                errors.push(ValidationError::IdentifierForm {
+                    found: identifier.name.clone(),
+                    suggestion: suggestion_suffix(
+                        &identifier.name,
+                        to_lower_camel_case(&identifier.name),
+                    ),
+                    location: identifier.location,
+                });
+            }
+        }
+        Pattern::Constructor(constructor) => {
+            for segment in &constructor.module_path {
+                if !is_lower_camel_case(segment) {
+                    errors.push(ValidationError::ModulePathForm {
+                        found: segment.clone(),
+                        suggestion: suggestion_suffix(segment, to_lower_camel_case(segment)),
+                        location: constructor.location,
+                    });
+                }
+            }
+            if !is_upper_camel_case(&constructor.name) {
+                errors.push(ValidationError::ConstructorNameForm {
+                    found: constructor.name.clone(),
+                    suggestion: suggestion_suffix(
+                        &constructor.name,
+                        to_upper_camel_case(&constructor.name),
+                    ),
+                    location: constructor.location,
+                });
+            }
+            for nested in &constructor.patterns {
+                validate_identifier_forms_in_pattern(nested, errors);
+            }
+        }
+        Pattern::List(list) => {
+            for nested in &list.patterns {
+                validate_identifier_forms_in_pattern(nested, errors);
+            }
+            if let Some(rest) = &list.rest {
+                if !is_lower_camel_case(rest) {
+                    errors.push(ValidationError::IdentifierForm {
+                        found: rest.clone(),
+                        suggestion: suggestion_suffix(rest, to_lower_camel_case(rest)),
+                        location: list.location,
+                    });
+                }
+            }
+        }
+        Pattern::Record(record) => {
+            for field in &record.fields {
+                if !is_lower_camel_case(&field.name) {
+                    errors.push(ValidationError::RecordFieldForm {
+                        found: field.name.clone(),
+                        suggestion: suggestion_suffix(
+                            &field.name,
+                            to_lower_camel_case(&field.name),
+                        ),
+                        location: field.location,
+                    });
+                }
+                if let Some(pattern) = &field.pattern {
+                    validate_identifier_forms_in_pattern(pattern, errors);
+                }
+            }
+        }
+        Pattern::Tuple(tuple) => {
+            for nested in &tuple.patterns {
+                validate_identifier_forms_in_pattern(nested, errors);
+            }
+        }
+    }
+}
+
+fn validate_identifier_forms_in_expr(expr: &Expr, errors: &mut Vec<ValidationError>) {
+    match expr {
+        Expr::Literal(_) => {}
+        Expr::Identifier(identifier) => {
+            let first = identifier.name.chars().next();
+            let valid = match first {
+                Some(ch) if ch.is_ascii_uppercase() => is_upper_camel_case(&identifier.name),
+                _ => is_lower_camel_case(&identifier.name),
+            };
+
+            if !valid {
+                let use_upper = matches!(first, Some(ch) if ch.is_ascii_uppercase());
+                if use_upper {
+                    errors.push(ValidationError::ConstructorNameForm {
+                        found: identifier.name.clone(),
+                        suggestion: suggestion_suffix(
+                            &identifier.name,
+                            to_upper_camel_case(&identifier.name),
+                        ),
+                        location: identifier.location,
+                    });
+                } else {
+                    errors.push(ValidationError::IdentifierForm {
+                        found: identifier.name.clone(),
+                        suggestion: suggestion_suffix(
+                            &identifier.name,
+                            to_lower_camel_case(&identifier.name),
+                        ),
+                        location: identifier.location,
+                    });
+                }
+            }
+        }
+        Expr::Lambda(lambda) => {
+            for param in &lambda.params {
+                if !is_lower_camel_case(&param.name) {
+                    errors.push(ValidationError::IdentifierForm {
+                        found: param.name.clone(),
+                        suggestion: suggestion_suffix(&param.name, to_lower_camel_case(&param.name)),
+                        location: param.location,
+                    });
+                }
+                if let Some(type_annotation) = &param.type_annotation {
+                    validate_identifier_forms_in_type(type_annotation, errors);
+                }
+            }
+            validate_identifier_forms_in_type(&lambda.return_type, errors);
+            validate_identifier_forms_in_expr(&lambda.body, errors);
+        }
+        Expr::Application(application) => {
+            validate_identifier_forms_in_expr(&application.func, errors);
+            for arg in &application.args {
+                validate_identifier_forms_in_expr(arg, errors);
+            }
+        }
+        Expr::Binary(binary) => {
+            validate_identifier_forms_in_expr(&binary.left, errors);
+            validate_identifier_forms_in_expr(&binary.right, errors);
+        }
+        Expr::Unary(unary) => validate_identifier_forms_in_expr(&unary.operand, errors),
+        Expr::Match(match_expr) => {
+            validate_identifier_forms_in_expr(&match_expr.scrutinee, errors);
+            for arm in &match_expr.arms {
+                validate_identifier_forms_in_pattern(&arm.pattern, errors);
+                if let Some(guard) = &arm.guard {
+                    validate_identifier_forms_in_expr(guard, errors);
+                }
+                validate_identifier_forms_in_expr(&arm.body, errors);
+            }
+        }
+        Expr::Let(let_expr) => {
+            validate_identifier_forms_in_pattern(&let_expr.pattern, errors);
+            validate_identifier_forms_in_expr(&let_expr.value, errors);
+            validate_identifier_forms_in_expr(&let_expr.body, errors);
+        }
+        Expr::If(if_expr) => {
+            validate_identifier_forms_in_expr(&if_expr.condition, errors);
+            validate_identifier_forms_in_expr(&if_expr.then_branch, errors);
+            if let Some(else_branch) = &if_expr.else_branch {
+                validate_identifier_forms_in_expr(else_branch, errors);
+            }
+        }
+        Expr::List(list) => {
+            for element in &list.elements {
+                validate_identifier_forms_in_expr(element, errors);
+            }
+        }
+        Expr::Record(record) => {
+            for field in &record.fields {
+                if !is_lower_camel_case(&field.name) {
+                    errors.push(ValidationError::RecordFieldForm {
+                        found: field.name.clone(),
+                        suggestion: suggestion_suffix(&field.name, to_lower_camel_case(&field.name)),
+                        location: field.location,
+                    });
+                }
+                validate_identifier_forms_in_expr(&field.value, errors);
+            }
+        }
+        Expr::MapLiteral(map) => {
+            for entry in &map.entries {
+                validate_identifier_forms_in_expr(&entry.key, errors);
+                validate_identifier_forms_in_expr(&entry.value, errors);
+            }
+        }
+        Expr::Tuple(tuple) => {
+            for element in &tuple.elements {
+                validate_identifier_forms_in_expr(element, errors);
+            }
+        }
+        Expr::FieldAccess(field_access) => {
+            validate_identifier_forms_in_expr(&field_access.object, errors);
+            if !is_lower_camel_case(&field_access.field) {
+                errors.push(ValidationError::RecordFieldForm {
+                    found: field_access.field.clone(),
+                    suggestion: suggestion_suffix(
+                        &field_access.field,
+                        to_lower_camel_case(&field_access.field),
+                    ),
+                    location: field_access.location,
+                });
+            }
+        }
+        Expr::Index(index) => {
+            validate_identifier_forms_in_expr(&index.object, errors);
+            validate_identifier_forms_in_expr(&index.index, errors);
+        }
+        Expr::Pipeline(pipeline) => {
+            validate_identifier_forms_in_expr(&pipeline.left, errors);
+            validate_identifier_forms_in_expr(&pipeline.right, errors);
+        }
+        Expr::Map(map) => {
+            validate_identifier_forms_in_expr(&map.list, errors);
+            validate_identifier_forms_in_expr(&map.func, errors);
+        }
+        Expr::Filter(filter) => {
+            validate_identifier_forms_in_expr(&filter.list, errors);
+            validate_identifier_forms_in_expr(&filter.predicate, errors);
+        }
+        Expr::Fold(fold) => {
+            validate_identifier_forms_in_expr(&fold.list, errors);
+            validate_identifier_forms_in_expr(&fold.func, errors);
+            validate_identifier_forms_in_expr(&fold.init, errors);
+        }
+        Expr::MemberAccess(member_access) => {
+            for segment in &member_access.namespace {
+                if !is_lower_camel_case(segment) {
+                    errors.push(ValidationError::ModulePathForm {
+                        found: segment.clone(),
+                        suggestion: suggestion_suffix(segment, to_lower_camel_case(segment)),
+                        location: member_access.location,
+                    });
+                }
+            }
+            let first = member_access.member.chars().next();
+            let valid = match first {
+                Some(ch) if ch.is_ascii_uppercase() => is_upper_camel_case(&member_access.member),
+                _ => is_lower_camel_case(&member_access.member),
+            };
+            if !valid {
+                let use_upper = matches!(first, Some(ch) if ch.is_ascii_uppercase());
+                if use_upper {
+                    errors.push(ValidationError::ConstructorNameForm {
+                        found: member_access.member.clone(),
+                        suggestion: suggestion_suffix(
+                            &member_access.member,
+                            to_upper_camel_case(&member_access.member),
+                        ),
+                        location: member_access.location,
+                    });
+                } else {
+                    errors.push(ValidationError::IdentifierForm {
+                        found: member_access.member.clone(),
+                        suggestion: suggestion_suffix(
+                            &member_access.member,
+                            to_lower_camel_case(&member_access.member),
+                        ),
+                        location: member_access.location,
+                    });
+                }
+            }
+        }
+        Expr::WithMock(with_mock) => {
+            if with_mock.is_legacy_keyword {
+                errors.push(ValidationError::LegacyKeyword {
+                    found: "with_mock".to_string(),
+                    location: with_mock.location,
+                });
+            }
+            validate_identifier_forms_in_expr(&with_mock.target, errors);
+            validate_identifier_forms_in_expr(&with_mock.replacement, errors);
+            validate_identifier_forms_in_expr(&with_mock.body, errors);
+        }
+        Expr::TypeAscription(type_ascription) => {
+            validate_identifier_forms_in_expr(&type_ascription.expr, errors);
+            validate_identifier_forms_in_type(&type_ascription.ascribed_type, errors);
+        }
+    }
+}
+
+fn validate_naming_forms(program: &Program, errors: &mut Vec<ValidationError>) {
+    for decl in &program.declarations {
+        match decl {
+            Declaration::Function(function) => {
+                if !is_lower_camel_case(&function.name) {
+                    errors.push(ValidationError::IdentifierForm {
+                        found: function.name.clone(),
+                        suggestion: suggestion_suffix(
+                            &function.name,
+                            to_lower_camel_case(&function.name),
+                        ),
+                        location: function.location,
+                    });
+                }
+                for type_param in &function.type_params {
+                    if !is_upper_camel_case(type_param) {
+                        errors.push(ValidationError::TypeVarForm {
+                            found: type_param.clone(),
+                            suggestion: suggestion_suffix(
+                                type_param,
+                                to_upper_camel_case(type_param),
+                            ),
+                            location: function.location,
+                        });
+                    }
+                }
+                for param in &function.params {
+                    if !is_lower_camel_case(&param.name) {
+                        errors.push(ValidationError::IdentifierForm {
+                            found: param.name.clone(),
+                            suggestion: suggestion_suffix(
+                                &param.name,
+                                to_lower_camel_case(&param.name),
+                            ),
+                            location: param.location,
+                        });
+                    }
+                    if let Some(type_annotation) = &param.type_annotation {
+                        validate_identifier_forms_in_type(type_annotation, errors);
+                    }
+                }
+                if let Some(return_type) = &function.return_type {
+                    validate_identifier_forms_in_type(return_type, errors);
+                }
+                validate_identifier_forms_in_expr(&function.body, errors);
+            }
+            Declaration::Type(type_decl) => {
+                if !is_upper_camel_case(&type_decl.name) {
+                    errors.push(ValidationError::TypeNameForm {
+                        found: type_decl.name.clone(),
+                        suggestion: suggestion_suffix(
+                            &type_decl.name,
+                            to_upper_camel_case(&type_decl.name),
+                        ),
+                        location: type_decl.location,
+                    });
+                }
+                for type_param in &type_decl.type_params {
+                    if !is_upper_camel_case(type_param) {
+                        errors.push(ValidationError::TypeVarForm {
+                            found: type_param.clone(),
+                            suggestion: suggestion_suffix(
+                                type_param,
+                                to_upper_camel_case(type_param),
+                            ),
+                            location: type_decl.location,
+                        });
+                    }
+                }
+                match &type_decl.definition {
+                    TypeDef::Sum(sum) => {
+                        for variant in &sum.variants {
+                            if !is_upper_camel_case(&variant.name) {
+                                errors.push(ValidationError::ConstructorNameForm {
+                                    found: variant.name.clone(),
+                                    suggestion: suggestion_suffix(
+                                        &variant.name,
+                                        to_upper_camel_case(&variant.name),
+                                    ),
+                                    location: variant.location,
+                                });
+                            }
+                            for ty in &variant.types {
+                                validate_identifier_forms_in_type(ty, errors);
+                            }
+                        }
+                    }
+                    TypeDef::Product(product) => {
+                        for field in &product.fields {
+                            if !is_lower_camel_case(&field.name) {
+                                errors.push(ValidationError::RecordFieldForm {
+                                    found: field.name.clone(),
+                                    suggestion: suggestion_suffix(
+                                        &field.name,
+                                        to_lower_camel_case(&field.name),
+                                    ),
+                                    location: field.location,
+                                });
+                            }
+                            validate_identifier_forms_in_type(&field.field_type, errors);
+                        }
+                    }
+                    TypeDef::Alias(alias) => {
+                        validate_identifier_forms_in_type(&alias.aliased_type, errors);
+                    }
+                }
+            }
+            Declaration::Import(import_decl) => {
+                for segment in &import_decl.module_path {
+                    if !is_lower_camel_case(segment) {
+                        errors.push(ValidationError::ModulePathForm {
+                            found: segment.clone(),
+                            suggestion: suggestion_suffix(segment, to_lower_camel_case(segment)),
+                            location: import_decl.location,
+                        });
+                    }
+                }
+            }
+            Declaration::Const(const_decl) => {
+                if !is_lower_camel_case(&const_decl.name) {
+                    errors.push(ValidationError::IdentifierForm {
+                        found: const_decl.name.clone(),
+                        suggestion: suggestion_suffix(
+                            &const_decl.name,
+                            to_lower_camel_case(&const_decl.name),
+                        ),
+                        location: const_decl.location,
+                    });
+                }
+                if let Some(type_annotation) = &const_decl.type_annotation {
+                    validate_identifier_forms_in_type(type_annotation, errors);
+                }
+                validate_identifier_forms_in_expr(&const_decl.value, errors);
+            }
+            Declaration::Test(test_decl) => validate_identifier_forms_in_expr(&test_decl.body, errors),
+            Declaration::Extern(extern_decl) => {
+                for segment in &extern_decl.module_path {
+                    if !is_lower_camel_case(segment) {
+                        errors.push(ValidationError::ModulePathForm {
+                            found: segment.clone(),
+                            suggestion: suggestion_suffix(segment, to_lower_camel_case(segment)),
+                            location: extern_decl.location,
+                        });
+                    }
+                }
+                if let Some(members) = &extern_decl.members {
+                    for member in members {
+                        if !is_lower_camel_case(&member.name) {
+                            errors.push(ValidationError::IdentifierForm {
+                                found: member.name.clone(),
+                                suggestion: suggestion_suffix(
+                                    &member.name,
+                                    to_lower_camel_case(&member.name),
+                                ),
+                                location: member.location,
+                            });
+                        }
+                        validate_identifier_forms_in_type(&member.member_type, errors);
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// Validate that test blocks only appear in tests/ directories

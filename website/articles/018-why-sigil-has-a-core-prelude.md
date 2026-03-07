@@ -2,7 +2,7 @@
 title: "Why Sigil Has a Core Prelude"
 date: 2026-03-04
 author: Sigil Language Team
-slug: why-sigil-has-a-core-prelude
+slug: why-sigil-has-a-corePrelude
 ---
 
 People often turn "core vs stdlib" into a namespace argument.

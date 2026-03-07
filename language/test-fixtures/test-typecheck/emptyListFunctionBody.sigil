@@ -1,0 +1,11 @@
+⟦ Test: Empty list in function body should work with return type ⟧
+
+t Block=CodeBlock(𝕊,𝕊)|Paragraph(𝕊)
+
+⟦ This should work - return type provides context ⟧
+λemptyBlocks()→[Block]=[]
+
+λmain()→𝕌=()
+
+⟦ This should also work ⟧
+λtest()→[ℤ]=[]

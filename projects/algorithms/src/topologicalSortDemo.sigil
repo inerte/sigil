@@ -1,0 +1,13 @@
+i src⋅graphTypes
+i src⋅topologicalSort
+
+λdemoGraph()→src⋅graphTypes.Graph={
+  nodes:[
+    {neighbors:[2,3],vertex:1},
+    {neighbors:[4],vertex:2},
+    {neighbors:[4],vertex:3},
+    {neighbors:[],vertex:4}
+  ]
+}
+
+λmain()→src⋅graphTypes.TopologicalSortResult=src⋅topologicalSort.topologicalSort(demoGraph())

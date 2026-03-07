@@ -1,0 +1,3 @@
+i src⋅linearSearch
+
+λmain()→ℤ=src⋅linearSearch.linearSearch(13,[1,3,5,7,9,11,13])

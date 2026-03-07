@@ -1,0 +1,26 @@
+i core⋅option
+i core⋅result
+
+λmain()→𝕌=()
+
+test "core prelude exposes option constructors without import" {
+  match Some(42){
+    Some(value)→value=42|
+    None()→false
+  }
+}
+
+test "core prelude exposes result constructors without import" {
+  match Ok("done"){
+    Ok(value)→value="done"|
+    Err(error)→false
+  }
+}
+
+test "core option helpers stay namespaced" {
+  core⋅option.isSome(Some(1)) and core⋅option.isNone(None()) and core⋅option.unwrapOr(7,None())=7
+}
+
+test "core result helpers stay namespaced" {
+  core⋅result.isOk(Ok(1)) and core⋅result.isErr(Err("bad")) and core⋅result.unwrapOrResult(9,Err("bad"))=9
+}

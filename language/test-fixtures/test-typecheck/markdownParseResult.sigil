@@ -1,0 +1,19 @@
+⟦ Test: Exact structure from markdown.sigil ⟧
+
+t Block=Header(ℤ,𝕊)|Paragraph(𝕊)
+
+t ParseResult={blocks:[Block],state:ParseState}
+
+t ParseState={
+  codeLang:𝕊,
+  codeLines:[𝕊],
+  inCodeBlock:𝔹,
+  paraLines:[𝕊]
+}
+
+λmain()→𝕌=()
+
+λtest(x:𝔹)→ParseResult match x{
+  true → {blocks:[],state:{codeLang:"",codeLines:[],inCodeBlock:false,paraLines:[]}}|
+  false → {blocks:[Paragraph("hi")],state:{codeLang:"js",codeLines:["test"],inCodeBlock:true,paraLines:[]}}
+}

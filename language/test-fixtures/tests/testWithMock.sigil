@@ -1,0 +1,19 @@
+⟦ TEST: withMock parser/typechecker/codegen parity ⟧
+
+e console
+
+mockable λfetchStatus()→!IO 𝕊="real"
+
+λmain()→𝕌=()
+
+test "withMock body can compose booleans" →!IO {
+  withMock(fetchStatus, λ()→!IO 𝕊="temporary") {
+    fetchStatus()="temporary" and fetchStatus()≠"real"
+  }
+}
+
+test "withMock can replace a mockable function" →!IO {
+  withMock(fetchStatus, λ()→!IO 𝕊="mocked") {
+    fetchStatus()="mocked"
+  }
+}

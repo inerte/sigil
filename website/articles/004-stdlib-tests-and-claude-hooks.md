@@ -156,8 +156,8 @@ At the repo root:
 
 Examples:
 
-- `language/stdlib-tests/tests/list-predicates.sigil`
-- `language/stdlib-tests/tests/numeric-predicates.sigil`
+- `language/stdlib-tests/tests/listPredicates.sigil`
+- `language/stdlib-tests/tests/numericPredicates.sigil`
 
 These are proper Sigil tests:
 

@@ -171,21 +171,56 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **How to fix:** Move test file to tests/ directory
 
 ### SIGIL-CANON-FILENAME-CASE
-**Description:** Filename contains uppercase letters.
-**Message:** "Filenames must be lowercase"
-**Example:** UserService.lib.sigil → user-service.lib.sigil
-**How to fix:** Rename file to use lowercase only
+**Description:** Filename does not start with a lowercase letter.
+**Message:** "filenames must start with a lowercase letter"
+**Example:** UserService.lib.sigil → userService.lib.sigil
+**How to fix:** Rename file to lowerCamelCase
 
 ### SIGIL-CANON-FILENAME-INVALID-CHAR
-**Description:** Filename contains invalid characters (underscore, space, etc).
-**Message:** "Filenames cannot contain X"
-**Example:** user_service.lib.sigil → user-service.lib.sigil
-**How to fix:** Use hyphens (-) not underscores (_)
+**Description:** Filename contains invalid characters (underscore, hyphen, space, etc).
+**Message:** "filenames cannot contain X"
+**Example:** user_service.lib.sigil → userService.lib.sigil
+**How to fix:** Use lowerCamelCase only
 
 ### SIGIL-CANON-FILENAME-FORMAT
-**Description:** Filename format violation (consecutive hyphens, hyphens at edges, etc).
+**Description:** Filename format violation (not lowerCamelCase or starts with a digit).
 **Message:** Various format error messages
-**How to fix:** Follow lowercase-with-hyphens format
+**How to fix:** Follow lowerCamelCase format
+
+### SIGIL-CANON-IDENTIFIER-FORM
+**Description:** Value-level identifier is not lowerCamelCase.
+**Message:** "value identifiers must be lowerCamelCase"
+**How to fix:** Rename the identifier to lowerCamelCase
+
+### SIGIL-CANON-TYPE-NAME-FORM
+**Description:** Type declaration name is not UpperCamelCase.
+**Message:** "type names must be UpperCamelCase"
+**How to fix:** Rename the type to UpperCamelCase
+
+### SIGIL-CANON-CONSTRUCTOR-NAME-FORM
+**Description:** Constructor name is not UpperCamelCase.
+**Message:** "constructor names must be UpperCamelCase"
+**How to fix:** Rename the constructor to UpperCamelCase
+
+### SIGIL-CANON-TYPE-VAR-FORM
+**Description:** Type variable is not UpperCamelCase.
+**Message:** "type variables must be UpperCamelCase"
+**How to fix:** Rename the type variable to UpperCamelCase
+
+### SIGIL-CANON-RECORD-FIELD-FORM
+**Description:** Record field is not lowerCamelCase.
+**Message:** "record fields must be lowerCamelCase"
+**How to fix:** Rename the field to lowerCamelCase
+
+### SIGIL-CANON-MODULE-PATH-FORM
+**Description:** Module path segment is not lowerCamelCase.
+**Message:** "module path segments must be lowerCamelCase"
+**How to fix:** Rename the module/file stem to lowerCamelCase
+
+### SIGIL-CANON-KEYWORD-LEGACY
+**Description:** Legacy keyword spelling is rejected by canonical validation.
+**Message:** "use withMock; with_mock is not canonical Sigil"
+**How to fix:** Replace the legacy keyword spelling with the canonical one
 
 ### SIGIL-CANON-RECURSION-ACCUMULATOR
 **Description:** Accumulator-passing style detected.

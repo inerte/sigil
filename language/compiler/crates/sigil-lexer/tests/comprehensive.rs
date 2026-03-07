@@ -39,7 +39,7 @@ fn test_all_type_symbols() {
 
 #[test]
 fn test_all_keywords() {
-    let source = "i e mockable c when l mut with_mock t";
+    let source = "i e mockable c when l mut withMock t";
     let tokens = tokenize(source).unwrap();
 
     assert_eq!(tokens[0].token_type, TokenType::IMPORT);
@@ -51,6 +51,12 @@ fn test_all_keywords() {
     assert_eq!(tokens[6].token_type, TokenType::MUT);
     assert_eq!(tokens[7].token_type, TokenType::WithMock);
     assert_eq!(tokens[8].token_type, TokenType::TYPE);
+}
+
+#[test]
+fn test_legacy_with_mock_keyword_tokenizes_separately() {
+    let tokens = tokenize("with_mock").unwrap();
+    assert_eq!(tokens[0].token_type, TokenType::LegacyWithMock);
 }
 
 #[test]

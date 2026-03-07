@@ -2,7 +2,7 @@
 title: "Pattern Guards: How Dog-Fooding Evolved Sigil"
 date: 2026-02-24
 author: Sigil Language Team
-slug: 003-pattern-guards-dog-fooding
+slug: 003-patternGuards-dog-fooding
 ---
 
 # Pattern Guards: How Dog-Fooding Evolved Sigil
@@ -260,7 +260,7 @@ sigil --version
 }
 ```
 
-See `language/examples/pattern-guards.sigil` for more examples.
+See `language/examples/patternGuards.sigil` for more examples.
 
 ## What's Next?
 

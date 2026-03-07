@@ -59,7 +59,7 @@ benchmarks/algorithms/
 ├── factorial/          # Recursive factorial
 ├── fibonacci/          # Recursive Fibonacci
 ├── quicksort/          # Sorting algorithm
-├── binary-search/      # Search algorithm
+├── binarySearch/      # Search algorithm
 ├── map-filter-reduce/  # Functional operations
 └── ...
 ```

@@ -55,7 +55,9 @@ while IFS= read -r file; do
     echo "═══════════════════════════════════════════════════════════"
     exit 1
   fi
-done < <(find . -name "*.sigil" -type f | sort)
+done < <(find . \
+  \( -path "*/.git" -o -path "*/target" -o -path "*/node_modules" -o -path "*/.local" \) -prune \
+  -o -name "*.sigil" -type f -print | sort)
 
 echo ""
 echo "═══════════════════════════════════════════════════════════"

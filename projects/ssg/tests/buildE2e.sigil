@@ -1,0 +1,76 @@
+i src⋅build
+i src⋅types
+i stdlib⋅file
+i stdlib⋅list
+i stdlib⋅path
+i stdlib⋅string
+
+λbaseConfig(outputDir:𝕊)→src⋅types.SiteBuildConfig={
+  basePath:"/",
+  outputDir:outputDir,
+  repoUrl:"https://github.com/inerte/sigil",
+  siteDescription:"Machine-first programming language designed for canonical code generation.",
+  siteTitle:"Sigil"
+}
+
+λcontains(haystack:𝕊,needle:𝕊)→𝔹=stdlib⋅string.indexOf(haystack,needle)≥0
+
+λmain()→𝕌=()
+
+test "build site removes stale output files" →!IO {
+  l outputDir=("/tmp/sigil-ssg-e2e-clean":𝕊);
+  l _=(stdlib⋅file.removeTree(outputDir):𝕌);
+  l _=(stdlib⋅file.makeDirs(outputDir):𝕌);
+  l stalePath=(stdlib⋅path.join(outputDir,"stale.txt"):𝕊);
+  l _=(stdlib⋅file.writeText("stale",stalePath):𝕌);
+  l _=(src⋅build.buildSite(baseConfig(outputDir)):𝕌);
+  l rootEntries=(src⋅build.listDir(outputDir):[𝕊]);
+  stdlib⋅list.contains("stale.txt",rootEntries)=false
+}
+
+test "build site renders docs content page" →!IO {
+  l outputDir=("/tmp/sigil-ssg-e2e-docs":𝕊);
+  l _=(stdlib⋅file.removeTree(outputDir):𝕌);
+  l _=(src⋅build.buildSite(baseConfig(outputDir)):𝕌);
+  l stdlibDoc=(stdlib⋅file.readText(stdlib⋅path.join(outputDir,"docs/stdlib/index.html")):𝕊);
+  contains(stdlibDoc,"Sigil Standard Library")
+}
+
+test "build site renders nav sections on homepage" →!IO {
+  l outputDir=("/tmp/sigil-ssg-e2e-home":𝕊);
+  l _=(stdlib⋅file.removeTree(outputDir):𝕌);
+  l _=(src⋅build.buildSite(baseConfig(outputDir)):𝕌);
+  l home=(stdlib⋅file.readText(stdlib⋅path.join(outputDir,"index.html")):𝕊);
+  contains(home,">Articles<") and contains(home,">Docs<") and contains(home,">Spec<")
+}
+
+test "build site writes key output files" →!IO {
+  l outputDir=("/tmp/sigil-ssg-e2e-files":𝕊);
+  l _=(stdlib⋅file.removeTree(outputDir):𝕌);
+  l _=(src⋅build.buildSite(baseConfig(outputDir)):𝕌);
+  l about=(stdlib⋅file.readText(stdlib⋅path.join(outputDir,"about-site/index.html")):𝕊);
+  l articles=(stdlib⋅file.readText(stdlib⋅path.join(outputDir,"articles/index.html")):𝕊);
+  l css=(stdlib⋅file.readText(stdlib⋅path.join(outputDir,"assets/site.css")):𝕊);
+  l docs=(stdlib⋅file.readText(stdlib⋅path.join(outputDir,"docs/index.html")):𝕊);
+  l notFound=(stdlib⋅file.readText(stdlib⋅path.join(outputDir,"404.html")):𝕊);
+  l siteJson=(stdlib⋅file.readText(stdlib⋅path.join(outputDir,"site.json")):𝕊);
+  l spec=(stdlib⋅file.readText(stdlib⋅path.join(outputDir,"spec/index.html")):𝕊);
+  contains(about,"About This Site") and
+  contains(articles,"Latest Articles") and
+  #css>0 and
+  contains(docs,"Docs") and
+  contains(notFound,"Page not found") and
+  contains(siteJson,"\"generatedAt\":\"") and
+  contains(spec,"Spec")
+}
+
+test "build site writes manifest with repo url and counts" →!IO {
+  l outputDir=("/tmp/sigil-ssg-e2e-manifest":𝕊);
+  l _=(stdlib⋅file.removeTree(outputDir):𝕌);
+  l _=(src⋅build.buildSite(baseConfig(outputDir)):𝕌);
+  l manifest=(stdlib⋅file.readText(stdlib⋅path.join(outputDir,"site.json")):𝕊);
+  contains(manifest,"\"repoUrl\":\"https://github.com/inerte/sigil\"") and
+  contains(manifest,"\"articlesCount\":\"") and
+  contains(manifest,"\"docsCount\":\"") and
+  contains(manifest,"\"specCount\":\"")
+}

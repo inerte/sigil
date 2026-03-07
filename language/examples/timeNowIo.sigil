@@ -1,0 +1,6 @@
+i stdlib⋅time
+
+λmain()→!IO 𝕌=
+  l now=(stdlib⋅time.now():stdlib⋅time.Instant);
+  l _=(stdlib⋅time.formatIso(now):𝕊);
+  ()

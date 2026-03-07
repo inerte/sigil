@@ -25,41 +25,41 @@ t DivMod={quotient:ℤ,remainder:ℤ}
 λgcd(a:ℤ,b:ℤ)→ℤ match b{0→a|divisor→gcd(divisor,a%divisor)}
 
 ⟦ Check if value is in range [min, max] (inclusive) ⟧
-λin_range(max:ℤ,min:ℤ,x:ℤ)→𝔹=in_range_helper(max,min,x)
+λinRange(max:ℤ,min:ℤ,x:ℤ)→𝔹=inRangeHelper(max,min,x)
 
 ⟦ Helper: Range checking ⟧
-λin_range_helper(max:ℤ,min:ℤ,x:ℤ)→𝔹 match (x≥min){
+λinRangeHelper(max:ℤ,min:ℤ,x:ℤ)→𝔹 match (x≥min){
   true→x≤max|
   false→false
 }
 
 ⟦ Check if value is even ⟧
-λis_even(x:ℤ)→𝔹=(x%2)=0
+λisEven(x:ℤ)→𝔹=(x%2)=0
 
 ⟦ Check if value is negative ⟧
-λis_negative(x:ℤ)→𝔹=x<0
+λisNegative(x:ℤ)→𝔹=x<0
 
 ⟦ Check if value is non-negative (≥0) ⟧
-λis_non_negative(x:ℤ)→𝔹=x≥0
+λisNonNegative(x:ℤ)→𝔹=x≥0
 
 ⟦ Check if value is odd ⟧
-λis_odd(x:ℤ)→𝔹=¬(is_even(x))
+λisOdd(x:ℤ)→𝔹=¬(isEven(x))
 
 ⟦ Check if value is positive ⟧
-λis_positive(x:ℤ)→𝔹=x>0
+λisPositive(x:ℤ)→𝔹=x>0
 
 ⟦ Check if value is prime ⟧
-λis_prime(n:ℤ)→𝔹 match n{
+λisPrime(n:ℤ)→𝔹 match n{
   0→false|
   1→false|
-  value→is_prime_helper(2,value)
+  value→isPrimeHelper(2,value)
 }
 
 ⟦ Helper: Prime checking ⟧
-λis_prime_helper(divisor:ℤ,n:ℤ)→𝔹 match (divisor*divisor>n){
+λisPrimeHelper(divisor:ℤ,n:ℤ)→𝔹 match (divisor*divisor>n){
   true→true|
   false→match (n%divisor≠0){
-    true→is_prime_helper(divisor+1,n)|
+    true→isPrimeHelper(divisor+1,n)|
     false→false
   }
 }
@@ -68,8 +68,8 @@ t DivMod={quotient:ℤ,remainder:ℤ}
 λlcm(a:ℤ,b:ℤ)→ℤ match (a=0) or (b=0){
   true→0|
   false→{
-    l gcd_value=(abs(gcd(a,b)):ℤ);
-    abs((a/gcd_value)*b)
+    l gcdValue=(abs(gcd(a,b)):ℤ);
+    abs((a/gcdValue)*b)
   }
 }
 
@@ -91,7 +91,7 @@ t DivMod={quotient:ℤ,remainder:ℤ}
 ⟦ Integer power (exponentiation) ⟧
 λpow(base:ℤ,exp:ℤ)→ℤ match exp{
   0→1|
-  remaining_exp→base*pow(base,remaining_exp-1)
+  remainingExp→base*pow(base,remainingExp-1)
 }
 
 ⟦ Integer range from start to stop, inclusive ⟧

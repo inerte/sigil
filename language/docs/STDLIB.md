@@ -1081,7 +1081,7 @@ t Result[T,E]=Ok(T)|Err(E)
 λunwrap_or_result[T,E](fallback:T,res:Result[T,E])→T
 ```
 
-**See also:** `examples/sum-types-demo.sigil` for comprehensive examples.
+**See also:** `examples/sumTypesDemo.sigil` for comprehensive examples.
 
 ### Core Helper Modules
 

@@ -1,0 +1,34 @@
+i src⋅extendedGcd
+i src⋅modularExponentiation
+i src⋅sieveOfEratosthenes
+
+λmain()→𝕌=()
+
+test "extended gcd returns gcd 2 for 240 and 46" {
+  (src⋅extendedGcd.extendedGcd(240,46)).gcd=2
+}
+
+test "extended gcd satisfies bezout identity" {
+  l result=(src⋅extendedGcd.extendedGcd(240,46):src⋅extendedGcd.ExtendedGcd);
+  ((240*result.x)+(46*result.y))=result.gcd
+}
+
+test "sieve of 1 is empty" {
+  src⋅sieveOfEratosthenes.sieve(1)=[]
+}
+
+test "sieve of 10 finds first primes" {
+  src⋅sieveOfEratosthenes.sieve(10)=[2,3,5,7]
+}
+
+test "mod pow computes repeated squaring result" {
+  src⋅modularExponentiation.modPow(2,10,1000)=24
+}
+
+test "mod pow zero exponent returns one modulo modulus" {
+  src⋅modularExponentiation.modPow(9,0,7)=1
+}
+
+test "mod pow modulus one returns zero" {
+  src⋅modularExponentiation.modPow(8,5,1)=0
+}

@@ -4,7 +4,7 @@
 
 use logos::Logos;
 
-/// All token types in the Sigil language (99 variants)
+/// All token types in the Sigil language.
 #[derive(Logos, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[logos(skip r"[ ]+")]  // Skip spaces (but not newlines or tabs)
 pub enum TokenType {
@@ -75,8 +75,11 @@ pub enum TokenType {
     #[token("mockable")]
     MOCKABLE,
 
-    #[token("with_mock")]
+    #[token("withMock")]
     WithMock,
+
+    #[token("with_mock")]
+    LegacyWithMock,
 
     #[token("when")]
     WHEN,

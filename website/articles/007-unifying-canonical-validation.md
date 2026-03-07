@@ -48,7 +48,7 @@ This applies to:
 - Declaration ordering (alphabetical)
 - Whitespace (no trailing spaces)
 - File endings (newline required)
-- Filenames (lowercase with hyphens)
+- Filenames (lowerCamelCase)
 
 All of these are canonical forms. All are mandatory. All enforce the same philosophy.
 
@@ -68,7 +68,7 @@ Consider these rules:
 - Files must have clear purpose (`SIGIL-CANON-FILE-PURPOSE-*`)
 - Declarations must be alphabetically ordered (`SIGIL-CANON-DECLARATION-ORDER`)
 - No accumulator-passing style (`SIGIL-CANON-RECURSION-ACCUMULATOR`)
-- Filenames must be lowercase kebab-case (`SIGIL-CANON-FILENAME-*`)
+- Filenames must be lowerCamelCase (`SIGIL-CANON-FILENAME-*`)
 
 Why is "file must end with newline" a different category than "filename must be lowercase"? Both are byte-level formatting rules. Both are mandatory. Both enforce canonicality.
 
@@ -78,7 +78,7 @@ Why is "no trailing whitespace" different from "declarations alphabetically orde
 
 ### 4. The Filename Validation Exposed the Problem
 
-When we added filename validation (requiring lowercase with hyphens), the arbitrary boundary became obvious.
+When we added filename validation (requiring lowerCamelCase), the arbitrary boundary became obvious.
 
 Is filename format a SURFACE concern or a CANON concern?
 
@@ -143,7 +143,7 @@ The merge happened in both compiler implementations:
 - `SIGIL-CANON-EXEC-NEEDS-MAIN` - `.sigil` files must have main()
 
 **Filename rules:**
-- `SIGIL-CANON-FILENAME-CASE` - Filenames must be lowercase
+- `SIGIL-CANON-FILENAME-CASE` - filenames must start with a lowercase letter
 - `SIGIL-CANON-FILENAME-INVALID-CHAR` - No underscores, spaces, or special characters
 - `SIGIL-CANON-FILENAME-FORMAT` - Hyphens cannot be at edges or consecutive
 

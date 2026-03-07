@@ -190,16 +190,16 @@ test "list reverse properties"{
 
 ```sigil
 // std/test/mock module
-λwith_mock_io[T](mocks:[IoMock],fn:λ()→T!IO)→T
-λwith_mock_network[T](mocks:[NetworkMock],fn:λ()→T!Network)→T
-λwith_mock[E,T](effect:Effect[E],mocks:[E],fn:λ()→T!E)→T
+λwithMockIo[T](mocks:[IoMock],fn:λ()→T!IO)→T
+λwithMockNetwork[T](mocks:[NetworkMock],fn:λ()→T!Network)→T
+λwithMock[E,T](effect:Effect[E],mocks:[E],fn:λ()→T!E)→T
 ```
 
 ### Example
 
 ```sigil
 test "read_file handles missing file"{
-  with_mock_io([
+  withMockIo([
     file_not_found("/missing.txt")→Err(IoError{msg:"not found"})
   ]){
     assert_err(read_file("/missing.txt"))
@@ -207,7 +207,7 @@ test "read_file handles missing file"{
 }
 
 test "fetch_url handles timeout"{
-  with_mock_network([
+  withMockNetwork([
     timeout("https://api.example.com/users")→Err(TimeoutError)
   ]){
     assert_err(fetch_url("https://api.example.com/users"))
@@ -469,10 +469,10 @@ AI generates comprehensive integration test suite from this spec.
 
 ```sigil
 test "E2E checkout flow - happy path"{
-  with_mock_network([
+  withMockNetwork([
     payment_api("credit_card_123")→Ok(PaymentSuccess{transaction_id:"tx_456"})
   ]){
-    with_mock_io([
+    withMockIo([
       send_email("user@example.com","Order confirmed")→Ok(())
     ]){
       l cart=create_cart()

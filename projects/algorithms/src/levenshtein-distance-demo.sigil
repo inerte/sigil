@@ -1,3 +1,0 @@
-i src⋅levenshtein-distance
-
-λmain()→ℤ=src⋅levenshtein-distance.levenshtein("kitten","sitting")

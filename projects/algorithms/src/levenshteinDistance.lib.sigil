@@ -1,0 +1,25 @@
+i stdlib⋅string
+
+λlevenshtein(left:𝕊,right:𝕊)→ℤ=levenshteinFrom(left,0,right,0)
+
+λlevenshteinFrom(left:𝕊,leftIdx:ℤ,right:𝕊,rightIdx:ℤ)→ℤ match leftIdx=#left{
+  true→#right-rightIdx|
+  false→match rightIdx=#right{
+    true→#left-leftIdx|
+    false→match stdlib⋅string.charAt(leftIdx,left)=stdlib⋅string.charAt(rightIdx,right){
+      true→levenshteinFrom(left,leftIdx+1,right,rightIdx+1)|
+      false→1+min3(
+        levenshteinFrom(left,leftIdx+1,right,rightIdx),
+        levenshteinFrom(left,leftIdx,right,rightIdx+1),
+        levenshteinFrom(left,leftIdx+1,right,rightIdx+1)
+      )
+    }
+  }
+}
+
+λmin2(a:ℤ,b:ℤ)→ℤ match a≤b{
+  true→a|
+  false→b
+}
+
+λmin3(a:ℤ,b:ℤ,third:ℤ)→ℤ=min2(min2(a,b),third)

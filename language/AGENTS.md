@@ -88,8 +88,8 @@ If a parser ambiguity appears, favor the interpretation that preserves globally 
 
 Current constructor and list invariants:
 - imported sum-type constructors use fully qualified module syntax in both expressions and patterns
-- canonical example: `src⋅graph-types.Ordering([1,2,3])`
-- canonical imported nullary pattern example: `src⋅graph-types.CycleDetected()`
+- canonical example: `src⋅graphTypes.Ordering([1,2,3])`
+- canonical imported nullary pattern example: `src⋅graphTypes.CycleDetected()`
 - list literals preserve nesting exactly as written
 - use `⧺` only for explicit concatenation; never rely on list literals to flatten values
 - if a canonical helper exists in `stdlib`, prefer it over project-local reimplementation
@@ -203,25 +203,26 @@ Sigil enforces canonical filename format and uses file extensions to distinguish
 Sigil enforces canonical filename format:
 
 **Rules:**
-- **Lowercase only** - no uppercase letters
-- **Hyphens for word separation** - not underscores or spaces
-- **Allowed characters**: `a-z`, `0-9`, `-`
+- **lowerCamelCase only** - must start with lowercase, then letters/digits only
+- **No underscores or hyphens**
+- **Allowed characters**: `a-z`, `A-Z`, `0-9`
 - **Must end with** `.sigil` or `.lib.sigil`
 
 **Valid examples:**
-- `user-service.lib.sigil` ✅
-- `01-introduction.sigil` ✅
-- `ffi-node-console.lib.sigil` ✅
+- `userService.lib.sigil` ✅
+- `example01Introduction.sigil` ✅
+- `ffiNodeConsole.lib.sigil` ✅
 
 **Invalid examples:**
 - `UserService.lib.sigil` ❌ (uppercase)
 - `user_service.lib.sigil` ❌ (underscore)
+- `user-service.lib.sigil` ❌ (hyphen)
 - `user service.sigil` ❌ (space)
 
 **Error codes:**
-- `SIGIL-CANON-FILENAME-CASE` - Contains uppercase
-- `SIGIL-CANON-FILENAME-INVALID-CHAR` - Contains underscores or special characters
-- `SIGIL-CANON-FILENAME-FORMAT` - Format violations (hyphens at edges, consecutive hyphens)
+- `SIGIL-CANON-FILENAME-CASE` - Does not start with lowercase
+- `SIGIL-CANON-FILENAME-INVALID-CHAR` - Contains `_`, `-`, or other invalid characters
+- `SIGIL-CANON-FILENAME-FORMAT` - Not lowerCamelCase or starts with a digit
 
 **Why?**
 - Case-insensitive filesystem safety (macOS/Windows)

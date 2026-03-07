@@ -1,0 +1,41 @@
+⟦ String Operations Demo
+
+   Demonstrates string operations and the # operator.
+⟧
+
+e console
+
+i stdlib⋅string
+
+⟦ Main demonstration ⟧
+λmain()→!IO 𝕌={
+  ⟦ Test string length operator ⟧
+  l text=("Hello, Sigil!":𝕊);
+  l _=(console.log("Text: "++text):𝕌);
+  l _=(console.log("Length: "++stdlib⋅string.intToString(#text)):𝕌);
+
+  ⟦ Test string transformations ⟧
+  l upper=(stdlib⋅string.toUpper("hello"):𝕊);
+  l lower=(stdlib⋅string.toLower("WORLD"):𝕊);
+  l _=(console.log("Upper: "++upper):𝕌);
+  l _=(console.log("Lower: "++lower):𝕌);
+
+  ⟦ Test string predicates ⟧
+  l hasPrefix=(stdlib⋅string.startsWith("Hello World","Hello"):𝔹);
+  l hasSuffix=(stdlib⋅string.endsWith("test.sigil",".sigil"):𝔹);
+  l prefixText=(match hasPrefix{true→"true"|false→"false"}:𝕊);
+  l suffixText=(match hasSuffix{true→"true"|false→"false"}:𝕊);
+  l _=(console.log("Has prefix Hello: "++prefixText):𝕌);
+  l _=(console.log("Has suffix .sigil: "++suffixText):𝕌);
+
+  ⟦ Test split ⟧
+  l parts=(stdlib⋅string.split("a,b,c",","):[𝕊]);
+  l _=(console.log("Split length: "++stdlib⋅string.intToString(#parts)):𝕌);
+
+  ⟦ Test take and drop ⟧
+  l sample=("abcdefgh":𝕊);
+  l firstThree=(stdlib⋅string.take(3,sample):𝕊);
+  l dropThree=(stdlib⋅string.drop(3,sample):𝕊);
+  l _=(console.log("Take 3: "++firstThree):𝕌);
+  console.log("Drop 3: "++dropThree)
+}

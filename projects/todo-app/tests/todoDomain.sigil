@@ -1,0 +1,53 @@
+t Todo={done:𝔹,id:ℤ,text:𝕊}
+
+i src⋅todoDomain
+i stdlib⋅numeric
+
+λlenTodos(todos:[Todo])→ℤ match todos{
+  []→0|
+  [_,.rest]→1+lenTodos(rest)
+}
+
+λmain()→𝕌=()
+
+test "todo add prepends item" {
+  match src⋅todoDomain.addTodo(1,"Task",[]){
+    [todo]→todo.id=1 and todo.text="Task" and todo.done=false|
+    _→false
+  }
+}
+
+test "todo clearCompleted keeps active only" {
+  match src⋅todoDomain.clearCompleted([Todo{done:true,id:1,text:"A"},Todo{done:false,id:2,text:"B"}]){
+    [todo]→todo.id=2 and todo.done=false|
+    _→false
+  }
+}
+
+test "todo completedCount counts completed" {
+  src⋅todoDomain.completedCount([Todo{done:true,id:1,text:"A"},Todo{done:false,id:2,text:"B"},Todo{done:true,id:3,text:"C"}])=2
+}
+
+test "todo completedCount result can use numeric predicates" {
+  l count=(src⋅todoDomain.completedCount([Todo{done:true,id:1,text:"A"},Todo{done:false,id:2,text:"B"},Todo{done:true,id:3,text:"C"}]):ℤ);
+  stdlib⋅numeric.isEven(count)=true and stdlib⋅numeric.inRange(3,0,count)=true
+}
+
+test "todo delete reduces length" {
+  lenTodos(src⋅todoDomain.deleteTodo(1,[Todo{done:false,id:1,text:"A"},Todo{done:false,id:2,text:"B"}]))=1
+}
+
+test "todo delete removes target" {
+  match src⋅todoDomain.deleteTodo(1,[Todo{done:false,id:1,text:"A"},Todo{done:false,id:2,text:"B"}]){
+    [todo]→todo.id=2 and todo.text="B"|
+    _→false
+  }
+}
+
+test "todo edit updates text" {
+  src⋅todoDomain.editTodo("New",1,[Todo{done:false,id:1,text:"Old"}])[0].text="New"
+}
+
+test "todo toggle flips done flag" {
+  src⋅todoDomain.toggleTodo(1,[Todo{done:false,id:1,text:"Task"}])[0].done=true
+}

@@ -8,21 +8,21 @@
 t JsonError={message:𝕊}
 t JsonValue=JsonArray([JsonValue])|JsonBool(𝔹)|JsonNull|JsonNumber(ℝ)|JsonObject({𝕊↦JsonValue})|JsonString(𝕊)
 
-λas_array(value:JsonValue)→Option[[JsonValue]]=None()
+λasArray(value:JsonValue)→Option[[JsonValue]]=None()
 
-λas_bool(value:JsonValue)→Option[𝔹]=None()
+λasBool(value:JsonValue)→Option[𝔹]=None()
 
-λas_number(value:JsonValue)→Option[ℝ]=None()
+λasNumber(value:JsonValue)→Option[ℝ]=None()
 
-λas_object(value:JsonValue)→Option[{𝕊↦JsonValue}]=None()
+λasObject(value:JsonValue)→Option[{𝕊↦JsonValue}]=None()
 
-λas_string(value:JsonValue)→Option[𝕊]=None()
+λasString(value:JsonValue)→Option[𝕊]=None()
 
-λget_field(key:𝕊,obj:{𝕊↦JsonValue})→Option[JsonValue]=None()
+λgetField(key:𝕊,obj:{𝕊↦JsonValue})→Option[JsonValue]=None()
 
-λget_index(arr:[JsonValue],idx:ℤ)→Option[JsonValue]=None()
+λgetIndex(arr:[JsonValue],idx:ℤ)→Option[JsonValue]=None()
 
-λis_null(value:JsonValue)→𝔹=false
+λisNull(value:JsonValue)→𝔹=false
 
 λparse(input:𝕊)→Result[JsonValue,JsonError]=Err({message:"JSON parse intrinsic unavailable"})
 

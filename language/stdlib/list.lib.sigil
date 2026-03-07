@@ -41,21 +41,21 @@ reducers and order predicates.
   [x,.rest]→fold(fn(acc,x),fn,rest)
 }
 
-λin_bounds[T](idx:ℤ,xs:[T])→𝔹=idx≥0 and idx<#xs
+λinBounds[T](idx:ℤ,xs:[T])→𝔹=idx≥0 and idx<#xs
 
-λlast[T](xs:[T])→Option[T]=last_helper(None(),xs)
+λlast[T](xs:[T])→Option[T]=lastHelper(None(),xs)
 
-λlast_helper[T](result:Option[T],xs:[T])→Option[T] match xs{
+λlastHelper[T](result:Option[T],xs:[T])→Option[T] match xs{
   []→result|
-  [x,.rest]→last_helper(Some(x),rest)
+  [x,.rest]→lastHelper(Some(x),rest)
 }
 
 λmax(xs:[ℤ])→Option[ℤ] match xs{
   []→None()|
   [x,.rest]→match max(rest){
-    Some(rest_max)→match x>rest_max{
+    Some(restMax)→match x>restMax{
       true→Some(x)|
-      false→Some(rest_max)
+      false→Some(restMax)
     }|
     None()→Some(x)
   }
@@ -64,9 +64,9 @@ reducers and order predicates.
 λmin(xs:[ℤ])→Option[ℤ] match xs{
   []→None()|
   [x,.rest]→match min(rest){
-    Some(rest_min)→match x<rest_min{
+    Some(restMin)→match x<restMin{
       true→Some(x)|
-      false→Some(rest_min)
+      false→Some(restMin)
     }|
     None()→Some(x)
   }
@@ -88,31 +88,31 @@ reducers and order predicates.
   [x,.rest]→x*product(rest)
 }
 
-λremove_first[T](item:T,xs:[T])→[T] match xs{
+λremoveFirst[T](item:T,xs:[T])→[T] match xs{
   []→[]|
   [x,.rest]→match x=item{
     true→rest|
-    false→([x]:[T])⧺remove_first(item,rest)
+    false→([x]:[T])⧺removeFirst(item,rest)
   }
 }
 
-λreverse[T](xs:[T])→[T]=reverse_helper([],xs)
+λreverse[T](xs:[T])→[T]=reverseHelper([],xs)
 
-λreverse_helper[T](acc:[T],xs:[T])→[T] match xs{
+λreverseHelper[T](acc:[T],xs:[T])→[T] match xs{
   []→acc|
-  [x,.rest]→reverse_helper(([x]:[T])⧺acc,rest)
+  [x,.rest]→reverseHelper(([x]:[T])⧺acc,rest)
 }
 
-λsorted_asc(xs:[ℤ])→𝔹 match xs{
+λsortedAsc(xs:[ℤ])→𝔹 match xs{
   []→true|
   [x]→true|
-  [x,y,.rest]→x≤y and sorted_asc(([y]:[ℤ])⧺rest)
+  [x,y,.rest]→x≤y and sortedAsc(([y]:[ℤ])⧺rest)
 }
 
-λsorted_desc(xs:[ℤ])→𝔹 match xs{
+λsortedDesc(xs:[ℤ])→𝔹 match xs{
   []→true|
   [x]→true|
-  [x,y,.rest]→x≥y and sorted_desc(([y]:[ℤ])⧺rest)
+  [x,y,.rest]→x≥y and sortedDesc(([y]:[ℤ])⧺rest)
 }
 
 λsum(xs:[ℤ])→ℤ match xs{

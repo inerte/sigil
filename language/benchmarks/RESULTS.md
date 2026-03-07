@@ -16,14 +16,14 @@ Sigil demonstrates **11.2% average token reduction** compared to TypeScript acro
 | **fibonacci** | 45 | 60 | 1.333 | **+33.3%** |
 | **gcd** | 43 | 48 | 1.116 | **+11.6%** |
 | **power** | 47 | 52 | 1.106 | **+10.6%** |
-| **map-double** | 53 | 59 | 1.113 | **+11.3%** |
-| **filter-even** | 61 | 67 | 1.098 | **+9.8%** |
-| **is-palindrome** | 45 | 49 | 1.089 | **+8.9%** |
-| **sum-list** | 55 | 50 | 0.909 | **-9.1%** |
+| **mapDouble** | 53 | 59 | 1.113 | **+11.3%** |
+| **filterEven** | 61 | 67 | 1.098 | **+9.8%** |
+| **isPalindrome** | 45 | 49 | 1.089 | **+8.9%** |
+| **sumList** | 55 | 50 | 0.909 | **-9.1%** |
 | | | | | |
 | **AVERAGE** | **49.3** | **54.6** | **1.115** | **+11.2%** |
 
-**Note:** sum-list is an outlier where TypeScript's `.reduce()` is more compact than Sigil's `⊕` operator syntax.
+**Note:** sumList is an outlier where TypeScript's `.reduce()` is more compact than Sigil's `⊕` operator syntax.
 
 ## Key Insights
 
@@ -39,14 +39,14 @@ Sigil's `match n{0→1|n→...}` vs TypeScript's `if (n === 0) return 1;` saves 
 ### 2. Functional Operations Are Competitive
 
 Map/filter operations show modest gains:
-- map-double: **+11.3%** (53 vs 59 tokens)
-- filter-even: **+9.8%** (61 vs 67 tokens)
+- mapDouble: **+11.3%** (53 vs 59 tokens)
+- filterEven: **+9.8%** (61 vs 67 tokens)
 
 Sigil's `↦` and `⊳` operators are compact but not dramatically better than `.map()` and `.filter()`.
 
 ### 3. Built-in Reduce Is Less Efficient
 
-**sum-list: -9.1%** (55 vs 50 tokens)
+**sumList: -9.1%** (55 vs 50 tokens)
 
 Sigil's fold syntax `xs⊕(λ(a:ℤ,x:ℤ)→ℤ=a+x)⊕0` is more verbose than TypeScript's `.reduce((a, x) => a + x, 0)` because:
 - Lambda requires full type annotations: `λ(a:ℤ,x:ℤ)→ℤ`
@@ -107,7 +107,7 @@ TypeScript: function fib(n: number): number {
 - Multiple `return` keywords vs `|` separator
 - Most compact recursive implementation
 
-### sum-list (Fold/Reduce)
+### sumList (Fold/Reduce)
 
 ```
 Sigil:       λsum(xs:[ℤ])→ℤ=xs⊕(λ(a:ℤ,x:ℤ)→ℤ=a+x)⊕0
@@ -131,7 +131,7 @@ TypeScript: function sum(xs: number[]): number {
 
 Python results (vs TypeScript baseline):
 - Average efficiency: **0.99** (essentially tied with TypeScript)
-- Sigil beats Python on all algorithms except sum-list
+- Sigil beats Python on all algorithms except sumList
 - Python's dynamic typing saves tokens but loses type information
 
 **Sigil vs Python:**

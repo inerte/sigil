@@ -360,7 +360,7 @@ That's what a "ONE canonical way" language should do: make the canonical way wor
 $ sigilc compile language/stdlib/list.sigil
 {"ok":true,"phase":"codegen",...}
 
-$ sigilc run language/examples/list-operations.sigil
+$ sigilc run language/examples/listOperations.sigil
 ```
 
 **ONE way. No annotations. Just works.**

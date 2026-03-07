@@ -1,0 +1,36 @@
+i core⋅map
+
+λkeepJsonHeader(key:𝕊,value:𝕊)→𝔹=key="content-type" and value="application/json"
+
+λmain()→𝕌=()
+
+test "core map infers and counts entries" {
+  l headers=({"content-type"↦"application/json","x-id"↦"42"}:{𝕊↦𝕊});
+  #headers=2 and core⋅map.size(headers)=2
+}
+
+test "core map get and has work" {
+  l headers=({"content-type"↦"application/json"}:{𝕊↦𝕊});
+  core⋅map.has("content-type",headers) and match core⋅map.get("content-type",headers){
+    Some(value)→value="application/json"|
+    None()→false
+  }
+}
+
+test "core map insert remove and merge work" {
+  l base=({↦}:{𝕊↦𝕊});
+  l inserted=core⋅map.insert("content-type",base,"text/plain");
+  l merged=core⋅map.merge(inserted,{"x-id"↦"42"});
+  core⋅map.has("content-type",inserted) and #merged=2 and #core⋅map.remove("x-id",merged)=1
+}
+
+test "core map equality ignores insertion order" {
+  ({"a"↦1,"b"↦2}:{𝕊↦ℤ})=({"b"↦2,"a"↦1}:{𝕊↦ℤ})
+}
+
+test "core map helpers operate over entries" {
+  l headers=({"content-type"↦"application/json","x-id"↦"42"}:{𝕊↦𝕊});
+  l filtered=core⋅map.filter(headers,keepJsonHeader);
+  l values=core⋅map.values(filtered);
+  #filtered=1 and values=["application/json"]
+}

@@ -14,26 +14,26 @@ t PageMeta={
 t Section=Article()|Doc()|Home()|Spec()
 
 t SiteBuildConfig={
-  base_path:𝕊,
-  output_dir:𝕊,
-  repo_url:𝕊,
-  site_description:𝕊,
-  site_title:𝕊
+  basePath:𝕊,
+  outputDir:𝕊,
+  repoUrl:𝕊,
+  siteDescription:𝕊,
+  siteTitle:𝕊
 }
 
 t SiteData={
   articles:[SitePage],
-  articles_intro:SitePage,
+  articlesIntro:SitePage,
   docs:[SitePage],
   home:SitePage,
   spec:[SitePage]
 }
 
 t SitePage={
-  body_html:𝕊,
-  body_markdown:𝕊,
+  bodyHtml:𝕊,
+  bodyMarkdown:𝕊,
   meta:PageMeta,
-  output_dir:𝕊,
+  outputDir:𝕊,
   section:Section,
-  source_path:𝕊
+  sourcePath:𝕊
 }

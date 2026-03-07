@@ -1,0 +1,14 @@
+i src⋅breadthFirstSearch
+i src⋅graphTypes
+
+λdemoGraph()→src⋅graphTypes.Graph={
+  nodes:[
+    {neighbors:[2,3],vertex:1},
+    {neighbors:[4],vertex:2},
+    {neighbors:[4,5],vertex:3},
+    {neighbors:[],vertex:4},
+    {neighbors:[],vertex:5}
+  ]
+}
+
+λmain()→[ℤ]=src⋅breadthFirstSearch.breadthFirstSearch(demoGraph(),1)

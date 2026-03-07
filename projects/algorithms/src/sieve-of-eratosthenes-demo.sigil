@@ -1,3 +1,0 @@
-i src⋅sieve-of-eratosthenes
-
-λmain()→[ℤ]=src⋅sieve-of-eratosthenes.sieve(30)

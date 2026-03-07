@@ -1306,8 +1306,8 @@ impl Parser {
             }
         }
 
-        // with_mock expression
-        if self.match_token(TokenType::WithMock) {
+        // withMock / legacy with_mock expression
+        if self.match_token(TokenType::WithMock) || self.match_token(TokenType::LegacyWithMock) {
             return self.with_mock_expression();
         }
 
@@ -1529,20 +1529,21 @@ impl Parser {
 
     fn with_mock_expression(&mut self) -> Result<Expr, ParseError> {
         let start = self.previous();
-        self.consume(TokenType::LPAREN, "Expected \"(\" after with_mock")?;
+        self.consume(TokenType::LPAREN, "Expected \"(\" after withMock")?;
         let target = self.expression()?;
         self.consume(TokenType::COMMA, "Expected \",\" after mock target")?;
         let replacement = self.expression()?;
         self.consume(TokenType::RPAREN, "Expected \")\" after mock replacement")?;
-        self.consume(TokenType::LBRACE, "Expected \"{\" before with_mock body")?;
+        self.consume(TokenType::LBRACE, "Expected \"{\" before withMock body")?;
         let body = self.expression()?;
-        self.consume(TokenType::RBRACE, "Expected \"}\" after with_mock body")?;
+        self.consume(TokenType::RBRACE, "Expected \"}\" after withMock body")?;
 
         let end = self.previous();
         Ok(Expr::WithMock(Box::new(WithMockExpr {
             target,
             replacement,
             body,
+            is_legacy_keyword: start.token_type == TokenType::LegacyWithMock,
             location: self.make_location(start.location.start, end.location.end),
         })))
     }

@@ -70,12 +70,12 @@ EOF
 
 cat > test-project/src/derived.lib.sigil << 'EOF'
 i src⋅base
-λadd_two(x:ℤ)→ℤ=src⋅base.increment(src⋅base.increment(x))
+λaddTwo(x:ℤ)→ℤ=src⋅base.increment(src⋅base.increment(x))
 EOF
 
 cat > test-project/src/app.sigil << 'EOF'
 i src⋅derived
-λmain()→ℤ=src⋅derived.add_two(5)
+λmain()→ℤ=src⋅derived.addTwo(5)
 EOF
 
 echo "Running: cd test-project && ../target/debug/sigil run src/app.sigil --human"

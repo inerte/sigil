@@ -12,21 +12,21 @@ t Url={
   port:Option[ℤ],
   protocol:𝕊,
   query:{𝕊↦𝕊},
-  query_string:𝕊
+  queryString:𝕊
 }
 
 t UrlError={message:𝕊}
 
 i core⋅map
 
-λget_query(key:𝕊,url:Url)→Option[𝕊]=core⋅map.get(key,url.query)
+λgetQuery(key:𝕊,url:Url)→Option[𝕊]=core⋅map.get(key,url.query)
 
-λhas_query(key:𝕊,url:Url)→𝔹=core⋅map.has(key,url.query)
+λhasQuery(key:𝕊,url:Url)→𝔹=core⋅map.has(key,url.query)
 
-λis_absolute(url:Url)→𝔹=#url.protocol>0
+λisAbsolute(url:Url)→𝔹=#url.protocol>0
 
-λis_anchor(url:Url)→𝔹=(#url.path=0) and (#url.fragment>0)
+λisAnchor(url:Url)→𝔹=(#url.path=0) and (#url.fragment>0)
 
 λparse(input:𝕊)→Result[Url,UrlError]=Err({message:"url parse intrinsic unavailable"})
 
-λsuffix(url:Url)→𝕊=url.query_string++url.fragment
+λsuffix(url:Url)→𝕊=url.queryString++url.fragment

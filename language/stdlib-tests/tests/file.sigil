@@ -6,59 +6,59 @@ i stdlib⋅path
 
 λmain()→𝕌=()
 
-test "file list_dir includes written entry" →!IO {
+test "file listDir includes written entry" →!IO {
   l dir=("/tmp/sigil-stdlib-file-list":𝕊);
-  l file_path=(stdlib⋅path.join(dir,"entry.txt"):𝕊);
-  l _=(stdlib⋅file.remove_tree(dir):𝕌);
-  l _=(stdlib⋅file.make_dirs(dir):𝕌);
-  l _=(stdlib⋅file.write_text("hello",file_path):𝕌);
-  l entries=(stdlib⋅file.list_dir(dir):[𝕊]);
+  l filePath=(stdlib⋅path.join(dir,"entry.txt"):𝕊);
+  l _=(stdlib⋅file.removeTree(dir):𝕌);
+  l _=(stdlib⋅file.makeDirs(dir):𝕌);
+  l _=(stdlib⋅file.writeText("hello",filePath):𝕌);
+  l entries=(stdlib⋅file.listDir(dir):[𝕊]);
   stdlib⋅list.contains("entry.txt",entries)
 }
 
-test "file make_dir creates a single directory" →!IO {
+test "file makeDir creates a single directory" →!IO {
   l base=("/tmp/sigil-stdlib-file-mkdir":𝕊);
   l dir=(stdlib⋅path.join(base,"child"):𝕊);
-  l _=(stdlib⋅file.remove_tree(base):𝕌);
-  l _=(stdlib⋅file.make_dirs(base):𝕌);
-  l _=(stdlib⋅file.make_dir(dir):𝕌);
+  l _=(stdlib⋅file.removeTree(base):𝕌);
+  l _=(stdlib⋅file.makeDirs(base):𝕌);
+  l _=(stdlib⋅file.makeDir(dir):𝕌);
   stdlib⋅file.exists(dir)
 }
 
-test "file make_dirs creates nested directories" →!IO {
+test "file makeDirs creates nested directories" →!IO {
   l dir=("/tmp/sigil-stdlib-file-nested/a/b":𝕊);
-  l _=(stdlib⋅file.remove_tree("/tmp/sigil-stdlib-file-nested"):𝕌);
-  l _=(stdlib⋅file.make_dirs(dir):𝕌);
+  l _=(stdlib⋅file.removeTree("/tmp/sigil-stdlib-file-nested"):𝕌);
+  l _=(stdlib⋅file.makeDirs(dir):𝕌);
   stdlib⋅file.exists(dir)
 }
 
-test "file read_text and append_text preserve utf8 content" →!IO {
+test "file readText and appendText preserve utf8 content" →!IO {
   l dir=("/tmp/sigil-stdlib-file-read-write":𝕊);
-  l file_path=(stdlib⋅path.join(dir,"sample.txt"):𝕊);
-  l _=(stdlib⋅file.remove_tree(dir):𝕌);
-  l _=(stdlib⋅file.make_dirs(dir):𝕌);
-  l _=(stdlib⋅file.write_text("hello",file_path):𝕌);
-  l _=(stdlib⋅file.append_text(" world",file_path):𝕌);
-  (stdlib⋅file.read_text(file_path):𝕊)="hello world"
+  l filePath=(stdlib⋅path.join(dir,"sample.txt"):𝕊);
+  l _=(stdlib⋅file.removeTree(dir):𝕌);
+  l _=(stdlib⋅file.makeDirs(dir):𝕌);
+  l _=(stdlib⋅file.writeText("hello",filePath):𝕌);
+  l _=(stdlib⋅file.appendText(" world",filePath):𝕌);
+  (stdlib⋅file.readText(filePath):𝕊)="hello world"
 }
 
 test "file remove removes a file" →!IO {
   l dir=("/tmp/sigil-stdlib-file-delete":𝕊);
-  l file_path=(stdlib⋅path.join(dir,"sample.txt"):𝕊);
-  l _=(stdlib⋅file.remove_tree(dir):𝕌);
-  l _=(stdlib⋅file.make_dirs(dir):𝕌);
-  l _=(stdlib⋅file.write_text("hello",file_path):𝕌);
-  l _=(stdlib⋅file.remove(file_path):𝕌);
-  stdlib⋅file.exists(file_path)=false
+  l filePath=(stdlib⋅path.join(dir,"sample.txt"):𝕊);
+  l _=(stdlib⋅file.removeTree(dir):𝕌);
+  l _=(stdlib⋅file.makeDirs(dir):𝕌);
+  l _=(stdlib⋅file.writeText("hello",filePath):𝕌);
+  l _=(stdlib⋅file.remove(filePath):𝕌);
+  stdlib⋅file.exists(filePath)=false
 }
 
-test "file remove_tree removes nested output" →!IO {
+test "file removeTree removes nested output" →!IO {
   l root=("/tmp/sigil-stdlib-file-rmtree":𝕊);
   l nested=(stdlib⋅path.join(root,"a/b"):𝕊);
-  l file_path=(stdlib⋅path.join(nested,"sample.txt"):𝕊);
-  l _=(stdlib⋅file.remove_tree(root):𝕌);
-  l _=(stdlib⋅file.make_dirs(nested):𝕌);
-  l _=(stdlib⋅file.write_text("hello",file_path):𝕌);
-  l _=(stdlib⋅file.remove_tree(root):𝕌);
+  l filePath=(stdlib⋅path.join(nested,"sample.txt"):𝕊);
+  l _=(stdlib⋅file.removeTree(root):𝕌);
+  l _=(stdlib⋅file.makeDirs(nested):𝕌);
+  l _=(stdlib⋅file.writeText("hello",filePath):𝕌);
+  l _=(stdlib⋅file.removeTree(root):𝕌);
   stdlib⋅file.exists(root)=false
 }

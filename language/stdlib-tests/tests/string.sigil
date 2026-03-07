@@ -22,12 +22,12 @@ test "# returns list length" {
   #[1,2,3]=3
 }
 
-test "char_at at index 0" {
-  stdlib⋅string.char_at(0,"hello")="h"
+test "charAt at index 0" {
+  stdlib⋅string.charAt(0,"hello")="h"
 }
 
-test "char_at at middle index" {
-  stdlib⋅string.char_at(2,"hello")="l"
+test "charAt at middle index" {
+  stdlib⋅string.charAt(2,"hello")="l"
 }
 
 test "drop first n characters" {
@@ -38,44 +38,44 @@ test "drop with 0" {
   stdlib⋅string.drop(0,"hello")="hello"
 }
 
-test "ends_with actual suffix" {
-  stdlib⋅string.ends_with("file.txt",".txt")=true
+test "endsWith actual suffix" {
+  stdlib⋅string.endsWith("file.txt",".txt")=true
 }
 
-test "ends_with non-suffix" {
-  stdlib⋅string.ends_with("hello",".txt")=false
+test "endsWith non-suffix" {
+  stdlib⋅string.endsWith("hello",".txt")=false
 }
 
-test "index_of finds occurrence" {
-  stdlib⋅string.index_of("hello world","o")=4
+test "indexOf finds occurrence" {
+  stdlib⋅string.indexOf("hello world","o")=4
 }
 
-test "index_of not found" {
-  stdlib⋅string.index_of("hello","z")=-1
+test "indexOf not found" {
+  stdlib⋅string.indexOf("hello","z")=-1
 }
 
-test "int_to_string negative" {
-  stdlib⋅string.int_to_string(-10)="-10"
+test "intToString negative" {
+  stdlib⋅string.intToString(-10)="-10"
 }
 
-test "int_to_string positive" {
-  stdlib⋅string.int_to_string(42)="42"
+test "intToString positive" {
+  stdlib⋅string.intToString(42)="42"
 }
 
-test "int_to_string zero" {
-  stdlib⋅string.int_to_string(0)="0"
+test "intToString zero" {
+  stdlib⋅string.intToString(0)="0"
 }
 
-test "is_digit letter" {
-  stdlib⋅string.is_digit("a")=false
+test "isDigit letter" {
+  stdlib⋅string.isDigit("a")=false
 }
 
-test "is_digit multi-character" {
-  stdlib⋅string.is_digit("42")=false
+test "isDigit multi-character" {
+  stdlib⋅string.isDigit("42")=false
 }
 
-test "is_digit single" {
-  stdlib⋅string.is_digit("5")=true
+test "isDigit single" {
+  stdlib⋅string.isDigit("5")=true
 }
 
 test "join empty list" {
@@ -102,12 +102,12 @@ test "repeat with non-positive count returns empty" {
   stdlib⋅string.repeat(0,"ab")=""
 }
 
-test "replace_all all occurrences" {
-  stdlib⋅string.replace_all("o","0","hello world")="hell0 w0rld"
+test "replaceAll all occurrences" {
+  stdlib⋅string.replaceAll("o","0","hello world")="hell0 w0rld"
 }
 
-test "replace_all no matches" {
-  stdlib⋅string.replace_all("z","x","hello")="hello"
+test "replaceAll no matches" {
+  stdlib⋅string.replaceAll("z","x","hello")="hello"
 }
 
 test "split by delimiter" {
@@ -118,12 +118,12 @@ test "split single element" {
   stdlib⋅string.split(",","hello")=["hello"]
 }
 
-test "starts_with non-prefix" {
-  stdlib⋅string.starts_with("abc","hello")=false
+test "startsWith non-prefix" {
+  stdlib⋅string.startsWith("abc","hello")=false
 }
 
-test "starts_with prefix" {
-  stdlib⋅string.starts_with("hel","hello")=true
+test "startsWith prefix" {
+  stdlib⋅string.startsWith("hel","hello")=true
 }
 
 test "substring full string" {
@@ -142,20 +142,20 @@ test "take n greater than length" {
   stdlib⋅string.take(10,"hi")="hi"
 }
 
-test "to_lower converts uppercase" {
-  stdlib⋅string.to_lower("HELLO")="hello"
+test "toLower converts uppercase" {
+  stdlib⋅string.toLower("HELLO")="hello"
 }
 
-test "to_lower preserves lowercase" {
-  stdlib⋅string.to_lower("hello")="hello"
+test "toLower preserves lowercase" {
+  stdlib⋅string.toLower("hello")="hello"
 }
 
-test "to_upper converts lowercase" {
-  stdlib⋅string.to_upper("hello")="HELLO"
+test "toUpper converts lowercase" {
+  stdlib⋅string.toUpper("hello")="HELLO"
 }
 
-test "to_upper preserves uppercase" {
-  stdlib⋅string.to_upper("HELLO")="HELLO"
+test "toUpper preserves uppercase" {
+  stdlib⋅string.toUpper("HELLO")="HELLO"
 }
 
 test "trim both sides" {
@@ -183,7 +183,7 @@ test "extract title from markdown" {
   l content="# Hello World\nContent here";
   l lines=stdlib⋅string.split("\n",content);
   l first=lines[0];
-  l title=match stdlib⋅string.starts_with("# ",first){
+  l title=match stdlib⋅string.startsWith("# ",first){
     true→stdlib⋅string.substring(#first,first,2)|
     false→"Untitled"
   };

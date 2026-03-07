@@ -500,13 +500,15 @@ pub struct MemberAccessExpr {
     pub location: SourceLocation,
 }
 
-/// With mock expression: with_mock target replacement { body }
+/// With mock expression: withMock target replacement { body }
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct WithMockExpr {
     pub target: Expr,
     pub replacement: Expr,
     pub body: Expr,
+    #[cfg_attr(feature = "serde", serde(rename = "isLegacyKeyword"))]
+    pub is_legacy_keyword: bool,
     pub location: SourceLocation,
 }
 

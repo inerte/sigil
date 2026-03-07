@@ -1,0 +1,3 @@
+i src⋅extendedGcd
+
+λmain()→src⋅extendedGcd.ExtendedGcd=src⋅extendedGcd.extendedGcd(240,46)

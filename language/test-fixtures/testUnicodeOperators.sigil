@@ -1,0 +1,34 @@
+⟦ Test Unicode operators in typechecker ⟧
+
+e console
+
+λboolText(value:𝔹)→𝕊 match value{
+  true→"true"|
+  false→"false"
+}
+
+λmain()→𝕌=console.log(
+  "All tests passed: "
+  ++boolText(testLe(5,10))
+  ++", "
+  ++boolText(testGe(10,5))
+  ++", "
+  ++boolText(testNe(5,10))
+  ++", "
+  ++boolText(¬testAnd(true,false))
+  ++", "
+  ++boolText(testOr(true,false))
+)
+
+⟦ Test and / or ⟧
+λtestAnd(a:𝔹,b:𝔹)→𝔹=a and b
+
+⟦ Test ≤ and ≥ ⟧
+λtestGe(a:ℤ,b:ℤ)→𝔹=a≥b
+λtestLe(a:ℤ,b:ℤ)→𝔹=a≤b
+
+⟦ Test ≠ ⟧
+λtestNe(a:ℤ,b:ℤ)→𝔹=a≠b
+
+⟦ Test and / or ⟧
+λtestOr(a:𝔹,b:𝔹)→𝔹=a or b

@@ -9,40 +9,40 @@ t RelativeState={left:[𝕊],right:[𝕊]}
 i stdlib⋅list
 i stdlib⋅string
 
-λbasename(value:𝕊)→𝕊 match stdlib⋅list.last(split_nonempty(normalize(value))){
+λbasename(value:𝕊)→𝕊 match stdlib⋅list.last(splitNonempty(normalize(value))){
   Some(segment)→segment|
   None()→normalize(value)
 }
 
 λdirname(value:𝕊)→𝕊=
   l normalized=(normalize(value):𝕊);
-  dirname_from_segments(stdlib⋅string.starts_with("/",normalized),split_nonempty(normalized))
+  dirnameFromSegments(stdlib⋅string.startsWith("/",normalized),splitNonempty(normalized))
 
-λdirname_from_segments(is_absolute:𝔹,segments:[𝕊])→𝕊 match #segments≤1{
-  true→root_or_current(is_absolute)|
-  false→path_from_segments(is_absolute,stdlib⋅list.take(#segments-1,segments))
+λdirnameFromSegments(isAbsolute:𝔹,segments:[𝕊])→𝕊 match #segments≤1{
+  true→rootOrCurrent(isAbsolute)|
+  false→pathFromSegments(isAbsolute,stdlib⋅list.take(#segments-1,segments))
 }
 
 λextname(value:𝕊)→𝕊=
   l name=(basename(value):𝕊);
-  extname_from_parts(name,stdlib⋅string.split(".",name))
+  extnameFromParts(name,stdlib⋅string.split(".",name))
 
-λextname_from_parts(name:𝕊,parts:[𝕊])→𝕊 match #parts≤1{
+λextnameFromParts(name:𝕊,parts:[𝕊])→𝕊 match #parts≤1{
   true→""|
-  false→match stdlib⋅string.starts_with(".",name) and #parts=2{
+  false→match stdlib⋅string.startsWith(".",name) and #parts=2{
     true→""|
     false→match stdlib⋅list.last(parts){
-      Some(last_part)→"."++last_part|
+      Some(lastPart)→"."++lastPart|
       None()→""
     }
   }
 }
 
-λfilter_empty(segments:[𝕊])→[𝕊] match segments{
+λfilterEmpty(segments:[𝕊])→[𝕊] match segments{
   []→[]|
   [segment,.rest]→match #segment=0{
-    true→filter_empty(rest)|
-    false→([segment]:[𝕊])⧺filter_empty(rest)
+    true→filterEmpty(rest)|
+    false→([segment]:[𝕊])⧺filterEmpty(rest)
   }
 }
 
@@ -55,35 +55,35 @@ i stdlib⋅string
 }
 
 λnormalize(value:𝕊)→𝕊=
-  l is_absolute=(stdlib⋅string.starts_with("/",value):𝔹);
-  l segments=(normalize_segments([],is_absolute,filter_empty(stdlib⋅string.split("/",value))):[𝕊]);
-  path_from_segments(is_absolute,segments)
+  l isAbsolute=(stdlib⋅string.startsWith("/",value):𝔹);
+  l segments=(normalizeSegments([],isAbsolute,filterEmpty(stdlib⋅string.split("/",value))):[𝕊]);
+  pathFromSegments(isAbsolute,segments)
 
-λnormalize_segments(acc:[𝕊],is_absolute:𝔹,segments:[𝕊])→[𝕊] match segments{
+λnormalizeSegments(acc:[𝕊],isAbsolute:𝔹,segments:[𝕊])→[𝕊] match segments{
   []→stdlib⋅list.reverse(acc)|
   [segment,.rest]→match segment="."{
-    true→normalize_segments(acc,is_absolute,rest)|
+    true→normalizeSegments(acc,isAbsolute,rest)|
     false→match segment=".."{
-      true→normalize_segments_parent(acc,is_absolute,rest)|
-      false→normalize_segments(([segment]:[𝕊])⧺acc,is_absolute,rest)
+      true→normalizeSegmentsParent(acc,isAbsolute,rest)|
+      false→normalizeSegments(([segment]:[𝕊])⧺acc,isAbsolute,rest)
     }
   }
 }
 
-λnormalize_segments_parent(acc:[𝕊],is_absolute:𝔹,rest:[𝕊])→[𝕊] match acc{
-  []→match is_absolute{
-    true→normalize_segments([],is_absolute,rest)|
-    false→normalize_segments([".."],is_absolute,rest)
+λnormalizeSegmentsParent(acc:[𝕊],isAbsolute:𝔹,rest:[𝕊])→[𝕊] match acc{
+  []→match isAbsolute{
+    true→normalizeSegments([],isAbsolute,rest)|
+    false→normalizeSegments([".."],isAbsolute,rest)
   }|
   [head,.more]→match head=".."{
-    true→normalize_segments(([".."]:[𝕊])⧺acc,is_absolute,rest)|
-    false→normalize_segments(more,is_absolute,rest)
+    true→normalizeSegments(([".."]:[𝕊])⧺acc,isAbsolute,rest)|
+    false→normalizeSegments(more,isAbsolute,rest)
   }
 }
 
-λpath_from_segments(is_absolute:𝔹,segments:[𝕊])→𝕊=
+λpathFromSegments(isAbsolute:𝔹,segments:[𝕊])→𝕊=
   l body=(stdlib⋅string.join("/",segments):𝕊);
-  match is_absolute{
+  match isAbsolute{
     true→match #body=0{
       true→"/"|
       false→"/"++body
@@ -95,30 +95,30 @@ i stdlib⋅string
   }
 
 λrelative(from:𝕊,to:𝕊)→𝕊=
-  l from_segments=(split_nonempty(normalize(from)):[𝕊]);
-  l state=(relative_drop_common(from_segments,split_nonempty(normalize(to))):RelativeState);
-  l upward=(repeat_segment(#state.left,".."):[𝕊]);
-  path_from_segments(false,upward⧺state.right)
+  l fromSegments=(splitNonempty(normalize(from)):[𝕊]);
+  l state=(relativeDropCommon(fromSegments,splitNonempty(normalize(to))):RelativeState);
+  l upward=(repeatSegment(#state.left,".."):[𝕊]);
+  pathFromSegments(false,upward⧺state.right)
 
-λrelative_drop_common(left:[𝕊],right:[𝕊])→RelativeState match left{
+λrelativeDropCommon(left:[𝕊],right:[𝕊])→RelativeState match left{
   []→{left:[],right:right}|
-  [left_head,.left_rest]→match right{
+  [leftHead,.leftRest]→match right{
     []→{left:left,right:[]}|
-    [right_head,.right_rest]→match left_head=right_head{
-      true→relative_drop_common(left_rest,right_rest)|
+    [rightHead,.rightRest]→match leftHead=rightHead{
+      true→relativeDropCommon(leftRest,rightRest)|
       false→{left:left,right:right}
     }
   }
 }
 
-λrepeat_segment(count:ℤ,segment:𝕊)→[𝕊] match count≤0{
+λrepeatSegment(count:ℤ,segment:𝕊)→[𝕊] match count≤0{
   true→[]|
-  false→([segment]:[𝕊])⧺repeat_segment(count-1,segment)
+  false→([segment]:[𝕊])⧺repeatSegment(count-1,segment)
 }
 
-λroot_or_current(is_absolute:𝔹)→𝕊 match is_absolute{
+λrootOrCurrent(isAbsolute:𝔹)→𝕊 match isAbsolute{
   true→"/"|
   false→"."
 }
 
-λsplit_nonempty(value:𝕊)→[𝕊]=filter_empty(stdlib⋅string.split("/",value))
+λsplitNonempty(value:𝕊)→[𝕊]=filterEmpty(stdlib⋅string.split("/",value))

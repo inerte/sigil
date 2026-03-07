@@ -10,7 +10,7 @@ test "url parse absolute exposes protocol host and path" {
       url.protocol="https" and
       url.host="sigil.dev" and
       url.path="/docs" and
-      stdlib⋅url.has_query("lang",url) and
+      stdlib⋅url.hasQuery("lang",url) and
       stdlib⋅url.suffix(url)="?lang=sigil#intro"|
     Err(_)→false
   }
@@ -26,7 +26,7 @@ test "url parse invalid absolute returns err" {
 test "url parse relative link keeps suffix and marks non-absolute" {
   match stdlib⋅url.parse("../docs/cli-json.md?x=1#schema"){
     Ok(url)→
-      stdlib⋅url.is_absolute(url)=false and
+      stdlib⋅url.isAbsolute(url)=false and
       url.path="../docs/cli-json.md" and
       stdlib⋅url.suffix(url)="?x=1#schema"|
     Err(_)→false

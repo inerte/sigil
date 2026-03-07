@@ -14,7 +14,7 @@ t Entry[K,V]={key:K,value:V}
 
 λfold[K,V,U](fn:λ(U,K,V)→U,init:U,map:{K↦V})→U=init
 
-λfrom_list[K,V](entries:[Entry[K,V]])→{K↦V}=({↦}:{K↦V})
+λfromList[K,V](entries:[Entry[K,V]])→{K↦V}=({↦}:{K↦V})
 
 λget[K,V](key:K,map:{K↦V})→Option[V]=None()
 
@@ -24,7 +24,7 @@ t Entry[K,V]={key:K,value:V}
 
 λkeys[K,V](map:{K↦V})→[K]=[]
 
-λmap_values[K,V,U](fn:λ(V)→U,map:{K↦V})→{K↦U}=({↦}:{K↦U})
+λmapValues[K,V,U](fn:λ(V)→U,map:{K↦V})→{K↦U}=({↦}:{K↦U})
 
 λmerge[K,V](left:{K↦V},right:{K↦V})→{K↦V}=({↦}:{K↦V})
 

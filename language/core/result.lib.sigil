@@ -3,27 +3,27 @@
 Canonical operations over the core Result type.
 ⟧
 
-λbind_result[T,U,E](fn:λ(T)→Result[U,E],res:Result[T,E])→Result[U,E] match res{
+λbindResult[T,U,E](fn:λ(T)→Result[U,E],res:Result[T,E])→Result[U,E] match res{
   Ok(value)→fn(value)|
   Err(error)→Err(error)
 }
 
-λis_err[T,E](res:Result[T,E])→𝔹 match res{
+λisErr[T,E](res:Result[T,E])→𝔹 match res{
   Ok(value)→false|
   Err(error)→true
 }
 
-λis_ok[T,E](res:Result[T,E])→𝔹 match res{
+λisOk[T,E](res:Result[T,E])→𝔹 match res{
   Ok(value)→true|
   Err(error)→false
 }
 
-λmap_result[T,U,E](fn:λ(T)→U,res:Result[T,E])→Result[U,E] match res{
+λmapResult[T,U,E](fn:λ(T)→U,res:Result[T,E])→Result[U,E] match res{
   Ok(value)→Ok(fn(value))|
   Err(error)→Err(error)
 }
 
-λunwrap_or_result[T,E](fallback:T,res:Result[T,E])→T match res{
+λunwrapOrResult[T,E](fallback:T,res:Result[T,E])→T match res{
   Ok(value)→value|
   Err(error)→fallback
 }

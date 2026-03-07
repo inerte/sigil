@@ -1,0 +1,3 @@
+i src⋅sieveOfEratosthenes
+
+λmain()→[ℤ]=src⋅sieveOfEratosthenes.sieve(30)

@@ -23,7 +23,7 @@ pub enum ParseError {
         expected: String,
     },
 
-    #[error("SIGIL-PARSE-CONST-NAME {file}:{line}:{column} invalid constant name (found {found}, expected lowercase identifier)")]
+    #[error("SIGIL-PARSE-CONST-NAME {file}:{line}:{column} invalid constant name (found {found}, expected lowerCamelCase identifier)")]
     InvalidConstantName {
         file: String,
         found: String,
@@ -143,7 +143,7 @@ impl From<ParseError> for Diagnostic {
                 "invalid constant name",
             )
             .with_location(source_location_to_span(file, location))
-            .with_found_expected(&found, "lowercase identifier"),
+            .with_found_expected(&found, "lowerCamelCase identifier"),
 
             ParseError::UntypedConstant {
                 file,

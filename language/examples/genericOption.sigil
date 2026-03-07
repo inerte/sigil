@@ -1,0 +1,4 @@
+i core⋅option
+
+λmain()→Option[ℤ]=
+  core⋅option.mapOption(λ(x:ℤ)→ℤ=x*2,Some(21))

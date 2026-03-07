@@ -88,7 +88,7 @@ Example:
 ```json
 {
   "code": "SIGIL-CANON-FILENAME-CASE",
-  "message": "Filenames must be lowercase",
+  "message": "filenames must start with a lowercase letter",
   "phase": "canonical"
 }
 ```
@@ -120,4 +120,3 @@ Recommended for tool authors / CI:
 2. Validate against `language/spec/cli-json.schema.json`.
 3. Branch on `formatVersion`.
 4. Use `error.code` + `fixits`/`suggestions` for automated recovery loops.
-

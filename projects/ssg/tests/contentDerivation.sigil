@@ -1,0 +1,35 @@
+i src⋅content
+i src⋅types
+
+λarticlePage(date:𝕊,slug:𝕊)→src⋅types.SitePage=
+  src⋅content.blankPage(
+    "",
+    {author:"Sigil",category:"",date:date,description:"",slug:slug,title:slug},
+    "articles/"++slug,
+    src⋅types.Article(),
+    "website/articles/"++slug++".md"
+  )
+
+λmain()→𝕌=()
+
+test "article ordering uses newest date first" {
+  l pages=([
+    articlePage("2026-02-24","older"),
+    articlePage("2026-03-03","newer")
+  ]:[src⋅types.SitePage]);
+  l sorted=(src⋅content.pagesNewestFirst(pages):[src⋅types.SitePage]);
+  sorted[0].meta.slug="newer" and sorted[1].meta.slug="older"
+}
+
+test "article ordering falls back to descending source path" {
+  l pages=([
+    articlePage("","001-alpha"),
+    articlePage("","002-beta")
+  ]:[src⋅types.SitePage]);
+  l sorted=(src⋅content.pagesNewestFirst(pages):[src⋅types.SitePage]);
+  sorted[0].meta.slug="002-beta" and sorted[1].meta.slug="001-alpha"
+}
+
+test "base path prefix handles repo pages subpaths" {
+  src⋅content.basePathPrefix("/ai-pl/","/docs/ffi/")="/ai-pl/docs/ffi/"
+}

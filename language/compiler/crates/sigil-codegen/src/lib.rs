@@ -264,13 +264,13 @@ impl TypeScriptGenerator {
         self.emit("  if (Number.isNaN(millis)) {");
         self.emit("    return { __tag: \"Err\", __fields: [{ message: \"invalid ISO-8601 timestamp\" }] };");
         self.emit("  }");
-        self.emit("  return { __tag: \"Ok\", __fields: [{ epoch_millis: millis }] };");
+        self.emit("  return { __tag: \"Ok\", __fields: [{ epochMillis: millis }] };");
         self.emit("}");
         self.emit("function __sigil_time_format_iso(instant) {");
-        self.emit("  return new Date(instant.epoch_millis).toISOString();");
+        self.emit("  return new Date(instant.epochMillis).toISOString();");
         self.emit("}");
         self.emit("function __sigil_time_now_instant() {");
-        self.emit("  return { epoch_millis: Date.now() };");
+        self.emit("  return { epochMillis: Date.now() };");
         self.emit("}");
         self.emit("function __sigil_url_query_map_from_search(search) {");
         self.emit("  const params = new URLSearchParams(search);");
@@ -418,9 +418,9 @@ impl TypeScriptGenerator {
         self.emit("  }");
         self.emit("}");
         self.emit("async function __sigil_with_mock_extern(key, actualFn, mockFn, body) {");
-        self.emit("  if (typeof actualFn !== 'function') { throw new Error('with_mock extern target is not callable'); }");
-        self.emit("  if (typeof mockFn !== 'function') { throw new Error('with_mock replacement must be callable'); }");
-        self.emit("  if (actualFn.length !== mockFn.length) { throw new Error(`with_mock extern arity mismatch for ${key}: expected ${actualFn.length}, got ${mockFn.length}`); }");
+        self.emit("  if (typeof actualFn !== 'function') { throw new Error('withMock extern target is not callable'); }");
+        self.emit("  if (typeof mockFn !== 'function') { throw new Error('withMock replacement must be callable'); }");
+        self.emit("  if (actualFn.length !== mockFn.length) { throw new Error(`withMock extern arity mismatch for ${key}: expected ${actualFn.length}, got ${mockFn.length}`); }");
         self.emit("  return await __sigil_with_mock(key, mockFn, body);");
         self.emit("}");
     }
@@ -531,7 +531,7 @@ impl TypeScriptGenerator {
                 "{}.then(async ([__fn, __acc, __map]) => {{ let __current = __acc; for (const [__key, __value] of __sigil_map_entries(__map)) {{ __current = await Promise.resolve(__fn(__current, __key, __value)); }} return __current; }})",
                 self.js_all(&[self.js_ready(fn_name), self.js_ready(init), self.js_ready(map)])
             )),
-            ("from_list", [entries]) => Some(format!(
+            ("fromList", [entries]) => Some(format!(
                 "{}.then((__entries) => __sigil_map_from_entries(__entries.map((__entry) => [__entry.key, __entry.value])))",
                 self.js_ready(entries)
             )),
@@ -555,7 +555,7 @@ impl TypeScriptGenerator {
                 "{}.then((__map) => __sigil_map_entries(__map).map(([__key]) => __key))",
                 self.js_ready(map)
             )),
-            ("map_values", [fn_name, map]) => Some(format!(
+            ("mapValues", [fn_name, map]) => Some(format!(
                 "{}.then(async ([__fn, __map]) => {{ let __current = __sigil_map_empty(); for (const [__key, __value] of __sigil_map_entries(__map)) {{ __current = __sigil_map_insert(__current, __key, await Promise.resolve(__fn(__value))); }} return __current; }})",
                 self.js_all(&[self.js_ready(fn_name), self.js_ready(map)])
             )),
@@ -907,31 +907,31 @@ impl TypeScriptGenerator {
         let generated_args = generated_args?;
 
         match member {
-            "char_at" if generated_args.len() == 2 => {
+            "charAt" if generated_args.len() == 2 => {
                 Ok(Some(format!("{}.then(([__index, __string]) => __sigil_ready(__string.charAt(__index)))", self.js_all(&generated_args))))
             }
             "substring" if generated_args.len() == 3 => {
                 Ok(Some(format!("{}.then(([__end, __string, __start]) => __sigil_ready(__string.substring(__start, __end)))", self.js_all(&generated_args))))
             }
-            "to_upper" if generated_args.len() == 1 => {
+            "toUpper" if generated_args.len() == 1 => {
                 Ok(Some(format!("{}.then((__value) => __value.toUpperCase())", generated_args[0])))
             }
-            "to_lower" if generated_args.len() == 1 => {
+            "toLower" if generated_args.len() == 1 => {
                 Ok(Some(format!("{}.then((__value) => __value.toLowerCase())", generated_args[0])))
             }
             "trim" if generated_args.len() == 1 => {
                 Ok(Some(format!("{}.then((__value) => __value.trim())", generated_args[0])))
             }
-            "index_of" if generated_args.len() == 2 => {
+            "indexOf" if generated_args.len() == 2 => {
                 Ok(Some(format!("{}.then(([__string, __needle]) => __string.indexOf(__needle))", self.js_all(&generated_args))))
             }
             "split" if generated_args.len() == 2 => {
                 Ok(Some(format!("{}.then(([__separator, __string]) => __string.split(__separator))", self.js_all(&generated_args))))
             }
-            "replace_all" if generated_args.len() == 3 => {
+            "replaceAll" if generated_args.len() == 3 => {
                 Ok(Some(format!("{}.then(([__search, __replacement, __string]) => __string.replaceAll(__search, __replacement))", self.js_all(&generated_args))))
             }
-            "int_to_string" if generated_args.len() == 1 => {
+            "intToString" if generated_args.len() == 1 => {
                 Ok(Some(format!("{}.then((__value) => String(__value))", generated_args[0])))
             }
             "join" if generated_args.len() == 2 => {
@@ -943,13 +943,13 @@ impl TypeScriptGenerator {
             "drop" if generated_args.len() == 2 => {
                 Ok(Some(format!("{}.then(([__count, __string]) => __string.substring(__count))", self.js_all(&generated_args))))
             }
-            "starts_with" if generated_args.len() == 2 => {
+            "startsWith" if generated_args.len() == 2 => {
                 Ok(Some(format!("{}.then(([__prefix, __string]) => __string.startsWith(__prefix))", self.js_all(&generated_args))))
             }
-            "ends_with" if generated_args.len() == 2 => {
+            "endsWith" if generated_args.len() == 2 => {
                 Ok(Some(format!("{}.then(([__string, __suffix]) => __string.endsWith(__suffix))", self.js_all(&generated_args))))
             }
-            "is_digit" if generated_args.len() == 1 => {
+            "isDigit" if generated_args.len() == 1 => {
                 Ok(Some(format!("{}.then((__value) => /^[0-9]$/.test(__value))", generated_args[0])))
             }
             _ => Ok(None),
@@ -988,7 +988,7 @@ impl TypeScriptGenerator {
                     self.js_all(&generated_args)
                 )))
             }
-            "from_list" if generated_args.len() == 1 => {
+            "fromList" if generated_args.len() == 1 => {
                 Ok(Some(format!(
                     "{}.then((__entries) => __sigil_map_from_entries(__entries.map((__entry) => [__entry.key, __entry.value])))",
                     generated_args[0]
@@ -1018,7 +1018,7 @@ impl TypeScriptGenerator {
                     generated_args[0]
                 )))
             }
-            "map_values" if generated_args.len() == 2 => {
+            "mapValues" if generated_args.len() == 2 => {
                 Ok(Some(format!(
                     "{}.then(async ([__fn, __map]) => {{ let __current = __sigil_map_empty(); for (const [__key, __value] of __sigil_map_entries(__map)) {{ __current = __sigil_map_insert(__current, __key, await Promise.resolve(__fn(__value))); }} return __current; }})",
                     self.js_all(&generated_args)
@@ -1069,35 +1069,35 @@ impl TypeScriptGenerator {
             .collect::<Result<Vec<_>, CodegenError>>()?;
 
         match member {
-            "as_array" if generated_args.len() == 1 => Ok(Some(format!(
+            "asArray" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__value) => __value?.__tag === 'JsonArray' ? {{ __tag: \"Some\", __fields: [__value.__fields[0]] }} : {{ __tag: \"None\", __fields: [] }})",
                 generated_args[0]
             ))),
-            "as_bool" if generated_args.len() == 1 => Ok(Some(format!(
+            "asBool" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__value) => __value?.__tag === 'JsonBool' ? {{ __tag: \"Some\", __fields: [__value.__fields[0]] }} : {{ __tag: \"None\", __fields: [] }})",
                 generated_args[0]
             ))),
-            "as_number" if generated_args.len() == 1 => Ok(Some(format!(
+            "asNumber" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__value) => __value?.__tag === 'JsonNumber' ? {{ __tag: \"Some\", __fields: [__value.__fields[0]] }} : {{ __tag: \"None\", __fields: [] }})",
                 generated_args[0]
             ))),
-            "as_object" if generated_args.len() == 1 => Ok(Some(format!(
+            "asObject" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__value) => __value?.__tag === 'JsonObject' ? {{ __tag: \"Some\", __fields: [__value.__fields[0]] }} : {{ __tag: \"None\", __fields: [] }})",
                 generated_args[0]
             ))),
-            "as_string" if generated_args.len() == 1 => Ok(Some(format!(
+            "asString" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__value) => __value?.__tag === 'JsonString' ? {{ __tag: \"Some\", __fields: [__value.__fields[0]] }} : {{ __tag: \"None\", __fields: [] }})",
                 generated_args[0]
             ))),
-            "get_field" if generated_args.len() == 2 => Ok(Some(format!(
+            "getField" if generated_args.len() == 2 => Ok(Some(format!(
                 "{}.then(([__key, __obj]) => __sigil_map_get(__obj, __key))",
                 self.js_all(&generated_args)
             ))),
-            "get_index" if generated_args.len() == 2 => Ok(Some(format!(
+            "getIndex" if generated_args.len() == 2 => Ok(Some(format!(
                 "{}.then(([__idx, __arr]) => (__idx >= 0 && __idx < __arr.length) ? {{ __tag: \"Some\", __fields: [__arr[__idx]] }} : {{ __tag: \"None\", __fields: [] }})",
                 self.js_all(&generated_args)
             ))),
-            "is_null" if generated_args.len() == 1 => Ok(Some(format!(
+            "isNull" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__value) => __value?.__tag === 'JsonNull')",
                 generated_args[0]
             ))),
@@ -1125,32 +1125,32 @@ impl TypeScriptGenerator {
 
         match member {
             "compare" if generated_args.len() == 2 => Ok(Some(format!(
-                "{}.then(([__left, __right]) => (__left.epoch_millis < __right.epoch_millis ? -1 : (__left.epoch_millis > __right.epoch_millis ? 1 : 0)))",
+                "{}.then(([__left, __right]) => (__left.epochMillis < __right.epochMillis ? -1 : (__left.epochMillis > __right.epochMillis ? 1 : 0)))",
                 self.js_all(&generated_args)
             ))),
-            "format_iso" if generated_args.len() == 1 => Ok(Some(format!(
+            "formatIso" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__instant) => __sigil_time_format_iso(__instant))",
                 generated_args[0]
             ))),
-            "from_epoch_millis" if generated_args.len() == 1 => Ok(Some(format!(
-                "{}.then((__millis) => ({{ epoch_millis: __millis }}))",
+            "fromEpochMillis" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__millis) => ({{ epochMillis: __millis }}))",
                 generated_args[0]
             ))),
-            "is_after" if generated_args.len() == 2 => Ok(Some(format!(
-                "{}.then(([__left, __right]) => __left.epoch_millis > __right.epoch_millis)",
+            "isAfter" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__left, __right]) => __left.epochMillis > __right.epochMillis)",
                 self.js_all(&generated_args)
             ))),
-            "is_before" if generated_args.len() == 2 => Ok(Some(format!(
-                "{}.then(([__left, __right]) => __left.epoch_millis < __right.epoch_millis)",
+            "isBefore" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__left, __right]) => __left.epochMillis < __right.epochMillis)",
                 self.js_all(&generated_args)
             ))),
             "now" if generated_args.is_empty() => Ok(Some("__sigil_ready(__sigil_time_now_instant())".to_string())),
-            "parse_iso" if generated_args.len() == 1 => Ok(Some(format!(
+            "parseIso" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__input) => __sigil_time_parse_iso_result(__input))",
                 generated_args[0]
             ))),
-            "to_epoch_millis" if generated_args.len() == 1 => Ok(Some(format!(
-                "{}.then((__instant) => __instant.epoch_millis)",
+            "toEpochMillis" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__instant) => __instant.epochMillis)",
                 generated_args[0]
             ))),
             _ => Ok(None),
@@ -1885,16 +1885,16 @@ mod tests {
 
     #[test]
     fn test_generate_import_sanitizes_alias_and_uses_relative_path() {
-        let source = "i src⋅rot13-encoder\nλmain()→𝕌=()";
+        let source = "i src⋅rot13Encoder\nλmain()→𝕌=()";
         let program = typed_program_for(source, "test.sigil");
 
         let mut gen = TypeScriptGenerator::new(CodegenOptions {
-            source_file: Some("projects/algorithms/tests/rot13-encoder.sigil".to_string()),
-            output_file: Some("/tmp/projects/algorithms/.local/tests/rot13-encoder.ts".to_string()),
+            source_file: Some("projects/algorithms/tests/rot13Encoder.sigil".to_string()),
+            output_file: Some("/tmp/projects/algorithms/.local/tests/rot13Encoder.ts".to_string()),
         });
         let result = gen.generate(&program).unwrap();
 
-        assert!(result.contains("import * as src_rot13_encoder from '../src/rot13-encoder.js';"));
+        assert!(result.contains("import * as src_rot13Encoder from '../src/rot13Encoder.js';"));
     }
 
     #[test]
@@ -1903,9 +1903,9 @@ mod tests {
         let program = typed_program_for(source, "test.sigil");
 
         let mut gen = TypeScriptGenerator::new(CodegenOptions {
-            source_file: Some("language/stdlib-tests/tests/numeric-predicates.sigil".to_string()),
+            source_file: Some("language/stdlib-tests/tests/numericPredicates.sigil".to_string()),
             output_file: Some(
-                "/tmp/language/stdlib-tests/.local/tests/numeric-predicates.ts".to_string(),
+                "/tmp/language/stdlib-tests/.local/tests/numericPredicates.ts".to_string(),
             ),
         });
         let result = gen.generate(&program).unwrap();
@@ -1962,19 +1962,19 @@ mod tests {
 
     #[test]
     fn test_generate_qualified_constructor_call_without_mock_wrapper() {
-        let source = "i src⋅graph-types\nλmain()→𝕌=src⋅graph-types.Ordering([])";
+        let source = "i src⋅graphTypes\nλmain()→𝕌=src⋅graphTypes.Ordering([])";
         let program = typed_program_for(source, "test.sigil");
 
         let mut gen = TypeScriptGenerator::new(CodegenOptions {
-            source_file: Some("projects/algorithms/src/topological-sort.sigil".to_string()),
+            source_file: Some("projects/algorithms/src/topologicalSort.sigil".to_string()),
             output_file: Some(
-                "/tmp/projects/algorithms/.local/src/topological-sort.ts".to_string(),
+                "/tmp/projects/algorithms/.local/src/topologicalSort.ts".to_string(),
             ),
         });
         let result = gen.generate(&program).unwrap();
 
-        assert!(result.contains("src_graph_types.Ordering"));
-        assert!(!result.contains("__sigil_call(\"extern:src/graph-types.Ordering\""));
+        assert!(result.contains("src_graphTypes.Ordering"));
+        assert!(!result.contains("__sigil_call(\"extern:src/graphTypes.Ordering\""));
     }
 
     #[test]

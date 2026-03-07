@@ -1,0 +1,22 @@
+⟦ Node.js path FFI Type Declarations
+
+  Provides typed FFI declarations for the Node.js path module.
+  Import this module to get compile-time type checking for path operations.
+
+  Example:
+    i stdlib⋅ffiNodePath
+    λgetConfigPath()→𝕊=path.join(["config", "app.json"])
+⟧
+
+e path : {
+  basename : λ(𝕊) → 𝕊,
+  dirname : λ(𝕊) → 𝕊,
+  extname : λ(𝕊) → 𝕊,
+  join : λ(𝕊, 𝕊) → 𝕊,
+  normalize : λ(𝕊) → 𝕊,
+  relative : λ(𝕊, 𝕊) → 𝕊
+}
+
+⟦ Note: join and resolve are variadic in Node.js but Sigil doesn't support
+  variadic types yet. The above typing assumes 2-argument join.
+  For other arities, use untyped 'e path'. ⟧

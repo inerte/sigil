@@ -65,11 +65,11 @@ Mocks are explicit, lexical, and automatically restored.
 mockable λfetchUser(id:ℤ)→!Network 𝕊="real"
 ```
 
-### `with_mock`
+### `withMock`
 
 ```sigil
 test "fallback on API failure" →!Network {
-  with_mock(fetchUser, λ(id:ℤ)→!Network 𝕊="ERR") {
+  withMock(fetchUser, λ(id:ℤ)→!Network 𝕊="ERR") {
     fetchUser(1)="ERR"
   }
 }
@@ -85,7 +85,7 @@ Test files run in parallel by default (results are sorted deterministically in f
 cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
 
 # Run a file or subdirectory under ./tests
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests/basic-testing.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests/basicTesting.sigil
 
 # Filter by test description substring
 cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --match "cache"

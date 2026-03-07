@@ -1,3 +1,0 @@
-i src⋅n-queens
-
-λmain()→[[ℤ]]=src⋅n-queens.n_queens(4)

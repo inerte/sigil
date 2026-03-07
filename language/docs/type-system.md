@@ -338,10 +338,10 @@ Constructors are functions that create sum type values:
 Imported constructors use the same fully qualified namespace style as imported functions:
 
 ```sigil
-i src⋅graph-types
+i src⋅graphTypes
 
-λsorted(order:[ℤ])→src⋅graph-types.TopologicalSortResult=
-  src⋅graph-types.Ordering(order)
+λsorted(order:[ℤ])→src⋅graphTypes.TopologicalSortResult=
+  src⋅graphTypes.Ordering(order)
 ```
 
 ### Pattern Matching
@@ -369,9 +369,9 @@ Sum types are deconstructed using pattern matching:
 }
 
 ⟦ Imported constructor patterns use fully qualified names ⟧
-λproject(result:src⋅graph-types.TopologicalSortResult)→[ℤ] match result{
-  src⋅graph-types.Ordering(order)→order|
-  src⋅graph-types.CycleDetected()→[]
+λproject(result:src⋅graphTypes.TopologicalSortResult)→[ℤ] match result{
+  src⋅graphTypes.Ordering(order)→order|
+  src⋅graphTypes.CycleDetected()→[]
 }
 ```
 
@@ -465,7 +465,7 @@ t Result[T,E]=Ok(T)|Err(E)
 
 ### Examples
 
-See `examples/sum-types-demo.sigil` for comprehensive examples including:
+See `examples/sumTypesDemo.sigil` for comprehensive examples including:
 - Simple enums (Color)
 - Generic Option and Result types
 - Pattern matching techniques

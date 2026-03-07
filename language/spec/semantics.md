@@ -5,7 +5,7 @@ Last Updated: 2026-02-21
 
 ## Overview
 
-This document defines the **operational semantics** of Sigil - how programs execute and evaluate. Sigil uses **immutable data** and a **concurrent-by-default, demand-driven** execution model.
+This document defines the **operational semantics** of Sigil - how programs execute and evaluate. Sigil uses **immutable data** and a **concurrentByDefault, demand-driven** execution model.
 
 ## Evaluation Strategy
 

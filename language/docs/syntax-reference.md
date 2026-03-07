@@ -134,7 +134,7 @@ mockable λfetchUser(id:ℤ)→!Network 𝕊="real"
 
 - `mockable` is only valid on functions
 - mockable functions must be effectful
-- mock targets are used by `with_mock(...) { ... }` in tests
+- mock targets are used by `withMock(...) { ... }` in tests
 
 ## Exported declarations (explicit)
 
@@ -229,7 +229,7 @@ Sigil-to-Sigil imports are namespace imports only.
 
 ```sigil
 i core⋅map
-i src⋅todo-domain
+i src⋅todoDomain
 i stdlib⋅json
 i stdlib⋅list
 i stdlib⋅file
@@ -241,17 +241,17 @@ i stdlib⋅url
 Use imported members with fully qualified namespace access:
 
 ```sigil
-src⋅todo-domain.completedCount(todos)
+src⋅todoDomain.completedCount(todos)
 #[1,2,3]
-src⋅graph-types.Ordering([1,2,3])
+src⋅graphTypes.Ordering([1,2,3])
 ```
 
 Imported sum-type constructors use the same fully qualified namespace style in both expressions and match patterns:
 
 ```sigil
-λrender(result:src⋅graph-types.TopologicalSortResult)→[ℤ] match result{
-  src⋅graph-types.Ordering(order)→order|
-  src⋅graph-types.CycleDetected()→[]
+λrender(result:src⋅graphTypes.TopologicalSortResult)→[ℤ] match result{
+  src⋅graphTypes.Ordering(order)→order|
+  src⋅graphTypes.CycleDetected()→[]
 }
 ```
 
@@ -310,7 +310,7 @@ test "logs" →!IO {
 mockable λfetchUser(id:ℤ)→!Network 𝕊="real"
 
 test "mocked fetch" →!Network {
-  with_mock(fetchUser,λ(id:ℤ)→!Network 𝕊="mocked"){
+  withMock(fetchUser,λ(id:ℤ)→!Network 𝕊="mocked"){
     fetchUser(1)="mocked"
   }
 }
@@ -428,7 +428,7 @@ t Point={x:ℤ,y:ℤ}
 
 Pattern guards are **backward compatible**: patterns without guards work exactly as before.
 
-See `language/examples/pattern-guards.sigil` for more examples.
+See `language/examples/patternGuards.sigil` for more examples.
 
 ## Lists
 

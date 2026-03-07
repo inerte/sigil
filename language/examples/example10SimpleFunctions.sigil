@@ -1,0 +1,8 @@
+⟦ Test: Simple Function Declaration
+   Expected output: 15
+   Function: add three numbers
+⟧
+
+λ addThree(x: ℤ, y: ℤ, z: ℤ) → ℤ = x + y + z
+
+λ main() → ℤ = addThree(3, 5, 7)

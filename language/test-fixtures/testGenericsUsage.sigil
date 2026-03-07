@@ -1,0 +1,3 @@
+λmain()→𝕌=()
+
+λuseOption()→Option[ℤ]=Some(42)

@@ -1,28 +1,28 @@
-i src⋅insertion-sort
-i src⋅merge-sort
+i src⋅insertionSort
+i src⋅mergeSort
 
 λmain()→𝕌=()
 
 test "insertion sort empty list" {
-  src⋅insertion-sort.insertion_sort([])=[]
+  src⋅insertionSort.insertionSort([])=[]
 }
 
 test "insertion sort preserves duplicates" {
-  src⋅insertion-sort.insertion_sort([3,1,3,2,1])=[1,1,2,3,3]
+  src⋅insertionSort.insertionSort([3,1,3,2,1])=[1,1,2,3,3]
 }
 
 test "insertion sort ascending order" {
-  src⋅insertion-sort.insertion_sort([5,4,3,2,1])=[1,2,3,4,5]
+  src⋅insertionSort.insertionSort([5,4,3,2,1])=[1,2,3,4,5]
 }
 
 test "merge sort odd length list" {
-  src⋅merge-sort.merge_sort([9,5,1,7,3])=[1,3,5,7,9]
+  src⋅mergeSort.mergeSort([9,5,1,7,3])=[1,3,5,7,9]
 }
 
 test "merge sort already sorted input" {
-  src⋅merge-sort.merge_sort([1,2,3,4,5])=[1,2,3,4,5]
+  src⋅mergeSort.mergeSort([1,2,3,4,5])=[1,2,3,4,5]
 }
 
 test "merge sort reverse sorted input" {
-  src⋅merge-sort.merge_sort([5,4,3,2,1])=[1,2,3,4,5]
+  src⋅mergeSort.mergeSort([5,4,3,2,1])=[1,2,3,4,5]
 }

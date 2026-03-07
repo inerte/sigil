@@ -104,48 +104,41 @@ Test files in `tests/` directories can import from ANY file (including `.sigil` 
 - No `export` keyword needed - everything is visible
 - Reinforces "ONE WAY" canonical philosophy
 
-### Filename Format Rule
+### Naming Rules
 
-**Rule**: Filenames must be lowercase with hyphens for word separation.
+**Rule**: Sigil uses exactly two identifier forms.
 
-**Rationale**: Enforce one canonical filename format for consistency and filesystem safety.
+- `UpperCamelCase` for types, constructors, and type variables
+- `lowerCamelCase` for everything else
 
-**Format**:
-- Basename (before extension) must match: `^[a-z0-9]+(-[a-z0-9]+)*$`
-- Lowercase letters only (a-z)
-- Numbers allowed (0-9)
-- Hyphens for word separation (-)
-- No underscores, spaces, or special characters
+**Filename rule**: basenames must be `lowerCamelCase`.
 
 **Valid:**
 ```
 hello.sigil
-user-service.lib.sigil
-01-introduction.sigil
-ffi-node-console.lib.sigil
+userService.lib.sigil
+example01Introduction.sigil
+ffiNodeConsole.lib.sigil
 ```
 
 **Invalid:**
 ```
-UserService.sigil           # uppercase → SIGIL-CANON-FILENAME-CASE
+UserService.sigil           # uppercase start → SIGIL-CANON-FILENAME-CASE
 user_service.lib.sigil      # underscore → SIGIL-CANON-FILENAME-INVALID-CHAR
-user service.sigil          # space → SIGIL-CANON-FILENAME-INVALID-CHAR
-user@service.sigil          # special char → SIGIL-CANON-FILENAME-INVALID-CHAR
--hello.sigil                # starts with hyphen → SIGIL-CANON-FILENAME-FORMAT
-hello-.sigil                # ends with hyphen → SIGIL-CANON-FILENAME-FORMAT
-hello--world.sigil          # consecutive hyphens → SIGIL-CANON-FILENAME-FORMAT
+user-service.sigil          # hyphen → SIGIL-CANON-FILENAME-INVALID-CHAR
+1intro.sigil                # leading digit → SIGIL-CANON-FILENAME-FORMAT
 ```
 
 **Error Codes**:
-- `SIGIL-CANON-FILENAME-CASE` - Contains uppercase letters
-- `SIGIL-CANON-FILENAME-INVALID-CHAR` - Contains underscores, spaces, or special characters
-- `SIGIL-CANON-FILENAME-FORMAT` - Format violations (hyphens at edges, consecutive hyphens, empty basename)
+- `SIGIL-CANON-FILENAME-CASE` - Does not start with lowercase
+- `SIGIL-CANON-FILENAME-INVALID-CHAR` - Contains `_`, `-`, or other invalid characters
+- `SIGIL-CANON-FILENAME-FORMAT` - Not lowerCamelCase or starts with a digit
 
 **Rationale:**
 - **Case-insensitive filesystem safety**: Prevents `User.sigil` vs `user.sigil` confusion on macOS/Windows
 - **Consistent import paths**: Module names map predictably to filenames
-- **One canonical way**: No choice between `user_service`, `UserService`, or `user-service`
-- **Readability**: Kebab-case is clear and web-friendly
+- **One canonical way**: No choice between `snake_case`, `kebab-case`, and `camelCase`
+- **Cheap category distinction**: Type-level names stay visibly different from value-level names
 
 #### Test Location Rule
 
@@ -155,7 +148,7 @@ Test blocks can ONLY appear in files under `tests/` directories.
 
 ```sigil
 ✅ VALID - Test file in tests/ directory:
-// tests/list-predicates.sigil
+// tests/listPredicates.sigil
 i stdlib⋅list
 
 λmain()→𝕌=()

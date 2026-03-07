@@ -5,21 +5,21 @@
   Runtime behavior is provided by compiler intrinsics for stdlib⋅time.
 ⟧
 
-t Instant={epoch_millis:ℤ}
+t Instant={epochMillis:ℤ}
 t TimeError={message:𝕊}
 
 λcompare(left:Instant,right:Instant)→ℤ=0
 
-λformat_iso(instant:Instant)→𝕊=""
+λformatIso(instant:Instant)→𝕊=""
 
-λfrom_epoch_millis(millis:ℤ)→Instant={epoch_millis:millis}
+λfromEpochMillis(millis:ℤ)→Instant={epochMillis:millis}
 
-λis_after(left:Instant,right:Instant)→𝔹=false
+λisAfter(left:Instant,right:Instant)→𝔹=false
 
-λis_before(left:Instant,right:Instant)→𝔹=false
+λisBefore(left:Instant,right:Instant)→𝔹=false
 
-λnow()→!IO Instant={epoch_millis:0}
+λnow()→!IO Instant={epochMillis:0}
 
-λparse_iso(input:𝕊)→Result[Instant,TimeError]=Err({message:"time parse intrinsic unavailable"})
+λparseIso(input:𝕊)→Result[Instant,TimeError]=Err({message:"time parse intrinsic unavailable"})
 
-λto_epoch_millis(instant:Instant)→ℤ=instant.epoch_millis
+λtoEpochMillis(instant:Instant)→ℤ=instant.epochMillis

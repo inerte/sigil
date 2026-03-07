@@ -78,7 +78,7 @@ Tests aren't a third category—they're executables that happen to contain test 
 Every test file follows the same pattern:
 
 ```sigil
-// tests/list-predicates.sigil
+// tests/listPredicates.sigil
 i stdlib⋅list
 
 λmain()→𝕌=()
@@ -316,7 +316,7 @@ This change required updating all existing Sigil files. Here's what we found:
 These were already in `tests/` directories but lacked the executable marker:
 
 ```diff
-  // tests/list-predicates.sigil
+  // tests/listPredicates.sigil
   i stdlib⋅list
 
 + λmain()→𝕌=()
@@ -327,12 +327,12 @@ These were already in `tests/` directories but lacked the executable marker:
 ```
 
 **Fixed:**
-- `language/stdlib-tests/tests/list-predicates.sigil`
-- `language/stdlib-tests/tests/numeric-predicates.sigil`
-- `projects/algorithms/tests/99-bottles.sigil`
-- `projects/algorithms/tests/basic-testing.sigil`
-- `projects/algorithms/tests/rot13-encoder.sigil`
-- `projects/todo-app/tests/todo-domain.sigil`
+- `language/stdlib-tests/tests/listPredicates.sigil`
+- `language/stdlib-tests/tests/numericPredicates.sigil`
+- `projects/algorithms/tests/example99Bottles.sigil`
+- `projects/algorithms/tests/basicTesting.sigil`
+- `projects/algorithms/tests/rot13Encoder.sigil`
+- `projects/todo-app/tests/todoDomain.sigil`
 
 ### Misplaced Test File (1 file)
 

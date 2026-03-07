@@ -240,7 +240,7 @@ export function main() {
 
 **No Promise wrapping needed** - it just works. The compiler keeps FFI results pending until something strict needs them.
 
-See [ASYNC.md](./ASYNC.md) for the full concurrent-by-default model.
+See [ASYNC.md](./ASYNC.md) for the full concurrentByDefault model.
 
 ## Canonical Form
 

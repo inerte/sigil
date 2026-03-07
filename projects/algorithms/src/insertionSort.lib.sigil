@@ -1,0 +1,12 @@
+λinsertSorted(item:ℤ,xs:[ℤ])→[ℤ] match xs{
+  []→[item]|
+  [head,.tail]→match item≤head{
+    true→[item,head]⧺tail|
+    false→[head]⧺insertSorted(item,tail)
+  }
+}
+
+λinsertionSort(xs:[ℤ])→[ℤ] match xs{
+  []→[]|
+  [head,.tail]→insertSorted(head,insertionSort(tail))
+}

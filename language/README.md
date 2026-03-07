@@ -60,7 +60,7 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test -
 - Tests must live under `./tests`
 - Test bodies return `𝔹`
 - Effectful tests declare effects explicitly
-- Scoped mocking is built-in via `mockable` + `with_mock(...) { ... }`
+- Scoped mocking is built-in via `mockable` + `withMock(...) { ... }`
 - Test files run in parallel by default (JSON results are output in stable order)
 
 See `docs/TESTING.md`.
@@ -72,7 +72,7 @@ Sigil-to-Sigil imports are typechecked across modules (not trust-mode `any`).
 Canonical Sigil imports:
 
 ```sigil
-i src⋅todo-domain
+i src⋅todoDomain
 i stdlib⋅list
 ```
 
@@ -236,10 +236,10 @@ See `benchmarks/RESULTS.md` for methodology and per-algorithm code.
 | fibonacci | 45 | 60 | +33.3% |
 | gcd | 43 | 48 | +11.6% |
 | power | 47 | 52 | +10.6% |
-| map-double | 53 | 59 | +11.3% |
-| filter-even | 61 | 67 | +9.8% |
-| is-palindrome | 45 | 49 | +8.9% |
-| sum-list | 55 | 50 | -9.1% |
+| mapDouble | 53 | 59 | +11.3% |
+| filterEven | 61 | 67 | +9.8% |
+| isPalindrome | 45 | 49 | +8.9% |
+| sumList | 55 | 50 | -9.1% |
 | **Average** | **49.3** | **54.6** | **+11.2%** |
 
 **Practical takeaway:** current evidence supports a **~10-15% token reduction**, not 40-60%.

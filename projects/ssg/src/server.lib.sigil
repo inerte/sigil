@@ -1,10 +1,10 @@
 e fs⋅promises
-i stdlib⋅http-server
+i stdlib⋅httpServer
 
-λstart_server(dist_dir:𝕊,port:ℤ)→!IO 𝕌=
+λstartServer(distDir:𝕊,port:ℤ)→!IO 𝕌=
   {
-    ⟦ TODO: Reconnect to stdlib⋅http-server.serve after callback function-type identity bug is fixed ⟧
-    l noop_dist=(dist_dir:𝕊);
-    l noop_port=(port:ℤ);
+    ⟦ TODO: Reconnect to stdlib⋅httpServer.serve after callback function-type identity bug is fixed ⟧
+    l noopDist=(distDir:𝕊);
+    l noopPort=(port:ℤ);
     ()
   }

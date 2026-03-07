@@ -95,7 +95,7 @@ pub enum ValidationError {
         message: String,
     },
 
-    #[error("SIGIL-CANON-FILENAME-CASE: Filenames must be lowercase\n\nFile: {filename}\nFound uppercase in: {basename}\nRename to: {suggested}\n\nSigil enforces ONE way: lowercase filenames with hyphens for word separation.")]
+    #[error("SIGIL-CANON-FILENAME-CASE: filenames must start with a lowercase letter\n\nFile: {filename}\nFound: {basename}\nRename to: {suggested}\n\nSigil enforces ONE way: filenames must be lowerCamelCase.")]
     FilenameCase {
         filename: String,
         basename: String,
@@ -103,7 +103,7 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
-    #[error("SIGIL-CANON-FILENAME-INVALID-CHAR: Filenames cannot contain {invalid_char}\n\nFile: {filename}\nFound in: {basename}\nRename to: {suggested}\n\nSigil enforces ONE way: use hyphens (-) not underscores (_) for word separation.")]
+    #[error("SIGIL-CANON-FILENAME-INVALID-CHAR: filenames cannot contain {invalid_char}\n\nFile: {filename}\nFound in: {basename}\nRename to: {suggested}\n\nSigil enforces ONE way: filenames must be lowerCamelCase.")]
     FilenameInvalidChar {
         filename: String,
         basename: String,
@@ -116,6 +116,54 @@ pub enum ValidationError {
     FilenameFormat {
         filename: String,
         message: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-IDENTIFIER-FORM: value identifiers must be lowerCamelCase\n\nFound: {found}\nExpected form: lowerCamelCase{suggestion}")]
+    IdentifierForm {
+        found: String,
+        suggestion: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-TYPE-NAME-FORM: type names must be UpperCamelCase\n\nFound: {found}\nExpected form: UpperCamelCase{suggestion}")]
+    TypeNameForm {
+        found: String,
+        suggestion: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-CONSTRUCTOR-NAME-FORM: constructor names must be UpperCamelCase\n\nFound: {found}\nExpected form: UpperCamelCase{suggestion}")]
+    ConstructorNameForm {
+        found: String,
+        suggestion: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-TYPE-VAR-FORM: type variables must be UpperCamelCase\n\nFound: {found}\nExpected form: UpperCamelCase{suggestion}")]
+    TypeVarForm {
+        found: String,
+        suggestion: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-RECORD-FIELD-FORM: record fields must be lowerCamelCase\n\nFound: {found}\nExpected form: lowerCamelCase{suggestion}")]
+    RecordFieldForm {
+        found: String,
+        suggestion: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-MODULE-PATH-FORM: module path segments must be lowerCamelCase\n\nFound: {found}\nExpected form: lowerCamelCase{suggestion}")]
+    ModulePathForm {
+        found: String,
+        suggestion: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-KEYWORD-LEGACY: use withMock; with_mock is not canonical Sigil")]
+    LegacyKeyword {
+        found: String,
         location: SourceLocation,
     },
 
@@ -297,6 +345,13 @@ impl ValidationError {
             ValidationError::FilenameCase { location, .. } => *location,
             ValidationError::FilenameInvalidChar { location, .. } => *location,
             ValidationError::FilenameFormat { location, .. } => *location,
+            ValidationError::IdentifierForm { location, .. } => *location,
+            ValidationError::TypeNameForm { location, .. } => *location,
+            ValidationError::ConstructorNameForm { location, .. } => *location,
+            ValidationError::TypeVarForm { location, .. } => *location,
+            ValidationError::RecordFieldForm { location, .. } => *location,
+            ValidationError::ModulePathForm { location, .. } => *location,
+            ValidationError::LegacyKeyword { location, .. } => *location,
             ValidationError::EOFNewline { location, .. } => *location,
             ValidationError::TrailingWhitespace { location, .. } => *location,
             ValidationError::BlankLines { location, .. } => *location,
@@ -469,6 +524,68 @@ impl From<ValidationError> for Diagnostic {
                 )
                 .with_location(source_location_to_span(get_file(), location))
             }
+
+            ValidationError::IdentifierForm { found, suggestion, location } => Diagnostic::new(
+                codes::canonical::IDENTIFIER_FORM,
+                SigilPhase::Canonical,
+                "value identifiers must be lowerCamelCase",
+            )
+            .with_location(source_location_to_span(get_file(), location))
+            .with_found_expected(&found, "lowerCamelCase")
+            .with_details("suggestion", suggestion),
+
+            ValidationError::TypeNameForm { found, suggestion, location } => Diagnostic::new(
+                codes::canonical::TYPE_NAME_FORM,
+                SigilPhase::Canonical,
+                "type names must be UpperCamelCase",
+            )
+            .with_location(source_location_to_span(get_file(), location))
+            .with_found_expected(&found, "UpperCamelCase")
+            .with_details("suggestion", suggestion),
+
+            ValidationError::ConstructorNameForm { found, suggestion, location } => Diagnostic::new(
+                codes::canonical::CONSTRUCTOR_NAME_FORM,
+                SigilPhase::Canonical,
+                "constructor names must be UpperCamelCase",
+            )
+            .with_location(source_location_to_span(get_file(), location))
+            .with_found_expected(&found, "UpperCamelCase")
+            .with_details("suggestion", suggestion),
+
+            ValidationError::TypeVarForm { found, suggestion, location } => Diagnostic::new(
+                codes::canonical::TYPE_VAR_FORM,
+                SigilPhase::Canonical,
+                "type variables must be UpperCamelCase",
+            )
+            .with_location(source_location_to_span(get_file(), location))
+            .with_found_expected(&found, "UpperCamelCase")
+            .with_details("suggestion", suggestion),
+
+            ValidationError::RecordFieldForm { found, suggestion, location } => Diagnostic::new(
+                codes::canonical::RECORD_FIELD_FORM,
+                SigilPhase::Canonical,
+                "record fields must be lowerCamelCase",
+            )
+            .with_location(source_location_to_span(get_file(), location))
+            .with_found_expected(&found, "lowerCamelCase")
+            .with_details("suggestion", suggestion),
+
+            ValidationError::ModulePathForm { found, suggestion, location } => Diagnostic::new(
+                codes::canonical::MODULE_PATH_FORM,
+                SigilPhase::Canonical,
+                "module path segments must be lowerCamelCase",
+            )
+            .with_location(source_location_to_span(get_file(), location))
+            .with_found_expected(&found, "lowerCamelCase")
+            .with_details("suggestion", suggestion),
+
+            ValidationError::LegacyKeyword { found, location } => Diagnostic::new(
+                codes::canonical::KEYWORD_LEGACY,
+                SigilPhase::Canonical,
+                "use withMock; with_mock is not canonical Sigil",
+            )
+            .with_location(source_location_to_span(get_file(), location))
+            .with_details("found", found),
 
             ValidationError::MatchTupleBoolean { location } => {
                 Diagnostic::new(

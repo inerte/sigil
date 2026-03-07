@@ -259,7 +259,7 @@ We updated the entire Sigil codebase (60+ files). Here's what we found:
 
 **Files unchanged:** 95%+ of files don't use both types and externs, so no changes needed.
 
-### Example: test-typed-ffi-mkdir.sigil
+### Example: testTypedFfiMkdir.sigil
 
 Before (would fail compilation):
 ```sigil
@@ -594,8 +594,8 @@ pnpm install
 pnpm --filter @sigil-lang/compiler build
 
 # Try typed FFI examples
-node language/compiler/dist/cli.js run language/examples/typed-ffi-demo.sigil
-node language/compiler/dist/cli.js run language/test-fixtures/test-typed-ffi-mkdir.sigil
+node language/compiler/dist/cli.js run language/examples/typed-ffiDemo.sigil
+node language/compiler/dist/cli.js run language/test-fixtures/testTypedFfiMkdir.sigil
 ```
 
 **See the error messages:**

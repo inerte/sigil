@@ -4,23 +4,23 @@ i src⋅types
 λmain()→𝕌=()
 
 test "frontmatter derives title and slug without header" {
-  l result=(src⋅frontmatter.parse_frontmatter("Body only","language/docs/CANONICAL_FORMS.md"):src⋅frontmatter.ParseResult);
+  l result=(src⋅frontmatter.parseFrontmatter("Body only","language/docs/CANONICAL_FORMS.md"):src⋅frontmatter.ParseResult);
   result.meta.slug="canonical-forms" and result.meta.title="Canonical Forms"
 }
 
 test "frontmatter parses canonical metadata" {
   l markdown=("---\ntitle: Batteries Included\ndate: 2026-03-03\nauthor: Sigil Language Team\nslug: ssg-notes\n---\n# Batteries Included\nBody":𝕊);
-  l result=(src⋅frontmatter.parse_frontmatter(markdown,"website/articles/ssg.md"):src⋅frontmatter.ParseResult);
+  l result=(src⋅frontmatter.parseFrontmatter(markdown,"website/articles/ssg.md"):src⋅frontmatter.ParseResult);
   result.content="# Batteries Included\nBody" and result.meta={author:"Sigil Language Team",category:"",date:"2026-03-03",description:"",slug:"ssg-notes",title:"Batteries Included"}
 }
 
 test "frontmatter strips quotes" {
   l markdown=("---\ntitle: \"Quoted Title\"\nauthor: 'Sigil Team'\n---\n# Quoted Title":𝕊);
-  l result=(src⋅frontmatter.parse_frontmatter(markdown,"website/articles/quoted.md"):src⋅frontmatter.ParseResult);
+  l result=(src⋅frontmatter.parseFrontmatter(markdown,"website/articles/quoted.md"):src⋅frontmatter.ParseResult);
   result.meta.title="Quoted Title" and result.meta.author="Sigil Team"
 }
 
 test "frontmatter uses first heading when title missing" {
-  l result=(src⋅frontmatter.parse_frontmatter("# Hello Sigil\n\nBody","website/articles/hello.sigil.md"):src⋅frontmatter.ParseResult);
+  l result=(src⋅frontmatter.parseFrontmatter("# Hello Sigil\n\nBody","website/articles/hello.sigil.md"):src⋅frontmatter.ParseResult);
   result.meta.title="Hello Sigil" and result.meta.slug="hello.sigil"
 }

@@ -1,0 +1,3 @@
+i src⋅nQueens
+
+λmain()→[[ℤ]]=src⋅nQueens.nQueens(4)

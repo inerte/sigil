@@ -1,0 +1,165 @@
+t PersistedState={nextId:ℤ,todos:[src⋅todoDomain.Todo]}
+t TodoCodecError={message:𝕊}
+
+i src⋅todoDomain
+i stdlib⋅json
+i stdlib⋅string
+
+λdecodeState(input:𝕊)→Result[PersistedState,TodoCodecError] match stdlib⋅json.parse(input){
+  Ok(value)→decodeStateFromJson(value)|
+  Err(error)→Err({message:error.message})
+}
+
+λdecodeStateFromJson(value:stdlib⋅json.JsonValue)→Result[PersistedState,TodoCodecError] match expectObject("state",value){
+  Ok(obj)→
+    match requireField("nextId",obj){
+      Ok(nextIdValue)→
+        match requireField("todos",obj){
+          Ok(todosValue)→
+            match expectString("nextId",nextIdValue){
+              Ok(nextIdText)→
+                match parseInt(nextIdText){
+                  Ok(nextId)→
+                    match decodeTodos(todosValue){
+                      Ok(todos)→Ok({nextId:nextId,todos:todos})|
+                      Err(error)→Err(error)
+                    }|
+                  Err(error)→Err(error)
+                }|
+              Err(error)→Err(error)
+            }|
+          Err(error)→Err(error)
+        }|
+      Err(error)→Err(error)
+    }|
+  Err(error)→Err(error)
+}
+
+λdecodeTodo(value:stdlib⋅json.JsonValue)→Result[src⋅todoDomain.Todo,TodoCodecError] match expectObject("todo",value){
+  Ok(obj)→
+    match requireField("done",obj){
+      Ok(doneValue)→
+        match requireField("id",obj){
+          Ok(idValue)→
+            match requireField("text",obj){
+              Ok(textValue)→
+                match expectBool("todo.done",doneValue){
+                  Ok(done)→
+                    match expectString("todo.id",idValue){
+                      Ok(idText)→
+                        match expectString("todo.text",textValue){
+                          Ok(text)→
+                            match parseInt(idText){
+                              Ok(id)→Ok({done:done,id:id,text:text})|
+                              Err(error)→Err(error)
+                            }|
+                          Err(error)→Err(error)
+                        }|
+                      Err(error)→Err(error)
+                    }|
+                  Err(error)→Err(error)
+                }|
+              Err(error)→Err(error)
+            }|
+          Err(error)→Err(error)
+        }|
+      Err(error)→Err(error)
+    }|
+  Err(error)→Err(error)
+}
+
+λdecodeTodos(value:stdlib⋅json.JsonValue)→Result[[src⋅todoDomain.Todo],TodoCodecError] match expectArray("todos",value){
+  Ok(values)→decodeTodosFromArray(values)|
+  Err(error)→Err(error)
+}
+
+λdecodeTodosFromArray(values:[stdlib⋅json.JsonValue])→Result[[src⋅todoDomain.Todo],TodoCodecError] match values{
+  []→Ok([])|
+  [head,.tail]→
+    match decodeTodo(head){
+      Ok(todo)→
+        match decodeTodosFromArray(tail){
+          Ok(rest)→Ok([todo]⧺rest)|
+          Err(error)→Err(error)
+        }|
+      Err(error)→Err(error)
+    }
+}
+
+λencodeState(state:PersistedState)→𝕊=stdlib⋅json.stringify(encodeStateToJson(state))
+
+λencodeStateToJson(state:PersistedState)→stdlib⋅json.JsonValue=
+  stdlib⋅json.JsonObject({
+    "nextId"↦stdlib⋅json.JsonString(stdlib⋅string.intToString(state.nextId)),
+    "todos"↦encodeTodos(state.todos)
+  })
+
+λencodeTodo(todo:src⋅todoDomain.Todo)→stdlib⋅json.JsonValue=
+  stdlib⋅json.JsonObject({
+    "done"↦stdlib⋅json.JsonBool(todo.done),
+    "id"↦stdlib⋅json.JsonString(stdlib⋅string.intToString(todo.id)),
+    "text"↦stdlib⋅json.JsonString(todo.text)
+  })
+
+λencodeTodos(todos:[src⋅todoDomain.Todo])→stdlib⋅json.JsonValue match todos{
+  []→stdlib⋅json.JsonArray([])|
+  [todo,.rest]→
+    match encodeTodos(rest){
+      stdlib⋅json.JsonArray(items)→stdlib⋅json.JsonArray([encodeTodo(todo)]⧺items)|
+      _→stdlib⋅json.JsonArray([encodeTodo(todo)])
+    }
+}
+
+λexpectArray(name:𝕊,value:stdlib⋅json.JsonValue)→Result[[stdlib⋅json.JsonValue],TodoCodecError] match stdlib⋅json.asArray(value){
+  Some(items)→Ok(items)|
+  None→Err({message:"expected array for "++name})
+}
+
+λexpectBool(name:𝕊,value:stdlib⋅json.JsonValue)→Result[𝔹,TodoCodecError] match stdlib⋅json.asBool(value){
+  Some(bool)→Ok(bool)|
+  None→Err({message:"expected bool for "++name})
+}
+
+λexpectObject(name:𝕊,value:stdlib⋅json.JsonValue)→Result[{𝕊↦stdlib⋅json.JsonValue},TodoCodecError] match stdlib⋅json.asObject(value){
+  Some(obj)→Ok(obj)|
+  None→Err({message:"expected object for "++name})
+}
+
+λexpectString(name:𝕊,value:stdlib⋅json.JsonValue)→Result[𝕊,TodoCodecError] match stdlib⋅json.asString(value){
+  Some(text)→Ok(text)|
+  None→Err({message:"expected string for "++name})
+}
+
+λintOfDigit(ch:𝕊)→ℤ match ch{
+  "0"→0|
+  "1"→1|
+  "2"→2|
+  "3"→3|
+  "4"→4|
+  "5"→5|
+  "6"→6|
+  "7"→7|
+  "8"→8|
+  "9"→9|
+  _→-1
+}
+
+λparseInt(text:𝕊)→Result[ℤ,TodoCodecError] match #text=0{
+  true→Err({message:"expected non-empty integer"})|
+  false→parseIntInner(0,0,text)
+}
+
+λparseIntInner(acc:ℤ,idx:ℤ,text:𝕊)→Result[ℤ,TodoCodecError] match idx≥#text{
+  true→Ok(acc)|
+  false→
+    l digit=(intOfDigit(stdlib⋅string.charAt(idx,text)):ℤ);
+    match digit<0{
+      true→Err({message:"expected decimal integer"})|
+      false→parseIntInner((acc*10)+digit,idx+1,text)
+    }
+}
+
+λrequireField(key:𝕊,obj:{𝕊↦stdlib⋅json.JsonValue})→Result[stdlib⋅json.JsonValue,TodoCodecError] match stdlib⋅json.getField(key,obj){
+  Some(value)→Ok(value)|
+  None→Err({message:"missing field: "++key})
+}

@@ -1,0 +1,12 @@
+t ParseError={message:𝕊}
+
+λlookupUser(id:ℤ)→Option[𝕊] match id{
+  1→Some("Alice")|
+  2→Some("Bob")|
+  _→None()
+}
+
+λmain()→Result[𝕊,ParseError] match lookupUser(1){
+  Some(name)→Ok("Hello, "++name)|
+  None()→Err(ParseError{message:"missing user"})
+}

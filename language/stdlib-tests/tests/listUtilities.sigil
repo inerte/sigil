@@ -1,0 +1,103 @@
+i stdlib⋅list
+i stdlib⋅numeric
+
+λappendDigit(acc:ℤ,x:ℤ)→ℤ=acc*10+x
+
+λmain()→𝕌=()
+
+test "list.count counts duplicates" {
+  stdlib⋅list.count(3,[3,1,3,2,3])=3 and stdlib⋅list.count(9,[])=0 and stdlib⋅list.count(7,[1,2,3])=0
+}
+
+test "list.drop clamps naturally" {
+  stdlib⋅list.drop(0,[1,2,3])=[1,2,3] and stdlib⋅list.drop(2,[1,2,3,4])=[3,4] and stdlib⋅list.drop(10,[1,2])=[] and stdlib⋅list.drop(-1,[1,2])=[1,2]
+}
+
+test "list.find returns first matching option" {
+  match stdlib⋅list.find(stdlib⋅numeric.isEven,[1,3,4,6]){
+    Some(actual)→actual=4|
+    None()→false
+  } and match stdlib⋅list.find(stdlib⋅numeric.isEven,[1,3,5]){
+    None()→true|
+    _→false
+  }
+}
+
+test "list.fold reduces left to right" {
+  stdlib⋅list.fold(0,appendDigit,[1,2,3])=123 and stdlib⋅list.fold(9,appendDigit,[])=9
+}
+
+test "list.last returns option" {
+  match stdlib⋅list.last([]){
+    None()→true|
+    _→false
+  } and match stdlib⋅list.last([9]){
+    Some(actual)→actual=9|
+    _→false
+  } and match stdlib⋅list.last([1,2,3]){
+    Some(actual)→actual=3|
+    _→false
+  }
+}
+
+test "list.max returns option" {
+  match stdlib⋅list.max([]){
+    None()→true|
+    _→false
+  } and match stdlib⋅list.max([3,9,4]){
+    Some(actual)→actual=9|
+    _→false
+  } and match stdlib⋅list.max([-5,-2,-9]){
+    Some(actual)→actual=-2|
+    _→false
+  }
+}
+
+test "list.min returns option" {
+  match stdlib⋅list.min([]){
+    None()→true|
+    _→false
+  } and match stdlib⋅list.min([3,9,4]){
+    Some(actual)→actual=3|
+    _→false
+  } and match stdlib⋅list.min([-5,-2,-9]){
+    Some(actual)→actual=-9|
+    _→false
+  }
+}
+
+test "list.nth returns option" {
+  match stdlib⋅list.nth(0,[7,8]){
+    Some(actual)→actual=7|
+    _→false
+  } and match stdlib⋅list.nth(1,[7,8]){
+    Some(actual)→actual=8|
+    _→false
+  } and match stdlib⋅list.nth(2,[7,8]){
+    None()→true|
+    _→false
+  } and match stdlib⋅list.nth(-1,[7,8]){
+    None()→true|
+    _→false
+  }
+}
+
+test "list.product multiplies integer lists" {
+  stdlib⋅list.product([])=1 and stdlib⋅list.product([2,3,4])=24 and stdlib⋅list.product([5,-2,1])=-10
+}
+
+test "list.removeFirst removes only first match" {
+  stdlib⋅list.removeFirst(2,[1,2,3,2])=[1,3,2] and stdlib⋅list.removeFirst(9,[1,2,3])=[1,2,3] and stdlib⋅list.removeFirst(9,[])=[]
+}
+
+test "list.reverse reverses list" {
+  stdlib⋅list.reverse([])=[] and stdlib⋅list.reverse([1])=[1] and stdlib⋅list.reverse([1,2,3])=[3,2,1]
+}
+
+test "list.sum sums integer lists" {
+  stdlib⋅list.sum([])=0 and stdlib⋅list.sum([1,2,3,4])=10 and stdlib⋅list.sum([5,-2,1])=4
+}
+
+test "list.take clamps naturally" {
+  stdlib⋅list.take(0,[1,2,3])=[] and stdlib⋅list.take(2,[1,2,3,4])=[1,2] and stdlib⋅list.take(10,[1,2])=[1,2] and stdlib⋅list.take(-1,[1,2])=[]
+}

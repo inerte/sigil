@@ -2,7 +2,7 @@
 title: "Why Sigil Is Concurrent by Default"
 date: 2026-03-03
 author: Sigil Language Team
-slug: why-sigil-is-concurrent-by-default
+slug: why-sigil-is-concurrentByDefault
 ---
 
 # Why Sigil Is Concurrent by Default
@@ -88,7 +88,7 @@ Ordered accumulation still belongs to `⊕`, because reductions depend on the pr
 
 ## Backend honesty
 
-On the JavaScript backend, concurrent-by-default means:
+On the JavaScript backend, concurrentByDefault means:
 
 - overlapping async I/O
 - overlapping Promise-based work

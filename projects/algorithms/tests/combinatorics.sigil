@@ -1,30 +1,30 @@
-i src⋅linear-search
-i src⋅n-queens
+i src⋅linearSearch
+i src⋅nQueens
 i src⋅permutations
 
-λall_unique(cols:[ℤ])→𝔹 match cols{
+λallUnique(cols:[ℤ])→𝔹 match cols{
   []→true|
-  [head,.tail]→match src⋅linear-search.linear_search(head,tail)=-1{
-    true→all_unique(tail)|
+  [head,.tail]→match src⋅linearSearch.linearSearch(head,tail)=-1{
+    true→allUnique(tail)|
     false→false
   }
 }
 
-λdiagonal_safe(col:ℤ,distance:ℤ,next_cols:[ℤ])→𝔹 match next_cols{
+λdiagonalSafe(col:ℤ,distance:ℤ,nextCols:[ℤ])→𝔹 match nextCols{
   []→true|
-  [next_col,.tail]→match col+distance=next_col or col-distance=next_col{
+  [nextCol,.tail]→match col+distance=nextCol or col-distance=nextCol{
     true→false|
-    false→diagonal_safe(col,distance+1,tail)
+    false→diagonalSafe(col,distance+1,tail)
   }
 }
 
 λmain()→𝕌=()
 
-λno_diagonal_conflicts(cols:[ℤ])→𝔹 match cols{
+λnoDiagonalConflicts(cols:[ℤ])→𝔹 match cols{
   []→true|
   [_]→true|
-  [head,.tail]→match diagonal_safe(head,1,tail){
-    true→no_diagonal_conflicts(tail)|
+  [head,.tail]→match diagonalSafe(head,1,tail){
+    true→noDiagonalConflicts(tail)|
     false→false
   }
 }
@@ -42,16 +42,16 @@ test "permutations order starts with canonical recursive cases" {
 }
 
 test "n queens size one has one solution" {
-  src⋅n-queens.n_queens(1)=[[0]]
+  src⋅nQueens.nQueens(1)=[[0]]
 }
 
 test "n queens size four has two solutions" {
-  #(src⋅n-queens.n_queens(4))=2
+  #(src⋅nQueens.nQueens(4))=2
 }
 
 test "n queens solutions are conflict free" {
-  match src⋅n-queens.n_queens(4){
-    [first_solution,second_solution]→all_unique(first_solution) and no_diagonal_conflicts(first_solution) and all_unique(second_solution) and no_diagonal_conflicts(second_solution)|
+  match src⋅nQueens.nQueens(4){
+    [firstSolution,secondSolution]→allUnique(firstSolution) and noDiagonalConflicts(firstSolution) and allUnique(secondSolution) and noDiagonalConflicts(secondSolution)|
     _→false
   }
 }

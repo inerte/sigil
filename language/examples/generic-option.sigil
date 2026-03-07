@@ -1,4 +1,0 @@
-i core⋅option
-
-λmain()→Option[ℤ]=
-  core⋅option.map_option(λ(x:ℤ)→ℤ=x*2,Some(21))

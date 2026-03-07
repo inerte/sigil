@@ -1,0 +1,17 @@
+t ExtendedGcd={gcd:ℤ,x:ℤ,y:ℤ}
+
+λextendedGcd(a:ℤ,b:ℤ)→ExtendedGcd match b=0{
+  true→match a<0{
+    true→ExtendedGcd{gcd:-a,x:-1,y:0}|
+    false→ExtendedGcd{gcd:a,x:1,y:0}
+  }|
+  false→{
+    l recursiveResult=(extendedGcd(b,a%b):ExtendedGcd);
+    l quotient=(((a-(a%b))/b):ℤ);
+    ExtendedGcd{
+      gcd:recursiveResult.gcd,
+      x:recursiveResult.y,
+      y:recursiveResult.x-(quotient*recursiveResult.y)
+    }
+  }
+}

@@ -1,3 +1,0 @@
-i src⋅extended-gcd
-
-λmain()→src⋅extended-gcd.ExtendedGcd=src⋅extended-gcd.extended_gcd(240,46)

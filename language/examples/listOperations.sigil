@@ -1,0 +1,21 @@
+⟦ Built-in list operations demonstration.
+
+  `↦` and `⊳` are canonical pure operators.
+  Use `⊕` for ordered reductions.
+⟧
+
+⟦ Map: [1,2,3] ↦ λ(x:ℤ)→ℤ=x*2 ⟧
+λdoubleAll(xs:[ℤ])→[ℤ]=xs↦λ(x:ℤ)→ℤ=x*2
+
+⟦ Chaining: filter, then map ⟧
+λfilterThenMap(xs:[ℤ])→[ℤ]=(xs⊳λ(x:ℤ)→𝔹=x>0)↦λ(x:ℤ)→ℤ=x*x
+
+⟦ Filter: [1,2,3,4,5] ⊳ λ(x:ℤ)→𝔹=x>2 ⟧
+λkeepLarge(xs:[ℤ])→[ℤ]=xs⊳λ(x:ℤ)→𝔹=x>2
+
+λmain()→ℤ=
+  l nums=([1,2,3,4,5]:[ℤ]);
+  sum(nums)
+
+⟦ Fold: [1,2,3] ⊕ λ(acc:ℤ,x:ℤ)→ℤ=acc+x ⊕ 0 ⟧
+λsum(xs:[ℤ])→ℤ=xs⊕(λ(acc:ℤ,x:ℤ)→ℤ=acc+x)⊕0

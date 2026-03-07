@@ -111,8 +111,8 @@ Field meanings:
 
 ```json
 {
-  "id": "tests/todo-domain.sigil::todo add prepends item",
-  "file": "tests/todo-domain.sigil",
+  "id": "tests/todoDomain.sigil::todo add prepends item",
+  "file": "tests/todoDomain.sigil",
   "name": "todo add prepends item",
   "status": "pass",
   "durationMs": 0,
@@ -182,7 +182,7 @@ When a test body is a top-level comparison (e.g. `a=b`, `x<y`, `a≠b`), Sigil e
 {
   "failure": {
     "kind": "exception",
-    "message": "with_mock extern arity mismatch for extern:axios.get: expected 1, got 0"
+    "message": "withMock extern arity mismatch for extern:axios.get: expected 1, got 0"
   }
 }
 ```

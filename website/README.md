@@ -38,4 +38,4 @@ test sum_test()→Unit|AssertionFailure =
 
 ---
 
-This website is built from markdown using a Static Site Generator built in Sigil. Docs stay in `language/docs`, specs in `language/spec`. <a href="/about-site/">Learn more about the site →</a>
+This website is built from markdown using a Static Site Generator built in Sigil. Docs stay in `language/docs`, specs in `language/spec`. <a href="about-site/">Learn more about the site →</a>

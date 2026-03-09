@@ -59,6 +59,7 @@ pub mod canonical {
     pub const RECORD_FIELD_FORM: &str = "SIGIL-CANON-RECORD-FIELD-FORM";
     pub const MODULE_PATH_FORM: &str = "SIGIL-CANON-MODULE-PATH-FORM";
     pub const KEYWORD_LEGACY: &str = "SIGIL-CANON-KEYWORD-LEGACY";
+    pub const RECORD_EXACTNESS: &str = "SIGIL-CANON-RECORD-EXACTNESS";
 
     // Recursion patterns
     pub const RECURSION_ACCUMULATOR: &str = "SIGIL-CANON-RECURSION-ACCUMULATOR";

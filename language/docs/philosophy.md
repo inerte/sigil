@@ -92,6 +92,47 @@ The design rule is pragmatic:
 
 Future language changes should decide intentionally whether a concept belongs in core vocabulary or in a namespaced module surface.
 
+#### Trusted Internal Data Must Be Exact
+
+Sigil wants internal business logic to operate on values that are already
+trusted, not on raw boundary blobs that keep dragging uncertainty through the
+program.
+
+That leads to four canonical rules:
+- records are exact fixed-shape products
+- uncertainty is explicit through `Option[T]` and `Result[T,E]`
+- external data should be decoded and validated early
+- validated domain values should use named wrappers when raw primitives are too weak
+
+Practical example:
+
+```sigil
+t Message={createdAt:stdlib⋅time.Instant,text:𝕊}
+```
+
+If code has a `Message`, then `createdAt` is there.
+If `createdAt` might be absent, the canonical encoding is:
+
+```sigil
+t MaybeMessage={createdAt:Option[stdlib⋅time.Instant],text:𝕊}
+```
+
+not an open record, a partial record, or ambient nullability.
+
+For JSON-backed boundaries, the intended pipeline is:
+
+```text
+raw JSON text
+→ stdlib⋅json.parse
+→ stdlib⋅decode.parse / stdlib⋅decode.run
+→ exact internal records and validated wrappers
+```
+
+This is both a PL-design choice and an AI-generation choice.
+LLMs over-defend when object shapes are loose and uncertainty is implicit.
+Sigil tries to make internal field access mean certainty unless the type visibly
+says otherwise.
+
 #### Parameter Classification for Canonical Forms
 
 Multi-parameter recursion is allowed if parameters are **algorithmically structural**, not accumulating state.

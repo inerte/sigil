@@ -210,8 +210,55 @@ Generic instantiation is driven by ordinary bidirectional typing:
 - type syntax `{K↦V}`
 - literal syntax `{key↦value,...}` and `{↦}`
 
-Records remain fixed-shape products using `:`.
+Records are exact fixed-shape products using `:`.
 Maps remain dynamic keyed collections using `↦`.
+
+That exactness is not just documentation. Sigil enforces:
+- no row polymorphism
+- no width subtyping for records
+- no open or partial record forms
+- no “maybe this field exists” semantics outside explicit `Option[T]`
+
+If a field might be absent, the canonical answer is:
+
+```sigil
+t MaybeMessage={createdAt:Option[stdlib⋅time.Instant],text:𝕊}
+```
+
+not an open record, optional-field syntax, or a half-populated record value.
+
+## Trusted Internal Data
+
+Sigil wants internal code to operate on trusted values, not on raw boundary blobs.
+
+Practical rule:
+
+```text
+raw JSON / raw text / raw protocol value
+→ parse
+→ decode / validate
+→ exact internal record or named wrapper
+```
+
+For example, this is the intended shape:
+
+```sigil
+t Message={createdAt:stdlib⋅time.Instant,text:𝕊}
+```
+
+Once business logic has a `Message`, `message.createdAt` is simply there.
+Sigil is trying to make “defensively check the field again just in case” both
+unnecessary and mechanically suspicious.
+
+When a validated value should remain distinct from a raw primitive, use a named
+wrapper rather than an alias:
+
+```sigil
+t Email=Email(𝕊)
+t UserId=UserId(ℤ)
+```
+
+This keeps “validated internal value” separate from “raw string/int from a boundary”.
 
 ### Future Phase: Advanced Features
 

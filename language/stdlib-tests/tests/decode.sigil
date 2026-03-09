@@ -1,0 +1,99 @@
+⟦ Tests for stdlib⋅decode ⟧
+
+t Message={createdAt:stdlib⋅time.Instant,id:TodoId}
+t TodoId=TodoId(ℤ)
+
+i core⋅map
+i stdlib⋅decode
+i stdlib⋅json
+i stdlib⋅time
+
+λinstant(value:stdlib⋅json.JsonValue)→Result[stdlib⋅time.Instant,stdlib⋅decode.DecodeError] match stdlib⋅decode.string(value){
+  Ok(text)→
+    match stdlib⋅time.parseIso(text){
+      Ok(decoded)→Ok(decoded)|
+      Err(error)→Err({message:error.message,path:[]})
+    }|
+  Err(error)→Err(error)
+}
+
+λmain()→𝕌=()
+
+λmessage(value:stdlib⋅json.JsonValue)→Result[Message,stdlib⋅decode.DecodeError] match stdlib⋅decode.field(instant,"createdAt")(value){
+  Ok(createdAt)→
+    match stdlib⋅decode.field(todoId,"id")(value){
+      Ok(id)→Ok({createdAt:createdAt,id:id})|
+      Err(error)→Err(error)
+    }|
+  Err(error)→Err(error)
+}
+
+λtodoId(value:stdlib⋅json.JsonValue)→Result[TodoId,stdlib⋅decode.DecodeError] match stdlib⋅decode.int(value){
+  Ok(id)→Ok(TodoId(id))|
+  Err(error)→Err(error)
+}
+
+test "decode.dict decodes object values" {
+  match stdlib⋅decode.run(
+    stdlib⋅decode.dict(stdlib⋅decode.int),
+    stdlib⋅json.JsonObject({
+      "a"↦stdlib⋅json.JsonString("1"),
+      "b"↦stdlib⋅json.JsonNumber(2.0)
+    })
+  ){
+    Ok(values)→
+      core⋅map.size(values)=2 and match core⋅map.get("a",values){
+        Some(value)→value=1|
+        None()→false
+      } and match core⋅map.get("b",values){
+        Some(value)→value=2|
+        None()→false
+      }|
+    Err(_)→false
+  }
+}
+
+test "decode.field reports missing required field path" {
+  match stdlib⋅decode.run(
+    stdlib⋅decode.field(stdlib⋅decode.string,"name"),
+    stdlib⋅json.JsonObject((({↦}:{𝕊↦stdlib⋅json.JsonValue}):{𝕊↦stdlib⋅json.JsonValue}))
+  ){
+    Ok(_)→false|
+    Err(error)→error={message:"missing required field",path:["name"]}
+  }
+}
+
+test "decode.list prefixes failing index path" {
+  match stdlib⋅decode.run(
+    stdlib⋅decode.field(stdlib⋅decode.list(stdlib⋅decode.int),"ids"),
+    stdlib⋅json.JsonObject({
+      "ids"↦stdlib⋅json.JsonArray([stdlib⋅json.JsonString("1"),stdlib⋅json.JsonBool(true)])
+    })
+  ){
+    Ok(_)→false|
+    Err(error)→error={message:"expected int",path:["ids","1"]}
+  }
+}
+
+test "decode.optionalField returns None when key is absent" {
+  match stdlib⋅decode.run(
+    stdlib⋅decode.optionalField(stdlib⋅decode.string,"name"),
+    stdlib⋅json.JsonObject((({↦}:{𝕊↦stdlib⋅json.JsonValue}):{𝕊↦stdlib⋅json.JsonValue}))
+  ){
+    Ok(value)→match value{
+      None()→true|
+      Some(_)→false
+    }|
+    Err(_)→false
+  }
+}
+
+test "decode.parse builds trusted wrapper-backed message" {
+  match stdlib⋅decode.parse(message,"{\"createdAt\":\"2026-03-07T00:00:00.000Z\",\"id\":\"42\"}"){
+    Ok(decoded)→
+      match decoded.id{
+        TodoId(id)→id=42 and decoded.createdAt.epochMillis>0
+      }|
+    Err(_)→false
+  }
+}

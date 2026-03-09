@@ -1721,7 +1721,8 @@ fn synthesize_application(
     env: &TypeEnvironment,
     app: &sigil_ast::ApplicationExpr,
 ) -> Result<InferenceType, TypeError> {
-    let fn_type = synthesize(env, &app.func)?;
+    let raw_fn_type = synthesize(env, &app.func)?;
+    let fn_type = env.normalize_type(&raw_fn_type);
 
     // Special case: applying 'any' type (FFI function call)
     if matches!(fn_type, InferenceType::Any) {
@@ -2143,7 +2144,7 @@ fn synthesize_map(
         ));
     }
 
-    let fn_type = synthesize(env, &map_expr.func)?;
+    let fn_type = env.normalize_type(&synthesize(env, &map_expr.func)?);
 
     if !matches!(fn_type, InferenceType::Function(_)) {
         return Err(TypeError::new(
@@ -2203,7 +2204,7 @@ fn synthesize_filter(
         ));
     }
 
-    let predicate_type = synthesize(env, &filter_expr.predicate)?;
+    let predicate_type = env.normalize_type(&synthesize(env, &filter_expr.predicate)?);
 
     if !matches!(predicate_type, InferenceType::Function(_)) {
         return Err(TypeError::new(
@@ -2270,7 +2271,7 @@ fn synthesize_fold(
         ));
     }
 
-    let fn_type = synthesize(env, &fold_expr.func)?;
+    let fn_type = env.normalize_type(&synthesize(env, &fold_expr.func)?);
 
     if !matches!(fn_type, InferenceType::Function(_)) {
         return Err(TypeError::new(
@@ -2749,7 +2750,8 @@ fn check_application(
     app: &sigil_ast::ApplicationExpr,
     expected_type: &InferenceType,
 ) -> Result<(), TypeError> {
-    let fn_type = synthesize(env, &app.func)?;
+    let raw_fn_type = synthesize(env, &app.func)?;
+    let fn_type = env.normalize_type(&raw_fn_type);
 
     if matches!(fn_type, InferenceType::Any) {
         return Ok(());
@@ -3167,6 +3169,57 @@ mod tests {
         let program = parse(tokens, "test.sigil").unwrap();
 
         let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_exact_record_rejects_missing_field() {
+        let source = "t Message={createdAt:𝕊,text:𝕊}\nλmain()→Message={createdAt:\"2026-03-07T00:00:00.000Z\"}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_exact_record_rejects_extra_field() {
+        let source = "t Message={createdAt:𝕊,text:𝕊}\nλmain()→Message={createdAt:\"2026-03-07T00:00:00.000Z\",debug:\"no\",text:\"hello\"}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_exact_records_do_not_width_subtype() {
+        let source = "t Message={createdAt:𝕊,text:𝕊}\nt Summary={text:𝕊}\nλheadline(summary:Summary)→𝕊=summary.text\nλmain()→𝕊=headline(({createdAt:\"2026-03-07T00:00:00.000Z\",text:\"hello\"}:Message))";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().message.contains("Function argument type mismatch"));
+    }
+
+    #[test]
+    fn test_validated_wrapper_stays_distinct_from_primitive() {
+        let source = "t UserId=UserId(ℤ)\nλmain()→UserId=42";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_function_alias_normalizes_for_application() {
+        let source = "t Decoder[T]=λ(𝕊)→Result[T,𝕊]\nλparseInt(text:𝕊)→Result[ℤ,𝕊]=Ok(42)\nλrun(decoder:Decoder[ℤ],input:𝕊)→Result[ℤ,𝕊]=decoder(input)";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, core_prelude_type_options());
         assert!(result.is_ok());
     }
 

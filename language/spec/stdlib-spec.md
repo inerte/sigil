@@ -1,7 +1,7 @@
 # Sigil Standard Library Specification
 
 Version: 1.0.0
-Last Updated: 2026-02-21
+Last Updated: 2026-03-07
 
 ## Overview
 
@@ -151,7 +151,7 @@ Find index of first occurrence, or `-1` if missing.
 - Pure: Yes
 
 ```sigil
-λint_to_string(n:ℤ)→𝕊
+λintToString(n:ℤ)→𝕊
 ```
 Convert an integer to a string.
 - Complexity: O(n)
@@ -314,39 +314,73 @@ t JsonValue=JsonArray([JsonValue])|JsonBool(𝔹)|JsonNull|JsonNumber(ℝ)|JsonO
 
 λparse(input:𝕊)→Result[JsonValue,JsonError]
 λstringify(value:JsonValue)→𝕊
-λget_field(key:𝕊,obj:{𝕊↦JsonValue})→Option[JsonValue]
-λget_index(arr:[JsonValue],idx:ℤ)→Option[JsonValue]
-λas_array(value:JsonValue)→Option[[JsonValue]]
-λas_bool(value:JsonValue)→Option[𝔹]
-λas_number(value:JsonValue)→Option[ℝ]
-λas_object(value:JsonValue)→Option[{𝕊↦JsonValue}]
-λas_string(value:JsonValue)→Option[𝕊]
-λis_null(value:JsonValue)→𝔹
+λgetField(key:𝕊,obj:{𝕊↦JsonValue})→Option[JsonValue]
+λgetIndex(arr:[JsonValue],idx:ℤ)→Option[JsonValue]
+λasArray(value:JsonValue)→Option[[JsonValue]]
+λasBool(value:JsonValue)→Option[𝔹]
+λasNumber(value:JsonValue)→Option[ℝ]
+λasObject(value:JsonValue)→Option[{𝕊↦JsonValue}]
+λasString(value:JsonValue)→Option[𝕊]
+λisNull(value:JsonValue)→𝔹
 ```
 
 Notes:
 - `parse` is exception-safe and returns `Err({message})` for invalid JSON.
 - `stringify` is canonical JSON output for the provided `JsonValue`.
 
-## Time Operations
+## Decode Operations
+
+`stdlib⋅decode` is the canonical boundary layer from raw `JsonValue` to trusted
+internal Sigil values.
 
 ```sigil
-t Instant={epoch_millis:ℤ}
-t TimeError={message:𝕊}
+t DecodeError={message:𝕊,path:[𝕊]}
+t Decoder[T]=λ(JsonValue)→Result[T,DecodeError]
 
-λparse_iso(input:𝕊)→Result[Instant,TimeError]
-λformat_iso(instant:Instant)→𝕊
-λnow()→!IO Instant
-λfrom_epoch_millis(millis:ℤ)→Instant
-λto_epoch_millis(instant:Instant)→ℤ
-λcompare(left:Instant,right:Instant)→ℤ
-λis_before(left:Instant,right:Instant)→𝔹
-λis_after(left:Instant,right:Instant)→𝔹
+λrun[T](decoder:Decoder[T],value:JsonValue)→Result[T,DecodeError]
+λparse[T](decoder:Decoder[T],input:𝕊)→Result[T,DecodeError]
+λsucceed[T](value:T)→Decoder[T]
+λfail[T](message:𝕊)→Decoder[T]
+λmap[T,U](decoder:Decoder[T],fn:λ(T)→U)→Decoder[U]
+λbind[T,U](decoder:Decoder[T],fn:λ(T)→Decoder[U])→Decoder[U]
+
+λbool(value:JsonValue)→Result[𝔹,DecodeError]
+λfloat(value:JsonValue)→Result[ℝ,DecodeError]
+λint(value:JsonValue)→Result[ℤ,DecodeError]
+λstring(value:JsonValue)→Result[𝕊,DecodeError]
+
+λlist[T](decoder:Decoder[T])→Decoder[[T]]
+λdict[T](decoder:Decoder[T])→Decoder[{𝕊↦T}]
+λfield[T](decoder:Decoder[T],key:𝕊)→Decoder[T]
+λoptionalField[T](decoder:Decoder[T],key:𝕊)→Decoder[Option[T]]
 ```
 
 Notes:
-- `parse_iso` is strict ISO-8601 only.
-- Non-ISO text must be normalized before calling `parse_iso`.
+- `stdlib⋅json` owns raw parsing and inspection.
+- `stdlib⋅decode` owns conversion into trusted internal types.
+- `DecodeError.path` records the nested field/index path of the failure.
+- If a field may be absent, keep the record exact and use `Option[T]` for that field.
+- Sigil does not use open records or partial records for this boundary story.
+
+## Time Operations
+
+```sigil
+t Instant={epochMillis:ℤ}
+t TimeError={message:𝕊}
+
+λparseIso(input:𝕊)→Result[Instant,TimeError]
+λformatIso(instant:Instant)→𝕊
+λnow()→!IO Instant
+λfromEpochMillis(millis:ℤ)→Instant
+λtoEpochMillis(instant:Instant)→ℤ
+λcompare(left:Instant,right:Instant)→ℤ
+λisBefore(left:Instant,right:Instant)→𝔹
+λisAfter(left:Instant,right:Instant)→𝔹
+```
+
+Notes:
+- `parseIso` is strict ISO-8601 only.
+- Non-ISO text must be normalized before calling `parseIso`.
 
 ## Math Operations
 
@@ -469,7 +503,7 @@ Assert condition is true, panic if false.
 ## Type Conversion
 
 ```sigil
-λint_to_string(n:ℤ)→𝕊
+λintToString(n:ℤ)→𝕊
 ```
 Convert integer to string.
 - Complexity: O(log n)
@@ -552,15 +586,15 @@ Auto-imported. Contains the foundational vocabulary types:
 ### std/file
 
 UTF-8 filesystem helpers:
-- `append_text`
+- `appendText`
 - `exists`
-- `list_dir`
-- `make_dir`
-- `make_dirs`
-- `read_text`
+- `listDir`
+- `makeDir`
+- `makeDirs`
+- `readText`
 - `remove`
-- `remove_tree`
-- `write_text`
+- `removeTree`
+- `writeText`
 
 ### std/path
 
@@ -593,13 +627,22 @@ Typed JSON parsing and serialization (`JsonValue`, `parse`, `stringify`)
 λstringify(value:JsonValue)→𝕊
 ```
 
+### std/decode
+
+Canonical JSON-to-domain decoding (`Decoder[T]`, `DecodeError`, `run`, `parse`)
+
+```sigil
+λrun[T](decoder:Decoder[T],value:JsonValue)→Result[T,DecodeError]
+λparse[T](decoder:Decoder[T],input:𝕊)→Result[T,DecodeError]
+```
+
 ### std/time
 
 Time and instant handling (`Instant`, strict ISO parsing, clock access)
 
 ```sigil
-λparse_iso(input:𝕊)→Result[Instant,TimeError]
-λformat_iso(instant:Instant)→𝕊
+λparseIso(input:𝕊)→Result[Instant,TimeError]
+λformatIso(instant:Instant)→𝕊
 λnow()→!IO Instant
 ```
 

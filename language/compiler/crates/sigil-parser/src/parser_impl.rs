@@ -270,6 +270,18 @@ impl Parser {
             }));
         }
 
+        // Non-constructor type aliases, like λ(T)→U or [T], should go straight
+        // through the general type parser instead of the sum/constructor path.
+        if !self.check(TokenType::UpperIdentifier) {
+            let start = self.peek();
+            let aliased_type = self.parse_type()?;
+            let end = self.previous();
+            return Ok(TypeDef::Alias(TypeAlias {
+                aliased_type,
+                location: self.make_location(start.location.start, end.location.end),
+            }));
+        }
+
         // Sum type or type alias
         let start = self.peek();
         let first_variant = self.variant_or_type()?;
@@ -362,6 +374,9 @@ impl Parser {
         let mut fields = Vec::new();
         if !self.check(TokenType::RBRACE) {
             loop {
+                if self.check(TokenType::DOT) || self.check(TokenType::DOTDOT) {
+                    return Err(self.record_exactness_error("record types"));
+                }
                 let field_start = self.peek();
                 let name = self.consume(TokenType::IDENTIFIER, "Expected field name")?.value.clone();
                 self.consume(TokenType::COLON, "Expected \":\"")?;
@@ -1500,6 +1515,9 @@ impl Parser {
                 }];
 
                 while self.match_token(TokenType::COMMA) {
+                    if self.check(TokenType::DOT) || self.check(TokenType::DOTDOT) {
+                        return Err(self.record_exactness_error("record literals"));
+                    }
                     let field_start = self.peek();
                     let field_name = self.consume(TokenType::IDENTIFIER, "Expected record field name")?.value.clone();
                     self.consume(TokenType::COLON, "Expected \":\" in record literal")?;
@@ -1786,6 +1804,9 @@ impl Parser {
 
             if !self.check(TokenType::RBRACE) {
                 loop {
+                    if self.check(TokenType::DOT) || self.check(TokenType::DOTDOT) {
+                        return Err(self.record_exactness_error("record patterns"));
+                    }
                     let field_start = self.peek();
                     let name = self.consume(TokenType::IDENTIFIER, "Expected field name")?.value.clone();
 
@@ -1941,6 +1962,17 @@ impl Parser {
             line: location.start.line,
             column: location.start.column,
             location,
+        }
+    }
+
+    fn record_exactness_error(&self, context: &str) -> ParseError {
+        let tok = self.peek();
+        ParseError::RecordExactness {
+            file: self.filename.clone(),
+            context: context.to_string(),
+            line: tok.location.start.line,
+            column: tok.location.start.column,
+            location: tok.location,
         }
     }
 

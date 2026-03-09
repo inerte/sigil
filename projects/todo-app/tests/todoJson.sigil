@@ -19,7 +19,7 @@ test "todo json decode rejects missing fields" {
 
 test "todo json roundtrip preserves state" {
   l state=({
-    nextId:9,
+    nextId:src⋅todoJson.NextTodoId(9),
     todos:[
       {done:false,id:1,text:"Ship JSON stdlib"},
       {done:true,id:2,text:"Write tests"}
@@ -28,6 +28,13 @@ test "todo json roundtrip preserves state" {
   l encoded=(src⋅todoJson.encodeState(state):𝕊);
   match src⋅todoJson.decodeState(encoded){
     Ok(decoded)→decoded=state|
+    Err(_)→false
+  }
+}
+
+test "todo json decode accepts numeric ids from older payloads" {
+  match src⋅todoJson.decodeState("{\"nextId\":9,\"todos\":[{\"done\":false,\"id\":1,\"text\":\"Ship JSON stdlib\"}]}"){
+    Ok(state)→src⋅todoJson.nextTodoIdValue(state.nextId)=9 and #state.todos=1 and state.todos[0].id=1|
     Err(_)→false
   }
 }

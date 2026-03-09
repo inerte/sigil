@@ -1,7 +1,7 @@
 # Sigil Type System Specification
 
 Version: 1.0.0
-Last Updated: 2026-03-02
+Last Updated: 2026-03-07
 
 ## Overview
 
@@ -73,8 +73,6 @@ If variable `x` has type scheme `σ` in environment `Γ`, then `x` has type `σ`
 Local `l` bindings do **not** undergo Hindley-Milner let-generalization.
 Only explicitly generic top-level declarations introduce quantified type schemes.
 
-Where `σ` is the generalization of the type of `e₁`.
-
 #### Pattern Matching
 
 ```
@@ -131,7 +129,7 @@ must use a fresh name instead of rebinding the existing one.
 
 ### Type Schemes
 
-Type schemes represent polymorphic types:
+Type schemes represent explicit top-level polymorphic types:
 
 ```
 σ ::= ∀α₁...αₙ.τ
@@ -139,30 +137,18 @@ Type schemes represent polymorphic types:
 
 Example:
 ```sigil
-λidentity(x)=x
+λidentity[T](x:T)→T=x
 ```
 Infers type: `∀T.λ(T)→T`
 
-### Generalization
-
-When binding variables with `l`, generalize free type variables:
-
-```sigil
-l id=λx→x;
-l result=id(5);
-l result2=id("hello");
-```
-
-Type of `id` is generalized to `∀T.λ(T)→T`, allowing it to be used with different types.
-
 ### Instantiation
 
-When using polymorphic values, instantiate with fresh type variables:
+When using an explicitly polymorphic top-level value, instantiate it with fresh type variables:
 
 ```sigil
-l id=λx→x;
-id(5)        (* T instantiated to ℤ *)
-id("hi")     (* T instantiated to 𝕊 *)
+λidentity[T](x:T)→T=x
+identity(5)        (* T instantiated to ℤ *)
+identity("hi")     (* T instantiated to 𝕊 *)
 ```
 
 ## Primitive Types
@@ -238,8 +224,17 @@ t Point={x:ℝ,y:ℝ}
 - Fields have names and types
 - Field access: `user.name` has type `𝕊` if `user : User`
 - Record literals must include all fields
+- Record types are **closed exact products**
+- Missing fields are rejected
+- Extra fields are rejected
+- Record types do **not** use width subtyping
+- Sigil has no row polymorphism, row tails, or open/partial-record semantics
+- If a field may be absent, the canonical encoding is an exact record with `Option[T]`
 - Canonical form requires record fields to be alphabetically ordered in declarations, literals, and patterns
 - Named product types participate in structural equality after normalization
+
+Exactness is enforced by the frontend and typechecker, not left as a style recommendation.
+Attempts to write open/partial-record forms are rejected with `SIGIL-CANON-RECORD-EXACTNESS`.
 
 ### Type Aliases
 
@@ -249,6 +244,52 @@ t Email=𝕊
 ```
 
 Type aliases create synonyms, not new types (structural typing).
+
+If a value must remain distinct from its raw representation, use a named wrapper
+type instead of an alias:
+
+```sigil
+t Email=Email(𝕊)
+t UserId=UserId(ℤ)
+```
+
+This is the canonical way to represent validated boundary values that should not
+be interchangeable with raw strings or integers inside business logic.
+
+## Trusted Internal Data and Boundaries
+
+Sigil distinguishes two phases of data:
+
+1. **External / uncertain data**
+   - JSON text
+   - parsed `JsonValue`
+   - URL text
+   - timestamp text
+2. **Trusted internal data**
+   - exact records
+   - explicit `Option[T]` / `Result[T,E]`
+   - validated wrapper types
+
+The canonical pipeline is:
+
+```sigil
+raw input → parse → decode / validate → trusted internal type
+```
+
+For JSON-backed boundaries, `stdlib⋅json` owns raw parsing and `stdlib⋅decode`
+owns conversion into trusted internal types.
+
+Example:
+
+```sigil
+t Message={createdAt:Instant,text:𝕊}
+
+⟦ raw JSON must be decoded before business logic sees Message ⟧
+```
+
+From that point on, `message.createdAt` is simply present. Sigil does not expect
+internal business logic to keep treating exact validated values as if they were
+still raw external blobs.
 
 ### Canonical Semantic Equality
 

@@ -77,6 +77,15 @@ pub enum ParseError {
         column: usize,
         location: SourceLocation,
     },
+
+    #[error("SIGIL-CANON-RECORD-EXACTNESS {file}:{line}:{column} Sigil {context} are exact fixed-shape products")]
+    RecordExactness {
+        file: String,
+        context: String,
+        line: usize,
+        column: usize,
+        location: SourceLocation,
+    },
 }
 
 impl ParseError {
@@ -90,6 +99,7 @@ impl ParseError {
             ParseError::InvalidLocalBinding { location, .. } => Some(*location),
             ParseError::CannotExport { location, .. } => Some(*location),
             ParseError::InvalidEffect { location, .. } => Some(*location),
+            ParseError::RecordExactness { location, .. } => Some(*location),
         }
     }
 }
@@ -215,6 +225,23 @@ impl From<ParseError> for Diagnostic {
             )
             .with_location(source_location_to_span(file, location))
             .with_found_expected(&effect, &valid),
+
+            ParseError::RecordExactness {
+                file,
+                context,
+                line: _,
+                column: _,
+                location,
+            } => Diagnostic::new(
+                codes::canonical::RECORD_EXACTNESS,
+                SigilPhase::Canonical,
+                format!(
+                    "Sigil {} are exact fixed-shape products. Open or partial records are not part of the language. Use an exact record and model absence with Option[T].",
+                    context
+                ),
+            )
+            .with_location(source_location_to_span(file, location))
+            .with_details("context", &context),
         }
     }
 }

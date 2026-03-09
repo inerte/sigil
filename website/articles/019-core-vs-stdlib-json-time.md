@@ -34,8 +34,8 @@ Good:
 ## Concrete Outcome
 
 We wired these modules into real projects immediately:
-- `projects/ssg` now sorts article dates through strict ISO parsing (`stdlib⋅time.parse_iso`).
+- `projects/ssg` now sorts article dates through strict ISO parsing (`stdlib⋅time.parseIso`).
 - `projects/ssg` now emits `site.json` through `stdlib⋅json.stringify`.
-- `projects/todo-app` now includes a Sigil JSON codec module with strict decode errors and tests.
+- `projects/todo-app` now uses `stdlib⋅decode` to turn raw JSON into trusted exact state values with strict decode errors and tests.
 
 This keeps Sigil practical without blurring core vocabulary boundaries.

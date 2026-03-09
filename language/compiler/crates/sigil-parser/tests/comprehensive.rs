@@ -153,6 +153,26 @@ fn test_type_declaration_product() {
 }
 
 #[test]
+fn test_type_declaration_function_alias() {
+    let source = "t Decoder[T]=λ(stdlib⋅json.JsonValue)→Result[T,DecodeError]";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    match &program.declarations[0] {
+        Declaration::Type(t) => match &t.definition {
+            TypeDef::Alias(alias) => match &alias.aliased_type {
+                Type::Function(function_type) => {
+                    assert_eq!(function_type.param_types.len(), 1);
+                }
+                other => panic!("Expected function type alias, got {:?}", other),
+            },
+            other => panic!("Expected alias type, got {:?}", other),
+        },
+        _ => panic!("Expected type declaration"),
+    }
+}
+
+#[test]
 fn test_multiple_params() {
     // Test function with multiple parameters
     let source = "λadd(x:ℤ,y:ℤ,z:ℤ)→ℤ=x+y+z";
@@ -684,6 +704,33 @@ fn test_record_literal() {
         }
         _ => panic!("Expected function"),
     }
+}
+
+#[test]
+fn test_record_type_rejects_open_tail_syntax() {
+    let source = "t User={id:ℤ,..rest}";
+    let tokens = tokenize(source).unwrap();
+    let error = parse(tokens, "test.lib.sigil").unwrap_err();
+
+    assert!(matches!(error, ParseError::RecordExactness { .. }));
+}
+
+#[test]
+fn test_record_literal_rejects_open_tail_syntax() {
+    let source = "λf()→Point={x:5,..rest}";
+    let tokens = tokenize(source).unwrap();
+    let error = parse(tokens, "test.sigil").unwrap_err();
+
+    assert!(matches!(error, ParseError::RecordExactness { .. }));
+}
+
+#[test]
+fn test_record_pattern_rejects_open_tail_syntax() {
+    let source = "λf(point:Point)→𝔹 match point{{x,..rest}→true}";
+    let tokens = tokenize(source).unwrap();
+    let error = parse(tokens, "test.sigil").unwrap_err();
+
+    assert!(matches!(error, ParseError::RecordExactness { .. }));
 }
 
 #[test]

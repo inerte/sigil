@@ -7,6 +7,7 @@ The Sigil standard library provides core utility functions and predicates for co
 ## Current Status
 
 **Implemented:**
+- ✅ Decode / validation pipeline for trusted internal data - `stdlib/decode`
 - ✅ List predicates (validation, checking) - `stdlib/list`
 - ✅ Numeric predicates and ranges - `stdlib/numeric`
 - ✅ List utilities (head, tail, take/drop/reverse, safe lookup) - `stdlib/list`
@@ -39,8 +40,8 @@ i stdlib⋅url
 
 ⟦ Use with fully qualified names ⟧
 λmain()→𝕌=console.log(
-  stdlib⋅string.int_to_string(#[1,2,3]) ++ " " ++
-  stdlib⋅time.format_iso(stdlib⋅time.from_epoch_millis(0))
+  stdlib⋅string.intToString(#[1,2,3]) ++ " " ++
+  stdlib⋅time.formatIso(stdlib⋅time.fromEpochMillis(0))
 )
 ```
 
@@ -107,8 +108,8 @@ i stdlib⋅path
 
 λmain()→!IO 𝕌=
   l out=(stdlib⋅path.join("/tmp","sigil.txt"):𝕊);
-  l _=(stdlib⋅file.write_text("hello",out):𝕌);
-  l _2=(stdlib⋅file.read_text(out):𝕊);
+  l _=(stdlib⋅file.writeText("hello",out):𝕌);
+  l _2=(stdlib⋅file.readText(out):𝕊);
   ()
 ```
 
@@ -130,13 +131,49 @@ i stdlib⋅json
 
 λmain()→𝕌=
   match stdlib⋅json.parse("{\"ok\":true}"){
-    Ok(value)→match stdlib⋅json.as_object(value){
+    Ok(value)→match stdlib⋅json.asObject(value){
       Some(_)→()|
-      None→()
+      None()→()
     }|
     Err(_)→()
   }
 ```
+
+`stdlib⋅decode` is the canonical layer for turning raw `JsonValue` into trusted
+internal Sigil values:
+
+```sigil
+i stdlib⋅decode
+i stdlib⋅json
+i stdlib⋅time
+
+t Message={createdAt:stdlib⋅time.Instant,text:𝕊}
+
+λinstant(value:stdlib⋅json.JsonValue)→Result[stdlib⋅time.Instant,stdlib⋅decode.DecodeError] match stdlib⋅decode.string(value){
+  Ok(text)→
+    match stdlib⋅time.parseIso(text){
+      Ok(instant)→Ok(instant)|
+      Err(error)→Err({message:error.message,path:[]})
+    }|
+  Err(error)→Err(error)
+}
+
+λmessage(value:stdlib⋅json.JsonValue)→Result[Message,stdlib⋅decode.DecodeError] match stdlib⋅decode.field(instant,"createdAt")(value){
+  Ok(createdAt)→
+    match stdlib⋅decode.field(stdlib⋅decode.string,"text")(value){
+      Ok(text)→Ok({createdAt:createdAt,text:text})|
+      Err(error)→Err(error)
+    }|
+  Err(error)→Err(error)
+}
+```
+
+The intended split is:
+- `stdlib⋅json` for raw parse / inspect / stringify
+- `stdlib⋅decode` for decode / validate / trust
+
+If a field may be absent, keep the record exact and use `Option[T]` in that
+field. Sigil does not use open or partial records for this.
 
 `stdlib⋅time` exposes strict ISO parsing and instant comparison:
 
@@ -144,9 +181,9 @@ i stdlib⋅json
 i stdlib⋅time
 
 λmain()→𝕌=
-  match stdlib⋅time.parse_iso("2026-03-03"){
+  match stdlib⋅time.parseIso("2026-03-03"){
     Ok(instant)→
-      l _=(stdlib⋅time.to_epoch_millis(instant):ℤ);
+      l _=(stdlib⋅time.toEpochMillis(instant):ℤ);
       ()|
     Err(_)→()
   }

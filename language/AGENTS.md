@@ -117,6 +117,10 @@ Current constructor and list invariants:
   - records are fixed-shape structural products using `:`
   - maps are dynamic keyed collections using `↦`
   - never blur them in syntax, docs, examples, or future features
+  - records are exact and closed; Sigil does not have open records, row tails, or width subtyping
+  - if a field may be absent, keep the record exact and use `Option[T]` for that field
+  - prefer early boundary conversion with `stdlib⋅decode` instead of carrying raw `JsonValue` deep into business logic
+  - when a validated boundary value should remain distinct from a raw primitive, prefer a named wrapper type like `Email` or `UserId`
 
 ### 3) Keep user-facing errors actionable
 

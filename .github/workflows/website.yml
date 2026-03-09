@@ -54,8 +54,8 @@ jobs:
 
       - name: Build website
         env:
-          sigil_site_base_path: /${{ github.event.repository.name }}/
-          sigil_site_repo_url: https://github.com/${{ github.repository }}
+          sigilSiteBasePath: /${{ github.event.repository.name }}/
+          sigilSiteRepoUrl: https://github.com/${{ github.repository }}
         run: language/compiler/target/debug/sigil run projects/ssg/src/main.sigil
 
       - name: Verify site output

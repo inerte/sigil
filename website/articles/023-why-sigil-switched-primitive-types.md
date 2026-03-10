@@ -1,8 +1,12 @@
-# Why Sigil Switched Primitive Types
+---
+title: Why Sigil Switched Primitive Types
+date: 2026-03-10
+author: Sigil Team
+category: Language Design, Token Efficiency
+slug: why-sigil-switched-primitive-types
+---
 
-**Date:** 2026-03-10
-**Author:** Sigil Team
-**Category:** Language Design, Token Efficiency
+# Why Sigil Switched Primitive Types
 
 ## Summary
 

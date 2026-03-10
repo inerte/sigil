@@ -1420,12 +1420,6 @@ fn validate_identifier_forms_in_expr(expr: &Expr, errors: &mut Vec<ValidationErr
             }
         }
         Expr::WithMock(with_mock) => {
-            if with_mock.is_legacy_keyword {
-                errors.push(ValidationError::LegacyKeyword {
-                    found: "with_mock".to_string(),
-                    location: with_mock.location,
-                });
-            }
             validate_identifier_forms_in_expr(&with_mock.target, errors);
             validate_identifier_forms_in_expr(&with_mock.replacement, errors);
             validate_identifier_forms_in_expr(&with_mock.body, errors);

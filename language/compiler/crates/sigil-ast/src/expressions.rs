@@ -507,8 +507,6 @@ pub struct WithMockExpr {
     pub target: Expr,
     pub replacement: Expr,
     pub body: Expr,
-    #[cfg_attr(feature = "serde", serde(rename = "isLegacyKeyword"))]
-    pub is_legacy_keyword: bool,
     pub location: SourceLocation,
 }
 

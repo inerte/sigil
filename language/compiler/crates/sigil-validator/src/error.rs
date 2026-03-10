@@ -161,12 +161,6 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
-    #[error("SIGIL-CANON-KEYWORD-LEGACY: use withMock; with_mock is not canonical Sigil")]
-    LegacyKeyword {
-        found: String,
-        location: SourceLocation,
-    },
-
     #[error("SIGIL-CANON-EOF-NEWLINE: file must end with newline\n\nFile: {filename}")]
     EOFNewline {
         filename: String,
@@ -351,7 +345,6 @@ impl ValidationError {
             ValidationError::TypeVarForm { location, .. } => *location,
             ValidationError::RecordFieldForm { location, .. } => *location,
             ValidationError::ModulePathForm { location, .. } => *location,
-            ValidationError::LegacyKeyword { location, .. } => *location,
             ValidationError::EOFNewline { location, .. } => *location,
             ValidationError::TrailingWhitespace { location, .. } => *location,
             ValidationError::BlankLines { location, .. } => *location,
@@ -578,14 +571,6 @@ impl From<ValidationError> for Diagnostic {
             .with_location(source_location_to_span(get_file(), location))
             .with_found_expected(&found, "lowerCamelCase")
             .with_details("suggestion", suggestion),
-
-            ValidationError::LegacyKeyword { found, location } => Diagnostic::new(
-                codes::canonical::KEYWORD_LEGACY,
-                SigilPhase::Canonical,
-                "use withMock; with_mock is not canonical Sigil",
-            )
-            .with_location(source_location_to_span(get_file(), location))
-            .with_details("found", found),
 
             ValidationError::MatchTupleBoolean { location } => {
                 Diagnostic::new(

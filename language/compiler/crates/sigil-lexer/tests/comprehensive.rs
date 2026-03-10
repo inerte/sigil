@@ -54,12 +54,6 @@ fn test_all_keywords() {
 }
 
 #[test]
-fn test_legacy_with_mock_keyword_tokenizes_separately() {
-    let tokens = tokenize("with_mock").unwrap();
-    assert_eq!(tokens[0].token_type, TokenType::LegacyWithMock);
-}
-
-#[test]
 fn test_all_delimiters() {
     let source = "( ) [ ] { } , : . ; | _ ..";
     let tokens = tokenize(source).unwrap();

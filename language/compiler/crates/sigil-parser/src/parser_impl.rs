@@ -1328,8 +1328,8 @@ impl Parser {
             }
         }
 
-        // withMock / legacy with_mock expression
-        if self.match_token(TokenType::WithMock) || self.match_token(TokenType::LegacyWithMock) {
+        // withMock expression
+        if self.match_token(TokenType::WithMock) {
             return self.with_mock_expression();
         }
 
@@ -1568,7 +1568,6 @@ impl Parser {
             target,
             replacement,
             body,
-            is_legacy_keyword: start.token_type == TokenType::LegacyWithMock,
             location: self.make_location(start.location.start, end.location.end),
         })))
     }

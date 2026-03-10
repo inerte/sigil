@@ -217,11 +217,6 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Message:** "module path segments must be lowerCamelCase"
 **How to fix:** Rename the module/file stem to lowerCamelCase
 
-### SIGIL-CANON-KEYWORD-LEGACY
-**Description:** Legacy keyword spelling is rejected by canonical validation.
-**Message:** "use withMock; with_mock is not canonical Sigil"
-**How to fix:** Replace the legacy keyword spelling with the canonical one
-
 ### SIGIL-CANON-RECURSION-ACCUMULATOR
 **Description:** Accumulator-passing style detected.
 **Message:** "Accumulator-passing style detected in function 'name'"

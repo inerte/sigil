@@ -690,7 +690,6 @@ impl Lexer {
             "mut" => TokenType::MUT,
             "mockable" => TokenType::MOCKABLE,
             "withMock" => TokenType::WithMock,
-            "with_mock" => TokenType::LegacyWithMock,
             "when" => TokenType::WHEN,
             "match" => TokenType::MATCH,
             "and" => TokenType::AND,

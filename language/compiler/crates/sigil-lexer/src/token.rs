@@ -78,9 +78,6 @@ pub enum TokenType {
     #[token("withMock")]
     WithMock,
 
-    #[token("with_mock")]
-    LegacyWithMock,
-
     #[token("when")]
     WHEN,
 

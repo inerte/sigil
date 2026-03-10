@@ -58,7 +58,6 @@ pub mod canonical {
     pub const TYPE_VAR_FORM: &str = "SIGIL-CANON-TYPE-VAR-FORM";
     pub const RECORD_FIELD_FORM: &str = "SIGIL-CANON-RECORD-FIELD-FORM";
     pub const MODULE_PATH_FORM: &str = "SIGIL-CANON-MODULE-PATH-FORM";
-    pub const KEYWORD_LEGACY: &str = "SIGIL-CANON-KEYWORD-LEGACY";
     pub const RECORD_EXACTNESS: &str = "SIGIL-CANON-RECORD-EXACTNESS";
 
     // Recursion patterns
@@ -163,7 +162,6 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     canonical::TYPE_VAR_FORM,
     canonical::RECORD_FIELD_FORM,
     canonical::MODULE_PATH_FORM,
-    canonical::KEYWORD_LEGACY,
     canonical::RECURSION_ACCUMULATOR,
     canonical::RECURSION_COLLECTION_NONSTRUCTURAL,
     canonical::RECURSION_CPS,
@@ -227,12 +225,12 @@ mod tests {
 
     #[test]
     fn count_error_codes() {
-        // As of implementation: 68 error codes total
-        // 10 lexer + 5 parser + 40 canonical + 2 typecheck + 1 mutability + 8 CLI + 2 runtime = 68
+        // As of implementation: 67 error codes total
+        // 10 lexer + 5 parser + 39 canonical + 2 typecheck + 1 mutability + 8 CLI + 2 runtime = 67
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            68,
-            "Expected 68 error codes, found {}",
+            67,
+            "Expected 67 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

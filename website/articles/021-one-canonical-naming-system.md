@@ -1,8 +1,12 @@
-# One Canonical Naming System
+---
+title: One Canonical Naming System
+date: 2026-03-07
+author: Sigil Team
+category: Language Design, Canonical Forms
+slug: 021-one-canonical-naming-system
+---
 
-**Date:** 2026-03-07
-**Author:** Sigil Team
-**Category:** Language Design, Canonical Forms
+# One Canonical Naming System
 
 ## Summary
 

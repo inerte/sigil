@@ -1,8 +1,12 @@
-# Canonical Filename Validation
+---
+title: Canonical Filename Validation
+date: 2026-02-27
+author: Sigil Team
+category: Language Design, Canonical Forms
+slug: 006-canonical-filename-validation
+---
 
-**Date:** 2026-02-27
-**Author:** Sigil Team
-**Category:** Language Design, Canonical Forms
+# Canonical Filename Validation
 
 ## Summary
 

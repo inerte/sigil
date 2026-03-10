@@ -1,8 +1,13 @@
-# Why Sigil Enforces Alphabetical Parameter Order
+---
+title: Why Sigil Enforces Alphabetical Parameter Order
+date: 2026-02-27
+author: Sigil Team
+category: Language Design
+tags: [canonical-forms, parameters, determinism]
+slug: 008-alphabetical-parameter-ordering
+---
 
-**Published:** 2026-02-27
-**Category:** Language Design
-**Tags:** canonical-forms, parameters, determinism
+# Why Sigil Enforces Alphabetical Parameter Order
 
 ## The Problem
 

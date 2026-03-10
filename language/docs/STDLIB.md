@@ -14,6 +14,7 @@ The Sigil standard library provides core utility functions and predicates for co
 - ✅ String operations (manipulation, searching) - `stdlib/string`
 - ✅ String predicates (prefix/suffix checking) - `stdlib/string`
 - ✅ File system operations - `stdlib/file`
+- ✅ HTTP client and server - `stdlib/httpClient`, `stdlib/httpServer`
 - ✅ JSON parsing/serialization - `stdlib/json`
 - ✅ Path manipulation - `stdlib/path`
 - ✅ Time parsing/comparison/clock - `stdlib/time`
@@ -37,6 +38,8 @@ i stdlib⋅path
 i stdlib⋅string
 i stdlib⋅time
 i stdlib⋅url
+i stdlib⋅httpClient
+i stdlib⋅httpServer
 
 ⟦ Use with fully qualified names ⟧
 λmain()→Unit=console.log(
@@ -203,6 +206,49 @@ i stdlib⋅url
     Err(_)→()
   }
 ```
+
+## HTTP Client and Server
+
+`stdlib⋅httpClient` is the canonical text-based HTTP client layer:
+
+```sigil
+i stdlib⋅httpClient
+i stdlib⋅json
+
+λmain()→!IO Unit=
+  match stdlib⋅httpClient.getJson(
+    stdlib⋅httpClient.jsonHeaders(),
+    "http://127.0.0.1:8080/health"
+  ){
+    Ok(value)→
+      l _=(stdlib⋅json.stringify(value):String);
+      ()|
+    Err(error)→
+      l _=(error.message:String);
+      ()
+  }
+```
+
+The split is:
+- transport/URL failures return `Err(HttpError)`
+- any received HTTP response, including `404` and `500`, returns `Ok(HttpResponse)`
+- JSON helpers compose over `stdlib⋅json`
+
+`stdlib⋅httpServer` is the canonical request/response server layer:
+
+```sigil
+i stdlib⋅httpServer
+
+λhandle(request:stdlib⋅httpServer.Request)→!IO stdlib⋅httpServer.Response match request.path{
+  "/health"→stdlib⋅httpServer.ok("healthy")|
+  _→stdlib⋅httpServer.notFound()
+}
+
+λmain()→!IO Unit=stdlib⋅httpServer.serve(handle,8080)
+```
+
+`serve` is a long-lived runtime entrypoint: once the server is listening, the
+process stays open until it is terminated externally.
 
 ## List Predicates
 

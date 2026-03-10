@@ -317,6 +317,94 @@ impl TypeScriptGenerator {
         self.emit("    return { __tag: \"Err\", __fields: [{ message: error instanceof Error ? error.message : String(error) }] };");
         self.emit("  }");
         self.emit("}");
+        self.emit("function __sigil_http_error(kind, message) {");
+        self.emit("  return { kind: { __tag: kind, __fields: [] }, message: String(message) };");
+        self.emit("}");
+        self.emit("function __sigil_http_headers_from_entries(entries) {");
+        self.emit("  return __sigil_map_from_entries(entries.map(([key, value]) => [String(key).toLowerCase(), String(value)]));");
+        self.emit("}");
+        self.emit("function __sigil_http_header_value(value) {");
+        self.emit("  if (Array.isArray(value)) return value.map((item) => String(item)).join(', ');");
+        self.emit("  if (value === undefined || value === null) return null;");
+        self.emit("  return String(value);");
+        self.emit("}");
+        self.emit("function __sigil_http_headers_from_node(headers) {");
+        self.emit("  return __sigil_http_headers_from_entries(Object.entries(headers ?? {}).flatMap(([key, value]) => {");
+        self.emit("    const normalized = __sigil_http_header_value(value);");
+        self.emit("    return normalized === null ? [] : [[key, normalized]];");
+        self.emit("  }));");
+        self.emit("}");
+        self.emit("function __sigil_http_headers_from_web(headers) {");
+        self.emit("  return __sigil_http_headers_from_entries(Array.from(headers.entries()));");
+        self.emit("}");
+        self.emit("function __sigil_http_headers_to_js(headers) {");
+        self.emit("  const result = {};");
+        self.emit("  for (const [key, value] of __sigil_map_entries(headers ?? __sigil_map_empty())) { result[String(key)] = String(value); }");
+        self.emit("  return result;");
+        self.emit("}");
+        self.emit("function __sigil_http_method_to_string(method) {");
+        self.emit("  switch (method?.__tag) {");
+        self.emit("    case 'Delete': return 'DELETE';");
+        self.emit("    case 'Get': return 'GET';");
+        self.emit("    case 'Patch': return 'PATCH';");
+        self.emit("    case 'Post': return 'POST';");
+        self.emit("    case 'Put': return 'PUT';");
+        self.emit("    default: return 'GET';");
+        self.emit("  }");
+        self.emit("}");
+        self.emit("async function __sigil_http_request(request) {");
+        self.emit("  try {");
+        self.emit("    const parsed = new URL(String(request.url));");
+        self.emit("    const init = { headers: __sigil_http_headers_to_js(request.headers), method: __sigil_http_method_to_string(request.method) };");
+        self.emit("    if (request.body?.__tag === 'Some') { init.body = request.body.__fields[0]; }");
+        self.emit("    const response = await fetch(parsed, init);");
+        self.emit("    const body = await response.text();");
+        self.emit("    return { __tag: 'Ok', __fields: [{ body, headers: __sigil_http_headers_from_web(response.headers), status: response.status, url: response.url }] };");
+        self.emit("  } catch (error) {");
+        self.emit("    const message = error instanceof Error ? error.message : String(error);");
+        self.emit("    try {");
+        self.emit("      new URL(String(request.url));");
+        self.emit("    } catch (_) {");
+        self.emit("      return { __tag: 'Err', __fields: [__sigil_http_error('InvalidUrl', message)] };");
+        self.emit("    }");
+        self.emit("    return { __tag: 'Err', __fields: [__sigil_http_error('Network', message)] };");
+        self.emit("  }");
+        self.emit("}");
+        self.emit("function __sigil_http_request_path(url) {");
+        self.emit("  try {");
+        self.emit("    const parsed = new URL(String(url ?? '/'), 'http://127.0.0.1');");
+        self.emit("    return parsed.pathname || '/';");
+        self.emit("  } catch (_) {");
+        self.emit("    return '/';");
+        self.emit("  }");
+        self.emit("}");
+        self.emit("async function __sigil_http_serve(handler, port) {");
+        self.emit("  const { createServer } = await import('node:http');");
+        self.emit("  const { text } = await import('stream/consumers');");
+        self.emit("  const server = createServer(async (req, res) => {");
+        self.emit("    try {");
+        self.emit("      const request = {");
+        self.emit("        body: await text(req),");
+        self.emit("        headers: __sigil_http_headers_from_node(req.headers),");
+        self.emit("        method: String(req.method ?? 'GET'),");
+        self.emit("        path: __sigil_http_request_path(req.url)");
+        self.emit("      };");
+        self.emit("      const response = await Promise.resolve(handler(request));");
+        self.emit("      res.writeHead(response.status, __sigil_http_headers_to_js(response.headers));");
+        self.emit("      res.end(String(response.body));");
+        self.emit("    } catch (error) {");
+        self.emit("      const message = error instanceof Error ? error.message : String(error);");
+        self.emit("      res.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' });");
+        self.emit("      res.end(message);");
+        self.emit("    }");
+        self.emit("  });");
+        self.emit("  await new Promise((resolve, reject) => {");
+        self.emit("    server.once('error', reject);");
+        self.emit("    server.listen(port, () => resolve(undefined));");
+        self.emit("  });");
+        self.emit("  console.log(`Server running at http://localhost:${String(port)}`);");
+        self.emit("  await new Promise(() => {});");
+        self.emit("}");
         self.emit("function __sigil_is_map(value) {");
         self.emit(
             "  return !!value && typeof value === 'object' && Array.isArray(value.__sigil_map);",
@@ -446,14 +534,37 @@ impl TypeScriptGenerator {
                 return Ok(());
             }
         }
+        if self
+            .source_file
+            .as_deref()
+            .is_some_and(|path| path.ends_with("language/stdlib/httpClient.lib.sigil"))
+        {
+            if self.generate_stdlib_http_client_function(func)? {
+                return Ok(());
+            }
+        }
+        if self
+            .source_file
+            .as_deref()
+            .is_some_and(|path| path.ends_with("language/stdlib/httpServer.lib.sigil"))
+        {
+            if self.generate_stdlib_http_server_function(func)? {
+                return Ok(());
+            }
+        }
 
-        let params: Vec<String> = func.params.iter().map(|p| p.name.clone()).collect();
+        let params: Vec<String> = func
+            .params
+            .iter()
+            .map(|p| sanitize_js_identifier(&p.name))
+            .collect();
         let params_str = params.join(", ");
+        let func_name = sanitize_js_identifier(&func.name);
 
         let impl_name = if func.is_mockable {
-            format!("__sigil_impl_{}", func.name)
+            format!("__sigil_impl_{}", func_name)
         } else {
-            func.name.clone()
+            func_name.clone()
         };
 
         // Export logic:
@@ -486,7 +597,7 @@ impl TypeScriptGenerator {
             let export_keyword = if should_export { "export " } else { "" };
             self.emit(&format!(
                 "{}function {}({}) {{",
-                export_keyword, func.name, params_str
+                export_keyword, func_name, params_str
             ));
             self.indent += 1;
             let args = if params.is_empty() {
@@ -509,7 +620,11 @@ impl TypeScriptGenerator {
         &mut self,
         func: &TypedFunctionDecl,
     ) -> Result<bool, CodegenError> {
-        let params: Vec<String> = func.params.iter().map(|p| p.name.clone()).collect();
+        let params: Vec<String> = func
+            .params
+            .iter()
+            .map(|p| sanitize_js_identifier(&p.name))
+            .collect();
         let params_str = params.join(", ");
         let export_keyword = if self.should_export_from_lib() {
             "export function"
@@ -588,10 +703,84 @@ impl TypeScriptGenerator {
 
         self.emit(&format!(
             "{} {}({}) {{",
-            export_keyword, func.name, params_str
+            export_keyword,
+            sanitize_js_identifier(&func.name),
+            params_str
         ));
         self.indent += 1;
         self.emit(&format!("return {};", body));
+        self.indent -= 1;
+        self.emit("}");
+        Ok(true)
+    }
+
+    fn generate_stdlib_http_client_function(
+        &mut self,
+        func: &TypedFunctionDecl,
+    ) -> Result<bool, CodegenError> {
+        if func.name != "request" {
+            return Ok(false);
+        }
+
+        let params: Vec<String> = func
+            .params
+            .iter()
+            .map(|p| sanitize_js_identifier(&p.name))
+            .collect();
+        let params_str = params.join(", ");
+        let export_keyword = if self.should_export_from_lib() {
+            "export function"
+        } else {
+            "function"
+        };
+
+        self.emit(&format!(
+            "{} {}({}) {{",
+            export_keyword,
+            sanitize_js_identifier(&func.name),
+            params_str
+        ));
+        self.indent += 1;
+        self.emit(&format!(
+            "return {}.then((__request) => __sigil_http_request(__request));",
+            self.js_ready(&params[0])
+        ));
+        self.indent -= 1;
+        self.emit("}");
+        Ok(true)
+    }
+
+    fn generate_stdlib_http_server_function(
+        &mut self,
+        func: &TypedFunctionDecl,
+    ) -> Result<bool, CodegenError> {
+        if func.name != "serve" {
+            return Ok(false);
+        }
+
+        let params: Vec<String> = func
+            .params
+            .iter()
+            .map(|p| sanitize_js_identifier(&p.name))
+            .collect();
+        let params_str = params.join(", ");
+        let export_keyword = if self.should_export_from_lib() {
+            "export function"
+        } else {
+            "function"
+        };
+
+        self.emit(&format!(
+            "{} {}({}) {{",
+            export_keyword,
+            sanitize_js_identifier(&func.name),
+            params_str
+        ));
+        self.indent += 1;
+        self.emit(&format!(
+            "return {}.then(([__handler, __port]) => __sigil_http_serve(__handler, __port));",
+            self.js_all(&[self.js_ready(&params[0]), self.js_ready(&params[1])])
+        ));
         self.indent -= 1;
         self.emit("}");
         Ok(true)
@@ -622,7 +811,12 @@ impl TypeScriptGenerator {
                     "function"
                 };
 
-                self.emit(&format!("{} {}({}) {{", ctor_keyword, variant.name, params));
+                self.emit(&format!(
+                    "{} {}({}) {{",
+                    ctor_keyword,
+                    sanitize_js_identifier(&variant.name),
+                    params
+                ));
                 self.indent += 1;
                 if param_names.is_empty() {
                     self.emit(&format!(
@@ -657,7 +851,9 @@ impl TypeScriptGenerator {
         };
         self.emit(&format!(
             "{}const {} = {};",
-            export_keyword, const_decl.name, value
+            export_keyword,
+            sanitize_js_identifier(&const_decl.name),
+            value
         ));
         Ok(())
     }
@@ -760,11 +956,11 @@ impl TypeScriptGenerator {
     fn generate_expression(&mut self, expr: &TypedExpr) -> Result<String, CodegenError> {
         match &expr.kind {
             TypedExprKind::Literal(lit) => self.generate_literal(lit),
-            TypedExprKind::Identifier(id) => Ok(self.js_ready(&id.name)),
+            TypedExprKind::Identifier(id) => Ok(self.js_ready(&sanitize_js_identifier(&id.name))),
             TypedExprKind::NamespaceMember { namespace, member } => Ok(self.js_ready(&format!(
                 "{}.{}",
                 sanitize_js_identifier(&namespace.join("_")),
-                member
+                sanitize_js_identifier(member)
             ))),
             TypedExprKind::Lambda(lambda) => self.generate_lambda(lambda),
             TypedExprKind::Call(call) => self.generate_call(call),
@@ -803,7 +999,11 @@ impl TypeScriptGenerator {
     }
 
     fn generate_lambda(&mut self, lambda: &TypedLambdaExpr) -> Result<String, CodegenError> {
-        let params: Vec<String> = lambda.params.iter().map(|p| p.name.clone()).collect();
+        let params: Vec<String> = lambda
+            .params
+            .iter()
+            .map(|p| sanitize_js_identifier(&p.name))
+            .collect();
         let params_str = params.join(", ");
         let body = self.generate_expression(&lambda.body)?;
         Ok(format!("(({}) => {})", params_str, body))
@@ -842,6 +1042,12 @@ impl TypeScriptGenerator {
                 if module == "stdlib/json" {
                     return self.generate_json_intrinsic(member, args);
                 }
+                if module == "stdlib/httpClient" {
+                    return self.generate_http_client_intrinsic(member, args);
+                }
+                if module == "stdlib/httpServer" {
+                    return self.generate_http_server_intrinsic(member, args);
+                }
                 if module == "stdlib/time" {
                     return self.generate_time_intrinsic(member, args);
                 }
@@ -867,6 +1073,20 @@ impl TypeScriptGenerator {
                     .is_some_and(|path| path.ends_with("language/stdlib/json.lib.sigil"))
                 {
                     return self.generate_json_intrinsic(&name.name, args);
+                }
+                if self
+                    .source_file
+                    .as_deref()
+                    .is_some_and(|path| path.ends_with("language/stdlib/httpClient.lib.sigil"))
+                {
+                    return self.generate_http_client_intrinsic(&name.name, args);
+                }
+                if self
+                    .source_file
+                    .as_deref()
+                    .is_some_and(|path| path.ends_with("language/stdlib/httpServer.lib.sigil"))
+                {
+                    return self.generate_http_server_intrinsic(&name.name, args);
                 }
                 if self
                     .source_file
@@ -1157,6 +1377,44 @@ impl TypeScriptGenerator {
         }
     }
 
+    fn generate_http_client_intrinsic(
+        &mut self,
+        member: &str,
+        args: &[TypedExpr],
+    ) -> Result<Option<String>, CodegenError> {
+        let generated_args = args
+            .iter()
+            .map(|arg| self.generate_expression(arg))
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+
+        match member {
+            "request" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__request) => __sigil_http_request(__request))",
+                generated_args[0]
+            ))),
+            _ => Ok(None),
+        }
+    }
+
+    fn generate_http_server_intrinsic(
+        &mut self,
+        member: &str,
+        args: &[TypedExpr],
+    ) -> Result<Option<String>, CodegenError> {
+        let generated_args = args
+            .iter()
+            .map(|arg| self.generate_expression(arg))
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+
+        match member {
+            "serve" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__handler, __port]) => __sigil_http_serve(__handler, __port))",
+                self.js_all(&generated_args)
+            ))),
+            _ => Ok(None),
+        }
+    }
+
     fn generate_url_intrinsic(
         &mut self,
         member: &str,
@@ -1206,10 +1464,10 @@ impl TypeScriptGenerator {
                 format!(
                     "{}.{}",
                     sanitize_js_identifier(&namespace),
-                    call.constructor
+                    sanitize_js_identifier(&call.constructor)
                 )
             }
-            None => call.constructor.clone(),
+            None => sanitize_js_identifier(&call.constructor),
         };
         let args: Vec<String> = call
             .args
@@ -1249,7 +1507,7 @@ impl TypeScriptGenerator {
         let func_ref = format!(
             "{}.{}",
             sanitize_js_identifier(&call.namespace.join("_")),
-            call.member
+            sanitize_js_identifier(&call.member)
         );
         let args: Vec<String> = call
             .args
@@ -1596,7 +1854,11 @@ impl TypeScriptGenerator {
         scrutinee: &str,
     ) -> Result<Option<String>, CodegenError> {
         match pattern {
-            Pattern::Identifier(id) => Ok(Some(format!("const {} = {};", id.name, scrutinee))),
+            Pattern::Identifier(id) => Ok(Some(format!(
+                "const {} = {};",
+                sanitize_js_identifier(&id.name),
+                scrutinee
+            ))),
             Pattern::Constructor(ctor) => {
                 if ctor.patterns.is_empty() {
                     return Ok(None);
@@ -1631,7 +1893,7 @@ impl TypeScriptGenerator {
                 if let Some(ref rest) = list.rest {
                     bindings.push(format!(
                         "const {} = {}.slice({});",
-                        rest,
+                        sanitize_js_identifier(rest),
                         scrutinee,
                         list.patterns.len()
                     ));
@@ -1730,7 +1992,7 @@ impl TypeScriptGenerator {
                 let func_ref = format!(
                     "{}.{}",
                     sanitize_js_identifier(&namespace.join("_")),
-                    member
+                    sanitize_js_identifier(member)
                 );
                 Ok(format!(
                     "__sigil_with_mock_extern('{}', {}, {}, async () => {})",
@@ -1752,13 +2014,63 @@ fn sanitize_js_identifier(raw: &str) -> String {
         }
     }
 
-    if sanitized.is_empty() {
+    let sanitized = if sanitized.is_empty() {
         "_".to_string()
     } else if sanitized.chars().next().unwrap().is_ascii_digit() {
         format!("_{}", sanitized)
     } else {
         sanitized
+    };
+
+    if is_reserved_js_identifier(&sanitized) {
+        format!("_{}", sanitized)
+    } else {
+        sanitized
     }
+}
+
+fn is_reserved_js_identifier(name: &str) -> bool {
+    matches!(
+        name,
+        "await"
+            | "break"
+            | "case"
+            | "catch"
+            | "class"
+            | "const"
+            | "continue"
+            | "debugger"
+            | "default"
+            | "delete"
+            | "do"
+            | "else"
+            | "enum"
+            | "export"
+            | "extends"
+            | "false"
+            | "finally"
+            | "for"
+            | "function"
+            | "if"
+            | "import"
+            | "in"
+            | "instanceof"
+            | "new"
+            | "null"
+            | "return"
+            | "super"
+            | "switch"
+            | "this"
+            | "throw"
+            | "true"
+            | "try"
+            | "typeof"
+            | "var"
+            | "void"
+            | "while"
+            | "with"
+            | "yield"
+    )
 }
 
 fn find_output_root(output_path: &Path) -> Option<PathBuf> {

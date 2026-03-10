@@ -1,0 +1,69 @@
+⟦ Tests for stdlib⋅httpClient ⟧
+
+i core⋅map
+i stdlib⋅httpClient
+i stdlib⋅json
+
+λmain()→Unit=()
+
+test "http client emptyHeaders returns empty map" {
+  core⋅map.size(stdlib⋅httpClient.emptyHeaders())=0
+}
+
+test "http client header creates singleton header map" {
+  match core⋅map.get("content-type",stdlib⋅httpClient.header("content-type","application/json")){
+    Some(value)→value="application/json"|
+    None()→false
+  }
+}
+
+test "http client invalid url returns err" →!IO {
+  match stdlib⋅httpClient.get(stdlib⋅httpClient.emptyHeaders(),"not a url"){
+    Ok(_)→false|
+    Err(error)→#error.message>0
+  }
+}
+
+test "http client mergeHeaders prefers right map values" {
+  l headers=(stdlib⋅httpClient.mergeHeaders(
+    stdlib⋅httpClient.header("content-type","text/plain"),
+    stdlib⋅httpClient.header("content-type","application/json")
+  ):stdlib⋅httpClient.Headers);
+  match core⋅map.get("content-type",headers){
+    Some(value)→value="application/json"|
+    None()→false
+  }
+}
+
+test "http client responseJson parses valid json body" {
+  match stdlib⋅httpClient.responseJson({
+    body:"{\"ok\":true}",
+    headers:stdlib⋅httpClient.emptyHeaders(),
+    status:200,
+    url:"https://sigil.dev/health"
+  }){
+    Ok(value)→match stdlib⋅json.asObject(value){
+      Some(obj)→match stdlib⋅json.getField("ok",obj){
+        Some(field)→match stdlib⋅json.asBool(field){
+          Some(flag)→flag|
+          None()→false
+        }|
+        None()→false
+      }|
+      None()→false
+    }|
+    Err(_)→false
+  }
+}
+
+test "http client responseJson returns invalid json error" {
+  match stdlib⋅httpClient.responseJson({
+    body:"{not json}",
+    headers:stdlib⋅httpClient.emptyHeaders(),
+    status:200,
+    url:"https://sigil.dev/bad"
+  }){
+    Ok(_)→false|
+    Err(error)→#error.message>0
+  }
+}

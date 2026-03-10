@@ -1,13 +1,9 @@
 ⟦ stdlib⋅httpServer - Canonical HTTP Server for Sigil
 
-This is a thin FFI wrapper around Node.js's http module.
-Provides a type-safe, idiomatic Sigil interface for HTTP servers.
-
-This is the ONE canonical way to serve HTTP in Sigil.
-No npm dependencies, no library choices - just import and use.
+Provides the typed Sigil surface for serving HTTP.
+Runtime behavior is implemented by the compiler runtime for stdlib⋅httpServer.
 ⟧
 
-⟦ HTTP request type ⟧
 t Headers={String↦String}
 
 t Request={
@@ -17,139 +13,58 @@ t Request={
   path:String
 }
 
-⟦ HTTP response type ⟧
 t Response={
   body:String,
   headers:Headers,
   status:Int
 }
 
-⟦ Opaque Node callback adapter types ⟧
-t NodeRequest={
-  method:String,
-  url:String
+e console : {
+  log : λ(String) → Unit
 }
 
-t NodeResponse={}
-
-⟦ External FFI bindings ⟧
-e console
-e http
-i core⋅map
-i stdlib⋅string
-i stdlib⋅url
-
-⟦ Helper: Create a JSON response ⟧
 λjson(body:String,status:Int)→Response={
   body:body,
   headers:{"content-type"↦"application/json; charset=utf-8"},
   status:status
 }
 
-⟦ Helper: Log HTTP request to console ⟧
 λlogRequest(req:Request)→!IO Unit={
   l logLine=(req.method++" "++req.path:String);
   console.log(logLine)
 }
 
-⟦ Helper: Create a 404 Not Found response ⟧
 λnotFound()→Response={
   body:"<h1>404 Not Found</h1>",
   headers:{"content-type"↦"text/html; charset=utf-8"},
   status:404
 }
 
-⟦ Helper: Create a 404 with custom message ⟧
 λnotFoundMsg(path:String)→Response={
   body:"<h1>404 Not Found</h1><p>Path: "++path++"</p>",
   headers:{"content-type"↦"text/html; charset=utf-8"},
   status:404
 }
 
-⟦ Helper: Create a 200 OK response ⟧
 λok(body:String)→Response={
   body:body,
   headers:{"content-type"↦"text/html; charset=utf-8"},
   status:200
 }
 
-⟦ Helper: Create a custom response ⟧
 λresponse(body:String,contentType:String,status:Int)→Response={
   body:body,
   headers:{"content-type"↦contentType},
   status:status
 }
 
-⟦ Main Export: Start HTTP server on specified port
+⟦
+  Start an HTTP server on the specified port.
 
-Usage:
-  λhandleRequest(req:Request)→!IO Response={
-    stdlib⋅httpServer.logRequest(req)
-    stdlib⋅httpServer.ok("<h1>Hello World</h1>")
-  }
-
-  λmain()→!IO Unit={
-    stdlib⋅httpServer.serve(handleRequest,3000)
-  }
+  Runtime behavior is provided by the compiler for stdlib⋅httpServer.serve.
 ⟧
+λserve(handler:λ(Request)→!IO Response,port:Int)→!IO Unit=()
 
-λserve(handler:λ(Request)→!IO Response,port:Int)→!IO Unit={
-  ⟦ Create HTTP server with request handler ⟧
-  (http.createServer(λ(nodeReq:NodeRequest,nodeRes:NodeResponse)→!IO Unit={
-    ⟦ Parse URL to extract path ⟧
-    l path=(match stdlib⋅url.parse(nodeReq.url){
-      Ok(parsedUrl)→match #parsedUrl.path>0{
-        true→parsedUrl.path|
-        false→"/"
-      }|
-      Err(_)→"/"
-    }:String);
-
-    ⟦ Extract method ⟧
-    l method=(nodeReq.method:String);
-
-    ⟦ For v1, use a placeholder header map until Node header conversion is wired in ⟧
-    l headers=({"content-type"↦""}:Headers);
-
-    ⟦ Collect request body chunks (TODO: typed chunk handling) ⟧
-    ⟦ For now, body parsing is stubbed to keep the canonical HTTP wrapper compiling ⟧
-
-    ⟦ Request body parsing not implemented yet (v1 stub) ⟧
-    l body=("":String);
-
-    ⟦ Build Sigil Request object ⟧
-    l sigilRequest=({
-      body:body,
-      headers:headers,
-      method:method,
-      path:path
-    }:Request);
-
-    ⟦ Call user-provided handler ⟧
-    l sigilResponse=(handler(sigilRequest):Response);
-
-    ⟦ Set response headers from map ⟧
-    ⟦ TODO: Header iteration is temporarily stubbed while block/effect sequencing is simplified ⟧
-    l responseHeaders=(sigilResponse.headers:Headers);
-
-    ⟦ TODO: Write response to nodeRes once callback second-parameter binding is stable in typechecker ⟧
-    l status=(sigilResponse.status:Int);
-    l bodyHtml=(sigilResponse.body:String);
-    l noop=(status:Int);
-    l noop2=(bodyHtml:String);
-    l noop3=(core⋅map.get("content-type",responseHeaders):Option[String]);
-
-    ()
-  })).listen(port,λ()→!IO Unit={
-    l portStr=(stdlib⋅string.intToString(port):String);
-    console.log("Server running at http://localhost:"++portStr)
-    ()
-  })
-
-  ()
-}
-
-⟦ Helper: Create a 500 Internal Server Error response ⟧
 λserverError(message:String)→Response={
   body:"<h1>500 Internal Server Error</h1><p>"++message++"</p>",
   headers:{"content-type"↦"text/html; charset=utf-8"},

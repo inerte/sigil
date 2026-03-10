@@ -16,12 +16,13 @@
     "sigil:test:fixtures": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test language/test-fixtures/tests",
     "sigil:test:language": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test language/tests",
     "sigil:test:stdlib": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test language/stdlib-tests/tests",
+    "sigil:test:http": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && (cd language/compiler && bash test-http-client-server.sh)",
     "sigil:test:algorithms": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test projects/algorithms/tests",
     "sigil:test:ssg": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test projects/ssg/tests",
     "sigil:test:todo": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test projects/todo-app/tests",
     "sigil:test:canonical": "bash language/test-canonical.sh",
     "sigil:test:multimodule": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && (cd language/compiler && bash test-multimodule.sh)",
-    "sigil:test:all": "pnpm sigil:test:compiler && pnpm sigil:test:fixtures && pnpm sigil:test:language && pnpm sigil:test:stdlib && pnpm sigil:test:algorithms && pnpm sigil:test:ssg && pnpm sigil:test:todo && pnpm sigil:test:multimodule"
+    "sigil:test:all": "pnpm sigil:test:compiler && pnpm sigil:test:fixtures && pnpm sigil:test:language && pnpm sigil:test:stdlib && pnpm sigil:test:http && pnpm sigil:test:algorithms && pnpm sigil:test:ssg && pnpm sigil:test:todo && pnpm sigil:test:multimodule"
   },
   "devDependencies": {
     "tsx": "^4.20.5"

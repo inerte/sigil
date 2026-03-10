@@ -1,0 +1,9 @@
+⟦ stdlib⋅httpClient GET example ⟧
+
+i stdlib⋅httpClient
+i stdlib⋅string
+
+λmain()→!IO String match stdlib⋅httpClient.get(stdlib⋅httpClient.emptyHeaders(),"http://127.0.0.1:8080/health"){
+  Ok(response)→stdlib⋅string.intToString(response.status)++":"++response.body|
+  Err(error)→"ERR:"++error.message
+}

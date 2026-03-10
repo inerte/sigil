@@ -1,0 +1,10 @@
+⟦ stdlib⋅httpClient JSON POST example ⟧
+
+i stdlib⋅httpClient
+i stdlib⋅json
+
+λmain()→!IO Result[stdlib⋅json.JsonValue,stdlib⋅httpClient.HttpError]=stdlib⋅httpClient.postJson(
+  stdlib⋅json.JsonObject({"message"↦stdlib⋅json.JsonString("hello from sigil")}),
+  stdlib⋅httpClient.emptyHeaders(),
+  "http://127.0.0.1:8080/messages"
+)

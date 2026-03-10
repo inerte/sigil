@@ -646,18 +646,64 @@ Time and instant handling (`Instant`, strict ISO parsing, clock access)
 λnow()→!IO Instant
 ```
 
-### std/http
+### std/httpClient
 
-HTTP client and server
+Canonical text-based HTTP client.
 
 ```sigil
-t HttpMethod=GET|POST|PUT|DELETE|PATCH
-t HttpRequest={body:String,headers:{String:String},method:HttpMethod,url:String}
-t HttpResponse={body:String,headers:{String:String},status:Int}
+t Headers={String↦String}
+t HttpError={kind:HttpErrorKind,message:String}
+t HttpErrorKind=InvalidJson()|InvalidUrl()|Network()|Timeout()
+t HttpMethod=Delete()|Get()|Patch()|Post()|Put()
+t HttpRequest={body:Option[String],headers:Headers,method:HttpMethod,url:String}
+t HttpResponse={body:String,headers:Headers,status:Int,url:String}
 
-λhttp_get(url:String)→Result[HttpResponse,HttpError]!Network
-λhttp_post(url:String,body:String)→Result[HttpResponse,HttpError]!Network
+λrequest(request:HttpRequest)→!IO Result[HttpResponse,HttpError]
+λget(headers:Headers,url:String)→!IO Result[HttpResponse,HttpError]
+λdelete(headers:Headers,url:String)→!IO Result[HttpResponse,HttpError]
+λpost(body:String,headers:Headers,url:String)→!IO Result[HttpResponse,HttpError]
+λput(body:String,headers:Headers,url:String)→!IO Result[HttpResponse,HttpError]
+λpatch(body:String,headers:Headers,url:String)→!IO Result[HttpResponse,HttpError]
+
+λgetJson(headers:Headers,url:String)→!IO Result[JsonValue,HttpError]
+λdeleteJson(headers:Headers,url:String)→!IO Result[JsonValue,HttpError]
+λpostJson(body:JsonValue,headers:Headers,url:String)→!IO Result[JsonValue,HttpError]
+λputJson(body:JsonValue,headers:Headers,url:String)→!IO Result[JsonValue,HttpError]
+λpatchJson(body:JsonValue,headers:Headers,url:String)→!IO Result[JsonValue,HttpError]
+λresponseJson(response:HttpResponse)→Result[JsonValue,HttpError]
+
+λemptyHeaders()→Headers
+λjsonHeaders()→Headers
+λheader(key:String,value:String)→Headers
+λmergeHeaders(left:Headers,right:Headers)→Headers
 ```
+
+Semantics:
+- any successfully received HTTP response returns `Ok(HttpResponse)`, including `404` and `500`
+- invalid URL, transport failure, and JSON parse failure return `Err(HttpError)`
+- request and response bodies are UTF-8 text in v1
+
+### std/httpServer
+
+Canonical request/response HTTP server.
+
+```sigil
+t Headers={String↦String}
+t Request={body:String,headers:Headers,method:String,path:String}
+t Response={body:String,headers:Headers,status:Int}
+
+λresponse(body:String,contentType:String,status:Int)→Response
+λok(body:String)→Response
+λjson(body:String,status:Int)→Response
+λnotFound()→Response
+λnotFoundMsg(message:String)→Response
+λserverError(message:String)→Response
+λlogRequest(request:Request)→!IO Unit
+λserve(handler:λ(Request)→!IO Response,port:Int)→!IO Unit
+```
+
+`serve` is long-lived: once the server is listening, the process remains active
+until it is terminated externally.
 
 ### std/test
 
@@ -689,7 +735,6 @@ Testing utilities
 
 Effects are tracked at type level:
 - `!IO` - Input/output operations
-- `!Network` - Network requests
 - `!Test` - Test operations
 - Pure functions have no effect annotation
 

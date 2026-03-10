@@ -1,4 +1,4 @@
-t Unit=Empty()
+t EmptyToken=Empty()
 
-λmain()→Unit=test()
-λtest()→Unit=Empty()
+λmain()→EmptyToken=test()
+λtest()→EmptyToken=Empty()

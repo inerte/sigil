@@ -1,0 +1,112 @@
+⟦ stdlib⋅httpClient - Canonical HTTP Client for Sigil
+
+Provides the typed Sigil surface for making HTTP requests.
+Runtime behavior is implemented by the compiler runtime for stdlib⋅httpClient.
+⟧
+
+t Headers={String↦String}
+
+t HttpError={
+  kind:HttpErrorKind,
+  message:String
+}
+
+t HttpErrorKind=InvalidJson()|InvalidUrl()|Network()|Timeout()
+
+t HttpMethod=Delete()|Get()|Patch()|Post()|Put()
+
+t HttpRequest={
+  body:Option[String],
+  headers:Headers,
+  method:HttpMethod,
+  url:String
+}
+
+t HttpResponse={
+  body:String,
+  headers:Headers,
+  status:Int,
+  url:String
+}
+
+i core⋅map
+i stdlib⋅json
+
+λdelete(headers:Headers,url:String)→!IO Result[HttpResponse,HttpError]=request({
+  body:None(),
+  headers:headers,
+  method:Delete(),
+  url:url
+})
+
+λdeleteJson(headers:Headers,url:String)→!IO Result[stdlib⋅json.JsonValue,HttpError] match delete(headers,url){
+  Ok(response)→responseJson(response)|
+  Err(error)→Err(error)
+}
+
+λemptyHeaders()→Headers=({↦}:{String↦String})
+
+λget(headers:Headers,url:String)→!IO Result[HttpResponse,HttpError]=request({
+  body:None(),
+  headers:headers,
+  method:Get(),
+  url:url
+})
+
+λgetJson(headers:Headers,url:String)→!IO Result[stdlib⋅json.JsonValue,HttpError] match get(headers,url){
+  Ok(response)→responseJson(response)|
+  Err(error)→Err(error)
+}
+
+λheader(key:String,value:String)→Headers=core⋅map.singleton(key,value)
+
+λjsonHeaders()→Headers={"content-type"↦"application/json; charset=utf-8"}
+
+λmergeHeaders(left:Headers,right:Headers)→Headers=core⋅map.merge(left,right)
+
+λpatch(body:String,headers:Headers,url:String)→!IO Result[HttpResponse,HttpError]=request({
+  body:Some(body),
+  headers:headers,
+  method:Patch(),
+  url:url
+})
+
+λpatchJson(body:stdlib⋅json.JsonValue,headers:Headers,url:String)→!IO Result[stdlib⋅json.JsonValue,HttpError] match patch(stdlib⋅json.stringify(body),mergeHeaders(jsonHeaders(),headers),url){
+  Ok(response)→responseJson(response)|
+  Err(error)→Err(error)
+}
+
+λpost(body:String,headers:Headers,url:String)→!IO Result[HttpResponse,HttpError]=request({
+  body:Some(body),
+  headers:headers,
+  method:Post(),
+  url:url
+})
+
+λpostJson(body:stdlib⋅json.JsonValue,headers:Headers,url:String)→!IO Result[stdlib⋅json.JsonValue,HttpError] match post(stdlib⋅json.stringify(body),mergeHeaders(jsonHeaders(),headers),url){
+  Ok(response)→responseJson(response)|
+  Err(error)→Err(error)
+}
+
+λput(body:String,headers:Headers,url:String)→!IO Result[HttpResponse,HttpError]=request({
+  body:Some(body),
+  headers:headers,
+  method:Put(),
+  url:url
+})
+
+λputJson(body:stdlib⋅json.JsonValue,headers:Headers,url:String)→!IO Result[stdlib⋅json.JsonValue,HttpError] match put(stdlib⋅json.stringify(body),mergeHeaders(jsonHeaders(),headers),url){
+  Ok(response)→responseJson(response)|
+  Err(error)→Err(error)
+}
+
+⟦ Runtime behavior is provided by the compiler for stdlib⋅httpClient.request. ⟧
+λrequest(request:HttpRequest)→!IO Result[HttpResponse,HttpError]=Err({
+  kind:Network(),
+  message:"http client runtime unavailable"
+})
+
+λresponseJson(response:HttpResponse)→Result[stdlib⋅json.JsonValue,HttpError] match stdlib⋅json.parse(response.body){
+  Ok(value)→Ok(value)|
+  Err(error)→Err({kind:InvalidJson(),message:error.message})
+}

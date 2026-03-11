@@ -22,6 +22,10 @@ claude "Write a Hello World in Sigil and run it"
 
 **Concurrent by Default** - Built for async I/O without await syntax. Functions compose naturally with effects tracked in the type system.
 
+**Testing Built In** - Sigil treats tests as first-class code, with language-level test declarations, JSON-readable results, and runtime-aware validation for things like topology-backed environments.
+
+**Topology as Runtime Truth** - External dependencies (such as HTTP and database calls) are declared once, bound per environment, and used through typed handles instead of raw endpoints. Runtime wiring becomes compiler-validated project structure.
+
 ## Quick Example
 
 ```sigil

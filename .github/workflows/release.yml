@@ -218,6 +218,11 @@ jobs:
           corepack enable
           corepack prepare pnpm@10.0.0 --activate
 
+      - name: Install workspace dependencies
+        if: ${{ steps.tap-config.outputs.configured == 'true' }}
+        shell: bash
+        run: pnpm install --frozen-lockfile
+
       - name: Generate checksums
         if: ${{ steps.tap-config.outputs.configured == 'true' }}
         shell: bash

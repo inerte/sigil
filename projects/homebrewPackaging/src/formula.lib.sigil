@@ -1,0 +1,99 @@
+t ChecksumEntry={archive:String,sha256:String}
+t FormulaInput={checksums:ReleaseChecksums,repo:String,version:String}
+t ReleaseChecksums={darwinArm64:String,darwinX64:String,linuxArm64:String,linuxX64:String}
+
+i stdlib⋅list
+i stdlib⋅string
+
+λarchiveName(platform:String,version:String)→String="sigil-"++version++"-"++platform++".tar.gz"
+
+λarchiveUrl(platform:String,repo:String,version:String)→String=
+  "https://github.com/"++repo++"/releases/download/"++version++"/"++archiveName(platform,version)
+
+λchecksumLine(line:String)→Option[ChecksumEntry]=
+  checksumLineParts(stdlib⋅string.split("  ",stdlib⋅string.trim(line)))
+
+λchecksumLineParts(parts:[String])→Option[ChecksumEntry] match stdlib⋅list.nth(0,parts){
+  Some(sha256)→match stdlib⋅list.nth(1,parts){
+    Some(archive)→Some({archive:archive,sha256:sha256})|
+    None()→None()
+  }|
+  None()→None()
+}
+
+λfindChecksum(archive:String,entries:[ChecksumEntry])→Option[String] match entries{
+  []→None()|
+  [first,.rest]→match first.archive=archive{
+    true→Some(first.sha256)|
+    false→findChecksum(archive,rest)
+  }
+}
+
+λformula(input:FormulaInput)→String=
+  stdlib⋅string.unlines([
+    "class Sigil < Formula",
+    "  desc \"Machine-first programming language designed for canonical code generation\"",
+    "  homepage \"https://github.com/"++input.repo++"\"",
+    "  version \""++input.version++"\"",
+    "  license \"MIT\"",
+    "",
+    "  on_macos do",
+    "    if Hardware::CPU.arm?",
+    "      url \""++archiveUrl("darwin-arm64",input.repo,input.version)++"\"",
+    "      sha256 \""++input.checksums.darwinArm64++"\"",
+    "    else",
+    "      url \""++archiveUrl("darwin-x64",input.repo,input.version)++"\"",
+    "      sha256 \""++input.checksums.darwinX64++"\"",
+    "    end",
+    "  end",
+    "",
+    "  on_linux do",
+    "    if Hardware::CPU.arm?",
+    "      url \""++archiveUrl("linux-arm64",input.repo,input.version)++"\"",
+    "      sha256 \""++input.checksums.linuxArm64++"\"",
+    "    else",
+    "      url \""++archiveUrl("linux-x64",input.repo,input.version)++"\"",
+    "      sha256 \""++input.checksums.linuxX64++"\"",
+    "    end",
+    "  end",
+    "",
+    "  def install",
+    "    bin.install Dir[\"*/sigil\"].first => \"sigil\"",
+    "    pkgshare.install Dir[\"*/README.txt\"].first => \"README.txt\"",
+    "  end",
+    "",
+    "  test do",
+    "    assert_match \"sigil "++input.version++"\", shell_output(\"#{bin}/sigil --version\")",
+    "  end",
+    "end"
+  ])++"\n"
+
+λparseChecksumLines(lines:[String])→[ChecksumEntry] match lines{
+  []→[]|
+  [first,.rest]→match checksumLine(first){
+    Some(entry)→[entry]⧺parseChecksumLines(rest)|
+    None()→parseChecksumLines(rest)
+  }
+}
+
+λparseChecksums(text:String,version:String)→Option[ReleaseChecksums]=
+  parseChecksumsFromEntries(parseChecksumLines(stdlib⋅string.lines(text)),version)
+
+λparseChecksumsFromEntries(entries:[ChecksumEntry],version:String)→Option[ReleaseChecksums] match findChecksum(archiveName("darwin-arm64",version),entries){
+  Some(darwinArm64)→match findChecksum(archiveName("darwin-x64",version),entries){
+    Some(darwinX64)→match findChecksum(archiveName("linux-arm64",version),entries){
+      Some(linuxArm64)→match findChecksum(archiveName("linux-x64",version),entries){
+        Some(linuxX64)→Some({
+          darwinArm64:darwinArm64,
+          darwinX64:darwinX64,
+          linuxArm64:linuxArm64,
+          linuxX64:linuxX64
+        })|
+        None()→None()
+      }|
+      None()→None()
+    }|
+    None()→None()
+  }|
+  None()→None()
+}

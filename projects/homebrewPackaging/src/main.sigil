@@ -1,0 +1,58 @@
+e console
+e process
+
+i src⋅formula
+i stdlib⋅file
+i stdlib⋅path
+
+λfail(message:String)→!IO Unit={
+  l _=(console.error(message):Unit);
+  process.exit(1)
+}
+
+λmain()→!IO Unit match releaseVersion(){
+  Ok(version)→match sha256SumsPath(){
+    Ok(path)→{
+      l repo=releaseRepo();
+      l output=outputPath();
+      l text=(stdlib⋅file.readText(path):String);
+      match src⋅formula.parseChecksums(text,version){
+        Some(checksums)→{
+          l _=(stdlib⋅file.makeDirs(stdlib⋅path.dirname(output)):Unit);
+          (stdlib⋅file.writeText(src⋅formula.formula({checksums:checksums,repo:repo,version:version}),output):Unit)
+        }|
+        None()→fail("could not parse required Homebrew release checksums")
+      }
+    }|
+    Err(message)→fail(message)
+  }|
+  Err(message)→fail(message)
+}
+
+λoutputPath()→String=outputPathFromProperty(process.env.hasOwnProperty("sigilHomebrewOutputPath"))
+
+λoutputPathFromProperty(hasValue:Bool)→String match hasValue{
+  true→(process.env.sigilHomebrewOutputPath:String)|
+  false→"packaging/homebrew/Formula/sigil.rb"
+}
+
+λreleaseRepo()→String=releaseRepoFromProperty(process.env.hasOwnProperty("sigilHomebrewRepo"))
+
+λreleaseRepoFromProperty(hasValue:Bool)→String match hasValue{
+  true→(process.env.sigilHomebrewRepo:String)|
+  false→"inerte/sigil"
+}
+
+λreleaseVersion()→Result[String,String]=releaseVersionFromProperty(process.env.hasOwnProperty("sigilHomebrewVersion"))
+
+λreleaseVersionFromProperty(hasValue:Bool)→Result[String,String] match hasValue{
+  true→Ok((process.env.sigilHomebrewVersion:String))|
+  false→Err("sigilHomebrewVersion is required")
+}
+
+λsha256SumsPath()→Result[String,String]=sha256SumsPathFromProperty(process.env.hasOwnProperty("sigilHomebrewSha256SumsPath"))
+
+λsha256SumsPathFromProperty(hasValue:Bool)→Result[String,String] match hasValue{
+  true→Ok((process.env.sigilHomebrewSha256SumsPath:String))|
+  false→Err("sigilHomebrewSha256SumsPath is required")
+}

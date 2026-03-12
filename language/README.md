@@ -345,7 +345,7 @@ GitHub Releases are the canonical installation path.
 
 - Official release versions use UTC timestamps in the format `YYYY-MM-DDTHH-mm-ssZ`
 - Source builds are for contributors and compiler development
-- Homebrew can be added later as a wrapper around the release artifacts
+- Homebrew packaging is generated from the release artifacts in this repo and can publish to a separate tap repo when configured
 
 ## Documentation
 

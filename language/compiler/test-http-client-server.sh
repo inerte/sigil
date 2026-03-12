@@ -1,12 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 echo "========================================"
 echo "HTTP Client/Server Integration Tests"
 echo "========================================"
 echo ""
 
-PROJECT_DIR="../../projects/topology-http"
+PROJECT_DIR="${SCRIPT_DIR}/../../projects/topology-http"
 PORT="45110"
 SERVER_LOG="server.log"
 SERVER_URL="http://127.0.0.1:${PORT}/health"

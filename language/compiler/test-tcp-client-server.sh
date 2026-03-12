@@ -1,12 +1,14 @@
 #!/bin/bash
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 echo "========================================"
 echo "TCP Client/Server Integration Tests"
 echo "========================================"
 echo ""
 
-PROJECT_DIR="../../projects/topology-tcp"
+PROJECT_DIR="${SCRIPT_DIR}/../../projects/topology-tcp"
 PORT="45120"
 SERVER_LOG="server.log"
 

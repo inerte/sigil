@@ -1,0 +1,7 @@
+{
+  "layout": {
+    "src": "src",
+    "tests": "tests",
+    "out": ".local"
+  }
+}

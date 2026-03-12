@@ -174,3 +174,79 @@ jobs:
           else
             gh release create "${VERSION}" dist/* --title "${VERSION}" --latest --generate-notes --repo "${REPO}"
           fi
+
+  publish-homebrew-tap:
+    needs:
+      - prepare-release
+      - build-binaries
+      - publish-release
+    if: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY != '' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: dist
+
+      - name: Generate checksums
+        shell: bash
+        run: |
+          cd dist
+          sha256sum sigil-* > SHA256SUMS
+
+      - name: Extract Sigil release binary
+        env:
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/sigil-release"
+          tar -xzf "dist/sigil-${VERSION}-linux-x64.tar.gz" -C "$RUNNER_TEMP/sigil-release"
+          echo "SIGIL_BIN=$(find "$RUNNER_TEMP/sigil-release" -name sigil -type f | head -1)" >> "$GITHUB_ENV"
+
+      - name: Generate Homebrew formula
+        env:
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+          REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/homebrew/Formula"
+          sigilHomebrewVersion="${VERSION}" \
+          sigilHomebrewRepo="${REPO}" \
+          sigilHomebrewSha256SumsPath="$PWD/dist/SHA256SUMS" \
+          sigilHomebrewOutputPath="$RUNNER_TEMP/homebrew/Formula/sigil.rb" \
+          "$SIGIL_BIN" run projects/homebrewPackaging/src/main.sigil
+          ruby -c "$RUNNER_TEMP/homebrew/Formula/sigil.rb"
+
+      - name: Configure tap deploy key
+        env:
+          HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+        shell: bash
+        run: |
+          install -m 700 -d ~/.ssh
+          printf "%s" "$HOMEBREW_TAP_DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      - name: Update tap repo
+        env:
+          TAP_REPO: inerte/homebrew-tap
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+        shell: bash
+        run: |
+          git clone "git@github.com:${TAP_REPO}.git" "$RUNNER_TEMP/homebrew-tap"
+          mkdir -p "$RUNNER_TEMP/homebrew-tap/Formula"
+          cp "$RUNNER_TEMP/homebrew/Formula/sigil.rb" "$RUNNER_TEMP/homebrew-tap/Formula/sigil.rb"
+          cd "$RUNNER_TEMP/homebrew-tap"
+          if git diff --quiet -- Formula/sigil.rb; then
+            echo "Homebrew formula already up to date"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/sigil.rb
+          git commit -m "update: publish sigil ${VERSION} formula"
+          git push

@@ -10,6 +10,7 @@ license = "MIT"
 sigil-ast = { path = "../sigil-ast" }
 sigil-lexer = { path = "../sigil-lexer" }
 sigil-diagnostics = { path = "../sigil-diagnostics" }
+sigil-typechecker = { path = "../sigil-typechecker" }
 thiserror = { workspace = true }
 
 [dev-dependencies]

@@ -19,22 +19,26 @@ test "http client header creates singleton header map" {
 }
 
 test "http client request record preserves dependency headers and path" {
-  l request=({
+  ({
     body:None(),
     dependency:stdlib⋅topology.HttpServiceDependency("mailerApi"),
     headers:stdlib⋅httpClient.emptyHeaders(),
     method:stdlib⋅httpClient.Get(),
     path:"/health"
-  }:stdlib⋅httpClient.HttpRequest);
-  request.dependency=stdlib⋅topology.HttpServiceDependency("mailerApi") and request.path="/health"
+  }:stdlib⋅httpClient.HttpRequest).dependency=stdlib⋅topology.HttpServiceDependency("mailerApi") and ({
+    body:None(),
+    dependency:stdlib⋅topology.HttpServiceDependency("mailerApi"),
+    headers:stdlib⋅httpClient.emptyHeaders(),
+    method:stdlib⋅httpClient.Get(),
+    path:"/health"
+  }:stdlib⋅httpClient.HttpRequest).path="/health"
 }
 
 test "http client mergeHeaders prefers right map values" {
-  l headers=(stdlib⋅httpClient.mergeHeaders(
+  match core⋅map.get("content-type",(stdlib⋅httpClient.mergeHeaders(
     stdlib⋅httpClient.header("content-type","text/plain"),
     stdlib⋅httpClient.header("content-type","application/json")
-  ):stdlib⋅httpClient.Headers);
-  match core⋅map.get("content-type",headers){
+  ):stdlib⋅httpClient.Headers)){
     Some(value)→value="application/json"|
     None()→false
   }

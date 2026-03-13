@@ -21,8 +21,7 @@ test "build site removes stale output files" →!IO {
   l outputDir=("/tmp/sigil-ssg-e2e-clean":String);
   l _=(stdlib⋅file.removeTree(outputDir):Unit);
   l _=(stdlib⋅file.makeDirs(outputDir):Unit);
-  l stalePath=(stdlib⋅path.join(outputDir,"stale.txt"):String);
-  l _=(stdlib⋅file.writeText("stale",stalePath):Unit);
+  l _=(stdlib⋅file.writeText("stale",stdlib⋅path.join(outputDir,"stale.txt")):Unit);
   l _=(src⋅build.buildSite(baseConfig(outputDir)):Unit);
   l rootEntries=(src⋅build.listDir(outputDir):[String]);
   stdlib⋅list.contains("stale.txt",rootEntries)=false

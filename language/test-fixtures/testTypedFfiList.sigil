@@ -3,8 +3,7 @@
 e fs⋅promises : { readdir : λ(String) → [String] }
 
 λcountFiles(dir:String)→Int={
-  l files=(fs⋅promises.readdir(dir):[String]);
-  #files  ⟦ Works because files is [String], not Any ⟧
+  #(fs⋅promises.readdir(dir):[String])  ⟦ Works because result is [String], not Any ⟧
 }
 
 λmain()→Unit=()

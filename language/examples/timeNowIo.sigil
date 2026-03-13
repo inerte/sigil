@@ -1,6 +1,5 @@
 i stdlib⋅time
 
 λmain()→!IO Unit=
-  l now=(stdlib⋅time.now():stdlib⋅time.Instant);
-  l _=(stdlib⋅time.formatIso(now):String);
+  l _=(stdlib⋅time.formatIso((stdlib⋅time.now():stdlib⋅time.Instant)):String);
   ()

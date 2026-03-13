@@ -594,6 +594,64 @@ Expected: TypeAscriptionExpr
 Wrap value in type ascription: (value:Type)
 ```
 
+#### Rule 10: Single-Use Pure Bindings Must Inline
+
+Pure local bindings that are used exactly once are non-canonical.
+
+Locals exist for:
+- reuse
+- effect sequencing
+- destructuring
+- syntax-required staging
+
+They do **not** exist to give one-use pure subexpressions an alternate surface form.
+
+**Error code:** `SIGIL-CANON-SINGLE-USE-PURE-BINDING`
+
+```sigil
+✅ VALID - reused pure binding:
+λrenderTwice(page:Page)→String={
+  l rendered=(render(page):String);
+  rendered++rendered
+}
+
+✅ VALID - effect sequencing:
+λload(path:String)→!IO String={
+  l text=(stdlib⋅file.readText(path):String);
+  stdlib⋅string.trim(text)
+}
+
+❌ REJECTED - one-use pure alias:
+λformulaText(checksums:Checksums,version:String)→String={
+  l repo=(releaseRepo():String);
+  src⋅formula.formula({checksums:checksums,repo:repo,version:version})
+}
+
+✅ REQUIRED:
+λformulaText(checksums:Checksums,version:String)→String=
+  src⋅formula.formula({checksums:checksums,repo:releaseRepo(),version:version})
+```
+
+**Rationale:**
+- **One surface form** - `l x=pure();use(x)` and `use(pure())` are not both allowed
+- **Tooling-first** - the compiler decides from purity and usage count, not from “readability”
+- **LLM consistency** - generated code stops drifting between named and inline one-shot intermediates
+- **Locals stay structural** - they mark reuse or sequencing boundaries instead of rhetorical stages
+
+**What is enforced mechanically:**
+- if a local binding is pure
+- and used exactly once
+- and direct substitution is legal
+- Sigil requires the inline form
+
+**Error message:**
+```
+Single-use pure binding 'repo' must be inlined
+
+Sigil enforces ONE WAY: pure intermediates used once stay inline.
+Bindings exist for reuse, effects, destructuring, or syntax-required staging.
+```
+
 ## Already Enforced (Lexer Level)
 
 The lexer rejects:

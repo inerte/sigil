@@ -30,8 +30,7 @@ e console : {
 }
 
 λlogRequest(req:Request)→!IO Unit={
-  l logLine=(req.method++" "++req.path:String);
-  console.log(logLine)
+  console.log((req.method++" "++req.path:String))
 }
 
 λnotFound()→Response={

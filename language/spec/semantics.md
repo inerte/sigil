@@ -133,6 +133,11 @@ l x=2+3;x*2
 → 10                (* Compute *)
 ```
 
+Canonical note:
+- this reduction rule describes runtime behavior
+- Sigil canonical validation may reject a source-level `l` binding earlier if it is a pure single-use alias
+- in that case the programmer must write the already-inlined source form instead
+
 #### Pattern Matching
 
 ```

@@ -8,26 +8,21 @@ t Selection={chosen:Int,rest:[Int]}
 λpermutationsFromSelections(choices:[Selection])→[[Int]] match choices{
   []→[]|
   [choice,.tail]→{
-    l chosenPermutations=(permutations(choice.rest):[[Int]]);
-    l prefixed=(prependAll(choice.chosen,chosenPermutations):[[Int]]);
-    l remaining=(permutationsFromSelections(tail):[[Int]]);
-    prefixed⧺remaining
+    prependAll(choice.chosen,permutations(choice.rest))⧺permutationsFromSelections(tail)
   }
 }
 
 λprependAll(item:Int,xss:[[Int]])→[[Int]] match xss{
   []→[]|
   [head,.tail]→{
-    l nextLists=(prependAll(item,tail):[[Int]]);
-    [[item]⧺head]⧺nextLists
+    [[item]⧺head]⧺prependAll(item,tail)
   }
 }
 
 λprependChoice(choices:[Selection],prefix:Int)→[Selection] match choices{
   []→[]|
   [choice,.tail]→{
-    l nextChoices=(prependChoice(tail,prefix):[Selection]);
-    [Selection{chosen:choice.chosen,rest:[prefix]⧺choice.rest}]⧺nextChoices
+    [Selection{chosen:choice.chosen,rest:[prefix]⧺choice.rest}]⧺prependChoice(tail,prefix)
   }
 }
 

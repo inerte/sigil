@@ -1,6 +1,5 @@
 i core⋅map
 
 λmain()→Option[String]={
-  l headers=({"content-type"↦"application/json","x-request-id"↦"abc-123"}:{String↦String});
-  core⋅map.get("content-type",headers)
+  core⋅map.get("content-type",({"content-type"↦"application/json","x-request-id"↦"abc-123"}:{String↦String}))
 }

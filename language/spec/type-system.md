@@ -127,6 +127,17 @@ If a binding name is already present in the active lexical environment, a nested
 
 must use a fresh name instead of rebinding the existing one.
 
+Sigil canonical validation also forbids single-use pure local aliases.
+
+If:
+- a local `l` binding is pure
+- its bound name is used exactly once
+- direct substitution is syntactically valid
+
+then the binding is rejected and the expression must be inlined.
+
+This rule is mechanical and does not depend on naming intent or readability judgments. Local bindings are reserved for reuse, effect sequencing, destructuring, recursion, or syntax-required staging.
+
 ### Type Schemes
 
 Type schemes represent explicit top-level polymorphic types:

@@ -13,13 +13,11 @@ i stdlib⋅path
 λmain()→!IO Unit match releaseVersion(){
   Ok(version)→match sha256SumsPath(){
     Ok(path)→{
-      l repo=releaseRepo();
-      l output=outputPath();
       l text=(stdlib⋅file.readText(path):String);
       match src⋅formula.parseChecksums(text,version){
         Some(checksums)→{
-          l _=(stdlib⋅file.makeDirs(stdlib⋅path.dirname(output)):Unit);
-          (stdlib⋅file.writeText(src⋅formula.formula({checksums:checksums,repo:repo,version:version}),output):Unit)
+          l _=(stdlib⋅file.makeDirs(stdlib⋅path.dirname(outputPath())):Unit);
+          (stdlib⋅file.writeText(src⋅formula.formula({checksums:checksums,repo:releaseRepo(),version:version}),outputPath()):Unit)
         }|
         None()→fail("could not parse required Homebrew release checksums")
       }

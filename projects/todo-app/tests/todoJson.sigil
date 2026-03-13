@@ -25,8 +25,7 @@ test "todo json roundtrip preserves state" {
       {done:true,id:2,text:"Write tests"}
     ]
   }:src⋅todoJson.PersistedState);
-  l encoded=(src⋅todoJson.encodeState(state):String);
-  match src⋅todoJson.decodeState(encoded){
+  match src⋅todoJson.decodeState((src⋅todoJson.encodeState(state):String)){
     Ok(decoded)→decoded=state|
     Err(_)→false
   }

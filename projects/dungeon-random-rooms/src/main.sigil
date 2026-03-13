@@ -52,16 +52,13 @@ c width=(48:Int)
 λisPlayer(world:World,x:Int,y:Int)→Bool=(x=centerX(world.room1)) and (y=centerY(world.room1))
 
 λmain()→!IO Unit={
-  l world=(makeWorld(seed0):World);
-  console.log(renderRows(world,0))
+  console.log(renderRows(makeWorld(seed0),0))
 }
 
 λmakeWorld(seed:Int)→World={
-  l rng=(Rng{seed:seed}:Rng);
-  l r1=(randRoomInZone(rng,6,13,2,2):RoomRoll);
+  l r1=(randRoomInZone(Rng{seed:seed},6,13,2,2):RoomRoll);
   l r2=(randRoomInZone(r1.rng,7,14,18,2):RoomRoll);
-  l r3=(randRoomInZone(r2.rng,6,12,32,9):RoomRoll);
-  World{room1:r1.room,room2:r2.room,room3:r3.room}
+  World{room1:r1.room,room2:r2.room,room3:(randRoomInZone(r2.rng,6,12,32,9):RoomRoll).room}
 }
 
 λmax2(a:Int,b:Int)→Int match a>b{
@@ -79,9 +76,7 @@ c width=(48:Int)
 
 λrandInt(max:Int,min:Int,rng:Rng)→IntRoll={
   l next=(nextRng(rng):Rng);
-  l span=((max-min)+1:Int);
-  l value=(min+(next.seed%span):Int);
-  IntRoll{rng:next,value:value}
+  IntRoll{rng:next,value:(min+(next.seed%((max-min)+1)):Int)}
 }
 
 λrandRoomInZone(rng:Rng,zh:Int,zw:Int,zx:Int,zy:Int)→RoomRoll={
@@ -89,8 +84,7 @@ c width=(48:Int)
   l hRoll=(randInt(zh-1,4,wRoll.rng):IntRoll);
   l xRoll=(randInt((zx+zw)-wRoll.value,zx,hRoll.rng):IntRoll);
   l yRoll=(randInt((zy+zh)-hRoll.value,zy,xRoll.rng):IntRoll);
-  l room=(Room{h:hRoll.value,w:wRoll.value,x:xRoll.value,y:yRoll.value}:Room);
-  RoomRoll{rng:yRoll.rng,room:room}
+  RoomRoll{rng:yRoll.rng,room:Room{h:hRoll.value,w:wRoll.value,x:xRoll.value,y:yRoll.value}}
 }
 
 λrenderRow(world:World,x:Int,y:Int)→String match width-x{

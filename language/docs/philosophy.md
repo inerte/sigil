@@ -236,6 +236,39 @@ This is both a safety rule and an AI-generation rule:
 
 Sigil prefers explicit renamed stages like `normalized_name`, `validated_name`, and `final_result` over reusing the same short name through nested scopes.
 
+### Locals Mark Reuse or Sequencing, Not Rhetoric
+
+Sigil also rejects the opposite source of variation: naming a pure intermediate that is used only once.
+
+```sigil
+⟦ BAD ⟧
+λformulaText(checksums:Checksums,version:String)→String={
+  l repo=(releaseRepo():String);
+  src⋅formula.formula({checksums:checksums,repo:repo,version:version})
+}
+
+⟦ GOOD ⟧
+λformulaText(checksums:Checksums,version:String)→String=
+  src⋅formula.formula({checksums:checksums,repo:releaseRepo(),version:version})
+```
+
+This is not a style suggestion. It is canonical validation.
+
+The rule is mechanical:
+- pure
+- used once
+- inlineable
+
+If all three are true, Sigil chooses the inline form.
+
+That leaves local bindings with a narrower and more useful meaning:
+- a value is reused
+- an effect must be sequenced
+- a pattern is being destructured
+- syntax requires an explicit staging point
+
+For Claude Code and Codex, this removes another source of pointless local variation. The same program no longer has two acceptable surfaces just because one author likes naming a one-shot intermediate and another does not.
+
 **Trade-offs:**
 - Slight performance overhead on pure functions (~microseconds)
 - Requires ES2022+ (top-level await)

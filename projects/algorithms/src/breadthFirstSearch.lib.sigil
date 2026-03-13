@@ -7,9 +7,7 @@ i stdlib⋅list
   [head,.tail]→match stdlib⋅list.contains(head,visited){
     true→bfsLoop(graph,tail,visited)|
     false→{
-      l nextQueue=(tail⧺src⋅graphHelpers.neighborsOf(graph,head):[Int]);
-      l nextVisited=(visited⧺[head]:[Int]);
-      bfsLoop(graph,nextQueue,nextVisited)
+      bfsLoop(graph,tail⧺src⋅graphHelpers.neighborsOf(graph,head),visited⧺[head])
     }
   }
 }

@@ -106,10 +106,9 @@ i stdlib⋅string
 λintFromTextInner(acc:Int,idx:Int,text:String)→Result[Int,DecodeError] match idx≥#text{
   true→Ok(acc)|
   false→
-    l digit=(digitValue(stdlib⋅string.charAt(idx,text)):Int);
-    match digit<0{
+    match (digitValue(stdlib⋅string.charAt(idx,text)):Int)<0{
       true→Err({message:"expected int",path:[]})|
-      false→intFromTextInner((acc*10)+digit,idx+1,text)
+      false→intFromTextInner((acc*10)+(digitValue(stdlib⋅string.charAt(idx,text)):Int),idx+1,text)
     }
 }
 

@@ -10,32 +10,21 @@ i stdlib⋅string
 ⟦ Main demonstration ⟧
 λmain()→!IO Unit={
   ⟦ Test string length operator ⟧
-  l text=("Hello, Sigil!":String);
-  l _=(console.log("Text: "++text):Unit);
-  l _=(console.log("Length: "++stdlib⋅string.intToString(#text)):Unit);
+  l _=(console.log("Text: "++("Hello, Sigil!":String)):Unit);
+  l _=(console.log("Length: "++stdlib⋅string.intToString(#("Hello, Sigil!":String))):Unit);
 
   ⟦ Test string transformations ⟧
-  l upper=(stdlib⋅string.toUpper("hello"):String);
-  l lower=(stdlib⋅string.toLower("WORLD"):String);
-  l _=(console.log("Upper: "++upper):Unit);
-  l _=(console.log("Lower: "++lower):Unit);
+  l _=(console.log("Upper: "++(stdlib⋅string.toUpper("hello"):String)):Unit);
+  l _=(console.log("Lower: "++(stdlib⋅string.toLower("WORLD"):String)):Unit);
 
   ⟦ Test string predicates ⟧
-  l hasPrefix=(stdlib⋅string.startsWith("Hello World","Hello"):Bool);
-  l hasSuffix=(stdlib⋅string.endsWith("test.sigil",".sigil"):Bool);
-  l prefixText=(match hasPrefix{true→"true"|false→"false"}:String);
-  l suffixText=(match hasSuffix{true→"true"|false→"false"}:String);
-  l _=(console.log("Has prefix Hello: "++prefixText):Unit);
-  l _=(console.log("Has suffix .sigil: "++suffixText):Unit);
+  l _=(console.log("Has prefix Hello: "++(match (stdlib⋅string.startsWith("Hello World","Hello"):Bool){true→"true"|false→"false"}:String)):Unit);
+  l _=(console.log("Has suffix .sigil: "++(match (stdlib⋅string.endsWith("test.sigil",".sigil"):Bool){true→"true"|false→"false"}:String)):Unit);
 
   ⟦ Test split ⟧
-  l parts=(stdlib⋅string.split("a,b,c",","):[String]);
-  l _=(console.log("Split length: "++stdlib⋅string.intToString(#parts)):Unit);
+  l _=(console.log("Split length: "++stdlib⋅string.intToString(#(stdlib⋅string.split("a,b,c",","):[String]))):Unit);
 
   ⟦ Test take and drop ⟧
-  l sample=("abcdefgh":String);
-  l firstThree=(stdlib⋅string.take(3,sample):String);
-  l dropThree=(stdlib⋅string.drop(3,sample):String);
-  l _=(console.log("Take 3: "++firstThree):Unit);
-  console.log("Drop 3: "++dropThree)
+  l _=(console.log("Take 3: "++(stdlib⋅string.take(3,("abcdefgh":String)):String)):Unit);
+  console.log("Drop 3: "++(stdlib⋅string.drop(3,("abcdefgh":String)):String))
 }

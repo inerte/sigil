@@ -267,6 +267,12 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
+    #[error("SIGIL-CANON-SINGLE-USE-PURE-BINDING: Single-use pure binding '{binding_name}' must be inlined\n\nSigil enforces ONE WAY: pure intermediates used once stay inline.\nBindings exist for reuse, effects, destructuring, or syntax-required staging.")]
+    SingleUsePureBinding {
+        binding_name: String,
+        location: SourceLocation,
+    },
+
     #[error("SIGIL-CANON-MATCH-BOOLEAN: Cannot pattern match on boolean expression\n\nUse if-expression instead: (condition)→thenBranch|elseBranch")]
     MatchBoolean {
         location: SourceLocation,
@@ -358,6 +364,7 @@ impl ValidationError {
             ValidationError::DeclExportOrder { location, .. } => *location,
             ValidationError::ExternMemberOrder { location, .. } => *location,
             ValidationError::LetUntyped { location, .. } => *location,
+            ValidationError::SingleUsePureBinding { location, .. } => *location,
             ValidationError::MatchBoolean { location } => *location,
             ValidationError::MatchTupleBoolean { location } => *location,
             ValidationError::DeclCategoryOrder { location, .. } => *location,
@@ -411,6 +418,19 @@ impl From<ValidationError> for Diagnostic {
                 .with_location(source_location_to_span(get_file(), location))
                 .with_found_expected(&effect_name, &prev_effect)
                 .with_details("expected_order", format!("{:?}", expected_order))
+            }
+
+            ValidationError::SingleUsePureBinding { binding_name, location } => {
+                Diagnostic::new(
+                    codes::canonical::SINGLE_USE_PURE_BINDING,
+                    SigilPhase::Canonical,
+                    format!("Single-use pure binding '{}' must be inlined", binding_name),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_details(
+                    "guidance",
+                    "Bindings exist for reuse, effects, destructuring, or syntax-required staging.",
+                )
             }
 
             ValidationError::RecordTypeFieldOrder { type_name, field_name, prev_field, position: _, expected_order, location } => {

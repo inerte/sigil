@@ -11,7 +11,5 @@ e fs⋅promises : {
 λloadTemplate()→String=fs⋅promises.readFile("template.html","utf8")
 
 λmain()→AssetPair={
-  l config=loadConfig();
-  l template=loadTemplate();
-  {config:config,template:template}
+  {config:loadConfig(),template:loadTemplate()}
 }

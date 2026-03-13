@@ -399,6 +399,7 @@ dependencies = [
  "sigil-diagnostics",
  "sigil-lexer",
  "sigil-parser",
+ "sigil-typechecker",
  "thiserror 2.0.18",
 ]
 

@@ -124,6 +124,7 @@ Current constructor and list invariants:
   - topology-aware projects must declare external HTTP/TCP dependencies in `src/topology.lib.sigil`
   - topology-aware application code must use `src⋅topology` dependency handles, not raw URLs, hosts, ports, or env-derived endpoints
   - tests are environments; prefer `test` bindings in topology over ad hoc runtime rewiring
+  - inline single-use pure locals; keep bindings only for reuse, effects, destructuring, or syntax-required staging
 
 ### 3) Keep user-facing errors actionable
 

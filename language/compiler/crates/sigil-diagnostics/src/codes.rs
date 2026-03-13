@@ -80,6 +80,7 @@ pub mod canonical {
 
     // Local bindings
     pub const LET_UNTYPED: &str = "SIGIL-CANON-LET-UNTYPED";
+    pub const SINGLE_USE_PURE_BINDING: &str = "SIGIL-CANON-SINGLE-USE-PURE-BINDING";
 
     // Declaration ordering
     pub const DECL_CATEGORY_ORDER: &str = "SIGIL-CANON-DECL-CATEGORY-ORDER";
@@ -188,6 +189,7 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     canonical::RECORD_PATTERN_FIELD_ORDER,
     canonical::NO_SHADOWING,
     canonical::LET_UNTYPED,
+    canonical::SINGLE_USE_PURE_BINDING,
     canonical::DECL_CATEGORY_ORDER,
     canonical::DECL_EXPORT_ORDER,
     canonical::DECL_ALPHABETICAL,
@@ -250,11 +252,11 @@ mod tests {
 
     #[test]
     fn count_error_codes() {
-        // As of implementation: 77 error codes total
+        // As of implementation: 78 error codes total
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            77,
-            "Expected 77 error codes, found {}",
+            78,
+            "Expected 78 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

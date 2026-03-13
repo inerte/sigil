@@ -9,9 +9,7 @@ t Pair={a:String,b:String}
 λfirst()→!IO String="first"
 
 λmain()→!IO Pair={
-  l a=first();
-  l b=second();
-  {a:a,b:b}
+  {a:first(),b:second()}
 }
 
 λsecond()→!IO String="second"

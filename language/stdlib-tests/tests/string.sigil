@@ -180,12 +180,8 @@ test "unlines on empty list" {
 
 ⟦ Integration test: parse markdown title ⟧
 test "extract title from markdown" {
-  l content="# Hello World\nContent here";
-  l lines=stdlib⋅string.split("\n",content);
-  l first=lines[0];
-  l title=match stdlib⋅string.startsWith("# ",first){
-    true→stdlib⋅string.substring(#first,first,2)|
-    false→"Untitled"
-  };
-  title="Hello World"
+  match stdlib⋅string.startsWith("# ",stdlib⋅string.split("\n","# Hello World\nContent here")[0]){
+    true→stdlib⋅string.substring(#stdlib⋅string.split("\n","# Hello World\nContent here")[0],stdlib⋅string.split("\n","# Hello World\nContent here")[0],2)="Hello World"|
+    false→false
+  }
 }

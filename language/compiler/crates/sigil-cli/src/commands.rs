@@ -10,7 +10,7 @@ use sigil_lexer::Lexer;
 use sigil_parser::Parser;
 use sigil_typechecker::{type_check, TypeError, TypeCheckOptions, TypeInfo, TypeScheme};
 use sigil_typechecker::types::{InferenceType, TConstructor, TFunction, TList, TMap, TRecord, TTuple};
-use sigil_validator::{validate_canonical_form, ValidationError};
+use sigil_validator::{validate_canonical_form, validate_typed_canonical_form, ValidationError};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -52,6 +52,18 @@ fn extract_error_code(message: &str) -> String {
         message[..colon_pos].to_string()
     } else {
         "SIGIL-ERROR".to_string()
+    }
+}
+
+fn format_validation_errors(errors: &[ValidationError]) -> String {
+    if errors.is_empty() {
+        "validation errors".to_string()
+    } else {
+        errors
+            .iter()
+            .map(|error| error.to_string())
+            .collect::<Vec<_>>()
+            .join("\n\n")
     }
 }
 
@@ -145,9 +157,8 @@ pub fn parse_command(file: &Path, human: bool) -> Result<(), CliError> {
     let ast = parser.parse().map_err(|e| CliError::Parser(format!("{}", e)))?;
 
     // Validate canonical form (includes formatting)
-    validate_canonical_form(&ast, Some(&filename), Some(&source)).map_err(|e: Vec<ValidationError>| {
-        CliError::Validation(format!("{} validation errors", e.len()))
-    })?;
+    validate_canonical_form(&ast, Some(&filename), Some(&source))
+        .map_err(|errors: Vec<ValidationError>| CliError::Validation(format_validation_errors(&errors)))?;
 
     if human {
         println!("sigilc parse OK phase=parser");
@@ -242,6 +253,9 @@ pub fn compile_command(
             }),
         )
         .map_err(|error: TypeError| CliError::Type(format!("{}", error)))?;
+
+        validate_typed_canonical_form(&typecheck_result.typed_program)
+            .map_err(|errors| CliError::Validation(format_validation_errors(&errors)))?;
 
         // Determine output path
         let output_path = if module_id == graph.topo_order.last().unwrap() && output.is_some() {
@@ -719,6 +733,9 @@ fn compile_module_graph(
             }),
         )
         .map_err(|error: TypeError| CliError::Type(format!("{}", error)))?;
+
+        validate_typed_canonical_form(&typecheck_result.typed_program)
+            .map_err(|errors| CliError::Validation(format_validation_errors(&errors)))?;
 
         let output_path = if module_id == graph.topo_order.last().unwrap() && output_override.is_some() {
             output_override.unwrap().to_path_buf()

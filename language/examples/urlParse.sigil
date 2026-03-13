@@ -4,8 +4,7 @@ i stdlib⋅url
 
 λmain()→Unit match stdlib⋅url.parse("https://sigil.dev/docs?lang=sigil#intro"){
   Ok(parsed)→
-    l summary=("protocol="++parsed.protocol++", host="++parsed.host++", path="++parsed.path++", suffix="++stdlib⋅url.suffix(parsed):String);
-    console.log(summary)
+    console.log(("protocol="++parsed.protocol++", host="++parsed.host++", path="++parsed.path++", suffix="++stdlib⋅url.suffix(parsed):String))
     ()|
   Err(err)→
     console.log("url parse error: "++err.message)

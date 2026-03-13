@@ -14,8 +14,7 @@ e fs⋅promises : {
 
 ⟦ Count files in a directory ⟧
 λcountFiles(dir:String)→Int={
-  l files=(fs⋅promises.readdir(dir):[String]);
-  #files  ⟦ Works! files has type [String], not any ⟧
+  #(fs⋅promises.readdir(dir):[String])  ⟦ Works! readdir has type [String], not any ⟧
 }
 
 ⟦ Main entry point ⟧

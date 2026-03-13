@@ -22,9 +22,7 @@ i stdlib⋅list
   true→[]|
   false→match safeAgainst(col,1,placedRev){
     true→{
-      l placedSolutions=(placeQueens([col]⧺placedRev,row+1,size):[[Int]]);
-      l skippedSolutions=(tryColumns(col+1,placedRev,row,size):[[Int]]);
-      placedSolutions⧺skippedSolutions
+      placeQueens([col]⧺placedRev,row+1,size)⧺tryColumns(col+1,placedRev,row,size)
     }|
     false→tryColumns(col+1,placedRev,row,size)
   }

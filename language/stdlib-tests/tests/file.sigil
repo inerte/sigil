@@ -7,58 +7,45 @@ i stdlib⋅path
 λmain()→Unit=()
 
 test "file listDir includes written entry" →!IO {
-  l dir=("/tmp/sigil-stdlib-file-list":String);
-  l filePath=(stdlib⋅path.join(dir,"entry.txt"):String);
-  l _=(stdlib⋅file.removeTree(dir):Unit);
-  l _=(stdlib⋅file.makeDirs(dir):Unit);
-  l _=(stdlib⋅file.writeText("hello",filePath):Unit);
-  l entries=(stdlib⋅file.listDir(dir):[String]);
-  stdlib⋅list.contains("entry.txt",entries)
+  l _=(stdlib⋅file.removeTree(("/tmp/sigil-stdlib-file-list":String)):Unit);
+  l _=(stdlib⋅file.makeDirs(("/tmp/sigil-stdlib-file-list":String)):Unit);
+  l _=(stdlib⋅file.writeText("hello",(stdlib⋅path.join(("/tmp/sigil-stdlib-file-list":String),"entry.txt"):String)):Unit);
+  stdlib⋅list.contains("entry.txt",(stdlib⋅file.listDir(("/tmp/sigil-stdlib-file-list":String)):[String]))
 }
 
 test "file makeDir creates a single directory" →!IO {
-  l base=("/tmp/sigil-stdlib-file-mkdir":String);
-  l dir=(stdlib⋅path.join(base,"child"):String);
-  l _=(stdlib⋅file.removeTree(base):Unit);
-  l _=(stdlib⋅file.makeDirs(base):Unit);
-  l _=(stdlib⋅file.makeDir(dir):Unit);
-  stdlib⋅file.exists(dir)
+  l _=(stdlib⋅file.removeTree(("/tmp/sigil-stdlib-file-mkdir":String)):Unit);
+  l _=(stdlib⋅file.makeDirs(("/tmp/sigil-stdlib-file-mkdir":String)):Unit);
+  l _=(stdlib⋅file.makeDir((stdlib⋅path.join(("/tmp/sigil-stdlib-file-mkdir":String),"child"):String)):Unit);
+  stdlib⋅file.exists((stdlib⋅path.join(("/tmp/sigil-stdlib-file-mkdir":String),"child"):String))
 }
 
 test "file makeDirs creates nested directories" →!IO {
-  l dir=("/tmp/sigil-stdlib-file-nested/a/b":String);
   l _=(stdlib⋅file.removeTree("/tmp/sigil-stdlib-file-nested"):Unit);
-  l _=(stdlib⋅file.makeDirs(dir):Unit);
-  stdlib⋅file.exists(dir)
+  l _=(stdlib⋅file.makeDirs(("/tmp/sigil-stdlib-file-nested/a/b":String)):Unit);
+  stdlib⋅file.exists(("/tmp/sigil-stdlib-file-nested/a/b":String))
 }
 
 test "file readText and appendText preserve utf8 content" →!IO {
-  l dir=("/tmp/sigil-stdlib-file-read-write":String);
-  l filePath=(stdlib⋅path.join(dir,"sample.txt"):String);
-  l _=(stdlib⋅file.removeTree(dir):Unit);
-  l _=(stdlib⋅file.makeDirs(dir):Unit);
-  l _=(stdlib⋅file.writeText("hello",filePath):Unit);
-  l _=(stdlib⋅file.appendText(" world",filePath):Unit);
-  (stdlib⋅file.readText(filePath):String)="hello world"
+  l _=(stdlib⋅file.removeTree(("/tmp/sigil-stdlib-file-read-write":String)):Unit);
+  l _=(stdlib⋅file.makeDirs(("/tmp/sigil-stdlib-file-read-write":String)):Unit);
+  l _=(stdlib⋅file.writeText("hello",(stdlib⋅path.join(("/tmp/sigil-stdlib-file-read-write":String),"sample.txt"):String)):Unit);
+  l _=(stdlib⋅file.appendText(" world",(stdlib⋅path.join(("/tmp/sigil-stdlib-file-read-write":String),"sample.txt"):String)):Unit);
+  (stdlib⋅file.readText((stdlib⋅path.join(("/tmp/sigil-stdlib-file-read-write":String),"sample.txt"):String)):String)="hello world"
 }
 
 test "file remove removes a file" →!IO {
-  l dir=("/tmp/sigil-stdlib-file-delete":String);
-  l filePath=(stdlib⋅path.join(dir,"sample.txt"):String);
-  l _=(stdlib⋅file.removeTree(dir):Unit);
-  l _=(stdlib⋅file.makeDirs(dir):Unit);
-  l _=(stdlib⋅file.writeText("hello",filePath):Unit);
-  l _=(stdlib⋅file.remove(filePath):Unit);
-  stdlib⋅file.exists(filePath)=false
+  l _=(stdlib⋅file.removeTree(("/tmp/sigil-stdlib-file-delete":String)):Unit);
+  l _=(stdlib⋅file.makeDirs(("/tmp/sigil-stdlib-file-delete":String)):Unit);
+  l _=(stdlib⋅file.writeText("hello",(stdlib⋅path.join(("/tmp/sigil-stdlib-file-delete":String),"sample.txt"):String)):Unit);
+  l _=(stdlib⋅file.remove((stdlib⋅path.join(("/tmp/sigil-stdlib-file-delete":String),"sample.txt"):String)):Unit);
+  stdlib⋅file.exists((stdlib⋅path.join(("/tmp/sigil-stdlib-file-delete":String),"sample.txt"):String))=false
 }
 
 test "file removeTree removes nested output" →!IO {
-  l root=("/tmp/sigil-stdlib-file-rmtree":String);
-  l nested=(stdlib⋅path.join(root,"a/b"):String);
-  l filePath=(stdlib⋅path.join(nested,"sample.txt"):String);
-  l _=(stdlib⋅file.removeTree(root):Unit);
-  l _=(stdlib⋅file.makeDirs(nested):Unit);
-  l _=(stdlib⋅file.writeText("hello",filePath):Unit);
-  l _=(stdlib⋅file.removeTree(root):Unit);
-  stdlib⋅file.exists(root)=false
+  l _=(stdlib⋅file.removeTree(("/tmp/sigil-stdlib-file-rmtree":String)):Unit);
+  l _=(stdlib⋅file.makeDirs((stdlib⋅path.join(("/tmp/sigil-stdlib-file-rmtree":String),"a/b"):String)):Unit);
+  l _=(stdlib⋅file.writeText("hello",(stdlib⋅path.join((stdlib⋅path.join(("/tmp/sigil-stdlib-file-rmtree":String),"a/b"):String),"sample.txt"):String)):Unit);
+  l _=(stdlib⋅file.removeTree(("/tmp/sigil-stdlib-file-rmtree":String)):Unit);
+  stdlib⋅file.exists(("/tmp/sigil-stdlib-file-rmtree":String))=false
 }

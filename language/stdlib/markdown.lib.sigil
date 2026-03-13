@@ -54,29 +54,22 @@ i stdlib⋅string
 λblockToHtml(block:Block)→String match block{
   Header(level,text) →
     l tag=("h"++stdlib⋅string.intToString(level):String);
-    l processed=(processInline(text):String);
-    "<"++tag++">"++processed++"</"++tag++">"|
+    "<"++tag++">"++processInline(text)++"</"++tag++">"|
 
   Paragraph(text) →
-    l processed=(processInline(text):String);
-    "<p>"++processed++"</p>"|
+    "<p>"++processInline(text)++"</p>"|
 
   CodeBlock(lang,code) →
     "<pre><code>"++code++"</code></pre>"|
 
   UnorderedList(items) →
-    l htmlItems=(items↦λ(item:String)→String="<li>"++processInline(item)++"</li>":[String]);
-    l joined=(stdlib⋅string.join("",htmlItems):String);
-    "<ul>"++joined++"</ul>"|
+    "<ul>"++stdlib⋅string.join("",items↦λ(item:String)→String="<li>"++processInline(item)++"</li>")++"</ul>"|
 
   OrderedList(items) →
-    l htmlItems=(items↦λ(item:String)→String="<li>"++processInline(item)++"</li>":[String]);
-    l joined=(stdlib⋅string.join("",htmlItems):String);
-    "<ol>"++joined++"</ol>"|
+    "<ol>"++stdlib⋅string.join("",items↦λ(item:String)→String="<li>"++processInline(item)++"</li>")++"</ol>"|
 
   Blockquote(text) →
-    l processed=(processInline(text):String);
-    "<blockquote>"++processed++"</blockquote>"|
+    "<blockquote>"++processInline(text)++"</blockquote>"|
 
   HorizontalRule →
     "<hr>"
@@ -178,9 +171,7 @@ i stdlib⋅string
 
 ⟦ Main Export - Parse markdown to HTML ⟧
 λparse(markdown:String)→String=
-  l blocks=(parseLines(markdown):[Block]);
-  l htmlBlocks=(blocks↦blockToHtml:[String]);
-  stdlib⋅string.join("\n",htmlBlocks)
+  stdlib⋅string.join("\n",parseLines(markdown)↦blockToHtml)
 
 ⟦ State Machine - Main Line Parser
 
@@ -198,78 +189,59 @@ Uses field access in pattern guards for the one canonical way to inspect state.
 
   ⟦ Not in code block - check for opening fence ⟧
   false when isCodeFence(line) →
-    l lang=(extractCodeLang(line):String);
-    l flushed=(flushList(state)⧺flushParagraph(state):[Block]);
-    {blocks:flushed,state:{codeLang:lang,codeLines:[],
+    {blocks:flushList(state)⧺flushParagraph(state),state:{codeLang:extractCodeLang(line),codeLines:[],
       inCodeBlock:true,inList:false,listItems:[],listType:"",paraLines:[]}}|
 
   ⟦ Header line ⟧
   false when isHeader(line) →
     l level=(extractHeaderLevel(line):Int);
-    l text=(extractHeaderText(level,line):String);
-    l flushed=(flushList(state)⧺flushParagraph(state):[Block]);
-    {blocks:flushed⧺[Header(level,text)],state:emptyState()}|
+    {blocks:flushList(state)⧺flushParagraph(state)⧺[Header(level,extractHeaderText(level,line))],state:emptyState()}|
 
   ⟦ Horizontal rule ⟧
   false when isHr(line) →
-    l flushed=(flushList(state)⧺flushParagraph(state):[Block]);
-    {blocks:flushed⧺[HorizontalRule()],state:emptyState()}|
+    {blocks:flushList(state)⧺flushParagraph(state)⧺[HorizontalRule()],state:emptyState()}|
 
   ⟦ Unordered list item - continuing existing ul ⟧
   false when state.inList and state.listType="ul" and isUnorderedList(line) →
-    l item=(extractListItem(line):String);
-    l flushed=(flushParagraph(state):[Block]);
-    {blocks:flushed,state:{codeLang:"",codeLines:[],
-      inCodeBlock:false,inList:true,listItems:state.listItems⧺[item],listType:"ul",paraLines:[]}}|
+    {blocks:flushParagraph(state),state:{codeLang:"",codeLines:[],
+      inCodeBlock:false,inList:true,listItems:state.listItems⧺[extractListItem(line)],listType:"ul",paraLines:[]}}|
 
   ⟦ Unordered list item - starting new ul ⟧
   false when isUnorderedList(line) →
-    l item=(extractListItem(line):String);
-    l flushed=(flushParagraph(state):[Block]);
-    {blocks:flushed,state:{codeLang:"",codeLines:[],
-      inCodeBlock:false,inList:true,listItems:[item],listType:"ul",paraLines:[]}}|
+    {blocks:flushParagraph(state),state:{codeLang:"",codeLines:[],
+      inCodeBlock:false,inList:true,listItems:[extractListItem(line)],listType:"ul",paraLines:[]}}|
 
   ⟦ Ordered list item - continuing existing ol ⟧
   false when state.inList and state.listType="ol" and isOrderedList(line) →
-    l item=(extractListItem(line):String);
-    l flushed=(flushParagraph(state):[Block]);
-    {blocks:flushed,state:{codeLang:"",codeLines:[],
-      inCodeBlock:false,inList:true,listItems:state.listItems⧺[item],listType:"ol",paraLines:[]}}|
+    {blocks:flushParagraph(state),state:{codeLang:"",codeLines:[],
+      inCodeBlock:false,inList:true,listItems:state.listItems⧺[extractListItem(line)],listType:"ol",paraLines:[]}}|
 
   ⟦ Ordered list item - starting new ol ⟧
   false when isOrderedList(line) →
-    l item=(extractListItem(line):String);
-    l flushed=(flushParagraph(state):[Block]);
-    {blocks:flushed,state:{codeLang:"",codeLines:[],
-      inCodeBlock:false,inList:true,listItems:[item],listType:"ol",paraLines:[]}}|
+    {blocks:flushParagraph(state),state:{codeLang:"",codeLines:[],
+      inCodeBlock:false,inList:true,listItems:[extractListItem(line)],listType:"ol",paraLines:[]}}|
 
   ⟦ Blockquote ⟧
   false when isBlockquote(line) →
-    l text=(extractBlockquoteText(line):String);
-    l flushed=(flushList(state)⧺flushParagraph(state):[Block]);
-    {blocks:flushed⧺[Blockquote(text)],state:emptyState()}|
+    {blocks:flushList(state)⧺flushParagraph(state)⧺[Blockquote(extractBlockquoteText(line))],state:emptyState()}|
 
   ⟦ Empty line - flush paragraph and list ⟧
   false when isEmpty(line) →
-    l flushed=(flushList(state)⧺flushParagraph(state):[Block]);
-    {blocks:flushed,state:emptyState()}|
+    {blocks:flushList(state)⧺flushParagraph(state),state:emptyState()}|
 
   ⟦ Regular text - accumulate paragraph ⟧
   false →
-    l flushed=(flushList(state):[Block]);
-    {blocks:flushed,state:{codeLang:"",codeLines:[],
+    {blocks:flushList(state),state:{codeLang:"",codeLines:[],
       inCodeBlock:false,inList:false,listItems:[],listType:"",paraLines:state.paraLines⧺[line]}}
 }
 
 ⟦ Parse all lines into blocks ⟧
 λparseLines(markdown:String)→[Block]=
-  l lines=(stdlib⋅string.split("\n",markdown):[String]);
-  parseLinesHelper([],lines,emptyState())
+  parseLinesHelper([],stdlib⋅string.split("\n",markdown),emptyState())
 
 λparseLinesHelper(blocks:[Block],lines:[String],state:ParserState)→[Block] match lines{
   [] →
-    l finalBlocks=(flushCodeBlock(state)⧺flushList(state)⧺flushParagraph(state):[Block]);
-    blocks⧺finalBlocks|
+    blocks⧺flushCodeBlock(state)⧺flushList(state)⧺flushParagraph(state)|
 
   [line,.rest] →
     l result=(parseLine(line,state):ParsingResult);
@@ -282,10 +254,7 @@ Process **bold**, *italic*, `code`, and [links](url) within text.
 ⟧
 
 λprocessInline(text:String)→String=
-  l step1=(processInlineCode(text):String);
-  l step2=(processInlineBold(step1):String);
-  l step3=(processInlineItalic(step2):String);
-  processInlineLinks(step3)
+  processInlineLinks(processInlineItalic(processInlineBold(processInlineCode(text))))
 
 λprocessInlineBold(text:String)→String=
   replacePairedDelimiters("</strong>","**","<strong>","",text)
@@ -302,20 +271,18 @@ Process **bold**, *italic*, `code`, and [links](url) within text.
   text
 
 ⟦ Replace paired delimiters with HTML tags ⟧
-λreplacePairedDelimiters(closeTag:String,delimiter:String,openTag:String,result:String,text:String)→String=
-  l firstIdx=(stdlib⋅string.indexOf(text,delimiter):Int);
-  match firstIdx{
+λreplacePairedDelimiters(closeTag:String,delimiter:String,openTag:String,result:String,text:String)→String match stdlib⋅string.indexOf(text,delimiter){
     idx when idx≥0 →
       l afterFirst=(stdlib⋅string.substring(#text,text,idx+#delimiter):String);
-      l secondIdx=(stdlib⋅string.indexOf(afterFirst,delimiter):Int);
-      match secondIdx{
+      match stdlib⋅string.indexOf(afterFirst,delimiter){
         idx2 when idx2≥0 →
-          l before=(stdlib⋅string.substring(idx,text,0):String);
-          l content=(stdlib⋅string.substring(idx2,afterFirst,0):String);
-          l afterSecondRelative=(idx2+#delimiter:Int);
-          l afterSecond=(stdlib⋅string.substring(#afterFirst,afterFirst,afterSecondRelative):String);
-          l newResult=(result+before+openTag+content+closeTag:String);
-          replacePairedDelimiters(closeTag,delimiter,openTag,newResult,afterSecond)|
+          replacePairedDelimiters(
+            closeTag,
+            delimiter,
+            openTag,
+            result+stdlib⋅string.substring(idx,text,0)+openTag+stdlib⋅string.substring(idx2,afterFirst,0)+closeTag,
+            stdlib⋅string.substring(#afterFirst,afterFirst,idx2+#delimiter)
+          )|
         _ →
           result+text
       }|

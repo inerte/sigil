@@ -7,6 +7,7 @@
 //! 4. No CPS (continuation passing style)
 
 use sigil_ast::*;
+use sigil_typechecker::{PurityClass, TypedDeclaration, TypedExpr, TypedExprKind, TypedProgram};
 use std::collections::{HashMap, HashSet};
 use crate::error::ValidationError;
 use sigil_lexer::{SourceLocation, Position};
@@ -237,6 +238,258 @@ pub fn validate_canonical_form(program: &Program, file_path: Option<&str>, sourc
         Ok(())
     } else {
         Err(errors)
+    }
+}
+
+/// Validate canonical rules that require typed purity/effect information.
+pub fn validate_typed_canonical_form(program: &TypedProgram) -> Result<(), Vec<ValidationError>> {
+    let mut errors = Vec::new();
+
+    for declaration in &program.declarations {
+        match declaration {
+            TypedDeclaration::Function(function) => {
+                collect_single_use_pure_bindings(&function.body, &mut errors);
+            }
+            TypedDeclaration::Const(const_decl) => {
+                collect_single_use_pure_bindings(&const_decl.value, &mut errors);
+            }
+            TypedDeclaration::Test(test_decl) => {
+                collect_single_use_pure_bindings(&test_decl.body, &mut errors);
+            }
+            TypedDeclaration::Type(_)
+            | TypedDeclaration::Import(_)
+            | TypedDeclaration::Extern(_) => {}
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+fn collect_single_use_pure_bindings(expr: &TypedExpr, errors: &mut Vec<ValidationError>) {
+    match &expr.kind {
+        TypedExprKind::Let(let_expr) => {
+            if let Pattern::Identifier(identifier) = &let_expr.pattern {
+                let usage_count = count_identifier_uses(&let_expr.body, &identifier.name);
+                if usage_count == 1 && let_expr.value.purity == PurityClass::Pure {
+                    errors.push(ValidationError::SingleUsePureBinding {
+                        binding_name: identifier.name.clone(),
+                        location: expr.location,
+                    });
+                }
+            }
+
+            collect_single_use_pure_bindings(&let_expr.value, errors);
+            collect_single_use_pure_bindings(&let_expr.body, errors);
+        }
+        TypedExprKind::Lambda(lambda) => {
+            collect_single_use_pure_bindings(&lambda.body, errors);
+        }
+        TypedExprKind::Call(call) => {
+            collect_single_use_pure_bindings(&call.func, errors);
+            for arg in &call.args {
+                collect_single_use_pure_bindings(arg, errors);
+            }
+        }
+        TypedExprKind::ConstructorCall(call) => {
+            for arg in &call.args {
+                collect_single_use_pure_bindings(arg, errors);
+            }
+        }
+        TypedExprKind::ExternCall(call) => {
+            for arg in &call.args {
+                collect_single_use_pure_bindings(arg, errors);
+            }
+        }
+        TypedExprKind::MethodCall(call) => {
+            collect_single_use_pure_bindings(&call.receiver, errors);
+            for arg in &call.args {
+                collect_single_use_pure_bindings(arg, errors);
+            }
+        }
+        TypedExprKind::Binary(binary) => {
+            collect_single_use_pure_bindings(&binary.left, errors);
+            collect_single_use_pure_bindings(&binary.right, errors);
+        }
+        TypedExprKind::Unary(unary) => {
+            collect_single_use_pure_bindings(&unary.operand, errors);
+        }
+        TypedExprKind::Match(match_expr) => {
+            collect_single_use_pure_bindings(&match_expr.scrutinee, errors);
+            for arm in &match_expr.arms {
+                if let Some(guard) = &arm.guard {
+                    collect_single_use_pure_bindings(guard, errors);
+                }
+                collect_single_use_pure_bindings(&arm.body, errors);
+            }
+        }
+        TypedExprKind::If(if_expr) => {
+            collect_single_use_pure_bindings(&if_expr.condition, errors);
+            collect_single_use_pure_bindings(&if_expr.then_branch, errors);
+            if let Some(else_branch) = &if_expr.else_branch {
+                collect_single_use_pure_bindings(else_branch, errors);
+            }
+        }
+        TypedExprKind::List(list) => {
+            for element in &list.elements {
+                collect_single_use_pure_bindings(element, errors);
+            }
+        }
+        TypedExprKind::Tuple(tuple) => {
+            for element in &tuple.elements {
+                collect_single_use_pure_bindings(element, errors);
+            }
+        }
+        TypedExprKind::Record(record) => {
+            for field in &record.fields {
+                collect_single_use_pure_bindings(&field.value, errors);
+            }
+        }
+        TypedExprKind::MapLiteral(map) => {
+            for entry in &map.entries {
+                collect_single_use_pure_bindings(&entry.key, errors);
+                collect_single_use_pure_bindings(&entry.value, errors);
+            }
+        }
+        TypedExprKind::FieldAccess(access) => {
+            collect_single_use_pure_bindings(&access.object, errors);
+        }
+        TypedExprKind::Index(index) => {
+            collect_single_use_pure_bindings(&index.object, errors);
+            collect_single_use_pure_bindings(&index.index, errors);
+        }
+        TypedExprKind::Map(map_expr) => {
+            collect_single_use_pure_bindings(&map_expr.list, errors);
+            collect_single_use_pure_bindings(&map_expr.func, errors);
+        }
+        TypedExprKind::Filter(filter) => {
+            collect_single_use_pure_bindings(&filter.list, errors);
+            collect_single_use_pure_bindings(&filter.predicate, errors);
+        }
+        TypedExprKind::Fold(fold) => {
+            collect_single_use_pure_bindings(&fold.list, errors);
+            collect_single_use_pure_bindings(&fold.func, errors);
+            collect_single_use_pure_bindings(&fold.init, errors);
+        }
+        TypedExprKind::Pipeline(pipeline) => {
+            collect_single_use_pure_bindings(&pipeline.left, errors);
+            collect_single_use_pure_bindings(&pipeline.right, errors);
+        }
+        TypedExprKind::WithMock(with_mock) => {
+            collect_single_use_pure_bindings(&with_mock.body, errors);
+        }
+        TypedExprKind::Literal(_)
+        | TypedExprKind::Identifier(_)
+        | TypedExprKind::NamespaceMember { .. } => {}
+    }
+}
+
+fn count_identifier_uses(expr: &TypedExpr, name: &str) -> usize {
+    match &expr.kind {
+        TypedExprKind::Identifier(identifier) => usize::from(identifier.name == name),
+        TypedExprKind::Literal(_) | TypedExprKind::NamespaceMember { .. } => 0,
+        TypedExprKind::Lambda(lambda) => count_identifier_uses(&lambda.body, name),
+        TypedExprKind::Call(call) => {
+            count_identifier_uses(&call.func, name)
+                + call
+                    .args
+                    .iter()
+                    .map(|arg| count_identifier_uses(arg, name))
+                    .sum::<usize>()
+        }
+        TypedExprKind::ConstructorCall(call) => call
+            .args
+            .iter()
+            .map(|arg| count_identifier_uses(arg, name))
+            .sum(),
+        TypedExprKind::ExternCall(call) => call
+            .args
+            .iter()
+            .map(|arg| count_identifier_uses(arg, name))
+            .sum(),
+        TypedExprKind::MethodCall(call) => {
+            count_identifier_uses(&call.receiver, name)
+                + call
+                    .args
+                    .iter()
+                    .map(|arg| count_identifier_uses(arg, name))
+                    .sum::<usize>()
+        }
+        TypedExprKind::Binary(binary) => {
+            count_identifier_uses(&binary.left, name) + count_identifier_uses(&binary.right, name)
+        }
+        TypedExprKind::Unary(unary) => count_identifier_uses(&unary.operand, name),
+        TypedExprKind::Match(match_expr) => {
+            count_identifier_uses(&match_expr.scrutinee, name)
+                + match_expr
+                    .arms
+                    .iter()
+                    .map(|arm| {
+                        arm.guard
+                            .as_ref()
+                            .map(|guard| count_identifier_uses(guard, name))
+                            .unwrap_or(0)
+                            + count_identifier_uses(&arm.body, name)
+                    })
+                    .sum::<usize>()
+        }
+        TypedExprKind::Let(let_expr) => {
+            count_identifier_uses(&let_expr.value, name) + count_identifier_uses(&let_expr.body, name)
+        }
+        TypedExprKind::If(if_expr) => {
+            count_identifier_uses(&if_expr.condition, name)
+                + count_identifier_uses(&if_expr.then_branch, name)
+                + if_expr
+                    .else_branch
+                    .as_ref()
+                    .map(|branch| count_identifier_uses(branch, name))
+                    .unwrap_or(0)
+        }
+        TypedExprKind::List(list) => list
+            .elements
+            .iter()
+            .map(|element| count_identifier_uses(element, name))
+            .sum(),
+        TypedExprKind::Tuple(tuple) => tuple
+            .elements
+            .iter()
+            .map(|element| count_identifier_uses(element, name))
+            .sum(),
+        TypedExprKind::Record(record) => record
+            .fields
+            .iter()
+            .map(|field| count_identifier_uses(&field.value, name))
+            .sum(),
+        TypedExprKind::MapLiteral(map) => map
+            .entries
+            .iter()
+            .map(|entry| {
+                count_identifier_uses(&entry.key, name) + count_identifier_uses(&entry.value, name)
+            })
+            .sum(),
+        TypedExprKind::FieldAccess(access) => count_identifier_uses(&access.object, name),
+        TypedExprKind::Index(index) => {
+            count_identifier_uses(&index.object, name) + count_identifier_uses(&index.index, name)
+        }
+        TypedExprKind::Map(map_expr) => {
+            count_identifier_uses(&map_expr.list, name) + count_identifier_uses(&map_expr.func, name)
+        }
+        TypedExprKind::Filter(filter) => {
+            count_identifier_uses(&filter.list, name)
+                + count_identifier_uses(&filter.predicate, name)
+        }
+        TypedExprKind::Fold(fold) => {
+            count_identifier_uses(&fold.list, name)
+                + count_identifier_uses(&fold.func, name)
+                + count_identifier_uses(&fold.init, name)
+        }
+        TypedExprKind::Pipeline(pipeline) => {
+            count_identifier_uses(&pipeline.left, name) + count_identifier_uses(&pipeline.right, name)
+        }
+        TypedExprKind::WithMock(with_mock) => count_identifier_uses(&with_mock.body, name),
     }
 }
 
@@ -1814,6 +2067,7 @@ mod tests {
     use super::*;
     use sigil_lexer::tokenize;
     use sigil_parser::parse;
+    use sigil_typechecker::type_check;
 
     #[test]
     fn test_no_duplicate_functions() {
@@ -1852,6 +2106,58 @@ mod tests {
 
         // Should pass - simple recursion is allowed
         assert!(validate_canonical_form(&program, None, None).is_ok());
+    }
+
+    #[test]
+    fn test_single_use_pure_binding_rejected() {
+        let source = r#"λmain()→String={
+  l repo=(releaseRepo():String);
+  {repo:repo}.repo
+}
+
+λreleaseRepo()→String="inerte/sigil"
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let typed = type_check(&program, source, None).unwrap();
+
+        let result = validate_typed_canonical_form(&typed.typed_program);
+        assert!(result.is_err());
+        let errors = result.unwrap_err();
+        assert!(matches!(
+            errors[0],
+            ValidationError::SingleUsePureBinding { .. }
+        ));
+    }
+
+    #[test]
+    fn test_multi_use_pure_binding_allowed() {
+        let source = r#"λmain()→Int={
+  l count=(releaseCount():Int);
+  count+count
+}
+
+λreleaseCount()→Int=2
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let typed = type_check(&program, source, None).unwrap();
+
+        assert!(validate_typed_canonical_form(&typed.typed_program).is_ok());
+    }
+
+    #[test]
+    fn test_single_use_effectful_binding_allowed() {
+        let source = r#"λemit()→!IO String="x"
+λmain()→!IO String={
+  l value=(emit():String);
+  value
+}"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let typed = type_check(&program, source, None).unwrap();
+
+        assert!(validate_typed_canonical_form(&typed.typed_program).is_ok());
     }
 }
 

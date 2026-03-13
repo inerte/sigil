@@ -9,14 +9,12 @@ test "frontmatter derives title and slug without header" {
 }
 
 test "frontmatter parses canonical metadata" {
-  l markdown=("---\ntitle: Batteries Included\ndate: 2026-03-03\nauthor: Sigil Language Team\nslug: ssg-notes\n---\n# Batteries Included\nBody":String);
-  l result=(src⋅frontmatter.parseFrontmatter(markdown,"website/articles/ssg.md"):src⋅frontmatter.ParseResult);
+  l result=(src⋅frontmatter.parseFrontmatter("---\ntitle: Batteries Included\ndate: 2026-03-03\nauthor: Sigil Language Team\nslug: ssg-notes\n---\n# Batteries Included\nBody","website/articles/ssg.md"):src⋅frontmatter.ParseResult);
   result.content="# Batteries Included\nBody" and result.meta={author:"Sigil Language Team",category:"",date:"2026-03-03",description:"",slug:"ssg-notes",title:"Batteries Included"}
 }
 
 test "frontmatter strips quotes" {
-  l markdown=("---\ntitle: \"Quoted Title\"\nauthor: 'Sigil Team'\n---\n# Quoted Title":String);
-  l result=(src⋅frontmatter.parseFrontmatter(markdown,"website/articles/quoted.md"):src⋅frontmatter.ParseResult);
+  l result=(src⋅frontmatter.parseFrontmatter("---\ntitle: \"Quoted Title\"\nauthor: 'Sigil Team'\n---\n# Quoted Title","website/articles/quoted.md"):src⋅frontmatter.ParseResult);
   result.meta.title="Quoted Title" and result.meta.author="Sigil Team"
 }
 

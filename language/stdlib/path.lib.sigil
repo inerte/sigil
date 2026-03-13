@@ -15,8 +15,7 @@ i stdlib⋅string
 }
 
 λdirname(value:String)→String=
-  l normalized=(normalize(value):String);
-  dirnameFromSegments(stdlib⋅string.startsWith("/",normalized),splitNonempty(normalized))
+  dirnameFromSegments(stdlib⋅string.startsWith("/",(normalize(value):String)),splitNonempty((normalize(value):String)))
 
 λdirnameFromSegments(isAbsolute:Bool,segments:[String])→String match #segments≤1{
   true→rootOrCurrent(isAbsolute)|
@@ -24,8 +23,7 @@ i stdlib⋅string
 }
 
 λextname(value:String)→String=
-  l name=(basename(value):String);
-  extnameFromParts(name,stdlib⋅string.split(".",name))
+  extnameFromParts((basename(value):String),stdlib⋅string.split(".",(basename(value):String)))
 
 λextnameFromParts(name:String,parts:[String])→String match #parts≤1{
   true→""|
@@ -56,8 +54,7 @@ i stdlib⋅string
 
 λnormalize(value:String)→String=
   l isAbsolute=(stdlib⋅string.startsWith("/",value):Bool);
-  l segments=(normalizeSegments([],isAbsolute,filterEmpty(stdlib⋅string.split("/",value))):[String]);
-  pathFromSegments(isAbsolute,segments)
+  pathFromSegments(isAbsolute,(normalizeSegments([],isAbsolute,filterEmpty(stdlib⋅string.split("/",value))):[String]))
 
 λnormalizeSegments(acc:[String],isAbsolute:Bool,segments:[String])→[String] match segments{
   []→stdlib⋅list.reverse(acc)|
@@ -81,24 +78,20 @@ i stdlib⋅string
   }
 }
 
-λpathFromSegments(isAbsolute:Bool,segments:[String])→String=
-  l body=(stdlib⋅string.join("/",segments):String);
-  match isAbsolute{
-    true→match #body=0{
+λpathFromSegments(isAbsolute:Bool,segments:[String])→String match isAbsolute{
+    true→match #(stdlib⋅string.join("/",segments):String)=0{
       true→"/"|
-      false→"/"++body
+      false→"/"++(stdlib⋅string.join("/",segments):String)
     }|
-    false→match #body=0{
+    false→match #(stdlib⋅string.join("/",segments):String)=0{
       true→"."|
-      false→body
+      false→(stdlib⋅string.join("/",segments):String)
     }
   }
 
 λrelative(from:String,to:String)→String=
-  l fromSegments=(splitNonempty(normalize(from)):[String]);
-  l state=(relativeDropCommon(fromSegments,splitNonempty(normalize(to))):RelativeState);
-  l upward=(repeatSegment(#state.left,".."):[String]);
-  pathFromSegments(false,upward⧺state.right)
+  l state=(relativeDropCommon((splitNonempty(normalize(from)):[String]),splitNonempty(normalize(to))):RelativeState);
+  pathFromSegments(false,(repeatSegment(#state.left,".."):[String])⧺state.right)
 
 λrelativeDropCommon(left:[String],right:[String])→RelativeState match left{
   []→{left:[],right:right}|

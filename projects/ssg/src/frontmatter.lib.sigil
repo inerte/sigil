@@ -9,10 +9,8 @@ i stdlib⋅string
   match separatorIdx<0{
     true→meta|
     false→
-      l key=(stdlib⋅string.trim(stdlib⋅string.substring(separatorIdx,line,0)):String);
-      l rawValue=(stdlib⋅string.substring(#line,line,separatorIdx+1):String);
-      l value=(stripQuotes(stdlib⋅string.trim(rawValue)):String);
-      match key{
+      l value=(stripQuotes(stdlib⋅string.trim(stdlib⋅string.substring(#line,line,separatorIdx+1))):String);
+      match stdlib⋅string.trim(stdlib⋅string.substring(separatorIdx,line,0)){
         "author"→{author:value,category:meta.category,date:meta.date,description:meta.description,slug:meta.slug,title:meta.title}|
         "category"→{author:meta.author,category:value,date:meta.date,description:meta.description,slug:meta.slug,title:meta.title}|
         "date"→{author:meta.author,category:meta.category,date:value,description:meta.description,slug:meta.slug,title:meta.title}|
@@ -40,12 +38,10 @@ i stdlib⋅string
     }
 }
 
-λcollapseHyphens(text:String)→String=
-  l collapsed=(stdlib⋅string.replaceAll("--","-",text):String);
-  match collapsed=text{
-    true→collapsed|
-    false→collapseHyphens(collapsed)
-  }
+λcollapseHyphens(text:String)→String match stdlib⋅string.replaceAll("--","-",text)=text{
+  true→stdlib⋅string.replaceAll("--","-",text)|
+  false→collapseHyphens(stdlib⋅string.replaceAll("--","-",text))
+}
 
 λconsumeFrontmatter(lines:[String],meta:src⋅types.PageMeta)→ParseLinesResult match lines{
   []→{contentLines:[],meta:meta}|
@@ -65,8 +61,7 @@ i stdlib⋅string
 λderiveTitle(content:String,meta:src⋅types.PageMeta,sourcePath:String)→String match #meta.title>0{
   true→meta.title|
   false→
-    l heading=(firstH1Line(stdlib⋅string.split("\n",content)):[String]);
-    match heading{
+    match firstH1Line(stdlib⋅string.split("\n",content)){
       []→humanizeStem(filenameStem(sourcePath))|
       [title,.rest]→title
     }
@@ -101,9 +96,7 @@ i stdlib⋅string
 }
 
 λhumanizeStem(stem:String)→String=
-  l lowered=(stdlib⋅string.toLower(stem):String);
-  l spaced=(stdlib⋅string.replaceAll("_"," ",stdlib⋅string.replaceAll("-"," ",lowered)):String);
-  capitalizeWords(spaced)
+  capitalizeWords(stdlib⋅string.replaceAll("_"," ",stdlib⋅string.replaceAll("-"," ",stdlib⋅string.toLower(stem))))
 
 λlastPart(parts:[String])→String match parts{
   []→""|
@@ -114,29 +107,20 @@ i stdlib⋅string
 }
 
 λnormalizeSlug(slug:String)→String=
-  l lowered=(stdlib⋅string.toLower(slug):String);
-  l withHyphens=(stdlib⋅string.replaceAll(" ","-",stdlib⋅string.replaceAll("_","-",lowered)):String);
-  l collapsed=(collapseHyphens(withHyphens):String);
-  trimHyphens(collapsed)
+  trimHyphens(collapseHyphens(stdlib⋅string.replaceAll(" ","-",stdlib⋅string.replaceAll("_","-",stdlib⋅string.toLower(slug)))))
 
 λparseFrontmatter(markdown:String,sourcePath:String)→ParseResult match stdlib⋅string.split("\n",markdown){
   []→
     l meta=(defaultMeta():src⋅types.PageMeta);
-    l title=(deriveTitle(markdown,meta,sourcePath):String);
-    l slug=(deriveSlug(meta,sourcePath):String);
-    {content:markdown,meta:{author:"",category:"",date:"",description:"",slug:slug,title:title}}|
+    {content:markdown,meta:{author:"",category:"",date:"",description:"",slug:deriveSlug(meta,sourcePath),title:deriveTitle(markdown,meta,sourcePath)}}|
   [line,.rest]→match line{
     "---"→
       l parsed=(consumeFrontmatter(rest,defaultMeta()):ParseLinesResult);
       l content=(stdlib⋅string.join("\n",parsed.contentLines):String);
-      l title=(deriveTitle(content,parsed.meta,sourcePath):String);
-      l slug=(deriveSlug(parsed.meta,sourcePath):String);
-      {content:content,meta:{author:parsed.meta.author,category:parsed.meta.category,date:parsed.meta.date,description:parsed.meta.description,slug:slug,title:title}}|
+      {content:content,meta:{author:parsed.meta.author,category:parsed.meta.category,date:parsed.meta.date,description:parsed.meta.description,slug:deriveSlug(parsed.meta,sourcePath),title:deriveTitle(content,parsed.meta,sourcePath)}}|
     _→
       l meta=(defaultMeta():src⋅types.PageMeta);
-      l title=(deriveTitle(markdown,meta,sourcePath):String);
-      l slug=(deriveSlug(meta,sourcePath):String);
-      {content:markdown,meta:{author:"",category:"",date:"",description:"",slug:slug,title:title}}
+      {content:markdown,meta:{author:"",category:"",date:"",description:"",slug:deriveSlug(meta,sourcePath),title:deriveTitle(markdown,meta,sourcePath)}}
   }
 }
 
@@ -149,8 +133,7 @@ i stdlib⋅string
 }
 
 λtrimHyphens(text:String)→String=
-  l left=(trimLeadingHyphens(text):String);
-  trimTrailingHyphens(left)
+  trimTrailingHyphens(trimLeadingHyphens(text))
 
 λtrimLeadingHyphens(text:String)→String match (#text>0) and stdlib⋅string.startsWith("-",text){
   true→trimLeadingHyphens(stdlib⋅string.substring(#text,text,1))|

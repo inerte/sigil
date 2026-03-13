@@ -13,9 +13,7 @@
 ⟦ Filter: [1,2,3,4,5] ⊳ λ(x:Int)→Bool=x>2 ⟧
 λkeepLarge(xs:[Int])→[Int]=xs⊳λ(x:Int)→Bool=x>2
 
-λmain()→Int=
-  l nums=([1,2,3,4,5]:[Int]);
-  sum(nums)
+λmain()→Int=sum(([1,2,3,4,5]:[Int]))
 
 ⟦ Fold: [1,2,3] ⊕ λ(acc:Int,x:Int)→Int=acc+x ⊕ 0 ⟧
 λsum(xs:[Int])→Int=xs⊕(λ(acc:Int,x:Int)→Int=acc+x)⊕0

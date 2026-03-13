@@ -42,11 +42,7 @@ t Result[T,E]=Ok(T)|Err(E)
 
 ⟦ Main - demonstrate all examples ⟧
 λmain()→Int={
-  l colorValue=(colorToNumber(Green()):Int);
-  l divOk=(processResult(divide(10,2)):Int);
-  l divErr=(processResult(divide(10,0)):Int);
-  l total=(colorValue+divOk+divErr:Int);
-  total
+  (colorToNumber(Green())+processResult(divide(10,2))+processResult(divide(10,0)):Int)
 }
 
 ⟦ Example 3: Pattern matching on Result ⟧

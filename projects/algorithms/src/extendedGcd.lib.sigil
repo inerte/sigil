@@ -7,11 +7,10 @@ t ExtendedGcd={gcd:Int,x:Int,y:Int}
   }|
   false→{
     l recursiveResult=(extendedGcd(b,a%b):ExtendedGcd);
-    l quotient=(((a-(a%b))/b):Int);
     ExtendedGcd{
       gcd:recursiveResult.gcd,
       x:recursiveResult.y,
-      y:recursiveResult.x-(quotient*recursiveResult.y)
+      y:recursiveResult.x-((((a-(a%b))/b):Int)*recursiveResult.y)
     }
   }
 }

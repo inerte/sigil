@@ -10,15 +10,13 @@ i stdlib⋅list
 λdfsNeighbors(graph:src⋅graphTypes.Graph,neighbors:[Int],visited:[Int])→[Int] match neighbors{
   []→visited|
   [neighbor,.tail]→{
-    l nextVisited=(dfsVisit(graph,neighbor,visited):[Int]);
-    dfsNeighbors(graph,tail,nextVisited)
+    dfsNeighbors(graph,tail,dfsVisit(graph,neighbor,visited))
   }
 }
 
 λdfsVisit(graph:src⋅graphTypes.Graph,vertex:Int,visited:[Int])→[Int] match stdlib⋅list.contains(vertex,visited){
   true→visited|
   false→{
-    l nextVisited=(visited⧺[vertex]:[Int]);
-    dfsNeighbors(graph,src⋅graphHelpers.neighborsOf(graph,vertex),nextVisited)
+    dfsNeighbors(graph,src⋅graphHelpers.neighborsOf(graph,vertex),visited⧺[vertex])
   }
 }

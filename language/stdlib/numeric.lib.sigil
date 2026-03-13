@@ -17,8 +17,7 @@ t DivMod={quotient:Int,remainder:Int}
 
 ⟦ Quotient and Euclidean remainder pair ⟧
 λdivmod(a:Int,b:Int)→DivMod={
-  l remainder=(mod(a,b):Int);
-  DivMod{quotient:((a-remainder)/b),remainder:remainder}
+  DivMod{quotient:((a-(mod(a,b):Int))/b),remainder:(mod(a,b):Int)}
 }
 
 ⟦ Greatest common divisor (Euclidean algorithm) ⟧
@@ -68,8 +67,7 @@ t DivMod={quotient:Int,remainder:Int}
 λlcm(a:Int,b:Int)→Int match (a=0) or (b=0){
   true→0|
   false→{
-    l gcdValue=(abs(gcd(a,b)):Int);
-    abs((a/gcdValue)*b)
+    abs((a/(abs(gcd(a,b)):Int))*b)
   }
 }
 
@@ -81,10 +79,9 @@ t DivMod={quotient:Int,remainder:Int}
 
 ⟦ Euclidean modulo with non-negative remainder ⟧
 λmod(a:Int,b:Int)→Int={
-  l raw=((a%b):Int);
-  match raw<0{
-    true→raw+abs(b)|
-    false→raw
+  match ((a%b):Int)<0{
+    true→((a%b):Int)+abs(b)|
+    false→((a%b):Int)
   }
 }
 

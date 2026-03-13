@@ -1,10 +1,8 @@
 i core⋅map
 
 λmain()→Bool={
-  l left=({"content-type"↦"text/plain","x-id"↦"42"}:{String↦String});
-  l right=({"x-id"↦"42","content-type"↦"text/plain"}:{String↦String});
-  match core⋅map.get("content-type",left){
-    Some(value)→value="text/plain" and #left=2 and left=right|
+  match core⋅map.get("content-type",({"content-type"↦"text/plain","x-id"↦"42"}:{String↦String})){
+    Some(value)→value="text/plain" and #({"content-type"↦"text/plain","x-id"↦"42"}:{String↦String})=2 and ({"content-type"↦"text/plain","x-id"↦"42"}:{String↦String})=({"x-id"↦"42","content-type"↦"text/plain"}:{String↦String})|
     None()→false
   }
 }

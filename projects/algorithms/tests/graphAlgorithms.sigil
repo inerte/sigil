@@ -39,8 +39,7 @@ test "missing start vertex returns empty traversal" {
 }
 
 test "topological sort returns ordering for dag" {
-  l result=(src⋅topologicalSort.topologicalSort(dagGraph()):src⋅graphTypes.TopologicalSortResult);
-  match result{
+  match src⋅topologicalSort.topologicalSort(dagGraph()){
     src⋅graphTypes.Ordering(order)→orderRespects(1,order,2) and orderRespects(1,order,3) and orderRespects(2,order,4) and orderRespects(3,order,4)|
     src⋅graphTypes.CycleDetected()→false
   }

@@ -28,14 +28,10 @@
   []→[]|
   [head,.tail]→match tail{
     []→{
-      l wrappedHead=(wrapRun(head):[[Int]]);
-      wrappedHead
+      wrapRun(head)
     }|
     [right,.rest]→{
-      l merged=(merge(head,right):[Int]);
-      l remainingPairs=(mergePairs(rest):[[Int]]);
-      l wrappedMerged=(wrapRun(merged):[[Int]]);
-      wrappedMerged⧺remainingPairs
+      wrapRun(merge(head,right))⧺mergePairs(rest)
     }
   }
 }

@@ -41,9 +41,7 @@ i stdlib⋅time
 λcopyAssetFiles(assetNames:[String],assetSourceDir:String,assetTargetDir:String)→!IO Unit match assetNames{
   []→()|
   [asset,.rest]→
-    l source=(stdlib⋅path.join(assetSourceDir,asset):String);
-    l target=(stdlib⋅path.join(assetTargetDir,asset):String);
-    l _=(copyFile(source,target):Unit);
+    l _=(copyFile(stdlib⋅path.join(assetSourceDir,asset),stdlib⋅path.join(assetTargetDir,asset)):Unit);
     copyAssetFiles(rest,assetSourceDir,assetTargetDir)
 }
 
@@ -83,9 +81,7 @@ i stdlib⋅time
 λloadPagesFromFiles(config:src⋅types.SiteBuildConfig,dir:String,files:[String],section:src⋅types.Section)→!IO [src⋅types.SitePage] match files{
   []→[]|
   [file,.rest]→
-    l sourcePath=(stdlib⋅path.join(dir,file):String);
-    l page=(loadPage(config,section,sourcePath):src⋅types.SitePage);
-    [page]⧺loadPagesFromFiles(config,dir,rest,section)
+    [loadPage(config,section,stdlib⋅path.join(dir,file))]⧺loadPagesFromFiles(config,dir,rest,section)
 }
 
 λloadSiteData(config:src⋅types.SiteBuildConfig)→!IO src⋅types.SiteData=
@@ -169,32 +165,34 @@ i stdlib⋅time
   stdlib⋅file.writeText(src⋅templates.notFoundPage(config),stdlib⋅path.join(config.outputDir,"404.html"))
 
 λwritePage(config:src⋅types.SiteBuildConfig,html:String,page:src⋅types.SitePage)→!IO Unit=
-  l dir=(outputDirPath(config,page):String);
-  l _=(stdlib⋅file.makeDirs(dir):Unit);
-  stdlib⋅file.writeText(html,stdlib⋅path.join(dir,"index.html"))
+  l _=(stdlib⋅file.makeDirs(outputDirPath(config,page)):Unit);
+  stdlib⋅file.writeText(html,stdlib⋅path.join(outputDirPath(config,page),"index.html"))
 
 λwritePages(config:src⋅types.SiteBuildConfig,pages:[src⋅types.SitePage])→!IO Unit match pages{
   []→()|
   [page,.rest]→
-    l html=(src⋅templates.articlePage(config,page):String);
-    l _=(writePage(config,html,page):Unit);
+    l _=(writePage(config,src⋅templates.articlePage(config,page),page):Unit);
     writePages(config,rest)
 }
 
 λwriteSiteManifest(config:src⋅types.SiteBuildConfig,data:src⋅types.SiteData)→!IO Unit=
   l generatedAt=(stdlib⋅time.formatIso(stdlib⋅time.now()):String);
-  l manifest=(buildSiteManifestJson(data,generatedAt,config.repoUrl):stdlib⋅json.JsonValue);
-  stdlib⋅file.writeText(stdlib⋅json.stringify(manifest),stdlib⋅path.join(config.outputDir,"site.json"))
+  stdlib⋅file.writeText(stdlib⋅json.stringify(buildSiteManifestJson(data,generatedAt,config.repoUrl)),stdlib⋅path.join(config.outputDir,"site.json"))
 
 λwriteStandalonePages(aliasRoutes:[src⋅types.AliasRoute],config:src⋅types.SiteBuildConfig)→!IO Unit=
   l aboutPage=(loadPage(config,src⋅types.Home(),"website/about-site.md"):src⋅types.SitePage);
-  l renderedPage=(src⋅content.renderPage(aliasRoutes,config.basePath,{
+  writePage(config,src⋅templates.articlePage(config,src⋅content.renderPage(aliasRoutes,config.basePath,{
     bodyHtml:aboutPage.bodyHtml,
     bodyMarkdown:aboutPage.bodyMarkdown,
     meta:aboutPage.meta,
     outputDir:"about-site",
     section:aboutPage.section,
     sourcePath:aboutPage.sourcePath
-  }):src⋅types.SitePage);
-  l html=(src⋅templates.articlePage(config,renderedPage):String);
-  writePage(config,html,renderedPage)
+  })),src⋅content.renderPage(aliasRoutes,config.basePath,{
+    bodyHtml:aboutPage.bodyHtml,
+    bodyMarkdown:aboutPage.bodyMarkdown,
+    meta:aboutPage.meta,
+    outputDir:"about-site",
+    section:aboutPage.section,
+    sourcePath:aboutPage.sourcePath
+  }))

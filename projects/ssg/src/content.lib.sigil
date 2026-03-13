@@ -35,11 +35,10 @@ i stdlib⋅url
       ⧺[{alias:"website/articles/",route:route}]|
     _→baseRoutes
   }:[src⋅types.AliasRoute]);
-  l withTrailing=(match route{
+  addKnownAliases(page,match route{
     "/"→withSourceDir|
     _→withSourceDir⧺[{alias:trimTrailingSlash(route),route:route}]
-  }:[src⋅types.AliasRoute]);
-  addKnownAliases(page,withTrailing)
+  })
 
 λbasePathPrefix(basePath:String,route:String)→String match basePath{
   "/"→route|
@@ -57,12 +56,11 @@ i stdlib⋅url
 }
 
 λbuildAliasRoutes(data:src⋅types.SiteData)→[src⋅types.AliasRoute]=
-  l homeRoutes=(aliasRoutesForPage(data.home):[src⋅types.AliasRoute]);
-  l introRoutes=(aliasRoutesForPage(data.articlesIntro):[src⋅types.AliasRoute]);
-  l articleRoutes=(pagesAliasRoutes(data.articles):[src⋅types.AliasRoute]);
-  l docRoutes=(pagesAliasRoutes(data.docs):[src⋅types.AliasRoute]);
-  l specRoutes=(pagesAliasRoutes(data.spec):[src⋅types.AliasRoute]);
-  homeRoutes⧺introRoutes⧺articleRoutes⧺docRoutes⧺specRoutes
+  aliasRoutesForPage(data.home)
+  ⧺aliasRoutesForPage(data.articlesIntro)
+  ⧺pagesAliasRoutes(data.articles)
+  ⧺pagesAliasRoutes(data.docs)
+  ⧺pagesAliasRoutes(data.spec)
 
 λcanonicalRoute(page:src⋅types.SitePage)→String match page.outputDir{
   ""→"/"|
@@ -153,9 +151,7 @@ i stdlib⋅url
 λpagesAliasRoutes(pages:[src⋅types.SitePage])→[src⋅types.AliasRoute] match pages{
   []→[]|
   [page,.rest]→
-    l current=(aliasRoutesForPage(page):[src⋅types.AliasRoute]);
-    l remaining=(pagesAliasRoutes(rest):[src⋅types.AliasRoute]);
-    current⧺remaining
+    aliasRoutesForPage(page)⧺pagesAliasRoutes(rest)
 }
 
 λpagesNewestFirst(pages:[src⋅types.SitePage])→[src⋅types.SitePage]=sortPagesInner(compareArticlePages,pages)
@@ -163,9 +159,8 @@ i stdlib⋅url
 λpagesSortedByTitle(pages:[src⋅types.SitePage])→[src⋅types.SitePage]=sortPagesInner(compareTitlePages,pages)
 
 λrenderPage(aliasRoutes:[src⋅types.AliasRoute],basePath:String,page:src⋅types.SitePage)→src⋅types.SitePage=
-  l rewritten=(rewriteInternalLinks(aliasRoutes,basePath,page.bodyMarkdown,page.sourcePath):String);
   {
-    bodyHtml:stdlib⋅markdown.parse(rewritten),
+    bodyHtml:stdlib⋅markdown.parse(rewriteInternalLinks(aliasRoutes,basePath,page.bodyMarkdown,page.sourcePath)),
     bodyMarkdown:page.bodyMarkdown,
     meta:page.meta,
     outputDir:page.outputDir,
@@ -192,15 +187,15 @@ i stdlib⋅url
   match openIdx<0{
     true→markdown|
     false→
-      l before=(stdlib⋅string.substring(openIdx+2,markdown,0):String);
       l afterOpen=(stdlib⋅string.substring(#markdown,markdown,openIdx+2):String);
       l closeIdx=(findLinkClose(afterOpen):Int);
       match closeIdx<0{
         true→markdown|
         false→
-          l target=(stdlib⋅string.substring(closeIdx,afterOpen,0):String);
-          l after=(stdlib⋅string.substring(#afterOpen,afterOpen,closeIdx+1):String);
-          before++rewriteLinkTarget(aliasRoutes,basePath,sourcePath,target)++")"++rewriteInternalLinks(aliasRoutes,basePath,after,sourcePath)
+          stdlib⋅string.substring(openIdx+2,markdown,0)
+          ++rewriteLinkTarget(aliasRoutes,basePath,sourcePath,stdlib⋅string.substring(closeIdx,afterOpen,0))
+          ++")"
+          ++rewriteInternalLinks(aliasRoutes,basePath,stdlib⋅string.substring(#afterOpen,afterOpen,closeIdx+1),sourcePath)
       }
   }
 
@@ -214,8 +209,7 @@ i stdlib⋅url
       match #direct>0{
         true→basePathPrefix(basePath,direct)++suffix|
         false→
-          l repoPath=(resolveRepoPath(sourcePath,parsedTarget.path):String);
-          l resolved=(lookupAlias(repoPath,aliasRoutes):String);
+          l resolved=(lookupAlias(resolveRepoPath(sourcePath,parsedTarget.path),aliasRoutes):String);
           match #resolved>0{
             true→basePathPrefix(basePath,resolved)++suffix|
             false→target

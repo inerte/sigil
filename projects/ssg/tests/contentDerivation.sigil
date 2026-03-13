@@ -13,20 +13,18 @@ i src⋅types
 λmain()→Unit=()
 
 test "article ordering uses newest date first" {
-  l pages=([
+  l sorted=(src⋅content.pagesNewestFirst([
     articlePage("2026-02-24","older"),
     articlePage("2026-03-03","newer")
-  ]:[src⋅types.SitePage]);
-  l sorted=(src⋅content.pagesNewestFirst(pages):[src⋅types.SitePage]);
+  ]):[src⋅types.SitePage]);
   sorted[0].meta.slug="newer" and sorted[1].meta.slug="older"
 }
 
 test "article ordering falls back to descending source path" {
-  l pages=([
+  l sorted=(src⋅content.pagesNewestFirst([
     articlePage("","001-alpha"),
     articlePage("","002-beta")
-  ]:[src⋅types.SitePage]);
-  l sorted=(src⋅content.pagesNewestFirst(pages):[src⋅types.SitePage]);
+  ]):[src⋅types.SitePage]);
   sorted[0].meta.slug="002-beta" and sorted[1].meta.slug="001-alpha"
 }
 

@@ -276,7 +276,7 @@ jobs:
           mkdir -p "$RUNNER_TEMP/homebrew-tap/Formula"
           cp "$RUNNER_TEMP/homebrew/Formula/sigil.rb" "$RUNNER_TEMP/homebrew-tap/Formula/sigil.rb"
           cd "$RUNNER_TEMP/homebrew-tap"
-          if git diff --quiet -- Formula/sigil.rb; then
+          if [[ -z "$(git status --porcelain -- Formula/sigil.rb)" ]]; then
             echo "Homebrew formula already up to date"
             exit 0
           fi

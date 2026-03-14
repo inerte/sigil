@@ -210,6 +210,37 @@ pre code{
   padding-left:1.4rem;
 }
 
+.article-nav{
+  display:grid;
+  gap:1rem;
+  margin-top:2rem;
+  grid-template-columns:repeat(auto-fit, minmax(16rem, 1fr));
+}
+
+.article-nav-card{
+  display:flex;
+  flex-direction:column;
+  gap:0.45rem;
+  padding:1rem 1.1rem;
+  border:1px solid rgba(31,27,22,0.08);
+  border-radius:1rem;
+  background:linear-gradient(180deg, rgba(242,211,194,0.35), rgba(255,250,240,0.95));
+  color:var(--fg);
+  text-decoration:none;
+}
+
+.article-nav-card:hover{
+  border-color:rgba(138,59,18,0.3);
+  box-shadow:0 16px 38px rgba(53,33,17,0.1);
+}
+
+.article-nav-label{
+  color:var(--muted);
+  font-size:0.85rem;
+  letter-spacing:0.04em;
+  text-transform:uppercase;
+}
+
 .listing{
   margin-top:1.5rem;
   padding:1.4rem;

@@ -10,12 +10,12 @@ i src⋅types
 λarticleListing(config:src⋅types.SiteBuildConfig,pages:[src⋅types.SitePage])→String=
   "<section class=\"listing\"><h2>Latest Articles</h2><ul class=\"page-list\">"++pageCards(config,pages)++"</ul></section>"
 
-λarticlePage(config:src⋅types.SiteBuildConfig,page:src⋅types.SitePage)→String=
+λarticlePage(config:src⋅types.SiteBuildConfig,navHtml:String,page:src⋅types.SitePage)→String=
   shell(
     sourceLink(config,page),
     config,
     breadcrumb(config,page),
-    page.bodyHtml,
+    page.bodyHtml++navHtml,
     detailMeta(page),
     page.meta.title
   )

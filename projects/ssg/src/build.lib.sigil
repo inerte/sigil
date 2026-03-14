@@ -10,6 +10,19 @@ i stdlib⋅path
 i stdlib⋅string
 i stdlib⋅time
 
+λarticleNav(config:src⋅types.SiteBuildConfig,nextCard:String,previousCard:String)→String match nextCard++previousCard{
+  ""→""|
+  cards→"<nav class=\"article-nav\">"++cards++"</nav>"
+}
+
+λarticleNavCard(config:src⋅types.SiteBuildConfig,label:String,page:src⋅types.SitePage)→String=
+  "<a class=\"article-nav-card\" href=\""++src⋅content.basePathPrefix(config.basePath,src⋅content.canonicalRoute(page))++"\"><span class=\"article-nav-label\">"++label++"</span><strong>"++page.meta.title++"</strong></a>"
+
+λarticlePreviousCard(config:src⋅types.SiteBuildConfig,previousPage:Option[src⋅types.SitePage])→String match previousPage{
+  Some(page)→articleNavCard(config,"Previous article",page)|
+  None()→""
+}
+
 λassetOutputDir(config:src⋅types.SiteBuildConfig)→String=stdlib⋅path.join(config.outputDir,"assets")
 
 λbuildSite(config:src⋅types.SiteBuildConfig)→!IO Unit=
@@ -21,7 +34,7 @@ i stdlib⋅time
   l _=(writePage(config,src⋅templates.homePage(data.articles,config,data.docs,data.home,data.spec),data.home):Unit);
   l _=(writeStandalonePages(aliasRoutes,config):Unit);
   l _=(writePage(config,src⋅templates.articlesIndex(config,data.articlesIntro.bodyHtml,data.articles),data.articlesIntro):Unit);
-  l _=(writePages(config,data.articles):Unit);
+  l _=(writeArticlePages(config,data.articles):Unit);
   l _=(writeIndexHtml(stdlib⋅path.join(config.outputDir,"docs"),src⋅templates.docsIndex(config,data.docs)):Unit);
   l _=(writePages(config,data.docs):Unit);
   l _=(writeIndexHtml(stdlib⋅path.join(config.outputDir,"spec"),src⋅templates.specIndex(config,data.spec)):Unit);
@@ -157,6 +170,17 @@ i stdlib⋅time
   spec:renderPages(aliasRoutes,basePath,data.spec)
 }
 
+λwriteArticlePages(config:src⋅types.SiteBuildConfig,pages:[src⋅types.SitePage])→!IO Unit=
+  writeArticlePagesInner(config,pages,None())
+
+λwriteArticlePagesInner(config:src⋅types.SiteBuildConfig,pages:[src⋅types.SitePage],previousPage:Option[src⋅types.SitePage])→!IO Unit match pages{
+  []→()|
+  [page,nextPage,.rest]→
+    l _=(writePage(config,src⋅templates.articlePage(config,articleNav(config,articleNavCard(config,"Next article",nextPage),articlePreviousCard(config,previousPage)),page),page):Unit);
+    writeArticlePagesInner(config,[nextPage]⧺rest,Some(page))|
+  [page]→writePage(config,src⋅templates.articlePage(config,articleNav(config,"",articlePreviousCard(config,previousPage)),page),page)
+}
+
 λwriteIndexHtml(dir:String,html:String)→!IO Unit=
   l _=(stdlib⋅file.makeDirs(dir):Unit);
   stdlib⋅file.writeText(html,stdlib⋅path.join(dir,"index.html"))
@@ -171,7 +195,7 @@ i stdlib⋅time
 λwritePages(config:src⋅types.SiteBuildConfig,pages:[src⋅types.SitePage])→!IO Unit match pages{
   []→()|
   [page,.rest]→
-    l _=(writePage(config,src⋅templates.articlePage(config,page),page):Unit);
+    l _=(writePage(config,src⋅templates.articlePage(config,"",page),page):Unit);
     writePages(config,rest)
 }
 
@@ -181,7 +205,7 @@ i stdlib⋅time
 
 λwriteStandalonePages(aliasRoutes:[src⋅types.AliasRoute],config:src⋅types.SiteBuildConfig)→!IO Unit=
   l aboutPage=(loadPage(config,src⋅types.Home(),"website/about-site.md"):src⋅types.SitePage);
-  writePage(config,src⋅templates.articlePage(config,src⋅content.renderPage(aliasRoutes,config.basePath,{
+  writePage(config,src⋅templates.articlePage(config,"",src⋅content.renderPage(aliasRoutes,config.basePath,{
     bodyHtml:aboutPage.bodyHtml,
     bodyMarkdown:aboutPage.bodyMarkdown,
     meta:aboutPage.meta,

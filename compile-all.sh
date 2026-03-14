@@ -7,7 +7,9 @@ RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
-SIGIL="language/compiler/target/debug/sigil"
+SCRIPT_DIR="$(cd -- "$(dirname -- "$0")" && pwd)"
+SIGIL="$SCRIPT_DIR/language/compiler/target/debug/sigil"
+MANIFEST_PATH="$SCRIPT_DIR/language/compiler/Cargo.toml"
 
 COMPILED=0
 FAILED=0
@@ -17,7 +19,7 @@ echo "  Building Rust compiler"
 echo "═══════════════════════════════════════════════════════════"
 echo ""
 
-if ! cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli 2>&1; then
+if ! cargo build --quiet --manifest-path "$MANIFEST_PATH" -p sigil-cli 2>&1; then
   echo -e "${RED}Failed to build Rust compiler${NC}"
   exit 1
 fi

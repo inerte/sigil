@@ -1,10 +1,13 @@
 t ParseResult={content:String,meta:src::types.PageMeta}
+
 t ParseLinesResult={contentLines:[String],meta:src::types.PageMeta}
 
 i src::types
+
 i stdlib::string
 
-λapplyFrontmatterLine(line:String,meta:src::types.PageMeta)=>src::types.PageMeta=l separatorIdx=(stdlib::string.indexOf(line,":"):Int);
+λapplyFrontmatterLine(line:String,meta:src::types.PageMeta)=>src::types.PageMeta={
+  l separatorIdx=(stdlib::string.indexOf(line,":"):Int);
   match separatorIdx<0{
     true=>meta|
     false=>match stdlib::string.trim(stdlib::string.substring(separatorIdx,line,0)){
@@ -17,6 +20,7 @@ i stdlib::string
       _=>meta
     }
   }
+}
 
 λcapitalizeWords(lowered:String)=>String=capitalizeWordsInner(true,0,lowered)
 
@@ -56,9 +60,9 @@ i stdlib::string
 λderiveTitle(content:String,meta:src::types.PageMeta,sourcePath:String)=>String match #meta.title>0{
   true=>meta.title|
   false=>match firstH1Line(stdlib::string.split("\n",content)){
-      []=>humanizeStem(filenameStem(sourcePath))|
-      [title,.rest]=>title
-    }
+    []=>humanizeStem(filenameStem(sourcePath))|
+    [title,.rest]=>title
+  }
 }
 
 λdropLast(parts:[String])=>[String] match parts{
@@ -74,11 +78,13 @@ i stdlib::string
   parts=>lastPart(parts)
 }
 
-λfilenameStem(path:String)=>String=l name=(fileName(path):String);
+λfilenameStem(path:String)=>String={
+  l name=(fileName(path):String);
   match stdlib::string.endsWith(name,".md"){
     true=>stdlib::string.substring(#name-3,name,0)|
     false=>name
   }
+}
 
 λfirstH1Line(lines:[String])=>[String] match lines{
   []=>[]|
@@ -101,16 +107,26 @@ i stdlib::string
 λnormalizeSlug(slug:String)=>String=trimHyphens(collapseHyphens(stdlib::string.replaceAll(" ","-",stdlib::string.replaceAll("_","-",stdlib::string.toLower(slug)))))
 
 λparseFrontmatter(markdown:String,sourcePath:String)=>ParseResult match stdlib::string.split("\n",markdown){
-  []=>l meta=(defaultMeta():src::types.PageMeta); {content:markdown,meta:{author:"",category:"",date:"",description:"",slug:deriveSlug(meta,sourcePath),title:deriveTitle(markdown,meta,sourcePath)}}|
+  []=>{
+    l meta=(defaultMeta():src::types.PageMeta);
+    {content:markdown,meta:{author:"",category:"",date:"",description:"",slug:deriveSlug(meta,sourcePath),title:deriveTitle(markdown,meta,sourcePath)}}
+  }|
   [line,.rest]=>match line{
-    "---"=>l parsed=(consumeFrontmatter(rest,defaultMeta()):ParseLinesResult); l content=(stdlib::string.join("\n",parsed.contentLines):String); {content:content,meta:{author:parsed.meta.author,category:parsed.meta.category,date:parsed.meta.date,description:parsed.meta.description,slug:deriveSlug(parsed.meta,sourcePath),title:deriveTitle(content,parsed.meta,sourcePath)}}|
-    _=>l meta=(defaultMeta():src::types.PageMeta); {content:markdown,meta:{author:"",category:"",date:"",description:"",slug:deriveSlug(meta,sourcePath),title:deriveTitle(markdown,meta,sourcePath)}}
+    "---"=>{
+      l parsed=(consumeFrontmatter(rest,defaultMeta()):ParseLinesResult);
+      l content=(stdlib::string.join("\n",parsed.contentLines):String);
+      {content:content,meta:{author:parsed.meta.author,category:parsed.meta.category,date:parsed.meta.date,description:parsed.meta.description,slug:deriveSlug(parsed.meta,sourcePath),title:deriveTitle(content,parsed.meta,sourcePath)}}
+    }|
+    _=>{
+      l meta=(defaultMeta():src::types.PageMeta);
+      {content:markdown,meta:{author:"",category:"",date:"",description:"",slug:deriveSlug(meta,sourcePath),title:deriveTitle(markdown,meta,sourcePath)}}
+    }
   }
 }
 
-λstripQuotes(value:String)=>String match (#value≥2) and stdlib::string.startsWith("\"",value) and stdlib::string.endsWith(value,"\""){
+λstripQuotes(value:String)=>String match #value≥2 and stdlib::string.startsWith("\"",value) and stdlib::string.endsWith(value,"\""){
   true=>stdlib::string.substring(#value-1,value,1)|
-  false=>match (#value≥2) and stdlib::string.startsWith("'",value) and stdlib::string.endsWith(value,"'"){
+  false=>match #value≥2 and stdlib::string.startsWith("'",value) and stdlib::string.endsWith(value,"'"){
     true=>stdlib::string.substring(#value-1,value,1)|
     false=>value
   }
@@ -118,12 +134,12 @@ i stdlib::string
 
 λtrimHyphens(text:String)=>String=trimTrailingHyphens(trimLeadingHyphens(text))
 
-λtrimLeadingHyphens(text:String)=>String match (#text>0) and stdlib::string.startsWith("-",text){
+λtrimLeadingHyphens(text:String)=>String match #text>0 and stdlib::string.startsWith("-",text){
   true=>trimLeadingHyphens(stdlib::string.substring(#text,text,1))|
   false=>text
 }
 
-λtrimTrailingHyphens(text:String)=>String match (#text>0) and stdlib::string.endsWith(text,"-"){
+λtrimTrailingHyphens(text:String)=>String match #text>0 and stdlib::string.endsWith(text,"-"){
   true=>trimTrailingHyphens(stdlib::string.substring(#text-1,text,0))|
   false=>text
 }

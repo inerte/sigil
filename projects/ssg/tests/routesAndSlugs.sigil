@@ -1,21 +1,10 @@
 i src::content
+
 i src::types
 
-λdocPage(slug:String)=>src::types.SitePage=src::content.blankPage(
-    "",
-    {author:"",category:"",date:"",description:"",slug:slug,title:slug},
-    "docs/"++slug,
-    src::types.Doc(),
-    "language/docs/"++slug++".md"
-  )
+λdocPage(slug:String)=>src::types.SitePage=src::content.blankPage("",{author:"",category:"",date:"",description:"",slug:slug,title:slug},"docs/"++slug,src::types.Doc(),"language/docs/"++slug++".md")
 
-λhomePage()=>src::types.SitePage=src::content.blankPage(
-    "",
-    {author:"",category:"",date:"",description:"",slug:"home",title:"Home"},
-    "",
-    src::types.Home(),
-    "website/README.md"
-  )
+λhomePage()=>src::types.SitePage=src::content.blankPage("",{author:"",category:"",date:"",description:"",slug:"home",title:"Home"},"",src::types.Home(),"website/README.md")
 
 λmain()=>Unit=()
 
@@ -24,10 +13,7 @@ test "article route uses section slug" {
 }
 
 test "docs sort uses canonical slug order" {
-  l sorted=(src::content.pagesSortedByTitle(([
-    docPage("stdlib"),
-    docPage("async")
-  ]:[src::types.SitePage])):[src::types.SitePage]);
+  l sorted=(src::content.pagesSortedByTitle(([docPage("stdlib"),docPage("async")]:[src::types.SitePage])):[src::types.SitePage]);
   sorted[0].meta.slug="async" and sorted[1].meta.slug="stdlib"
 }
 

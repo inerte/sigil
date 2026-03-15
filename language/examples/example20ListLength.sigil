@@ -1,6 +1,1 @@
-⟦ Test: List Length
-   Expected output: 5
-   Using # operator
-⟧
-
 λmain()=>Int=#[1,2,3,4,5]

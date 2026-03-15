@@ -1,27 +1,10 @@
-⟦ stdlib::httpServer - Canonical HTTP Server for Sigil
-
-Provides the typed Sigil surface for serving HTTP.
-Runtime behavior is implemented by the compiler runtime for stdlib::httpServer.
-⟧
-
 t Headers={String↦String}
 
-t Request={
-  body:String,
-  headers:Headers,
-  method:String,
-  path:String
-}
+t Request={body:String,headers:Headers,method:String,path:String}
 
-t Response={
-  body:String,
-  headers:Headers,
-  status:Int
-}
+t Response={body:String,headers:Headers,status:Int}
 
-e console:{
-  log:λ(String)=>Unit
-}
+e console:{log:λ(String)=>Unit}
 
 λjson(body:String,status:Int)=>Response={body:body,headers:{"content-type"↦"application/json; charset=utf-8"},status:status}
 
@@ -35,11 +18,6 @@ e console:{
 
 λresponse(body:String,contentType:String,status:Int)=>Response={body:body,headers:{"content-type"↦contentType},status:status}
 
-⟦
-  Start an HTTP server on the specified port.
-
-  Runtime behavior is provided by the compiler for stdlib::httpServer.serve.
-⟧
 λserve(handler:λ(Request)=>!IO Response,port:Int)=>!IO Unit=()
 
 λserverError(message:String)=>Response={body:"<h1>500 Internal Server Error</h1><p>"++message++"</p>",headers:{"content-type"↦"text/html; charset=utf-8"},status:500}

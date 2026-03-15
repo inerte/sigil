@@ -1,16 +1,18 @@
 i src::extendedGcd
+
 i src::modularExponentiation
+
 i src::sieveOfEratosthenes
 
 λmain()=>Unit=()
 
 test "extended gcd returns gcd 2 for 240 and 46" {
-  (src::extendedGcd.extendedGcd(240,46)).gcd=2
+  src::extendedGcd.extendedGcd(240,46).gcd=2
 }
 
 test "extended gcd satisfies bezout identity" {
   l result=(src::extendedGcd.extendedGcd(240,46):src::extendedGcd.ExtendedGcd);
-  ((240*result.x)+(46*result.y))=result.gcd
+  240*result.x+46*result.y=result.gcd
 }
 
 test "sieve of 1 is empty" {

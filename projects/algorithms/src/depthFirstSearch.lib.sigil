@@ -1,5 +1,7 @@
 i src::graphHelpers
+
 i src::graphTypes
+
 i stdlib::list
 
 λdepthFirstSearch(graph:src::graphTypes.Graph,start:Int)=>[Int] match src::graphHelpers.hasVertex(graph,start){

@@ -1,3 +1,5 @@
 λfilterEven(xs:[Int])=>[Int]=xs⊳isEven
+
 λisEven(x:Int)=>Bool=x%2=0
+
 λmain()=>[Int]=filterEven([1,2,3,4,5,6])

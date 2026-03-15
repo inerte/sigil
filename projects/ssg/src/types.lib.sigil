@@ -1,39 +1,11 @@
-⟦ Shared type definitions for the Sigil website builder ⟧
-
 t AliasRoute={alias:String,route:String}
 
-t PageMeta={
-  author:String,
-  category:String,
-  date:String,
-  description:String,
-  slug:String,
-  title:String
-}
+t PageMeta={author:String,category:String,date:String,description:String,slug:String,title:String}
 
 t Section=Article()|Doc()|Home()|Spec()
 
-t SiteBuildConfig={
-  basePath:String,
-  outputDir:String,
-  repoUrl:String,
-  siteDescription:String,
-  siteTitle:String
-}
+t SiteBuildConfig={basePath:String,outputDir:String,repoUrl:String,siteDescription:String,siteTitle:String}
 
-t SiteData={
-  articles:[SitePage],
-  articlesIntro:SitePage,
-  docs:[SitePage],
-  home:SitePage,
-  spec:[SitePage]
-}
+t SiteData={articles:[SitePage],articlesIntro:SitePage,docs:[SitePage],home:SitePage,spec:[SitePage]}
 
-t SitePage={
-  bodyHtml:String,
-  bodyMarkdown:String,
-  meta:PageMeta,
-  outputDir:String,
-  section:Section,
-  sourcePath:String
-}
+t SitePage={bodyHtml:String,bodyMarkdown:String,meta:PageMeta,outputDir:String,section:Section,sourcePath:String}

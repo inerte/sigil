@@ -2,8 +2,11 @@ t ExtendedGcd={gcd:Int,x:Int,y:Int}
 
 λextendedGcd(a:Int,b:Int)=>ExtendedGcd match b=0{
   true=>match a<0{
-    true=>ExtendedGcd{gcd:-a,x:-1,y:0}|
-    false=>ExtendedGcd{gcd:a,x:1,y:0}
+    true=>{gcd:-a,x:-1,y:0}|
+    false=>{gcd:a,x:1,y:0}
   }|
-  false=>l recursiveResult=(extendedGcd(b,a%b):ExtendedGcd); ExtendedGcd{gcd:recursiveResult.gcd,x:recursiveResult.y,y:recursiveResult.x-((((a-(a%b))/b):Int)*recursiveResult.y)}
+  false=>{
+    l recursiveResult=(extendedGcd(b,a%b):ExtendedGcd);
+    {gcd:recursiveResult.gcd,x:recursiveResult.y,y:recursiveResult.x-((a-a%b)/b:Int)*recursiveResult.y}
+  }
 }

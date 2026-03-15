@@ -3,7 +3,7 @@ i src::rot13Encoder
 λmain()=>Unit=()
 
 test "rot13 encodes hello world" {
-  src::rot13Encoder.rot13(["H","e","l","l","o",","," ","W","o","r","l","d","!"])= "Uryyb, Jbeyq!"
+  src::rot13Encoder.rot13(["H","e","l","l","o",","," ","W","o","r","l","d","!"])="Uryyb, Jbeyq!"
 }
 
 test "rot13 preserves punctuation" {

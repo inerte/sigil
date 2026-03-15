@@ -1,10 +1,5 @@
-⟦ FFI (Foreign Function Interface) demo.
-
-  FFI calls use the same concurrentByDefault runtime model as ordinary Sigil code.
-⟧
-
 e console
 
-λgreet(name:String)=>Unit=console.log("Hello, " ++ name ++ "!")
+λgreet(name:String)=>Unit=console.log("Hello, "++name++"!")
 
 λmain()=>Unit=greet("Sigil")

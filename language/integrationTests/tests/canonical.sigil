@@ -1,6 +1,9 @@
 i stdlib::file
+
 i stdlib::path
+
 i stdlib::process
+
 i stdlib::string
 
 i src::support
@@ -11,29 +14,29 @@ i src::support
 
 λcompile(file:String)=>!IO stdlib::process.ProcessResult=stdlib::process.run(src::support.sigil(["compile",file]))
 
-λgoodFibSource()=>String="λfib(n:Int)=>Int match n{\n  0=>0|\n  1=>1|\n  value=>fib(value-1)+fib(value-2)\n}\nλmain()=>Int=fib(5)\n"
+λgoodFibSource()=>String="λfib(n:Int)=>Int match n{\n  0=>0|\n  1=>1|\n  value=>fib(value-1)+fib(value-2)\n}\n\nλmain()=>Int=fib(5)\n"
 
 λmain()=>Unit=()
 
-test "canonical rejects single-line multi-arm match" =>!IO {
+test "canonical rejects single-line multi-arm match" =>!IO  {
   l root=(src::support.uniqueRepoTempDir("canonicalMatch"):String);
   l file=(stdlib::path.join(root,"badMatch.sigil"):String);
   l _=(stdlib::file.writeText(badMatchSource(),file):Unit);
   l result=(compile(file):stdlib::process.ProcessResult);
   l _=(stdlib::file.removeTree(root):Unit);
-  stdlib::string.indexOf(src::support.combinedOutput(result),"SIGIL-CANON-MATCH-LAYOUT")≥0=true
+  stdlib::string.indexOf(src::support.combinedOutput(result),"SIGIL-CANON-SOURCE-FORM")≥0=true
 }
 
-test "canonical rejects split signature before match" =>!IO {
+test "canonical rejects split signature before match" =>!IO  {
   l root=(src::support.uniqueRepoTempDir("canonicalSignature"):String);
   l file=(stdlib::path.join(root,"badSignature.sigil"):String);
   l _=(stdlib::file.writeText(badSignatureSource(),file):Unit);
   l result=(compile(file):stdlib::process.ProcessResult);
   l _=(stdlib::file.removeTree(root):Unit);
-  stdlib::string.indexOf(src::support.combinedOutput(result),"SIGIL-CANON-SIGNATURE-LAYOUT")≥0=true
+  stdlib::string.indexOf(src::support.combinedOutput(result),"SIGIL-CANON-SOURCE-FORM")≥0=true
 }
 
-test "canonical fib fixture compiles" =>!IO {
+test "canonical fib fixture compiles" =>!IO  {
   l root=(src::support.uniqueRepoTempDir("canonicalGood"):String);
   l file=(stdlib::path.join(root,"goodFib.sigil"):String);
   l _=(stdlib::file.writeText(goodFibSource(),file):Unit);
@@ -42,12 +45,12 @@ test "canonical fib fixture compiles" =>!IO {
   result.code=0
 }
 
-test "list reverse example compiles" =>!IO {
+test "list reverse example compiles" =>!IO  {
   l result=(compile(src::support.repoPath("language/examples/listReverse.sigil")):stdlib::process.ProcessResult);
   result.code=0
 }
 
-test "list length example compiles" =>!IO {
+test "list length example compiles" =>!IO  {
   l result=(compile(src::support.repoPath("language/examples/listLength.sigil")):stdlib::process.ProcessResult);
   result.code=0
 }

@@ -1,6 +1,1 @@
-⟦ Test: Negative Numbers
-   Expected output: 5
-   Tests: negative literals and arithmetic
-⟧
-
-λmain()=>Int=10+(-5)
+λmain()=>Int=10+-5

@@ -1,6 +1,1 @@
-⟦ Test: Subtraction
-   Expected output: 42
-   Tests: subtraction operator
-⟧
-
 λmain()=>Int=100-58

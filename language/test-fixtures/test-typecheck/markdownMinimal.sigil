@@ -1,6 +1,4 @@
-⟦ Minimal reproduction of markdown.sigil structure ⟧
-
-t Block=Header(Int,String)|Paragraph(String)|HorizontalRule
+t Block=Header(Int,String)|Paragraph(String)|HorizontalRule()
 
 t ParseState={inCodeBlock:Bool}
 

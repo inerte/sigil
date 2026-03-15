@@ -1,10 +1,9 @@
-⟦ Test async list operations with map/filter/fold ⟧
-
 λdouble(x:Int)=>Int=x*2
+
 λisEven(x:Int)=>Bool=x%2=0
+
 λmain()=>Int=processList([1,2,3,4,5])
 
-⟦ Chain async operations: map => filter => fold ⟧
 λprocessList(xs:[Int])=>Int=xs↦double⊳isEven⊕sum⊕0
 
 λsum(acc:Int,x:Int)=>Int=acc+x

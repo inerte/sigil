@@ -1,9 +1,3 @@
-⟦ Sigil Core Map Helpers
-
-Canonical operations over the core map type {K↦V}.
-Primitive operations are compiler intrinsics backed by the JS runtime.
-⟧
-
 t Entry[K,V]={key:K,value:V}
 
 λempty[K,V]()=>{K↦V}=({↦}:{K↦V})

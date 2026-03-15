@@ -3,6 +3,6 @@
   divisor=>gcd(divisor,a%divisor)
 }
 
-λlcm(a:Int,b:Int)=>Int=(a*b)/gcd(a,b)
+λlcm(a:Int,b:Int)=>Int=a*b/gcd(a,b)
 
 λmain()=>Int=gcd(48,18)

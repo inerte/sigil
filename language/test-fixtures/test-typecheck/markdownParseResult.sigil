@@ -1,15 +1,8 @@
-⟦ Test: Exact structure from markdown.sigil ⟧
-
 t Block=Header(Int,String)|Paragraph(String)
 
 t ParseResult={blocks:[Block],state:ParseState}
 
-t ParseState={
-  codeLang:String,
-  codeLines:[String],
-  inCodeBlock:Bool,
-  paraLines:[String]
-}
+t ParseState={codeLang:String,codeLines:[String],inCodeBlock:Bool,paraLines:[String]}
 
 λmain()=>Unit=()
 

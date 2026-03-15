@@ -1,29 +1,12 @@
-⟦ stdlib::config - Canonical environment bindings for topology-backed projects
-
-Config modules in config/*.lib.sigil bind declared topology dependencies to
-concrete runtime values. Ambient env access belongs in config modules, not in
-topology declarations or ordinary application code.
-⟧
-
 t BindingValue=EnvVar(String)|Literal(String)
 
-t Bindings={
-  httpBindings:[HttpBinding],
-  tcpBindings:[TcpBinding]
-}
+t Bindings={httpBindings:[HttpBinding],tcpBindings:[TcpBinding]}
 
-t HttpBinding={
-  baseUrl:BindingValue,
-  dependencyName:String
-}
+t HttpBinding={baseUrl:BindingValue,dependencyName:String}
 
 t PortBindingValue=EnvVarPort(String)|LiteralPort(Int)
 
-t TcpBinding={
-  dependencyName:String,
-  host:BindingValue,
-  port:PortBindingValue
-}
+t TcpBinding={dependencyName:String,host:BindingValue,port:PortBindingValue}
 
 i stdlib::topology
 

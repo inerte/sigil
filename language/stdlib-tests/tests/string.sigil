@@ -1,10 +1,7 @@
-⟦ Comprehensive tests for stdlib::string ⟧
-
 i stdlib::string
 
 λmain()=>Unit=()
 
-⟦ Test # operator on strings ⟧
 test "# returns string length" {
   #"hello"=5
 }
@@ -17,7 +14,6 @@ test "# works on unicode strings" {
   #"🚀"=2
 }
 
-⟦ Test # operator on lists ⟧
 test "# returns list length" {
   #[1,2,3]=3
 }
@@ -178,7 +174,6 @@ test "unlines on empty list" {
   stdlib::string.unlines([])=""
 }
 
-⟦ Integration test: parse markdown title ⟧
 test "extract title from markdown" {
   match stdlib::string.startsWith("# ",stdlib::string.split("\n","# Hello World\nContent here")[0]){
     true=>stdlib::string.substring(#stdlib::string.split("\n","# Hello World\nContent here")[0],stdlib::string.split("\n","# Hello World\nContent here")[0],2)="Hello World"|

@@ -1,6 +1,3 @@
-⟦ Test that helper functions are now allowed ⟧
-
-⟦ Utility function used by multiple functions ⟧
 λisPositive(x:Int)=>Bool=x>0
 
 λmain()=>String=processA(50)++" and "++processB(-5)

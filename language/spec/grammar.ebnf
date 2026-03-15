@@ -1,8 +1,9 @@
 (* Sigil Programming Language - Surface Grammar Sketch *)
 (* This grammar documents the current parser surface at a high level. *)
-(* Some canonical constraints are enforced after parsing by validation/typecheck,
-   including whitespace/layout rules such as one-line signatures and multiline
-   multi-arm match layout. *)
+(* Canonical source is printer-first. The parser accepts the structural surface,
+   then the compiler compares the original source against the internal canonical
+   printer output. Semantic canonicality checks that are not pure printing still
+   run in validation/typecheck. *)
 
 Program = { TopLevelDecl } ;
 

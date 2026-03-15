@@ -1,4 +1,5 @@
 i src::content
+
 i src::types
 
 λallDocsSection(config:src::types.SiteBuildConfig,docs:[src::types.SitePage])=>String="<section class=\"listing\"><h2>Docs</h2><ul class=\"page-list\">"++pageCards(config,docs)++"</ul></section>"
@@ -7,34 +8,22 @@ i src::types
 
 λarticleListing(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>String="<section class=\"listing\"><h2>Latest Articles</h2><ul class=\"page-list\">"++pageCards(config,pages)++"</ul></section>"
 
-λarticlePage(config:src::types.SiteBuildConfig,navHtml:String,page:src::types.SitePage)=>String=shell(
-    sourceLink(config,page),
-    config,
-    breadcrumb(config,page),
-    page.bodyHtml++navHtml,
-    detailMeta(page),
-    page.meta.title
-  )
+λarticlePage(config:src::types.SiteBuildConfig,navHtml:String,page:src::types.SitePage)=>String=shell(sourceLink(config,page),config,breadcrumb(config,page),page.bodyHtml++navHtml,detailMeta(page),page.meta.title)
 
-λarticlesIndex(config:src::types.SiteBuildConfig,introHtml:String,pages:[src::types.SitePage])=>String=shell(
-    "",
-    config,
-    sectionIntro("Design notes and language decisions published from the repo.","Articles"),
-    introHtml++articleListing(config,pages),
-    "",
-    "Articles"
-  )
+λarticlesIndex(config:src::types.SiteBuildConfig,introHtml:String,pages:[src::types.SitePage])=>String=shell("",config,sectionIntro("Design notes and language decisions published from the repo.","Articles"),introHtml++articleListing(config,pages),"","Articles")
 
 λbreadcrumb(config:src::types.SiteBuildConfig,page:src::types.SitePage)=>String="<nav class=\"breadcrumb\"><a href=\""++siteUrl(config.basePath,"/")++"\">Home</a><span>/</span><a href=\""++sectionUrl(config.basePath,page.section)++"\">"++src::content.sectionName(page.section)++"</a></nav>"
 
-λdetailMeta(page:src::types.SitePage)=>String=l author=(page.meta.author:String);
+λdetailMeta(page:src::types.SitePage)=>String={
+  l author=(page.meta.author:String);
   l date=(page.meta.date:String);
-  match (#author>0) or (#date>0){
+  match #author>0 or #date>0{
     true=>"<p class=\"page-meta\">"++detailMetaValue(author,date)++"</p>"|
     false=>""
   }
+}
 
-λdetailMetaValue(author:String,date:String)=>String match (#author>0) and (#date>0){
+λdetailMetaValue(author:String,date:String)=>String match #author>0 and #date>0{
   true=>date++" · "++author|
   false=>match #date>0{
     true=>date|
@@ -42,14 +31,7 @@ i src::types
   }
 }
 
-λdocsIndex(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>String=shell(
-    "",
-    config,
-    sectionIntro("Reference docs rendered directly from language/docs.","Docs"),
-    "<section class=\"listing\"><ul class=\"page-list\">"++pageCards(config,pages)++"</ul></section>",
-    "",
-    "Docs"
-  )
+λdocsIndex(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>String=shell("",config,sectionIntro("Reference docs rendered directly from language/docs.","Docs"),"<section class=\"listing\"><ul class=\"page-list\">"++pageCards(config,pages)++"</ul></section>","","Docs")
 
 λfooter(config:src::types.SiteBuildConfig)=>String match #config.repoUrl>0{
   true=>"<footer class=\"site-footer\"><a href=\""++config.repoUrl++"\">GitHub</a></footer>"|
@@ -61,27 +43,13 @@ i src::types
   false=>""
 }
 
-λhomePage(articles:[src::types.SitePage],config:src::types.SiteBuildConfig,docs:[src::types.SitePage],home:src::types.SitePage,spec:[src::types.SitePage])=>String=shell(
-    "",
-    config,
-    sectionIntro(config.siteDescription,config.siteTitle),
-    home.bodyHtml++latestArticles(articles,config)++allDocsSection(config,docs)++allSpecsSection(config,spec),
-    "",
-    home.meta.title
-  )
+λhomePage(articles:[src::types.SitePage],config:src::types.SiteBuildConfig,docs:[src::types.SitePage],home:src::types.SitePage,spec:[src::types.SitePage])=>String=shell("",config,sectionIntro(config.siteDescription,config.siteTitle),home.bodyHtml++latestArticles(articles,config)++allDocsSection(config,docs)++allSpecsSection(config,spec),"",home.meta.title)
 
 λlatestArticles(articles:[src::types.SitePage],config:src::types.SiteBuildConfig)=>String="<section class=\"listing\"><h2>Latest Articles</h2><ul class=\"page-list\">"++pageCards(config,src::content.takeFirst(5,articles))++"</ul><p><a href=\""++siteUrl(config.basePath,"/articles/")++"\" class=\"view-all\">View all articles =></a></p></section>"
 
 λnav(config:src::types.SiteBuildConfig)=>String="<header class=\"site-header\"><div class=\"site-brand\"><a href=\""++siteUrl(config.basePath,"/")++"\">"++config.siteTitle++"</a></div><nav class=\"site-nav\"><a href=\""++siteUrl(config.basePath,"/articles/")++"\">Articles</a><a href=\""++siteUrl(config.basePath,"/docs/")++"\">Docs</a><a href=\""++siteUrl(config.basePath,"/spec/")++"\">Spec</a>"++githubNav(config)++"</nav></header>"
 
-λnotFoundPage(config:src::types.SiteBuildConfig)=>String=shell(
-    "",
-    config,
-    sectionIntro("The requested route does not exist.","Page not found"),
-    "<p><a href=\""++siteUrl(config.basePath,"/")++"\">Return home</a></p>",
-    "",
-    "Not Found"
-  )
+λnotFoundPage(config:src::types.SiteBuildConfig)=>String=shell("",config,sectionIntro("The requested route does not exist.","Page not found"),"<p><a href=\""++siteUrl(config.basePath,"/")++"\">Return home</a></p>","","Not Found")
 
 λpageCard(config:src::types.SiteBuildConfig,page:src::types.SitePage)=>String="<li class=\"page-card\" data-section=\""++src::content.sectionNameLowercase(page.section)++"\"><a class=\"page-link\" href=\""++siteUrl(config.basePath,src::content.canonicalRoute(page))++"\">"++page.meta.title++"</a>"++pageCardMeta(page)++pageCardDescription(page)++"</li>"
 
@@ -124,11 +92,4 @@ i src::types
   false=>""
 }
 
-λspecIndex(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>String=shell(
-    "",
-    config,
-    sectionIntro("Normative language and stdlib specifications rendered from language/spec.","Spec"),
-    "<section class=\"listing\"><ul class=\"page-list\">"++pageCards(config,pages)++"</ul></section>",
-    "",
-    "Spec"
-  )
+λspecIndex(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>String=shell("",config,sectionIntro("Normative language and stdlib specifications rendered from language/spec.","Spec"),"<section class=\"listing\"><ul class=\"page-list\">"++pageCards(config,pages)++"</ul></section>","","Spec")

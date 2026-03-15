@@ -1,28 +1,7 @@
-⟦ Node.js fs/promises FFI Type Declarations
-
-  Provides typed FFI declarations for the Node.js fs/promises module.
-  Import this module to get compile-time type checking for file system operations.
-
-  Example:
-    i stdlib::ffiNodeFs
-    λreadConfig()=>String=fs::promises.readFile("config.json", "utf8")
-⟧
-
 t MkdirOptions={recursive:Bool}
+
 t RmOptions={force:Bool,recursive:Bool}
 
-e fs:{
-  existsSync:λ(String)=>Bool
-}
+e fs:{existsSync:λ(String)=>Bool}
 
-e fs::promises:{
-  access:λ(String)=>Unit,
-  appendFile:λ(String,String,String)=>Unit,
-  mkdtemp:λ(String)=>String,
-  mkdir:λ(String,MkdirOptions)=>Unit,
-  readFile:λ(String,String)=>String,
-  readdir:λ(String)=>[String],
-  rm:λ(String,RmOptions)=>Unit,
-  unlink:λ(String)=>Unit,
-  writeFile:λ(String,String,String)=>Unit
-}
+e fs::promises:{access:λ(String)=>Unit,appendFile:λ(String,String,String)=>Unit,mkdtemp:λ(String)=>String,mkdir:λ(String,MkdirOptions)=>Unit,readFile:λ(String,String)=>String,readdir:λ(String)=>[String],rm:λ(String,RmOptions)=>Unit,unlink:λ(String)=>Unit,writeFile:λ(String,String,String)=>Unit}

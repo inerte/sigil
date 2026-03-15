@@ -3,4 +3,5 @@
   1=>1|
   value=>value*factorial(value-1)
 }
+
 λmain()=>Int=factorial(5)

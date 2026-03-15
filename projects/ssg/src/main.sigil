@@ -1,11 +1,7 @@
 i src::build
+
 i config::site
+
 i src::types
 
-λmain()=>!IO Unit=src::build.buildSite({
-    basePath:config::site.basePath(),
-    outputDir:"website/.local/site",
-    repoUrl:config::site.repoUrl(),
-    siteDescription:"Machine-first programming language designed for canonical code generation.",
-    siteTitle:"Sigil"
-  })
+λmain()=>!IO Unit=src::build.buildSite({basePath:config::site.basePath(),outputDir:"website/.local/site",repoUrl:config::site.repoUrl(),siteDescription:"Machine-first programming language designed for canonical code generation.",siteTitle:"Sigil"})

@@ -1,9 +1,13 @@
 e process
 
 i stdlib::file
+
 i stdlib::path
+
 i stdlib::process
+
 i stdlib::string
+
 i stdlib::time
 
 λcombinedOutput(result:stdlib::process.ProcessResult)=>String=result.stdout++result.stderr
@@ -12,15 +16,19 @@ i stdlib::time
 
 λrepoRoot()=>String=process.cwd()
 
-λretryRunStdoutContains(attempts:Int,command:stdlib::process.Command,delayMs:Int,expected:String)=>!IO stdlib::process.ProcessResult=l result=(stdlib::process.run(command):stdlib::process.ProcessResult);
+λretryRunStdoutContains(attempts:Int,command:stdlib::process.Command,delayMs:Int,expected:String)=>!IO stdlib::process.ProcessResult={
+  l result=(stdlib::process.run(command):stdlib::process.ProcessResult);
   match runStdoutContains(expected,result){
     true=>result|
     false=>match attempts≤1{
       true=>result|
-      false=>l _=(stdlib::time.sleepMs(delayMs):Unit);
+      false=>{
+        l _=(stdlib::time.sleepMs(delayMs):Unit);
         retryRunStdoutContains(attempts-1,command,delayMs,expected)
+      }
     }
   }
+}
 
 λrunStdoutContains(expected:String,result:stdlib::process.ProcessResult)=>Bool=stdlib::string.indexOf(result.stdout,expected)≥0
 
@@ -30,7 +38,9 @@ i stdlib::time
 
 λtrimmedOutput(result:stdlib::process.ProcessResult)=>String=stdlib::string.trim(combinedOutput(result))
 
-λuniqueRepoTempDir(prefix:String)=>!IO String=l millis=(stdlib::time.toEpochMillis(stdlib::time.now()):Int);
+λuniqueRepoTempDir(prefix:String)=>!IO String={
+  l millis=(stdlib::time.toEpochMillis(stdlib::time.now()):Int);
   l path=(repoPath("language/integrationTests/.tmp"++prefix++stdlib::string.intToString(millis)):String);
   l _=(stdlib::file.makeDirs(path):Unit);
   path
+}

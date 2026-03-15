@@ -1,11 +1,5 @@
-⟦
-  Sigil Standard Library - Time
-
-  Canonical instant model (epoch millis) with strict ISO-8601 parsing.
-  Runtime behavior is provided by compiler intrinsics for stdlib::time.
-⟧
-
 t Instant={epochMillis:Int}
+
 t TimeError={message:String}
 
 λcompare(left:Instant,right:Instant)=>Int=0

@@ -1,12 +1,7 @@
-⟦
-  Sigil Standard Library - Path
-
-  Canonical filesystem path helpers over normalized forward-slash paths.
-⟧
-
 t RelativeState={left:[String],right:[String]}
 
 i stdlib::list
+
 i stdlib::string
 
 λbasename(value:String)=>String match stdlib::list.last(splitNonempty(normalize(value))){
@@ -50,8 +45,10 @@ i stdlib::string
   }
 }
 
-λnormalize(value:String)=>String=l isAbsolute=(stdlib::string.startsWith("/",value):Bool);
+λnormalize(value:String)=>String={
+  l isAbsolute=(stdlib::string.startsWith("/",value):Bool);
   pathFromSegments(isAbsolute,(normalizeSegments([],isAbsolute,filterEmpty(stdlib::string.split("/",value))):[String]))
+}
 
 λnormalizeSegments(acc:[String],isAbsolute:Bool,segments:[String])=>[String] match segments{
   []=>stdlib::list.reverse(acc)|
@@ -76,18 +73,20 @@ i stdlib::string
 }
 
 λpathFromSegments(isAbsolute:Bool,segments:[String])=>String match isAbsolute{
-    true=>match #(stdlib::string.join("/",segments):String)=0{
-      true=>"/"|
-      false=>"/"++(stdlib::string.join("/",segments):String)
-    }|
-    false=>match #(stdlib::string.join("/",segments):String)=0{
-      true=>"."|
-      false=>(stdlib::string.join("/",segments):String)
-    }
+  true=>match #(stdlib::string.join("/",segments):String)=0{
+    true=>"/"|
+    false=>"/"++(stdlib::string.join("/",segments):String)
+  }|
+  false=>match #(stdlib::string.join("/",segments):String)=0{
+    true=>"."|
+    false=>(stdlib::string.join("/",segments):String)
   }
+}
 
-λrelative(from:String,to:String)=>String=l state=(relativeDropCommon((splitNonempty(normalize(from)):[String]),splitNonempty(normalize(to))):RelativeState);
+λrelative(from:String,to:String)=>String={
+  l state=(relativeDropCommon((splitNonempty(normalize(from)):[String]),splitNonempty(normalize(to))):RelativeState);
   pathFromSegments(false,(repeatSegment(#state.left,".."):[String])⧺state.right)
+}
 
 λrelativeDropCommon(left:[String],right:[String])=>RelativeState match left{
   []=>{left:[],right:right}|

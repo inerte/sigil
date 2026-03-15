@@ -1,3 +1,5 @@
 λisPalindrome(s:String)=>Bool=s=reverse(s)
+
 λmain()=>Bool=isPalindrome("racecar")
+
 λreverse(s:String)=>String=s

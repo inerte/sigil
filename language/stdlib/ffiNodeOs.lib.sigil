@@ -1,9 +1,1 @@
-⟦ Node.js os FFI Type Declarations
-
-  Provides typed FFI declarations for the Node.js os module.
-  Import this module to get compile-time type checking for host OS helpers.
-⟧
-
-e os:{
-  tmpdir:λ()=>String
-}
+e os:{tmpdir:λ()=>String}

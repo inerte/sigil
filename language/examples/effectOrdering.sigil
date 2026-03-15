@@ -1,9 +1,3 @@
-⟦ Effect ordering stays source-ordered.
-
-  `first()` is initiated before `second()`, even though the runtime may overlap
-  their resolution before the final record is observed.
-⟧
-
 t Pair={a:String,b:String}
 
 λfirst()=>!IO String="first"

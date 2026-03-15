@@ -1,15 +1,11 @@
-⟦
-  Sigil Standard Library - Decode
-
-  Canonical bridge from raw JSON values to trusted internal Sigil values.
-  Decoders keep boundary uncertainty explicit through Result[_,DecodeError].
-⟧
-
 t DecodeError={message:String,path:[String]}
+
 t Decoder[T]=λ(stdlib::json.JsonValue)=>Result[T,DecodeError]
 
 i core::map
+
 i stdlib::json
+
 i stdlib::string
 
 λbind[T,U](decoder:Decoder[T],fn:λ(T)=>Decoder[U])=>Decoder[U]=λ(value:stdlib::json.JsonValue)=>Result[U,DecodeError] match decoder(value){
@@ -23,17 +19,13 @@ i stdlib::string
 }
 
 λdict[T](decoder:Decoder[T])=>Decoder[{String↦T}]=λ(value:stdlib::json.JsonValue)=>Result[{String↦T},DecodeError] match stdlib::json.asObject(value){
-  Some(objectValue)=>core::map.fold(
-    λ(acc:Result[{String↦T},DecodeError],key:String,item:stdlib::json.JsonValue)=>Result[{String↦T},DecodeError] match acc{
-      Ok(current)=>match decoder(item){
-        Ok(decoded)=>Ok(core::map.insert(key,current,decoded))|
-        Err(error)=>Err(prependPath(error,key))
-      }|
-      Err(error)=>Err(error)
-    },
-    Ok((({↦}:{String↦T}):{String↦T})),
-    objectValue
-  )|
+  Some(objectValue)=>core::map.fold(λ(acc:Result[{String↦T},DecodeError],key:String,item:stdlib::json.JsonValue)=>Result[{String↦T},DecodeError] match acc{
+    Ok(current)=>match decoder(item){
+      Ok(decoded)=>Ok(core::map.insert(key,current,decoded))|
+      Err(error)=>Err(prependPath(error,key))
+    }|
+    Err(error)=>Err(error)
+  },Ok((({↦}:{String↦T}):{String↦T})),objectValue)|
   None()=>Err({message:"expected object",path:[]})
 }
 
@@ -72,9 +64,9 @@ i stdlib::string
 λint(value:stdlib::json.JsonValue)=>Result[Int,DecodeError] match stdlib::json.asString(value){
   Some(text)=>intFromText(text)|
   None()=>match stdlib::json.asNumber(value){
-      Some(numberValue)=>intFromText(stdlib::json.stringify(stdlib::json.JsonNumber(numberValue)))|
-      None()=>Err({message:"expected int",path:[]})
-    }
+    Some(numberValue)=>intFromText(stdlib::json.stringify(stdlib::json.JsonNumber(numberValue)))|
+    None()=>Err({message:"expected int",path:[]})
+  }
 }
 
 λintFromText(text:String)=>Result[Int,DecodeError] match #text=0{
@@ -95,7 +87,7 @@ i stdlib::string
   true=>Ok(acc)|
   false=>match (digitValue(stdlib::string.charAt(idx,text)):Int)<0{
     true=>Err({message:"expected int",path:[]})|
-    false=>intFromTextInner((acc*10)+(digitValue(stdlib::string.charAt(idx,text)):Int),idx+1,text)
+    false=>intFromTextInner(acc*10+(digitValue(stdlib::string.charAt(idx,text)):Int),idx+1,text)
   }
 }
 

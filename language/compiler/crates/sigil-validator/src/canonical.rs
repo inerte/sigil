@@ -5,11 +5,13 @@
 //! 2. No accumulator parameters (prevents tail-call optimization)
 //! 3. Canonical pattern matching (most direct form)
 //! 4. No CPS (continuation passing style)
+#![allow(dead_code)]
 
 use sigil_ast::*;
 use sigil_typechecker::{PurityClass, TypedDeclaration, TypedExpr, TypedExprKind, TypedProgram};
 use std::collections::{HashMap, HashSet};
 use crate::error::ValidationError;
+use crate::printer::print_canonical_program;
 use sigil_lexer::{tokenize, Position, SourceLocation, Token, TokenType};
 
 fn is_lower_camel_case(name: &str) -> bool {
@@ -103,6 +105,34 @@ fn suggestion_suffix(found: &str, suggested: String) -> String {
         String::new()
     } else {
         format!("\nSuggested: {}", suggested)
+    }
+}
+
+fn first_source_difference(source: &str, canonical_source: &str) -> SourceLocation {
+    let mut line = 1;
+    let mut column = 1;
+    let mut offset = 0;
+
+    for (left, right) in source.chars().zip(canonical_source.chars()) {
+        if left != right {
+            return SourceLocation {
+                start: Position { line, column, offset },
+                end: Position { line, column, offset },
+            };
+        }
+
+        offset += left.len_utf8();
+        if left == '\n' {
+            line += 1;
+            column = 1;
+        } else {
+            column += 1;
+        }
+    }
+
+    SourceLocation {
+        start: Position { line, column, offset },
+        end: Position { line, column, offset },
     }
 }
 
@@ -568,19 +598,14 @@ fn validate_source_layout(program: &Program, source: &str, file_path: &str) -> R
 pub fn validate_canonical_form(program: &Program, file_path: Option<&str>, source: Option<&str>) -> Result<(), Vec<ValidationError>> {
     let mut errors = Vec::new();
 
-    // Validate source formatting first (if source provided)
-    if let (Some(path), Some(src)) = (file_path, source) {
-        if let Err(e) = validate_eof_newline(src, path) {
-            errors.extend(e);
-        }
-        if let Err(e) = validate_no_trailing_whitespace(src, path) {
-            errors.extend(e);
-        }
-        if let Err(e) = validate_blank_lines(src, path) {
-            errors.extend(e);
-        }
-        if let Err(e) = validate_source_layout(program, src, path) {
-            errors.extend(e);
+    if let (Some(_path), Some(src)) = (file_path, source) {
+        let canonical_source = print_canonical_program(program);
+        if src != canonical_source {
+            let location = first_source_difference(src, &canonical_source);
+            errors.push(ValidationError::SourceForm {
+                canonical_source,
+                location,
+            });
         }
     }
 
@@ -2615,6 +2640,7 @@ mod tests {
     #[test]
     fn test_no_duplicate_functions() {
         let source = r#"λbar(y:Int)=>Int=y*2
+
 λfoo(x:Int)=>Int=x+1
 "#;
         let tokens = tokenize(source).unwrap();
@@ -2626,6 +2652,7 @@ mod tests {
     #[test]
     fn test_duplicate_function_error() {
         let source = r#"λfoo(x:Int)=>Int=x+1
+
 λfoo(y:Int)=>Int=y*2
 "#;
         let tokens = tokenize(source).unwrap();
@@ -2635,8 +2662,7 @@ mod tests {
         assert!(result.is_err());
 
         let errors = result.unwrap_err();
-        assert_eq!(errors.len(), 1);
-        assert!(matches!(errors[0], ValidationError::DuplicateDeclaration { .. }));
+        assert!(errors.iter().any(|error| matches!(error, ValidationError::DuplicateDeclaration { .. })));
     }
 
     #[test]
@@ -2706,6 +2732,7 @@ mod tests {
     #[test]
     fn test_multi_arm_match_must_be_multiline() {
         let source = r#"λfib(n:Int)=>Int match n{0=>0|1=>1|value=>fib(value-1)+fib(value-2)}
+
 λmain()=>Int=fib(5)
 "#;
         let tokens = tokenize(source).unwrap();
@@ -2713,7 +2740,7 @@ mod tests {
 
         let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
         assert!(result.is_err());
-        assert!(matches!(result.unwrap_err()[0], ValidationError::MatchLayout { .. }));
+        assert!(result.unwrap_err().iter().any(|error| matches!(error, ValidationError::SourceForm { .. })));
     }
 
     #[test]
@@ -2723,6 +2750,7 @@ mod tests {
   1=>1|
   value=>fib(value-1)+fib(value-2)
 }
+
 λmain()=>Int=fib(5)
 "#;
         let tokens = tokenize(source).unwrap();
@@ -2741,6 +2769,7 @@ mod tests {
   }|
   _=>3
 }
+
 λmain()=>Int=f(0,1)
 "#;
         let tokens = tokenize(source).unwrap();
@@ -2751,14 +2780,14 @@ mod tests {
     }
 
     #[test]
-    fn test_signature_split_across_lines_rejected() {
+    fn test_non_canonical_signature_layout_rejected() {
         let source = "λfib(n:Int)=>Int\nmatch n{0=>0}\n";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
         let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
         assert!(result.is_err());
-        assert!(result.unwrap_err().iter().any(|error| matches!(error, ValidationError::SignatureLayout { .. })));
+        assert!(result.unwrap_err().iter().any(|error| matches!(error, ValidationError::SourceForm { .. })));
     }
 
 }

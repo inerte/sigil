@@ -86,15 +86,20 @@ Sigil is not “many ways to do it.” If adding a feature:
 
 If a parser ambiguity appears, favor the interpretation that preserves globally expected meaning (e.g., arithmetic operators should behave like arithmetic).
 
-Current canonical layout rules:
-- function and lambda signatures stay on one line
+Canonical source is now printer-first:
+- the compiler owns an internal canonical source printer
+- every valid AST has exactly one accepted textual representation
+- `compile`, `run`, and `test` reject parseable-but-non-canonical source
+- there is no public formatter; the compiler error is the enforcement point
+- when updating syntax or source shape, think in terms of AST => one printed form
+
+Current high-signal printer choices:
+- signatures stay on one line
 - direct `match` bodies begin on that same line
+- branching prints multiline early
 - multi-arm `match` is always multiline
 - each arm starts as `pattern=>`
-- the body must begin on that same line, though it may continue on following indented lines
-- no spaces around `:`, `=>`, `=`, `|`, `+`, `-`, `*`, `/`, or `%`
-- no spaces just inside delimiters
-- no blank lines inside `match`
+- no discretionary alternative layout for the same AST shape
 
 Current constructor and list invariants:
 - imported sum-type constructors use fully qualified module syntax in both expressions and patterns
@@ -144,7 +149,7 @@ Current constructor and list invariants:
 Error messages should:
 - state what was found
 - state the canonical form
-- give a minimal example fix when possible
+- give the required canonical form when possible
 
 Prefer:
 - `Use "::" (e.g., i stdlib::list)`

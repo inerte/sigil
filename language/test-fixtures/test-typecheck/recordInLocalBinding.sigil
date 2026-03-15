@@ -1,12 +1,13 @@
-⟦ Test: Record literal with empty list after local binding ⟧
-
 t Inner={items:[Int]}
+
 t Outer={state:Inner}
 
 λmain()=>Unit=()
 
 λtest(x:Bool)=>Outer match x{
-  true=>l dummy=(1:Int);
-    {state:{items:[]}}|
+  true=>{
+    l dummy=(1:Int);
+    {state:{items:[]}}
+  }|
   false=>{state:{items:[1,2,3]}}
 }

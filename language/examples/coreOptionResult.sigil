@@ -8,5 +8,5 @@ t ParseError={message:String}
 
 λmain()=>Result[String,ParseError] match lookupUser(1){
   Some(name)=>Ok("Hello, "++name)|
-  None()=>Err(ParseError{message:"missing user"})
+  None()=>Err({message:"missing user"})
 }

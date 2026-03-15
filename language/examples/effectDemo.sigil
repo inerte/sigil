@@ -1,47 +1,19 @@
-⟦
-  Effect Tracking Demo
-
-  Demonstrates Sigil's compile-time effect tracking system.
-  Effects prevent accidental side effects by requiring explicit declarations.
-⟧
-
 e console
 
-⟦ Pure computation - no side effects ⟧
 λadd(a:Int,b:Int)=>Int=a+b
 
-⟦ Pure functions can call other pure functions ⟧
 λcomputeSum(a:Int,b:Int)=>Int=add(a,b)
 
-⟦ Pure transformation ⟧
 λdouble(x:Int)=>Int=x*2
 
-⟦ Network effect (simulated) ⟧
 λfetchData()=>!Network String="network-data"
 
-⟦ Single IO effect - console output ⟧
 λlog(msg:String)=>!IO Unit=console.log(msg)
 
-⟦ Effectful functions can call pure functions ⟧
 λlogDoubled(x:Int)=>!IO Unit=logValue(double(x))
 
-⟦ IO effect with computation ⟧
 λlogValue(x:Int)=>!IO Unit=console.log(x)
 
-⟦ Main function with all effects ⟧
-λmain()=>!IO !Network Unit=processAndLog()
+λmain()=>!IO!Network Unit=processAndLog()
 
-⟦ Function with two declared effects ⟧
-λprocessAndLog()=>!IO !Network Unit=log(fetchData())
-
-⟦ ========================================================================COMPILE-TIME SAFETY
-
-  Effect tracking prevents bugs at compile time:
-
-  - Pure functions calling effectful functions: REJECTED
-  - Missing effect declarations: REJECTED
-  - All effects properly declared: ACCEPTED
-
-  The compiler ensures that every function signature accurately
-  documents all side effects it performs.
-  ======================================================================== ⟧
+λprocessAndLog()=>!IO!Network Unit=log(fetchData())

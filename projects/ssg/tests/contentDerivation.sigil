@@ -1,29 +1,18 @@
 i src::content
+
 i src::types
 
-λarticlePage(date:String,slug:String)=>src::types.SitePage=src::content.blankPage(
-    "",
-    {author:"Sigil",category:"",date:date,description:"",slug:slug,title:slug},
-    "articles/"++slug,
-    src::types.Article(),
-    "website/articles/"++slug++".md"
-  )
+λarticlePage(date:String,slug:String)=>src::types.SitePage=src::content.blankPage("",{author:"Sigil",category:"",date:date,description:"",slug:slug,title:slug},"articles/"++slug,src::types.Article(),"website/articles/"++slug++".md")
 
 λmain()=>Unit=()
 
 test "article ordering uses newest date first" {
-  l sorted=(src::content.pagesNewestFirst([
-    articlePage("2026-02-24","older"),
-    articlePage("2026-03-03","newer")
-  ]):[src::types.SitePage]);
+  l sorted=(src::content.pagesNewestFirst([articlePage("2026-02-24","older"),articlePage("2026-03-03","newer")]):[src::types.SitePage]);
   sorted[0].meta.slug="newer" and sorted[1].meta.slug="older"
 }
 
 test "article ordering falls back to descending source path" {
-  l sorted=(src::content.pagesNewestFirst([
-    articlePage("","001-alpha"),
-    articlePage("","002-beta")
-  ]):[src::types.SitePage]);
+  l sorted=(src::content.pagesNewestFirst([articlePage("","001-alpha"),articlePage("","002-beta")]):[src::types.SitePage]);
   sorted[0].meta.slug="002-beta" and sorted[1].meta.slug="001-alpha"
 }
 

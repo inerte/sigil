@@ -1,7 +1,9 @@
 e fs::promises
+
 i stdlib::httpServer
 
-⟦ TODO: Reconnect to stdlib::httpServer.serve after callback function-type identity bug is fixed ⟧
-λstartServer(distDir:String,port:Int)=>!IO Unit=l noopDist=(distDir:String);
+λstartServer(distDir:String,port:Int)=>!IO Unit={
+  l noopDist=(distDir:String);
   l noopPort=(port:Int);
   ()
+}

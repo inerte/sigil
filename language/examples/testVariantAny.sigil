@@ -1,6 +1,9 @@
 t Headers={}
+
 t Response={body:String,headers:Headers,status:Int}
+
 t Result=Ok(Response)
 
 λmain()=>Result=test()
+
 λtest()=>Result=Ok({body:"ok",headers:{},status:200})

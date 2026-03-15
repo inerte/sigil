@@ -1,6 +1,1 @@
-⟦ Test: Modulo Operator
-   Expected output: 3
-   Calculation: 17 % 7 = 3
-⟧
-
 λmain()=>Int=17%7

@@ -1,7 +1,11 @@
 i src::breadthFirstSearch
+
 i src::depthFirstSearch
+
 i src::graphTypes
+
 i src::linearSearch
+
 i src::topologicalSort
 
 λcyclicGraph()=>src::graphTypes.Graph={nodes:[{neighbors:[2],vertex:1},{neighbors:[3],vertex:2},{neighbors:[1],vertex:3}]}

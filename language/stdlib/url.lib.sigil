@@ -1,19 +1,4 @@
-⟦
-  Sigil Standard Library - URL
-
-  Canonical URL parsing for absolute and relative links.
-  Runtime behavior is provided by compiler intrinsics for stdlib::url.
-⟧
-
-t Url={
-  fragment:String,
-  host:String,
-  path:String,
-  port:Option[Int],
-  protocol:String,
-  query:{String↦String},
-  queryString:String
-}
+t Url={fragment:String,host:String,path:String,port:Option[Int],protocol:String,query:{String↦String},queryString:String}
 
 t UrlError={message:String}
 
@@ -25,7 +10,7 @@ i core::map
 
 λisAbsolute(url:Url)=>Bool=#url.protocol>0
 
-λisAnchor(url:Url)=>Bool=(#url.path=0) and (#url.fragment>0)
+λisAnchor(url:Url)=>Bool=#url.path=0 and #url.fragment>0
 
 λparse(input:String)=>Result[Url,UrlError]=Err({message:"url parse intrinsic unavailable"})
 

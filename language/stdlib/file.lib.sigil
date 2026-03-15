@@ -1,9 +1,3 @@
-⟦
-  Sigil Standard Library - File
-
-  Canonical UTF-8 filesystem helpers.
-⟧
-
 e fs
 
 e fs::promises

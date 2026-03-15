@@ -5,13 +5,28 @@ The compiler toolchain rejects non-canonical source.
 
 ## Current Enforcement Model
 
-Canonical enforcement happens in multiple phases:
+Canonicality is now printer-first.
+The compiler parses source, builds an AST, prints the canonical source for that
+AST internally, and then compares the original file byte-for-byte against that
+printed form.
+
+If the bytes differ:
+
+- `sigil compile` fails
+- `sigil run` fails
+- `sigil test` fails
+
+There is no public formatter command. Sigil does not permit “almost canonical”
+source to run and then normalize later.
+
+Canonical enforcement now happens like this:
 
 ```text
 Source
 => Tokenize
 => Parse
-=> Canonical validation
+=> Canonical source print
+=> Source == canonical print ?
 => Type check
 => Typed canonical validation
 => Codegen / Run / Test
@@ -36,16 +51,16 @@ The parser enforces current surface forms such as:
 
 ### Canonical Validator
 
-The validator enforces canonical structural rules such as:
+The validator still enforces canonical rules that are not reducible to printing
+alone, such as:
 
 - filename rules
 - declaration ordering
 - file-purpose rules
 - test location rules
-- formatting rules
-- one-line signatures for functions and lambdas
-- canonical `match` layout and arm headers
-- no non-canonical operator/delimiter spacing
+- no-shadowing
+- record field ordering
+- typed canonical restrictions like single-use pure binding inlining
 
 ### Typed Canonical Validation
 
@@ -60,7 +75,7 @@ Current important example:
 Traditional ecosystems often rely on:
 
 - style guides
-- formatter preferences
+- optional formatter passes
 - lints that can be ignored
 
 Sigil instead makes canonicality part of the accepted language surface.
@@ -69,18 +84,18 @@ That gives:
 
 - one accepted spelling for common constructs
 - better machine generation loops
-- corrective diagnostics instead of review-time style debates
+- one textual representation per valid program
 
 ## Practical Rule
 
-If a doc claims “preferred style” but the compiler accepts multiple forms, that
-claim is not yet canonical enforcement.
+If a doc claims “preferred style” but the compiler accepts multiple parseable
+forms, that claim is not yet canonical enforcement.
 
 For Sigil, canonicality means the toolchain actually rejects the alternative.
 
-Current high-signal formatting constraints:
+Current high-signal printer choices:
 
-- `λfib(n:Int)=>Int match n{...}` is valid; splitting the signature/body introducer across lines is not
-- multi-arm `match` must be multiline
-- each arm starts as `pattern=>`
-- the body must begin on that same line, though it may continue on following indented lines
+- `λfib(n:Int)=>Int match n{...}` is canonical; splitting the signature/body introducer is not
+- multi-arm `match` prints multiline
+- branching and non-trivial structure print multiline earlier than dense inline forms
+- spacing is a consequence of the printer, not a second style system

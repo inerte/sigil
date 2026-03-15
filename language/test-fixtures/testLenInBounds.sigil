@@ -1,7 +1,7 @@
-⟦ Test # length operator and inBounds predicate ⟧
-
 e console
+
 i stdlib::list
+
 i stdlib::string
 
 λboolText(value:Bool)=>String match value{
@@ -9,11 +9,4 @@ i stdlib::string
   false=>"false"
 }
 
-λmain()=>Unit=console.log(
-  "#[1,2,3]: "
-  ++stdlib::string.intToString(#[1,2,3])
-  ++", inBounds(1,[1,2,3]): "
-  ++boolText(stdlib::list.inBounds(1,[1,2,3]))
-  ++", inBounds(5,[1,2,3]): "
-  ++boolText(stdlib::list.inBounds(5,[1,2,3]))
-)
+λmain()=>Unit=console.log("#[1,2,3]: "++stdlib::string.intToString(#[1,2,3])++", inBounds(1,[1,2,3]): "++boolText(stdlib::list.inBounds(1,[1,2,3]))++", inBounds(5,[1,2,3]): "++boolText(stdlib::list.inBounds(5,[1,2,3])))

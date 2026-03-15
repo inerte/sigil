@@ -17,10 +17,10 @@ t Selection={chosen:Int,rest:[Int]}
 
 λprependChoice(choices:[Selection],prefix:Int)=>[Selection] match choices{
   []=>[]|
-  [choice,.tail]=>[Selection{chosen:choice.chosen,rest:[prefix]⧺choice.rest}]⧺prependChoice(tail,prefix)
+  [choice,.tail]=>[{chosen:choice.chosen,rest:[prefix]⧺choice.rest}]⧺prependChoice(tail,prefix)
 }
 
 λselections(xs:[Int])=>[Selection] match xs{
   []=>[]|
-  [head,.tail]=>[Selection{chosen:head,rest:tail}]⧺prependChoice(selections(tail),head)
+  [head,.tail]=>[{chosen:head,rest:tail}]⧺prependChoice(selections(tail),head)
 }

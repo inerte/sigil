@@ -1,7 +1,7 @@
-⟦ Test: Nested record with empty lists in match expression ⟧
-
 t Inner={items:[Int]}
+
 t Outer={inner:Inner,name:String}
+
 t Result={data:Outer}
 
 λmain()=>Unit=()

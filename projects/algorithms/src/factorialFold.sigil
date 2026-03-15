@@ -1,4 +1,5 @@
 i stdlib::list
+
 i stdlib::numeric
 
 λfactorial(n:Int)=>Int=stdlib::list.fold(1,multiply,stdlib::numeric.range(1,n))

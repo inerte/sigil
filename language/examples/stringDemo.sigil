@@ -1,22 +1,12 @@
-⟦ String Operations Demo
-
-   Demonstrates string operations and the # operator.
-⟧
-
 e console
 
 i stdlib::string
 
-⟦ Main demonstration ⟧
-λmain()=>!IO Unit=l _=(console.log("Text: "++("Hello, Sigil!":String)):Unit);
-  ⟦ Test string length operator ⟧
+λmain()=>!IO Unit={
+  l _=(console.log("Text: "++("Hello, Sigil!":String)):Unit);
   l _=(console.log("Length: "++stdlib::string.intToString(#("Hello, Sigil!":String))):Unit);
-
-  ⟦ Test string transformations ⟧
   l _=(console.log("Upper: "++(stdlib::string.toUpper("hello"):String)):Unit);
   l _=(console.log("Lower: "++(stdlib::string.toLower("WORLD"):String)):Unit);
-
-  ⟦ Test string predicates ⟧
   l _=(console.log("Has prefix Hello: "++(match (stdlib::string.startsWith("Hello World","Hello"):Bool){
     true=>"true"|
     false=>"false"
@@ -25,10 +15,7 @@ i stdlib::string
     true=>"true"|
     false=>"false"
   }:String)):Unit);
-
-  ⟦ Test split ⟧
   l _=(console.log("Split length: "++stdlib::string.intToString(#(stdlib::string.split("a,b,c",","):[String]))):Unit);
-
-  ⟦ Test take and drop ⟧
   l _=(console.log("Take 3: "++(stdlib::string.take(3,("abcdefgh":String)):String)):Unit);
   console.log("Drop 3: "++(stdlib::string.drop(3,("abcdefgh":String)):String))
+}

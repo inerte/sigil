@@ -1,6 +1,9 @@
 i stdlib::file
+
 i stdlib::path
+
 i stdlib::process
+
 i stdlib::string
 
 i src::support
@@ -15,12 +18,15 @@ i src::support
 
 λrawClientSource()=>String="i stdlib::httpClient\n\nλmain()=>!IO String match stdlib::httpClient.get(\"http://127.0.0.1:45110\",stdlib::httpClient.emptyHeaders(),\"/health\"){\n  Ok(response)=>response.body|\n  Err(error)=>error.message\n}\n"
 
-λrawEndpointCompileOutput()=>!IO String=l _=(stdlib::file.writeText(rawClientSource(),rawClientFile()):Unit);
+λrawEndpointCompileOutput()=>!IO String={
+  l _=(stdlib::file.writeText(rawClientSource(),rawClientFile()):Unit);
   l result=(stdlib::process.run(httpCommand(["compile","src/rawEndpointClient.sigil"])):stdlib::process.ProcessResult);
   l _=(stdlib::file.remove(rawClientFile()):Unit);
   src::support.combinedOutput(result)
+}
 
-λrunClientOutput(target:String)=>!IO String=l server=(stdlib::process.spawn(httpCommand(["run","src/httpRoundtripServer.sigil","--env","test"])):stdlib::process.RunningProcess);
+λrunClientOutput(target:String)=>!IO String={
+  l server=(stdlib::process.spawn(httpCommand(["run","src/httpRoundtripServer.sigil","--env","test"])):stdlib::process.RunningProcess);
   l ready=(src::support.retryRunStdoutContains(50,httpCommand(["run","src/getClient.sigil","--env","test"]),200,"200:healthy"):stdlib::process.ProcessResult);
   l result=match src::support.runStdoutContains("200:healthy",ready){
     true=>(stdlib::process.run(httpCommand(["run",target,"--env","test"])):stdlib::process.ProcessResult)|
@@ -29,34 +35,35 @@ i src::support
   l _=(stdlib::process.kill(server):Unit);
   l _=(stdlib::process.wait(server):stdlib::process.ProcessResult);
   src::support.combinedOutput(result)
+}
 
 λvalidateResult()=>!IO stdlib::process.ProcessResult=stdlib::process.run(httpCommand(["validate",".","--env","test"]))
 
-test "http topology validates for test env" =>!IO {
+test "http topology validates for test env" =>!IO  {
   l result=(validateResult():stdlib::process.ProcessResult);
   result.code=0
 }
 
-test "http get client reaches roundtrip server" =>!IO {
+test "http get client reaches roundtrip server" =>!IO  {
   stdlib::string.indexOf(runClientOutput("src/getClient.sigil"),"200:healthy")≥0=true
 }
 
-test "http post client reaches roundtrip server" =>!IO {
+test "http post client reaches roundtrip server" =>!IO  {
   stdlib::string.indexOf(runClientOutput("src/postClient.sigil"),"201:echoed")≥0=true
 }
 
-test "http json client reaches roundtrip server" =>!IO {
+test "http json client reaches roundtrip server" =>!IO  {
   stdlib::string.indexOf(runClientOutput("src/jsonClient.sigil"),"{\\\"ok\\\":true}")≥0=true
 }
 
-test "http headers client reaches roundtrip server" =>!IO {
+test "http headers client reaches roundtrip server" =>!IO  {
   stdlib::string.indexOf(runClientOutput("src/headersClient.sigil"),"202:abc-123")≥0=true
 }
 
-test "http missing client returns 404" =>!IO {
+test "http missing client returns 404" =>!IO  {
   stdlib::string.indexOf(runClientOutput("src/missingClient.sigil"),"404")≥0=true
 }
 
-test "http raw endpoint compile is forbidden" =>!IO {
+test "http raw endpoint compile is forbidden" =>!IO  {
   stdlib::string.indexOf(rawEndpointCompileOutput(),"SIGIL-TOPO-RAW-ENDPOINT-FORBIDDEN")≥0=true
 }

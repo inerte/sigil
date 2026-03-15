@@ -1,12 +1,8 @@
 i src::content
+
 i src::types
 
-λaliasRoutes()=>[src::types.AliasRoute]=[
-  {alias:"language/docs/CANONICAL_FORMS.md",route:"/docs/canonical-forms/"},
-  {alias:"language/spec/cli-json.md",route:"/spec/cli-json/"},
-  {alias:"website/articles/015-why-sigil-bans-shadowing.md",route:"/articles/015-why-sigil-bans-shadowing/"},
-  {alias:"/articles/why-sigil-bans-shadowing",route:"/articles/015-why-sigil-bans-shadowing/"}
-]
+λaliasRoutes()=>[src::types.AliasRoute]=[{alias:"language/docs/CANONICAL_FORMS.md",route:"/docs/canonical-forms/"},{alias:"language/spec/cli-json.md",route:"/spec/cli-json/"},{alias:"website/articles/015-why-sigil-bans-shadowing.md",route:"/articles/015-why-sigil-bans-shadowing/"},{alias:"/articles/why-sigil-bans-shadowing",route:"/articles/015-why-sigil-bans-shadowing/"}]
 
 λmain()=>Unit=()
 
@@ -19,8 +15,7 @@ test "link rewriting preserves fragments" {
 }
 
 test "link rewriting rewrites docs and articles" {
-  (src::content.rewriteInternalLinks(aliasRoutes(),"/sigil","Read [docs](../language/docs/CANONICAL_FORMS.md)","website/articles/015-why-sigil-bans-shadowing.md"):String)="Read [docs](/sigil/docs/canonical-forms/)" and
-  (src::content.rewriteInternalLinks(aliasRoutes(),"/sigil","Read [article](/articles/why-sigil-bans-shadowing)","language/docs/FFI.md"):String)="Read [article](/sigil/articles/015-why-sigil-bans-shadowing/)"
+  (src::content.rewriteInternalLinks(aliasRoutes(),"/sigil","Read [docs](../language/docs/CANONICAL_FORMS.md)","website/articles/015-why-sigil-bans-shadowing.md"):String)="Read [docs](/sigil/docs/canonical-forms/)" and (src::content.rewriteInternalLinks(aliasRoutes(),"/sigil","Read [article](/articles/why-sigil-bans-shadowing)","language/docs/FFI.md"):String)="Read [article](/sigil/articles/015-why-sigil-bans-shadowing/)"
 }
 
 test "link rewriting leaves external links unchanged" {

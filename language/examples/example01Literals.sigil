@@ -1,5 +1,1 @@
-⟦ Test: Basic Literals
-   Expected output: 42
-⟧
-
 λmain()=>Int=42

@@ -1,7 +1,3 @@
-⟦ Test: String Concatenation
-   Expected output: Hello, World!
-⟧
-
 e console
 
 λmain()=>Unit=console.log("Hello, "++"World!")

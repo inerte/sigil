@@ -1,6 +1,7 @@
 t Todo={done:Bool,id:Int,text:String}
 
 i src::todoDomain
+
 i stdlib::numeric
 
 λlenTodos(todos:[Todo])=>Int match todos{
@@ -18,36 +19,36 @@ test "todo add prepends item" {
 }
 
 test "todo clearCompleted keeps active only" {
-  match src::todoDomain.clearCompleted([Todo{done:true,id:1,text:"A"},Todo{done:false,id:2,text:"B"}]){
+  match src::todoDomain.clearCompleted([{done:true,id:1,text:"A"},{done:false,id:2,text:"B"}]){
     [todo]=>todo.id=2 and todo.done=false|
     _=>false
   }
 }
 
 test "todo completedCount counts completed" {
-  src::todoDomain.completedCount([Todo{done:true,id:1,text:"A"},Todo{done:false,id:2,text:"B"},Todo{done:true,id:3,text:"C"}])=2
+  src::todoDomain.completedCount([{done:true,id:1,text:"A"},{done:false,id:2,text:"B"},{done:true,id:3,text:"C"}])=2
 }
 
 test "todo completedCount result can use numeric predicates" {
-  l count=(src::todoDomain.completedCount([Todo{done:true,id:1,text:"A"},Todo{done:false,id:2,text:"B"},Todo{done:true,id:3,text:"C"}]):Int);
+  l count=(src::todoDomain.completedCount([{done:true,id:1,text:"A"},{done:false,id:2,text:"B"},{done:true,id:3,text:"C"}]):Int);
   stdlib::numeric.isEven(count)=true and stdlib::numeric.inRange(3,0,count)=true
 }
 
 test "todo delete reduces length" {
-  lenTodos(src::todoDomain.deleteTodo(1,[Todo{done:false,id:1,text:"A"},Todo{done:false,id:2,text:"B"}]))=1
+  lenTodos(src::todoDomain.deleteTodo(1,[{done:false,id:1,text:"A"},{done:false,id:2,text:"B"}]))=1
 }
 
 test "todo delete removes target" {
-  match src::todoDomain.deleteTodo(1,[Todo{done:false,id:1,text:"A"},Todo{done:false,id:2,text:"B"}]){
+  match src::todoDomain.deleteTodo(1,[{done:false,id:1,text:"A"},{done:false,id:2,text:"B"}]){
     [todo]=>todo.id=2 and todo.text="B"|
     _=>false
   }
 }
 
 test "todo edit updates text" {
-  src::todoDomain.editTodo("New",1,[Todo{done:false,id:1,text:"Old"}])[0].text="New"
+  src::todoDomain.editTodo("New",1,[{done:false,id:1,text:"Old"}])[0].text="New"
 }
 
 test "todo toggle flips done flag" {
-  src::todoDomain.toggleTodo(1,[Todo{done:false,id:1,text:"Task"}])[0].done=true
+  src::todoDomain.toggleTodo(1,[{done:false,id:1,text:"Task"}])[0].done=true
 }

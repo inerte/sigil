@@ -11,6 +11,8 @@
 
 pub mod error;
 pub mod canonical;
+pub mod printer;
 
 pub use error::*;
 pub use canonical::*;
+pub use printer::*;

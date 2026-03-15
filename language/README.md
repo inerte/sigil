@@ -104,8 +104,8 @@ If 93% of code is AI-generated (2026 stats), why optimize for the 7%?
 
 1. **Token Density**: `λ` instead of `function` - machines don't need verbosity
 2. **Zero Ambiguity**: Exactly ONE way to write anything - LLMs hallucinate less
-3. **Perfect Formatting**: Code won't compile if not canonically formatted
-   Signatures stay on one line, multi-arm `match` is multiline, and spacing is fixed.
+3. **One Textual Representation**: Code won't compile if it doesn't match the compiler's canonical printed form
+   Parseable-but-non-canonical source is rejected by `compile`, `run`, and `test`.
 4. **Strong Types**: Bidirectional type checking with mandatory annotations
 5. **Context Efficiency**: ~10% more code fits in context windows (current benchmark average)
 
@@ -139,12 +139,13 @@ Developers interact through **Claude Code**:
 - Compile-time guarantees prevent runtime type errors
 - Better error messages than Hindley-Milner: "expected Int, got String"
 
-### 3. Enforced Canonical Formatting
-**"Unformatted code is a syntax error"**
+### 3. Printer-First Canonical Source
+**"There is one accepted textual form per program"**
 
-- Formatter is part of the parser, not a separate tool
-- Code that violates formatting rules doesn't parse
-- LLMs learn ONE valid token sequence per semantic meaning
+- The compiler owns an internal canonical source printer
+- Parseable-but-non-canonical source is rejected before codegen
+- There is no public formatter command
+- LLMs learn ONE valid text shape per AST
 
 ### 4. Minimal Token Syntax for Models
 **"Every character carries maximum information density"**

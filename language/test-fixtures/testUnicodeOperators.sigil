@@ -1,5 +1,3 @@
-⟦ Test Unicode operators in typechecker ⟧
-
 e console
 
 λboolText(value:Bool)=>String match value{
@@ -7,28 +5,14 @@ e console
   false=>"false"
 }
 
-λmain()=>Unit=console.log(
-  "All tests passed: "
-  ++boolText(testLe(5,10))
-  ++", "
-  ++boolText(testGe(10,5))
-  ++", "
-  ++boolText(testNe(5,10))
-  ++", "
-  ++boolText(¬testAnd(true,false))
-  ++", "
-  ++boolText(testOr(true,false))
-)
+λmain()=>Unit=console.log("All tests passed: "++boolText(testLe(5,10))++", "++boolText(testGe(10,5))++", "++boolText(testNe(5,10))++", "++boolText(¬testAnd(true,false))++", "++boolText(testOr(true,false)))
 
-⟦ Test and / or ⟧
 λtestAnd(a:Bool,b:Bool)=>Bool=a and b
 
-⟦ Test ≤ and ≥ ⟧
 λtestGe(a:Int,b:Int)=>Bool=a≥b
+
 λtestLe(a:Int,b:Int)=>Bool=a≤b
 
-⟦ Test ≠ ⟧
 λtestNe(a:Int,b:Int)=>Bool=a≠b
 
-⟦ Test and / or ⟧
 λtestOr(a:Bool,b:Bool)=>Bool=a or b

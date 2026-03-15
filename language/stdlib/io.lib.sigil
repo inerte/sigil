@@ -1,24 +1,13 @@
-⟦
-  Sigil Standard Library - I/O Operations
-
-  Console and process I/O using Node.js FFI.
-  All functions have !IO effect annotation.
-⟧
-
 e console
+
 e process
 
-⟦ Print debug info ⟧
 λdebug(msg:String)=>!IO Unit=console.debug(msg)
 
-⟦ Print to stderr ⟧
 λeprintln(msg:String)=>!IO Unit=console.error(msg)
 
-⟦ Print to stdout (without newline) ⟧
 λprint(msg:String)=>!IO Unit=process.stdout.write(msg)
 
-⟦ Print to stdout (with newline) ⟧
 λprintln(msg:String)=>!IO Unit=console.log(msg)
 
-⟦ Print warning ⟧
 λwarn(msg:String)=>!IO Unit=console.warn(msg)

@@ -9,14 +9,14 @@ test "core map infers and counts entries" {
 }
 
 test "core map get and has work" {
-  core::map.has("content-type",({"content-type"↦"application/json"}:{String↦String})) and match core::map.get("content-type",({"content-type"↦"application/json"}:{String↦String})){
+  core::map.has("content-type",({"content-type"↦"application/json"}:{String↦String})) and (match core::map.get("content-type",({"content-type"↦"application/json"}:{String↦String})){
     Some(value)=>value="application/json"|
     None()=>false
-  }
+  })
 }
 
 test "core map insert remove and merge work" {
-  core::map.has("content-type",core::map.insert("content-type",({↦}:{String↦String}),"text/plain")) and #(core::map.merge(core::map.insert("content-type",({↦}:{String↦String}),"text/plain"),{"x-id"↦"42"}))=2 and #core::map.remove("x-id",core::map.merge(core::map.insert("content-type",({↦}:{String↦String}),"text/plain"),{"x-id"↦"42"}))=1
+  core::map.has("content-type",core::map.insert("content-type",({↦}:{String↦String}),"text/plain")) and #core::map.merge(core::map.insert("content-type",({↦}:{String↦String}),"text/plain"),{"x-id"↦"42"})=2 and #core::map.remove("x-id",core::map.merge(core::map.insert("content-type",({↦}:{String↦String}),"text/plain"),{"x-id"↦"42"}))=1
 }
 
 test "core map equality ignores insertion order" {

@@ -179,29 +179,27 @@ For topology-aware projects:
 Validation is currently per selected `--env`, not a whole-project scan across
 all declared environments.
 
-## Formatting Rules
+## Printer-First Source
 
-Current canonical formatting rules include:
+Sigil no longer describes canonicality mainly as a checklist of spacing rules.
+The authoritative rule is:
 
-- file must end with a final newline
-- no trailing whitespace
-- at most one consecutive blank line
-- no spaces just inside `()`, `[]`, or `{}`
-- no spaces around `:`, `=>`, `=`, or `|`
-- no spaces around `+`, `-`, `*`, `/`, or `%`
-- function and lambda signatures must stay on one line
-- direct `match` bodies must start on that same signature line
-- multi-arm `match` expressions must be multiline
-- each multiline `match` arm must start as `pattern=>`
-- continued multiline arm bodies are allowed, but the body must begin on the arm header line
-- no blank lines inside a `match`
-- unnecessary block wrappers around direct `match` function/lambda bodies are rejected
-- redundant parentheses around whole body expressions are rejected
+- parse source
+- print the canonical source for that AST internally
+- reject the file unless the bytes match exactly
 
-The lexer also rejects:
+That gives Sigil a source normal form:
 
-- tab characters
-- standalone `\r`
+- one textual representation per valid AST
+- no public formatter command
+- no "preferred style" separate from the language
+
+Some surface constraints are still easiest to think about mechanically:
+
+- signatures print on one line
+- direct `match` bodies begin on that same line
+- multi-arm `match` prints multiline
+- branching and other non-trivial structure print multiline earlier than dense inline forms
 
 Canonical examples:
 

@@ -1,5 +1,3 @@
-⟦ Test: map uses canonical normalized equality for named product types ⟧
-
 t Todo={done:Bool,id:Int,text:String}
 
 λkeep(todo:Todo)=>Todo=todo

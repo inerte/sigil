@@ -1,46 +1,22 @@
-⟦ stdlib::httpClient - Canonical HTTP Client for Sigil
-
-Provides the typed Sigil surface for making HTTP requests.
-Runtime behavior is implemented by the compiler runtime for stdlib::httpClient.
-⟧
-
 t Headers={String↦String}
 
-t HttpError={
-  kind:HttpErrorKind,
-  message:String
-}
+t HttpError={kind:HttpErrorKind,message:String}
 
 t HttpErrorKind=InvalidJson()|InvalidUrl()|Network()|Timeout()|Topology()
 
 t HttpMethod=Delete()|Get()|Patch()|Post()|Put()
 
-t HttpRequest={
-  body:Option[String],
-  dependency:stdlib::topology.HttpServiceDependency,
-  headers:Headers,
-  method:HttpMethod,
-  path:String
-}
+t HttpRequest={body:Option[String],dependency:stdlib::topology.HttpServiceDependency,headers:Headers,method:HttpMethod,path:String}
 
-t HttpResponse={
-  body:String,
-  headers:Headers,
-  status:Int,
-  url:String
-}
+t HttpResponse={body:String,headers:Headers,status:Int,url:String}
 
 i core::map
+
 i stdlib::json
+
 i stdlib::topology
 
-λdelete(dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[HttpResponse,HttpError]=request({
-  body:None(),
-  dependency:dependency,
-  headers:headers,
-  method:Delete(),
-  path:path
-})
+λdelete(dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[HttpResponse,HttpError]=request({body:None(),dependency:dependency,headers:headers,method:Delete(),path:path})
 
 λdeleteJson(dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[stdlib::json.JsonValue,HttpError] match delete(dependency,headers,path){
   Ok(response)=>responseJson(response)|
@@ -49,13 +25,7 @@ i stdlib::topology
 
 λemptyHeaders()=>Headers=({↦}:{String↦String})
 
-λget(dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[HttpResponse,HttpError]=request({
-  body:None(),
-  dependency:dependency,
-  headers:headers,
-  method:Get(),
-  path:path
-})
+λget(dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[HttpResponse,HttpError]=request({body:None(),dependency:dependency,headers:headers,method:Get(),path:path})
 
 λgetJson(dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[stdlib::json.JsonValue,HttpError] match get(dependency,headers,path){
   Ok(response)=>responseJson(response)|
@@ -68,50 +38,28 @@ i stdlib::topology
 
 λmergeHeaders(left:Headers,right:Headers)=>Headers=core::map.merge(left,right)
 
-λpatch(body:String,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[HttpResponse,HttpError]=request({
-  body:Some(body),
-  dependency:dependency,
-  headers:headers,
-  method:Patch(),
-  path:path
-})
+λpatch(body:String,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[HttpResponse,HttpError]=request({body:Some(body),dependency:dependency,headers:headers,method:Patch(),path:path})
 
 λpatchJson(body:stdlib::json.JsonValue,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[stdlib::json.JsonValue,HttpError] match patch(stdlib::json.stringify(body),dependency,mergeHeaders(jsonHeaders(),headers),path){
   Ok(response)=>responseJson(response)|
   Err(error)=>Err(error)
 }
 
-λpost(body:String,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[HttpResponse,HttpError]=request({
-  body:Some(body),
-  dependency:dependency,
-  headers:headers,
-  method:Post(),
-  path:path
-})
+λpost(body:String,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[HttpResponse,HttpError]=request({body:Some(body),dependency:dependency,headers:headers,method:Post(),path:path})
 
 λpostJson(body:stdlib::json.JsonValue,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[stdlib::json.JsonValue,HttpError] match post(stdlib::json.stringify(body),dependency,mergeHeaders(jsonHeaders(),headers),path){
   Ok(response)=>responseJson(response)|
   Err(error)=>Err(error)
 }
 
-λput(body:String,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[HttpResponse,HttpError]=request({
-  body:Some(body),
-  dependency:dependency,
-  headers:headers,
-  method:Put(),
-  path:path
-})
+λput(body:String,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[HttpResponse,HttpError]=request({body:Some(body),dependency:dependency,headers:headers,method:Put(),path:path})
 
 λputJson(body:stdlib::json.JsonValue,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[stdlib::json.JsonValue,HttpError] match put(stdlib::json.stringify(body),dependency,mergeHeaders(jsonHeaders(),headers),path){
   Ok(response)=>responseJson(response)|
   Err(error)=>Err(error)
 }
 
-⟦ Runtime behavior is provided by the compiler for stdlib::httpClient.request. ⟧
-λrequest(request:HttpRequest)=>!IO Result[HttpResponse,HttpError]=Err({
-  kind:Network(),
-  message:"http client runtime unavailable"
-})
+λrequest(request:HttpRequest)=>!IO Result[HttpResponse,HttpError]=Err({kind:Network(),message:"http client runtime unavailable"})
 
 λresponseJson(response:HttpResponse)=>Result[stdlib::json.JsonValue,HttpError] match stdlib::json.parse(response.body){
   Ok(value)=>Ok(value)|

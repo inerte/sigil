@@ -4,7 +4,12 @@ This document describes the current Sigil surface accepted by the compiler in
 this repository.
 
 Sigil is canonical by design. This is not a style guide with alternatives. It
-documents the one surface form the parser, validator, and typechecker expect.
+documents the one surface form the parser, internal canonical printer,
+validator, and typechecker accept.
+
+If source parses but does not exactly match the compiler's canonical printed
+form for that AST, `compile`, `run`, and `test` reject it. There is no public
+formatter.
 
 ## Source Files
 
@@ -99,8 +104,8 @@ For function declarations:
 
 - `=` is required before a non-`match` body
 - `=` is forbidden before a `match` body
-- the full signature must stay on one physical line
-- a direct `match` body must start on that same line
+- the canonical printer keeps the full signature on one physical line
+- a direct `match` body begins on that same line
 
 Effects, when present, appear between `=>` and the return type:
 
@@ -235,20 +240,12 @@ match value{
 }
 ```
 
-Canonical layout rules for `match`:
+Canonical `match` shape comes from the internal printer:
 
-- single-arm `match` may stay on one line
-- multi-arm `match` must be multiline
-- each arm header starts as `pattern=>`
-- the arm body must begin on that same line
-- continued body lines are allowed, but blank lines inside the `match` are not
-- `|` closes the previous arm; it never leads the next line
-
-Canonical spacing rules:
-
-- no spaces just inside delimiters
-- no spaces around `:`, `=>`, `=`, or `|`
-- no spaces around `+`, `-`, `*`, `/`, or `%`
+- multi-arm `match` prints multiline
+- each arm begins as `pattern=>`
+- nested branching may continue on following indented lines
+- there is no alternate printed layout for the same `match` AST
 
 Patterns include:
 

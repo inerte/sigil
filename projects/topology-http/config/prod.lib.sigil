@@ -1,8 +1,7 @@
 e process
 
 i src::topology
+
 i stdlib::config
 
-c bindings=(stdlib::config.bindings([
-  stdlib::config.bindHttpEnv(src::topology.mailerApi,"MAILER_API_URL")
-],[]):stdlib::config.Bindings)
+c bindings=(stdlib::config.bindings([stdlib::config.bindHttpEnv(src::topology.mailerApi,"MAILER_API_URL")],[]):stdlib::config.Bindings)

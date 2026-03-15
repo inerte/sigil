@@ -1,9 +1,13 @@
 t NextTodoId=NextTodoId(Int)
+
 t PersistedState={nextId:NextTodoId,todos:[src::todoDomain.Todo]}
 
 i src::todoDomain
+
 i stdlib::decode
+
 i stdlib::json
+
 i stdlib::string
 
 λdecodeNextTodoId(value:stdlib::json.JsonValue)=>Result[NextTodoId,stdlib::decode.DecodeError] match stdlib::decode.int(value){
@@ -26,16 +30,9 @@ i stdlib::string
 
 λencodeState(state:PersistedState)=>String=stdlib::json.stringify(encodeStateToJson(state))
 
-λencodeStateToJson(state:PersistedState)=>stdlib::json.JsonValue=stdlib::json.JsonObject({
-  "nextId"↦stdlib::json.JsonString(stdlib::string.intToString(nextTodoIdValue(state.nextId))),
-  "todos"↦encodeTodos(state.todos)
-})
+λencodeStateToJson(state:PersistedState)=>stdlib::json.JsonValue=stdlib::json.JsonObject({"nextId"↦stdlib::json.JsonString(stdlib::string.intToString(nextTodoIdValue(state.nextId))),"todos"↦encodeTodos(state.todos)})
 
-λencodeTodo(todo:src::todoDomain.Todo)=>stdlib::json.JsonValue=stdlib::json.JsonObject({
-  "done"↦stdlib::json.JsonBool(todo.done),
-  "id"↦stdlib::json.JsonString(stdlib::string.intToString(todo.id)),
-  "text"↦stdlib::json.JsonString(todo.text)
-})
+λencodeTodo(todo:src::todoDomain.Todo)=>stdlib::json.JsonValue=stdlib::json.JsonObject({"done"↦stdlib::json.JsonBool(todo.done),"id"↦stdlib::json.JsonString(stdlib::string.intToString(todo.id)),"text"↦stdlib::json.JsonString(todo.text)})
 
 λencodeTodos(todos:[src::todoDomain.Todo])=>stdlib::json.JsonValue match todos{
   []=>stdlib::json.JsonArray([])|

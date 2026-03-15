@@ -310,13 +310,15 @@ More code fits in LLM context windows = better understanding = better code gener
 
 **"Unformatted code doesn't compile"**
 
-The formatter is part of the parser. Code that violates formatting rules produces a parse error, not a warning.
+Sigil does not have a separate public formatter step. The compiler parses the
+source, prints the canonical source form for that AST internally, and rejects
+the file if the bytes differ.
 
-**Rules:**
-- No spaces around operators: `x+y` not `x + y`
-- Single space after commas: `f(x, y)` not `f(x,y)`
-- No trailing whitespace
-- No line length limits (machines don't care)
+**Model:**
+- The compiler owns the canonical source printer
+- Every valid AST has one accepted textual representation
+- `compile`, `run`, and `test` reject parseable-but-non-canonical source
+- There is no public `sigil format`
 
 **Why?** LLMs learn ONE valid token sequence per semantic meaning. No uncertainty.
 

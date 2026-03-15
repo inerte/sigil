@@ -4,18 +4,12 @@ i stdlib::numeric
 
 λping()=>!IO String="real"
 
-test "any function can be overridden in tests" =>!IO {
-  withMock(ping, λ()=>!IO String="fake") {
-    ping()="fake"
-  }
+test "any function can be overridden in tests" =>!IO  {
+  withMock(ping,λ()=>!IO String="fake"){ping()="fake"}
 }
 
-test "nested withMock uses inner replacement lexically" =>!IO {
-  withMock(ping, λ()=>!IO String="outer") {
-    withMock(ping, λ()=>!IO String="inner") {
-      ping()="inner"
-    }
-  }
+test "nested withMock uses inner replacement lexically" =>!IO  {
+  withMock(ping,λ()=>!IO String="outer"){withMock(ping,λ()=>!IO String="inner"){ping()="inner"}}
 }
 
 test "numeric predicates are available in projects" {
@@ -26,8 +20,6 @@ test "pure boolean passes" {
   1+1=2
 }
 
-test "withMock can be used in boolean expressions" =>!IO {
-  withMock(ping, λ()=>!IO String="pong") {
-    ping()="pong" and ping()≠"real"
-  }
+test "withMock can be used in boolean expressions" =>!IO  {
+  withMock(ping,λ()=>!IO String="pong"){ping()="pong" and ping()≠"real"}
 }

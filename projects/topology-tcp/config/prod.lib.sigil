@@ -1,8 +1,7 @@
 e process
 
 i src::topology
+
 i stdlib::config
 
-c bindings=(stdlib::config.bindings([],[
-  stdlib::config.bindTcpEnv(src::topology.eventStream,"EVENT_STREAM_HOST","EVENT_STREAM_PORT")
-]):stdlib::config.Bindings)
+c bindings=(stdlib::config.bindings([],[stdlib::config.bindTcpEnv(src::topology.eventStream,"EVENT_STREAM_HOST","EVENT_STREAM_PORT")]):stdlib::config.Bindings)

@@ -1,4 +1,5 @@
 i stdlib::list
+
 i stdlib::numeric
 
 λappendDigit(acc:Int,x:Int)=>Int=acc*10+x
@@ -14,13 +15,13 @@ test "list.drop clamps naturally" {
 }
 
 test "list.find returns first matching option" {
-  match stdlib::list.find(stdlib::numeric.isEven,[1,3,4,6]){
+  (match stdlib::list.find(stdlib::numeric.isEven,[1,3,4,6]){
     Some(actual)=>actual=4|
     None()=>false
-  } and match stdlib::list.find(stdlib::numeric.isEven,[1,3,5]){
+  }) and (match stdlib::list.find(stdlib::numeric.isEven,[1,3,5]){
     None()=>true|
     _=>false
-  }
+  })
 }
 
 test "list.fold reduces left to right" {
@@ -28,58 +29,58 @@ test "list.fold reduces left to right" {
 }
 
 test "list.last returns option" {
-  match stdlib::list.last([]){
+  (match stdlib::list.last([]){
     None()=>true|
     _=>false
-  } and match stdlib::list.last([9]){
+  }) and (match stdlib::list.last([9]){
     Some(actual)=>actual=9|
     _=>false
-  } and match stdlib::list.last([1,2,3]){
+  }) and (match stdlib::list.last([1,2,3]){
     Some(actual)=>actual=3|
     _=>false
-  }
+  })
 }
 
 test "list.max returns option" {
-  match stdlib::list.max([]){
+  (match stdlib::list.max([]){
     None()=>true|
     _=>false
-  } and match stdlib::list.max([3,9,4]){
+  }) and (match stdlib::list.max([3,9,4]){
     Some(actual)=>actual=9|
     _=>false
-  } and match stdlib::list.max([-5,-2,-9]){
+  }) and (match stdlib::list.max([-5,-2,-9]){
     Some(actual)=>actual=-2|
     _=>false
-  }
+  })
 }
 
 test "list.min returns option" {
-  match stdlib::list.min([]){
+  (match stdlib::list.min([]){
     None()=>true|
     _=>false
-  } and match stdlib::list.min([3,9,4]){
+  }) and (match stdlib::list.min([3,9,4]){
     Some(actual)=>actual=3|
     _=>false
-  } and match stdlib::list.min([-5,-2,-9]){
+  }) and (match stdlib::list.min([-5,-2,-9]){
     Some(actual)=>actual=-9|
     _=>false
-  }
+  })
 }
 
 test "list.nth returns option" {
-  match stdlib::list.nth(0,[7,8]){
+  (match stdlib::list.nth(0,[7,8]){
     Some(actual)=>actual=7|
     _=>false
-  } and match stdlib::list.nth(1,[7,8]){
+  }) and (match stdlib::list.nth(1,[7,8]){
     Some(actual)=>actual=8|
     _=>false
-  } and match stdlib::list.nth(2,[7,8]){
+  }) and (match stdlib::list.nth(2,[7,8]){
     None()=>true|
     _=>false
-  } and match stdlib::list.nth(-1,[7,8]){
+  }) and (match stdlib::list.nth(-1,[7,8]){
     None()=>true|
     _=>false
-  }
+  })
 }
 
 test "list.product multiplies integer lists" {

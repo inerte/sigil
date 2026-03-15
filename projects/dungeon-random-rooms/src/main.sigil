@@ -1,29 +1,26 @@
-⟦ Seeded ASCII dungeon generator (pure Sigil, no mutable grid).
-
-   Research constraints:
-   - RNG is explicit state threaded through functions
-   - rooms are generated inside non-overlapping zones (no retry loops)
-   - rendering is tileAt(world,x,y) + recursive string building
-⟧
-
 t IntRoll={rng:Rng,value:Int}
+
 t Rng={seed:Int}
+
 t Room={h:Int,w:Int,x:Int,y:Int}
+
 t RoomRoll={rng:Rng,room:Room}
+
 t World={room1:Room,room2:Room,room3:Room}
 
 e console
 
 c height=(18:Int)
+
 c seed0=(1337:Int)
+
 c width=(48:Int)
 
 λcenterX(room:Room)=>Int=room.x+halfFloor(room.w)
 
 λcenterY(room:Room)=>Int=room.y+halfFloor(room.h)
 
-λcorridorL(a:Room,b:Room,x:Int,y:Int)=>Bool=inH(centerY(a),x,centerX(a),centerX(b),y) or
-  inV(centerX(b),x,y,centerY(a),centerY(b))
+λcorridorL(a:Room,b:Room,x:Int,y:Int)=>Bool=inH(centerY(a),x,centerX(a),centerX(b),y) or inV(centerX(b),x,y,centerY(a),centerY(b))
 
 λhalfFloor(n:Int)=>Int match n{
   0=>0|
@@ -31,29 +28,27 @@ c width=(48:Int)
   value=>1+halfFloor(value-2)
 }
 
-λinH(cy:Int,x:Int,x1:Int,x2:Int,y:Int)=>Bool=((y=cy) and (x≥min2(x1,x2))) and (x≤max2(x1,x2))
+λinH(cy:Int,x:Int,x1:Int,x2:Int,y:Int)=>Bool=y=cy and x≥min2(x1,x2) and x≤max2(x1,x2)
 
-λinRect(rh:Int,rw:Int,rx:Int,ry:Int,x:Int,y:Int)=>Bool=((x≥rx) and (x<rx+rw)) and ((y≥ry) and (y<ry+rh))
+λinRect(rh:Int,rw:Int,rx:Int,ry:Int,x:Int,y:Int)=>Bool=x≥rx and x<rx+rw and (y≥ry and y<ry+rh)
 
 λinRoom(room:Room,x:Int,y:Int)=>Bool=inRect(room.h,room.w,room.x,room.y,x,y)
 
-λinV(cx:Int,x:Int,y:Int,y1:Int,y2:Int)=>Bool=((x=cx) and (y≥min2(y1,y2))) and (y≤max2(y1,y2))
+λinV(cx:Int,x:Int,y:Int,y1:Int,y2:Int)=>Bool=x=cx and y≥min2(y1,y2) and y≤max2(y1,y2)
 
-λisExit(world:World,x:Int,y:Int)=>Bool=(x=centerX(world.room3)) and (y=centerY(world.room3))
+λisExit(world:World,x:Int,y:Int)=>Bool=x=centerX(world.room3) and y=centerY(world.room3)
 
-λisFloor(world:World,x:Int,y:Int)=>Bool=inRoom(world.room1,x,y) or
-  inRoom(world.room2,x,y) or
-  inRoom(world.room3,x,y) or
-  corridorL(world.room1,world.room2,x,y) or
-  corridorL(world.room2,world.room3,x,y)
+λisFloor(world:World,x:Int,y:Int)=>Bool=inRoom(world.room1,x,y) or inRoom(world.room2,x,y) or inRoom(world.room3,x,y) or corridorL(world.room1,world.room2,x,y) or corridorL(world.room2,world.room3,x,y)
 
-λisPlayer(world:World,x:Int,y:Int)=>Bool=(x=centerX(world.room1)) and (y=centerY(world.room1))
+λisPlayer(world:World,x:Int,y:Int)=>Bool=x=centerX(world.room1) and y=centerY(world.room1)
 
 λmain()=>!IO Unit=console.log(renderRows(makeWorld(seed0),0))
 
-λmakeWorld(seed:Int)=>World=l r1=(randRoomInZone(Rng{seed:seed},6,13,2,2):RoomRoll);
+λmakeWorld(seed:Int)=>World={
+  l r1=(randRoomInZone({seed:seed},6,13,2,2):RoomRoll);
   l r2=(randRoomInZone(r1.rng,7,14,18,2):RoomRoll);
-  World{room1:r1.room,room2:r2.room,room3:(randRoomInZone(r2.rng,6,12,32,9):RoomRoll).room}
+  {room1:r1.room,room2:r2.room,room3:(randRoomInZone(r2.rng,6,12,32,9):RoomRoll).room}
+}
 
 λmax2(a:Int,b:Int)=>Int match a>b{
   true=>a|
@@ -65,16 +60,20 @@ c width=(48:Int)
   _=>b
 }
 
-λnextRng(rng:Rng)=>Rng=Rng{seed:((rng.seed*48271)%2147483647)}
+λnextRng(rng:Rng)=>Rng={seed:rng.seed*48271%2147483647}
 
-λrandInt(max:Int,min:Int,rng:Rng)=>IntRoll=l next=(nextRng(rng):Rng);
-  IntRoll{rng:next,value:(min+(next.seed%((max-min)+1)):Int)}
+λrandInt(max:Int,min:Int,rng:Rng)=>IntRoll={
+  l next=(nextRng(rng):Rng);
+  {rng:next,value:(min+next.seed%(max-min+1):Int)}
+}
 
-λrandRoomInZone(rng:Rng,zh:Int,zw:Int,zx:Int,zy:Int)=>RoomRoll=l wRoll=(randInt(zw-1,5,rng):IntRoll);
+λrandRoomInZone(rng:Rng,zh:Int,zw:Int,zx:Int,zy:Int)=>RoomRoll={
+  l wRoll=(randInt(zw-1,5,rng):IntRoll);
   l hRoll=(randInt(zh-1,4,wRoll.rng):IntRoll);
-  l xRoll=(randInt((zx+zw)-wRoll.value,zx,hRoll.rng):IntRoll);
-  l yRoll=(randInt((zy+zh)-hRoll.value,zy,xRoll.rng):IntRoll);
-  RoomRoll{rng:yRoll.rng,room:Room{h:hRoll.value,w:wRoll.value,x:xRoll.value,y:yRoll.value}}
+  l xRoll=(randInt(zx+zw-wRoll.value,zx,hRoll.rng):IntRoll);
+  l yRoll=(randInt(zy+zh-hRoll.value,zy,xRoll.rng):IntRoll);
+  {rng:yRoll.rng,room:{h:hRoll.value,w:wRoll.value,x:xRoll.value,y:yRoll.value}}
+}
 
 λrenderRow(world:World,x:Int,y:Int)=>String match width-x{
   0=>""|

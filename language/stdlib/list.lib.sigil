@@ -1,9 +1,3 @@
-⟦ Sigil Standard Library - List Operations
-
-Generic list helpers that work across element types, plus integer-specialized
-reducers and order predicates.
-⟧
-
 λcontains[T](item:T,xs:[T])=>Bool match xs{
   []=>false|
   [x,.rest]=>match x=item{

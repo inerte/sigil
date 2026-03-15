@@ -1,12 +1,6 @@
-⟦
-  Sigil Standard Library - JSON
-
-  Canonical JSON value model with safe parsing via Result.
-  Runtime behavior is provided by compiler intrinsics for stdlib::json.
-⟧
-
 t JsonError={message:String}
-t JsonValue=JsonArray([JsonValue])|JsonBool(Bool)|JsonNull|JsonNumber(Float)|JsonObject({String↦JsonValue})|JsonString(String)
+
+t JsonValue=JsonArray([JsonValue])|JsonBool(Bool)|JsonNull()|JsonNumber(Float)|JsonObject({String↦JsonValue})|JsonString(String)
 
 λasArray(value:JsonValue)=>Option[[JsonValue]]=None()
 

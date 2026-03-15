@@ -1,8 +1,3 @@
-⟦ Sigil Core Prelude
+t Option[T]=Some(T)|None()
 
-Foundational vocabulary types that are implicitly available in every module.
-These names define the language's everyday control and data flow.
-⟧
-
-t Option[T]=Some(T)|None
 t Result[T,E]=Ok(T)|Err(E)

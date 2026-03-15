@@ -1,4 +1,5 @@
 i src::insertionSort
+
 i src::mergeSort
 
 λmain()=>Unit=()

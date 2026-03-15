@@ -1,14 +1,20 @@
 i src::types
+
 i stdlib::markdown
+
 i stdlib::string
+
 i stdlib::time
+
 i stdlib::url
 
-λaddArticleAliases(page:src::types.SitePage,routes:[src::types.AliasRoute])=>[src::types.AliasRoute]=l bareSlug=(stripNumericPrefix(page.meta.slug):String);
+λaddArticleAliases(page:src::types.SitePage,routes:[src::types.AliasRoute])=>[src::types.AliasRoute]={
+  l bareSlug=(stripNumericPrefix(page.meta.slug):String);
   match bareSlug=page.meta.slug{
     true=>routes|
     false=>routes⧺[{alias:"/articles/"++bareSlug,route:canonicalRoute(page)}]⧺[{alias:"/articles/"++bareSlug++"/",route:canonicalRoute(page)}]
   }
+}
 
 λaddKnownAliases(page:src::types.SitePage,routes:[src::types.AliasRoute])=>[src::types.AliasRoute] match page.section{
   src::types.Article()=>addArticleAliases(page,routes)|
@@ -19,12 +25,9 @@ i stdlib::url
   _=>routes
 }
 
-λaliasRoutesForPage(page:src::types.SitePage)=>[src::types.AliasRoute]=l route=(canonicalRoute(page):String);
-  l baseRoutes=([
-    {alias:page.sourcePath,route:route},
-    {alias:"/"++page.sourcePath,route:route},
-    {alias:route,route:route}
-  ]:[src::types.AliasRoute]);
+λaliasRoutesForPage(page:src::types.SitePage)=>[src::types.AliasRoute]={
+  l route=(canonicalRoute(page):String);
+  l baseRoutes=([{alias:page.sourcePath,route:route},{alias:"/"++page.sourcePath,route:route},{alias:route,route:route}]:[src::types.AliasRoute]);
   l withSourceDir=(match page.sourcePath{
     "website/articles/README.md"=>baseRoutes⧺[{alias:"website/articles",route:route}]⧺[{alias:"website/articles/",route:route}]|
     _=>baseRoutes
@@ -33,6 +36,7 @@ i stdlib::url
     "/"=>withSourceDir|
     _=>withSourceDir⧺[{alias:trimTrailingSlash(route),route:route}]
   })
+}
 
 λbasePathPrefix(basePath:String,route:String)=>String match basePath{
   "/"=>route|
@@ -42,29 +46,23 @@ i stdlib::url
 
 λblankPage(markdown:String,meta:src::types.PageMeta,outputDir:String,section:src::types.Section,sourcePath:String)=>src::types.SitePage={bodyHtml:"",bodyMarkdown:markdown,meta:meta,outputDir:outputDir,section:section,sourcePath:sourcePath}
 
-λbuildAliasRoutes(data:src::types.SiteData)=>[src::types.AliasRoute]=aliasRoutesForPage(data.home)
-  ⧺aliasRoutesForPage(data.articlesIntro)
-  ⧺pagesAliasRoutes(data.articles)
-  ⧺pagesAliasRoutes(data.docs)
-  ⧺pagesAliasRoutes(data.spec)
+λbuildAliasRoutes(data:src::types.SiteData)=>[src::types.AliasRoute]=aliasRoutesForPage(data.home)⧺aliasRoutesForPage(data.articlesIntro)⧺pagesAliasRoutes(data.articles)⧺pagesAliasRoutes(data.docs)⧺pagesAliasRoutes(data.spec)
 
 λcanonicalRoute(page:src::types.SitePage)=>String match page.outputDir{
   ""=>"/"|
   dir=>"/"++dir++"/"
 }
 
-λcompareArticlePages(left:src::types.SitePage,right:src::types.SitePage)=>Bool=l leftKey=(dateSortKey(left.meta.date):Int);
+λcompareArticlePages(left:src::types.SitePage,right:src::types.SitePage)=>Bool={
+  l leftKey=(dateSortKey(left.meta.date):Int);
   l rightKey=(dateSortKey(right.meta.date):Int);
   match leftKey=rightKey{
     true=>compareText(right.sourcePath,left.sourcePath)|
     false=>leftKey>rightKey
   }
+}
 
-λcompareText(left:String,right:String)=>Bool=compareTextInner(
-    0,
-    stdlib::string.toLower(left),
-    stdlib::string.toLower(right)
-  )
+λcompareText(left:String,right:String)=>Bool=compareTextInner(0,stdlib::string.toLower(left),stdlib::string.toLower(right))
 
 λcompareTextInner(idx:Int,left:String,right:String)=>Bool match idx≥#left{
   true=>idx<#right|
@@ -101,10 +99,7 @@ i stdlib::url
 
 λfindLinkClose(afterOpen:String)=>Int=stdlib::string.indexOf(afterOpen,")")
 
-λisExternalLink(target:stdlib::url.Url)=>Bool=stdlib::url.isAnchor(target) or
-  target.protocol="http" or
-  target.protocol="https" or
-  target.protocol="mailto"
+λisExternalLink(target:stdlib::url.Url)=>Bool=stdlib::url.isAnchor(target) or target.protocol="http" or target.protocol="https" or target.protocol="mailto"
 
 λlookupAlias(alias:String,aliasRoutes:[src::types.AliasRoute])=>String match aliasRoutes{
   []=>""|
@@ -151,14 +146,16 @@ i stdlib::url
   }
 }
 
-λrewriteInternalLinks(aliasRoutes:[src::types.AliasRoute],basePath:String,markdown:String,sourcePath:String)=>String=l openIdx=(stdlib::string.indexOf(markdown,"]("):Int);
+λrewriteInternalLinks(aliasRoutes:[src::types.AliasRoute],basePath:String,markdown:String,sourcePath:String)=>String={
+  l openIdx=(stdlib::string.indexOf(markdown,"]("):Int);
   match openIdx<0{
     true=>markdown|
     false=>match findLinkClose(stdlib::string.substring(#markdown,markdown,openIdx+2)){
       closeIdx when closeIdx<0=>markdown|
-      closeIdx=>stdlib::string.substring(openIdx+2,markdown,0)++rewriteLinkTarget(aliasRoutes,basePath,sourcePath,stdlib::string.substring(closeIdx,stdlib::string.substring(#markdown,markdown,openIdx+2),0))++")"++rewriteInternalLinks(aliasRoutes,basePath,stdlib::string.substring(#(stdlib::string.substring(#markdown,markdown,openIdx+2)),stdlib::string.substring(#markdown,markdown,openIdx+2),closeIdx+1),sourcePath)
+      closeIdx=>stdlib::string.substring(openIdx+2,markdown,0)++rewriteLinkTarget(aliasRoutes,basePath,sourcePath,stdlib::string.substring(closeIdx,stdlib::string.substring(#markdown,markdown,openIdx+2),0))++")"++rewriteInternalLinks(aliasRoutes,basePath,stdlib::string.substring(#stdlib::string.substring(#markdown,markdown,openIdx+2),stdlib::string.substring(#markdown,markdown,openIdx+2),closeIdx+1),sourcePath)
     }
   }
+}
 
 λrewriteLinkTarget(aliasRoutes:[src::types.AliasRoute],basePath:String,sourcePath:String,target:String)=>String match stdlib::url.parse(target){
   Err(_)=>target|
@@ -254,7 +251,7 @@ i stdlib::url
   }
 }
 
-λtrimTrailingSlash(path:String)=>String match (#path>1) and stdlib::string.endsWith(path,"/"){
+λtrimTrailingSlash(path:String)=>String match #path>1 and stdlib::string.endsWith(path,"/"){
   true=>trimTrailingSlash(stdlib::string.substring(#path-1,path,0))|
   false=>path
 }

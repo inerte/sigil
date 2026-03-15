@@ -1,11 +1,7 @@
-⟦
-  Sigil Standard Library - Process
-
-  Canonical host process helpers for integration harnesses and tooling.
-⟧
-
 t Command={argv:[String],cwd:Option[String],env:{String↦String}}
+
 t RunningProcess={pid:Int}
+
 t ProcessResult={code:Int,stderr:String,stdout:String}
 
 λcommand(argv:[String])=>Command={argv:argv,cwd:None(),env:({↦}:{String↦String})}

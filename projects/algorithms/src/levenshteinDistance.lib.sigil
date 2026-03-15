@@ -8,11 +8,7 @@ i stdlib::string
     true=>#left-leftIdx|
     false=>match stdlib::string.charAt(leftIdx,left)=stdlib::string.charAt(rightIdx,right){
       true=>levenshteinFrom(left,leftIdx+1,right,rightIdx+1)|
-      false=>1+min3(
-        levenshteinFrom(left,leftIdx+1,right,rightIdx),
-        levenshteinFrom(left,leftIdx,right,rightIdx+1),
-        levenshteinFrom(left,leftIdx+1,right,rightIdx+1)
-      )
+      false=>1+min3(levenshteinFrom(left,leftIdx+1,right,rightIdx),levenshteinFrom(left,leftIdx,right,rightIdx+1),levenshteinFrom(left,leftIdx+1,right,rightIdx+1))
     }
   }
 }

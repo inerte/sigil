@@ -1,2 +1,3 @@
 λmain()=>Int=sum([1,2,3,4,5])
+
 λsum(xs:[Int])=>Int=xs⊕(λ(a:Int,x:Int)=>Int=a+x)⊕0

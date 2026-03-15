@@ -1,5 +1,3 @@
-⟦ Tests for stdlib::path ⟧
-
 i stdlib::path
 
 λmain()=>Unit=()

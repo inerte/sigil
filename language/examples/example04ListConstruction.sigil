@@ -1,8 +1,3 @@
-⟦ Test: List Construction
-   Expected output: 4
-   Tests: creating list and getting length
-⟧
-
 λmain()=>Int=#makeList()
 
 λmakeList()=>[Int]=[10,20,30,40]

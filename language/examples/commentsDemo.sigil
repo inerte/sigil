@@ -1,15 +1,7 @@
-⟦ Factorial Function with Comments
-   This demonstrates how to use multi-line comments in Sigil.
-   Comments use white square brackets and can appear anywhere. ⟧
-
 λfactorial(n:Int)=>Int match n{
-  0=>1|⟦ base case: 0! = 1 ⟧
-  1=>1|⟦ base case: 1! = 1 ⟧
-  value=>value*⟦ multiply n by (n-1)! ⟧factorial(value-1)
+  0=>1|
+  1=>1|
+  value=>value*factorial(value-1)
 }
 
-⟦ Main function demonstrates:
-   - Inline comments mid-expression
-   - Multi-line explanatory comments
-   - Comments don't affect execution ⟧
-λmain()=>Int=factorial(⟦ calculate 5! ⟧5)
+λmain()=>Int=factorial(5)

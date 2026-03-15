@@ -1,5 +1,7 @@
 i src::topology
+
 i stdlib::httpClient
+
 i stdlib::json
 
 λmain()=>!IO String match stdlib::httpClient.getJson(src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/json"){

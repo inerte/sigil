@@ -1,8 +1,5 @@
-⟦ TEST: Typed FFI type checking ⟧
-
 e console:{log:λ(String)=>Unit}
 
-⟦ This should compile - correct type ⟧
 λgood()=>Unit=console.log("type safe")
 
 λmain()=>Unit=()

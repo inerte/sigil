@@ -2,4 +2,5 @@
   0=>a|
   divisor=>gcd(divisor,a%divisor)
 }
+
 λmain()=>Int=gcd(48,18)

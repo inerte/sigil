@@ -1,17 +1,9 @@
-⟦ Test: Empty lists in record literals should infer from record type ⟧
+t State={items:[Int],names:[String]}
 
-t State={
-  items:[Int],
-  names:[String]
-}
-
-⟦ This should work - record type provides context for empty list fields ⟧
 λemptyState()=>State={items:[],names:[]}
 
-⟦ Non-empty fields should also work ⟧
 λinitialState()=>State={items:[1,2,3],names:["a","b"]}
 
 λmain()=>Unit=()
 
-⟦ Mixed empty and non-empty ⟧
 λpartialState()=>State={items:[],names:["test"]}

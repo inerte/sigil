@@ -16,7 +16,7 @@ claude "Write a Hello World in Sigil and run it"
 
 ## Why Sigil?
 
-**Radical Canonicalization** - ONE way to write everything. No style debates, no formatting discussions. The compiler enforces canonical forms for filenames, declarations, parameters, even whitespace.
+**Radical Canonicalization** - ONE way to write everything. Not one preferred style: one accepted textual representation per program. The compiler owns the canonical printer internally and rejects any parseable source that does not match it.
 
 **Zero Ambiguity** - Explicit bidirectional types, no shadowing, deterministic execution. Code means exactly what it says. Perfect for AI code generation.
 

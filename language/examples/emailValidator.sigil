@@ -1,40 +1,21 @@
-⟦ Email Validation Example
-
-Demonstrates string operations, pattern guards, and validation logic.
-
-This example validates email addresses using basic rules:
-- Must contain exactly one @ symbol
-- Local part (before @) must not be empty
-- Domain part (after @) must contain at least one dot
-- Domain must not start or end with a dot
-- Total length must be reasonable
-
-Note: This is a simplified validator for demonstration purposes.
-Production email validation is more complex (RFC 5322).
-⟧
-
-⟦ Email components after splitting ⟧
 t EmailParts={domain:String,local:String}
 
-⟦ Result type for validation ⟧
-t ValidationResult=Valid|Invalid(String)
+t ValidationResult=Valid()|Invalid(String)
 
 e console
 
 i stdlib::string
 
-⟦ Helper: Count occurrences of character in string ⟧
 λcountChar(char:String,str:String)=>Int=countHelper(0,char,0,str)
 
 λcountHelper(acc:Int,char:String,idx:Int,str:String)=>Int match idx<#str{
-  true=>countHelper(acc+match stdlib::string.charAt(idx,str)=char{
+  true=>countHelper(acc+(match stdlib::string.charAt(idx,str)=char{
     true=>1|
     false=>0
-  },char,idx+1,str)|
+  }),char,idx+1,str)|
   false=>acc
 }
 
-⟦ Helper: Extract local and domain from split result ⟧
 λextractParts(parts:[String])=>EmailParts match #parts=2{
   true=>extractTwoParts(parts)|
   false=>{domain:"",local:""}
@@ -45,57 +26,32 @@ i stdlib::string
   _=>{domain:"",local:""}
 }
 
-⟦ Helper: Format validation result for display ⟧
 λformatResult(email:String,result:ValidationResult)=>String match result{
-  Valid=>"✓ '"++email++"' is valid"|
+  Valid()=>"✓ '"++email++"' is valid"|
   Invalid(reason)=>"✗ '"++email++"': "++reason
 }
 
-⟦ Main - Demonstrate email validation ⟧
-λmain()=>!IO Unit=l _=(console.log("=== Email Validator ===\n"):Unit);
-
-  ⟦ Valid emails ⟧
+λmain()=>!IO Unit={
+  l _=(console.log("=== Email Validator ===\n"):Unit);
   l _=(console.log("Valid examples:"):Unit);
   l _=(console.log(formatResult("user@example.com",validateEmail("user@example.com"))):Unit);
   l _=(console.log(formatResult("alice.bob@mail.co.uk",validateEmail("alice.bob@mail.co.uk"))):Unit);
   l _=(console.log(formatResult("test123@domain.org",validateEmail("test123@domain.org"))):Unit);
-
   l _=(console.log("\nInvalid examples:"):Unit);
-
-  ⟦ Missing @ ⟧
   l _=(console.log(formatResult("userexample.com",validateEmail("userexample.com"))):Unit);
-
-  ⟦ Multiple @ ⟧
   l _=(console.log(formatResult("user@@example.com",validateEmail("user@@example.com"))):Unit);
-
-  ⟦ Empty local ⟧
   l _=(console.log(formatResult("@example.com",validateEmail("@example.com"))):Unit);
-
-  ⟦ Empty domain ⟧
   l _=(console.log(formatResult("user@",validateEmail("user@"))):Unit);
-
-  ⟦ No dot in domain ⟧
   l _=(console.log(formatResult("user@domain",validateEmail("user@domain"))):Unit);
-
-  ⟦ Domain starts with dot ⟧
   l _=(console.log(formatResult("user@.example.com",validateEmail("user@.example.com"))):Unit);
-
-  ⟦ Domain ends with dot ⟧
   l _=(console.log(formatResult("user@example.com.",validateEmail("user@example.com."))):Unit);
-
-  ⟦ Local starts with dot ⟧
   l _=(console.log(formatResult(".user@example.com",validateEmail(".user@example.com"))):Unit);
-
-  ⟦ Consecutive dots in local ⟧
   l _=(console.log(formatResult("user..name@example.com",validateEmail("user..name@example.com"))):Unit);
-
-  ⟦ Empty email ⟧
   console.log(formatResult("",validateEmail("")))
+}
 
-⟦ Helper: Split email at @ symbol ⟧
 λsplitAt(email:String)=>EmailParts=extractParts(stdlib::string.split(email,"@"))
 
-⟦ Validate domain part (after @) ⟧
 λvalidateDomain(domain:String)=>ValidationResult=validateDomainChecks(domain,#domain)
 
 λvalidateDomainChecks(domain:String,len:Int)=>ValidationResult match len=0{
@@ -118,13 +74,11 @@ i stdlib::string
   }
 }
 
-⟦ Main email validation function - exported for testing ⟧
 λvalidateEmail(email:String)=>ValidationResult=validateEmailWithParts(email,splitAt(email))
 
-⟦ Validate email parts after splitting ⟧
 λvalidateEmailParts(parts:EmailParts)=>ValidationResult match validateLocal(parts.local){
   Invalid(msg)=>Invalid(msg)|
-  Valid=>validateDomain(parts.domain)
+  Valid()=>validateDomain(parts.domain)
 }
 
 λvalidateEmailWithParts(email:String,parts:EmailParts)=>ValidationResult match #email=0{
@@ -138,7 +92,6 @@ i stdlib::string
   }
 }
 
-⟦ Validate local part (before @) ⟧
 λvalidateLocal(local:String)=>ValidationResult=validateLocalChecks(#local,local)
 
 λvalidateLocalChecks(len:Int,local:String)=>ValidationResult match len=0{

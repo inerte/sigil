@@ -119,6 +119,12 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
+    #[error("SIGIL-CANON-SOURCE-FORM: source is not written in Sigil's one true canonical form\n\nWrite the file exactly as:\n\n{canonical_source}")]
+    SourceForm {
+        canonical_source: String,
+        location: SourceLocation,
+    },
+
     #[error("SIGIL-CANON-IDENTIFIER-FORM: value identifiers must be lowerCamelCase\n\nFound: {found}\nExpected form: lowerCamelCase{suggestion}")]
     IdentifierForm {
         found: String,
@@ -385,6 +391,7 @@ impl ValidationError {
             ValidationError::FilenameCase { location, .. } => *location,
             ValidationError::FilenameInvalidChar { location, .. } => *location,
             ValidationError::FilenameFormat { location, .. } => *location,
+            ValidationError::SourceForm { location, .. } => *location,
             ValidationError::IdentifierForm { location, .. } => *location,
             ValidationError::TypeNameForm { location, .. } => *location,
             ValidationError::ConstructorNameForm { location, .. } => *location,
@@ -593,6 +600,16 @@ impl From<ValidationError> for Diagnostic {
                     "Cannot pattern match on boolean expression",
                 )
                 .with_location(source_location_to_span(get_file(), location))
+            }
+
+            ValidationError::SourceForm { canonical_source, location } => {
+                Diagnostic::new(
+                    codes::canonical::SOURCE_FORM,
+                    SigilPhase::Canonical,
+                    "Source is not written in Sigil's one true canonical form",
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_details("canonical_source", canonical_source)
             }
 
             ValidationError::IdentifierForm { found, suggestion, location } => Diagnostic::new(

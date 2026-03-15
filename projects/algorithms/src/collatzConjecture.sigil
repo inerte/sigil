@@ -6,6 +6,6 @@
 λmain()=>[Int]=collatz(13)
 
 λnextCollatz(n:Int)=>Int match n%2{
-  0=>(n)/2|
+  0=>n/2|
   _=>3*n+1
 }

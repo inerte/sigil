@@ -1,49 +1,35 @@
-⟦ Pattern Guards Test
-
-  Tests the new `when` keyword for conditional pattern matching.
-
-  Syntax: pattern when guardExpr => body
-
-  The guard expression is evaluated after pattern bindings are established
-  and must have type Bool (boolean).
-⟧
-
-⟦ Sum type for Test 4 ⟧
 t Result=Ok(Int)|Err(String)
 
 e console
 
-⟦ Run tests ⟧
-λmain()=>Int=l r1=(test1(0):String);
+λmain()=>Int={
+  l r1=(test1(0):String);
   l r2=(test2(15):String);
   l r3=(test3(true,1):String);
   l r4=(test4(Ok(150)):String);
   l r5=(test5(5,10):String);
   l r6=(test6(0):String);
   0
+}
 
-⟦ Test 1: Simple guards with literal patterns ⟧
 λtest1(x:Int)=>String match x{
   0 when true=>"zero"|
   1=>"one"|
   _=>"other"
 }
 
-⟦ Test 2: Guards with pattern bindings ⟧
 λtest2(x:Int)=>String match x{
   n when n>10=>"big"|
   n when n>0=>"small positive"|
   n=>"zero or negative"
 }
 
-⟦ Test 3: Fall-through when guard fails ⟧
 λtest3(flag:Bool,x:Int)=>String match x{
   1 when flag=>"one with flag"|
   1=>"one without flag"|
   _=>"other"
 }
 
-⟦ Test 4: Sum type with guards ⟧
 λtest4(r:Result)=>String match r{
   Ok(n) when n>100=>"big success"|
   Ok(n) when n>0=>"small success"|
@@ -51,14 +37,12 @@ e console
   Err(msg)=>"error: "++msg
 }
 
-⟦ Test 5: Complex guards ⟧
 λtest5(x:Int,y:Int)=>String match x{
   a when a>0 and y>0=>"both positive"|
   a when a>0 or y>0=>"one positive"|
   _=>"neither positive"
 }
 
-⟦ Test 6: Backward compatibility - no guards ⟧
 λtest6(x:Int)=>String match x{
   0=>"zero"|
   1=>"one"|

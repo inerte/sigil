@@ -3,4 +3,5 @@
   1=>1|
   value=>value*factorial(value-1)
 }
+
 λmain()=>String="factorial(5) = "+factorial(5)

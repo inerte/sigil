@@ -262,11 +262,11 @@ mod tests {
 
     #[test]
     fn count_error_codes() {
-        // As of implementation: 82 error codes total
+        // Keep this in sync when adding or removing diagnostic codes.
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            82,
-            "Expected 82 error codes, found {}",
+            83,
+            "Expected 83 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

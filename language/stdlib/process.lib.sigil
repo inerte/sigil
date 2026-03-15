@@ -1,0 +1,23 @@
+⟦
+  Sigil Standard Library - Process
+
+  Canonical host process helpers for integration harnesses and tooling.
+⟧
+
+t Command={argv:[String],cwd:Option[String],env:{String↦String}}
+t RunningProcess={pid:Int}
+t ProcessResult={code:Int,stderr:String,stdout:String}
+
+λcommand(argv:[String])=>Command={argv:argv,cwd:None(),env:({↦}:{String↦String})}
+
+λkill(process:RunningProcess)=>!IO Unit=()
+
+λrun(command:Command)=>!IO ProcessResult={code:-1,stderr:"process intrinsic unavailable",stdout:""}
+
+λspawn(command:Command)=>!IO RunningProcess={pid:-1}
+
+λwait(process:RunningProcess)=>!IO ProcessResult={code:-1,stderr:"process intrinsic unavailable",stdout:""}
+
+λwithCwd(command:Command,cwd:String)=>Command={argv:command.argv,cwd:Some(cwd),env:command.env}
+
+λwithEnv(command:Command,env:{String↦String})=>Command={argv:command.argv,cwd:command.cwd,env:env}

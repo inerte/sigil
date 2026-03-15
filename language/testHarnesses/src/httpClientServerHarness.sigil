@@ -1,0 +1,54 @@
+i stdlib::file
+i stdlib::io
+i stdlib::path
+i stdlib::process
+i stdlib::string
+
+i src::support
+
+λmain()=>!IO Unit=l _=(src::support.printSection("HTTP Client/Server Integration Tests"):Unit);
+  l validateResult=(stdlib::process.run(src::support.sigilIn(["validate",".","--env","test"],projectDir())):stdlib::process.ProcessResult);
+  l step1=(src::support.assertSuccess("http validate",validateResult):Unit);
+  l server=(stdlib::process.spawn(src::support.sigilIn(["run","src/httpRoundtripServer.sigil","--env","test"],projectDir())):stdlib::process.RunningProcess);
+  l ready=(src::support.retryRunStdoutContains(50,src::support.sigilIn(["run","src/getClient.sigil","--env","test"],projectDir()),200,"200:healthy"):stdlib::process.ProcessResult);
+  l readyCheck=match src::support.runStdoutContains("200:healthy",ready){
+    true=>()|
+    false=>stopServerAndFail("HTTP server did not start",server)
+  };
+  l step2=(runAndAssert("200:healthy",server,"src/getClient.sigil"):Unit);
+  l step3=(runAndAssert("201:echoed",server,"src/postClient.sigil"):Unit);
+  l step4=(runAndAssert("{\\\"ok\\\":true}",server,"src/jsonClient.sigil"):Unit);
+  l step5=(runAndAssert("202:abc-123",server,"src/headersClient.sigil"):Unit);
+  l step6=(runAndAssert("404",server,"src/missingClient.sigil"):Unit);
+  l step7=(stdlib::file.writeText(rawClientSource(),rawClientFile()):Unit);
+  l compileResult=(stdlib::process.run(src::support.sigilIn(["compile","src/rawEndpointClient.sigil"],projectDir())):stdlib::process.ProcessResult);
+  l compileCheck=match compileResult.code=0{
+    true=>stopServerAndFail("Expected raw HTTP endpoint compile failure",server)|
+    false=>match stdlib::string.indexOf(src::support.combinedOutput(compileResult),"SIGIL-TOPO-RAW-ENDPOINT-FORBIDDEN")≥0{
+      true=>()|
+      false=>stopServerAndFail("Expected SIGIL-TOPO-RAW-ENDPOINT-FORBIDDEN\n"++src::support.combinedOutput(compileResult),server)
+    }
+  };
+  l step8=(stdlib::file.remove(rawClientFile()):Unit);
+  l step9=(stdlib::process.kill(server):Unit);
+  l step10=(stdlib::process.wait(server):stdlib::process.ProcessResult);
+  stdlib::io.println("HTTP harness passed")
+
+λprojectDir()=>String=src::support.repoPath("projects/topology-http")
+
+λrawClientFile()=>String=stdlib::path.join(projectDir(),"src/rawEndpointClient.sigil")
+
+λrawClientSource()=>String="i stdlib::httpClient\n\nλmain()=>!IO String match stdlib::httpClient.get(\"http://127.0.0.1:45110\",stdlib::httpClient.emptyHeaders(),\"/health\"){\n  Ok(response)=>response.body|\n  Err(error)=>error.message\n}\n"
+
+λrunAndAssert(expected:String,server:stdlib::process.RunningProcess,target:String)=>!IO Unit=l result=(stdlib::process.run(src::support.sigilIn(["run",target,"--env","test"],projectDir())):stdlib::process.ProcessResult);
+  match result.code=0{
+    true=>match src::support.runStdoutContains(expected,result){
+      true=>stdlib::io.println("PASS "++target)|
+      false=>stopServerAndFail("Unexpected runtime stdout for "++target,server)
+    }|
+    false=>stopServerAndFail("Command failed for "++target++"\n"++src::support.combinedOutput(result),server)
+  }
+
+λstopServerAndFail(message:String,server:stdlib::process.RunningProcess)=>!IO Unit=l _=(stdlib::process.kill(server):Unit);
+  l result=(stdlib::process.wait(server):stdlib::process.ProcessResult);
+  src::support.fail(message++"\nServer output:\n"++src::support.combinedOutput(result))

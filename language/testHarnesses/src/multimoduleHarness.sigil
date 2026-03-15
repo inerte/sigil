@@ -1,0 +1,35 @@
+i stdlib::file
+i stdlib::io
+i stdlib::path
+i stdlib::process
+i stdlib::string
+i stdlib::time
+
+i src::support
+
+λmain()=>!IO Unit=l _=(src::support.printSection("Multi-Module Integration Tests"):Unit);
+  l millis=(stdlib::time.toEpochMillis(stdlib::time.now()):Int);
+  l root=(src::support.repoPath("language/testHarnesses/.tmpMultimodule"++stdlib::string.intToString(millis)):String);
+  l step1=(stdlib::file.makeDirs(stdlib::path.join(root,"src")):Unit);
+  l step2=(writeProjectFile(projectConfig(),"sigil.json",root):Unit);
+  l step3=(writeProjectFile("λdouble(x:Int)=>Int=x*2\nλtriple(x:Int)=>Int=x*3\n","src/utils.lib.sigil",root):Unit);
+  l step4=(writeProjectFile("i src::utils\nλmain()=>Int=src::utils.double(21)\n","src/main.sigil",root):Unit);
+  l step5=(runProject("42",root,"src/main.sigil"):Unit);
+  l step6=(writeProjectFile("λadd(x:Int,y:Int)=>Int=x+y\nλsubtract(x:Int,y:Int)=>Int=x-y\n","src/math.lib.sigil",root):Unit);
+  l step7=(writeProjectFile("i src::math\ni src::utils\nλmain()=>Int=src::math.add(src::utils.double(10),src::utils.triple(5))\n","src/calc.sigil",root):Unit);
+  l step8=(runProject("35",root,"src/calc.sigil"):Unit);
+  l step9=(writeProjectFile("λincrement(x:Int)=>Int=x+1\n","src/base.lib.sigil",root):Unit);
+  l step10=(writeProjectFile("i src::base\nλaddTwo(x:Int)=>Int=src::base.increment(src::base.increment(x))\n","src/derived.lib.sigil",root):Unit);
+  l step11=(writeProjectFile("i src::derived\nλmain()=>Int=src::derived.addTwo(5)\n","src/app.sigil",root):Unit);
+  l step12=(runProject("7",root,"src/app.sigil"):Unit);
+  l step13=(stdlib::file.removeTree(root):Unit);
+  stdlib::io.println("Multi-module harness passed")
+
+λprojectConfig()=>String="{\"layout\":{\"src\":\"src\",\"tests\":\"tests\",\"out\":\".local\"}}"
+
+λrunProject(expected:String,root:String,target:String)=>!IO Unit=l result=(stdlib::process.run(src::support.sigilIn(["run",target],root)):stdlib::process.ProcessResult);
+  l _=(src::support.assertSuccess(target,result):Unit);
+  l runCheck=(src::support.assertRunStdoutContains(target,expected,result):Unit);
+  stdlib::io.println("PASS "++target)
+
+λwriteProjectFile(content:String,path:String,root:String)=>!IO Unit=stdlib::file.writeText(content,stdlib::path.join(root,path))

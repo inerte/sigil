@@ -14,6 +14,7 @@ The Sigil standard library provides core utility functions and predicates for co
 - ✅ String operations (manipulation, searching) - `stdlib/string`
 - ✅ String predicates (prefix/suffix checking) - `stdlib/string`
 - ✅ File system operations - `stdlib/file`
+- ✅ Process execution for harnesses and tooling - `stdlib/process`
 - ✅ HTTP and TCP clients and servers - `stdlib/httpClient`, `stdlib/httpServer`, `stdlib/tcpClient`, `stdlib/tcpServer`
 - ✅ Runtime dependency topology - `stdlib/topology`
 - ✅ Runtime dependency config bindings - `stdlib/config`
@@ -37,6 +38,7 @@ i stdlib::json
 i stdlib::file
 i stdlib::numeric
 i stdlib::path
+i stdlib::process
 i stdlib::string
 i stdlib::time
 i stdlib::url
@@ -103,7 +105,7 @@ Sigil uses file-based visibility:
 
 There is no `export` keyword.
 
-## File, Path, JSON, Time, and URL
+## File, Path, Process, JSON, Time, and URL
 
 `stdlib::file` exposes canonical UTF-8 filesystem helpers:
 
@@ -118,6 +120,9 @@ i stdlib::path
   ()
 ```
 
+It also exposes `makeTempDir(prefix)` for canonical temp workspace creation in
+tooling and harness code.
+
 `stdlib::path` exposes canonical filesystem path operations:
 
 ```sigil
@@ -128,6 +133,32 @@ i stdlib::path
   l _2=(stdlib::path.join("website","articles"):String);
   ()
 ```
+
+`stdlib::process` exposes canonical argv-based child-process execution:
+
+```sigil
+i stdlib::process
+
+λmain()=>!IO Unit=
+  l command=(stdlib::process.command(["git","status"]):stdlib::process.Command);
+  l result=(stdlib::process.run(command):stdlib::process.ProcessResult);
+  match result.code=0{
+    true=>()|
+    false=>()
+  }
+```
+
+The canonical process surface is:
+- `command`
+- `withCwd`
+- `withEnv`
+- `run`
+- `spawn`
+- `wait`
+- `kill`
+
+Commands are argv-based only. Non-zero exit status is returned in
+`ProcessResult.code`; it is not a separate failure channel.
 
 `stdlib::json` exposes a typed JSON AST with safe parsing:
 
@@ -180,7 +211,7 @@ The intended split is:
 If a field may be absent, keep the record exact and use `Option[T]` in that
 field. Sigil does not use open or partial records for this.
 
-`stdlib::time` exposes strict ISO parsing and instant comparison:
+`stdlib::time` exposes strict ISO parsing, instant comparison, and harness sleep:
 
 ```sigil
 i stdlib::time
@@ -193,6 +224,9 @@ i stdlib::time
     Err(_)=>()
   }
 ```
+
+Effectful code may also use `stdlib::time.sleepMs(ms)` for retry loops and
+process orchestration.
 
 `stdlib::url` exposes strict parse results and typed URL fields for both absolute and relative targets:
 

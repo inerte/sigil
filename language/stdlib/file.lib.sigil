@@ -8,6 +8,8 @@ e fs
 
 e fs::promises
 
+e os
+
 i stdlib::path
 
 λappendText(content:String,path:String)=>!IO Unit=fs::promises.appendFile(path,content,"utf8")
@@ -19,6 +21,8 @@ i stdlib::path
 λmakeDir(path:String)=>!IO Unit=fs::promises.mkdir(path,{recursive:false})
 
 λmakeDirs(path:String)=>!IO Unit=fs::promises.mkdir(path,{recursive:true})
+
+λmakeTempDir(prefix:String)=>!IO String=fs::promises.mkdtemp(stdlib::path.join(os.tmpdir(),prefix))
 
 λreadText(path:String)=>!IO String=fs::promises.readFile(path,"utf8")
 

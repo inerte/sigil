@@ -22,4 +22,6 @@ t TimeError={message:String}
 
 λparseIso(input:String)=>Result[Instant,TimeError]=Err({message:"time parse intrinsic unavailable"})
 
+λsleepMs(ms:Int)=>!IO Unit=()
+
 λtoEpochMillis(instant:Instant)=>Int=instant.epochMillis

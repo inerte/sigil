@@ -122,6 +122,7 @@ Current constructor and list invariants:
   - a namespaced module surface
   - backend/runtime only
 - prefer putting operational formats/protocols (json, time, url, http, markdown) in `stdlib`
+- prefer `stdlib::process`, `stdlib::file.makeTempDir`, and `stdlib::time.sleepMs` for repo-local harness/tooling workflows before reaching for shell-specific orchestration
 - promote concepts to core only when they are universal language-shaping vocabulary
 - records and maps are distinct:
   - records are fixed-shape structural products using `:`

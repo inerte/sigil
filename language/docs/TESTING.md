@@ -2,6 +2,11 @@
 
 Sigil tests are first-class language declarations, not a separate test framework.
 
+Repo-level integration harnesses now live mostly in Sigil as well. The
+`test-*.sh` entrypoints under `language/` and `language/compiler/` are thin
+launchers that bootstrap the compiler and then run Sigil harness programs from
+`language/testHarnesses/src/`.
+
 ## Canonical Layout
 
 - tests live under `tests/`
@@ -98,6 +103,11 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test -
 ```
 
 For topology-aware projects, `--env <name>` is required.
+
+For process-heavy harness code, prefer:
+- `stdlib::process` for child processes
+- `stdlib::file.makeTempDir` for scratch workspaces
+- `stdlib::time.sleepMs` for retry loops
 
 ## JSON Output
 

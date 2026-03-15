@@ -1,0 +1,45 @@
+i stdlib::file
+i stdlib::io
+i stdlib::path
+i stdlib::process
+i stdlib::string
+i stdlib::time
+
+i src::support
+
+λassertCompileFails(expected:[String],file:String)=>!IO Unit=l result=(stdlib::process.run(src::support.sigil(["compile",file])):stdlib::process.ProcessResult);
+  match result.code=0{
+    true=>src::support.fail("Expected compile failure for "++file)|
+    false=>match src::support.containsAny(expected,src::support.combinedOutput(result)){
+      true=>stdlib::io.println("PASS blocked "++file)|
+      false=>src::support.fail("Compile failed for "++file++" but not with an expected error.\n"++src::support.combinedOutput(result))
+    }
+  }
+
+λassertCompilePasses(file:String)=>!IO Unit=l result=(stdlib::process.run(src::support.sigil(["compile",file])):stdlib::process.ProcessResult);
+  l _=(src::support.assertSuccess(file,result):Unit);
+  stdlib::io.println("PASS compiled "++file)
+
+λbadMatchSource()=>String="λfib(n:Int)=>Int match n{0=>0|1=>1|value=>fib(value-1)+fib(value-2)}\nλmain()=>Int=fib(5)\n"
+
+λbadSignatureSource()=>String="λfib(n:Int)=>Int\nmatch n{0=>0}\nλmain()=>Int=fib(5)\n"
+
+λgoodFibSource()=>String="λfib(n:Int)=>Int match n{\n  0=>0|\n  1=>1|\n  value=>fib(value-1)+fib(value-2)\n}\nλmain()=>Int=fib(5)\n"
+
+λmain()=>!IO Unit=l _=(src::support.printSection("Sigil Canonical Form Enforcement"):Unit);
+  l millis=(stdlib::time.toEpochMillis(stdlib::time.now()):Int);
+  l root=(src::support.repoPath("language/testHarnesses/.tmpCanonical"++stdlib::string.intToString(millis)):String);
+  l matchFile=(stdlib::path.join(root,"badMatch.sigil"):String);
+  l signatureFile=(stdlib::path.join(root,"badSignature.sigil"):String);
+  l goodFile=(stdlib::path.join(root,"goodFib.sigil"):String);
+  l step1=(stdlib::file.makeDirs(root):Unit);
+  l step2=(stdlib::file.writeText(badMatchSource(),matchFile):Unit);
+  l step3=(stdlib::file.writeText(badSignatureSource(),signatureFile):Unit);
+  l step4=(stdlib::file.writeText(goodFibSource(),goodFile):Unit);
+  l step5=(assertCompileFails(["SIGIL-CANON-MATCH-LAYOUT"],matchFile):Unit);
+  l step6=(assertCompileFails(["SIGIL-CANON-SIGNATURE-LAYOUT"],signatureFile):Unit);
+  l step7=(assertCompilePasses(goodFile):Unit);
+  l step8=(assertCompilePasses(src::support.repoPath("language/examples/listReverse.sigil")):Unit);
+  l step9=(assertCompilePasses(src::support.repoPath("language/examples/listLength.sigil")):Unit);
+  l step10=(stdlib::file.removeTree(root):Unit);
+  stdlib::io.println("Canonical harness passed")

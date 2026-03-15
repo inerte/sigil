@@ -18,6 +18,7 @@ e fs:{
 e fs::promises:{
   access:λ(String)=>Unit,
   appendFile:λ(String,String,String)=>Unit,
+  mkdtemp:λ(String)=>String,
   mkdir:λ(String,MkdirOptions)=>Unit,
   readFile:λ(String,String)=>String,
   readdir:λ(String)=>[String],

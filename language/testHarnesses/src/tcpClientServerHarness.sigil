@@ -1,0 +1,52 @@
+i stdlib::file
+i stdlib::io
+i stdlib::path
+i stdlib::process
+i stdlib::string
+
+i src::support
+
+λmain()=>!IO Unit=l _=(src::support.printSection("TCP Client/Server Integration Tests"):Unit);
+  l validateResult=(stdlib::process.run(src::support.sigilIn(["validate",".","--env","test"],projectDir())):stdlib::process.ProcessResult);
+  l step1=(src::support.assertSuccess("tcp validate",validateResult):Unit);
+  l server=(stdlib::process.spawn(src::support.sigilIn(["run","src/tcpRoundtripServer.sigil","--env","test"],projectDir())):stdlib::process.RunningProcess);
+  l ready=(src::support.retryRunStdoutContains(50,src::support.sigilIn(["run","src/pingClient.sigil","--env","test"],projectDir()),200,"pong"):stdlib::process.ProcessResult);
+  l readyCheck=match src::support.runStdoutContains("pong",ready){
+    true=>()|
+    false=>stopServerAndFail("TCP server did not start",server)
+  };
+  l step2=(runAndAssert("pong",server,"src/pingClient.sigil"):Unit);
+  l step3=(runAndAssert("echoed",server,"src/echoClient.sigil"):Unit);
+  l step4=(runAndAssert("HELLO",server,"src/upperClient.sigil"):Unit);
+  l step5=(stdlib::file.writeText(rawClientSource(),rawClientFile()):Unit);
+  l compileResult=(stdlib::process.run(src::support.sigilIn(["compile","src/rawTcpClient.sigil"],projectDir())):stdlib::process.ProcessResult);
+  l compileCheck=match compileResult.code=0{
+    true=>stopServerAndFail("Expected raw TCP endpoint compile failure",server)|
+    false=>match stdlib::string.indexOf(src::support.combinedOutput(compileResult),"SIGIL-TOPO-RAW-ENDPOINT-FORBIDDEN")≥0{
+      true=>()|
+      false=>stopServerAndFail("Expected SIGIL-TOPO-RAW-ENDPOINT-FORBIDDEN\n"++src::support.combinedOutput(compileResult),server)
+    }
+  };
+  l step6=(stdlib::file.remove(rawClientFile()):Unit);
+  l step7=(stdlib::process.kill(server):Unit);
+  l step8=(stdlib::process.wait(server):stdlib::process.ProcessResult);
+  stdlib::io.println("TCP harness passed")
+
+λprojectDir()=>String=src::support.repoPath("projects/topology-tcp")
+
+λrawClientFile()=>String=stdlib::path.join(projectDir(),"src/rawTcpClient.sigil")
+
+λrawClientSource()=>String="i stdlib::tcpClient\n\nλmain()=>!IO String match stdlib::tcpClient.send(\"ping\",\"127.0.0.1\"){\n  Ok(response)=>response.message|\n  Err(error)=>error.message\n}\n"
+
+λrunAndAssert(expected:String,server:stdlib::process.RunningProcess,target:String)=>!IO Unit=l result=(stdlib::process.run(src::support.sigilIn(["run",target,"--env","test"],projectDir())):stdlib::process.ProcessResult);
+  match result.code=0{
+    true=>match src::support.runStdoutContains(expected,result){
+      true=>stdlib::io.println("PASS "++target)|
+      false=>stopServerAndFail("Unexpected runtime stdout for "++target,server)
+    }|
+    false=>stopServerAndFail("Command failed for "++target++"\n"++src::support.combinedOutput(result),server)
+  }
+
+λstopServerAndFail(message:String,server:stdlib::process.RunningProcess)=>!IO Unit=l _=(stdlib::process.kill(server):Unit);
+  l result=(stdlib::process.wait(server):stdlib::process.ProcessResult);
+  src::support.fail(message++"\nServer output:\n"++src::support.combinedOutput(result))

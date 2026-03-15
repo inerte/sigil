@@ -248,6 +248,58 @@ Join lines with newline separators.
 - Complexity: O(n)
 - Pure: Yes
 
+## File and Process Operations
+
+### Implemented `stdlib::file` Functions
+
+```sigil
+λappendText(content:String,path:String)=>!IO Unit
+λexists(path:String)=>!IO Bool
+λlistDir(path:String)=>!IO [String]
+λmakeDir(path:String)=>!IO Unit
+λmakeDirs(path:String)=>!IO Unit
+λmakeTempDir(prefix:String)=>!IO String
+λreadText(path:String)=>!IO String
+λremove(path:String)=>!IO Unit
+λremoveTree(path:String)=>!IO Unit
+λwriteText(content:String,path:String)=>!IO Unit
+```
+
+`makeTempDir(prefix)` creates a fresh temp directory and returns its absolute
+path. Cleanup remains explicit through `removeTree`.
+
+### Implemented `stdlib::process` Types and Functions
+
+```sigil
+t Command={argv:[String],cwd:Option[String],env:{String↦String}}
+t RunningProcess={pid:Int}
+t ProcessResult={code:Int,stderr:String,stdout:String}
+
+λcommand(argv:[String])=>Command
+λwithCwd(command:Command,cwd:String)=>Command
+λwithEnv(command:Command,env:{String↦String})=>Command
+λrun(command:Command)=>!IO ProcessResult
+λspawn(command:Command)=>!IO RunningProcess
+λwait(process:RunningProcess)=>!IO ProcessResult
+λkill(process:RunningProcess)=>!IO Unit
+```
+
+Process rules:
+- command execution is argv-based only
+- `withEnv` overlays explicit variables on top of the inherited environment
+- non-zero exit codes are reported in `ProcessResult.code`
+- `run` captures stdout and stderr in memory
+- `kill` is a normal termination request, not a timeout/escalation protocol
+
+### Implemented `stdlib::time` Additions
+
+```sigil
+λsleepMs(ms:Int)=>!IO Unit
+```
+
+`sleepMs` is the canonical delay primitive for retry loops and harness
+orchestration.
+
 ## Map Operations
 
 ```sigil

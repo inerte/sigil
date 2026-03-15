@@ -1,0 +1,62 @@
+⟦
+  Shared helpers for Sigil-based test harnesses.
+⟧
+
+e process
+
+i stdlib::io
+i stdlib::path
+i stdlib::process
+i stdlib::string
+i stdlib::time
+
+λassertContains(context:String,expected:String,text:String)=>!IO Unit match stdlib::string.indexOf(text,expected)≥0{
+  true=>()|
+  false=>fail("Expected "++context++" to contain \""++expected++"\" but got:\n"++text)
+}
+
+λassertExitCode(context:String,expected:Int,result:stdlib::process.ProcessResult)=>!IO Unit match result.code=expected{
+  true=>()|
+  false=>fail("Expected exit code "++stdlib::string.intToString(expected)++" for "++context++" but got "++stdlib::string.intToString(result.code)++"\n"++combinedOutput(result))
+}
+
+λassertRunStdoutContains(context:String,expected:String,result:stdlib::process.ProcessResult)=>!IO Unit=assertContains(context,expected,result.stdout)
+
+λassertSuccess(context:String,result:stdlib::process.ProcessResult)=>!IO Unit=assertExitCode(context,0,result)
+
+λcombinedOutput(result:stdlib::process.ProcessResult)=>String=result.stdout++result.stderr
+
+λcontainsAny(expected:[String],text:String)=>Bool match expected{
+  []=>false|
+  [item,.rest]=>match stdlib::string.indexOf(text,item)≥0{
+    true=>true|
+    false=>containsAny(rest,text)
+  }
+}
+
+λfail(message:String)=>!IO Unit=l _=(stdlib::io.eprintln(message):Unit);
+  process.exit(1)
+
+λprintSection(title:String)=>!IO Unit=l firstPrint=(stdlib::io.println("========================================"):Unit);
+  l secondPrint=(stdlib::io.println(title):Unit);
+  stdlib::io.println("========================================")
+
+λrepoPath(relative:String)=>String=stdlib::path.join(repoRoot(),relative)
+
+λrepoRoot()=>String=process.cwd()
+
+λretryRunStdoutContains(attempts:Int,command:stdlib::process.Command,delayMs:Int,expected:String)=>!IO stdlib::process.ProcessResult=l result=(stdlib::process.run(command):stdlib::process.ProcessResult);
+  match runStdoutContains(expected,result){
+    true=>result|
+    false=>match attempts≤1{
+      true=>result|
+      false=>l _=(stdlib::time.sleepMs(delayMs):Unit);
+        retryRunStdoutContains(attempts-1,command,delayMs,expected)
+    }
+  }
+
+λrunStdoutContains(expected:String,result:stdlib::process.ProcessResult)=>Bool=stdlib::string.indexOf(result.stdout,expected)≥0
+
+λsigil(args:[String])=>stdlib::process.Command=stdlib::process.command([repoPath("language/compiler/target/debug/sigil")]⧺args)
+
+λsigilIn(args:[String],cwd:String)=>stdlib::process.Command=stdlib::process.withCwd(sigil(args),cwd)

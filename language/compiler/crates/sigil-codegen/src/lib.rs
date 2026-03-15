@@ -258,6 +258,67 @@ impl TypeScriptGenerator {
         self.emit("function __sigil_time_now_instant() {");
         self.emit("  return { epochMillis: Date.now() };");
         self.emit("}");
+        self.emit("const __sigil_processes = new Map();");
+        self.emit("function __sigil_process_env_to_object(envMap) {");
+        self.emit("  const out = {};");
+        self.emit("  for (const [key, value] of __sigil_map_entries(envMap ?? __sigil_map_empty())) {");
+        self.emit("    out[String(key)] = String(value);");
+        self.emit("  }");
+        self.emit("  return out;");
+        self.emit("}");
+        self.emit("function __sigil_process_command_cwd(command) {");
+        self.emit("  const cwd = command?.cwd;");
+        self.emit("  return cwd && cwd.__tag === 'Some' ? cwd.__fields[0] : undefined;");
+        self.emit("}");
+        self.emit("function __sigil_process_result(code, stderr, stdout) {");
+        self.emit("  return { code, stderr, stdout };");
+        self.emit("}");
+        self.emit("async function __sigil_process_spawn(command) {");
+        self.emit("  const { spawn } = await import('child_process');");
+        self.emit("  const argv = Array.isArray(command?.argv) ? command.argv : [];");
+        self.emit("  if (argv.length === 0) { return { pid: -1 }; }");
+        self.emit("  const child = spawn(argv[0], argv.slice(1), {");
+        self.emit("    cwd: __sigil_process_command_cwd(command),");
+        self.emit("    env: { ...process.env, ...__sigil_process_env_to_object(command?.env) },");
+        self.emit("    stdio: ['ignore', 'pipe', 'pipe'],");
+        self.emit("  });");
+        self.emit("  const pid = typeof child.pid === 'number' ? child.pid : Math.floor(Math.random() * 2147483647);");
+        self.emit("  const state = { child, stdout: '', stderr: '', done: null };");
+        self.emit("  if (child.stdout) { child.stdout.on('data', (chunk) => { state.stdout += String(chunk); }); }");
+        self.emit("  if (child.stderr) { child.stderr.on('data', (chunk) => { state.stderr += String(chunk); }); }");
+        self.emit("  state.done = new Promise((resolve) => {");
+        self.emit("    child.once('error', (error) => {");
+        self.emit("      resolve(__sigil_process_result(-1, state.stderr + String(error?.message ?? error), state.stdout));");
+        self.emit("    });");
+        self.emit("    child.once('close', (code) => {");
+        self.emit("      resolve(__sigil_process_result(typeof code === 'number' ? code : -1, state.stderr, state.stdout));");
+        self.emit("    });");
+        self.emit("  });");
+        self.emit("  __sigil_processes.set(pid, state);");
+        self.emit("  return { pid };");
+        self.emit("}");
+        self.emit("async function __sigil_process_wait(processHandle) {");
+        self.emit("  const pid = Number(processHandle?.pid ?? -1);");
+        self.emit("  const state = __sigil_processes.get(pid);");
+        self.emit("  if (!state) {");
+        self.emit("    return __sigil_process_result(-1, 'unknown process', '');");
+        self.emit("  }");
+        self.emit("  const result = await state.done;");
+        self.emit("  __sigil_processes.delete(pid);");
+        self.emit("  return result;");
+        self.emit("}");
+        self.emit("async function __sigil_process_kill(processHandle) {");
+        self.emit("  const pid = Number(processHandle?.pid ?? -1);");
+        self.emit("  const state = __sigil_processes.get(pid);");
+        self.emit("  if (state) {");
+        self.emit("    try { state.child.kill(); } catch (_) {}");
+        self.emit("  }");
+        self.emit("  return null;");
+        self.emit("}");
+        self.emit("async function __sigil_process_run(command) {");
+        self.emit("  const handle = await __sigil_process_spawn(command);");
+        self.emit("  return __sigil_process_wait(handle);");
+        self.emit("}");
         self.emit("function __sigil_url_query_map_from_search(search) {");
         self.emit("  const params = new URLSearchParams(search);");
         self.emit("  return __sigil_map_from_entries(Array.from(params.entries()));");
@@ -1265,6 +1326,9 @@ impl TypeScriptGenerator {
                 if module == "stdlib/time" {
                     return self.generate_time_intrinsic(member, args);
                 }
+                if module == "stdlib/process" {
+                    return self.generate_process_intrinsic(member, args);
+                }
                 if module == "stdlib/url" {
                     return self.generate_url_intrinsic(member, args);
                 }
@@ -1322,6 +1386,13 @@ impl TypeScriptGenerator {
                     .is_some_and(|path| path.ends_with("language/stdlib/time.lib.sigil"))
                 {
                     return self.generate_time_intrinsic(&name.name, args);
+                }
+                if self
+                    .source_file
+                    .as_deref()
+                    .is_some_and(|path| path.ends_with("language/stdlib/process.lib.sigil"))
+                {
+                    return self.generate_process_intrinsic(&name.name, args);
                 }
                 if self
                     .source_file
@@ -1597,8 +1668,43 @@ impl TypeScriptGenerator {
                 "{}.then((__input) => __sigil_time_parse_iso_result(__input))",
                 generated_args[0]
             ))),
+            "sleepMs" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__ms) => new Promise((resolve) => setTimeout(() => resolve(null), Math.max(0, Number(__ms)))))",
+                generated_args[0]
+            ))),
             "toEpochMillis" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__instant) => __instant.epochMillis)",
+                generated_args[0]
+            ))),
+            _ => Ok(None),
+        }
+    }
+
+    fn generate_process_intrinsic(
+        &mut self,
+        member: &str,
+        args: &[TypedExpr],
+    ) -> Result<Option<String>, CodegenError> {
+        let generated_args = args
+            .iter()
+            .map(|arg| self.generate_expression(arg))
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+
+        match member {
+            "kill" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__process) => __sigil_process_kill(__process))",
+                generated_args[0]
+            ))),
+            "run" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__command) => __sigil_process_run(__command))",
+                generated_args[0]
+            ))),
+            "spawn" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__command) => __sigil_process_spawn(__command))",
+                generated_args[0]
+            ))),
+            "wait" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__process) => __sigil_process_wait(__process))",
                 generated_args[0]
             ))),
             _ => Ok(None),
@@ -1761,6 +1867,11 @@ impl TypeScriptGenerator {
         }
         if call.namespace.join("/") == "stdlib/time" {
             if let Some(intrinsic) = self.generate_time_intrinsic(&call.member, &call.args)? {
+                return Ok(intrinsic);
+            }
+        }
+        if call.namespace.join("/") == "stdlib/process" {
+            if let Some(intrinsic) = self.generate_process_intrinsic(&call.member, &call.args)? {
                 return Ok(intrinsic);
             }
         }

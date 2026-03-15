@@ -35,9 +35,9 @@ i src::utils
 λmain()=>Int=src::utils.double(21)
 EOF
 
-echo "Running: cd test-project && ../target/debug/sigil run src/main.sigil --human"
+echo "Running: cd test-project && ../target/debug/sigil run src/main.sigil"
 cd test-project
-../target/debug/sigil run src/main.sigil --human
+../target/debug/sigil run src/main.sigil
 cd ..
 echo ""
 
@@ -55,9 +55,9 @@ i src::utils
 λmain()=>Int=src::math.add(src::utils.double(10),src::utils.triple(5))
 EOF
 
-echo "Running: cd test-project && ../target/debug/sigil run src/calc.sigil --human"
+echo "Running: cd test-project && ../target/debug/sigil run src/calc.sigil"
 cd test-project
-../target/debug/sigil run src/calc.sigil --human
+../target/debug/sigil run src/calc.sigil
 cd ..
 echo ""
 
@@ -78,9 +78,9 @@ i src::derived
 λmain()=>Int=src::derived.addTwo(5)
 EOF
 
-echo "Running: cd test-project && ../target/debug/sigil run src/app.sigil --human"
+echo "Running: cd test-project && ../target/debug/sigil run src/app.sigil"
 cd test-project
-../target/debug/sigil run src/app.sigil --human
+../target/debug/sigil run src/app.sigil
 cd ..
 echo ""
 

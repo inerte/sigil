@@ -85,7 +85,7 @@ fn output_json_error(command: &str, phase: &str, error_code: &str, message: &str
 }
 
 /// Lex command: tokenize a Sigil file
-pub fn lex_command(file: &Path, human: bool) -> Result<(), CliError> {
+pub fn lex_command(file: &Path) -> Result<(), CliError> {
     let source = fs::read_to_string(file)?;
     let filename = file.to_string_lossy().to_string();
 
@@ -93,57 +93,42 @@ pub fn lex_command(file: &Path, human: bool) -> Result<(), CliError> {
     let mut lexer = Lexer::new(&source);
     let tokens = lexer.tokenize().map_err(|e| CliError::Lexer(format!("{}", e)))?;
 
-    if human {
-        println!("sigilc lex OK phase=lexer");
-        for token in &tokens {
-            println!(
-                "{}({}) at {}:{}",
-                format!("{:?}", token.token_type),
-                &token.value,
-                token.location.start.line,
-                token.location.start.column
-            );
+    let output = serde_json::json!({
+        "formatVersion": 1,
+        "command": "sigilc lex",
+        "ok": true,
+        "phase": "lexer",
+        "data": {
+            "file": filename,
+            "summary": {
+                "tokens": tokens.len()
+            },
+            "tokens": tokens.iter().map(|t| {
+                serde_json::json!({
+                    "type": format!("{:?}", t.token_type),
+                    "lexeme": &t.value,
+                    "start": {
+                        "line": t.location.start.line,
+                        "column": t.location.start.column,
+                        "offset": t.location.start.offset
+                    },
+                    "end": {
+                        "line": t.location.end.line,
+                        "column": t.location.end.column,
+                        "offset": t.location.end.offset
+                    },
+                    "text": format!("{}({}) at {}:{}", format!("{:?}", t.token_type), &t.value, t.location.start.line, t.location.start.column)
+                })
+            }).collect::<Vec<_>>()
         }
-    } else {
-        // JSON output - field ordering matches TypeScript exactly
-        let output = serde_json::json!({
-            "formatVersion": 1,
-            "command": "sigilc lex",
-            "ok": true,
-            "phase": "lexer",
-            "data": {
-                "file": filename,
-                "summary": {
-                    "tokens": tokens.len()
-                },
-                "tokens": tokens.iter().map(|t| {
-                    // Match TypeScript field order: type, lexeme, start, end, text
-                    serde_json::json!({
-                        "type": format!("{:?}", t.token_type),
-                        "lexeme": &t.value,
-                        "start": {
-                            "line": t.location.start.line,
-                            "column": t.location.start.column,
-                            "offset": t.location.start.offset
-                        },
-                        "end": {
-                            "line": t.location.end.line,
-                            "column": t.location.end.column,
-                            "offset": t.location.end.offset
-                        },
-                        "text": format!("{}({}) at {}:{}", format!("{:?}", t.token_type), &t.value, t.location.start.line, t.location.start.column)
-                    })
-                }).collect::<Vec<_>>()
-            }
-        });
-        println!("{}", serde_json::to_string(&output).unwrap());
-    }
+    });
+    println!("{}", serde_json::to_string(&output).unwrap());
 
     Ok(())
 }
 
 /// Parse command: parse a Sigil file to AST
-pub fn parse_command(file: &Path, human: bool) -> Result<(), CliError> {
+pub fn parse_command(file: &Path) -> Result<(), CliError> {
     let source = fs::read_to_string(file)?;
     let filename = file.to_string_lossy().to_string();
 
@@ -160,33 +145,26 @@ pub fn parse_command(file: &Path, human: bool) -> Result<(), CliError> {
     validate_canonical_form(&ast, Some(&filename), Some(&source))
         .map_err(|errors: Vec<ValidationError>| CliError::Validation(format_validation_errors(&errors)))?;
 
-    if human {
-        println!("sigilc parse OK phase=parser");
-        println!("{:#?}", ast);
-    } else {
-        // JSON output - serialize AST as JSON (requires serde feature)
-        let ast_json = serde_json::to_value(&ast).unwrap_or_else(|e| {
-            // Fallback to debug representation if serialization fails
-            eprintln!("Warning: AST serialization failed: {}", e);
-            serde_json::json!(format!("{:#?}", ast))
-        });
+    let ast_json = serde_json::to_value(&ast).unwrap_or_else(|e| {
+        eprintln!("Warning: AST serialization failed: {}", e);
+        serde_json::json!(format!("{:#?}", ast))
+    });
 
-        let output = serde_json::json!({
-            "formatVersion": 1,
-            "command": "sigilc parse",
-            "ok": true,
-            "phase": "parser",
-            "data": {
-                "file": filename,
-                "summary": {
-                    "tokens": token_count,
-                    "declarations": ast.declarations.len()
-                },
-                "ast": ast_json
-            }
-        });
-        println!("{}", serde_json::to_string(&output).unwrap());
-    }
+    let output = serde_json::json!({
+        "formatVersion": 1,
+        "command": "sigilc parse",
+        "ok": true,
+        "phase": "parser",
+        "data": {
+            "file": filename,
+            "summary": {
+                "tokens": token_count,
+                "declarations": ast.declarations.len()
+            },
+            "ast": ast_json
+        }
+    });
+    println!("{}", serde_json::to_string(&output).unwrap());
 
     Ok(())
 }
@@ -196,30 +174,25 @@ pub fn compile_command(
     file: &Path,
     output: Option<&Path>,
     show_types: bool,
-    human: bool,
 ) -> Result<(), CliError> {
     // Build module graph
     let graph = match ModuleGraph::build(file) {
         Ok(g) => g,
         Err(ModuleGraphError::Validation(errors)) => {
-            // Output JSON error for validation failures
-            if !human {
-                // Get first error for main message and code
-                if let Some(first_error) = errors.first() {
-                    let error_msg = first_error.to_string();
-                    let error_code = extract_error_code(&error_msg);
+            if let Some(first_error) = errors.first() {
+                let error_msg = first_error.to_string();
+                let error_code = extract_error_code(&error_msg);
 
-                    output_json_error(
-                        "sigilc compile",
-                        "canonical",
-                        &error_code,
-                        &error_msg,
-                        json!({
-                            "file": file.to_string_lossy(),
-                            "errors": errors.iter().map(|e| e.to_string()).collect::<Vec<_>>()
-                        })
-                    );
-                }
+                output_json_error(
+                    "sigilc compile",
+                    "canonical",
+                    &error_code,
+                    &error_msg,
+                    json!({
+                        "file": file.to_string_lossy(),
+                        "errors": errors.iter().map(|e| e.to_string()).collect::<Vec<_>>()
+                    })
+                );
             }
             return Err(ModuleGraphError::Validation(errors).into());
         }
@@ -299,62 +272,54 @@ pub fn compile_command(
     let entry_output = output_files.last().unwrap();
     let entry_module = graph.modules.get(graph.topo_order.last().unwrap()).unwrap();
 
-    if human {
-        println!("sigilc compile OK phase=codegen");
-        println!("Compiled {} module(s)", graph.modules.len());
-        println!("Entry output: {}", entry_output.display());
-    } else {
-        // JSON output - build allModules array matching TypeScript format
-        let all_modules: Vec<serde_json::Value> = graph.topo_order
-            .iter()
-            .map(|module_id| {
-                let module = &graph.modules[module_id];
-                let output_file = module_outputs.get(module_id)
-                    .map(|p| p.to_string_lossy().to_string())
-                    .unwrap_or_default();
+    let all_modules: Vec<serde_json::Value> = graph.topo_order
+        .iter()
+        .map(|module_id| {
+            let module = &graph.modules[module_id];
+            let output_file = module_outputs.get(module_id)
+                .map(|p| p.to_string_lossy().to_string())
+                .unwrap_or_default();
 
-                serde_json::json!({
-                    "moduleId": module_id,
-                    "sourceFile": module.file_path.to_string_lossy(),
-                    "outputFile": output_file
-                })
-            })
-            .collect();
-
-        // Extract project info from entry module (if present)
-        let project_json = entry_module.project.as_ref().map(|proj| {
             serde_json::json!({
-                "root": proj.root.to_string_lossy(),
-                "layout": serde_json::to_value(&proj.layout).unwrap_or(serde_json::json!({}))
+                "moduleId": module_id,
+                "sourceFile": module.file_path.to_string_lossy(),
+                "outputFile": output_file
             })
-        });
+        })
+        .collect();
 
-        let output_json = serde_json::json!({
-            "formatVersion": 1,
-            "command": "sigilc compile",
-            "ok": true,
-            "phase": "codegen",
-            "data": {
-                "input": file.to_string_lossy(),
-                "outputs": {
-                    "rootTs": entry_output.to_string_lossy(),
-                    "allModules": all_modules
-                },
-                "project": project_json,
-                "typecheck": {
-                    "ok": true,
-                    "inferred": if show_types { vec![] as Vec<serde_json::Value> } else { vec![] }
-                }
+    let project_json = entry_module.project.as_ref().map(|proj| {
+        serde_json::json!({
+            "root": proj.root.to_string_lossy(),
+            "layout": serde_json::to_value(&proj.layout).unwrap_or(serde_json::json!({}))
+        })
+    });
+
+    let output_json = serde_json::json!({
+        "formatVersion": 1,
+        "command": "sigilc compile",
+        "ok": true,
+        "phase": "codegen",
+        "data": {
+            "input": file.to_string_lossy(),
+            "outputs": {
+                "rootTs": entry_output.to_string_lossy(),
+                "allModules": all_modules
+            },
+            "project": project_json,
+            "typecheck": {
+                "ok": true,
+                "inferred": if show_types { vec![] as Vec<serde_json::Value> } else { vec![] }
             }
-        });
-        println!("{}", serde_json::to_string(&output_json).unwrap());
-    }
+        }
+    });
+    println!("{}", serde_json::to_string(&output_json).unwrap());
 
     Ok(())
 }
 
 /// Run command: compile and execute a Sigil file
-pub fn run_command(file: &Path, selected_env: Option<&str>, human: bool) -> Result<(), CliError> {
+pub fn run_command(file: &Path, selected_env: Option<&str>) -> Result<(), CliError> {
     let graph = ModuleGraph::build(file)?;
     let compiled = compile_module_graph(graph, None)?;
     let entry_output_path = compiled.entry_output_path;
@@ -415,58 +380,47 @@ if (result !== undefined) {{
     let exit_code = output.status.code().unwrap_or(-1);
 
     if exit_code != 0 {
-        if human {
-            eprintln!("{}", stderr);
-            eprintln!("sigilc run FAIL (exit code: {})", exit_code);
-        } else {
-            let output_json = serde_json::json!({
-                "formatVersion": 1,
-                "command": "sigilc run",
-                "ok": false,
-                "phase": "runtime",
-                "error": {
-                    "code": "SIGIL-RUNTIME-CHILD-EXIT",
-                    "phase": "runtime",
-                    "message": format!("child process exited with nonzero status: {}", exit_code),
-                    "details": {
-                        "exitCode": exit_code,
-                        "stdout": stdout.to_string(),
-                        "stderr": stderr.to_string()
-                    }
-                }
-            });
-            println!("{}", serde_json::to_string(&output_json).unwrap());
-        }
-        return Err(CliError::Runtime(format!("Process exited with code {}", exit_code)));
-    }
-
-    if human {
-        print!("{}", stdout);
-        eprint!("{}", stderr);
-        println!("sigilc run OK phase=runtime");
-    } else {
         let output_json = serde_json::json!({
             "formatVersion": 1,
             "command": "sigilc run",
-            "ok": true,
+            "ok": false,
             "phase": "runtime",
-            "data": {
-                "compile": {
-                    "input": file.to_string_lossy(),
-                    "output": entry_output_path.to_string_lossy(),
-                    "runnerFile": runner_path.to_string_lossy()
-                },
-                "runtime": {
-                    "engine": "node+tsx",
+            "error": {
+                "code": "SIGIL-RUNTIME-CHILD-EXIT",
+                "phase": "runtime",
+                "message": format!("child process exited with nonzero status: {}", exit_code),
+                "details": {
                     "exitCode": exit_code,
-                    "durationMs": duration_ms,
                     "stdout": stdout.to_string(),
                     "stderr": stderr.to_string()
                 }
             }
         });
         println!("{}", serde_json::to_string(&output_json).unwrap());
+        return Err(CliError::Runtime(format!("Process exited with code {}", exit_code)));
     }
+
+    let output_json = serde_json::json!({
+        "formatVersion": 1,
+        "command": "sigilc run",
+        "ok": true,
+        "phase": "runtime",
+        "data": {
+            "compile": {
+                "input": file.to_string_lossy(),
+                "output": entry_output_path.to_string_lossy(),
+                "runnerFile": runner_path.to_string_lossy()
+            },
+            "runtime": {
+                "engine": "node+tsx",
+                "exitCode": exit_code,
+                "durationMs": duration_ms,
+                "stdout": stdout.to_string(),
+                "stderr": stderr.to_string()
+            }
+        }
+    });
+    println!("{}", serde_json::to_string(&output_json).unwrap());
 
     Ok(())
 }
@@ -476,31 +430,26 @@ pub fn test_command(
     path: &Path,
     selected_env: Option<&str>,
     match_filter: Option<&str>,
-    human: bool,
 ) -> Result<(), CliError> {
     // Check if tests directory exists
     if !path.exists() {
-        if human {
-            println!("No tests found ({} does not exist).", path.display());
-        } else {
-            let output_json = serde_json::json!({
-                "formatVersion": 1,
-                "command": "sigilc test",
-                "ok": true,
-                "summary": {
-                    "files": 0,
-                    "discovered": 0,
-                    "selected": 0,
-                    "passed": 0,
-                    "failed": 0,
-                    "errored": 0,
-                    "skipped": 0,
-                    "durationMs": 0
-                },
-                "results": []
-            });
-            println!("{}", serde_json::to_string(&output_json).unwrap());
-        }
+        let output_json = serde_json::json!({
+            "formatVersion": 1,
+            "command": "sigilc test",
+            "ok": true,
+            "summary": {
+                "files": 0,
+                "discovered": 0,
+                "selected": 0,
+                "passed": 0,
+                "failed": 0,
+                "errored": 0,
+                "skipped": 0,
+                "durationMs": 0
+            },
+            "results": []
+        });
+        println!("{}", serde_json::to_string(&output_json).unwrap());
         return Ok(());
     }
 
@@ -548,44 +497,23 @@ pub fn test_command(
 
     let ok = failed == 0 && errored == 0;
 
-    if human {
-        if ok {
-            println!("PASS {}/{} tests passed", passed, selected);
-        } else {
-            println!("FAIL {}/{} tests passed", passed, selected);
-            for result in &all_results {
-                if result.status != "pass" {
-                    println!(
-                        "{}: {} ({})",
-                        result.status.to_uppercase(),
-                        result.name,
-                        result.file
-                    );
-                    if let Some(ref failure) = result.failure {
-                        println!("  {}", failure);
-                    }
-                }
-            }
-        }
-    } else {
-        let output_json = serde_json::json!({
-            "formatVersion": 1,
-            "command": "sigilc test",
-            "ok": ok,
-            "summary": {
-                "files": test_files.len(),
-                "discovered": discovered,
-                "selected": selected,
-                "passed": passed,
-                "failed": failed,
-                "errored": errored,
-                "skipped": 0,
-                "durationMs": duration_ms
-            },
-            "results": all_results
-        });
-        println!("{}", serde_json::to_string(&output_json).unwrap());
-    }
+    let output_json = serde_json::json!({
+        "formatVersion": 1,
+        "command": "sigilc test",
+        "ok": ok,
+        "summary": {
+            "files": test_files.len(),
+            "discovered": discovered,
+            "selected": selected,
+            "passed": passed,
+            "failed": failed,
+            "errored": errored,
+            "skipped": 0,
+            "durationMs": duration_ms
+        },
+        "results": all_results
+    });
+    println!("{}", serde_json::to_string(&output_json).unwrap());
 
     if !ok {
         return Err(CliError::Runtime("Tests failed".to_string()));
@@ -594,7 +522,7 @@ pub fn test_command(
     Ok(())
 }
 
-pub fn validate_command(path: &Path, env: &str, human: bool) -> Result<(), CliError> {
+pub fn validate_command(path: &Path, env: &str) -> Result<(), CliError> {
     let project_root = find_project_root(path).ok_or_else(|| {
         CliError::Validation(format!(
             "{}: no Sigil project found while validating topology",
@@ -657,21 +585,17 @@ console.log(JSON.stringify({{
         }));
     }
 
-    if human {
-        println!("sigilc validate OK phase=topology env={}", env);
-    } else {
-        let output_json = serde_json::json!({
-            "formatVersion": 1,
-            "command": "sigilc validate",
-            "ok": true,
-            "phase": "topology",
-            "data": {
-                "environment": env,
-                "projectRoot": project_root.to_string_lossy()
-            }
-        });
-        println!("{}", serde_json::to_string(&output_json).unwrap());
-    }
+    let output_json = serde_json::json!({
+        "formatVersion": 1,
+        "command": "sigilc validate",
+        "ok": true,
+        "phase": "topology",
+        "data": {
+            "environment": env,
+            "projectRoot": project_root.to_string_lossy()
+        }
+    });
+    println!("{}", serde_json::to_string(&output_json).unwrap());
 
     Ok(())
 }

@@ -24,7 +24,7 @@ cleanup() {
 trap cleanup EXIT
 
 cd "${PROJECT_DIR}"
-../../language/compiler/target/debug/sigil validate . --env test --human
+../../language/compiler/target/debug/sigil validate . --env test
 ../../language/compiler/target/debug/sigil run src/tcpRoundtripServer.sigil --env test > "${SERVER_LOG}" 2>&1 &
 SERVER_PID=$!
 
@@ -57,9 +57,11 @@ run_and_assert() {
   local file=$1
   local expected=$2
   local output
-  output=$(../../language/compiler/target/debug/sigil run "${file}" --env test --human)
+  local actual
+  output=$(../../language/compiler/target/debug/sigil run "${file}" --env test)
+  actual=$(printf '%s' "${output}" | node -e 'let data="";process.stdin.on("data",c=>data+=c);process.stdin.on("end",()=>process.stdout.write(JSON.parse(data).data.runtime.stdout));')
   echo "${output}"
-  if ! grep -q "${expected}" <<<"${output}"; then
+  if ! grep -Fq "${expected}" <<<"${actual}"; then
     echo "Expected '${expected}' from ${file}"
     exit 1
   fi

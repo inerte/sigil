@@ -54,9 +54,6 @@ Sigil includes first-class `test` declarations and a built-in test runner:
 # JSON output by default (machine-readable)
 cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
 
-# Human-readable output
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --human
-
 # Run a subset by description substring
 cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --match "toggle"
 ```
@@ -283,7 +280,7 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compil
 "Claude, add error logging to main.sigil"
 
 # Run tests
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --human
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
 ```
 
 **No IDE tooling needed** - Claude Code uses the compiler CLI directly:

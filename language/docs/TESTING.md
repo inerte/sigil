@@ -82,7 +82,6 @@ test "fallback on API failure" =>!Network {
 ## CLI
 
 Default output mode is JSON.
-Human-readable output is available with `--human`.
 
 Examples:
 
@@ -96,8 +95,6 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test p
 # Filter by test name substring
 cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --match "cache"
 
-# Human-readable output
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --human
 ```
 
 For topology-aware projects, `--env <name>` is required.

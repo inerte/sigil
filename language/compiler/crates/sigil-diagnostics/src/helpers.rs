@@ -140,20 +140,6 @@ mod tests {
     }
 
     #[test]
-    fn test_diagnostic_format_human() {
-        let diag = diagnostic("SIGIL-TEST", SigilPhase::Parser, "test error")
-            .with_location(source_span("file.sigil", source_point(1, 1)))
-            .with_found_expected("x", "y");
-
-        let formatted = diag.format_human();
-        assert!(formatted.contains("SIGIL-TEST"));
-        assert!(formatted.contains("file.sigil:1:1"));
-        assert!(formatted.contains("test error"));
-        assert!(formatted.contains("found"));
-        assert!(formatted.contains("expected"));
-    }
-
-    #[test]
     fn test_suggestions() {
         let _s1 = suggest_replace_symbol("use dot", "::", None);
         let _s2 = suggest_export_member("export this", Some("foo".into()), None);

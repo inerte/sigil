@@ -222,33 +222,6 @@ impl Diagnostic {
         self
     }
 
-    /// Format for human-readable output
-    /// Format: "CODE file:line:col message (found X, expected Y)"
-    pub fn format_human(&self) -> String {
-        let mut parts = vec![self.code.clone()];
-
-        if let Some(loc) = &self.location {
-            parts.push(loc.format_location());
-        }
-
-        parts.push(self.message.clone());
-
-        if self.found.is_some() || self.expected.is_some() {
-            let found = self
-                .found
-                .as_ref()
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| "?".into());
-            let expected = self
-                .expected
-                .as_ref()
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| "?".into());
-            parts.push(format!("(found {}, expected {})", found, expected));
-        }
-
-        parts.join(" ")
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -285,20 +258,6 @@ impl<T> CommandEnvelope<T> {
             phase: Some(error.phase),
             data: None,
             error: Some(error),
-        }
-    }
-
-    pub fn format_human(&self) -> String {
-        if self.ok {
-            let mut parts = vec![format!("{} OK", self.command)];
-            if let Some(phase) = self.phase {
-                parts.push(format!("phase={:?}", phase).to_lowercase());
-            }
-            parts.join(" ")
-        } else if let Some(err) = &self.error {
-            err.format_human()
-        } else {
-            format!("{} FAIL", self.command)
         }
     }
 }

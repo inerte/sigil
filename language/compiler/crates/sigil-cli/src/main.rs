@@ -31,20 +31,12 @@ enum Command {
     Lex {
         /// Input .sigil file
         file: PathBuf,
-
-        /// Human-readable output (default: JSON)
-        #[arg(long)]
-        human: bool,
     },
 
     /// Parse a Sigil file to AST
     Parse {
         /// Input .sigil file
         file: PathBuf,
-
-        /// Human-readable output (default: JSON)
-        #[arg(long)]
-        human: bool,
     },
 
     /// Compile a Sigil file to TypeScript
@@ -59,10 +51,6 @@ enum Command {
         /// Show inferred types in output
         #[arg(long)]
         show_types: bool,
-
-        /// Human-readable output (default: JSON)
-        #[arg(long)]
-        human: bool,
     },
 
     /// Compile and run a Sigil file
@@ -73,10 +61,6 @@ enum Command {
         /// Runtime topology environment name (required for topology-aware projects)
         #[arg(long)]
         env: Option<String>,
-
-        /// Human-readable output (default: JSON)
-        #[arg(long)]
-        human: bool,
     },
 
     /// Run Sigil tests
@@ -92,10 +76,6 @@ enum Command {
         /// Filter tests by substring match
         #[arg(long)]
         r#match: Option<String>,
-
-        /// Human-readable output (default: JSON)
-        #[arg(long)]
-        human: bool,
     },
 
     /// Validate project topology for one environment
@@ -107,10 +87,6 @@ enum Command {
         /// Runtime topology environment name
         #[arg(long)]
         env: String,
-
-        /// Human-readable output (default: JSON)
-        #[arg(long)]
-        human: bool,
     },
 }
 
@@ -118,17 +94,16 @@ fn main() {
     let cli = Cli::parse();
 
     let result = match cli.command {
-        Command::Lex { file, human } => lex_command(&file, human),
-        Command::Parse { file, human } => parse_command(&file, human),
+        Command::Lex { file } => lex_command(&file),
+        Command::Parse { file } => parse_command(&file),
         Command::Compile {
             file,
             output,
             show_types,
-            human,
-        } => compile_command(&file, output.as_deref(), show_types, human),
-        Command::Run { file, env, human } => run_command(&file, env.as_deref(), human),
-        Command::Test { path, env, r#match, human } => test_command(&path, env.as_deref(), r#match.as_deref(), human),
-        Command::Validate { path, env, human } => validate_command(&path, &env, human),
+        } => compile_command(&file, output.as_deref(), show_types),
+        Command::Run { file, env } => run_command(&file, env.as_deref()),
+        Command::Test { path, env, r#match } => test_command(&path, env.as_deref(), r#match.as_deref()),
+        Command::Validate { path, env } => validate_command(&path, &env),
     };
 
     if let Err(e) = result {

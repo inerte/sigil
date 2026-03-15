@@ -194,7 +194,7 @@ function getValidationPlan(relPath, projectDir) {
     plan.checks.push({
       label: 'Running canonical form tests',
       cmd: COMPILER_BINARY,
-      args: ['test', 'language/testHarnesses/tests/canonical.sigil'],
+      args: ['test', 'language/integrationTests/tests/canonical.sigil'],
     });
     return plan;
   }

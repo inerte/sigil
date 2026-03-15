@@ -31,6 +31,6 @@ i stdlib::time
 λtrimmedOutput(result:stdlib::process.ProcessResult)=>String=stdlib::string.trim(combinedOutput(result))
 
 λuniqueRepoTempDir(prefix:String)=>!IO String=l millis=(stdlib::time.toEpochMillis(stdlib::time.now()):Int);
-  l path=(repoPath("language/testHarnesses/.tmp"++prefix++stdlib::string.intToString(millis)):String);
+  l path=(repoPath("language/integrationTests/.tmp"++prefix++stdlib::string.intToString(millis)):String);
   l _=(stdlib::file.makeDirs(path):Unit);
   path

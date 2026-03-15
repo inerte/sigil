@@ -2,8 +2,8 @@
 
 Sigil tests are first-class language declarations, not a separate test framework.
 
-Repo-level integration harnesses are ordinary Sigil test files under
-`language/testHarnesses/tests/`. They run through the same `sigil test`
+Repo-level integration tests are ordinary Sigil test files under
+`language/integrationTests/tests/`. They run through the same `sigil test`
 machinery as project tests rather than through separate shell launchers.
 
 ## Canonical Layout

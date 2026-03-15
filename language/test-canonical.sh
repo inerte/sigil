@@ -20,7 +20,7 @@ test_should_fail() {
   
   echo -n "Testing $(basename $file) (should fail)... "
   
-  if output=$("$SIGIL" compile "$file" --human 2>&1); then
+  if output=$("$SIGIL" compile "$file" 2>&1); then
     echo -e "${RED}✗ FAILED${NC} - Compiled successfully (should have been blocked!)"
     echo "  This loophole is NOT blocked!"
     ((FAILED++))
@@ -47,7 +47,7 @@ test_should_pass() {
   local file=$1
   echo -n "Testing $(basename $file) (should compile)... "
   
-  if output=$("$SIGIL" compile "$file" --human 2>&1); then
+  if output=$("$SIGIL" compile "$file" 2>&1); then
     echo -e "${GREEN}✓ PASSED${NC} - Compiled successfully"
     ((PASSED++))
     return 0

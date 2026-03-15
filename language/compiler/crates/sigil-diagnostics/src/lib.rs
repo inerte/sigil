@@ -5,7 +5,7 @@
 //! - Diagnostic types (error messages with structured metadata)
 //! - All 55+ error code constants
 //! - Helper functions for creating diagnostics
-//! - Human-readable and JSON formatting
+//! - JSON formatting
 //!
 //! # Example
 //!
@@ -13,7 +13,7 @@
 //! use sigil_diagnostics::{codes, types::{Diagnostic, SigilPhase}, helpers::source_point};
 //!
 //! let diag = Diagnostic::new(codes::lexer::TAB, SigilPhase::Lexer, "tab characters not allowed");
-//! println!("{}", diag.format_human());
+//! let _ = diag;
 //! ```
 
 pub mod codes;

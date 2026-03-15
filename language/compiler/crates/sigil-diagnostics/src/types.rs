@@ -179,11 +179,7 @@ impl Diagnostic {
     }
 
     /// Set found and expected values
-    pub fn with_found_expected(
-        mut self,
-        found: impl Serialize,
-        expected: impl Serialize,
-    ) -> Self {
+    pub fn with_found_expected(mut self, found: impl Serialize, expected: impl Serialize) -> Self {
         self.found = serde_json::to_value(found).ok();
         self.expected = serde_json::to_value(expected).ok();
         self
@@ -212,7 +208,9 @@ impl Diagnostic {
 
     /// Add a suggestion
     pub fn with_suggestion(mut self, suggestion: Suggestion) -> Self {
-        self.suggestions.get_or_insert_with(Vec::new).push(suggestion);
+        self.suggestions
+            .get_or_insert_with(Vec::new)
+            .push(suggestion);
         self
     }
 
@@ -220,34 +218,6 @@ impl Diagnostic {
     pub fn with_fixit(mut self, fixit: Fixit) -> Self {
         self.fixits.get_or_insert_with(Vec::new).push(fixit);
         self
-    }
-
-    /// Format for human-readable output
-    /// Format: "CODE file:line:col message (found X, expected Y)"
-    pub fn format_human(&self) -> String {
-        let mut parts = vec![self.code.clone()];
-
-        if let Some(loc) = &self.location {
-            parts.push(loc.format_location());
-        }
-
-        parts.push(self.message.clone());
-
-        if self.found.is_some() || self.expected.is_some() {
-            let found = self
-                .found
-                .as_ref()
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| "?".into());
-            let expected = self
-                .expected
-                .as_ref()
-                .map(|v| v.to_string())
-                .unwrap_or_else(|| "?".into());
-            parts.push(format!("(found {}, expected {})", found, expected));
-        }
-
-        parts.join(" ")
     }
 }
 
@@ -285,20 +255,6 @@ impl<T> CommandEnvelope<T> {
             phase: Some(error.phase),
             data: None,
             error: Some(error),
-        }
-    }
-
-    pub fn format_human(&self) -> String {
-        if self.ok {
-            let mut parts = vec![format!("{} OK", self.command)];
-            if let Some(phase) = self.phase {
-                parts.push(format!("phase={:?}", phase).to_lowercase());
-            }
-            parts.join(" ")
-        } else if let Some(err) = &self.error {
-            err.format_human()
-        } else {
-            format!("{} FAIL", self.command)
         }
     }
 }

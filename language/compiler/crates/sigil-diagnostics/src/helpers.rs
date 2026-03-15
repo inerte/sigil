@@ -131,26 +131,8 @@ mod tests {
 
     #[test]
     fn test_source_span_format_location() {
-        let span = source_span_with_end(
-            "test.sigil",
-            source_point(10, 5),
-            source_point(10, 15),
-        );
+        let span = source_span_with_end("test.sigil", source_point(10, 5), source_point(10, 15));
         assert_eq!(span.format_location(), "test.sigil:10:5");
-    }
-
-    #[test]
-    fn test_diagnostic_format_human() {
-        let diag = diagnostic("SIGIL-TEST", SigilPhase::Parser, "test error")
-            .with_location(source_span("file.sigil", source_point(1, 1)))
-            .with_found_expected("x", "y");
-
-        let formatted = diag.format_human();
-        assert!(formatted.contains("SIGIL-TEST"));
-        assert!(formatted.contains("file.sigil:1:1"));
-        assert!(formatted.contains("test error"));
-        assert!(formatted.contains("found"));
-        assert!(formatted.contains("expected"));
     }
 
     #[test]

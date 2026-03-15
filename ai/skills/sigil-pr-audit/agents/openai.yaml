@@ -1,0 +1,4 @@
+interface:
+  display_name: "Sigil PR Audit"
+  short_description: "Audit untrusted Sigil pull requests"
+  default_prompt: "Use $sigil-pr-audit to audit this checked-out Sigil PR before I read the Rust diff."

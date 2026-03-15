@@ -26,8 +26,6 @@ pub enum Declaration {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct FunctionDecl {
     pub name: String,
-    #[cfg_attr(feature = "serde", serde(rename = "isMockable"))]
-    pub is_mockable: bool,
     #[cfg_attr(feature = "serde", serde(rename = "typeParams"))]
     pub type_params: Vec<String>,
     pub params: Vec<Param>,

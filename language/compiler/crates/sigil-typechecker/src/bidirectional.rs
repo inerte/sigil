@@ -167,32 +167,12 @@ pub fn type_check(
                     let mut quantified_vars = HashSet::new();
                     collect_type_var_ids(&func_type, &mut quantified_vars);
                     let scheme = explicit_scheme(&func_type, &quantified_vars);
-                    if func_decl.is_mockable {
-                        env.bind_scheme_with_meta(
-                            func_decl.name.clone(),
-                            scheme.clone(),
-                            BindingMeta {
-                                is_mockable_function: true,
-                                is_extern_namespace: false,
-                            },
-                        );
-                    } else {
-                        env.bind_scheme(func_decl.name.clone(), scheme.clone());
-                    }
+                    env.bind_scheme(func_decl.name.clone(), scheme.clone());
                     schemes.insert(func_decl.name.clone(), scheme);
                     func_type.clone()
                 };
 
-                if func_decl.type_params.is_empty() && func_decl.is_mockable {
-                    env.bind_with_meta(
-                        func_decl.name.clone(),
-                        binding_type.clone(),
-                        BindingMeta {
-                            is_mockable_function: true,
-                            is_extern_namespace: false,
-                        },
-                    );
-                } else if func_decl.type_params.is_empty() {
+                if func_decl.type_params.is_empty() {
                     env.bind(func_decl.name.clone(), binding_type.clone());
                 }
 
@@ -226,7 +206,6 @@ pub fn type_check(
                         namespace_name,
                         InferenceType::Record(TRecord { fields, name: None }),
                         BindingMeta {
-                            is_mockable_function: false,
                             is_extern_namespace: true,
                         },
                     );
@@ -236,7 +215,6 @@ pub fn type_check(
                         namespace_name,
                         InferenceType::Any,
                         BindingMeta {
-                            is_mockable_function: false,
                             is_extern_namespace: true,
                         },
                     );
@@ -944,7 +922,6 @@ fn build_typed_function_decl(
 
     Ok(TypedFunctionDecl {
         name: func_decl.name.clone(),
-        is_mockable: func_decl.is_mockable,
         type_params: func_decl.type_params.clone(),
         params: func_decl.params.clone(),
         return_type,
@@ -2526,8 +2503,8 @@ fn synthesize_with_mock(
     env: &TypeEnvironment,
     with_mock: &sigil_ast::WithMockExpr,
 ) -> Result<InferenceType, TypeError> {
-    // Check target is mockable or extern
-    // For now, simplified validation - just check types match
+    // Check target/replacement compatibility.
+    // Canonical placement rules are enforced earlier by validation.
     let target_type = synthesize(env, &with_mock.target)?;
     let replacement_type = synthesize(env, &with_mock.replacement)?;
 
@@ -2558,7 +2535,7 @@ fn synthesize_with_mock(
         }
     }
 
-    // TODO: Full extern/mockable function validation
+    // TODO: Full target-kind validation beyond simple type compatibility.
 
     // Return type is the body type
     synthesize(env, &with_mock.body)

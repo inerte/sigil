@@ -9,7 +9,6 @@ TopLevelDecl = TypeDecl
              | ImportDecl
              | ConstDecl
              | FunctionDecl
-             | MockableFunctionDecl
              | TestDecl ;
 
 (* Canonical declaration order is enforced separately:
@@ -53,7 +52,6 @@ TypeList = Type , { "," , Type } ;
 ConstDecl = "c" , Identifier , "=" , "(" , Expr , ":" , Type , ")" ;
 
 FunctionDecl = "λ" , Identifier , "(" , [ ParamList ] , ")" , "→" , [ Effects ] , Type , FunctionBody ;
-MockableFunctionDecl = "mockable" , FunctionDecl ;
 FunctionBody = "=" , Expr | MatchExpr ;
 
 ParamList = Param , { "," , Param } ;

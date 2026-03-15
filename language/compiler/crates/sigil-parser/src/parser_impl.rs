@@ -50,19 +50,9 @@ impl Parser {
     // ========================================================================
 
     fn declaration(&mut self) -> Result<Declaration, ParseError> {
-        // Mockable function declaration: mockable λ...
-        if self.match_token(TokenType::MOCKABLE) {
-            if !self.check(TokenType::LAMBDA) {
-                return Err(self.error("Expected \"λ\" after \"mockable\""));
-            }
-            let mockable_start = self.previous();
-            self.consume(TokenType::LAMBDA, "Expected \"λ\" after \"mockable\"")?;
-            return self.function_declaration(true, Some(mockable_start));
-        }
-
         // Function declaration: λ identifier(params)...
         if self.match_token(TokenType::LAMBDA) {
-            return self.function_declaration(false, None);
+            return self.function_declaration();
         }
 
         // Type declaration: t TypeName = ...
@@ -91,15 +81,11 @@ impl Parser {
             return self.test_declaration();
         }
 
-        Err(self.error("Expected top-level declaration (t, e, i, c, λ, mockable λ, or test)"))
+        Err(self.error("Expected top-level declaration (t, e, i, c, λ, or test)"))
     }
 
-    fn function_declaration(
-        &mut self,
-        is_mockable: bool,
-        start_token: Option<Token>,
-    ) -> Result<Declaration, ParseError> {
-        let start = start_token.unwrap_or_else(|| self.previous());
+    fn function_declaration(&mut self) -> Result<Declaration, ParseError> {
+        let start = self.previous();
         let name = self.consume(TokenType::IDENTIFIER, "Expected function name")?.value.clone();
 
         // Optional generic type parameters: λfunc[T,U](...)
@@ -153,7 +139,6 @@ impl Parser {
 
         Ok(Declaration::Function(FunctionDecl {
             name,
-            is_mockable,
             type_params,
             params,
             effects,

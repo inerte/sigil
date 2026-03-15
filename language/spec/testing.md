@@ -12,7 +12,6 @@ Current implemented testing surface includes:
 - top-level `test "name" { ... }`
 - optional explicit test effects
 - built-in `withMock(...) { ... }`
-- `mockable λ...`
 - CLI test discovery and execution
 
 This spec describes the implemented system in the current compiler, not older
@@ -59,17 +58,6 @@ Test files are executable-oriented and must define `main`.
 
 ## Mocking
 
-### Mockable Sigil Functions
-
-```sigil
-mockable λfetchUser(id:Int)→!Network String="real"
-```
-
-Rules:
-
-- only functions may be marked `mockable`
-- mockable functions must be effectful
-
 ### `withMock`
 
 Current built-in mocking form:
@@ -85,7 +73,11 @@ test "fallback on API failure" →!Network {
 Allowed targets:
 
 - extern members
-- `mockable` Sigil functions
+- any Sigil function
+
+Placement rule:
+
+- `withMock(...)` is only valid directly inside `test` declaration bodies
 
 ## CLI Surface
 

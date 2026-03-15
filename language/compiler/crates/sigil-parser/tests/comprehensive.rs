@@ -61,21 +61,6 @@ fn test_function_declaration_with_type_params() {
 }
 
 #[test]
-fn test_function_declaration_mockable() {
-    let source = "mockable λfetch()→String=\"\"";
-    let tokens = tokenize(source).unwrap();
-    let program = parse(tokens, "test.sigil").unwrap();
-
-    match &program.declarations[0] {
-        Declaration::Function(f) => {
-            assert!(f.is_mockable);
-            assert_eq!(f.name, "fetch");
-        }
-        _ => panic!("Expected function declaration"),
-    }
-}
-
-#[test]
 fn test_function_with_effects() {
     let source = "λread_file()→!IO String=\"\"";
     let tokens = tokenize(source).unwrap();

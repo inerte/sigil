@@ -54,7 +54,6 @@ Valid top-level forms:
 - `i`
 - `c`
 - `λ`
-- `mockable λ`
 - `test`
 
 Invalid at top level:
@@ -107,19 +106,6 @@ Effects, when present, appear between `→` and the return type:
 λmain()→!IO Unit=console.log("hello")
 λfetchUser(id:Int)→!Network String=axios.get("https://example.com/"+stdlib⋅string.intToString(id))
 ```
-
-## Mockable Function Declarations
-
-Mockable functions are top-level functions prefixed with `mockable`:
-
-```sigil
-mockable λfetchUser(id:Int)→!Network String="real"
-```
-
-Rules:
-
-- only functions may be `mockable`
-- mockable functions must be effectful
 
 ## Lambda Expressions
 
@@ -347,12 +333,19 @@ test "writes log" →!IO {
 Sigil includes a built-in `withMock(...) { ... }` expression for tests:
 
 ```sigil
+λfetchUser(id:Int)→!Network String="real"
+
 test "fallback on API failure" →!Network {
   withMock(fetchUser, λ(id:Int)→!Network String="ERR") {
     fetchUser(1)="ERR"
   }
 }
 ```
+
+Rules:
+
+- `withMock(...)` is only valid directly inside `test` declaration bodies
+- allowed targets are any Sigil function or an extern member
 
 ## Canonical References
 

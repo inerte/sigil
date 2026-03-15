@@ -61,12 +61,16 @@ Sigil includes built-in lexical mocking.
 Allowed targets:
 
 - extern members
-- Sigil functions declared `mockable`
+- any Sigil function
+
+Placement rule:
+
+- `withMock(...)` is only valid directly inside `test` declaration bodies
 
 Example:
 
 ```sigil
-mockable λfetchUser(id:Int)→!Network String="real"
+λfetchUser(id:Int)→!Network String="real"
 
 test "fallback on API failure" →!Network {
   withMock(fetchUser, λ(id:Int)→!Network String="ERR") {

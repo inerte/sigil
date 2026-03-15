@@ -216,12 +216,23 @@ fn test_function_in_lib_valid() {
 }
 
 #[test]
-fn test_mockable_function_valid() {
-    let source = "mockable λfetch()→String=\"data\"";
+fn test_function_declaration_valid() {
+    let source = "λfetch()→String=\"data\"";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.lib.sigil").unwrap();
 
     assert!(validate_canonical_form(&program, Some("test.lib.sigil"), None).is_ok());
+}
+
+#[test]
+fn test_with_mock_outside_test_body_is_invalid() {
+    let source = "λfetch()→!IO String=\"real\"\nλhelper()→!IO String=withMock(fetch, λ()→!IO String=\"fake\") { fetch() }\n";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "tests/testWithMock.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("tests/testWithMock.sigil"), Some(source));
+    assert!(result.is_err());
+    assert!(result.unwrap_err().iter().any(|error| matches!(error, ValidationError::WithMockTestOnly { .. })));
 }
 
 #[test]

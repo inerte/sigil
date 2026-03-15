@@ -16,7 +16,6 @@ pub struct TypeInfo {
 
 #[derive(Debug, Clone, Default)]
 pub struct BindingMeta {
-    pub is_mockable_function: bool,
     pub is_extern_namespace: bool,
 }
 

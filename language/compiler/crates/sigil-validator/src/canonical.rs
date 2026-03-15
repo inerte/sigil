@@ -211,6 +211,11 @@ pub fn validate_canonical_form(program: &Program, file_path: Option<&str>, sourc
         errors.extend(e);
     }
 
+    // Rule 5b: withMock is only valid inside test declaration bodies
+    if let Err(e) = validate_with_mock_placement(program) {
+        errors.extend(e);
+    }
+
     // Rule 6: Recursive functions must not use accumulators
     if let Err(e) = validate_recursive_functions(program) {
         errors.extend(e);
@@ -1930,6 +1935,142 @@ fn validate_recursive_functions(program: &Program) -> Result<(), Vec<ValidationE
         Ok(())
     } else {
         Err(errors)
+    }
+}
+
+fn validate_with_mock_placement(program: &Program) -> Result<(), Vec<ValidationError>> {
+    let mut errors = Vec::new();
+
+    for declaration in &program.declarations {
+        match declaration {
+            Declaration::Function(function) => {
+                collect_with_mock_outside_tests(&function.body, &mut errors);
+            }
+            Declaration::Const(const_decl) => {
+                collect_with_mock_outside_tests(&const_decl.value, &mut errors);
+            }
+            Declaration::Test(test_decl) => {
+                collect_with_mock_outside_tests_in_test_expr(&test_decl.body, true, &mut errors);
+            }
+            Declaration::Type(_)
+            | Declaration::Import(_)
+            | Declaration::Extern(_) => {}
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+fn collect_with_mock_outside_tests(expr: &Expr, errors: &mut Vec<ValidationError>) {
+    collect_with_mock_outside_tests_in_test_expr(expr, false, errors);
+}
+
+fn collect_with_mock_outside_tests_in_test_expr(
+    expr: &Expr,
+    in_test_body: bool,
+    errors: &mut Vec<ValidationError>,
+) {
+    match expr {
+        Expr::Literal(_) | Expr::Identifier(_) => {}
+        Expr::Lambda(lambda) => {
+            collect_with_mock_outside_tests_in_test_expr(&lambda.body, false, errors);
+        }
+        Expr::Application(app) => {
+            collect_with_mock_outside_tests_in_test_expr(&app.func, in_test_body, errors);
+            for arg in &app.args {
+                collect_with_mock_outside_tests_in_test_expr(arg, in_test_body, errors);
+            }
+        }
+        Expr::Binary(binary) => {
+            collect_with_mock_outside_tests_in_test_expr(&binary.left, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(&binary.right, in_test_body, errors);
+        }
+        Expr::Unary(unary) => {
+            collect_with_mock_outside_tests_in_test_expr(&unary.operand, in_test_body, errors);
+        }
+        Expr::Match(match_expr) => {
+            collect_with_mock_outside_tests_in_test_expr(&match_expr.scrutinee, in_test_body, errors);
+            for arm in &match_expr.arms {
+                collect_with_mock_outside_tests_in_test_expr(&arm.body, in_test_body, errors);
+                if let Some(guard) = &arm.guard {
+                    collect_with_mock_outside_tests_in_test_expr(guard, in_test_body, errors);
+                }
+            }
+        }
+        Expr::Let(let_expr) => {
+            collect_with_mock_outside_tests_in_test_expr(&let_expr.value, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(&let_expr.body, in_test_body, errors);
+        }
+        Expr::If(if_expr) => {
+            collect_with_mock_outside_tests_in_test_expr(&if_expr.condition, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(&if_expr.then_branch, in_test_body, errors);
+            if let Some(else_branch) = &if_expr.else_branch {
+                collect_with_mock_outside_tests_in_test_expr(else_branch, in_test_body, errors);
+            }
+        }
+        Expr::List(list) => {
+            for element in &list.elements {
+                collect_with_mock_outside_tests_in_test_expr(element, in_test_body, errors);
+            }
+        }
+        Expr::Tuple(tuple) => {
+            for element in &tuple.elements {
+                collect_with_mock_outside_tests_in_test_expr(element, in_test_body, errors);
+            }
+        }
+        Expr::Record(record) => {
+            for field in &record.fields {
+                collect_with_mock_outside_tests_in_test_expr(&field.value, in_test_body, errors);
+            }
+        }
+        Expr::MapLiteral(map) => {
+            for entry in &map.entries {
+                collect_with_mock_outside_tests_in_test_expr(&entry.key, in_test_body, errors);
+                collect_with_mock_outside_tests_in_test_expr(&entry.value, in_test_body, errors);
+            }
+        }
+        Expr::FieldAccess(field_access) => {
+            collect_with_mock_outside_tests_in_test_expr(&field_access.object, in_test_body, errors);
+        }
+        Expr::Index(index) => {
+            collect_with_mock_outside_tests_in_test_expr(&index.object, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(&index.index, in_test_body, errors);
+        }
+        Expr::Map(map_expr) => {
+            collect_with_mock_outside_tests_in_test_expr(&map_expr.list, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(&map_expr.func, in_test_body, errors);
+        }
+        Expr::Filter(filter) => {
+            collect_with_mock_outside_tests_in_test_expr(&filter.list, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(&filter.predicate, in_test_body, errors);
+        }
+        Expr::Fold(fold) => {
+            collect_with_mock_outside_tests_in_test_expr(&fold.list, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(&fold.func, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(&fold.init, in_test_body, errors);
+        }
+        Expr::Pipeline(pipeline) => {
+            collect_with_mock_outside_tests_in_test_expr(&pipeline.left, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(&pipeline.right, in_test_body, errors);
+        }
+        Expr::TypeAscription(type_ascription) => {
+            collect_with_mock_outside_tests_in_test_expr(&type_ascription.expr, in_test_body, errors);
+        }
+        Expr::MemberAccess(_) => {}
+        Expr::WithMock(with_mock) => {
+            if !in_test_body {
+                errors.push(ValidationError::WithMockTestOnly {
+                    location: with_mock.location,
+                });
+            }
+            collect_with_mock_outside_tests_in_test_expr(&with_mock.target, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(&with_mock.replacement, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(&with_mock.body, in_test_body, errors);
+        }
     }
 }
 

@@ -21,7 +21,6 @@ use sigil_typechecker::typed_ir::{
     TypedMatchExpr, TypedMethodCallExpr, TypedPipelineExpr, TypedProgram, TypedRecordExpr,
     TypedTestDecl, TypedTupleExpr, TypedUnaryExpr, TypedWithMockExpr, WithMockTarget,
 };
-use std::collections::HashSet;
 use std::path::{Component, Path, PathBuf};
 use thiserror::Error;
 
@@ -51,7 +50,6 @@ pub struct TypeScriptGenerator {
     source_file: Option<String>,
     output_file: Option<String>,
     test_meta_entries: Vec<String>,
-    mockable_functions: HashSet<String>,
 }
 
 impl TypeScriptGenerator {
@@ -62,7 +60,6 @@ impl TypeScriptGenerator {
             source_file: options.source_file,
             output_file: options.output_file,
             test_meta_entries: Vec::new(),
-            mockable_functions: HashSet::new(),
         }
     }
 
@@ -81,17 +78,6 @@ impl TypeScriptGenerator {
         self.output.clear();
         self.indent = 0;
         self.test_meta_entries.clear();
-        self.mockable_functions.clear();
-
-        // Collect mockable functions
-        for decl in &program.declarations {
-            if let TypedDeclaration::Function(func) = decl {
-                if func.is_mockable {
-                    self.mockable_functions.insert(func.name.clone());
-                }
-            }
-        }
-
         // Emit mock runtime helpers first
         self.emit_mock_runtime_helpers();
 
@@ -715,12 +701,6 @@ impl TypeScriptGenerator {
         let params_str = params.join(", ");
         let func_name = sanitize_js_identifier(&func.name);
 
-        let impl_name = if func.is_mockable {
-            format!("__sigil_impl_{}", func_name)
-        } else {
-            func_name.clone()
-        };
-
         // Export logic:
         // - .lib.sigil files: export all functions
         // - .sigil files: export main() only (for executables)
@@ -736,7 +716,7 @@ impl TypeScriptGenerator {
             "function"
         };
 
-        self.emit(&format!("{} {}({}) {{", fn_keyword, impl_name, params_str));
+        self.emit(&format!("{} {}({}) {{", fn_keyword, func_name, params_str));
         self.indent += 1;
 
         let body_code = self.generate_expression(&func.body)?;
@@ -744,28 +724,6 @@ impl TypeScriptGenerator {
 
         self.indent -= 1;
         self.emit("}");
-
-        // If mockable, emit wrapper
-        if func.is_mockable {
-            self.emit("");
-            let export_keyword = if should_export { "export " } else { "" };
-            self.emit(&format!(
-                "{}function {}({}) {{",
-                export_keyword, func_name, params_str
-            ));
-            self.indent += 1;
-            let args = if params.is_empty() {
-                String::new()
-            } else {
-                format!(", {}", params_str)
-            };
-            self.emit(&format!(
-                "return __sigil_call('{}', {}{});",
-                func.name, impl_name, args
-            ));
-            self.indent -= 1;
-            self.emit("}");
-        }
 
         Ok(())
     }
@@ -1240,18 +1198,42 @@ impl TypeScriptGenerator {
             return Ok(intrinsic);
         }
 
-        let func = self.generate_expression(&call.func)?;
         let args: Vec<String> = call
             .args
             .iter()
             .map(|arg| self.generate_expression(arg))
             .collect::<Result<_, _>>()?;
-        let mut values = vec![func];
-        values.extend(args);
-        Ok(format!(
-            "{}.then(([__sigil_fn, ...__sigil_args]) => __sigil_fn(...__sigil_args))",
-            self.js_all(&values)
-        ))
+        match &call.func.kind {
+            TypedExprKind::Identifier(id) => Ok(format!(
+                "{}.then((__sigil_args) => __sigil_call(\"{}\", {}, __sigil_args))",
+                self.js_all(&args),
+                id.name,
+                sanitize_js_identifier(&id.name)
+            )),
+            TypedExprKind::NamespaceMember { namespace, member } => {
+                let func_ref = format!(
+                    "{}.{}",
+                    sanitize_js_identifier(&namespace.join("_")),
+                    sanitize_js_identifier(member)
+                );
+                Ok(format!(
+                    "{}.then((__sigil_args) => __sigil_call(\"extern:{}.{}\", {}, __sigil_args))",
+                    self.js_all(&args),
+                    namespace.join("/"),
+                    member,
+                    func_ref
+                ))
+            }
+            _ => {
+                let func = self.generate_expression(&call.func)?;
+                let mut values = vec![func];
+                values.extend(args);
+                Ok(format!(
+                    "{}.then(([__sigil_fn, ...__sigil_args]) => __sigil_fn(...__sigil_args))",
+                    self.js_all(&values)
+                ))
+            }
+        }
     }
 
     fn try_generate_typed_intrinsic(
@@ -2468,15 +2450,15 @@ mod tests {
     }
 
     #[test]
-    fn test_mockable_zero_arg_wrapper_uses_default_args() {
-        let source = "mockable λping()→String=\"real\"";
+    fn test_regular_function_calls_route_through_mock_runtime() {
+        let source = "λping()→String=\"real\"\nλmain()→String=ping()";
         let program = typed_program_for(source, "test.sigil");
 
         let mut gen = TypeScriptGenerator::new(CodegenOptions::default());
         let result = gen.generate(&program).unwrap();
 
         assert!(result.contains("function __sigil_call(key, actualFn, args = [])"));
-        assert!(result.contains("return __sigil_call('ping', __sigil_impl_ping);"));
+        assert!(result.contains("__sigil_call(\"ping\", ping, __sigil_args)"));
     }
 
     #[test]

@@ -30,7 +30,6 @@ pub enum TypedDeclaration {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedFunctionDecl {
     pub name: String,
-    pub is_mockable: bool,
     pub type_params: Vec<String>,
     pub params: Vec<Param>,
     pub return_type: InferenceType,

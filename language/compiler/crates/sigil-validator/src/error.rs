@@ -246,6 +246,11 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
+    #[error("SIGIL-CANON-WITH-MOCK-TEST-ONLY: withMock is only allowed directly inside test declaration bodies\n\nSigil allows mocking only in tests. Move this withMock expression into a test body.")]
+    WithMockTestOnly {
+        location: SourceLocation,
+    },
+
     #[error("SIGIL-CANON-DECL-EXPORT-ORDER: Declarations with 'export' must come before non-exported declarations\n\nFound non-exported '{prev_name}' before exported '{current_name}'")]
     DeclExportOrder {
         current_name: String,
@@ -361,6 +366,7 @@ impl ValidationError {
             ValidationError::RecordPatternFieldOrder { location, .. } => *location,
             ValidationError::NoShadowing { location, .. } => *location,
             ValidationError::TestPath { location, .. } => *location,
+            ValidationError::WithMockTestOnly { location } => *location,
             ValidationError::DeclExportOrder { location, .. } => *location,
             ValidationError::ExternMemberOrder { location, .. } => *location,
             ValidationError::LetUntyped { location, .. } => *location,
@@ -498,6 +504,15 @@ impl From<ValidationError> for Diagnostic {
                 )
                 .with_location(source_location_to_span(file_path.clone(), location))
                 .with_details("file_path", &file_path)
+            }
+
+            ValidationError::WithMockTestOnly { location } => {
+                Diagnostic::new(
+                    codes::canonical::WITH_MOCK_TEST_ONLY,
+                    SigilPhase::Canonical,
+                    "withMock is only allowed directly inside test declaration bodies",
+                )
+                .with_location(source_location_to_span(get_file(), location))
             }
 
             ValidationError::DeclExportOrder { current_name, prev_name, location } => {

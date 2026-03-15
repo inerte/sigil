@@ -60,7 +60,7 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test -
 - Tests must live under `./tests`
 - Test bodies return `Bool`
 - Effectful tests declare effects explicitly
-- Scoped mocking is built-in via `mockable` + `withMock(...) { ... }`
+- Scoped mocking is built-in via `withMock(...) { ... }` inside test bodies
 - Test files run in parallel by default (JSON results are output in stable order)
 
 See `docs/TESTING.md`.

@@ -2,9 +2,9 @@ i stdlib⋅numeric
 
 λmain()→Unit=()
 
-mockable λping()→!IO String="real"
+λping()→!IO String="real"
 
-test "mockable function can be overridden" →!IO {
+test "any function can be overridden in tests" →!IO {
   withMock(ping, λ()→!IO String="fake") {
     ping()="fake"
   }

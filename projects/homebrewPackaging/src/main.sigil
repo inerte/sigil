@@ -6,23 +6,16 @@ i src::formula
 i stdlib::file
 i stdlib::path
 
-λfail(message:String)=>!IO Unit={
-  l _=(console.error(message):Unit);
-  process.exit(1)
-}
+λfail(message:String)=>!IO Unit=l _=(console.error(message):Unit); process.exit(1)
 
 λmain()=>!IO Unit match releaseVersion(){
   Ok(version)=>match sha256SumsPath(){
-    Ok(path)=>{
-      l text=(stdlib::file.readText(path):String);
+    Ok(path)=>l text=(stdlib::file.readText(path):String);
       match src::formula.parseChecksums(text,version){
-        Some(checksums)=>{
-          l _=(stdlib::file.makeDirs(stdlib::path.dirname(config::release.outputPath())):Unit);
-          (stdlib::file.writeText(src::formula.formula({checksums:checksums,repo:config::release.releaseRepo(),version:version}),config::release.outputPath()):Unit)
-        }|
+        Some(checksums)=>l _=(stdlib::file.makeDirs(stdlib::path.dirname(config::release.outputPath())):Unit);
+          (stdlib::file.writeText(src::formula.formula({checksums:checksums,repo:config::release.releaseRepo(),version:version}),config::release.outputPath()):Unit)|
         None()=>fail("could not parse required Homebrew release checksums")
-      }
-    }|
+      }|
     Err(message)=>fail(message)
   }|
   Err(message)=>fail(message)

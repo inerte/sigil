@@ -181,6 +181,41 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
+    #[error("SIGIL-CANON-DELIMITER-SPACING: non-canonical delimiter spacing\n\nUse tight delimiters with no spaces just inside brackets, parentheses, or braces.")]
+    DelimiterSpacing {
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-OPERATOR-SPACING: non-canonical operator spacing\n\nUse no spaces around ':', '=>', '=', '|', '+', '-', '*', '/', and '%'.")]
+    OperatorSpacing {
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-SIGNATURE-LAYOUT: function and lambda signatures must stay on one line\n\nKeep the full signature and direct body introducer on a single line.")]
+    SignatureLayout {
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-MATCH-LAYOUT: non-canonical match layout\n\nSingle-arm match may stay on one line. Multi-arm match must use multiline canonical layout.")]
+    MatchLayout {
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-MATCH-ARM-LAYOUT: non-canonical match arm layout\n\nEach multiline match arm header must start as 'pattern=>'. The body must begin on that same line. Continued body lines must stay in canonical indented form.")]
+    MatchArmLayout {
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-REDUNDANT-PARENS: redundant parentheses\n\nRemove parentheses that do not change the canonical expression shape.")]
+    RedundantParens {
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-MATCH-BODY-BLOCK: direct match bodies must not be wrapped in a block\n\nUse 'λf()=>T match ...' instead of wrapping the match in '{{...}}'.")]
+    MatchBodyBlock {
+        location: SourceLocation,
+    },
+
     #[error("SIGIL-CANON-PARAM-ORDER: Parameter out of alphabetical order in function '{function_name}'\n\nFound: {param_name} at position {position}\nAfter: {prev_param}\n\nParameters must be alphabetically ordered.\nExpected '{param_name}' to come before '{prev_param}'.\n\nCorrect order: {expected_order:?}\n\nSigil enforces ONE WAY: canonical parameter ordering.")]
     ParameterOrder {
         function_name: String,
@@ -359,6 +394,13 @@ impl ValidationError {
             ValidationError::EOFNewline { location, .. } => *location,
             ValidationError::TrailingWhitespace { location, .. } => *location,
             ValidationError::BlankLines { location, .. } => *location,
+            ValidationError::DelimiterSpacing { location } => *location,
+            ValidationError::OperatorSpacing { location } => *location,
+            ValidationError::SignatureLayout { location } => *location,
+            ValidationError::MatchLayout { location } => *location,
+            ValidationError::MatchArmLayout { location } => *location,
+            ValidationError::RedundantParens { location } => *location,
+            ValidationError::MatchBodyBlock { location } => *location,
             ValidationError::ParameterOrder { location, .. } => *location,
             ValidationError::EffectOrder { location, .. } => *location,
             ValidationError::RecordTypeFieldOrder { location, .. } => *location,
@@ -612,6 +654,69 @@ impl From<ValidationError> for Diagnostic {
                     codes::canonical::MATCH_TUPLE_BOOLEAN,
                     SigilPhase::Canonical,
                     "Cannot pattern match on tuple containing booleans",
+                )
+                .with_location(source_location_to_span(get_file(), location))
+            }
+
+            ValidationError::DelimiterSpacing { location } => {
+                Diagnostic::new(
+                    codes::canonical::DELIMITER_SPACING,
+                    SigilPhase::Canonical,
+                    "non-canonical delimiter spacing",
+                )
+                .with_location(source_location_to_span(get_file(), location))
+            }
+
+            ValidationError::OperatorSpacing { location } => {
+                Diagnostic::new(
+                    codes::canonical::OPERATOR_SPACING,
+                    SigilPhase::Canonical,
+                    "non-canonical operator spacing",
+                )
+                .with_location(source_location_to_span(get_file(), location))
+            }
+
+            ValidationError::SignatureLayout { location } => {
+                Diagnostic::new(
+                    codes::canonical::SIGNATURE_LAYOUT,
+                    SigilPhase::Canonical,
+                    "function and lambda signatures must stay on one line",
+                )
+                .with_location(source_location_to_span(get_file(), location))
+            }
+
+            ValidationError::MatchLayout { location } => {
+                Diagnostic::new(
+                    codes::canonical::MATCH_LAYOUT,
+                    SigilPhase::Canonical,
+                    "non-canonical match layout",
+                )
+                .with_location(source_location_to_span(get_file(), location))
+            }
+
+            ValidationError::MatchArmLayout { location } => {
+                Diagnostic::new(
+                    codes::canonical::MATCH_ARM_LAYOUT,
+                    SigilPhase::Canonical,
+                    "non-canonical match arm layout",
+                )
+                .with_location(source_location_to_span(get_file(), location))
+            }
+
+            ValidationError::RedundantParens { location } => {
+                Diagnostic::new(
+                    codes::canonical::REDUNDANT_PARENS,
+                    SigilPhase::Canonical,
+                    "redundant parentheses",
+                )
+                .with_location(source_location_to_span(get_file(), location))
+            }
+
+            ValidationError::MatchBodyBlock { location } => {
+                Diagnostic::new(
+                    codes::canonical::MATCH_BODY_BLOCK,
+                    SigilPhase::Canonical,
+                    "direct match bodies must not be wrapped in a block",
                 )
                 .with_location(source_location_to_span(get_file(), location))
             }

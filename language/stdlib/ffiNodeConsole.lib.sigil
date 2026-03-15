@@ -8,10 +8,10 @@
     λmain()=>Unit=console.log("typed!")
 ⟧
 
-e console : {
-  debug : λ(String) => Unit,
-  error : λ(String) => Unit,
-  info : λ(String) => Unit,
-  log : λ(String) => Unit,
-  warn : λ(String) => Unit
+e console:{
+  debug:λ(String)=>Unit,
+  error:λ(String)=>Unit,
+  info:λ(String)=>Unit,
+  log:λ(String)=>Unit,
+  warn:λ(String)=>Unit
 }

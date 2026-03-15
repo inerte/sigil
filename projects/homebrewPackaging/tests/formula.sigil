@@ -3,8 +3,7 @@ i stdlib::string
 
 λmain()=>Unit=()
 
-λsampleChecksums()=>String=
-  stdlib::string.unlines([
+λsampleChecksums()=>String=stdlib::string.unlines([
     "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  sigil-2026-03-11T14-58-24Z-darwin-arm64.tar.gz",
     "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb  sigil-2026-03-11T14-58-24Z-darwin-x64.tar.gz",
     "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc  sigil-2026-03-11T14-58-24Z-linux-arm64.tar.gz",
@@ -37,8 +36,7 @@ test "formula renders release version and platform checksums" {
 
 test "parse checksums extracts all release digests" {
   match src::formula.parseChecksums(sampleChecksums(),"2026-03-11T14-58-24Z"){
-    Some(checksums)=>
-      checksums.darwinArm64="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" and
+    Some(checksums)=>checksums.darwinArm64="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" and
       checksums.darwinX64="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" and
       checksums.linuxArm64="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" and
       checksums.linuxX64="dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"|

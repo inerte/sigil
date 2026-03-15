@@ -1,8 +1,6 @@
 i core::map
 
-λmain()=>Bool={
-  match core::map.get("content-type",({"content-type"↦"text/plain","x-id"↦"42"}:{String↦String})){
-    Some(value)=>value="text/plain" and #({"content-type"↦"text/plain","x-id"↦"42"}:{String↦String})=2 and ({"content-type"↦"text/plain","x-id"↦"42"}:{String↦String})=({"x-id"↦"42","content-type"↦"text/plain"}:{String↦String})|
-    None()=>false
-  }
+λmain()=>Bool match core::map.get("content-type",({"content-type"↦"text/plain","x-id"↦"42"}:{String↦String})){
+  Some(value)=>value="text/plain" and #({"content-type"↦"text/plain","x-id"↦"42"}:{String↦String})=2 and ({"content-type"↦"text/plain","x-id"↦"42"}:{String↦String})=({"x-id"↦"42","content-type"↦"text/plain"}:{String↦String})|
+  None()=>false
 }

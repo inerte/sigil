@@ -4,27 +4,13 @@ i src::graphTypes
 i src::linearSearch
 i src::topologicalSort
 
-λcyclicGraph()=>src::graphTypes.Graph={
-  nodes:[
-    {neighbors:[2],vertex:1},
-    {neighbors:[3],vertex:2},
-    {neighbors:[1],vertex:3}
-  ]
-}
+λcyclicGraph()=>src::graphTypes.Graph={nodes:[{neighbors:[2],vertex:1},{neighbors:[3],vertex:2},{neighbors:[1],vertex:3}]}
 
-λdagGraph()=>src::graphTypes.Graph={
-  nodes:[
-    {neighbors:[2,3],vertex:1},
-    {neighbors:[4],vertex:2},
-    {neighbors:[4],vertex:3},
-    {neighbors:[],vertex:4}
-  ]
-}
+λdagGraph()=>src::graphTypes.Graph={nodes:[{neighbors:[2,3],vertex:1},{neighbors:[4],vertex:2},{neighbors:[4],vertex:3},{neighbors:[],vertex:4}]}
 
 λmain()=>Unit=()
 
-λorderRespects(from:Int,order:[Int],to:Int)=>Bool=
-  src::linearSearch.linearSearch(from,order)<src::linearSearch.linearSearch(to,order)
+λorderRespects(from:Int,order:[Int],to:Int)=>Bool=src::linearSearch.linearSearch(from,order)<src::linearSearch.linearSearch(to,order)
 
 test "depth first search is deterministic" {
   src::depthFirstSearch.depthFirstSearch(dagGraph(),1)=[1,2,4,3]

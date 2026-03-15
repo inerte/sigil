@@ -1,8 +1,7 @@
 i stdlib::json
 
 λmain()=>Unit match stdlib::json.parse("{\"name\":\"sigil\",\"stable\":true}"){
-    Ok(value)=>
-      l _=(stdlib::json.stringify(value):String);
+    Ok(value)=>l _=(stdlib::json.stringify(value):String);
       ()|
     Err(_)=>()
   }

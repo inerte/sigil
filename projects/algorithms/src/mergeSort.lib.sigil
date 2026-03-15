@@ -27,12 +27,8 @@
 λmergePairs(runs:[[Int]])=>[[Int]] match runs{
   []=>[]|
   [head,.tail]=>match tail{
-    []=>{
-      wrapRun(head)
-    }|
-    [right,.rest]=>{
-      wrapRun(merge(head,right))⧺mergePairs(rest)
-    }
+    []=>wrapRun(head)|
+    [right,.rest]=>wrapRun(merge(head,right))⧺mergePairs(rest)
   }
 }
 

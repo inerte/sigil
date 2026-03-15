@@ -3,4 +3,4 @@
    Tests: subtraction operator
 ⟧
 
-λ main() => Int = 100 - 58
+λmain()=>Int=100-58

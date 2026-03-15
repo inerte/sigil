@@ -186,11 +186,34 @@ Current canonical formatting rules include:
 - file must end with a final newline
 - no trailing whitespace
 - at most one consecutive blank line
+- no spaces just inside `()`, `[]`, or `{}`
+- no spaces around `:`, `=>`, `=`, or `|`
+- no spaces around `+`, `-`, `*`, `/`, or `%`
+- function and lambda signatures must stay on one line
+- direct `match` bodies must start on that same signature line
+- multi-arm `match` expressions must be multiline
+- each multiline `match` arm must start as `pattern=>`
+- continued multiline arm bodies are allowed, but the body must begin on the arm header line
+- no blank lines inside a `match`
+- unnecessary block wrappers around direct `match` function/lambda bodies are rejected
+- redundant parentheses around whole body expressions are rejected
 
 The lexer also rejects:
 
 - tab characters
 - standalone `\r`
+
+Canonical examples:
+
+```sigil
+λfib(n:Int)=>Int match n{
+  0=>0|
+  1=>1|
+  value=>fib(value-1)+fib(value-2)
+}
+
+λmain()=>Int=fib(10)
+```
 
 ## Validation Pipeline
 

@@ -3,4 +3,4 @@
    Tests: negative literals and arithmetic
 ⟧
 
-λ main() => Int = 10 + (-5)
+λmain()=>Int=10+(-5)

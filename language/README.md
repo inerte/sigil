@@ -26,7 +26,11 @@ Sigil is optimized for:
 
 ### What's Written (Dense, Canonical Format)
 ```sigil
-λfibonacci(n:Int)=>Int match n{0=>0|1=>1|n=>fibonacci(n-1)+fibonacci(n-2)}
+λfibonacci(n:Int)=>Int match n{
+  0=>0|
+  1=>1|
+  value=>fibonacci(value-1)+fibonacci(value-2)
+}
 ```
 
 ### How Humans Understand It
@@ -104,6 +108,7 @@ If 93% of code is AI-generated (2026 stats), why optimize for the 7%?
 1. **Token Density**: `λ` instead of `function` - machines don't need verbosity
 2. **Zero Ambiguity**: Exactly ONE way to write anything - LLMs hallucinate less
 3. **Perfect Formatting**: Code won't compile if not canonically formatted
+   Signatures stay on one line, multi-arm `match` is multiline, and spacing is fixed.
 4. **Strong Types**: Bidirectional type checking with mandatory annotations
 5. **Context Efficiency**: ~10% more code fits in context windows (current benchmark average)
 

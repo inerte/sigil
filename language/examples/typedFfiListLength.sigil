@@ -8,16 +8,12 @@
 ⟧
 
 ⟦ Typed FFI declaration: readdir returns [String], not any ⟧
-e fs::promises : {
-  readdir : λ(String) => [String]
+e fs::promises:{
+  readdir:λ(String)=>[String]
 }
 
 ⟦ Count files in a directory ⟧
-λcountFiles(dir:String)=>Int={
-  #(fs::promises.readdir(dir):[String])  ⟦ Works! readdir has type [String], not any ⟧
-}
+λcountFiles(dir:String)=>Int=#(fs::promises.readdir(dir):[String])⟦ Works! readdir has type [String], not any ⟧
 
 ⟦ Main entry point ⟧
-λmain()=>Int={
-  countFiles(".")
-}
+λmain()=>Int=countFiles(".")

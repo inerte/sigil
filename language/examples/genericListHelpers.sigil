@@ -1,4 +1,3 @@
 i stdlib::list
 
-λmain()=>Option[String]=
-  stdlib::list.find(λ(item:String)=>Bool=#item>4,["sigil","ai","language"])
+λmain()=>Option[String]=stdlib::list.find(λ(item:String)=>Bool=#item>4,["sigil","ai","language"])

@@ -4,6 +4,10 @@ t Response={body:String,headers:{String↦String},status:Int}
 
 λgetUsers(req:Request)=>Result[Response,Error]=Ok(Response{body:"[{\"id\":1,\"name\":\"Alice\"}]",headers:{"Content-Type"↦"application/json"},status:200})
 
-λhandleRequest(req:Request)=>Result[Response,Error] match req.path{"/users"=>getUsers(req)|"/health"=>Ok(Response{body:"OK",headers:({↦}:{String↦String}),status:200})|_=>Err(Error{code:404,msg:"Not found"})}
+λhandleRequest(req:Request)=>Result[Response,Error] match req.path{
+  "/users"=>getUsers(req)|
+  "/health"=>Ok(Response{body:"OK",headers:({↦}:{String↦String}),status:200})|
+  _=>Err(Error{code:404,msg:"Not found"})
+}
 
 λmain()=>Result[Response,Error]=handleRequest(Request{body:"",method:"GET",path:"/users"})

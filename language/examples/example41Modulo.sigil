@@ -3,4 +3,4 @@
    Calculation: 17 % 7 = 3
 ⟧
 
-λ main() => Int = 17 % 7
+λmain()=>Int=17%7

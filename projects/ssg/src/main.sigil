@@ -2,8 +2,7 @@ i src::build
 i config::site
 i src::types
 
-λmain()=>!IO Unit=
-  src::build.buildSite({
+λmain()=>!IO Unit=src::build.buildSite({
     basePath:config::site.basePath(),
     outputDir:"website/.local/site",
     repoUrl:config::site.repoUrl(),

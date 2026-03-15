@@ -40,6 +40,13 @@ pub mod canonical {
     pub const EOF_NEWLINE: &str = "SIGIL-CANON-EOF-NEWLINE";
     pub const TRAILING_WHITESPACE: &str = "SIGIL-CANON-TRAILING-WHITESPACE";
     pub const BLANK_LINES: &str = "SIGIL-CANON-BLANK-LINES";
+    pub const DELIMITER_SPACING: &str = "SIGIL-CANON-DELIMITER-SPACING";
+    pub const OPERATOR_SPACING: &str = "SIGIL-CANON-OPERATOR-SPACING";
+    pub const SIGNATURE_LAYOUT: &str = "SIGIL-CANON-SIGNATURE-LAYOUT";
+    pub const MATCH_LAYOUT: &str = "SIGIL-CANON-MATCH-LAYOUT";
+    pub const MATCH_ARM_LAYOUT: &str = "SIGIL-CANON-MATCH-ARM-LAYOUT";
+    pub const REDUNDANT_PARENS: &str = "SIGIL-CANON-REDUNDANT-PARENS";
+    pub const MATCH_BODY_BLOCK: &str = "SIGIL-CANON-MATCH-BODY-BLOCK";
 
     // File purpose constraints
     pub const LIB_NO_MAIN: &str = "SIGIL-CANON-LIB-NO-MAIN";
@@ -168,6 +175,13 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     canonical::EOF_NEWLINE,
     canonical::TRAILING_WHITESPACE,
     canonical::BLANK_LINES,
+    canonical::DELIMITER_SPACING,
+    canonical::OPERATOR_SPACING,
+    canonical::SIGNATURE_LAYOUT,
+    canonical::MATCH_LAYOUT,
+    canonical::MATCH_ARM_LAYOUT,
+    canonical::REDUNDANT_PARENS,
+    canonical::MATCH_BODY_BLOCK,
     canonical::LIB_NO_MAIN,
     canonical::EXEC_NEEDS_MAIN,
     canonical::TEST_NEEDS_MAIN,
@@ -265,8 +279,8 @@ mod tests {
         // Keep this in sync when adding or removing diagnostic codes.
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            83,
-            "Expected 83 error codes, found {}",
+            90,
+            "Expected 90 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

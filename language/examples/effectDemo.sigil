@@ -34,8 +34,7 @@ e console
 ⟦ Function with two declared effects ⟧
 λprocessAndLog()=>!IO !Network Unit=log(fetchData())
 
-⟦ ========================================================================
-  COMPILE-TIME SAFETY
+⟦ ========================================================================COMPILE-TIME SAFETY
 
   Effect tracking prevents bugs at compile time:
 

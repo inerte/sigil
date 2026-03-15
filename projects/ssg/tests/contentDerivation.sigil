@@ -1,8 +1,7 @@
 i src::content
 i src::types
 
-λarticlePage(date:String,slug:String)=>src::types.SitePage=
-  src::content.blankPage(
+λarticlePage(date:String,slug:String)=>src::types.SitePage=src::content.blankPage(
     "",
     {author:"Sigil",category:"",date:date,description:"",slug:slug,title:slug},
     "articles/"++slug,

@@ -9,14 +9,10 @@ i stdlib::list
 
 λdfsNeighbors(graph:src::graphTypes.Graph,neighbors:[Int],visited:[Int])=>[Int] match neighbors{
   []=>visited|
-  [neighbor,.tail]=>{
-    dfsNeighbors(graph,tail,dfsVisit(graph,neighbor,visited))
-  }
+  [neighbor,.tail]=>dfsNeighbors(graph,tail,dfsVisit(graph,neighbor,visited))
 }
 
 λdfsVisit(graph:src::graphTypes.Graph,vertex:Int,visited:[Int])=>[Int] match stdlib::list.contains(vertex,visited){
   true=>visited|
-  false=>{
-    dfsNeighbors(graph,src::graphHelpers.neighborsOf(graph,vertex),visited⧺[vertex])
-  }
+  false=>dfsNeighbors(graph,src::graphHelpers.neighborsOf(graph,vertex),visited⧺[vertex])
 }

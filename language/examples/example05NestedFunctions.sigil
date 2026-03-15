@@ -3,10 +3,10 @@
    Tests: function composition
 ⟧
 
-λ add(a: Int, b: Int) => Int = a + b
+λadd(a:Int,b:Int)=>Int=a+b
 
-λ compute() => Int = add(multiply(10, 3), multiply(5, 4))
+λcompute()=>Int=add(multiply(10,3),multiply(5,4))
 
-λ main() => Int = compute()
+λmain()=>Int=compute()
 
-λ multiply(a: Int, b: Int) => Int = a * b
+λmultiply(a:Int,b:Int)=>Int=a*b

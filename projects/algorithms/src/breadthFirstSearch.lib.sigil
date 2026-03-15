@@ -6,9 +6,7 @@ i stdlib::list
   []=>visited|
   [head,.tail]=>match stdlib::list.contains(head,visited){
     true=>bfsLoop(graph,tail,visited)|
-    false=>{
-      bfsLoop(graph,tail⧺src::graphHelpers.neighborsOf(graph,head),visited⧺[head])
-    }
+    false=>bfsLoop(graph,tail⧺src::graphHelpers.neighborsOf(graph,head),visited⧺[head])
   }
 }
 

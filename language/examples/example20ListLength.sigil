@@ -3,4 +3,4 @@
    Using # operator
 ⟧
 
-λ main() => Int = #[1, 2, 3, 4, 5]
+λmain()=>Int=#[1,2,3,4,5]

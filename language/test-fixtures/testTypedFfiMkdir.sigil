@@ -1,18 +1,17 @@
 ⟦ TEST: typed FFI accepts named product types via canonical normalization ⟧
 
 ⟦ Define the options type (must come before extern that references it) ⟧
-t MkdirOptions = { recursive: Bool }
+t MkdirOptions={recursive:Bool}
 
 ⟦ Typed extern with record type parameter ⟧
-e fs::promises : {
-  mkdir : λ(String, MkdirOptions) => Unit
+e fs::promises:{
+  mkdir:λ(String,MkdirOptions)=>Unit
 }
 
 ⟦ Create typed options using the named product type; the checker normalizes it ⟧
 c opts=({recursive:true}:MkdirOptions)
 
 ⟦ Now this typechecks! ⟧
-λensureDir(dir:String)=>Unit=
-  fs::promises.mkdir(dir, opts)
+λensureDir(dir:String)=>Unit=fs::promises.mkdir(dir, opts)
 
 λmain()=>Unit=()

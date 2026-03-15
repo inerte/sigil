@@ -3,6 +3,6 @@
    Function: add three numbers
 ⟧
 
-λ addThree(x: Int, y: Int, z: Int) => Int = x + y + z
+λaddThree(x:Int,y:Int,z:Int)=>Int=x+y+z
 
-λ main() => Int = addThree(3, 5, 7)
+λmain()=>Int=addThree(3,5,7)

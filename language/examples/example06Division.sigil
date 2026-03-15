@@ -3,4 +3,4 @@
    Tests: integer division
 ⟧
 
-λ main() => Int = 21 / 3
+λmain()=>Int=21/3

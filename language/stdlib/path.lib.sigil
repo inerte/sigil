@@ -14,16 +14,14 @@ i stdlib::string
   None()=>normalize(value)
 }
 
-λdirname(value:String)=>String=
-  dirnameFromSegments(stdlib::string.startsWith("/",(normalize(value):String)),splitNonempty((normalize(value):String)))
+λdirname(value:String)=>String=dirnameFromSegments(stdlib::string.startsWith("/",(normalize(value):String)),splitNonempty((normalize(value):String)))
 
 λdirnameFromSegments(isAbsolute:Bool,segments:[String])=>String match #segments≤1{
   true=>rootOrCurrent(isAbsolute)|
   false=>pathFromSegments(isAbsolute,stdlib::list.take(#segments-1,segments))
 }
 
-λextname(value:String)=>String=
-  extnameFromParts((basename(value):String),stdlib::string.split(".",(basename(value):String)))
+λextname(value:String)=>String=extnameFromParts((basename(value):String),stdlib::string.split(".",(basename(value):String)))
 
 λextnameFromParts(name:String,parts:[String])=>String match #parts≤1{
   true=>""|
@@ -52,8 +50,7 @@ i stdlib::string
   }
 }
 
-λnormalize(value:String)=>String=
-  l isAbsolute=(stdlib::string.startsWith("/",value):Bool);
+λnormalize(value:String)=>String=l isAbsolute=(stdlib::string.startsWith("/",value):Bool);
   pathFromSegments(isAbsolute,(normalizeSegments([],isAbsolute,filterEmpty(stdlib::string.split("/",value))):[String]))
 
 λnormalizeSegments(acc:[String],isAbsolute:Bool,segments:[String])=>[String] match segments{
@@ -89,8 +86,7 @@ i stdlib::string
     }
   }
 
-λrelative(from:String,to:String)=>String=
-  l state=(relativeDropCommon((splitNonempty(normalize(from)):[String]),splitNonempty(normalize(to))):RelativeState);
+λrelative(from:String,to:String)=>String=l state=(relativeDropCommon((splitNonempty(normalize(from)):[String]),splitNonempty(normalize(to))):RelativeState);
   pathFromSegments(false,(repeatSegment(#state.left,".."):[String])⧺state.right)
 
 λrelativeDropCommon(left:[String],right:[String])=>RelativeState match left{

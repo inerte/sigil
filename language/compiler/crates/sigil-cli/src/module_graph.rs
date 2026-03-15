@@ -12,6 +12,18 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
+fn format_validation_errors(errors: &[ValidationError]) -> String {
+    if errors.is_empty() {
+        "validation errors".to_string()
+    } else {
+        errors
+            .iter()
+            .map(|error| error.to_string())
+            .collect::<Vec<_>>()
+            .join("\n\n")
+    }
+}
+
 #[derive(Debug, Error)]
 pub enum ModuleGraphError {
     #[error("IO error: {0}")]
@@ -23,7 +35,7 @@ pub enum ModuleGraphError {
     #[error("Parser error: {0}")]
     Parser(String),
 
-    #[error("Validation error: {} errors", .0.len())]
+    #[error("Validation error: {}", format_validation_errors(.0))]
     Validation(Vec<ValidationError>),
 
     #[error("Import cycle detected: {0:?}")]

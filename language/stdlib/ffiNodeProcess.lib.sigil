@@ -8,7 +8,7 @@
     λgetWorkingDir()=>String=process.cwd()
 ⟧
 
-e process : {
-  cwd : λ() => String,
-  exit : λ(Int) => Unit
+e process:{
+  cwd:λ()=>String,
+  exit:λ(Int)=>Unit
 }

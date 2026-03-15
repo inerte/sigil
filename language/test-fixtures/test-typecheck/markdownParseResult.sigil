@@ -14,6 +14,6 @@ t ParseState={
 λmain()=>Unit=()
 
 λtest(x:Bool)=>ParseResult match x{
-  true => {blocks:[],state:{codeLang:"",codeLines:[],inCodeBlock:false,paraLines:[]}}|
-  false => {blocks:[Paragraph("hi")],state:{codeLang:"js",codeLines:["test"],inCodeBlock:true,paraLines:[]}}
+  true=>{blocks:[],state:{codeLang:"",codeLines:[],inCodeBlock:false,paraLines:[]}}|
+  false=>{blocks:[Paragraph("hi")],state:{codeLang:"js",codeLines:["test"],inCodeBlock:true,paraLines:[]}}
 }

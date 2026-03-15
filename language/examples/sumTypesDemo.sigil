@@ -41,9 +41,7 @@ t Result[T,E]=Ok(T)|Err(E)
 }
 
 ⟦ Main - demonstrate all examples ⟧
-λmain()=>Int={
-  (colorToNumber(Green())+processResult(divide(10,2))+processResult(divide(10,0)):Int)
-}
+λmain()=>Int=(colorToNumber(Green())+processResult(divide(10,2))+processResult(divide(10,0)):Int)
 
 ⟦ Example 3: Pattern matching on Result ⟧
 λprocessResult(result:Result[Int,String])=>Int match result{

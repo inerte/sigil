@@ -2,4 +2,4 @@
    Expected output: 42
 ⟧
 
-λ main() => Int = 42
+λmain()=>Int=42

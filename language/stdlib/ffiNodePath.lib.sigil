@@ -8,13 +8,13 @@
     λgetConfigPath()=>String=path.join(["config", "app.json"])
 ⟧
 
-e path : {
-  basename : λ(String) => String,
-  dirname : λ(String) => String,
-  extname : λ(String) => String,
-  join : λ(String, String) => String,
-  normalize : λ(String) => String,
-  relative : λ(String, String) => String
+e path:{
+  basename:λ(String)=>String,
+  dirname:λ(String)=>String,
+  extname:λ(String)=>String,
+  join:λ(String,String)=>String,
+  normalize:λ(String)=>String,
+  relative:λ(String,String)=>String
 }
 
 ⟦ Note: join and resolve are variadic in Node.js but Sigil doesn't support

@@ -7,23 +7,17 @@ t Selection={chosen:Int,rest:[Int]}
 
 λpermutationsFromSelections(choices:[Selection])=>[[Int]] match choices{
   []=>[]|
-  [choice,.tail]=>{
-    prependAll(choice.chosen,permutations(choice.rest))⧺permutationsFromSelections(tail)
-  }
+  [choice,.tail]=>prependAll(choice.chosen,permutations(choice.rest))⧺permutationsFromSelections(tail)
 }
 
 λprependAll(item:Int,xss:[[Int]])=>[[Int]] match xss{
   []=>[]|
-  [head,.tail]=>{
-    [[item]⧺head]⧺prependAll(item,tail)
-  }
+  [head,.tail]=>[[item]⧺head]⧺prependAll(item,tail)
 }
 
 λprependChoice(choices:[Selection],prefix:Int)=>[Selection] match choices{
   []=>[]|
-  [choice,.tail]=>{
-    [Selection{chosen:choice.chosen,rest:[prefix]⧺choice.rest}]⧺prependChoice(tail,prefix)
-  }
+  [choice,.tail]=>[Selection{chosen:choice.chosen,rest:[prefix]⧺choice.rest}]⧺prependChoice(tail,prefix)
 }
 
 λselections(xs:[Int])=>[Selection] match xs{

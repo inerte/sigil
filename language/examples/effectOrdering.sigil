@@ -8,8 +8,6 @@ t Pair={a:String,b:String}
 
 λfirst()=>!IO String="first"
 
-λmain()=>!IO Pair={
-  {a:first(),b:second()}
-}
+λmain()=>!IO Pair={a:first(),b:second()}
 
 λsecond()=>!IO String="second"

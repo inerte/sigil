@@ -3,10 +3,7 @@
   false=>match exponent=0{
     true=>1%modulus|
     false=>match exponent%2=0{
-      true=>{
-        l half=(modPow(base,exponent/2,modulus):Int);
-        (half*half)%modulus
-      }|
+      true=>l half=(modPow(base,exponent/2,modulus):Int); (half*half)%modulus|
       false=>(((base%modulus)*modPow(base,exponent-1,modulus))%modulus)
     }
   }

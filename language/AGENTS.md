@@ -86,6 +86,16 @@ Sigil is not “many ways to do it.” If adding a feature:
 
 If a parser ambiguity appears, favor the interpretation that preserves globally expected meaning (e.g., arithmetic operators should behave like arithmetic).
 
+Current canonical layout rules:
+- function and lambda signatures stay on one line
+- direct `match` bodies begin on that same line
+- multi-arm `match` is always multiline
+- each arm starts as `pattern=>`
+- the body must begin on that same line, though it may continue on following indented lines
+- no spaces around `:`, `=>`, `=`, `|`, `+`, `-`, `*`, `/`, or `%`
+- no spaces just inside delimiters
+- no blank lines inside `match`
+
 Current constructor and list invariants:
 - imported sum-type constructors use fully qualified module syntax in both expressions and patterns
 - canonical example: `src::graphTypes.Ordering([1,2,3])`

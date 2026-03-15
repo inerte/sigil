@@ -1,14 +1,10 @@
 i stdlib::json
 
 λmain()=>Unit match stdlib::json.parse("{\"profile\":{\"name\":\"sigil\"}}"){
-    Ok(value)=>
-      match stdlib::json.asObject(value){
-        Some(root)=>
-          match stdlib::json.getField("profile",root){
-            Some(profileValue)=>
-              match stdlib::json.asObject(profileValue){
-                Some(profile)=>
-                  l _=(stdlib::json.getField("name",profile):Option[stdlib::json.JsonValue]);
+    Ok(value)=>match stdlib::json.asObject(value){
+        Some(root)=>match stdlib::json.getField("profile",root){
+            Some(profileValue)=>match stdlib::json.asObject(profileValue){
+                Some(profile)=>l _=(stdlib::json.getField("name",profile):Option[stdlib::json.JsonValue]);
                   ()|
                 None=>()
               }|

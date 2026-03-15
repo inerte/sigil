@@ -7,6 +7,6 @@ t Result={data:Outer}
 λmain()=>Unit=()
 
 λtest(x:Bool)=>Result match x{
-  true => {data:{inner:{items:[]},name:"test"}}|
-  false => {data:{inner:{items:[1,2,3]},name:"other"}}
+  true=>{data:{inner:{items:[]},name:"test"}}|
+  false=>{data:{inner:{items:[1,2,3]},name:"other"}}
 }

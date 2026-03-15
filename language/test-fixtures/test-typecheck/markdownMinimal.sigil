@@ -7,8 +7,8 @@ t ParseState={inCodeBlock:Bool}
 λemptyBlocks()=>[Block]=[]
 
 λflushCodeBlock(state:ParseState)=>[Block] match state.inCodeBlock{
-  true => [Paragraph("test")]|
-  false => emptyBlocks()
+  true=>[Paragraph("test")]|
+  false=>emptyBlocks()
 }
 
 λmain()=>Unit=()

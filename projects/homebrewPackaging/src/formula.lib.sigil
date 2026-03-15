@@ -7,11 +7,9 @@ i stdlib::string
 
 λarchiveName(platform:String,version:String)=>String="sigil-"++version++"-"++platform++".tar.gz"
 
-λarchiveUrl(platform:String,repo:String,version:String)=>String=
-  "https://github.com/"++repo++"/releases/download/"++version++"/"++archiveName(platform,version)
+λarchiveUrl(platform:String,repo:String,version:String)=>String="https://github.com/"++repo++"/releases/download/"++version++"/"++archiveName(platform,version)
 
-λchecksumLine(line:String)=>Option[ChecksumEntry]=
-  checksumLineParts(stdlib::string.split("  ",stdlib::string.trim(line)))
+λchecksumLine(line:String)=>Option[ChecksumEntry]=checksumLineParts(stdlib::string.split("  ",stdlib::string.trim(line)))
 
 λchecksumLineParts(parts:[String])=>Option[ChecksumEntry] match stdlib::list.nth(0,parts){
   Some(sha256)=>match stdlib::list.nth(1,parts){
@@ -29,8 +27,7 @@ i stdlib::string
   }
 }
 
-λformula(input:FormulaInput)=>String=
-  stdlib::string.unlines([
+λformula(input:FormulaInput)=>String=stdlib::string.unlines([
     "class Sigil < Formula",
     "  desc \"Machine-first programming language designed for canonical code generation\"",
     "  homepage \"https://github.com/"++input.repo++"\"",
@@ -76,8 +73,7 @@ i stdlib::string
   }
 }
 
-λparseChecksums(text:String,version:String)=>Option[ReleaseChecksums]=
-  parseChecksumsFromEntries(parseChecksumLines(stdlib::string.lines(text)),version)
+λparseChecksums(text:String,version:String)=>Option[ReleaseChecksums]=parseChecksumsFromEntries(parseChecksumLines(stdlib::string.lines(text)),version)
 
 λparseChecksumsFromEntries(entries:[ChecksumEntry],version:String)=>Option[ReleaseChecksums] match findChecksum(archiveName("darwin-arm64",version),entries){
   Some(darwinArm64)=>match findChecksum(archiveName("darwin-x64",version),entries){

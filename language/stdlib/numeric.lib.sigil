@@ -7,7 +7,10 @@
 t DivMod={quotient:Int,remainder:Int}
 
 ⟦ Absolute value ⟧
-λabs(x:Int)=>Int match x<0{true=>-x|false=>x}
+λabs(x:Int)=>Int match x<0{
+  true=>-x|
+  false=>x
+}
 
 ⟦ Clamp value between min and max ⟧
 λclamp(hi:Int,lo:Int,x:Int)=>Int=max(lo,min(x,hi))
@@ -16,12 +19,13 @@ t DivMod={quotient:Int,remainder:Int}
 λdivisible(d:Int,n:Int)=>Bool=n%d=0
 
 ⟦ Quotient and Euclidean remainder pair ⟧
-λdivmod(a:Int,b:Int)=>DivMod={
-  DivMod{quotient:((a-(mod(a,b):Int))/b),remainder:(mod(a,b):Int)}
-}
+λdivmod(a:Int,b:Int)=>DivMod=DivMod{quotient:((a-(mod(a,b):Int))/b),remainder:(mod(a,b):Int)}
 
 ⟦ Greatest common divisor (Euclidean algorithm) ⟧
-λgcd(a:Int,b:Int)=>Int match b{0=>a|divisor=>gcd(divisor,a%divisor)}
+λgcd(a:Int,b:Int)=>Int match b{
+  0=>a|
+  divisor=>gcd(divisor,a%divisor)
+}
 
 ⟦ Check if value is in range [min, max] (inclusive) ⟧
 λinRange(max:Int,min:Int,x:Int)=>Bool=inRangeHelper(max,min,x)
@@ -66,23 +70,25 @@ t DivMod={quotient:Int,remainder:Int}
 ⟦ Least common multiple ⟧
 λlcm(a:Int,b:Int)=>Int match (a=0) or (b=0){
   true=>0|
-  false=>{
-    abs((a/(abs(gcd(a,b)):Int))*b)
-  }
+  false=>abs((a/(abs(gcd(a,b)):Int))*b)
 }
 
 ⟦ Maximum of two numbers ⟧
-λmax(a:Int,b:Int)=>Int match a>b{true=>a|false=>b}
+λmax(a:Int,b:Int)=>Int match a>b{
+  true=>a|
+  false=>b
+}
 
 ⟦ Minimum of two numbers ⟧
-λmin(a:Int,b:Int)=>Int match a<b{true=>a|false=>b}
+λmin(a:Int,b:Int)=>Int match a<b{
+  true=>a|
+  false=>b
+}
 
 ⟦ Euclidean modulo with non-negative remainder ⟧
-λmod(a:Int,b:Int)=>Int={
-  match ((a%b):Int)<0{
-    true=>((a%b):Int)+abs(b)|
-    false=>((a%b):Int)
-  }
+λmod(a:Int,b:Int)=>Int match ((a%b):Int)<0{
+  true=>((a%b):Int)+abs(b)|
+  false=>((a%b):Int)
 }
 
 ⟦ Integer power (exponentiation) ⟧

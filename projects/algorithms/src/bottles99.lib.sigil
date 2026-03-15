@@ -1,13 +1,31 @@
-λaction(n:Int)=>String match n{0=>"Go to the store and buy some more"|1=>"Take it down and pass it around"|count=>"Take one down and pass it around"}
+λaction(n:Int)=>String match n{
+  0=>"Go to the store and buy some more"|
+  1=>"Take it down and pass it around"|
+  count=>"Take one down and pass it around"
+}
 
-λcountLower(n:Int)=>String match n{0=>"no more bottles"|1=>"1 bottle"|count=>showInt(count)++" bottles"}
+λcountLower(n:Int)=>String match n{
+  0=>"no more bottles"|
+  1=>"1 bottle"|
+  count=>showInt(count)++" bottles"
+}
 
-λcountUpper(n:Int)=>String match n{0=>"No more bottles"|1=>"1 bottle"|count=>showInt(count)++" bottles"}
+λcountUpper(n:Int)=>String match n{
+  0=>"No more bottles"|
+  1=>"1 bottle"|
+  count=>showInt(count)++" bottles"
+}
 
-λnextCount(n:Int)=>String match n{0=>countLower(99)|count=>countLower(count-1)}
+λnextCount(n:Int)=>String match n{
+  0=>countLower(99)|
+  count=>countLower(count-1)
+}
 
 λshowInt(n:Int)=>String=""+n
 
-λsong(n:Int)=>String match n{0=>verse(0)|count=>verse(count)++"\n\n"++song(count-1)}
+λsong(n:Int)=>String match n{
+  0=>verse(0)|
+  count=>verse(count)++"\n\n"++song(count-1)
+}
 
 λverse(n:Int)=>String=countUpper(n)++" of beer on the wall, "++countLower(n)++" of beer.\n"++action(n)++", "++nextCount(n)++" of beer on the wall."

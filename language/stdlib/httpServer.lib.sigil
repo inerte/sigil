@@ -19,43 +19,21 @@ t Response={
   status:Int
 }
 
-e console : {
-  log : λ(String) => Unit
+e console:{
+  log:λ(String)=>Unit
 }
 
-λjson(body:String,status:Int)=>Response={
-  body:body,
-  headers:{"content-type"↦"application/json; charset=utf-8"},
-  status:status
-}
+λjson(body:String,status:Int)=>Response={body:body,headers:{"content-type"↦"application/json; charset=utf-8"},status:status}
 
-λlogRequest(req:Request)=>!IO Unit={
-  console.log((req.method++" "++req.path:String))
-}
+λlogRequest(req:Request)=>!IO Unit=console.log((req.method++" "++req.path:String))
 
-λnotFound()=>Response={
-  body:"<h1>404 Not Found</h1>",
-  headers:{"content-type"↦"text/html; charset=utf-8"},
-  status:404
-}
+λnotFound()=>Response={body:"<h1>404 Not Found</h1>",headers:{"content-type"↦"text/html; charset=utf-8"},status:404}
 
-λnotFoundMsg(path:String)=>Response={
-  body:"<h1>404 Not Found</h1><p>Path: "++path++"</p>",
-  headers:{"content-type"↦"text/html; charset=utf-8"},
-  status:404
-}
+λnotFoundMsg(path:String)=>Response={body:"<h1>404 Not Found</h1><p>Path: "++path++"</p>",headers:{"content-type"↦"text/html; charset=utf-8"},status:404}
 
-λok(body:String)=>Response={
-  body:body,
-  headers:{"content-type"↦"text/html; charset=utf-8"},
-  status:200
-}
+λok(body:String)=>Response={body:body,headers:{"content-type"↦"text/html; charset=utf-8"},status:200}
 
-λresponse(body:String,contentType:String,status:Int)=>Response={
-  body:body,
-  headers:{"content-type"↦contentType},
-  status:status
-}
+λresponse(body:String,contentType:String,status:Int)=>Response={body:body,headers:{"content-type"↦contentType},status:status}
 
 ⟦
   Start an HTTP server on the specified port.
@@ -64,8 +42,4 @@ e console : {
 ⟧
 λserve(handler:λ(Request)=>!IO Response,port:Int)=>!IO Unit=()
 
-λserverError(message:String)=>Response={
-  body:"<h1>500 Internal Server Error</h1><p>"++message++"</p>",
-  headers:{"content-type"↦"text/html; charset=utf-8"},
-  status:500
-}
+λserverError(message:String)=>Response={body:"<h1>500 Internal Server Error</h1><p>"++message++"</p>",headers:{"content-type"↦"text/html; charset=utf-8"},status:500}

@@ -1,17 +1,13 @@
 i src::content
 i src::types
 
-λallDocsSection(config:src::types.SiteBuildConfig,docs:[src::types.SitePage])=>String=
-  "<section class=\"listing\"><h2>Docs</h2><ul class=\"page-list\">"++pageCards(config,docs)++"</ul></section>"
+λallDocsSection(config:src::types.SiteBuildConfig,docs:[src::types.SitePage])=>String="<section class=\"listing\"><h2>Docs</h2><ul class=\"page-list\">"++pageCards(config,docs)++"</ul></section>"
 
-λallSpecsSection(config:src::types.SiteBuildConfig,spec:[src::types.SitePage])=>String=
-  "<section class=\"listing\"><h2>Spec</h2><ul class=\"page-list\">"++pageCards(config,spec)++"</ul></section>"
+λallSpecsSection(config:src::types.SiteBuildConfig,spec:[src::types.SitePage])=>String="<section class=\"listing\"><h2>Spec</h2><ul class=\"page-list\">"++pageCards(config,spec)++"</ul></section>"
 
-λarticleListing(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>String=
-  "<section class=\"listing\"><h2>Latest Articles</h2><ul class=\"page-list\">"++pageCards(config,pages)++"</ul></section>"
+λarticleListing(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>String="<section class=\"listing\"><h2>Latest Articles</h2><ul class=\"page-list\">"++pageCards(config,pages)++"</ul></section>"
 
-λarticlePage(config:src::types.SiteBuildConfig,navHtml:String,page:src::types.SitePage)=>String=
-  shell(
+λarticlePage(config:src::types.SiteBuildConfig,navHtml:String,page:src::types.SitePage)=>String=shell(
     sourceLink(config,page),
     config,
     breadcrumb(config,page),
@@ -20,8 +16,7 @@ i src::types
     page.meta.title
   )
 
-λarticlesIndex(config:src::types.SiteBuildConfig,introHtml:String,pages:[src::types.SitePage])=>String=
-  shell(
+λarticlesIndex(config:src::types.SiteBuildConfig,introHtml:String,pages:[src::types.SitePage])=>String=shell(
     "",
     config,
     sectionIntro("Design notes and language decisions published from the repo.","Articles"),
@@ -30,11 +25,9 @@ i src::types
     "Articles"
   )
 
-λbreadcrumb(config:src::types.SiteBuildConfig,page:src::types.SitePage)=>String=
-  "<nav class=\"breadcrumb\"><a href=\""++siteUrl(config.basePath,"/")++"\">Home</a><span>/</span><a href=\""++sectionUrl(config.basePath,page.section)++"\">"++src::content.sectionName(page.section)++"</a></nav>"
+λbreadcrumb(config:src::types.SiteBuildConfig,page:src::types.SitePage)=>String="<nav class=\"breadcrumb\"><a href=\""++siteUrl(config.basePath,"/")++"\">Home</a><span>/</span><a href=\""++sectionUrl(config.basePath,page.section)++"\">"++src::content.sectionName(page.section)++"</a></nav>"
 
-λdetailMeta(page:src::types.SitePage)=>String=
-  l author=(page.meta.author:String);
+λdetailMeta(page:src::types.SitePage)=>String=l author=(page.meta.author:String);
   l date=(page.meta.date:String);
   match (#author>0) or (#date>0){
     true=>"<p class=\"page-meta\">"++detailMetaValue(author,date)++"</p>"|
@@ -49,8 +42,7 @@ i src::types
   }
 }
 
-λdocsIndex(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>String=
-  shell(
+λdocsIndex(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>String=shell(
     "",
     config,
     sectionIntro("Reference docs rendered directly from language/docs.","Docs"),
@@ -69,8 +61,7 @@ i src::types
   false=>""
 }
 
-λhomePage(articles:[src::types.SitePage],config:src::types.SiteBuildConfig,docs:[src::types.SitePage],home:src::types.SitePage,spec:[src::types.SitePage])=>String=
-  shell(
+λhomePage(articles:[src::types.SitePage],config:src::types.SiteBuildConfig,docs:[src::types.SitePage],home:src::types.SitePage,spec:[src::types.SitePage])=>String=shell(
     "",
     config,
     sectionIntro(config.siteDescription,config.siteTitle),
@@ -79,14 +70,11 @@ i src::types
     home.meta.title
   )
 
-λlatestArticles(articles:[src::types.SitePage],config:src::types.SiteBuildConfig)=>String=
-  "<section class=\"listing\"><h2>Latest Articles</h2><ul class=\"page-list\">"++pageCards(config,src::content.takeFirst(5,articles))++"</ul><p><a href=\""++siteUrl(config.basePath,"/articles/")++"\" class=\"view-all\">View all articles =></a></p></section>"
+λlatestArticles(articles:[src::types.SitePage],config:src::types.SiteBuildConfig)=>String="<section class=\"listing\"><h2>Latest Articles</h2><ul class=\"page-list\">"++pageCards(config,src::content.takeFirst(5,articles))++"</ul><p><a href=\""++siteUrl(config.basePath,"/articles/")++"\" class=\"view-all\">View all articles =></a></p></section>"
 
-λnav(config:src::types.SiteBuildConfig)=>String=
-  "<header class=\"site-header\"><div class=\"site-brand\"><a href=\""++siteUrl(config.basePath,"/")++"\">"++config.siteTitle++"</a></div><nav class=\"site-nav\"><a href=\""++siteUrl(config.basePath,"/articles/")++"\">Articles</a><a href=\""++siteUrl(config.basePath,"/docs/")++"\">Docs</a><a href=\""++siteUrl(config.basePath,"/spec/")++"\">Spec</a>"++githubNav(config)++"</nav></header>"
+λnav(config:src::types.SiteBuildConfig)=>String="<header class=\"site-header\"><div class=\"site-brand\"><a href=\""++siteUrl(config.basePath,"/")++"\">"++config.siteTitle++"</a></div><nav class=\"site-nav\"><a href=\""++siteUrl(config.basePath,"/articles/")++"\">Articles</a><a href=\""++siteUrl(config.basePath,"/docs/")++"\">Docs</a><a href=\""++siteUrl(config.basePath,"/spec/")++"\">Spec</a>"++githubNav(config)++"</nav></header>"
 
-λnotFoundPage(config:src::types.SiteBuildConfig)=>String=
-  shell(
+λnotFoundPage(config:src::types.SiteBuildConfig)=>String=shell(
     "",
     config,
     sectionIntro("The requested route does not exist.","Page not found"),
@@ -95,8 +83,7 @@ i src::types
     "Not Found"
   )
 
-λpageCard(config:src::types.SiteBuildConfig,page:src::types.SitePage)=>String=
-  "<li class=\"page-card\" data-section=\""++src::content.sectionNameLowercase(page.section)++"\"><a class=\"page-link\" href=\""++siteUrl(config.basePath,src::content.canonicalRoute(page))++"\">"++page.meta.title++"</a>"++pageCardMeta(page)++pageCardDescription(page)++"</li>"
+λpageCard(config:src::types.SiteBuildConfig,page:src::types.SitePage)=>String="<li class=\"page-card\" data-section=\""++src::content.sectionNameLowercase(page.section)++"\"><a class=\"page-link\" href=\""++siteUrl(config.basePath,src::content.canonicalRoute(page))++"\">"++page.meta.title++"</a>"++pageCardMeta(page)++pageCardDescription(page)++"</li>"
 
 λpageCardDescription(page:src::types.SitePage)=>String match #page.meta.description>0{
   true=>"<div class=\"page-card-desc\">"++page.meta.description++"</div>"|
@@ -113,17 +100,13 @@ i src::types
   [page,.rest]=>pageCard(config,page)++pageCards(config,rest)
 }
 
-λreferenceList(config:src::types.SiteBuildConfig,heading:String,pages:[src::types.SitePage])=>String=
-  "<section class=\"listing compact\"><h2>"++heading++"</h2><ul class=\"page-list\">"++pageCards(config,src::content.takeFirst(6,pages))++"</ul></section>"
+λreferenceList(config:src::types.SiteBuildConfig,heading:String,pages:[src::types.SitePage])=>String="<section class=\"listing compact\"><h2>"++heading++"</h2><ul class=\"page-list\">"++pageCards(config,src::content.takeFirst(6,pages))++"</ul></section>"
 
-λreferenceLists(config:src::types.SiteBuildConfig,docs:[src::types.SitePage],spec:[src::types.SitePage])=>String=
-  "<div class=\"home-grid secondary\">"++referenceList(config,"Docs",docs)++referenceList(config,"Spec",spec)++"</div>"
+λreferenceLists(config:src::types.SiteBuildConfig,docs:[src::types.SitePage],spec:[src::types.SitePage])=>String="<div class=\"home-grid secondary\">"++referenceList(config,"Docs",docs)++referenceList(config,"Spec",spec)++"</div>"
 
-λsectionCard(body:String,config:src::types.SiteBuildConfig,cta:String,heading:String,route:String)=>String=
-  "<section class=\"section-card\"><h2>"++heading++"</h2><p>"++body++"</p><a class=\"cta\" href=\""++siteUrl(config.basePath,route)++"\">"++cta++"</a></section>"
+λsectionCard(body:String,config:src::types.SiteBuildConfig,cta:String,heading:String,route:String)=>String="<section class=\"section-card\"><h2>"++heading++"</h2><p>"++body++"</p><a class=\"cta\" href=\""++siteUrl(config.basePath,route)++"\">"++cta++"</a></section>"
 
-λsectionIntro(body:String,title:String)=>String=
-  "<section class=\"section-intro\"><h1>"++title++"</h1><p>"++body++"</p></section>"
+λsectionIntro(body:String,title:String)=>String="<section class=\"section-intro\"><h1>"++title++"</h1><p>"++body++"</p></section>"
 
 λsectionUrl(basePath:String,section:src::types.Section)=>String match section{
   src::types.Article()=>siteUrl(basePath,"/articles/")|
@@ -132,8 +115,7 @@ i src::types
   src::types.Spec()=>siteUrl(basePath,"/spec/")
 }
 
-λshell(aside:String,config:src::types.SiteBuildConfig,intro:String,mainHtml:String,meta:String,title:String)=>String=
-  "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>"++title++" · "++config.siteTitle++"</title><meta name=\"description\" content=\""++config.siteDescription++"\"><link rel=\"stylesheet\" href=\""++siteUrl(config.basePath,"/assets/site.css")++"\"><link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css\"></head><body><div class=\"site-shell\">"++nav(config)++"<main class=\"site-main\">"++intro++meta++"<article class=\"prose\">"++mainHtml++"</article>"++aside++"</main>"++footer(config)++"</div><script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js\"></script><script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js\"></script><script>hljs.highlightAll();</script></body></html>"
+λshell(aside:String,config:src::types.SiteBuildConfig,intro:String,mainHtml:String,meta:String,title:String)=>String="<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>"++title++" · "++config.siteTitle++"</title><meta name=\"description\" content=\""++config.siteDescription++"\"><link rel=\"stylesheet\" href=\""++siteUrl(config.basePath,"/assets/site.css")++"\"><link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css\"></head><body><div class=\"site-shell\">"++nav(config)++"<main class=\"site-main\">"++intro++meta++"<article class=\"prose\">"++mainHtml++"</article>"++aside++"</main>"++footer(config)++"</div><script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js\"></script><script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js\"></script><script>hljs.highlightAll();</script></body></html>"
 
 λsiteUrl(basePath:String,route:String)=>String=src::content.basePathPrefix(basePath,route)
 
@@ -142,8 +124,7 @@ i src::types
   false=>""
 }
 
-λspecIndex(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>String=
-  shell(
+λspecIndex(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>String=shell(
     "",
     config,
     sectionIntro("Normative language and stdlib specifications rendered from language/spec.","Spec"),

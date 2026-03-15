@@ -4,23 +4,19 @@
   With typed FFI, we get compile-time type checking for external function calls.
 ⟧
 
-e console : {
-  log : λ(String) => Unit
+e console:{
+  log:λ(String)=>Unit
 }
 
-e fs::promises : {
-  readFile : λ(String, String) => String,
-  writeFile : λ(String, String) => Unit
+e fs::promises:{
+  readFile:λ(String,String)=>String,
+  writeFile:λ(String,String)=>Unit
 }
 
-e path : {
-  join : λ(String, String) => String
+e path:{
+  join:λ(String,String)=>String
 }
 
-λmain()=>Unit={
-  console.log("Typed FFI demonstration")
-}
+λmain()=>Unit=console.log("Typed FFI demonstration")
 
-λreadConfig(filename:String)=>String={
-  fs::promises.readFile((path.join("config", filename):String), "utf8")
-}
+λreadConfig(filename:String)=>String=fs::promises.readFile((path.join("config",filename):String),"utf8")

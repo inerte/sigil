@@ -5,13 +5,7 @@ i stdlib::list
 i stdlib::path
 i stdlib::string
 
-λbaseConfig(outputDir:String)=>src::types.SiteBuildConfig={
-  basePath:"/",
-  outputDir:outputDir,
-  repoUrl:"https://github.com/inerte/sigil",
-  siteDescription:"Machine-first programming language designed for canonical code generation.",
-  siteTitle:"Sigil"
-}
+λbaseConfig(outputDir:String)=>src::types.SiteBuildConfig={basePath:"/",outputDir:outputDir,repoUrl:"https://github.com/inerte/sigil",siteDescription:"Machine-first programming language designed for canonical code generation.",siteTitle:"Sigil"}
 
 λcontains(haystack:String,needle:String)=>Bool=stdlib::string.indexOf(haystack,needle)≥0
 

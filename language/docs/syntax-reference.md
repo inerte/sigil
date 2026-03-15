@@ -99,6 +99,8 @@ For function declarations:
 
 - `=` is required before a non-`match` body
 - `=` is forbidden before a `match` body
+- the full signature must stay on one physical line
+- a direct `match` body must start on that same line
 
 Effects, when present, appear between `=>` and the return type:
 
@@ -232,6 +234,21 @@ match value{
   _=>"many"
 }
 ```
+
+Canonical layout rules for `match`:
+
+- single-arm `match` may stay on one line
+- multi-arm `match` must be multiline
+- each arm header starts as `pattern=>`
+- the arm body must begin on that same line
+- continued body lines are allowed, but blank lines inside the `match` are not
+- `|` closes the previous arm; it never leads the next line
+
+Canonical spacing rules:
+
+- no spaces just inside delimiters
+- no spaces around `:`, `=>`, `=`, or `|`
+- no spaces around `+`, `-`, `*`, `/`, or `%`
 
 Patterns include:
 

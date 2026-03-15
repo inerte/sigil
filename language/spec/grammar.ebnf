@@ -1,6 +1,8 @@
 (* Sigil Programming Language - Surface Grammar Sketch *)
 (* This grammar documents the current parser surface at a high level. *)
-(* Some canonical constraints are enforced after parsing by validation/typecheck. *)
+(* Some canonical constraints are enforced after parsing by validation/typecheck,
+   including whitespace/layout rules such as one-line signatures and multiline
+   multi-arm match layout. *)
 
 Program = { TopLevelDecl } ;
 

@@ -2,14 +2,12 @@
 
 t AssetPair={config:String,template:String}
 
-e fs::promises : {
-  readFile : λ(String, String) => String
+e fs::promises:{
+  readFile:λ(String,String)=>String
 }
 
 λloadConfig()=>String=fs::promises.readFile("config.json","utf8")
 
 λloadTemplate()=>String=fs::promises.readFile("template.html","utf8")
 
-λmain()=>AssetPair={
-  {config:loadConfig(),template:loadTemplate()}
-}
+λmain()=>AssetPair={config:loadConfig(),template:loadTemplate()}

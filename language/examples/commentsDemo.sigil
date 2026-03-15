@@ -3,8 +3,8 @@
    Comments use white square brackets and can appear anywhere. ⟧
 
 λfactorial(n:Int)=>Int match n{
-  0=>1|  ⟦ base case: 0! = 1 ⟧
-  1=>1|  ⟦ base case: 1! = 1 ⟧
+  0=>1|⟦ base case: 0! = 1 ⟧
+  1=>1|⟦ base case: 1! = 1 ⟧
   value=>value*⟦ multiply n by (n-1)! ⟧factorial(value-1)
 }
 

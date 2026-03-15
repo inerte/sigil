@@ -1,3 +1,7 @@
-λfibonacci(n:Int)=>Int match n{0=>0|1=>1|value=>fibonacci(value-1)+fibonacci(value-2)}
+λfibonacci(n:Int)=>Int match n{
+  0=>0|
+  1=>1|
+  value=>fibonacci(value-1)+fibonacci(value-2)
+}
 
 λmain()=>Int=fibonacci(10)

@@ -15,8 +15,7 @@ i stdlib::time
   cards=>"<nav class=\"article-nav\">"++cards++"</nav>"
 }
 
-λarticleNavCard(config:src::types.SiteBuildConfig,label:String,page:src::types.SitePage)=>String=
-  "<a class=\"article-nav-card\" href=\""++src::content.basePathPrefix(config.basePath,src::content.canonicalRoute(page))++"\"><span class=\"article-nav-label\">"++label++"</span><strong>"++page.meta.title++"</strong></a>"
+λarticleNavCard(config:src::types.SiteBuildConfig,label:String,page:src::types.SitePage)=>String="<a class=\"article-nav-card\" href=\""++src::content.basePathPrefix(config.basePath,src::content.canonicalRoute(page))++"\"><span class=\"article-nav-label\">"++label++"</span><strong>"++page.meta.title++"</strong></a>"
 
 λarticlePreviousCard(config:src::types.SiteBuildConfig,previousPage:Option[src::types.SitePage])=>String match previousPage{
   Some(page)=>articleNavCard(config,"Previous article",page)|
@@ -25,8 +24,7 @@ i stdlib::time
 
 λassetOutputDir(config:src::types.SiteBuildConfig)=>String=stdlib::path.join(config.outputDir,"assets")
 
-λbuildSite(config:src::types.SiteBuildConfig)=>!IO Unit=
-  l _=(prepareOutputDir(config.outputDir):Unit);
+λbuildSite(config:src::types.SiteBuildConfig)=>!IO Unit=l _=(prepareOutputDir(config.outputDir):Unit);
   l rawData=(loadSiteData(config):src::types.SiteData);
   l aliasRoutes=(src::content.buildAliasRoutes(rawData):[src::types.AliasRoute]);
   l data=(renderSiteData(aliasRoutes,config.basePath,rawData):src::types.SiteData);
@@ -42,8 +40,7 @@ i stdlib::time
   l _=(writeSiteManifest(config,data):Unit);
   writeNotFound(config)
 
-λbuildSiteManifestJson(data:src::types.SiteData,generatedAt:String,repoUrl:String)=>stdlib::json.JsonValue=
-  stdlib::json.JsonObject({
+λbuildSiteManifestJson(data:src::types.SiteData,generatedAt:String,repoUrl:String)=>stdlib::json.JsonValue=stdlib::json.JsonObject({
     "articlesCount"↦stdlib::json.JsonString(stdlib::string.intToString(#data.articles)),
     "docsCount"↦stdlib::json.JsonString(stdlib::string.intToString(#data.docs)),
     "generatedAt"↦stdlib::json.JsonString(generatedAt),
@@ -53,15 +50,12 @@ i stdlib::time
 
 λcopyAssetFiles(assetNames:[String],assetSourceDir:String,assetTargetDir:String)=>!IO Unit match assetNames{
   []=>()|
-  [asset,.rest]=>
-    l _=(copyFile(stdlib::path.join(assetSourceDir,asset),stdlib::path.join(assetTargetDir,asset)):Unit);
-    copyAssetFiles(rest,assetSourceDir,assetTargetDir)
+  [asset,.rest]=>l _=(copyFile(stdlib::path.join(assetSourceDir,asset),stdlib::path.join(assetTargetDir,asset)):Unit); copyAssetFiles(rest,assetSourceDir,assetTargetDir)
 }
 
 λcopyFile(source:String,target:String)=>!IO Unit=fs::promises.copyFile(source,target)
 
-λcopyStaticAssets(assetTargetDir:String)=>!IO Unit=
-  l assetSourceDir=("website/static":String);
+λcopyStaticAssets(assetTargetDir:String)=>!IO Unit=l assetSourceDir=("website/static":String);
   l _=(stdlib::file.makeDirs(assetTargetDir):Unit);
   l assetNames=(stdlib::file.listDir(assetSourceDir):[String]);
   copyAssetFiles(assetNames,assetSourceDir,assetTargetDir)
@@ -76,29 +70,24 @@ i stdlib::time
 
 λlistDir(path:String)=>!IO [String]=stdlib::file.listDir(path)
 
-λloadArticles(config:src::types.SiteBuildConfig)=>!IO [src::types.SitePage]=
-  l files=(filterMarkdownFiles(stdlib::file.listDir("website/articles")):[String]);
+λloadArticles(config:src::types.SiteBuildConfig)=>!IO [src::types.SitePage]=l files=(filterMarkdownFiles(stdlib::file.listDir("website/articles")):[String]);
   l pages=(loadPagesFromFiles(config,"website/articles",files,src::types.Article()):[src::types.SitePage]);
   src::content.pagesNewestFirst(removeIntroPage(pages))
 
-λloadDocs(config:src::types.SiteBuildConfig)=>!IO [src::types.SitePage]=
-  l files=(filterMarkdownFiles(stdlib::file.listDir("language/docs")):[String]);
+λloadDocs(config:src::types.SiteBuildConfig)=>!IO [src::types.SitePage]=l files=(filterMarkdownFiles(stdlib::file.listDir("language/docs")):[String]);
   l pages=(loadPagesFromFiles(config,"language/docs",files,src::types.Doc()):[src::types.SitePage]);
   src::content.pagesSortedByTitle(pages)
 
-λloadPage(config:src::types.SiteBuildConfig,section:src::types.Section,sourcePath:String)=>!IO src::types.SitePage=
-  l markdown=(stdlib::file.readText(sourcePath):String);
+λloadPage(config:src::types.SiteBuildConfig,section:src::types.Section,sourcePath:String)=>!IO src::types.SitePage=l markdown=(stdlib::file.readText(sourcePath):String);
   l parsed=(src::frontmatter.parseFrontmatter(markdown,sourcePath):src::frontmatter.ParseResult);
   src::content.blankPage(parsed.content,parsed.meta,pageOutputDir(section,parsed.meta.slug,sourcePath),section,sourcePath)
 
 λloadPagesFromFiles(config:src::types.SiteBuildConfig,dir:String,files:[String],section:src::types.Section)=>!IO [src::types.SitePage] match files{
   []=>[]|
-  [file,.rest]=>
-    [loadPage(config,section,stdlib::path.join(dir,file))]⧺loadPagesFromFiles(config,dir,rest,section)
+  [file,.rest]=>[loadPage(config,section,stdlib::path.join(dir,file))]⧺loadPagesFromFiles(config,dir,rest,section)
 }
 
-λloadSiteData(config:src::types.SiteBuildConfig)=>!IO src::types.SiteData=
-  l home=(loadPage(config,src::types.Home(),"website/README.md"):src::types.SitePage);
+λloadSiteData(config:src::types.SiteBuildConfig)=>!IO src::types.SiteData=l home=(loadPage(config,src::types.Home(),"website/README.md"):src::types.SitePage);
   l articlesIntro=(loadPage(config,src::types.Article(),"website/articles/README.md"):src::types.SitePage);
   l articles=(loadArticles(config):[src::types.SitePage]);
   l docs=(loadDocs(config):[src::types.SitePage]);
@@ -125,8 +114,7 @@ i stdlib::time
     spec:spec
   }
 
-λloadSpec(config:src::types.SiteBuildConfig)=>!IO [src::types.SitePage]=
-  l files=(filterMarkdownFiles(stdlib::file.listDir("language/spec")):[String]);
+λloadSpec(config:src::types.SiteBuildConfig)=>!IO [src::types.SitePage]=l files=(filterMarkdownFiles(stdlib::file.listDir("language/spec")):[String]);
   l pages=(loadPagesFromFiles(config,"language/spec",files,src::types.Spec()):[src::types.SitePage]);
   src::content.pagesSortedByTitle(pages)
 
@@ -145,8 +133,7 @@ i stdlib::time
   src::types.Spec()=>"spec/"++slug
 }
 
-λprepareOutputDir(outputDir:String)=>!IO Unit=
-  l _=(stdlib::file.removeTree(outputDir):Unit);
+λprepareOutputDir(outputDir:String)=>!IO Unit=l _=(stdlib::file.removeTree(outputDir):Unit);
   stdlib::file.makeDirs(outputDir)
 
 λremoveIntroPage(pages:[src::types.SitePage])=>[src::types.SitePage] match pages{
@@ -162,49 +149,33 @@ i stdlib::time
   [page,.rest]=>[src::content.renderPage(aliasRoutes,basePath,page)]⧺renderPages(aliasRoutes,basePath,rest)
 }
 
-λrenderSiteData(aliasRoutes:[src::types.AliasRoute],basePath:String,data:src::types.SiteData)=>src::types.SiteData={
-  articles:renderPages(aliasRoutes,basePath,data.articles),
-  articlesIntro:src::content.renderPage(aliasRoutes,basePath,data.articlesIntro),
-  docs:renderPages(aliasRoutes,basePath,data.docs),
-  home:src::content.renderPage(aliasRoutes,basePath,data.home),
-  spec:renderPages(aliasRoutes,basePath,data.spec)
-}
+λrenderSiteData(aliasRoutes:[src::types.AliasRoute],basePath:String,data:src::types.SiteData)=>src::types.SiteData={articles:renderPages(aliasRoutes,basePath,data.articles),articlesIntro:src::content.renderPage(aliasRoutes,basePath,data.articlesIntro),docs:renderPages(aliasRoutes,basePath,data.docs),home:src::content.renderPage(aliasRoutes,basePath,data.home),spec:renderPages(aliasRoutes,basePath,data.spec)}
 
-λwriteArticlePages(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>!IO Unit=
-  writeArticlePagesInner(config,pages,None())
+λwriteArticlePages(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>!IO Unit=writeArticlePagesInner(config,pages,None())
 
 λwriteArticlePagesInner(config:src::types.SiteBuildConfig,pages:[src::types.SitePage],previousPage:Option[src::types.SitePage])=>!IO Unit match pages{
   []=>()|
-  [page,nextPage,.rest]=>
-    l _=(writePage(config,src::templates.articlePage(config,articleNav(config,articleNavCard(config,"Next article",nextPage),articlePreviousCard(config,previousPage)),page),page):Unit);
-    writeArticlePagesInner(config,[nextPage]⧺rest,Some(page))|
+  [page,nextPage,.rest]=>l _=(writePage(config,src::templates.articlePage(config,articleNav(config,articleNavCard(config,"Next article",nextPage),articlePreviousCard(config,previousPage)),page),page):Unit); writeArticlePagesInner(config,[nextPage]⧺rest,Some(page))|
   [page]=>writePage(config,src::templates.articlePage(config,articleNav(config,"",articlePreviousCard(config,previousPage)),page),page)
 }
 
-λwriteIndexHtml(dir:String,html:String)=>!IO Unit=
-  l _=(stdlib::file.makeDirs(dir):Unit);
+λwriteIndexHtml(dir:String,html:String)=>!IO Unit=l _=(stdlib::file.makeDirs(dir):Unit);
   stdlib::file.writeText(html,stdlib::path.join(dir,"index.html"))
 
-λwriteNotFound(config:src::types.SiteBuildConfig)=>!IO Unit=
-  stdlib::file.writeText(src::templates.notFoundPage(config),stdlib::path.join(config.outputDir,"404.html"))
+λwriteNotFound(config:src::types.SiteBuildConfig)=>!IO Unit=stdlib::file.writeText(src::templates.notFoundPage(config),stdlib::path.join(config.outputDir,"404.html"))
 
-λwritePage(config:src::types.SiteBuildConfig,html:String,page:src::types.SitePage)=>!IO Unit=
-  l _=(stdlib::file.makeDirs(outputDirPath(config,page)):Unit);
+λwritePage(config:src::types.SiteBuildConfig,html:String,page:src::types.SitePage)=>!IO Unit=l _=(stdlib::file.makeDirs(outputDirPath(config,page)):Unit);
   stdlib::file.writeText(html,stdlib::path.join(outputDirPath(config,page),"index.html"))
 
 λwritePages(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>!IO Unit match pages{
   []=>()|
-  [page,.rest]=>
-    l _=(writePage(config,src::templates.articlePage(config,"",page),page):Unit);
-    writePages(config,rest)
+  [page,.rest]=>l _=(writePage(config,src::templates.articlePage(config,"",page),page):Unit); writePages(config,rest)
 }
 
-λwriteSiteManifest(config:src::types.SiteBuildConfig,data:src::types.SiteData)=>!IO Unit=
-  l generatedAt=(stdlib::time.formatIso(stdlib::time.now()):String);
+λwriteSiteManifest(config:src::types.SiteBuildConfig,data:src::types.SiteData)=>!IO Unit=l generatedAt=(stdlib::time.formatIso(stdlib::time.now()):String);
   stdlib::file.writeText(stdlib::json.stringify(buildSiteManifestJson(data,generatedAt,config.repoUrl)),stdlib::path.join(config.outputDir,"site.json"))
 
-λwriteStandalonePages(aliasRoutes:[src::types.AliasRoute],config:src::types.SiteBuildConfig)=>!IO Unit=
-  l aboutPage=(loadPage(config,src::types.Home(),"website/about-site.md"):src::types.SitePage);
+λwriteStandalonePages(aliasRoutes:[src::types.AliasRoute],config:src::types.SiteBuildConfig)=>!IO Unit=l aboutPage=(loadPage(config,src::types.Home(),"website/about-site.md"):src::types.SitePage);
   writePage(config,src::templates.articlePage(config,"",src::content.renderPage(aliasRoutes,config.basePath,{
     bodyHtml:aboutPage.bodyHtml,
     bodyMarkdown:aboutPage.bodyMarkdown,

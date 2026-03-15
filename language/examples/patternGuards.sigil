@@ -34,12 +34,12 @@ With guards, you can express ranges cleanly.
 ⟧
 
 λclassifyNumber(n:Int)=>String match n{
-  x when x>1000 => "huge" |
-  x when x>100 => "large" |
-  x when x>10 => "medium" |
-  x when x>0 => "small" |
-  0 => "zero" |
-  _ => "negative"
+  x when x>1000=>"huge"|
+  x when x>100=>"large"|
+  x when x>10=>"medium"|
+  x when x>0=>"small"|
+  0=>"zero"|
+  _=>"negative"
 }
 
 ⟦ Example 5: Complex Conditions
@@ -49,15 +49,15 @@ conjunction (`and`), disjunction (`or`), and comparisons.
 ⟧
 
 λclassifyPoint(p:Point)=>String match p.x{
-  x when x=0 and p.y=0 => "origin" |
-  x when x=0 => "on y-axis" |
-  _ when p.y=0 => "on x-axis" |
-  x when x=p.y => "on diagonal y=x" |
-  x when x=-p.y => "on diagonal y=-x" |
-  x when x>0 and p.y>0 => "quadrant I" |
-  x when x<0 and p.y>0 => "quadrant II" |
-  x when x<0 and p.y<0 => "quadrant III" |
-  _ => "quadrant IV"
+  x when x=0 and p.y=0=>"origin"|
+  x when x=0=>"on y-axis"|
+  _ when p.y=0=>"on x-axis"|
+  x when x=p.y=>"on diagonal y=x"|
+  x when x=-p.y=>"on diagonal y=-x"|
+  x when x>0 and p.y>0=>"quadrant I"|
+  x when x<0 and p.y>0=>"quadrant II"|
+  x when x<0 and p.y<0=>"quadrant III"|
+  _=>"quadrant IV"
 }
 
 ⟦ Example 8: Backward Compatibility
@@ -67,9 +67,9 @@ Guards are purely additive.
 ⟧
 
 λcolorToHex(color:Color)=>String match color{
-  Red => "#FF0000" |
-  Green => "#00FF00" |
-  Blue => "#0000FF"
+  Red=>"#FF0000"|
+  Green=>"#00FF00"|
+  Blue=>"#0000FF"
 }
 
 ⟦ Example 7: List Processing
@@ -79,15 +79,14 @@ conditional list processing.
 ⟧
 
 λfindFirstPositive(list:[Int])=>String match list{
-  [] => "empty list" |
-  [x,.rest] when x>0 => "first positive: "++stdlib::string.intToString(x) |
-  [_,.xs] => findFirstPositive(xs)
+  []=>"empty list"|
+  [x,.rest] when x>0=>"first positive: "++stdlib::string.intToString(x)|
+  [_,.xs]=>findFirstPositive(xs)
 }
 
 ⟦ Demo - Run examples ⟧
 
-λmain()=>Int={
-  l _=(console.log("=== Range Checking ==="):Unit);
+λmain()=>Int=l _=(console.log("=== Range Checking ==="):Unit);
   l _=(console.log(classifyNumber(5000)):Unit);
   l _=(console.log(classifyNumber(50)):Unit);
   l _=(console.log(classifyNumber(5)):Unit);
@@ -117,7 +116,6 @@ conditional list processing.
   l _=(console.log(colorToHex(Red())):Unit);
 
   0
-}
 
 ⟦ Example 4: Fall-through Behavior
 
@@ -126,10 +124,10 @@ This enables priority-based matching.
 ⟧
 
 λprioritizeTask(priority:Int,urgent:Bool)=>String match priority{
-  p when urgent => "URGENT (priority "++stdlib::string.intToString(p)++")" |
-  p when p>7 => "High priority" |
-  p when p>3 => "Medium priority" |
-  _ => "Low priority"
+  p when urgent=>"URGENT (priority "++stdlib::string.intToString(p)++")"|
+  p when p>7=>"High priority"|
+  p when p>3=>"Medium priority"|
+  _=>"Low priority"
 }
 
 ⟦ Example 3: Conditional Unpacking
@@ -139,11 +137,11 @@ on the unpacked values.
 ⟧
 
 λprocessResult(r:Result)=>String match r{
-  Ok(n) when n>100 => "Big success: "++stdlib::string.intToString(n) |
-  Ok(n) when n>0 => "Success: "++stdlib::string.intToString(n) |
-  Ok(n) => "Success with zero or negative" |
-  Err(msg) when #msg>0 => "Error: "++msg |
-  Err(_) => "Unknown error"
+  Ok(n) when n>100=>"Big success: "++stdlib::string.intToString(n)|
+  Ok(n) when n>0=>"Success: "++stdlib::string.intToString(n)|
+  Ok(n)=>"Success with zero or negative"|
+  Err(msg) when #msg>0=>"Error: "++msg|
+  Err(_)=>"Unknown error"
 }
 
 ⟦ Example 6: State Machines
@@ -153,11 +151,11 @@ Match on state structure, guard on input conditions.
 ⟧
 
 λstateTransition(action:Action,state:State)=>State match action{
-  Increment when state.count<100 => {count:state.count+1,mode:state.mode} |
-  Increment => {count:100,mode:"maxed"} |
-  Decrement when state.count>0 => {count:state.count-1,mode:state.mode} |
-  Decrement => {count:0,mode:"empty"} |
-  Reset => {count:0,mode:"normal"}
+  Increment when state.count<100=>{count:state.count+1,mode:state.mode}|
+  Increment=>{count:100,mode:"maxed"}|
+  Decrement when state.count>0=>{count:state.count-1,mode:state.mode}|
+  Decrement=>{count:0,mode:"empty"}|
+  Reset=>{count:0,mode:"normal"}
 }
 
 ⟦ Example 2: Validating Data
@@ -167,10 +165,10 @@ on structure but need to check constraints.
 ⟧
 
 λvalidateUser(u:User)=>String match u.age{
-  age when age<0 => "Invalid: negative age" |
-  age when age>150 => "Invalid: age too high" |
-  _ when #u.name=0 => "Invalid: empty name" |
-  _ => "Valid user: "++u.name
+  age when age<0=>"Invalid: negative age"|
+  age when age>150=>"Invalid: age too high"|
+  _ when #u.name=0=>"Invalid: empty name"|
+  _=>"Valid user: "++u.name
 }
 
 ⟦ Design Principles

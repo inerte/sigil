@@ -43,6 +43,9 @@ The validator enforces canonical structural rules such as:
 - file-purpose rules
 - test location rules
 - formatting rules
+- one-line signatures for functions and lambdas
+- canonical `match` layout and arm headers
+- no non-canonical operator/delimiter spacing
 
 ### Typed Canonical Validation
 
@@ -74,3 +77,10 @@ If a doc claims “preferred style” but the compiler accepts multiple forms, t
 claim is not yet canonical enforcement.
 
 For Sigil, canonicality means the toolchain actually rejects the alternative.
+
+Current high-signal formatting constraints:
+
+- `λfib(n:Int)=>Int match n{...}` is valid; splitting the signature/body introducer across lines is not
+- multi-arm `match` must be multiline
+- each arm starts as `pattern=>`
+- the body must begin on that same line, though it may continue on following indented lines

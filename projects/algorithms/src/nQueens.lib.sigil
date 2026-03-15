@@ -21,9 +21,7 @@ i stdlib::list
 λtryColumns(col:Int,placedRev:[Int],row:Int,size:Int)=>[[Int]] match col≥size{
   true=>[]|
   false=>match safeAgainst(col,1,placedRev){
-    true=>{
-      placeQueens([col]⧺placedRev,row+1,size)⧺tryColumns(col+1,placedRev,row,size)
-    }|
+    true=>placeQueens([col]⧺placedRev,row+1,size)⧺tryColumns(col+1,placedRev,row,size)|
     false=>tryColumns(col+1,placedRev,row,size)
   }
 }

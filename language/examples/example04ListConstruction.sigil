@@ -3,6 +3,6 @@
    Tests: creating list and getting length
 ⟧
 
-λ main() => Int = #makeList()
+λmain()=>Int=#makeList()
 
-λ makeList() => [Int] = [10, 20, 30, 40]
+λmakeList()=>[Int]=[10,20,30,40]

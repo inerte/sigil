@@ -21,11 +21,9 @@ i stdlib::list
 
 λtopologicalLoop(graph:src::graphTypes.Graph,ordered:[Int],remaining:[Int])=>src::graphTypes.TopologicalSortResult match remaining{
   []=>src::graphTypes.Ordering(ordered)|
-  _=>{
-    match pickZeroIndegree(graph,remaining){
-      value when value=-1=>src::graphTypes.CycleDetected()|
-      nextVertex=>topologicalLoop(graph,ordered⧺[nextVertex],stdlib::list.removeFirst(nextVertex,remaining))
-    }
+  _=>match pickZeroIndegree(graph,remaining){
+    value when value=-1=>src::graphTypes.CycleDetected()|
+    nextVertex=>topologicalLoop(graph,ordered⧺[nextVertex],stdlib::list.removeFirst(nextVertex,remaining))
   }
 }
 

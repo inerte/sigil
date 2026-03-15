@@ -10,7 +10,7 @@ use sigil_ast::*;
 use sigil_typechecker::{PurityClass, TypedDeclaration, TypedExpr, TypedExprKind, TypedProgram};
 use std::collections::{HashMap, HashSet};
 use crate::error::ValidationError;
-use sigil_lexer::{SourceLocation, Position};
+use sigil_lexer::{tokenize, Position, SourceLocation, Token, TokenType};
 
 fn is_lower_camel_case(name: &str) -> bool {
     let mut chars = name.chars();
@@ -165,6 +165,405 @@ fn validate_blank_lines(source: &str, file_path: &str) -> Result<(), Vec<Validat
     Ok(())
 }
 
+fn slice_between<'a>(source: &'a str, start: usize, end: usize) -> &'a str {
+    if start >= end || end > source.len() {
+        ""
+    } else {
+        source.get(start..end).unwrap_or("")
+    }
+}
+
+fn slice_at_line(source: &str, line: usize) -> &str {
+    source.lines().nth(line.saturating_sub(1)).unwrap_or("")
+}
+
+fn contains_space_outside_comments(slice: &str) -> bool {
+    let mut chars = slice.chars().peekable();
+    let mut in_comment = false;
+
+    while let Some(ch) = chars.next() {
+        if in_comment {
+            if ch == '⟧' {
+                in_comment = false;
+            }
+            continue;
+        }
+
+        if ch == '⟦' {
+            in_comment = true;
+            continue;
+        }
+
+        if ch == ' ' {
+            return true;
+        }
+    }
+
+    false
+}
+
+fn has_space_gap(source: &str, left: &Token, right: &Token) -> bool {
+    left.location.end.line == right.location.start.line
+        && contains_space_outside_comments(slice_between(source, left.location.end.offset, right.location.start.offset))
+}
+
+fn char_before(source: &str, offset: usize) -> Option<char> {
+    source.get(..offset)?.chars().next_back()
+}
+
+fn char_after(source: &str, offset: usize) -> Option<char> {
+    source.get(offset..)?.chars().next()
+}
+
+fn expr_location(expr: &Expr) -> SourceLocation {
+    match expr {
+        Expr::Literal(expr) => expr.location,
+        Expr::Identifier(expr) => expr.location,
+        Expr::Lambda(expr) => expr.location,
+        Expr::Application(expr) => expr.location,
+        Expr::Binary(expr) => expr.location,
+        Expr::Unary(expr) => expr.location,
+        Expr::Match(expr) => expr.location,
+        Expr::Let(expr) => expr.location,
+        Expr::If(expr) => expr.location,
+        Expr::List(expr) => expr.location,
+        Expr::Record(expr) => expr.location,
+        Expr::MapLiteral(expr) => expr.location,
+        Expr::Tuple(expr) => expr.location,
+        Expr::FieldAccess(expr) => expr.location,
+        Expr::Index(expr) => expr.location,
+        Expr::Pipeline(expr) => expr.location,
+        Expr::Map(expr) => expr.location,
+        Expr::Filter(expr) => expr.location,
+        Expr::Fold(expr) => expr.location,
+        Expr::MemberAccess(expr) => expr.location,
+        Expr::WithMock(expr) => expr.location,
+        Expr::TypeAscription(expr) => expr.location,
+    }
+}
+
+fn type_location(ty: &Type) -> SourceLocation {
+    match ty {
+        Type::Primitive(ty) => ty.location,
+        Type::List(ty) => ty.location,
+        Type::Map(ty) => ty.location,
+        Type::Function(ty) => ty.location,
+        Type::Constructor(ty) => ty.location,
+        Type::Variable(ty) => ty.location,
+        Type::Tuple(ty) => ty.location,
+        Type::Qualified(ty) => ty.location,
+    }
+}
+
+fn token_is_open_delimiter(token_type: TokenType) -> bool {
+    matches!(token_type, TokenType::LPAREN | TokenType::LBRACKET | TokenType::LBRACE)
+}
+
+fn token_is_close_delimiter(token_type: TokenType) -> bool {
+    matches!(token_type, TokenType::RPAREN | TokenType::RBRACKET | TokenType::RBRACE)
+}
+
+fn token_forbids_surrounding_spaces(token_type: TokenType) -> bool {
+    matches!(
+        token_type,
+        TokenType::COLON
+            | TokenType::ARROW
+            | TokenType::EQUAL
+            | TokenType::PipeSep
+            | TokenType::PLUS
+            | TokenType::MINUS
+            | TokenType::STAR
+            | TokenType::SLASH
+            | TokenType::PERCENT
+    )
+}
+
+fn validate_token_spacing(source: &str, file_path: &str) -> Result<(), Vec<ValidationError>> {
+    let tokens = tokenize(source).map_err(|error| vec![ValidationError::FilenameFormat {
+        filename: file_path.to_string(),
+        message: error.to_string(),
+        location: SourceLocation::new(Position::new(1, 1, 0), Position::new(1, 1, 0)),
+    }])?;
+
+    let significant: Vec<&Token> = tokens
+        .iter()
+        .filter(|token| token.token_type != TokenType::NEWLINE && token.token_type != TokenType::EOF)
+        .collect();
+
+    for window in significant.windows(2) {
+        let left = window[0];
+        let right = window[1];
+
+        if token_is_open_delimiter(left.token_type) && has_space_gap(source, left, right) {
+            return Err(vec![ValidationError::DelimiterSpacing {
+                location: SourceLocation::new(left.location.start, right.location.start),
+            }]);
+        }
+
+        if token_is_close_delimiter(right.token_type) && has_space_gap(source, left, right) {
+            return Err(vec![ValidationError::DelimiterSpacing {
+                location: SourceLocation::new(left.location.end, right.location.end),
+            }]);
+        }
+
+        if token_forbids_surrounding_spaces(left.token_type) && has_space_gap(source, left, right) {
+            return Err(vec![ValidationError::OperatorSpacing {
+                location: SourceLocation::new(left.location.start, right.location.start),
+            }]);
+        }
+
+        if token_forbids_surrounding_spaces(right.token_type) && has_space_gap(source, left, right) {
+            return Err(vec![ValidationError::OperatorSpacing {
+                location: SourceLocation::new(left.location.end, right.location.end),
+            }]);
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_function_body_layout(function: &FunctionDecl, source: &str) -> Result<(), Vec<ValidationError>> {
+    let body_location = expr_location(&function.body);
+    if function.location.start.line != body_location.start.line {
+        return Err(vec![ValidationError::SignatureLayout {
+            location: function.location,
+        }]);
+    }
+
+    if matches!(function.body, Expr::Match(_)) {
+        let between = slice_between(source, type_location(function.return_type.as_ref().unwrap()).end.offset, body_location.start.offset);
+        if between.contains('{') {
+            return Err(vec![ValidationError::MatchBodyBlock {
+                location: function.location,
+            }]);
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_lambda_body_layout(lambda: &LambdaExpr, source: &str) -> Result<(), Vec<ValidationError>> {
+    let body_location = expr_location(&lambda.body);
+    if lambda.location.start.line != body_location.start.line {
+        return Err(vec![ValidationError::SignatureLayout {
+            location: lambda.location,
+        }]);
+    }
+
+    if matches!(lambda.body, Expr::Match(_)) {
+        let between = slice_between(source, type_location(&lambda.return_type).end.offset, body_location.start.offset);
+        if between.contains('{') {
+            return Err(vec![ValidationError::MatchBodyBlock {
+                location: lambda.location,
+            }]);
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_match_layout(match_expr: &MatchExpr, source: &str) -> Result<(), Vec<ValidationError>> {
+    let multiline = match_expr.location.start.line != match_expr.location.end.line;
+
+    if match_expr.arms.len() > 1 && !multiline {
+        return Err(vec![ValidationError::MatchLayout {
+            location: match_expr.location,
+        }]);
+    }
+
+    if !multiline {
+        return Ok(());
+    }
+
+    for line in (match_expr.location.start.line + 1)..match_expr.location.end.line {
+        let trimmed = slice_at_line(source, line).trim();
+        if trimmed.is_empty() {
+            return Err(vec![ValidationError::MatchArmLayout {
+                location: match_expr.location,
+            }]);
+        }
+        if trimmed.starts_with('|') {
+            return Err(vec![ValidationError::MatchArmLayout {
+                location: match_expr.location,
+            }]);
+        }
+    }
+
+    for arm in &match_expr.arms {
+        let body_location = expr_location(&arm.body);
+        if arm.location.start.line != body_location.start.line {
+            return Err(vec![ValidationError::MatchArmLayout {
+                location: arm.location,
+            }]);
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_redundant_parens_in_body(expr: &Expr, source: &str) -> Result<(), Vec<ValidationError>> {
+    let can_be_meaningfully_wrapped = matches!(
+        expr,
+        Expr::Application(_)
+            | Expr::Binary(_)
+            | Expr::Unary(_)
+            | Expr::Match(_)
+            | Expr::Let(_)
+            | Expr::If(_)
+            | Expr::List(_)
+            | Expr::Record(_)
+            | Expr::MapLiteral(_)
+            | Expr::Tuple(_)
+            | Expr::FieldAccess(_)
+            | Expr::Index(_)
+            | Expr::Pipeline(_)
+            | Expr::Map(_)
+            | Expr::Filter(_)
+            | Expr::Fold(_)
+            | Expr::TypeAscription(_)
+    );
+    if !can_be_meaningfully_wrapped {
+        return Ok(());
+    }
+
+    let location = expr_location(expr);
+    if char_before(source, location.start.offset) == Some('(')
+        && char_after(source, location.end.offset) == Some(')')
+    {
+        return Err(vec![ValidationError::RedundantParens { location }]);
+    }
+    Ok(())
+}
+
+fn validate_expr_layout(expr: &Expr, source: &str, errors: &mut Vec<ValidationError>) {
+    match expr {
+        Expr::Lambda(lambda) => {
+            if let Err(error) = validate_lambda_body_layout(lambda, source) {
+                errors.extend(error);
+            }
+            validate_expr_layout(&lambda.body, source, errors);
+        }
+        Expr::Match(match_expr) => {
+            if let Err(error) = validate_match_layout(match_expr, source) {
+                errors.extend(error);
+            }
+            for arm in &match_expr.arms {
+                if let Err(error) = validate_redundant_parens_in_body(&arm.body, source) {
+                    errors.extend(error);
+                }
+                if let Some(guard) = &arm.guard {
+                    validate_expr_layout(guard, source, errors);
+                }
+                validate_expr_layout(&arm.body, source, errors);
+            }
+            validate_expr_layout(&match_expr.scrutinee, source, errors);
+        }
+        Expr::Application(application) => {
+            validate_expr_layout(&application.func, source, errors);
+            for arg in &application.args {
+                validate_expr_layout(arg, source, errors);
+            }
+        }
+        Expr::Binary(binary) => {
+            validate_expr_layout(&binary.left, source, errors);
+            validate_expr_layout(&binary.right, source, errors);
+        }
+        Expr::Unary(unary) => validate_expr_layout(&unary.operand, source, errors),
+        Expr::Let(let_expr) => {
+            validate_expr_layout(&let_expr.value, source, errors);
+            validate_expr_layout(&let_expr.body, source, errors);
+        }
+        Expr::If(if_expr) => {
+            validate_expr_layout(&if_expr.condition, source, errors);
+            validate_expr_layout(&if_expr.then_branch, source, errors);
+            if let Some(else_branch) = &if_expr.else_branch {
+                validate_expr_layout(else_branch, source, errors);
+            }
+        }
+        Expr::List(list) => {
+            for element in &list.elements {
+                validate_expr_layout(element, source, errors);
+            }
+        }
+        Expr::Record(record) => {
+            for field in &record.fields {
+                validate_expr_layout(&field.value, source, errors);
+            }
+        }
+        Expr::MapLiteral(map) => {
+            for entry in &map.entries {
+                validate_expr_layout(&entry.key, source, errors);
+                validate_expr_layout(&entry.value, source, errors);
+            }
+        }
+        Expr::Tuple(tuple) => {
+            for element in &tuple.elements {
+                validate_expr_layout(element, source, errors);
+            }
+        }
+        Expr::FieldAccess(access) => validate_expr_layout(&access.object, source, errors),
+        Expr::Index(index) => {
+            validate_expr_layout(&index.object, source, errors);
+            validate_expr_layout(&index.index, source, errors);
+        }
+        Expr::Pipeline(pipeline) => {
+            validate_expr_layout(&pipeline.left, source, errors);
+            validate_expr_layout(&pipeline.right, source, errors);
+        }
+        Expr::Map(map_expr) => {
+            validate_expr_layout(&map_expr.list, source, errors);
+            validate_expr_layout(&map_expr.func, source, errors);
+        }
+        Expr::Filter(filter) => {
+            validate_expr_layout(&filter.list, source, errors);
+            validate_expr_layout(&filter.predicate, source, errors);
+        }
+        Expr::Fold(fold) => {
+            validate_expr_layout(&fold.list, source, errors);
+            validate_expr_layout(&fold.func, source, errors);
+            validate_expr_layout(&fold.init, source, errors);
+        }
+        Expr::WithMock(with_mock) => validate_expr_layout(&with_mock.body, source, errors),
+        Expr::TypeAscription(ascription) => validate_expr_layout(&ascription.expr, source, errors),
+        Expr::Literal(_) | Expr::Identifier(_) | Expr::MemberAccess(_) => {}
+    }
+}
+
+fn validate_source_layout(program: &Program, source: &str, file_path: &str) -> Result<(), Vec<ValidationError>> {
+    let mut errors = Vec::new();
+
+    if let Err(error) = validate_token_spacing(source, file_path) {
+        errors.extend(error);
+    }
+
+    for declaration in &program.declarations {
+        match declaration {
+            Declaration::Function(function) => {
+                if let Err(error) = validate_function_body_layout(function, source) {
+                    errors.extend(error);
+                }
+                if let Err(error) = validate_redundant_parens_in_body(&function.body, source) {
+                    errors.extend(error);
+                }
+                validate_expr_layout(&function.body, source, &mut errors);
+            }
+            Declaration::Const(const_decl) => {
+                validate_expr_layout(&const_decl.value, source, &mut errors);
+            }
+            Declaration::Test(test_decl) => {
+                validate_expr_layout(&test_decl.body, source, &mut errors);
+            }
+            Declaration::Type(_) | Declaration::Import(_) | Declaration::Extern(_) => {}
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
 /// Validate that a program follows canonical form rules
 pub fn validate_canonical_form(program: &Program, file_path: Option<&str>, source: Option<&str>) -> Result<(), Vec<ValidationError>> {
     let mut errors = Vec::new();
@@ -178,6 +577,9 @@ pub fn validate_canonical_form(program: &Program, file_path: Option<&str>, sourc
             errors.extend(e);
         }
         if let Err(e) = validate_blank_lines(src, path) {
+            errors.extend(e);
+        }
+        if let Err(e) = validate_source_layout(program, src, path) {
             errors.extend(e);
         }
     }
@@ -2212,8 +2614,8 @@ mod tests {
 
     #[test]
     fn test_no_duplicate_functions() {
-        let source = r#"λ bar(y: Int) => Int = y * 2
-λ foo(x: Int) => Int = x + 1
+        let source = r#"λbar(y:Int)=>Int=y*2
+λfoo(x:Int)=>Int=x+1
 "#;
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.lib.sigil").unwrap();
@@ -2223,8 +2625,8 @@ mod tests {
 
     #[test]
     fn test_duplicate_function_error() {
-        let source = r#"λ foo(x: Int) => Int = x + 1
-λ foo(y: Int) => Int = y * 2
+        let source = r#"λfoo(x:Int)=>Int=x+1
+λfoo(y:Int)=>Int=y*2
 "#;
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.lib.sigil").unwrap();
@@ -2300,6 +2702,65 @@ mod tests {
 
         assert!(validate_typed_canonical_form(&typed.typed_program).is_ok());
     }
+
+    #[test]
+    fn test_multi_arm_match_must_be_multiline() {
+        let source = r#"λfib(n:Int)=>Int match n{0=>0|1=>1|value=>fib(value-1)+fib(value-2)}
+λmain()=>Int=fib(5)
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
+        assert!(result.is_err());
+        assert!(matches!(result.unwrap_err()[0], ValidationError::MatchLayout { .. }));
+    }
+
+    #[test]
+    fn test_direct_match_body_canonical_layout_allowed() {
+        let source = r#"λfib(n:Int)=>Int match n{
+  0=>0|
+  1=>1|
+  value=>fib(value-1)+fib(value-2)
+}
+λmain()=>Int=fib(5)
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
+        assert!(result.is_ok(), "{:?}", result.unwrap_err());
+    }
+
+    #[test]
+    fn test_nested_match_arm_body_allowed() {
+        let source = r#"λf(x:Int,y:Int)=>Int match x{
+  0=>match y{
+    0=>1|
+    _=>2
+  }|
+  _=>3
+}
+λmain()=>Int=f(0,1)
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
+        assert!(result.is_ok(), "{:?}", result.unwrap_err());
+    }
+
+    #[test]
+    fn test_signature_split_across_lines_rejected() {
+        let source = "λfib(n:Int)=>Int\nmatch n{0=>0}\n";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().iter().any(|error| matches!(error, ValidationError::SignatureLayout { .. })));
+    }
+
 }
 
 /// Validate canonical declaration ordering

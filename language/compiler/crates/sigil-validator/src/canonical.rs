@@ -2372,6 +2372,11 @@ fn validate_recursive_functions(program: &Program) -> Result<(), Vec<ValidationE
                     function_name: func.name.clone(),
                     location: func.location,
                 });
+            } else if detect_exact_recursive_flat_map_clone(func) {
+                errors.push(ValidationError::RecursiveFlatMapClone {
+                    function_name: func.name.clone(),
+                    location: func.location,
+                });
             } else if detect_exact_recursive_fold_clone(func) {
                 errors.push(ValidationError::RecursiveFoldClone {
                     function_name: func.name.clone(),
@@ -2399,6 +2404,8 @@ fn validate_recursive_functions(program: &Program) -> Result<(), Vec<ValidationE
             }
         }
     }
+
+    collect_filter_then_count_errors(program, &mut errors);
 
     if errors.is_empty() {
         Ok(())
@@ -2774,6 +2781,13 @@ fn is_binary_operator<'a>(
     }
 }
 
+fn is_unary_length(expr: &Expr) -> Option<&Expr> {
+    match expr {
+        Expr::Unary(unary) if unary.operator == UnaryOperator::Length => Some(&unary.operand),
+        _ => None,
+    }
+}
+
 fn is_nullary_constructor_expr(expr: &Expr, name: &str) -> bool {
     matches!(
         expr,
@@ -3065,6 +3079,24 @@ fn detect_exact_recursive_find_clone(func: &FunctionDecl) -> bool {
     }
 }
 
+fn detect_exact_recursive_flat_map_clone(func: &FunctionDecl) -> bool {
+    let Some((match_expr, _param_name)) = function_match_on_single_list_param(func) else {
+        return false;
+    };
+    let Some((empty_arm, cons_arm, head_name, rest_name)) = empty_and_cons_arms(match_expr) else {
+        return false;
+    };
+    if !is_empty_list_expr(&empty_arm.body) {
+        return false;
+    }
+    let Some((left, right)) = is_binary_list_append(&cons_arm.body) else {
+        return false;
+    };
+    is_self_call_with_rest(right, &func.name, rest_name)
+        && !is_self_call(left, &func.name)
+        && expr_contains_identifier(left, head_name)
+}
+
 fn count_self_calls(expr: &Expr, function_name: &str) -> usize {
     match expr {
         Expr::Application(app) => {
@@ -3172,6 +3204,111 @@ fn detect_exact_recursive_fold_clone(func: &FunctionDecl) -> bool {
         return false;
     }
     is_obvious_fold_step(&cons_arm.body, &func.name, head_name, rest_name)
+}
+
+fn collect_filter_then_count_errors(program: &Program, errors: &mut Vec<ValidationError>) {
+    for declaration in &program.declarations {
+        match declaration {
+            Declaration::Function(function) => collect_filter_then_count_in_expr(&function.body, errors),
+            Declaration::Const(const_decl) => collect_filter_then_count_in_expr(&const_decl.value, errors),
+            Declaration::Test(test_decl) => collect_filter_then_count_in_expr(&test_decl.body, errors),
+            Declaration::Type(_) | Declaration::Import(_) | Declaration::Extern(_) => {}
+        }
+    }
+}
+
+fn collect_filter_then_count_in_expr(expr: &Expr, errors: &mut Vec<ValidationError>) {
+    match expr {
+        Expr::Literal(_) | Expr::Identifier(_) | Expr::MemberAccess(_) => {}
+        Expr::Lambda(lambda) => collect_filter_then_count_in_expr(&lambda.body, errors),
+        Expr::Application(app) => {
+            collect_filter_then_count_in_expr(&app.func, errors);
+            for arg in &app.args {
+                collect_filter_then_count_in_expr(arg, errors);
+            }
+        }
+        Expr::Binary(binary) => {
+            collect_filter_then_count_in_expr(&binary.left, errors);
+            collect_filter_then_count_in_expr(&binary.right, errors);
+        }
+        Expr::Unary(unary) => {
+            if unary.operator == UnaryOperator::Length && matches!(&unary.operand, Expr::Filter(_)) {
+                errors.push(ValidationError::FilterThenCount {
+                    location: unary.location,
+                });
+            }
+            collect_filter_then_count_in_expr(&unary.operand, errors);
+        }
+        Expr::Match(match_expr) => {
+            collect_filter_then_count_in_expr(&match_expr.scrutinee, errors);
+            for arm in &match_expr.arms {
+                if let Some(guard) = &arm.guard {
+                    collect_filter_then_count_in_expr(guard, errors);
+                }
+                collect_filter_then_count_in_expr(&arm.body, errors);
+            }
+        }
+        Expr::Let(let_expr) => {
+            collect_filter_then_count_in_expr(&let_expr.value, errors);
+            collect_filter_then_count_in_expr(&let_expr.body, errors);
+        }
+        Expr::If(if_expr) => {
+            collect_filter_then_count_in_expr(&if_expr.condition, errors);
+            collect_filter_then_count_in_expr(&if_expr.then_branch, errors);
+            if let Some(else_branch) = &if_expr.else_branch {
+                collect_filter_then_count_in_expr(else_branch, errors);
+            }
+        }
+        Expr::List(list) => {
+            for element in &list.elements {
+                collect_filter_then_count_in_expr(element, errors);
+            }
+        }
+        Expr::Record(record) => {
+            for field in &record.fields {
+                collect_filter_then_count_in_expr(&field.value, errors);
+            }
+        }
+        Expr::MapLiteral(map) => {
+            for entry in &map.entries {
+                collect_filter_then_count_in_expr(&entry.key, errors);
+                collect_filter_then_count_in_expr(&entry.value, errors);
+            }
+        }
+        Expr::Tuple(tuple) => {
+            for element in &tuple.elements {
+                collect_filter_then_count_in_expr(element, errors);
+            }
+        }
+        Expr::FieldAccess(field_access) => collect_filter_then_count_in_expr(&field_access.object, errors),
+        Expr::Index(index) => {
+            collect_filter_then_count_in_expr(&index.object, errors);
+            collect_filter_then_count_in_expr(&index.index, errors);
+        }
+        Expr::Pipeline(pipeline) => {
+            collect_filter_then_count_in_expr(&pipeline.left, errors);
+            collect_filter_then_count_in_expr(&pipeline.right, errors);
+        }
+        Expr::Map(map) => {
+            collect_filter_then_count_in_expr(&map.list, errors);
+            collect_filter_then_count_in_expr(&map.func, errors);
+        }
+        Expr::Filter(filter) => {
+            collect_filter_then_count_in_expr(&filter.list, errors);
+            collect_filter_then_count_in_expr(&filter.predicate, errors);
+        }
+        Expr::Fold(fold) => {
+            collect_filter_then_count_in_expr(&fold.list, errors);
+            collect_filter_then_count_in_expr(&fold.func, errors);
+            collect_filter_then_count_in_expr(&fold.init, errors);
+        }
+        Expr::WithMock(with_mock) => {
+            collect_filter_then_count_in_expr(&with_mock.target, errors);
+            collect_filter_then_count_in_expr(&with_mock.replacement, errors);
+            collect_filter_then_count_in_expr(&with_mock.body, errors);
+        }
+        Expr::TypeAscription(type_ascription) => collect_filter_then_count_in_expr(&type_ascription.expr, errors),
+    }
 }
 
 #[cfg(test)]
@@ -3512,6 +3649,43 @@ mod tests {
     }
 
     #[test]
+    fn test_recursive_flat_map_clone_rejected() {
+        let source = r#"λexplode(xs:[Int])=>[Int] match xs{
+  []=>[]|
+  [x,.rest]=>digits(x)⧺explode(rest)
+}
+
+λdigits(x:Int)=>[Int]=[x,x]
+
+λmain()=>[Int]=explode([1,2,3])
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .iter()
+            .any(|error| matches!(error, ValidationError::RecursiveFlatMapClone { .. })));
+    }
+
+    #[test]
+    fn test_filter_then_count_rejected() {
+        let source = r#"λcountEven(xs:[Int])=>Int=#(xs⊳(λ(x:Int)=>Bool=x%2=0))
+
+λmain()=>Int=countEven([1,2,3,4])
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .iter()
+            .any(|error| matches!(error, ValidationError::FilterThenCount { .. })));
+    }
+
+    #[test]
     fn test_canonical_map_operator_allowed() {
         let source = r#"λdouble(xs:[Int])=>[Int]=xs↦(λ(x:Int)=>Int=x*2)
 
@@ -3531,6 +3705,19 @@ mod tests {
 λfindEven(xs:[Int])=>Option[Int]=stdlib::list.find(λ(x:Int)=>Bool=x%2=0,xs)
 
 λmain()=>Bool=allPositive([1,2,3]) and anyEven([1,2,3]) and findEven([1,2,3,4])=Some(2)
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        assert!(validate_canonical_form(&program, Some("test.sigil"), Some(source)).is_ok());
+    }
+
+    #[test]
+    fn test_canonical_flat_map_and_count_if_allowed() {
+        let source = r#"λcountEven(xs:[Int])=>Int=stdlib::list.countIf(λ(x:Int)=>Bool=x%2=0,xs)
+
+λexplode(xs:[Int])=>[Int]=stdlib::list.flatMap(λ(x:Int)=>[Int]=[x,x],xs)
+
+λmain()=>Bool=countEven([1,2,3,4])=2 and explode([1,2])=[1,1,2,2]
 "#;
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();

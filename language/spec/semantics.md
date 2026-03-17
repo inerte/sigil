@@ -136,21 +136,27 @@ The validator rejects exact recursive clones of:
 
 - `all`
 - `any`
+- `flatMap`
 - `map`
 - `filter`
 - `find`
 - `fold`
 - `reverse`
 
-It also rejects recursive result-building of the form `self(rest)⧺rhs`.
+It also rejects:
+
+- recursive result-building of the form `self(rest)⧺rhs`
+- filter then length of the form `#(xs⊳pred)`
 
 The required replacements are:
 
 - `stdlib::list.all`
 - `stdlib::list.any`
+- `stdlib::list.countIf`
 - `↦`
 - `⊳`
 - `stdlib::list.find`
+- `stdlib::list.flatMap`
 - `⊕` / `stdlib::list.fold`
 - `stdlib::list.reverse`
 

@@ -1,5 +1,7 @@
 i src::types
 
+i stdlib::list
+
 i stdlib::markdown
 
 i stdlib::string
@@ -121,10 +123,7 @@ i stdlib::url
   }
 }
 
-λpagesAliasRoutes(pages:[src::types.SitePage])=>[src::types.AliasRoute] match pages{
-  []=>[]|
-  [page,.rest]=>aliasRoutesForPage(page)⧺pagesAliasRoutes(rest)
-}
+λpagesAliasRoutes(pages:[src::types.SitePage])=>[src::types.AliasRoute]=stdlib::list.flatMap(aliasRoutesForPage,pages)
 
 λpagesNewestFirst(pages:[src::types.SitePage])=>[src::types.SitePage]=sortPagesInner(compareArticlePages,pages)
 

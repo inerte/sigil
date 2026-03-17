@@ -454,6 +454,14 @@ Count occurrences of an element in a list.
 λcount(item:Int,xs:[Int])=>Int
 ```
 
+### countIf
+
+Count elements that satisfy a predicate.
+
+```sigil
+λcountIf[T](pred:λ(T)=>Bool,xs:[T])=>Int
+```
+
 ### drop
 
 Drop the first `n` elements.
@@ -474,6 +482,19 @@ Examples:
 ```sigil
 stdlib::list.find(stdlib::numeric.is_even,[1,3,4,6])   ⟦ => Some(4) ⟧
 stdlib::list.find(stdlib::numeric.is_even,[1,3,5])     ⟦ => None() ⟧
+```
+
+### flatMap
+
+Map each element to a list and flatten the results in order.
+
+```sigil
+λflatMap[T,U](fn:λ(T)=>[U],xs:[T])=>[U]
+```
+
+Examples:
+```sigil
+stdlib::list.flatMap(λ(x:Int)=>[Int]=[x,x],[1,2,3])   ⟦ => [1,1,2,2,3,3] ⟧
 ```
 
 ### fold
@@ -651,14 +672,17 @@ not hand-rolled recursive plumbing:
 
 - use `stdlib::list.all` for universal checks
 - use `stdlib::list.any` for existential checks
+- use `stdlib::list.countIf` for predicate counting
 - use `↦` for projection
 - use `⊳` for filtering
 - use `stdlib::list.find` for first-match search
+- use `stdlib::list.flatMap` for flattening projection
 - use `⊕` or `stdlib::list.fold` for reduction
 - use `stdlib::list.reverse` for reversal
 
 Sigil now rejects exact recursive clones of `all`, `any`, `map`, `filter`,
-`find`, `fold`, and `reverse`, as well as recursive result-building of the form
+`find`, `flatMap`, `fold`, and `reverse`, rejects `#(xs⊳pred)` in favor of
+`stdlib::list.countIf`, and rejects recursive result-building of the form
 `self(rest)⧺rhs`.
 
 ## String Operations

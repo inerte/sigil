@@ -65,6 +65,12 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
+    #[error("SIGIL-CANON-RECURSION-FLATMAP-CLONE: Recursive function '{function_name}' is a hand-rolled flatMap.\n\nSigil rejects exact recursive flatMap clones and requires the canonical stdlib surface.\n\nUse stdlib::list.flatMap(fn,xs) instead of custom recursive flattening projection.")]
+    RecursiveFlatMapClone {
+        function_name: String,
+        location: SourceLocation,
+    },
+
     #[error("SIGIL-CANON-RECURSION-REVERSE-CLONE: Recursive function '{function_name}' is a hand-rolled reverse.\n\nSigil rejects the classic self(rest)⧺[x] reverse shape.\n\nUse stdlib::list.reverse instead.")]
     RecursiveReverseClone {
         function_name: String,
@@ -74,6 +80,11 @@ pub enum ValidationError {
     #[error("SIGIL-CANON-RECURSION-FOLD-CLONE: Recursive function '{function_name}' is a hand-rolled fold.\n\nSigil rejects exact recursive list-reduction clones and requires the canonical reduction surface.\n\nUse ⊕ or stdlib::list.fold instead of custom recursive reduction.")]
     RecursiveFoldClone {
         function_name: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-TRAVERSAL-FILTER-COUNT: Expression uses filter then length for counting.\n\nSigil rejects the exact shape #(xs⊳pred) when a canonical one-pass counting path exists.\n\nUse stdlib::list.countIf(pred,xs) instead.")]
+    FilterThenCount {
         location: SourceLocation,
     },
 
@@ -405,8 +416,10 @@ impl ValidationError {
             ValidationError::RecursiveMapClone { location, .. } => *location,
             ValidationError::RecursiveFilterClone { location, .. } => *location,
             ValidationError::RecursiveFindClone { location, .. } => *location,
+            ValidationError::RecursiveFlatMapClone { location, .. } => *location,
             ValidationError::RecursiveReverseClone { location, .. } => *location,
             ValidationError::RecursiveFoldClone { location, .. } => *location,
+            ValidationError::FilterThenCount { location } => *location,
             ValidationError::NonStructuralRecursion { location, .. } => *location,
             ValidationError::RedundantPattern { location } => *location,
             ValidationError::UnreachablePattern { location } => *location,
@@ -604,6 +617,16 @@ impl From<ValidationError> for Diagnostic {
                 .with_details("guidance", "Use stdlib::list.find(pred,xs) instead of custom recursive element search.")
             }
 
+            ValidationError::RecursiveFlatMapClone { function_name, location } => {
+                Diagnostic::new(
+                    codes::canonical::RECURSION_FLATMAP_CLONE,
+                    SigilPhase::Canonical,
+                    format!("Recursive function '{}' is a hand-rolled flatMap", function_name),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_details("guidance", "Use stdlib::list.flatMap(fn,xs) instead of custom recursive flattening projection.")
+            }
+
             ValidationError::RecursiveReverseClone { function_name, location } => {
                 Diagnostic::new(
                     codes::canonical::RECURSION_REVERSE_CLONE,
@@ -622,6 +645,16 @@ impl From<ValidationError> for Diagnostic {
                 )
                 .with_location(source_location_to_span(get_file(), location))
                 .with_details("guidance", "Use ⊕ or stdlib::list.fold instead of custom recursive reduction.")
+            }
+
+            ValidationError::FilterThenCount { location } => {
+                Diagnostic::new(
+                    codes::canonical::TRAVERSAL_FILTER_COUNT,
+                    SigilPhase::Canonical,
+                    "filter followed by length is not canonical".to_string(),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_details("guidance", "Use stdlib::list.countIf(pred,xs) instead of #(xs⊳pred).")
             }
 
             ValidationError::RecordTypeFieldOrder { type_name, field_name, prev_field, position: _, expected_order, location } => {

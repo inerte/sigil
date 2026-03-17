@@ -269,6 +269,12 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Example:** `λfindEven(xs:[Int])=>Option[Int] match xs{[]=>None()|[x,.rest]=>match isEven(x){true=>Some(x)|false=>findEven(rest)}}`
 **How to fix:** Use `stdlib::list.find(pred,xs)`
 
+### SIGIL-CANON-RECURSION-FLATMAP-CLONE
+**Description:** Exact recursive flatMap clone detected.
+**Message:** "Recursive function 'name' is a hand-rolled flatMap"
+**Example:** `λexplode(xs:[Int])=>[Int] match xs{[]=>[]|[x,.rest]=>digits(x)⧺explode(rest)}`
+**How to fix:** Use `stdlib::list.flatMap(fn,xs)`
+
 ### SIGIL-CANON-RECURSION-REVERSE-CLONE
 **Description:** Exact recursive reverse clone detected.
 **Message:** "Recursive function 'name' is a hand-rolled reverse"
@@ -280,6 +286,12 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Message:** "Recursive function 'name' is a hand-rolled fold"
 **Example:** `λsum(xs:[Int])=>Int match xs{[]=>0|[x,.rest]=>x+sum(rest)}`
 **How to fix:** Use `⊕` or `stdlib::list.fold`
+
+### SIGIL-CANON-TRAVERSAL-FILTER-COUNT
+**Description:** Filter followed by length is a non-canonical counting shape.
+**Message:** "filter followed by length is not canonical"
+**Example:** `#(xs⊳pred)`
+**How to fix:** Use `stdlib::list.countIf(pred,xs)`
 
 ### SIGIL-CANON-MATCH-BOOLEAN
 **Description:** Cannot pattern match on boolean expression.

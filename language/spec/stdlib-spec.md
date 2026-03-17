@@ -72,8 +72,10 @@ t Result[T,E]=Ok(T)|Err(E)
 λany[T](pred:λ(T)=>Bool,xs:[T])=>Bool
 λcontains[T](item:T,xs:[T])=>Bool
 λcount[T](item:T,xs:[T])=>Int
+λcountIf[T](pred:λ(T)=>Bool,xs:[T])=>Int
 λdrop[T](n:Int,xs:[T])=>[T]
 λfind[T](pred:λ(T)=>Bool,xs:[T])=>Option[T]
+λflatMap[T,U](fn:λ(T)=>[U],xs:[T])=>[U]
 λfold[T,U](acc:U,fn:λ(U,T)=>U,xs:[T])=>U
 λinBounds[T](idx:Int,xs:[T])=>Bool
 λlast[T](xs:[T])=>Option[T]
@@ -103,14 +105,17 @@ Sigil treats the list-processing surface as canonical:
 
 - use `stdlib::list.all` for universal checks
 - use `stdlib::list.any` for existential checks
+- use `stdlib::list.countIf` for predicate counting
 - use `↦` for projection
 - use `⊳` for filtering
 - use `stdlib::list.find` for first-match search
+- use `stdlib::list.flatMap` for flattening projection
 - use `⊕` or `stdlib::list.fold` for reduction
 - use `stdlib::list.reverse` for reversal
 
 The validator rejects exact recursive clones of `all`, `any`, `map`, `filter`,
-`find`, `fold`, and `reverse`, as well as recursive result-building of the form
+`find`, `flatMap`, `fold`, and `reverse`, rejects `#(xs⊳pred)` in favor of
+`stdlib::list.countIf`, and rejects recursive result-building of the form
 `self(rest)⧺rhs`. These are narrow AST-shape rules, not a general complexity
 prover.
 

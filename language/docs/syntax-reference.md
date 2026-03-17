@@ -329,9 +329,11 @@ plumbing:
 
 - do not hand-write recursive `all` clones; use `stdlib::list.all`
 - do not hand-write recursive `any` clones; use `stdlib::list.any`
+- do not count with `#(xs⊳pred)`; use `stdlib::list.countIf`
 - do not hand-write recursive `map` clones when `↦` fits
 - do not hand-write recursive `filter` clones when `⊳` fits
 - do not hand-write recursive `find` clones; use `stdlib::list.find`
+- do not hand-write recursive `flatMap` clones; use `stdlib::list.flatMap`
 - do not hand-write recursive `fold` clones when `⊕` fits
 - do not hand-write recursive `reverse` clones; use `stdlib::list.reverse`
 - do not build recursive list results with `self(rest)⧺rhs`

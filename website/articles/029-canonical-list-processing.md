@@ -17,9 +17,11 @@ The validator now rejects these exact recursive shapes:
 - recursive append-to-result of the form `self(rest)⧺rhs`
 - hand-rolled `all` clones
 - hand-rolled `any` clones
+- filter followed by length of the form `#(xs⊳pred)`
 - hand-rolled `map` clones
 - hand-rolled `filter` clones
 - hand-rolled `find` clones
+- hand-rolled `flatMap` clones
 - hand-rolled `reverse` clones
 - hand-rolled `fold` clones
 
@@ -27,9 +29,11 @@ The required replacements are:
 
 - `stdlib::list.all` for universal checks
 - `stdlib::list.any` for existential checks
+- `stdlib::list.countIf` for predicate counting
 - `↦` for projection
 - `⊳` for filtering
 - `stdlib::list.find` for first-match search
+- `stdlib::list.flatMap` for flattening projection
 - `⊕` or `stdlib::list.fold` for reduction
 - `stdlib::list.reverse` for reversal
 
@@ -104,6 +108,20 @@ Required:
 λdouble(xs:[Int])=>[Int]=xs↦(λ(x:Int)=>Int=x*2)
 ```
 
+### Count
+
+Rejected:
+
+```sigil
+λcountEven(xs:[Int])=>Int=#(xs⊳isEven)
+```
+
+Required:
+
+```sigil
+λcountEven(xs:[Int])=>Int=stdlib::list.countIf(isEven,xs)
+```
+
 ### Filter
 
 Rejected:
@@ -142,6 +160,23 @@ Required:
 
 ```sigil
 λfindEven(xs:[Int])=>Option[Int]=stdlib::list.find(isEven,xs)
+```
+
+### FlatMap
+
+Rejected:
+
+```sigil
+λexplode(xs:[Int])=>[Int] match xs{
+  []=>[]|
+  [x,.rest]=>digits(x)⧺explode(rest)
+}
+```
+
+Required:
+
+```sigil
+λexplode(xs:[Int])=>[Int]=stdlib::list.flatMap(digits,xs)
 ```
 
 ### Reverse

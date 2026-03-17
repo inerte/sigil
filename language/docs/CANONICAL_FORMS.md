@@ -177,9 +177,11 @@ Current exact-shape bans:
 - recursive append-to-result of the form `self(rest)⧺rhs`
 - hand-rolled recursive `all` clones
 - hand-rolled recursive `any` clones
+- filter followed by length of the form `#(xs⊳pred)`
 - hand-rolled recursive `map` clones
 - hand-rolled recursive `filter` clones
 - hand-rolled recursive `find` clones
+- hand-rolled recursive `flatMap` clones
 - hand-rolled recursive `reverse` clones
 - hand-rolled recursive `fold` clones
 
@@ -187,9 +189,11 @@ Canonical replacements:
 
 - universal checks: `stdlib::list.all`
 - existential checks: `stdlib::list.any`
+- predicate counting: `stdlib::list.countIf`
 - projection: `↦`
 - filtering: `⊳`
 - first-match search: `stdlib::list.find`
+- flattening projection: `stdlib::list.flatMap`
 - reduction: `⊕` or `stdlib::list.fold`
 - reversal: `stdlib::list.reverse`
 - custom list building: wrapper + accumulator helper, reversing once at the end if needed

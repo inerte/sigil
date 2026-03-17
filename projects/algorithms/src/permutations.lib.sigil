@@ -1,14 +1,13 @@
 t Selection={chosen:Int,rest:[Int]}
 
+i stdlib::list
+
 λpermutations(xs:[Int])=>[[Int]] match xs{
   []=>[[]]|
   _=>permutationsFromSelections(selections(xs))
 }
 
-λpermutationsFromSelections(choices:[Selection])=>[[Int]] match choices{
-  []=>[]|
-  [choice,.tail]=>prependAll(choice.chosen,permutations(choice.rest))⧺permutationsFromSelections(tail)
-}
+λpermutationsFromSelections(choices:[Selection])=>[[Int]]=stdlib::list.flatMap(λ(choice:Selection)=>[[Int]]=prependAll(choice.chosen,permutations(choice.rest)),choices)
 
 λprependAll(item:Int,xss:[[Int]])=>[[Int]]=xss↦(λ(head:[Int])=>[Int]=[item]⧺head)
 

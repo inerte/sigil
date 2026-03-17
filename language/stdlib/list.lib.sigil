@@ -20,6 +20,11 @@
   }
 }
 
+λcountIf[T](pred:λ(T)=>Bool,xs:[T])=>Int=fold(0,λ(acc:Int,x:T)=>Int match pred(x){
+  true=>acc+1|
+  false=>acc
+},xs)
+
 λdrop[T](n:Int,xs:[T])=>[T] match n≤0{
   true=>xs|
   false=>match xs{
@@ -35,6 +40,13 @@
     false=>None()
   }
 },xs)
+
+λflatMap[T,U](fn:λ(T)=>[U],xs:[T])=>[U]=reverse(flatMapHelper([],fn,xs))
+
+λflatMapHelper[T,U](acc:[U],fn:λ(T)=>[U],xs:[T])=>[U] match xs{
+  []=>acc|
+  [x,.rest]=>flatMapHelper(prependReversed(acc,fn(x)),fn,rest)
+}
 
 λfold[T,U](acc:U,fn:λ(U,T)=>U,xs:[T])=>U match xs{
   []=>acc|
@@ -88,6 +100,8 @@
     }
   }
 }
+
+λprependReversed[T](acc:[T],xs:[T])=>[T]=fold(acc,λ(result:[T],x:T)=>[T]=([x]:[T])⧺result,xs)
 
 λproduct(xs:[Int])=>Int=fold(1,multiplyInt,xs)
 

@@ -32,9 +32,9 @@ Default base ref:
 
 ## Workflow
 
-1. Run `ai/skills/sigil-pr-audit/scripts/audit-pr.sh [base-ref] [scope]`.
+1. Run `.agents/skills/sigil-pr-audit/scripts/audit-pr.sh [base-ref] [scope]`.
 2. Read [`references/invariants.md`](./references/invariants.md).
-3. If the audit touches language semantics, read [`/Users/julionobreganetto/dev/sigil/language/AGENTS.md`](/Users/julionobreganetto/dev/sigil/language/AGENTS.md).
+3. If the audit touches language semantics, read [`language/AGENTS.md`](REPO_ROOT/language/AGENTS.md).
 4. Review the audit output before opening implementation files.
 5. Run the targeted commands listed under `CHECK:` in the audit output.
 6. Read only the files needed to explain any remaining blockers or suspicious changes.

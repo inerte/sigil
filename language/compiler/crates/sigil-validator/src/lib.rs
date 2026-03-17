@@ -11,8 +11,10 @@
 
 pub mod error;
 pub mod canonical;
+pub mod branching_recursion;
 pub mod printer;
 
 pub use error::*;
 pub use canonical::*;
+pub use branching_recursion::*;
 pub use printer::*;

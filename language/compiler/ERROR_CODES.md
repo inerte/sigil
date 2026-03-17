@@ -287,6 +287,13 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Example:** `λsum(xs:[Int])=>Int match xs{[]=>0|[x,.rest]=>x+sum(rest)}`
 **How to fix:** Use `⊕` or `stdlib::list.fold`
 
+### SIGIL-CANON-BRANCHING-SELF-RECURSION
+**Description:** Non-canonical sibling self-calls over the same directly reduced parameter.
+**Message:** "Recursive function 'name' uses non-canonical branching self-recursion"
+**Example:** `fib(n-1)+fib(n-2)`
+**Why it is rejected:** This exact shape duplicates work instead of following one canonical recursion path.
+**How to fix:** Use a wrapper plus helper accumulator/state-threading function, or another canonical helper shape that performs one recursive step at a time.
+
 ### SIGIL-CANON-TRAVERSAL-FILTER-COUNT
 **Description:** Filter followed by length is a non-canonical counting shape.
 **Message:** "filter followed by length is not canonical"

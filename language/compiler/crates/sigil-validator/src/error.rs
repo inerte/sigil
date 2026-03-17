@@ -29,6 +29,54 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
+    #[error("SIGIL-CANON-RECURSION-APPEND-RESULT: Recursive function '{function_name}' appends to the recursive result.\n\nSigil rejects recursive result-building of the form self(rest)⧺rhs.\nThis shape is non-canonical and usually rebuilds lists inefficiently.\n\nUse ↦, ⊳, or a wrapper plus accumulator helper with one final reverse.")]
+    RecursiveAppendResult {
+        function_name: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-RECURSION-ALL-CLONE: Recursive function '{function_name}' is a hand-rolled all.\n\nSigil rejects exact recursive all clones and requires the canonical stdlib surface.\n\nUse stdlib::list.all(pred,xs) instead of custom recursive universal checks.")]
+    RecursiveAllClone {
+        function_name: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-RECURSION-ANY-CLONE: Recursive function '{function_name}' is a hand-rolled any.\n\nSigil rejects exact recursive any clones and requires the canonical stdlib surface.\n\nUse stdlib::list.any(pred,xs) instead of custom recursive existential checks.")]
+    RecursiveAnyClone {
+        function_name: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-RECURSION-MAP-CLONE: Recursive function '{function_name}' is a hand-rolled map.\n\nSigil rejects exact recursive map clones and requires the canonical operator.\n\nUse xs↦f instead of custom recursive list projection.")]
+    RecursiveMapClone {
+        function_name: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-RECURSION-FILTER-CLONE: Recursive function '{function_name}' is a hand-rolled filter.\n\nSigil rejects exact recursive filter clones and requires the canonical operator.\n\nUse xs⊳pred instead of custom recursive list filtering.")]
+    RecursiveFilterClone {
+        function_name: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-RECURSION-FIND-CLONE: Recursive function '{function_name}' is a hand-rolled find.\n\nSigil rejects exact recursive find clones and requires the canonical stdlib surface.\n\nUse stdlib::list.find(pred,xs) instead of custom recursive element search.")]
+    RecursiveFindClone {
+        function_name: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-RECURSION-REVERSE-CLONE: Recursive function '{function_name}' is a hand-rolled reverse.\n\nSigil rejects the classic self(rest)⧺[x] reverse shape.\n\nUse stdlib::list.reverse instead.")]
+    RecursiveReverseClone {
+        function_name: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-RECURSION-FOLD-CLONE: Recursive function '{function_name}' is a hand-rolled fold.\n\nSigil rejects exact recursive list-reduction clones and requires the canonical reduction surface.\n\nUse ⊕ or stdlib::list.fold instead of custom recursive reduction.")]
+    RecursiveFoldClone {
+        function_name: String,
+        location: SourceLocation,
+    },
+
     #[error("SIGIL-CANON-RECURSION-COLLECTION-NONSTRUCTURAL: Recursive function '{function_name}' has collection parameter but doesn't use structural recursion.\n\nSigil enforces ONE way: structural recursion for collections.")]
     NonStructuralRecursion {
         function_name: String,
@@ -351,6 +399,14 @@ impl ValidationError {
             ValidationError::DuplicateDeclaration { location, .. } => *location,
             ValidationError::AccumulatorParameter { location, .. } => *location,
             ValidationError::ContinuationPassingStyle { location, .. } => *location,
+            ValidationError::RecursiveAppendResult { location, .. } => *location,
+            ValidationError::RecursiveAllClone { location, .. } => *location,
+            ValidationError::RecursiveAnyClone { location, .. } => *location,
+            ValidationError::RecursiveMapClone { location, .. } => *location,
+            ValidationError::RecursiveFilterClone { location, .. } => *location,
+            ValidationError::RecursiveFindClone { location, .. } => *location,
+            ValidationError::RecursiveReverseClone { location, .. } => *location,
+            ValidationError::RecursiveFoldClone { location, .. } => *location,
             ValidationError::NonStructuralRecursion { location, .. } => *location,
             ValidationError::RedundantPattern { location } => *location,
             ValidationError::UnreachablePattern { location } => *location,
@@ -486,6 +542,86 @@ impl From<ValidationError> for Diagnostic {
                     "guidance",
                     "Bindings exist for reuse, effects, destructuring, or syntax-required staging.",
                 )
+            }
+
+            ValidationError::RecursiveAppendResult { function_name, location } => {
+                Diagnostic::new(
+                    codes::canonical::RECURSION_APPEND_RESULT,
+                    SigilPhase::Canonical,
+                    format!("Recursive function '{}' appends to the recursive result", function_name),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_details("guidance", "Use ↦, ⊳, or a wrapper plus accumulator helper with one final reverse.")
+            }
+
+            ValidationError::RecursiveAllClone { function_name, location } => {
+                Diagnostic::new(
+                    codes::canonical::RECURSION_ALL_CLONE,
+                    SigilPhase::Canonical,
+                    format!("Recursive function '{}' is a hand-rolled all", function_name),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_details("guidance", "Use stdlib::list.all(pred,xs) instead of custom recursive universal checks.")
+            }
+
+            ValidationError::RecursiveAnyClone { function_name, location } => {
+                Diagnostic::new(
+                    codes::canonical::RECURSION_ANY_CLONE,
+                    SigilPhase::Canonical,
+                    format!("Recursive function '{}' is a hand-rolled any", function_name),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_details("guidance", "Use stdlib::list.any(pred,xs) instead of custom recursive existential checks.")
+            }
+
+            ValidationError::RecursiveMapClone { function_name, location } => {
+                Diagnostic::new(
+                    codes::canonical::RECURSION_MAP_CLONE,
+                    SigilPhase::Canonical,
+                    format!("Recursive function '{}' is a hand-rolled map", function_name),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_details("guidance", "Use xs↦f instead of custom recursive list projection.")
+            }
+
+            ValidationError::RecursiveFilterClone { function_name, location } => {
+                Diagnostic::new(
+                    codes::canonical::RECURSION_FILTER_CLONE,
+                    SigilPhase::Canonical,
+                    format!("Recursive function '{}' is a hand-rolled filter", function_name),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_details("guidance", "Use xs⊳pred instead of custom recursive list filtering.")
+            }
+
+            ValidationError::RecursiveFindClone { function_name, location } => {
+                Diagnostic::new(
+                    codes::canonical::RECURSION_FIND_CLONE,
+                    SigilPhase::Canonical,
+                    format!("Recursive function '{}' is a hand-rolled find", function_name),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_details("guidance", "Use stdlib::list.find(pred,xs) instead of custom recursive element search.")
+            }
+
+            ValidationError::RecursiveReverseClone { function_name, location } => {
+                Diagnostic::new(
+                    codes::canonical::RECURSION_REVERSE_CLONE,
+                    SigilPhase::Canonical,
+                    format!("Recursive function '{}' is a hand-rolled reverse", function_name),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_details("guidance", "Use stdlib::list.reverse instead.")
+            }
+
+            ValidationError::RecursiveFoldClone { function_name, location } => {
+                Diagnostic::new(
+                    codes::canonical::RECURSION_FOLD_CLONE,
+                    SigilPhase::Canonical,
+                    format!("Recursive function '{}' is a hand-rolled fold", function_name),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_details("guidance", "Use ⊕ or stdlib::list.fold instead of custom recursive reduction.")
             }
 
             ValidationError::RecordTypeFieldOrder { type_name, field_name, prev_field, position: _, expected_order, location } => {

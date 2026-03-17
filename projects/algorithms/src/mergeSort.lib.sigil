@@ -40,10 +40,7 @@
   _=>1+nextRunCount(runCount-2)
 }
 
-λsingletons(xs:[Int])=>[[Int]] match xs{
-  []=>[]|
-  [head,.tail]=>[[head]]⧺singletons(tail)
-}
+λsingletons(xs:[Int])=>[[Int]]=xs↦(λ(head:Int)=>[Int]=[head])
 
 λwrapAll(partials:[[Int]],values:[Int])=>[[Int]] match values{
   []=>partials|

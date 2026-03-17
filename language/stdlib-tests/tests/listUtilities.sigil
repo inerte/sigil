@@ -14,6 +14,14 @@ test "list.drop clamps naturally" {
   stdlib::list.drop(0,[1,2,3])=[1,2,3] and stdlib::list.drop(2,[1,2,3,4])=[3,4] and stdlib::list.drop(10,[1,2])=[] and stdlib::list.drop(-1,[1,2])=[1,2]
 }
 
+test "list.all checks universal predicates" {
+  stdlib::list.all(stdlib::numeric.isEven,[2,4,6]) and ¬stdlib::list.all(stdlib::numeric.isEven,[2,3,4]) and stdlib::list.all(stdlib::numeric.isEven,[])
+}
+
+test "list.any checks existential predicates" {
+  ¬stdlib::list.any(stdlib::numeric.isEven,[1,3,5]) and stdlib::list.any(stdlib::numeric.isEven,[1,2,3]) and ¬stdlib::list.any(stdlib::numeric.isEven,[])
+}
+
 test "list.find returns first matching option" {
   (match stdlib::list.find(stdlib::numeric.isEven,[1,3,4,6]){
     Some(actual)=>actual=4|

@@ -400,7 +400,7 @@ sorted_desc([1,2,3])   ⟦ => false ⟧
 Check if all elements in a list satisfy a predicate.
 
 ```sigil
-λall(pred:λ(Int)=>Bool,xs:[Int])=>Bool
+λall[T](pred:λ(T)=>Bool,xs:[T])=>Bool
 ```
 
 **Examples:**
@@ -417,7 +417,7 @@ all(is_even,[2,4,6])          ⟦ => true ⟧
 Check if any element in a list satisfies a predicate.
 
 ```sigil
-λany(pred:λ(Int)=>Bool,xs:[Int])=>Bool
+λany[T](pred:λ(T)=>Bool,xs:[T])=>Bool
 ```
 
 **Examples:**
@@ -643,6 +643,23 @@ stdlib::numeric.range(2,5)   ⟦ => [2,3,4,5] ⟧
 stdlib::numeric.range(3,3)   ⟦ => [3] ⟧
 stdlib::numeric.range(5,2)   ⟦ => [] ⟧
 ```
+
+## Canonical List-Processing Surface
+
+For ordinary list work, Sigil expects the canonical operators and stdlib path,
+not hand-rolled recursive plumbing:
+
+- use `stdlib::list.all` for universal checks
+- use `stdlib::list.any` for existential checks
+- use `↦` for projection
+- use `⊳` for filtering
+- use `stdlib::list.find` for first-match search
+- use `⊕` or `stdlib::list.fold` for reduction
+- use `stdlib::list.reverse` for reversal
+
+Sigil now rejects exact recursive clones of `all`, `any`, `map`, `filter`,
+`find`, `fold`, and `reverse`, as well as recursive result-building of the form
+`self(rest)⧺rhs`.
 
 ## String Operations
 

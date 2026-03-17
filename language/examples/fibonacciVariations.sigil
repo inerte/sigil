@@ -1,0 +1,147 @@
+λabs(x:Int)=>Int match x<0{
+  true=>-x|
+  false=>x
+}
+
+λfib01BasicRecursive(n:Int)=>Int match n{
+  0=>0|
+  1=>1|
+  value=>fib01BasicRecursive(value-1)+fib01BasicRecursive(value-2)
+}
+
+λfib02WithGuards(n:Int)=>Int match n≤1{
+  true=>n|
+  false=>fib02WithGuards(n-1)+fib02WithGuards(n-2)
+}
+
+λfib03NestedMatches(n:Int)=>Int match n{
+  0=>0|
+  value=>match value{
+    1=>1|
+    nextValue=>fib03NestedMatches(nextValue-1)+fib03NestedMatches(nextValue-2)
+  }
+}
+
+λfib04TupleHelper(a:Int,b:Int,n:Int)=>Int match n{
+  0=>a|
+  count=>fib04TupleHelper(b,a+b,count-1)
+}
+
+λfib04TupleSwap(n:Int)=>Int=fib04TupleHelper(0,1,n)
+
+λfib05SequenceBuilder(n:Int)=>Int=last(fibSequence(n))
+
+λfib06ListSum(n:Int)=>Int match n{
+  0=>0|
+  1=>1|
+  value=>sum([fib06ListSum(value-1),fib06ListSum(value-2)])
+}
+
+λfib07WithOption(n:Int)=>Int=(match fib07WithOptionHelper(n){
+  Some(x)=>x|
+  None()=>-1
+}:Int)
+
+λfib07WithOptionHelper(n:Int)=>Option[Int] match n{
+  0=>Some(0)|
+  1=>Some(1)|
+  value=>sumOptions(fib07WithOptionHelper(value-1),fib07WithOptionHelper(value-2))
+}
+
+λfib08Mod(n:Int)=>Int match n{
+  0=>0|
+  1=>1|
+  value=>mod(fib08Mod(value-1)+fib08Mod(value-2),1000000007)
+}
+
+λfib09MinMax(n:Int)=>Int match n{
+  0=>0|
+  1=>1|
+  value=>min(fib09MinMax(value-1),fib09MinMax(value-2))+max(fib09MinMax(value-1),fib09MinMax(value-2))
+}
+
+λfib10AbsDiff(n:Int)=>Int match n{
+  0=>0|
+  1=>1|
+  value=>abs(fib10AbsDiff(value-1)-fib10AbsDiff(value-2))+min(fib10AbsDiff(value-1),fib10AbsDiff(value-2))
+}
+
+λfib11WithLength(n:Int)=>Int=lengthInterpretation(n)
+
+λfib12Comparison(n:Int)=>Int match n{
+  0=>0|
+  1=>1|
+  value=>match fib12Comparison(value-1)>fib12Comparison(value-2){
+    true=>fib12Comparison(value-1)+fib12Comparison(value-2)|
+    false=>fib12Comparison(value-2)+fib12Comparison(value-1)
+  }
+}
+
+λfibAsLength(n:Int)=>[Int]=fibAsLengthHelper([],n)
+
+λfibAsLengthHelper(acc:[Int],n:Int)=>[Int] match n{
+  0=>acc|
+  1=>([1]:[Int])⧺acc|
+  value=>fibAsLengthHelper(fibAsLengthHelper(acc,value-2),value-1)
+}
+
+λfibSequence(n:Int)=>[Int] match n{
+  0=>[0]|
+  1=>[0,1]|
+  count=>fibSequenceHelper([0,1],2,count)
+}
+
+λfibSequenceHelper(acc:[Int],current:Int,n:Int)=>[Int] match current>n{
+  true=>acc|
+  false=>fibSequenceHelper(acc⧺[sumLastTwo(acc)],current+1,n)
+}
+
+λlast(xs:[Int])=>Int match reverse(xs){
+  []=>0|
+  [x,.rest]=>x
+}
+
+λlengthInterpretation(n:Int)=>Int match n{
+  0=>0|
+  1=>1|
+  count=>#fibAsLength(count)
+}
+
+λmain()=>Int=fib01BasicRecursive(10)+fib02WithGuards(10)+fib03NestedMatches(10)+fib04TupleSwap(10)+fib05SequenceBuilder(10)+fib06ListSum(10)+fib07WithOption(10)+fib08Mod(10)+fib09MinMax(10)+fib10AbsDiff(10)+fib11WithLength(10)+fib12Comparison(10)
+
+λmax(a:Int,b:Int)=>Int match a>b{
+  true=>a|
+  false=>b
+}
+
+λmin(a:Int,b:Int)=>Int match a<b{
+  true=>a|
+  false=>b
+}
+
+λmod(a:Int,b:Int)=>Int match (a%b:Int)<0{
+  true=>(a%b:Int)+abs(b)|
+  false=>(a%b:Int)
+}
+
+λreverse[T](xs:[T])=>[T]=reverseHelper([],xs)
+
+λreverseHelper[T](acc:[T],xs:[T])=>[T] match xs{
+  []=>acc|
+  [x,.rest]=>reverseHelper(([x]:[T])⧺acc,rest)
+}
+
+λsum(xs:[Int])=>Int=xs⊕(λ(acc:Int,x:Int)=>Int=acc+x)⊕0
+
+λsumLastTwo(xs:[Int])=>Int match reverse(xs){
+  [a,b,.rest]=>a+b|
+  other=>0
+}
+
+λsumOptions(opt1:Option[Int],opt2:Option[Int])=>Option[Int] match opt1{
+  Some(a)=>match opt2{
+    Some(b)=>Some(a+b)|
+    None()=>None()
+  }|
+  None()=>None()
+}

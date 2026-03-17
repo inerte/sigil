@@ -1,5 +1,9 @@
 λaddInt(acc:Int,x:Int)=>Int=acc+x
 
+λall[T](pred:λ(T)=>Bool,xs:[T])=>Bool=fold(true,λ(acc:Bool,x:T)=>Bool=acc and pred(x),xs)
+
+λany[T](pred:λ(T)=>Bool,xs:[T])=>Bool=fold(false,λ(acc:Bool,x:T)=>Bool=acc or pred(x),xs)
+
 λcontains[T](item:T,xs:[T])=>Bool match xs{
   []=>false|
   [x,.rest]=>match x=item{
@@ -24,13 +28,13 @@
   }
 }
 
-λfind[T](pred:λ(T)=>Bool,xs:[T])=>Option[T] match xs{
-  []=>None()|
-  [x,.rest]=>match pred(x){
+λfind[T](pred:λ(T)=>Bool,xs:[T])=>Option[T]=fold(None(),λ(acc:Option[T],x:T)=>Option[T] match acc{
+  Some(value)=>Some(value)|
+  None()=>match pred(x){
     true=>Some(x)|
-    false=>find(pred,rest)
+    false=>None()
   }
-}
+},xs)
 
 λfold[T,U](acc:U,fn:λ(U,T)=>U,xs:[T])=>U match xs{
   []=>acc|

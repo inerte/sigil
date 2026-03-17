@@ -60,6 +60,7 @@ alone, such as:
 - test location rules
 - no-shadowing
 - record field ordering
+- exact recursive list-plumbing bans where Sigil already has a canonical surface
 - typed canonical restrictions like single-use pure binding inlining
 
 ### Typed Canonical Validation
@@ -69,6 +70,17 @@ After type checking, the validator enforces typed canonical rules.
 Current important example:
 
 - pure single-use local bindings must be inlined
+
+Current list-processing examples:
+
+- recursive `all` clones are rejected in favor of `stdlib::list.all`
+- recursive `any` clones are rejected in favor of `stdlib::list.any`
+- recursive `map` clones are rejected in favor of `↦`
+- recursive `filter` clones are rejected in favor of `⊳`
+- recursive `find` clones are rejected in favor of `stdlib::list.find`
+- recursive `fold` clones are rejected in favor of `⊕` / `stdlib::list.fold`
+- recursive `reverse` clones are rejected in favor of `stdlib::list.reverse`
+- recursive result-building of the form `self(rest)⧺rhs` is rejected
 
 ## Why This Matters
 

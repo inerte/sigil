@@ -68,21 +68,23 @@ t Result[T,E]=Ok(T)|Err(E)
 ### Implemented `stdlib::list` Functions
 
 ```sigil
+λall[T](pred:λ(T)=>Bool,xs:[T])=>Bool
+λany[T](pred:λ(T)=>Bool,xs:[T])=>Bool
 λcontains[T](item:T,xs:[T])=>Bool
 λcount[T](item:T,xs:[T])=>Int
 λdrop[T](n:Int,xs:[T])=>[T]
 λfind[T](pred:λ(T)=>Bool,xs:[T])=>Option[T]
 λfold[T,U](acc:U,fn:λ(U,T)=>U,xs:[T])=>U
-λin_bounds[T](idx:Int,xs:[T])=>Bool
+λinBounds[T](idx:Int,xs:[T])=>Bool
 λlast[T](xs:[T])=>Option[T]
 λmax(xs:[Int])=>Option[Int]
 λmin(xs:[Int])=>Option[Int]
 λnth[T](idx:Int,xs:[T])=>Option[T]
 λproduct(xs:[Int])=>Int
-λremove_first[T](item:T,xs:[T])=>[T]
+λremoveFirst[T](item:T,xs:[T])=>[T]
 λreverse[T](xs:[T])=>[T]
-λsorted_asc(xs:[Int])=>Bool
-λsorted_desc(xs:[Int])=>Bool
+λsortedAsc(xs:[Int])=>Bool
+λsortedDesc(xs:[Int])=>Bool
 λsum(xs:[Int])=>Int
 λtake[T](n:Int,xs:[T])=>[T]
 ```
@@ -94,6 +96,23 @@ Safe element access uses `Option[T]`:
 - `min([])=>None()`
 - `nth(-1,xs)=>None()`
 - `nth(idx,xs)=>None()` when out of bounds
+
+### Canonical list-processing restrictions
+
+Sigil treats the list-processing surface as canonical:
+
+- use `stdlib::list.all` for universal checks
+- use `stdlib::list.any` for existential checks
+- use `↦` for projection
+- use `⊳` for filtering
+- use `stdlib::list.find` for first-match search
+- use `⊕` or `stdlib::list.fold` for reduction
+- use `stdlib::list.reverse` for reversal
+
+The validator rejects exact recursive clones of `all`, `any`, `map`, `filter`,
+`find`, `fold`, and `reverse`, as well as recursive result-building of the form
+`self(rest)⧺rhs`. These are narrow AST-shape rules, not a general complexity
+prover.
 
 ### Implemented `stdlib::numeric` Helpers
 

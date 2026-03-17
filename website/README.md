@@ -18,6 +18,8 @@ claude "Write a Hello World in Sigil and run it"
 
 **Radical Canonicalization** - ONE way to write everything. Not one preferred style: one accepted textual representation per program. The compiler owns the canonical printer internally and rejects any parseable source that does not match it.
 
+**Canonical Programming Paths** - Sigil canonicalizes common programming patterns, not just syntax. Projection, filtering, reduction, search, and reversal flow through one blessed surface so humans and AI agents converge on the same code shapes.
+
 **Zero Ambiguity** - Explicit bidirectional types, no shadowing, deterministic execution. Code means exactly what it says. Perfect for AI code generation.
 
 **Concurrent by Default** - Built for async I/O without await syntax. Functions compose naturally with effects tracked in the type system.

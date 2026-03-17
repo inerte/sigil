@@ -2,7 +2,7 @@
 //!
 //! Enforces Sigil's "ONE WAY" principle by rejecting alternative patterns:
 //! 1. No duplicate declarations
-//! 2. No accumulator parameters (prevents tail-call optimization)
+//! 2. Canonical recursive list-plumbing shapes
 //! 3. Canonical pattern matching (most direct form)
 //! 4. No CPS (continuation passing style)
 #![allow(dead_code)]
@@ -2342,6 +2342,48 @@ fn validate_recursive_functions(program: &Program) -> Result<(), Vec<ValidationE
                 });
             }
 
+            if detect_exact_recursive_reverse_clone(func) {
+                errors.push(ValidationError::RecursiveReverseClone {
+                    function_name: func.name.clone(),
+                    location: func.location,
+                });
+            } else if detect_exact_recursive_all_clone(func) {
+                errors.push(ValidationError::RecursiveAllClone {
+                    function_name: func.name.clone(),
+                    location: func.location,
+                });
+            } else if detect_exact_recursive_any_clone(func) {
+                errors.push(ValidationError::RecursiveAnyClone {
+                    function_name: func.name.clone(),
+                    location: func.location,
+                });
+            } else if detect_exact_recursive_map_clone(func) {
+                errors.push(ValidationError::RecursiveMapClone {
+                    function_name: func.name.clone(),
+                    location: func.location,
+                });
+            } else if detect_exact_recursive_filter_clone(func) {
+                errors.push(ValidationError::RecursiveFilterClone {
+                    function_name: func.name.clone(),
+                    location: func.location,
+                });
+            } else if detect_exact_recursive_find_clone(func) {
+                errors.push(ValidationError::RecursiveFindClone {
+                    function_name: func.name.clone(),
+                    location: func.location,
+                });
+            } else if detect_exact_recursive_fold_clone(func) {
+                errors.push(ValidationError::RecursiveFoldClone {
+                    function_name: func.name.clone(),
+                    location: func.location,
+                });
+            } else if contains_recursive_append_result(&func.body, &func.name) {
+                errors.push(ValidationError::RecursiveAppendResult {
+                    function_name: func.name.clone(),
+                    location: func.location,
+                });
+            }
+
             // Check 3: Collection parameters must use structural recursion
             // Simplified: just check that collection params are destructured in patterns
             if func.params.len() == 1 {
@@ -2630,6 +2672,508 @@ fn matches_list_pattern(pattern: &Pattern) -> bool {
     }
 }
 
+fn function_match_on_single_list_param<'a>(
+    func: &'a FunctionDecl,
+) -> Option<(&'a MatchExpr, &'a str)> {
+    if func.params.len() != 1 {
+        return None;
+    }
+    let param = &func.params[0];
+    if !matches!(param.type_annotation.as_ref(), Some(Type::List(_))) {
+        return None;
+    }
+    let Expr::Match(match_expr) = &func.body else {
+        return None;
+    };
+    let Expr::Identifier(scrutinee) = &match_expr.scrutinee else {
+        return None;
+    };
+    if scrutinee.name != param.name {
+        return None;
+    }
+    Some((match_expr, param.name.as_str()))
+}
+
+fn empty_and_cons_arms<'a>(
+    match_expr: &'a MatchExpr,
+) -> Option<(&'a MatchArm, &'a MatchArm, &'a str, &'a str)> {
+    if match_expr.arms.len() != 2 {
+        return None;
+    }
+    let empty_arm = &match_expr.arms[0];
+    let cons_arm = &match_expr.arms[1];
+    if empty_arm.guard.is_some() || cons_arm.guard.is_some() {
+        return None;
+    }
+    let Pattern::List(empty_pat) = &empty_arm.pattern else {
+        return None;
+    };
+    if !empty_pat.patterns.is_empty() || empty_pat.rest.is_some() {
+        return None;
+    }
+    let Pattern::List(cons_pat) = &cons_arm.pattern else {
+        return None;
+    };
+    if cons_pat.patterns.len() != 1 || cons_pat.rest.is_none() {
+        return None;
+    }
+    let Pattern::Identifier(head_pat) = &cons_pat.patterns[0] else {
+        return None;
+    };
+    Some((empty_arm, cons_arm, head_pat.name.as_str(), cons_pat.rest.as_deref()?))
+}
+
+fn is_empty_list_expr(expr: &Expr) -> bool {
+    matches!(expr, Expr::List(ListExpr { elements, .. }) if elements.is_empty())
+}
+
+fn is_singleton_list_expr<'a>(expr: &'a Expr) -> Option<&'a Expr> {
+    match expr {
+        Expr::List(ListExpr { elements, .. }) if elements.len() == 1 => elements.first(),
+        _ => None,
+    }
+}
+
+fn is_self_call(expr: &Expr, function_name: &str) -> bool {
+    matches!(
+        expr,
+        Expr::Application(app)
+            if matches!(&app.func, Expr::Identifier(identifier) if identifier.name == function_name)
+    )
+}
+
+fn is_self_call_with_rest(expr: &Expr, function_name: &str, rest_name: &str) -> bool {
+    let Expr::Application(app) = expr else {
+        return false;
+    };
+    if !matches!(&app.func, Expr::Identifier(identifier) if identifier.name == function_name) {
+        return false;
+    }
+    if app.args.len() != 1 {
+        return false;
+    }
+    matches!(&app.args[0], Expr::Identifier(identifier) if identifier.name == rest_name)
+}
+
+fn is_binary_list_append<'a>(expr: &'a Expr) -> Option<(&'a Expr, &'a Expr)> {
+    match expr {
+        Expr::Binary(binary) if binary.operator == BinaryOperator::ListAppend => {
+            Some((&binary.left, &binary.right))
+        }
+        _ => None,
+    }
+}
+
+fn is_binary_operator<'a>(
+    expr: &'a Expr,
+    operator: BinaryOperator,
+) -> Option<(&'a Expr, &'a Expr)> {
+    match expr {
+        Expr::Binary(binary) if binary.operator == operator => Some((&binary.left, &binary.right)),
+        _ => None,
+    }
+}
+
+fn is_nullary_constructor_expr(expr: &Expr, name: &str) -> bool {
+    matches!(
+        expr,
+        Expr::Application(app)
+            if matches!(&app.func, Expr::Identifier(identifier) if identifier.name == name)
+                && app.args.is_empty()
+    )
+}
+
+fn is_unary_constructor_expr<'a>(expr: &'a Expr, name: &str) -> Option<&'a Expr> {
+    match expr {
+        Expr::Application(app)
+            if matches!(&app.func, Expr::Identifier(identifier) if identifier.name == name)
+                && app.args.len() == 1 =>
+        {
+            app.args.first()
+        }
+        _ => None,
+    }
+}
+
+fn contains_recursive_append_result(expr: &Expr, function_name: &str) -> bool {
+    match expr {
+        Expr::Binary(binary) => {
+            (binary.operator == BinaryOperator::ListAppend && is_self_call(&binary.left, function_name))
+                || contains_recursive_append_result(&binary.left, function_name)
+                || contains_recursive_append_result(&binary.right, function_name)
+        }
+        Expr::Application(app) => {
+            contains_recursive_append_result(&app.func, function_name)
+                || app.args.iter().any(|arg| contains_recursive_append_result(arg, function_name))
+        }
+        Expr::Lambda(lambda) => contains_recursive_append_result(&lambda.body, function_name),
+        Expr::Match(match_expr) => {
+            contains_recursive_append_result(&match_expr.scrutinee, function_name)
+                || match_expr.arms.iter().any(|arm| {
+                    arm.guard
+                        .as_ref()
+                        .map(|guard| contains_recursive_append_result(guard, function_name))
+                        .unwrap_or(false)
+                        || contains_recursive_append_result(&arm.body, function_name)
+                })
+        }
+        Expr::Let(let_expr) => {
+            contains_recursive_append_result(&let_expr.value, function_name)
+                || contains_recursive_append_result(&let_expr.body, function_name)
+        }
+        Expr::If(if_expr) => {
+            contains_recursive_append_result(&if_expr.condition, function_name)
+                || contains_recursive_append_result(&if_expr.then_branch, function_name)
+                || if_expr
+                    .else_branch
+                    .as_ref()
+                    .map(|branch| contains_recursive_append_result(branch, function_name))
+                    .unwrap_or(false)
+        }
+        Expr::List(list) => list
+            .elements
+            .iter()
+            .any(|element| contains_recursive_append_result(element, function_name)),
+        Expr::Record(record) => record
+            .fields
+            .iter()
+            .any(|field| contains_recursive_append_result(&field.value, function_name)),
+        Expr::MapLiteral(map) => map.entries.iter().any(|entry| {
+            contains_recursive_append_result(&entry.key, function_name)
+                || contains_recursive_append_result(&entry.value, function_name)
+        }),
+        Expr::Tuple(tuple) => tuple
+            .elements
+            .iter()
+            .any(|element| contains_recursive_append_result(element, function_name)),
+        Expr::FieldAccess(field_access) => {
+            contains_recursive_append_result(&field_access.object, function_name)
+        }
+        Expr::Index(index) => {
+            contains_recursive_append_result(&index.object, function_name)
+                || contains_recursive_append_result(&index.index, function_name)
+        }
+        Expr::Pipeline(pipeline) => {
+            contains_recursive_append_result(&pipeline.left, function_name)
+                || contains_recursive_append_result(&pipeline.right, function_name)
+        }
+        Expr::Map(map) => {
+            contains_recursive_append_result(&map.list, function_name)
+                || contains_recursive_append_result(&map.func, function_name)
+        }
+        Expr::Filter(filter) => {
+            contains_recursive_append_result(&filter.list, function_name)
+                || contains_recursive_append_result(&filter.predicate, function_name)
+        }
+        Expr::Fold(fold) => {
+            contains_recursive_append_result(&fold.list, function_name)
+                || contains_recursive_append_result(&fold.func, function_name)
+                || contains_recursive_append_result(&fold.init, function_name)
+        }
+        Expr::WithMock(with_mock) => {
+            contains_recursive_append_result(&with_mock.target, function_name)
+                || contains_recursive_append_result(&with_mock.replacement, function_name)
+                || contains_recursive_append_result(&with_mock.body, function_name)
+        }
+        Expr::TypeAscription(type_ascription) => {
+            contains_recursive_append_result(&type_ascription.expr, function_name)
+        }
+        Expr::Literal(_) | Expr::Identifier(_) | Expr::Unary(_) | Expr::MemberAccess(_) => false,
+    }
+}
+
+fn detect_exact_recursive_reverse_clone(func: &FunctionDecl) -> bool {
+    let Some((match_expr, _param_name)) = function_match_on_single_list_param(func) else {
+        return false;
+    };
+    let Some((empty_arm, cons_arm, head_name, rest_name)) = empty_and_cons_arms(match_expr) else {
+        return false;
+    };
+    if !is_empty_list_expr(&empty_arm.body) {
+        return false;
+    }
+    let Some((left, right)) = is_binary_list_append(&cons_arm.body) else {
+        return false;
+    };
+    is_self_call_with_rest(left, &func.name, rest_name)
+        && matches!(is_singleton_list_expr(right), Some(Expr::Identifier(identifier)) if identifier.name == head_name)
+}
+
+fn is_binary_predicate_with_self(
+    expr: &Expr,
+    operator: BinaryOperator,
+    function_name: &str,
+    head_name: &str,
+    rest_name: &str,
+) -> bool {
+    let Some((left, right)) = is_binary_operator(expr, operator) else {
+        return false;
+    };
+    (is_predicate_application(left, head_name) && is_self_call_with_rest(right, function_name, rest_name))
+        || (is_self_call_with_rest(left, function_name, rest_name) && is_predicate_application(right, head_name))
+}
+
+fn detect_exact_recursive_all_clone(func: &FunctionDecl) -> bool {
+    let Some((match_expr, _param_name)) = function_match_on_single_list_param(func) else {
+        return false;
+    };
+    let Some((empty_arm, cons_arm, head_name, rest_name)) = empty_and_cons_arms(match_expr) else {
+        return false;
+    };
+    matches!(&empty_arm.body, Expr::Literal(lit) if lit.literal_type == LiteralType::Bool && lit.value == LiteralValue::Bool(true))
+        && is_binary_predicate_with_self(
+            &cons_arm.body,
+            BinaryOperator::And,
+            &func.name,
+            head_name,
+            rest_name,
+        )
+}
+
+fn detect_exact_recursive_any_clone(func: &FunctionDecl) -> bool {
+    let Some((match_expr, _param_name)) = function_match_on_single_list_param(func) else {
+        return false;
+    };
+    let Some((empty_arm, cons_arm, head_name, rest_name)) = empty_and_cons_arms(match_expr) else {
+        return false;
+    };
+    matches!(&empty_arm.body, Expr::Literal(lit) if lit.literal_type == LiteralType::Bool && lit.value == LiteralValue::Bool(false))
+        && is_binary_predicate_with_self(
+            &cons_arm.body,
+            BinaryOperator::Or,
+            &func.name,
+            head_name,
+            rest_name,
+        )
+}
+
+fn detect_exact_recursive_map_clone(func: &FunctionDecl) -> bool {
+    let Some((match_expr, _param_name)) = function_match_on_single_list_param(func) else {
+        return false;
+    };
+    let Some((empty_arm, cons_arm, head_name, rest_name)) = empty_and_cons_arms(match_expr) else {
+        return false;
+    };
+    if !is_empty_list_expr(&empty_arm.body) {
+        return false;
+    }
+    let Some((left, right)) = is_binary_list_append(&cons_arm.body) else {
+        return false;
+    };
+    is_self_call_with_rest(right, &func.name, rest_name)
+        && matches!(is_singleton_list_expr(left), Some(element) if !matches!(element, Expr::Identifier(identifier) if identifier.name == head_name))
+}
+
+fn is_predicate_application(expr: &Expr, head_name: &str) -> bool {
+    matches!(
+        expr,
+        Expr::Application(app)
+            if app.args.len() == 1
+                && matches!(&app.args[0], Expr::Identifier(identifier) if identifier.name == head_name)
+    )
+}
+
+fn is_keep_branch(expr: &Expr, function_name: &str, head_name: &str, rest_name: &str) -> bool {
+    let Some((left, right)) = is_binary_list_append(expr) else {
+        return false;
+    };
+    matches!(is_singleton_list_expr(left), Some(Expr::Identifier(identifier)) if identifier.name == head_name)
+        && is_self_call_with_rest(right, function_name, rest_name)
+}
+
+fn is_drop_branch(expr: &Expr, function_name: &str, rest_name: &str) -> bool {
+    is_self_call_with_rest(expr, function_name, rest_name)
+}
+
+fn detect_exact_recursive_filter_clone(func: &FunctionDecl) -> bool {
+    let Some((match_expr, _param_name)) = function_match_on_single_list_param(func) else {
+        return false;
+    };
+    let Some((empty_arm, cons_arm, head_name, rest_name)) = empty_and_cons_arms(match_expr) else {
+        return false;
+    };
+    if !is_empty_list_expr(&empty_arm.body) {
+        return false;
+    }
+    match &cons_arm.body {
+        Expr::If(if_expr) => {
+            is_predicate_application(&if_expr.condition, head_name)
+                && is_keep_branch(&if_expr.then_branch, &func.name, head_name, rest_name)
+                && if_expr
+                    .else_branch
+                    .as_ref()
+                    .map(|branch| is_drop_branch(branch, &func.name, rest_name))
+                    .unwrap_or(false)
+        }
+        Expr::Match(nested_match) => {
+            if !is_predicate_application(&nested_match.scrutinee, head_name) || nested_match.arms.len() != 2 {
+                return false;
+            }
+            let keep_arm = &nested_match.arms[0];
+            let drop_arm = &nested_match.arms[1];
+            keep_arm.guard.is_none()
+                && drop_arm.guard.is_none()
+                && matches!(&keep_arm.pattern, Pattern::Literal(lit) if lit.literal_type == PatternLiteralType::Bool && lit.value == PatternLiteralValue::Bool(true))
+                && matches!(&drop_arm.pattern, Pattern::Literal(lit) if lit.literal_type == PatternLiteralType::Bool && lit.value == PatternLiteralValue::Bool(false))
+                && is_keep_branch(&keep_arm.body, &func.name, head_name, rest_name)
+                && is_drop_branch(&drop_arm.body, &func.name, rest_name)
+        }
+        _ => false,
+    }
+}
+
+fn detect_exact_recursive_find_clone(func: &FunctionDecl) -> bool {
+    let Some((match_expr, _param_name)) = function_match_on_single_list_param(func) else {
+        return false;
+    };
+    let Some((empty_arm, cons_arm, head_name, rest_name)) = empty_and_cons_arms(match_expr) else {
+        return false;
+    };
+    if !is_nullary_constructor_expr(&empty_arm.body, "None") {
+        return false;
+    }
+    match &cons_arm.body {
+        Expr::If(if_expr) => {
+            is_predicate_application(&if_expr.condition, head_name)
+                && matches!(
+                    is_unary_constructor_expr(&if_expr.then_branch, "Some"),
+                    Some(Expr::Identifier(identifier)) if identifier.name == head_name
+                )
+                && if_expr
+                    .else_branch
+                    .as_ref()
+                    .map(|branch| is_self_call_with_rest(branch, &func.name, rest_name))
+                    .unwrap_or(false)
+        }
+        Expr::Match(nested_match) => {
+            if !is_predicate_application(&nested_match.scrutinee, head_name) || nested_match.arms.len() != 2 {
+                return false;
+            }
+            let some_arm = &nested_match.arms[0];
+            let none_arm = &nested_match.arms[1];
+            some_arm.guard.is_none()
+                && none_arm.guard.is_none()
+                && matches!(&some_arm.pattern, Pattern::Literal(lit) if lit.literal_type == PatternLiteralType::Bool && lit.value == PatternLiteralValue::Bool(true))
+                && matches!(&none_arm.pattern, Pattern::Literal(lit) if lit.literal_type == PatternLiteralType::Bool && lit.value == PatternLiteralValue::Bool(false))
+                && matches!(
+                    is_unary_constructor_expr(&some_arm.body, "Some"),
+                    Some(Expr::Identifier(identifier)) if identifier.name == head_name
+                )
+                && is_self_call_with_rest(&none_arm.body, &func.name, rest_name)
+        }
+        _ => false,
+    }
+}
+
+fn count_self_calls(expr: &Expr, function_name: &str) -> usize {
+    match expr {
+        Expr::Application(app) => {
+            usize::from(matches!(&app.func, Expr::Identifier(identifier) if identifier.name == function_name))
+                + count_self_calls(&app.func, function_name)
+                + app.args.iter().map(|arg| count_self_calls(arg, function_name)).sum::<usize>()
+        }
+        Expr::Binary(binary) => count_self_calls(&binary.left, function_name) + count_self_calls(&binary.right, function_name),
+        Expr::Unary(unary) => count_self_calls(&unary.operand, function_name),
+        Expr::Match(match_expr) => {
+            count_self_calls(&match_expr.scrutinee, function_name)
+                + match_expr.arms.iter().map(|arm| {
+                    arm.guard.as_ref().map(|guard| count_self_calls(guard, function_name)).unwrap_or(0)
+                        + count_self_calls(&arm.body, function_name)
+                }).sum::<usize>()
+        }
+        Expr::Let(let_expr) => count_self_calls(&let_expr.value, function_name) + count_self_calls(&let_expr.body, function_name),
+        Expr::If(if_expr) => {
+            count_self_calls(&if_expr.condition, function_name)
+                + count_self_calls(&if_expr.then_branch, function_name)
+                + if_expr.else_branch.as_ref().map(|branch| count_self_calls(branch, function_name)).unwrap_or(0)
+        }
+        Expr::List(list) => list.elements.iter().map(|element| count_self_calls(element, function_name)).sum(),
+        Expr::Record(record) => record.fields.iter().map(|field| count_self_calls(&field.value, function_name)).sum(),
+        Expr::MapLiteral(map) => map.entries.iter().map(|entry| count_self_calls(&entry.key, function_name) + count_self_calls(&entry.value, function_name)).sum(),
+        Expr::Tuple(tuple) => tuple.elements.iter().map(|element| count_self_calls(element, function_name)).sum(),
+        Expr::FieldAccess(field_access) => count_self_calls(&field_access.object, function_name),
+        Expr::Index(index) => count_self_calls(&index.object, function_name) + count_self_calls(&index.index, function_name),
+        Expr::Pipeline(pipeline) => count_self_calls(&pipeline.left, function_name) + count_self_calls(&pipeline.right, function_name),
+        Expr::Map(map) => count_self_calls(&map.list, function_name) + count_self_calls(&map.func, function_name),
+        Expr::Filter(filter) => count_self_calls(&filter.list, function_name) + count_self_calls(&filter.predicate, function_name),
+        Expr::Fold(fold) => count_self_calls(&fold.list, function_name) + count_self_calls(&fold.func, function_name) + count_self_calls(&fold.init, function_name),
+        Expr::WithMock(with_mock) => count_self_calls(&with_mock.target, function_name) + count_self_calls(&with_mock.replacement, function_name) + count_self_calls(&with_mock.body, function_name),
+        Expr::TypeAscription(type_ascription) => count_self_calls(&type_ascription.expr, function_name),
+        Expr::Literal(_) | Expr::Identifier(_) | Expr::MemberAccess(_) | Expr::Lambda(_) => 0,
+    }
+}
+
+fn expr_contains_identifier(expr: &Expr, name: &str) -> bool {
+    match expr {
+        Expr::Identifier(identifier) => identifier.name == name,
+        Expr::Application(app) => {
+            expr_contains_identifier(&app.func, name)
+                || app.args.iter().any(|arg| expr_contains_identifier(arg, name))
+        }
+        Expr::Binary(binary) => {
+            expr_contains_identifier(&binary.left, name) || expr_contains_identifier(&binary.right, name)
+        }
+        Expr::Unary(unary) => expr_contains_identifier(&unary.operand, name),
+        Expr::Match(match_expr) => {
+            expr_contains_identifier(&match_expr.scrutinee, name)
+                || match_expr.arms.iter().any(|arm| {
+                    arm.guard
+                        .as_ref()
+                        .map(|guard| expr_contains_identifier(guard, name))
+                        .unwrap_or(false)
+                        || expr_contains_identifier(&arm.body, name)
+                })
+        }
+        Expr::Let(let_expr) => expr_contains_identifier(&let_expr.value, name) || expr_contains_identifier(&let_expr.body, name),
+        Expr::If(if_expr) => {
+            expr_contains_identifier(&if_expr.condition, name)
+                || expr_contains_identifier(&if_expr.then_branch, name)
+                || if_expr.else_branch.as_ref().map(|branch| expr_contains_identifier(branch, name)).unwrap_or(false)
+        }
+        Expr::List(list) => list.elements.iter().any(|element| expr_contains_identifier(element, name)),
+        Expr::Record(record) => record.fields.iter().any(|field| expr_contains_identifier(&field.value, name)),
+        Expr::MapLiteral(map) => map.entries.iter().any(|entry| expr_contains_identifier(&entry.key, name) || expr_contains_identifier(&entry.value, name)),
+        Expr::Tuple(tuple) => tuple.elements.iter().any(|element| expr_contains_identifier(element, name)),
+        Expr::FieldAccess(field_access) => expr_contains_identifier(&field_access.object, name),
+        Expr::Index(index) => expr_contains_identifier(&index.object, name) || expr_contains_identifier(&index.index, name),
+        Expr::Pipeline(pipeline) => expr_contains_identifier(&pipeline.left, name) || expr_contains_identifier(&pipeline.right, name),
+        Expr::Map(map) => expr_contains_identifier(&map.list, name) || expr_contains_identifier(&map.func, name),
+        Expr::Filter(filter) => expr_contains_identifier(&filter.list, name) || expr_contains_identifier(&filter.predicate, name),
+        Expr::Fold(fold) => expr_contains_identifier(&fold.list, name) || expr_contains_identifier(&fold.func, name) || expr_contains_identifier(&fold.init, name),
+        Expr::WithMock(with_mock) => expr_contains_identifier(&with_mock.target, name) || expr_contains_identifier(&with_mock.replacement, name) || expr_contains_identifier(&with_mock.body, name),
+        Expr::TypeAscription(type_ascription) => expr_contains_identifier(&type_ascription.expr, name),
+        Expr::Literal(_) | Expr::Lambda(_) | Expr::MemberAccess(_) => false,
+    }
+}
+
+fn is_obvious_fold_step(expr: &Expr, function_name: &str, head_name: &str, rest_name: &str) -> bool {
+    match expr {
+        Expr::Binary(binary) => {
+            (expr_contains_identifier(&binary.left, head_name) && is_self_call_with_rest(&binary.right, function_name, rest_name))
+                || (is_self_call_with_rest(&binary.left, function_name, rest_name) && expr_contains_identifier(&binary.right, head_name))
+        }
+        Expr::Application(app) => {
+            count_self_calls(expr, function_name) == 1
+                && app.args.iter().any(|arg| is_self_call_with_rest(arg, function_name, rest_name))
+                && app.args.iter().any(|arg| expr_contains_identifier(arg, head_name))
+        }
+        _ => false,
+    }
+}
+
+fn detect_exact_recursive_fold_clone(func: &FunctionDecl) -> bool {
+    let Some((match_expr, _param_name)) = function_match_on_single_list_param(func) else {
+        return false;
+    };
+    let Some((empty_arm, cons_arm, head_name, rest_name)) = empty_and_cons_arms(match_expr) else {
+        return false;
+    };
+    if matches!(&func.return_type, Some(Type::List(_))) || is_empty_list_expr(&empty_arm.body) {
+        return false;
+    }
+    is_obvious_fold_step(&cons_arm.body, &func.name, head_name, rest_name)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2788,6 +3332,209 @@ mod tests {
         let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
         assert!(result.is_err());
         assert!(result.unwrap_err().iter().any(|error| matches!(error, ValidationError::SourceForm { .. })));
+    }
+
+    #[test]
+    fn test_recursive_append_result_rejected() {
+        let source = r#"λmain()=>[Int]=suffix([1,2,3])
+
+λsuffix(xs:[Int])=>[Int] match xs{
+  []=>[]|
+  [x,.rest]=>suffix(rest)⧺[x+1,x]
+}
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .iter()
+            .any(|error| matches!(error, ValidationError::RecursiveAppendResult { .. })));
+    }
+
+    #[test]
+    fn test_non_recursive_append_allowed() {
+        let source = r#"λaddFooter(lines:[String])=>[String]=lines⧺["-- end --"]
+
+λmain()=>[String]=addFooter(["a"])
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        assert!(validate_canonical_form(&program, Some("test.sigil"), Some(source)).is_ok());
+    }
+
+    #[test]
+    fn test_recursive_map_clone_rejected() {
+        let source = r#"λdouble(xs:[Int])=>[Int] match xs{
+  []=>[]|
+  [x,.rest]=>[x*2]⧺double(rest)
+}
+
+λmain()=>[Int]=double([1,2,3])
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .iter()
+            .any(|error| matches!(error, ValidationError::RecursiveMapClone { .. })));
+    }
+
+    #[test]
+    fn test_recursive_all_clone_rejected() {
+        let source = r#"λallPositive(xs:[Int])=>Bool match xs{
+  []=>true|
+  [x,.rest]=>isPositive(x) and allPositive(rest)
+}
+
+λisPositive(x:Int)=>Bool=x>0
+
+λmain()=>Bool=allPositive([1,2,3])
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .iter()
+            .any(|error| matches!(error, ValidationError::RecursiveAllClone { .. })));
+    }
+
+    #[test]
+    fn test_recursive_any_clone_rejected() {
+        let source = r#"λanyEven(xs:[Int])=>Bool match xs{
+  []=>false|
+  [x,.rest]=>isEven(x) or anyEven(rest)
+}
+
+λisEven(x:Int)=>Bool=x%2=0
+
+λmain()=>Bool=anyEven([1,2,3])
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .iter()
+            .any(|error| matches!(error, ValidationError::RecursiveAnyClone { .. })));
+    }
+
+    #[test]
+    fn test_recursive_filter_clone_rejected() {
+        let source = r#"λevens(xs:[Int])=>[Int] match xs{
+  []=>[]|
+  [x,.rest]=>match isEven(x){
+    true=>[x]⧺evens(rest)|
+    false=>evens(rest)
+  }
+}
+
+λisEven(x:Int)=>Bool=x%2=0
+
+λmain()=>[Int]=evens([1,2,3,4])
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .iter()
+            .any(|error| matches!(error, ValidationError::RecursiveFilterClone { .. })));
+    }
+
+    #[test]
+    fn test_recursive_reverse_clone_rejected() {
+        let source = r#"λmain()=>[Int]=reverse([1,2,3])
+
+λreverse(xs:[Int])=>[Int] match xs{
+  []=>[]|
+  [x,.rest]=>reverse(rest)⧺[x]
+}
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .iter()
+            .any(|error| matches!(error, ValidationError::RecursiveReverseClone { .. })));
+    }
+
+    #[test]
+    fn test_recursive_fold_clone_rejected() {
+        let source = r#"λmain()=>Int=sum([1,2,3])
+
+λsum(xs:[Int])=>Int match xs{
+  []=>0|
+  [x,.rest]=>x+sum(rest)
+}
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .iter()
+            .any(|error| matches!(error, ValidationError::RecursiveFoldClone { .. })));
+    }
+
+    #[test]
+    fn test_recursive_find_clone_rejected() {
+        let source = r#"λfindEven(xs:[Int])=>Option[Int] match xs{
+  []=>None()|
+  [x,.rest]=>match isEven(x){
+    true=>Some(x)|
+    false=>findEven(rest)
+  }
+}
+
+λisEven(x:Int)=>Bool=x%2=0
+
+λmain()=>Option[Int]=findEven([1,2,3,4])
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .iter()
+            .any(|error| matches!(error, ValidationError::RecursiveFindClone { .. })));
+    }
+
+    #[test]
+    fn test_canonical_map_operator_allowed() {
+        let source = r#"λdouble(xs:[Int])=>[Int]=xs↦(λ(x:Int)=>Int=x*2)
+
+λmain()=>[Int]=double([1,2,3])
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        assert!(validate_canonical_form(&program, Some("test.sigil"), Some(source)).is_ok());
+    }
+
+    #[test]
+    fn test_canonical_any_all_find_allowed() {
+        let source = r#"λallPositive(xs:[Int])=>Bool=stdlib::list.all(λ(x:Int)=>Bool=x>0,xs)
+
+λanyEven(xs:[Int])=>Bool=stdlib::list.any(λ(x:Int)=>Bool=x%2=0,xs)
+
+λfindEven(xs:[Int])=>Option[Int]=stdlib::list.find(λ(x:Int)=>Bool=x%2=0,xs)
+
+λmain()=>Bool=allPositive([1,2,3]) and anyEven([1,2,3]) and findEven([1,2,3,4])=Some(2)
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        assert!(validate_canonical_form(&program, Some("test.sigil"), Some(source)).is_ok());
     }
 
 }

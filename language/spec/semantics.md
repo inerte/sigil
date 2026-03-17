@@ -126,3 +126,33 @@ This document intentionally does not specify:
 - lifetimes
 
 Those semantics are not part of the current implemented Sigil surface.
+
+## Canonical Recursive List Processing
+
+The current implementation also treats a small set of recursive list-plumbing
+shapes as non-canonical when Sigil already has one required surface.
+
+The validator rejects exact recursive clones of:
+
+- `all`
+- `any`
+- `map`
+- `filter`
+- `find`
+- `fold`
+- `reverse`
+
+It also rejects recursive result-building of the form `self(rest)⧺rhs`.
+
+The required replacements are:
+
+- `stdlib::list.all`
+- `stdlib::list.any`
+- `↦`
+- `⊳`
+- `stdlib::list.find`
+- `⊕` / `stdlib::list.fold`
+- `stdlib::list.reverse`
+
+These are exact-shape canonicality rules, not general semantic equivalence or
+complexity proofs.

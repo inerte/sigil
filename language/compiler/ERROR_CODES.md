@@ -233,6 +233,54 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Message:** "Recursive function 'name' returns a function type"
 **How to fix:** Return a value, not a function
 
+### SIGIL-CANON-RECURSION-APPEND-RESULT
+**Description:** Recursive function appends to the recursive result.
+**Message:** "Recursive function 'name' appends to the recursive result"
+**Example:** `λreverse(xs:[Int])=>[Int] match xs{[]=>[]|[x,.rest]=>reverse(rest)⧺[x]}`
+**How to fix:** Use `↦`, `⊳`, or a wrapper plus accumulator helper with one final reverse
+
+### SIGIL-CANON-RECURSION-ALL-CLONE
+**Description:** Exact recursive all clone detected.
+**Message:** "Recursive function 'name' is a hand-rolled all"
+**Example:** `λallPositive(xs:[Int])=>Bool match xs{[]=>true|[x,.rest]=>isPositive(x) and allPositive(rest)}`
+**How to fix:** Use `stdlib::list.all(pred,xs)`
+
+### SIGIL-CANON-RECURSION-ANY-CLONE
+**Description:** Exact recursive any clone detected.
+**Message:** "Recursive function 'name' is a hand-rolled any"
+**Example:** `λanyEven(xs:[Int])=>Bool match xs{[]=>false|[x,.rest]=>isEven(x) or anyEven(rest)}`
+**How to fix:** Use `stdlib::list.any(pred,xs)`
+
+### SIGIL-CANON-RECURSION-MAP-CLONE
+**Description:** Exact recursive map clone detected.
+**Message:** "Recursive function 'name' is a hand-rolled map"
+**Example:** `λdouble(xs:[Int])=>[Int] match xs{[]=>[]|[x,.rest]=>[x*2]⧺double(rest)}`
+**How to fix:** Use `xs↦f`
+
+### SIGIL-CANON-RECURSION-FILTER-CLONE
+**Description:** Exact recursive filter clone detected.
+**Message:** "Recursive function 'name' is a hand-rolled filter"
+**Example:** `λevens(xs:[Int])=>[Int] match xs{[]=>[]|[x,.rest]=>match isEven(x){true=>[x]⧺evens(rest)|false=>evens(rest)}}`
+**How to fix:** Use `xs⊳pred`
+
+### SIGIL-CANON-RECURSION-FIND-CLONE
+**Description:** Exact recursive find clone detected.
+**Message:** "Recursive function 'name' is a hand-rolled find"
+**Example:** `λfindEven(xs:[Int])=>Option[Int] match xs{[]=>None()|[x,.rest]=>match isEven(x){true=>Some(x)|false=>findEven(rest)}}`
+**How to fix:** Use `stdlib::list.find(pred,xs)`
+
+### SIGIL-CANON-RECURSION-REVERSE-CLONE
+**Description:** Exact recursive reverse clone detected.
+**Message:** "Recursive function 'name' is a hand-rolled reverse"
+**Example:** `λreverse(xs:[Int])=>[Int] match xs{[]=>[]|[x,.rest]=>reverse(rest)⧺[x]}`
+**How to fix:** Use `stdlib::list.reverse`
+
+### SIGIL-CANON-RECURSION-FOLD-CLONE
+**Description:** Exact recursive fold clone detected.
+**Message:** "Recursive function 'name' is a hand-rolled fold"
+**Example:** `λsum(xs:[Int])=>Int match xs{[]=>0|[x,.rest]=>x+sum(rest)}`
+**How to fix:** Use `⊕` or `stdlib::list.fold`
+
 ### SIGIL-CANON-MATCH-BOOLEAN
 **Description:** Cannot pattern match on boolean expression.
 **Message:** "Cannot pattern match on boolean expression"

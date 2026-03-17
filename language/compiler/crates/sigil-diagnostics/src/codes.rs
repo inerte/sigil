@@ -74,6 +74,14 @@ pub mod canonical {
     pub const RECURSION_COLLECTION_NONSTRUCTURAL: &str =
         "SIGIL-CANON-RECURSION-COLLECTION-NONSTRUCTURAL";
     pub const RECURSION_CPS: &str = "SIGIL-CANON-RECURSION-CPS";
+    pub const RECURSION_APPEND_RESULT: &str = "SIGIL-CANON-RECURSION-APPEND-RESULT";
+    pub const RECURSION_ALL_CLONE: &str = "SIGIL-CANON-RECURSION-ALL-CLONE";
+    pub const RECURSION_ANY_CLONE: &str = "SIGIL-CANON-RECURSION-ANY-CLONE";
+    pub const RECURSION_FILTER_CLONE: &str = "SIGIL-CANON-RECURSION-FILTER-CLONE";
+    pub const RECURSION_FIND_CLONE: &str = "SIGIL-CANON-RECURSION-FIND-CLONE";
+    pub const RECURSION_FOLD_CLONE: &str = "SIGIL-CANON-RECURSION-FOLD-CLONE";
+    pub const RECURSION_MAP_CLONE: &str = "SIGIL-CANON-RECURSION-MAP-CLONE";
+    pub const RECURSION_REVERSE_CLONE: &str = "SIGIL-CANON-RECURSION-REVERSE-CLONE";
 
     // Pattern matching
     pub const MATCH_BOOLEAN: &str = "SIGIL-CANON-MATCH-BOOLEAN";
@@ -202,6 +210,14 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     canonical::RECURSION_ACCUMULATOR,
     canonical::RECURSION_COLLECTION_NONSTRUCTURAL,
     canonical::RECURSION_CPS,
+    canonical::RECURSION_APPEND_RESULT,
+    canonical::RECURSION_ALL_CLONE,
+    canonical::RECURSION_ANY_CLONE,
+    canonical::RECURSION_FILTER_CLONE,
+    canonical::RECURSION_FIND_CLONE,
+    canonical::RECURSION_FOLD_CLONE,
+    canonical::RECURSION_MAP_CLONE,
+    canonical::RECURSION_REVERSE_CLONE,
     canonical::MATCH_BOOLEAN,
     canonical::MATCH_TUPLE_BOOLEAN,
     canonical::PARAM_ORDER,
@@ -281,8 +297,8 @@ mod tests {
         // Keep this in sync when adding or removing diagnostic codes.
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            91,
-            "Expected 91 error codes, found {}",
+            99,
+            "Expected 99 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

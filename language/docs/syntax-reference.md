@@ -266,7 +266,7 @@ match option{
 
 match list{
   []=>0|
-  [head,..rest]=>head
+  [head,.rest]=>head
 }
 ```
 
@@ -323,6 +323,18 @@ Examples:
 ```
 
 `↦` and `⊳` require pure callbacks.
+
+Sigil also treats these operators as the canonical surface for common list
+plumbing:
+
+- do not hand-write recursive `all` clones; use `stdlib::list.all`
+- do not hand-write recursive `any` clones; use `stdlib::list.any`
+- do not hand-write recursive `map` clones when `↦` fits
+- do not hand-write recursive `filter` clones when `⊳` fits
+- do not hand-write recursive `find` clones; use `stdlib::list.find`
+- do not hand-write recursive `fold` clones when `⊕` fits
+- do not hand-write recursive `reverse` clones; use `stdlib::list.reverse`
+- do not build recursive list results with `self(rest)⧺rhs`
 
 ## Tests
 

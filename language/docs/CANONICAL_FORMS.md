@@ -167,6 +167,36 @@ Current mechanical rule:
 The current validator does not perform a separate “substitution legality”
 analysis. This document describes the implementation as it exists today.
 
+## Canonical List Processing
+
+Sigil now rejects a small set of exact recursive list-plumbing clones when the
+language already has one canonical surface.
+
+Current exact-shape bans:
+
+- recursive append-to-result of the form `self(rest)⧺rhs`
+- hand-rolled recursive `all` clones
+- hand-rolled recursive `any` clones
+- hand-rolled recursive `map` clones
+- hand-rolled recursive `filter` clones
+- hand-rolled recursive `find` clones
+- hand-rolled recursive `reverse` clones
+- hand-rolled recursive `fold` clones
+
+Canonical replacements:
+
+- universal checks: `stdlib::list.all`
+- existential checks: `stdlib::list.any`
+- projection: `↦`
+- filtering: `⊳`
+- first-match search: `stdlib::list.find`
+- reduction: `⊕` or `stdlib::list.fold`
+- reversal: `stdlib::list.reverse`
+- custom list building: wrapper + accumulator helper, reversing once at the end if needed
+
+These are exact-shape validator rules, not general algorithm analysis.
+Recursive algorithms that do not match these narrow patterns remain valid.
+
 ## Topology / Config Boundaries
 
 For topology-aware projects:

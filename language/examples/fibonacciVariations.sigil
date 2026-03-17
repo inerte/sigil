@@ -3,22 +3,30 @@
   false=>x
 }
 
-λfib01BasicRecursive(n:Int)=>Int match n{
-  0=>0|
-  1=>1|
-  value=>fib01BasicRecursive(value-1)+fib01BasicRecursive(value-2)
+λfib01BasicRecursive(n:Int)=>Int=fib01BasicRecursiveHelper(0,1,n)
+
+λfib01BasicRecursiveHelper(a:Int,b:Int,n:Int)=>Int match n{
+  0=>a|
+  count=>fib01BasicRecursiveHelper(b,a+b,count-1)
 }
 
-λfib02WithGuards(n:Int)=>Int match n≤1{
-  true=>n|
-  false=>fib02WithGuards(n-1)+fib02WithGuards(n-2)
+λfib02WithGuards(n:Int)=>Int=fib02WithGuardsHelper(0,1,n)
+
+λfib02WithGuardsHelper(a:Int,b:Int,n:Int)=>Int match n≤1{
+  true=>match n{
+    0=>a|
+    other=>b
+  }|
+  false=>fib02WithGuardsHelper(b,a+b,n-1)
 }
 
-λfib03NestedMatches(n:Int)=>Int match n{
-  0=>0|
+λfib03NestedMatches(n:Int)=>Int=fib03NestedMatchesHelper(0,1,n)
+
+λfib03NestedMatchesHelper(a:Int,b:Int,n:Int)=>Int match n{
+  0=>a|
   value=>match value{
-    1=>1|
-    nextValue=>fib03NestedMatches(nextValue-1)+fib03NestedMatches(nextValue-2)
+    1=>b|
+    nextValue=>fib03NestedMatchesHelper(b,a+b,nextValue-1)
   }
 }
 
@@ -31,49 +39,54 @@
 
 λfib05SequenceBuilder(n:Int)=>Int=last(fibSequence(n))
 
-λfib06ListSum(n:Int)=>Int match n{
-  0=>0|
-  1=>1|
-  value=>sum([fib06ListSum(value-1),fib06ListSum(value-2)])
+λfib06ListSum(n:Int)=>Int=fib06ListSumHelper(0,1,n)
+
+λfib06ListSumHelper(a:Int,b:Int,n:Int)=>Int match n{
+  0=>a|
+  count=>fib06ListSumHelper(b,sum([a,b]),count-1)
 }
 
-λfib07WithOption(n:Int)=>Int=(match fib07WithOptionHelper(n){
+λfib07WithOption(n:Int)=>Int=(match fib07WithOptionHelper(0,1,n){
   Some(x)=>x|
   None()=>-1
 }:Int)
 
-λfib07WithOptionHelper(n:Int)=>Option[Int] match n{
-  0=>Some(0)|
-  1=>Some(1)|
-  value=>sumOptions(fib07WithOptionHelper(value-1),fib07WithOptionHelper(value-2))
+λfib07WithOptionHelper(a:Int,b:Int,n:Int)=>Option[Int] match n{
+  0=>Some(a)|
+  1=>Some(b)|
+  count=>fib07WithOptionHelper(b,a+b,count-1)
 }
 
-λfib08Mod(n:Int)=>Int match n{
-  0=>0|
-  1=>1|
-  value=>mod(fib08Mod(value-1)+fib08Mod(value-2),1000000007)
+λfib08Mod(n:Int)=>Int=fib08ModHelper(0,1,n)
+
+λfib08ModHelper(a:Int,b:Int,n:Int)=>Int match n{
+  0=>a|
+  count=>fib08ModHelper(b,mod(a+b,1000000007),count-1)
 }
 
-λfib09MinMax(n:Int)=>Int match n{
-  0=>0|
-  1=>1|
-  value=>min(fib09MinMax(value-1),fib09MinMax(value-2))+max(fib09MinMax(value-1),fib09MinMax(value-2))
+λfib09MinMax(n:Int)=>Int=fib09MinMaxHelper(0,1,n)
+
+λfib09MinMaxHelper(a:Int,b:Int,n:Int)=>Int match n{
+  0=>a|
+  count=>fib09MinMaxHelper(b,min(a,b)+max(a,b),count-1)
 }
 
-λfib10AbsDiff(n:Int)=>Int match n{
-  0=>0|
-  1=>1|
-  value=>abs(fib10AbsDiff(value-1)-fib10AbsDiff(value-2))+min(fib10AbsDiff(value-1),fib10AbsDiff(value-2))
+λfib10AbsSum(n:Int)=>Int=fib10AbsSumHelper(0,1,n)
+
+λfib10AbsSumHelper(a:Int,b:Int,n:Int)=>Int match n{
+  0=>a|
+  count=>fib10AbsSumHelper(b,abs(a)+abs(b),count-1)
 }
 
 λfib11WithLength(n:Int)=>Int=lengthInterpretation(n)
 
-λfib12Comparison(n:Int)=>Int match n{
-  0=>0|
-  1=>1|
-  value=>match fib12Comparison(value-1)>fib12Comparison(value-2){
-    true=>fib12Comparison(value-1)+fib12Comparison(value-2)|
-    false=>fib12Comparison(value-2)+fib12Comparison(value-1)
+λfib12Comparison(n:Int)=>Int=fib12ComparisonHelper(0,1,n)
+
+λfib12ComparisonHelper(a:Int,b:Int,n:Int)=>Int match n{
+  0=>a|
+  count=>match a>b{
+    true=>fib12ComparisonHelper(b,a+b,count-1)|
+    false=>fib12ComparisonHelper(b,b+a,count-1)
   }
 }
 
@@ -107,7 +120,7 @@
   count=>#fibAsLength(count)
 }
 
-λmain()=>Int=fib01BasicRecursive(10)+fib02WithGuards(10)+fib03NestedMatches(10)+fib04TupleSwap(10)+fib05SequenceBuilder(10)+fib06ListSum(10)+fib07WithOption(10)+fib08Mod(10)+fib09MinMax(10)+fib10AbsDiff(10)+fib11WithLength(10)+fib12Comparison(10)
+λmain()=>Int=fib01BasicRecursive(10)+fib02WithGuards(10)+fib03NestedMatches(10)+fib04TupleSwap(10)+fib05SequenceBuilder(10)+fib06ListSum(10)+fib07WithOption(10)+fib08Mod(10)+fib09MinMax(10)+fib10AbsSum(10)+fib11WithLength(10)+fib12Comparison(10)
 
 λmax(a:Int,b:Int)=>Int match a>b{
   true=>a|
@@ -136,12 +149,4 @@
 λsumLastTwo(xs:[Int])=>Int match reverse(xs){
   [a,b,.rest]=>a+b|
   other=>0
-}
-
-λsumOptions(opt1:Option[Int],opt2:Option[Int])=>Option[Int] match opt1{
-  Some(a)=>match opt2{
-    Some(b)=>Some(a+b)|
-    None()=>None()
-  }|
-  None()=>None()
 }

@@ -9,10 +9,12 @@
 //! 3. **Canonical Pattern Matching**: Enforces direct, structural forms
 //! 4. **Declaration Ordering**: Types before usage (optional check)
 
-pub mod error;
+pub mod branching_recursion;
 pub mod canonical;
+pub mod error;
 pub mod printer;
 
-pub use error::*;
+pub use branching_recursion::*;
 pub use canonical::*;
+pub use error::*;
 pub use printer::*;

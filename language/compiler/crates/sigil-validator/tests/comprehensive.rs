@@ -186,7 +186,7 @@ fn test_surface_form_multiple_functions() {
 
 #[test]
 fn test_valid_program_both_validators() {
-    let source = "λfib(n:Int)=>Int=fib(n-1)+fib(n-2)";
+    let source = "λcountdown(n:Int)=>Int match n{0=>0|value=>countdown(value-1)}";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.lib.sigil").unwrap();
 

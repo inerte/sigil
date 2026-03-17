@@ -648,6 +648,11 @@ pub fn validate_canonical_form(program: &Program, file_path: Option<&str>, sourc
         errors.extend(e);
     }
 
+    // Rule 6b: No non-canonical branching self-recursion
+    if let Err(e) = crate::branching_recursion::validate_branching_recursion(program) {
+        errors.extend(e);
+    }
+
     // Rule 7: Parameter and effect ordering - alphabetical
     if let Err(e) = validate_function_signature_ordering(program) {
         errors.extend(e);
@@ -3426,13 +3431,12 @@ mod tests {
 
     #[test]
     fn test_direct_match_body_canonical_layout_allowed() {
-        let source = r#"λfib(n:Int)=>Int match n{
+        let source = r#"λcountdown(n:Int)=>Int match n{
   0=>0|
-  1=>1|
-  value=>fib(value-1)+fib(value-2)
+  value=>countdown(value-1)
 }
 
-λmain()=>Int=fib(5)
+λmain()=>Int=countdown(5)
 "#;
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();

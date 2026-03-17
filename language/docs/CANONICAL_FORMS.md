@@ -247,6 +247,79 @@ Canonical examples:
 λmain()=>Int=fib(10)
 ```
 
+## Canonical Branching Recursion
+
+Sigil rejects one narrow recursive shape as non-canonical: sibling self-calls that all directly reduce the same parameter while leaving the other arguments unchanged.
+
+### Blocked Pattern
+
+```sigil
+λfib(n:Int)=>Int match n{
+  0=>0|
+  1=>1|
+  value=>fib(value-1)+fib(value-2)  // ❌ SIGIL-CANON-BRANCHING-SELF-RECURSION
+}
+```
+
+Sigil rejects this shape because it duplicates work instead of following one canonical recursion path.
+
+### Canonical Replacement
+
+```sigil
+λfib(n:Int)=>Int=fibHelper(0,1,n)
+
+λfibHelper(a:Int,b:Int,n:Int)=>Int match n{
+  0=>a|
+  count=>fibHelper(b,a+b,count-1)
+}
+```
+
+The preferred replacement is a wrapper plus helper function that threads the working state through one recursive step at a time.
+
+### What Gets Rejected
+
+Sigil rejects only exact branching self-recursion when all of these are true:
+
+1. there are multiple sibling self-calls in the same expression
+2. each self-call directly reduces the same parameter, such as `n-1` and `n-2`
+3. the other arguments are unchanged across those sibling calls
+
+Sigil also rejects obvious nested amplification of that same shape, such as:
+
+```sigil
+λbad(n:Int)=>Int=bad(bad(n-1)+bad(n-2))
+```
+
+### Allowed Patterns
+
+**Single recursive call:**
+```sigil
+λlength(xs:[Int])=>Int match xs{
+  []=>0|
+  [h,.tail]=>1+length(tail)
+}
+```
+
+**Different non-reduced arguments:**
+```sigil
+λmerge(left:[Int],right:[Int])=>[Int] match left{
+  []=>right|
+  [lh,.lt]=>match right{
+    []=>left|
+    [rh,.rt]=>match lh≤rh{
+      true=>[lh]⧺merge(lt,right)|
+      false=>[rh]⧺merge(left,rt)
+    }
+  }
+}
+```
+
+Sigil does not attempt general complexity proofs or general exponential-recursion detection. This rule exists to ban one specific non-canonical recursion shape with a clear canonical replacement.
+
+### Error Code
+
+`SIGIL-CANON-BRANCHING-SELF-RECURSION` - Non-canonical branching self-recursion detected. Use a wrapper plus helper state-threading shape instead of sibling self-calls over the same reduced parameter.
+
 ## Validation Pipeline
 
 Canonical validation happens in two stages:

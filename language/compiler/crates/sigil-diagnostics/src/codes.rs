@@ -83,6 +83,7 @@ pub mod canonical {
     pub const RECURSION_FOLD_CLONE: &str = "SIGIL-CANON-RECURSION-FOLD-CLONE";
     pub const RECURSION_MAP_CLONE: &str = "SIGIL-CANON-RECURSION-MAP-CLONE";
     pub const RECURSION_REVERSE_CLONE: &str = "SIGIL-CANON-RECURSION-REVERSE-CLONE";
+    pub const BRANCHING_SELF_RECURSION: &str = "SIGIL-CANON-BRANCHING-SELF-RECURSION";
     pub const TRAVERSAL_FILTER_COUNT: &str = "SIGIL-CANON-TRAVERSAL-FILTER-COUNT";
 
     // Pattern matching
@@ -221,6 +222,7 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     canonical::RECURSION_FOLD_CLONE,
     canonical::RECURSION_MAP_CLONE,
     canonical::RECURSION_REVERSE_CLONE,
+    canonical::BRANCHING_SELF_RECURSION,
     canonical::TRAVERSAL_FILTER_COUNT,
     canonical::MATCH_BOOLEAN,
     canonical::MATCH_TUPLE_BOOLEAN,
@@ -301,8 +303,8 @@ mod tests {
         // Keep this in sync when adding or removing diagnostic codes.
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            101,
-            "Expected 101 error codes, found {}",
+            102,
+            "Expected 102 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

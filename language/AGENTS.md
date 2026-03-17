@@ -306,11 +306,54 @@ test "my feature works" {
 }
 ```
 
+### Canonical Branching Recursion
+
+Sigil rejects one narrow recursive shape as non-canonical:
+
+- multiple sibling self-calls in the same expression
+- each self-call directly reduces the same parameter, such as `n-1` and `n-2`
+- the other arguments stay identical across the sibling calls
+- error: `SIGIL-CANON-BRANCHING-SELF-RECURSION`
+
+Blocked example:
+
+```sigil
+λfib(n:Int)=>Int match n{
+  0=>0|
+  1=>1|
+  value=>fib(value-1)+fib(value-2)
+}
+```
+
+Sigil rejects this shape because it duplicates work instead of following one canonical recursion path.
+
+Use one of these instead:
+- wrapper + helper state threading
+- accumulator helper recursion
+- another canonical linear helper shape when the algorithm permits it
+
+Canonical example:
+
+```sigil
+λfib(n:Int)=>Int=fibHelper(0,1,n)
+
+λfibHelper(a:Int,b:Int,n:Int)=>Int match n{
+  0=>a|
+  count=>fibHelper(b,a+b,count-1)
+}
+```
+
+This rule is intentionally narrow:
+- single recursive calls are allowed
+- recursion in different control-flow branches is allowed
+- recursive calls with different non-reduced arguments are allowed
+- Sigil does not attempt general complexity proofs or general exponential-recursion detection
+
 ### Testing Invalid Code Patterns
 
 **IMPORTANT**: All `.sigil` files in the repository should compile successfully.
 
-To test that the compiler correctly rejects invalid code patterns (accumulator-passing style, CPS, etc.), use Rust crate-level string-input tests instead of creating invalid `.sigil` files:
+To test that the compiler correctly rejects invalid code patterns (accumulator-passing style, CPS, non-canonical branching recursion, etc.), use Rust crate-level string-input tests instead of creating invalid `.sigil` files:
 
 ```rust
 use sigil_lexer::tokenize;
@@ -331,6 +374,7 @@ fn test_accumulator_blocked() {
 
 Rust tests go in:
 - `language/compiler/crates/sigil-validator/tests/comprehensive.rs` - canonical form validation
+- `language/compiler/crates/sigil-validator/src/branching_recursion.rs` - narrow branching recursion string-input tests
 - `language/compiler/crates/sigil-parser/tests/comprehensive.rs` - parser rejection tests
 
 Run compiler tests:

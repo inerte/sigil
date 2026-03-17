@@ -1,7 +1,8 @@
-λfib(n:Int)=>Int match n{
-  0=>0|
-  1=>1|
-  value=>fib(value-1)+fib(value-2)
+λfib(n:Int)=>Int=fibHelper(0,1,n)
+
+λfibHelper(a:Int,b:Int,n:Int)=>Int match n{
+  0=>a|
+  count=>fibHelper(b,a+b,count-1)
 }
 
 λmain()=>Int=fib(10)

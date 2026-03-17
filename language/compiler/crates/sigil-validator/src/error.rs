@@ -83,6 +83,12 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
+    #[error("SIGIL-CANON-BRANCHING-SELF-RECURSION: Recursive function '{function_name}' uses non-canonical branching self-recursion.\n\nSigil rejects exact sibling self-calls that reduce the same parameter while keeping the other arguments unchanged. That shape duplicates work instead of following one canonical recursion path.\n\nUse a wrapper plus helper accumulator pattern, or another canonical state-threading helper shape, instead.")]
+    BranchingSelfRecursion {
+        function_name: String,
+        location: SourceLocation,
+    },
+
     #[error("SIGIL-CANON-TRAVERSAL-FILTER-COUNT: Expression uses filter then length for counting.\n\nSigil rejects the exact shape #(xs⊳pred) when a canonical one-pass counting path exists.\n\nUse stdlib::list.countIf(pred,xs) instead.")]
     FilterThenCount {
         location: SourceLocation,
@@ -419,6 +425,7 @@ impl ValidationError {
             ValidationError::RecursiveFlatMapClone { location, .. } => *location,
             ValidationError::RecursiveReverseClone { location, .. } => *location,
             ValidationError::RecursiveFoldClone { location, .. } => *location,
+            ValidationError::BranchingSelfRecursion { location, .. } => *location,
             ValidationError::FilterThenCount { location } => *location,
             ValidationError::NonStructuralRecursion { location, .. } => *location,
             ValidationError::RedundantPattern { location } => *location,
@@ -645,6 +652,19 @@ impl From<ValidationError> for Diagnostic {
                 )
                 .with_location(source_location_to_span(get_file(), location))
                 .with_details("guidance", "Use ⊕ or stdlib::list.fold instead of custom recursive reduction.")
+            }
+
+            ValidationError::BranchingSelfRecursion { function_name, location } => {
+                Diagnostic::new(
+                    codes::canonical::BRANCHING_SELF_RECURSION,
+                    SigilPhase::Canonical,
+                    format!("Recursive function '{}' uses non-canonical branching self-recursion", function_name),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_details(
+                    "guidance",
+                    "Use a wrapper plus helper accumulator pattern, or another canonical state-threading helper shape, instead of sibling self-calls over the same reduced parameter.",
+                )
             }
 
             ValidationError::FilterThenCount { location } => {

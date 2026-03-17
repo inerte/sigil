@@ -23,7 +23,6 @@ Do not use this skill for:
 
 - repository root checked out locally
 - current branch set to the PR branch, or an explicit base ref
-- optional scope hint such as `compiler`, `stdlib`, `docs`, or `full`
 
 Default base ref:
 - prefer the user-provided base ref
@@ -32,7 +31,7 @@ Default base ref:
 
 ## Workflow
 
-1. Run `.agents/skills/sigil-pr-audit/scripts/audit-pr.sh [base-ref] [scope]`.
+1. Run `.agents/skills/sigil-pr-audit/scripts/audit-pr.sh [base-ref]`.
 2. Read [`references/invariants.md`](./references/invariants.md).
 3. If the audit touches language semantics, read [`language/AGENTS.md`](/Users/jnobreganetto/Documents/GitHub/ai-pl/language/AGENTS.md).
 4. Review the audit output before opening implementation files.

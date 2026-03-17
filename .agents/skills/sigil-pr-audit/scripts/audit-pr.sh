@@ -2,7 +2,6 @@
 set -euo pipefail
 
 base_ref="${1:-}"
-scope_hint="${2:-}"
 
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "ERROR: run this script inside a git repository" >&2
@@ -112,9 +111,6 @@ echo "== SIGIL PR AUDIT =="
 echo "branch: ${current_branch}"
 echo "base_ref: ${base_ref}"
 echo "merge_base: ${merge_base}"
-if [[ -n "${scope_hint}" ]]; then
-  echo "scope_hint: ${scope_hint}"
-fi
 echo
 
 echo "== DIFF STAT =="

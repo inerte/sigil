@@ -1447,6 +1447,9 @@ impl TypeScriptGenerator {
             "split" if generated_args.len() == 2 => {
                 Ok(Some(format!("{}.then(([__separator, __string]) => __string.split(__separator))", self.js_all(&generated_args))))
             }
+            "reverse" if generated_args.len() == 1 => {
+                Ok(Some(format!("{}.then((__value) => __sigil_ready(__value.split(\"\").reverse().join(\"\")))", generated_args[0])))
+            }
             "replaceAll" if generated_args.len() == 3 => {
                 Ok(Some(format!("{}.then(([__search, __replacement, __string]) => __string.replaceAll(__search, __replacement))", self.js_all(&generated_args))))
             }

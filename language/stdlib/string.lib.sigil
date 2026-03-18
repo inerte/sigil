@@ -21,6 +21,8 @@
 
 λreplaceAll(pattern:String,replacement:String,s:String)=>String=""
 
+λreverse(s:String)=>String=""
+
 λsplit(delimiter:String,s:String)=>[String]=[""]
 
 λstartsWith(prefix:String,s:String)=>Bool=false

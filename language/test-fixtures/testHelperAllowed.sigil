@@ -1,13 +1,13 @@
-λisPositive(x:Int)=>Bool=x>0
+i stdlib::numeric
 
 λmain()=>String=processA(50)++" and "++processB(-5)
 
-λprocessA(x:Int)=>String match isPositive(x){
+λprocessA(x:Int)=>String match stdlib::numeric.isPositive(x){
   true=>"positive"|
   false=>"negative"
 }
 
-λprocessB(y:Int)=>String match isPositive(y){
+λprocessB(y:Int)=>String match stdlib::numeric.isPositive(y){
   true=>"yes"|
   false=>"no"
 }

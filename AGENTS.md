@@ -27,6 +27,7 @@ For language/compiler work, prefer the deeper guide:
    - deterministic behavior and deterministic codegen where possible
    - tests/examples as source of truth over prose docs
    - canonical semantic equality for structural types (aliases + named products normalize before comparison)
+   - first-party Sigil code outside `language/stdlib/` should use canonical stdlib helpers directly instead of locally redefining them
 - For website/docs/article writing:
    - prefer normal technical prose over punchy social-post style
    - do not write in "LinkedIn broetry" style with one-line dramatic paragraphs, hype-heavy binaries, or sloganized emphasis

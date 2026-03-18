@@ -98,6 +98,10 @@ test "repeat with non-positive count returns empty" {
   stdlib::string.repeat(0,"ab")=""
 }
 
+test "reverse flips string contents" {
+  stdlib::string.reverse("stressed")="desserts"
+}
+
 test "replaceAll all occurrences" {
   stdlib::string.replaceAll("o","0","hello world")="hell0 w0rld"
 }

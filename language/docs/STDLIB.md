@@ -880,6 +880,22 @@ stdlib::string.repeat(0,"ab")    ⟦ => "" ⟧
 
 **Implementation:** recursive concatenation in Sigil
 
+### reverse
+
+Reverse a string.
+
+```sigil
+λreverse(s:String)=>String
+```
+
+**Examples:**
+```sigil
+stdlib::string.reverse("stressed")    ⟦ => "desserts" ⟧
+stdlib::string.reverse("abc")         ⟦ => "cba" ⟧
+```
+
+**Codegen:** `s.split("").reverse().join("")`
+
 ## String Predicates
 
 **Module:** `stdlib/string`

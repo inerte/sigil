@@ -1,6 +1,3 @@
-λgcd(a:Int,b:Int)=>Int match b{
-  0=>a|
-  divisor=>gcd(divisor,a%divisor)
-}
+i stdlib::numeric
 
-λmain()=>Int=gcd(48,18)
+λmain()=>Int=stdlib::numeric.gcd(48,18)

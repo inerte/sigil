@@ -1,5 +1,5 @@
-λfilterEven(xs:[Int])=>[Int]=xs⊳isEven
+i stdlib::numeric
 
-λisEven(x:Int)=>Bool=x%2=0
+λfilterEven(xs:[Int])=>[Int]=xs⊳stdlib::numeric.isEven
 
 λmain()=>[Int]=filterEven([1,2,3,4,5,6])

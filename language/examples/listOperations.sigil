@@ -1,9 +1,9 @@
+i stdlib::list
+
 λdoubleAll(xs:[Int])=>[Int]=xs↦(λ(x:Int)=>Int=x*2)
 
 λfilterThenMap(xs:[Int])=>[Int]=xs⊳(λ(x:Int)=>Bool=x>0)↦(λ(x:Int)=>Int=x*x)
 
 λkeepLarge(xs:[Int])=>[Int]=xs⊳(λ(x:Int)=>Bool=x>2)
 
-λmain()=>Int=sum(([1,2,3,4,5]:[Int]))
-
-λsum(xs:[Int])=>Int=xs⊕(λ(acc:Int,x:Int)=>Int=acc+x)⊕0
+λmain()=>Int=stdlib::list.sum(([1,2,3,4,5]:[Int]))

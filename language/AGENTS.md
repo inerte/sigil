@@ -108,6 +108,7 @@ Current constructor and list invariants:
 - list literals preserve nesting exactly as written
 - use `⧺` only for explicit concatenation; never rely on list literals to flatten values
 - if a canonical helper exists in `stdlib`, prefer it over project-local reimplementation
+- in first-party Sigil code outside `language/stdlib/`, do not locally redefine canonical stdlib helpers; use qualified calls like `stdlib::list.sum` and `stdlib::numeric.max`
 - for safe integer list lookup/end access, prefer `stdlib::list.nth` and `stdlib::list.last`
 - Sigil is concurrent by default; do not describe it as "await every call"
 - effectful operations start in source order, even when their resolution overlaps

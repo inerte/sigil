@@ -1,9 +1,9 @@
-λdouble(x:Int)=>Int=x*2
+i stdlib::numeric
 
-λisEven(x:Int)=>Bool=x%2=0
+λdouble(x:Int)=>Int=x*2
 
 λmain()=>Int=processList([1,2,3,4,5])
 
-λprocessList(xs:[Int])=>Int=xs↦double⊳isEven⊕sum⊕0
+λprocessList(xs:[Int])=>Int=xs↦double⊳stdlib::numeric.isEven⊕sum⊕0
 
 λsum(acc:Int,x:Int)=>Int=acc+x

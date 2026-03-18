@@ -217,6 +217,13 @@ Repeat a string `count` times.
 - Pure: Yes
 
 ```sigil
+λreverse(s:String)=>String
+```
+Reverse a string.
+- Complexity: O(n)
+- Pure: Yes
+
+```sigil
 λsplit(delimiter:String,s:String)=>[String]
 ```
 Split a string by delimiter.

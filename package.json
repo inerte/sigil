@@ -12,7 +12,7 @@
     "test": "pnpm -r --if-present test",
     "sigil": "cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml --",
     "lex": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil lex",
-    "sigil:test:canonical-stdlib": "python3 tools/test_checkCanonicalStdlibUsage.py && python3 tools/checkCanonicalStdlibUsage.py",
+    "sigil:test:canonical-stdlib": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && (cd projects/canonicalStdlibAudit && ../../language/compiler/target/debug/sigil test tests && ../../language/compiler/target/debug/sigil run src/main.sigil)",
     "sigil:test:compiler": "cargo test --manifest-path language/compiler/Cargo.toml",
     "sigil:test:fixtures": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test language/test-fixtures/tests",
     "sigil:test:language": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test language/tests",

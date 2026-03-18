@@ -1,7 +1,5 @@
 e console
 
-e process
-
 i config::release
 
 i src::formula
@@ -10,9 +8,11 @@ i stdlib::file
 
 i stdlib::path
 
+i stdlib::process
+
 λfail(message:String)=>!IO Unit={
   l _=(console.error(message):Unit);
-  process.exit(1)
+  stdlib::process.exit(1)
 }
 
 λmain()=>!IO Unit match releaseVersion(){

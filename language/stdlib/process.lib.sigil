@@ -6,6 +6,8 @@ t ProcessResult={code:Int,stderr:String,stdout:String}
 
 λcommand(argv:[String])=>Command={argv:argv,cwd:None(),env:({↦}:{String↦String})}
 
+λexit(code:Int)=>!IO Unit=()
+
 λkill(process:RunningProcess)=>!IO Unit=()
 
 λrun(command:Command)=>!IO ProcessResult={code:-1,stderr:"process intrinsic unavailable",stdout:""}

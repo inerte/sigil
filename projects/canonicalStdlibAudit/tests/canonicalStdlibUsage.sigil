@@ -1,0 +1,46 @@
+i src::canonicalStdlibUsage
+
+i stdlib::regex
+
+λcompiledRules()=>[src::canonicalStdlibUsage.Rule] match src::canonicalStdlibUsage.rules(){
+  Ok(rules)=>rules|
+  Err(_)=>[]
+}
+
+λmain()=>Unit=()
+
+test "duplicate numeric max is rejected" {
+  match src::canonicalStdlibUsage.analyzeFile("projects/demo.sigil",compiledRules(),"λmax(a:Int,b:Int)=>Int=a\n"){
+    [issue]=>issue.line=1 and issue.name="maxNumeric" and issue.path="projects/demo.sigil" and issue.replacement="stdlib::numeric.max"|
+    _=>false
+  }
+}
+
+test "duplicate reverse is rejected" {
+  match src::canonicalStdlibUsage.analyzeFile("language/examples/example.sigil",compiledRules(),"λreverse[T](xs:[T])=>[T]=[]\n"){
+    [issue]=>issue.line=1 and issue.name="reverseList" and issue.path="language/examples/example.sigil" and issue.replacement="stdlib::list.reverse"|
+    _=>false
+  }
+}
+
+test "duplicate string take is rejected" {
+  match src::canonicalStdlibUsage.analyzeFile("projects/demo.sigil",compiledRules(),"λtake(n:Int,s:String)=>String=s\n"){
+    [issue]=>issue.line=1 and issue.name="takeString" and issue.path="projects/demo.sigil" and issue.replacement="stdlib::string.take"|
+    _=>false
+  }
+}
+
+test "duplicate sum is rejected" {
+  match src::canonicalStdlibUsage.analyzeFile("language/examples/example.sigil",compiledRules(),"λsum(xs:[Int])=>Int=0\n"){
+    [issue]=>issue.line=1 and issue.name="sum" and issue.path="language/examples/example.sigil" and issue.replacement="stdlib::list.sum"|
+    _=>false
+  }
+}
+
+test "same name with different shape is allowed" {
+  src::canonicalStdlibUsage.analyzeFile("language/test-fixtures/example.sigil",compiledRules(),"λsum(acc:Int,x:Int)=>Int=acc+x\n")=[]
+}
+
+test "stdlib path is ignored" {
+  src::canonicalStdlibUsage.ignorePath("language/stdlib/list.lib.sigil")
+}

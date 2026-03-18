@@ -319,6 +319,38 @@ impl TypeScriptGenerator {
         self.emit("  const handle = await __sigil_process_spawn(command);");
         self.emit("  return __sigil_process_wait(handle);");
         self.emit("}");
+        self.emit("async function __sigil_process_exit(code) {");
+        self.emit("  process.exit(Number(code));");
+        self.emit("  return null;");
+        self.emit("}");
+        self.emit("function __sigil_regex_compile_result(flags, pattern) {");
+        self.emit("  try {");
+        self.emit("    const normalizedFlags = String(flags ?? '');");
+        self.emit("    const normalizedPattern = String(pattern ?? '');");
+        self.emit("    new RegExp(normalizedPattern, normalizedFlags);");
+        self.emit("    return { __tag: \"Ok\", __fields: [{ flags: normalizedFlags, pattern: normalizedPattern }] };");
+        self.emit("  } catch (error) {");
+        self.emit("    return { __tag: \"Err\", __fields: [{ message: error instanceof Error ? error.message : String(error) }] };");
+        self.emit("  }");
+        self.emit("}");
+        self.emit("function __sigil_regex_find(regex, input) {");
+        self.emit("  try {");
+        self.emit("    const compiled = new RegExp(String(regex?.pattern ?? ''), String(regex?.flags ?? ''));");
+        self.emit("    const source = String(input ?? '');");
+        self.emit("    const match = compiled.exec(source);");
+        self.emit("    if (!match) { return { __tag: \"None\", __fields: [] }; }");
+        self.emit("    return { __tag: \"Some\", __fields: [{ captures: match.slice(1).map((value) => value ?? ''), end: match.index + match[0].length, full: match[0], start: match.index }] };");
+        self.emit("  } catch (_) {");
+        self.emit("    return { __tag: \"None\", __fields: [] };");
+        self.emit("  }");
+        self.emit("}");
+        self.emit("function __sigil_regex_is_match(regex, input) {");
+        self.emit("  try {");
+        self.emit("    return new RegExp(String(regex?.pattern ?? ''), String(regex?.flags ?? '')).test(String(input ?? ''));");
+        self.emit("  } catch (_) {");
+        self.emit("    return false;");
+        self.emit("  }");
+        self.emit("}");
         self.emit("function __sigil_url_query_map_from_search(search) {");
         self.emit("  const params = new URLSearchParams(search);");
         self.emit("  return __sigil_map_from_entries(Array.from(params.entries()));");
@@ -1702,6 +1734,10 @@ impl TypeScriptGenerator {
                 "{}.then((__command) => __sigil_process_run(__command))",
                 generated_args[0]
             ))),
+            "exit" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__code) => __sigil_process_exit(__code))",
+                generated_args[0]
+            ))),
             "spawn" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__command) => __sigil_process_spawn(__command))",
                 generated_args[0]
@@ -1728,6 +1764,33 @@ impl TypeScriptGenerator {
             "request" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__request) => __sigil_http_request(__request))",
                 generated_args[0]
+            ))),
+            _ => Ok(None),
+        }
+    }
+
+    fn generate_regex_intrinsic(
+        &mut self,
+        member: &str,
+        args: &[TypedExpr],
+    ) -> Result<Option<String>, CodegenError> {
+        let generated_args = args
+            .iter()
+            .map(|arg| self.generate_expression(arg))
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+
+        match member {
+            "compile" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__flags, __pattern]) => __sigil_regex_compile_result(__flags, __pattern))",
+                self.js_all(&generated_args)
+            ))),
+            "find" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__input, __regex]) => __sigil_regex_find(__regex, __input))",
+                self.js_all(&generated_args)
+            ))),
+            "isMatch" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__input, __regex]) => __sigil_regex_is_match(__regex, __input))",
+                self.js_all(&generated_args)
             ))),
             _ => Ok(None),
         }
@@ -1875,6 +1938,11 @@ impl TypeScriptGenerator {
         }
         if call.namespace.join("/") == "stdlib/process" {
             if let Some(intrinsic) = self.generate_process_intrinsic(&call.member, &call.args)? {
+                return Ok(intrinsic);
+            }
+        }
+        if call.namespace.join("/") == "stdlib/regex" {
+            if let Some(intrinsic) = self.generate_regex_intrinsic(&call.member, &call.args)? {
                 return Ok(intrinsic);
             }
         }

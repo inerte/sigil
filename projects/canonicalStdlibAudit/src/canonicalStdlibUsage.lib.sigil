@@ -1,0 +1,94 @@
+t AnalyzeState={issues:[Issue],line:Int}
+
+t Issue={line:Int,name:String,path:String,replacement:String}
+
+t Rule={name:String,pattern:stdlib::regex.Regex,replacement:String}
+
+t RuleSpec={name:String,pattern:String,replacement:String}
+
+i stdlib::file
+
+i stdlib::io
+
+i stdlib::list
+
+i stdlib::path
+
+i stdlib::process
+
+i stdlib::regex
+
+i stdlib::string
+
+λanalyzeFile(path:String,rules:[Rule],source:String)=>[Issue]=stdlib::list.reverse((stdlib::list.fold({issues:[],line:1},λ(acc:AnalyzeState,line:String)=>AnalyzeState={issues:(lineIssues(acc.line,path,rules,line):[Issue])⧺acc.issues,line:acc.line+1},((stdlib::string.lines(source):[String])⊳nonEmpty:[String])):AnalyzeState).issues)
+
+λcompileRule(spec:RuleSpec)=>Result[Rule,String] match stdlib::regex.compile("",spec.pattern){
+  Ok(pattern)=>Ok({name:spec.name,pattern:pattern,replacement:spec.replacement})|
+  Err(error)=>Err("failed to compile regex rule '"++spec.name++"': "++error.message)
+}
+
+λgitTopLevel()=>!IO Result[String,String]={
+  l result=(stdlib::process.run(stdlib::process.command(["git","rev-parse","--show-toplevel"])):stdlib::process.ProcessResult);
+  match result.code=0{
+    true=>Ok((stdlib::string.trim(result.stdout):String))|
+    false=>Err("git rev-parse failed: "++result.stderr)
+  }
+}
+
+λgitTrackedFiles()=>!IO Result[[String],String]=parseTrackedFiles(stdlib::process.run(stdlib::process.command(["git","ls-files","*.sigil","*.lib.sigil"])))
+
+λignorePath(path:String)=>Bool=stdlib::string.startsWith("language/stdlib/",path)
+
+λissueMessage(issue:Issue)=>String=issue.path++":"++stdlib::string.intToString(issue.line)++": local '"++issue.name++"' duplicates canonical helper '"++issue.replacement++"'; use the qualified stdlib path instead."
+
+λlineIssues(lineNumber:Int,path:String,rules:[Rule],sourceLine:String)=>[Issue]=stdlib::list.fold([],λ(acc:[Issue],rule:Rule)=>[Issue] match stdlib::regex.isMatch(sourceLine,rule.pattern){
+  true=>([{line:lineNumber,name:rule.name,path:path,replacement:rule.replacement}]:[Issue])⧺acc|
+  false=>acc
+},rules)
+
+λnonEmpty(text:String)=>Bool=#text>0
+
+λparseTrackedFiles(result:stdlib::process.ProcessResult)=>Result[[String],String] match result.code=0{
+  true=>Ok((stdlib::string.lines(result.stdout):[String])⊳nonEmpty)|
+  false=>Err("git ls-files failed: "++result.stderr)
+}
+
+λprintIssues(issues:[Issue])=>!IO Unit match issues{
+  []=>()|
+  [head,.tail]=>{
+    l _=(stdlib::io.println(issueMessage(head)):Unit);
+    printIssues(tail)
+  }
+}
+
+λreadIssues(paths:[String],root:String,rules:[Rule])=>!IO [Issue] match paths{
+  []=>[]|
+  [path,.rest]=>match ignorePath(path){
+    true=>readIssues(rest,root,rules)|
+    false=>{
+      l source=(stdlib::file.readText(stdlib::path.join(root,path)):String);
+      (analyzeFile(path,rules,source):[Issue])⧺(readIssues(rest,root,rules):[Issue])
+    }
+  }
+}
+
+λruleSpecs()=>[RuleSpec]=[{name:"abs",pattern:"^λabs\\(([a-z][A-Za-z0-9]*):Int\\)=>Int(?==| match)",replacement:"stdlib::numeric.abs"},{name:"all",pattern:"^λall\\[([A-Z][A-Za-z0-9]*)\\]\\([a-z][A-Za-z0-9]*:λ\\(\\1\\)=>Bool,[a-z][A-Za-z0-9]*:\\[\\1\\]\\)=>Bool(?==| match)",replacement:"stdlib::list.all"},{name:"any",pattern:"^λany\\[([A-Z][A-Za-z0-9]*)\\]\\([a-z][A-Za-z0-9]*:λ\\(\\1\\)=>Bool,[a-z][A-Za-z0-9]*:\\[\\1\\]\\)=>Bool(?==| match)",replacement:"stdlib::list.any"},{name:"charAt",pattern:"^λcharAt\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:String\\)=>String(?==| match)",replacement:"stdlib::string.charAt"},{name:"clamp",pattern:"^λclamp\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:Int,[a-z][A-Za-z0-9]*:Int\\)=>Int(?==| match)",replacement:"stdlib::numeric.clamp"},{name:"contains",pattern:"^λcontains\\[([A-Z][A-Za-z0-9]*)\\]\\([a-z][A-Za-z0-9]*:\\1,[a-z][A-Za-z0-9]*:\\[\\1\\]\\)=>Bool(?==| match)",replacement:"stdlib::list.contains"},{name:"count",pattern:"^λcount\\[([A-Z][A-Za-z0-9]*)\\]\\([a-z][A-Za-z0-9]*:\\1,[a-z][A-Za-z0-9]*:\\[\\1\\]\\)=>Int(?==| match)",replacement:"stdlib::list.count"},{name:"countIf",pattern:"^λcountIf\\[([A-Z][A-Za-z0-9]*)\\]\\([a-z][A-Za-z0-9]*:λ\\(\\1\\)=>Bool,[a-z][A-Za-z0-9]*:\\[\\1\\]\\)=>Int(?==| match)",replacement:"stdlib::list.countIf"},{name:"divisible",pattern:"^λdivisible\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:Int\\)=>Bool(?==| match)",replacement:"stdlib::numeric.divisible"},{name:"divmod",pattern:"^λdivmod\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:Int\\)=>DivMod(?==| match)",replacement:"stdlib::numeric.divmod"},{name:"dropList",pattern:"^λdrop\\[([A-Z][A-Za-z0-9]*)\\]\\([a-z][A-Za-z0-9]*:Int,[a-z][A-Za-z0-9]*:\\[\\1\\]\\)=>\\[\\1\\](?==| match)",replacement:"stdlib::list.drop"},{name:"dropString",pattern:"^λdrop\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:String\\)=>String(?==| match)",replacement:"stdlib::string.drop"},{name:"endsWith",pattern:"^λendsWith\\(([a-z][A-Za-z0-9]*):String,[a-z][A-Za-z0-9]*:String\\)=>Bool(?==| match)",replacement:"stdlib::string.endsWith"},{name:"find",pattern:"^λfind\\[([A-Z][A-Za-z0-9]*)\\]\\([a-z][A-Za-z0-9]*:λ\\(\\1\\)=>Bool,[a-z][A-Za-z0-9]*:\\[\\1\\]\\)=>Option\\[\\1\\](?==| match)",replacement:"stdlib::list.find"},{name:"flatMap",pattern:"^λflatMap\\[([A-Z][A-Za-z0-9]*),([A-Z][A-Za-z0-9]*)\\]\\([a-z][A-Za-z0-9]*:λ\\(\\1\\)=>\\[\\2\\],[a-z][A-Za-z0-9]*:\\[\\1\\]\\)=>\\[\\2\\](?==| match)",replacement:"stdlib::list.flatMap"},{name:"gcd",pattern:"^λgcd\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:Int\\)=>Int(?==| match)",replacement:"stdlib::numeric.gcd"},{name:"inBounds",pattern:"^λinBounds\\[([A-Z][A-Za-z0-9]*)\\]\\([a-z][A-Za-z0-9]*:Int,[a-z][A-Za-z0-9]*:\\[\\1\\]\\)=>Bool(?==| match)",replacement:"stdlib::list.inBounds"},{name:"inRange",pattern:"^λinRange\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:Int,[a-z][A-Za-z0-9]*:Int\\)=>Bool(?==| match)",replacement:"stdlib::numeric.inRange"},{name:"indexOf",pattern:"^λindexOf\\(([a-z][A-Za-z0-9]*):String,[a-z][A-Za-z0-9]*:String\\)=>Int(?==| match)",replacement:"stdlib::string.indexOf"},{name:"intToString",pattern:"^λintToString\\(([a-z][A-Za-z0-9]*):Int\\)=>String(?==| match)",replacement:"stdlib::string.intToString"},{name:"isDigit",pattern:"^λisDigit\\(([a-z][A-Za-z0-9]*):String\\)=>Bool(?==| match)",replacement:"stdlib::string.isDigit"},{name:"isEven",pattern:"^λisEven\\(([a-z][A-Za-z0-9]*):Int\\)=>Bool(?==| match)",replacement:"stdlib::numeric.isEven"},{name:"isNegative",pattern:"^λisNegative\\(([a-z][A-Za-z0-9]*):Int\\)=>Bool(?==| match)",replacement:"stdlib::numeric.isNegative"},{name:"isNonNegative",pattern:"^λisNonNegative\\(([a-z][A-Za-z0-9]*):Int\\)=>Bool(?==| match)",replacement:"stdlib::numeric.isNonNegative"},{name:"isOdd",pattern:"^λisOdd\\(([a-z][A-Za-z0-9]*):Int\\)=>Bool(?==| match)",replacement:"stdlib::numeric.isOdd"},{name:"isPositive",pattern:"^λisPositive\\(([a-z][A-Za-z0-9]*):Int\\)=>Bool(?==| match)",replacement:"stdlib::numeric.isPositive"},{name:"join",pattern:"^λjoin\\(([a-z][A-Za-z0-9]*):String,[a-z][A-Za-z0-9]*:\\[String\\]\\)=>String(?==| match)",replacement:"stdlib::string.join"},{name:"last",pattern:"^λlast\\[([A-Z][A-Za-z0-9]*)\\]\\([a-z][A-Za-z0-9]*:\\[\\1\\]\\)=>Option\\[\\1\\](?==| match)",replacement:"stdlib::list.last"},{name:"lcm",pattern:"^λlcm\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:Int\\)=>Int(?==| match)",replacement:"stdlib::numeric.lcm"},{name:"lines",pattern:"^λlines\\(([a-z][A-Za-z0-9]*):String\\)=>\\[String\\](?==| match)",replacement:"stdlib::string.lines"},{name:"maxList",pattern:"^λmax\\(([a-z][A-Za-z0-9]*):\\[Int\\]\\)=>Option\\[Int\\](?==| match)",replacement:"stdlib::list.max"},{name:"maxNumeric",pattern:"^λmax\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:Int\\)=>Int(?==| match)",replacement:"stdlib::numeric.max"},{name:"minList",pattern:"^λmin\\(([a-z][A-Za-z0-9]*):\\[Int\\]\\)=>Option\\[Int\\](?==| match)",replacement:"stdlib::list.min"},{name:"minNumeric",pattern:"^λmin\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:Int\\)=>Int(?==| match)",replacement:"stdlib::numeric.min"},{name:"mod",pattern:"^λmod\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:Int\\)=>Int(?==| match)",replacement:"stdlib::numeric.mod"},{name:"nth",pattern:"^λnth\\[([A-Z][A-Za-z0-9]*)\\]\\([a-z][A-Za-z0-9]*:Int,[a-z][A-Za-z0-9]*:\\[\\1\\]\\)=>Option\\[\\1\\](?==| match)",replacement:"stdlib::list.nth"},{name:"pow",pattern:"^λpow\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:Int\\)=>Int(?==| match)",replacement:"stdlib::numeric.pow"},{name:"product",pattern:"^λproduct\\(([a-z][A-Za-z0-9]*):\\[Int\\]\\)=>Int(?==| match)",replacement:"stdlib::list.product"},{name:"range",pattern:"^λrange\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:Int\\)=>\\[Int\\](?==| match)",replacement:"stdlib::numeric.range"},{name:"removeFirst",pattern:"^λremoveFirst\\[([A-Z][A-Za-z0-9]*)\\]\\([a-z][A-Za-z0-9]*:\\1,[a-z][A-Za-z0-9]*:\\[\\1\\]\\)=>\\[\\1\\](?==| match)",replacement:"stdlib::list.removeFirst"},{name:"repeat",pattern:"^λrepeat\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:String\\)=>String(?==| match)",replacement:"stdlib::string.repeat"},{name:"replaceAll",pattern:"^λreplaceAll\\(([a-z][A-Za-z0-9]*):String,[a-z][A-Za-z0-9]*:String,[a-z][A-Za-z0-9]*:String\\)=>String(?==| match)",replacement:"stdlib::string.replaceAll"},{name:"reverseList",pattern:"^λreverse\\[([A-Z][A-Za-z0-9]*)\\]\\([a-z][A-Za-z0-9]*:\\[\\1\\]\\)=>\\[\\1\\](?==| match)",replacement:"stdlib::list.reverse"},{name:"reverseString",pattern:"^λreverse\\(([a-z][A-Za-z0-9]*):String\\)=>String(?==| match)",replacement:"stdlib::string.reverse"},{name:"sign",pattern:"^λsign\\(([a-z][A-Za-z0-9]*):Int\\)=>Int(?==| match)",replacement:"stdlib::numeric.sign"},{name:"split",pattern:"^λsplit\\(([a-z][A-Za-z0-9]*):String,[a-z][A-Za-z0-9]*:String\\)=>\\[String\\](?==| match)",replacement:"stdlib::string.split"},{name:"sortedAsc",pattern:"^λsortedAsc\\(([a-z][A-Za-z0-9]*):\\[Int\\]\\)=>Bool(?==| match)",replacement:"stdlib::list.sortedAsc"},{name:"sortedDesc",pattern:"^λsortedDesc\\(([a-z][A-Za-z0-9]*):\\[Int\\]\\)=>Bool(?==| match)",replacement:"stdlib::list.sortedDesc"},{name:"startsWith",pattern:"^λstartsWith\\(([a-z][A-Za-z0-9]*):String,[a-z][A-Za-z0-9]*:String\\)=>Bool(?==| match)",replacement:"stdlib::string.startsWith"},{name:"substring",pattern:"^λsubstring\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:String,[a-z][A-Za-z0-9]*:Int\\)=>String(?==| match)",replacement:"stdlib::string.substring"},{name:"sum",pattern:"^λsum\\(([a-z][A-Za-z0-9]*):\\[Int\\]\\)=>Int(?==| match)",replacement:"stdlib::list.sum"},{name:"takeList",pattern:"^λtake\\[([A-Z][A-Za-z0-9]*)\\]\\([a-z][A-Za-z0-9]*:Int,[a-z][A-Za-z0-9]*:\\[\\1\\]\\)=>\\[\\1\\](?==| match)",replacement:"stdlib::list.take"},{name:"takeString",pattern:"^λtake\\(([a-z][A-Za-z0-9]*):Int,[a-z][A-Za-z0-9]*:String\\)=>String(?==| match)",replacement:"stdlib::string.take"},{name:"toLower",pattern:"^λtoLower\\(([a-z][A-Za-z0-9]*):String\\)=>String(?==| match)",replacement:"stdlib::string.toLower"},{name:"toUpper",pattern:"^λtoUpper\\(([a-z][A-Za-z0-9]*):String\\)=>String(?==| match)",replacement:"stdlib::string.toUpper"},{name:"trim",pattern:"^λtrim\\(([a-z][A-Za-z0-9]*):String\\)=>String(?==| match)",replacement:"stdlib::string.trim"},{name:"unlines",pattern:"^λunlines\\(([a-z][A-Za-z0-9]*):\\[String\\]\\)=>String(?==| match)",replacement:"stdlib::string.unlines"}]
+
+λrules()=>Result[[Rule],String]=stdlib::list.fold(Ok([]),λ(acc:Result[[Rule],String],spec:RuleSpec)=>Result[[Rule],String] match acc{
+  Ok(compiled)=>match compileRule(spec){
+    Ok(rule)=>Ok(compiled⧺[rule])|
+    Err(message)=>Err(message)
+  }|
+  Err(message)=>Err(message)
+},ruleSpecs())
+
+λrunCheck()=>!IO Result[[Issue],String] match rules(){
+  Ok(compiled)=>match gitTopLevel(){
+    Ok(root)=>match gitTrackedFiles(){
+      Ok(paths)=>Ok((readIssues(paths,root,compiled):[Issue]))|
+      Err(message)=>Err(message)
+    }|
+    Err(message)=>Err(message)
+  }|
+  Err(message)=>Err(message)
+}

@@ -15,6 +15,7 @@ The Sigil standard library provides core utility functions and predicates for co
 - ✅ String predicates (prefix/suffix checking) - `stdlib/string`
 - ✅ File system operations - `stdlib/file`
 - ✅ Process execution for harnesses and tooling - `stdlib/process`
+- ✅ Regular-expression compile/test/search - `stdlib/regex`
 - ✅ HTTP and TCP clients and servers - `stdlib/httpClient`, `stdlib/httpServer`, `stdlib/tcpClient`, `stdlib/tcpServer`
 - ✅ Runtime dependency topology - `stdlib/topology`
 - ✅ Runtime dependency config bindings - `stdlib/config`
@@ -26,7 +27,6 @@ The Sigil standard library provides core utility functions and predicates for co
 - ✅ Length operator (`#`) - works on strings and lists
 
 **Not yet implemented:**
-- ⏳ Regex utilities
 - ⏳ Crypto utilities
 
 ## Import Syntax
@@ -39,6 +39,7 @@ i stdlib::file
 i stdlib::numeric
 i stdlib::path
 i stdlib::process
+i stdlib::regex
 i stdlib::string
 i stdlib::time
 i stdlib::url
@@ -150,6 +151,7 @@ i stdlib::process
 
 The canonical process surface is:
 - `command`
+- `exit`
 - `withCwd`
 - `withEnv`
 - `run`
@@ -159,6 +161,32 @@ The canonical process surface is:
 
 Commands are argv-based only. Non-zero exit status is returned in
 `ProcessResult.code`; it is not a separate failure channel.
+
+`stdlib::regex` exposes a small JavaScript-backed regular-expression surface:
+
+```sigil
+i stdlib::regex
+
+λmain()=>Unit=
+  match stdlib::regex.compile("i","^(sigil)-(.*)$"){
+    Ok(regex)=>match stdlib::regex.find("Sigil-lang",regex){
+      Some(found)=>
+        l _=(found.full:String);
+        ()|
+      None()=>()
+    }|
+    Err(_)=>()
+  }
+```
+
+The canonical regex surface is:
+- `compile`
+- `find`
+- `isMatch`
+
+Regex semantics in v1 follow JavaScript `RegExp`, including pattern syntax and
+flags. `compile` validates the pattern/flags first and returns `Err` on invalid
+input. `find` returns only the first match.
 
 `stdlib::json` exposes a typed JSON AST with safe parsing:
 

@@ -307,6 +307,7 @@ t RunningProcess={pid:Int}
 t ProcessResult={code:Int,stderr:String,stdout:String}
 
 λcommand(argv:[String])=>Command
+λexit(code:Int)=>!IO Unit
 λwithCwd(command:Command,cwd:String)=>Command
 λwithEnv(command:Command,env:{String↦String})=>Command
 λrun(command:Command)=>!IO ProcessResult
@@ -321,6 +322,24 @@ Process rules:
 - non-zero exit codes are reported in `ProcessResult.code`
 - `run` captures stdout and stderr in memory
 - `kill` is a normal termination request, not a timeout/escalation protocol
+
+### Implemented `stdlib::regex` Types and Functions
+
+```sigil
+t Regex={flags:String,pattern:String}
+t RegexError={message:String}
+t RegexMatch={captures:[String],end:Int,full:String,start:Int}
+
+λcompile(flags:String,pattern:String)=>Result[Regex,RegexError]
+λfind(input:String,regex:Regex)=>Option[RegexMatch]
+λisMatch(input:String,regex:Regex)=>Bool
+```
+
+Regex rules:
+- v1 semantics follow JavaScript `RegExp`
+- `compile` validates both flags and pattern before returning `Ok`
+- `find` returns the first match only
+- unmatched capture groups are returned as empty strings in `captures`
 
 ### Implemented `stdlib::time` Additions
 
@@ -894,7 +913,6 @@ Effects are tracked at type level:
 
 Planned for future stdlib versions:
 
-- **std/regex** - Regular expressions
 - **std/crypto** - Cryptographic functions
 - **std/random** - Random number generation
 - **std/stream** - Streaming I/O

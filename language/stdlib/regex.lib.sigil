@@ -1,0 +1,11 @@
+t Regex={flags:String,pattern:String}
+
+t RegexError={message:String}
+
+t RegexMatch={captures:[String],end:Int,full:String,start:Int}
+
+λcompile(flags:String,pattern:String)=>Result[Regex,RegexError]=Err({message:"regex intrinsic unavailable"})
+
+λfind(input:String,regex:Regex)=>Option[RegexMatch]=None()
+
+λisMatch(input:String,regex:Regex)=>Bool=false

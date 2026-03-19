@@ -116,7 +116,7 @@ Claude Code reads these diagnostics and explains them to humans in natural langu
 
 Sigil enforces one way to write anything:
 
-```sigil
+```sigil invalid-module
 λfibonacci(n:Int)=>Int match n{0=>0|1=>1|n=>fibonacci(n-1)+fibonacci(n-2)}
 ```
 
@@ -141,7 +141,7 @@ Claude Code uses this to verify correctness after generating code.
 
 Strong type inference with mandatory annotations:
 
-```sigil
+```text
 ⟦ Type error: Cannot pass String where Int expected ⟧
 λadd(a:Int,b:Int)=>Int=a+b
 test "add strings"=add("1","2") match 3  ⟦ Error here ⟧

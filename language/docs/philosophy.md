@@ -50,7 +50,7 @@ const add = new Function('a', 'b', 'return a + b');
 ```
 
 **Sigil - ONE way:**
-```sigil
+```sigil module
 λadd(a:Int,b:Int)=>Int=a+b
 ```
 
@@ -106,14 +106,14 @@ That leads to four canonical rules:
 
 Practical example:
 
-```sigil
+```sigil module
 t Message={createdAt:stdlib::time.Instant,text:String}
 ```
 
 If code has a `Message`, then `createdAt` is there.
 If `createdAt` might be absent, the canonical encoding is:
 
-```sigil
+```sigil module
 t MaybeMessage={createdAt:Option[stdlib::time.Instant],text:String}
 ```
 
@@ -176,12 +176,11 @@ The problem with a naive async-first language is not the Promise boundary. It is
 
 **Sigil's solution:** keep one function model, but join values only when a strict construct actually needs them.
 
-```sigil
-⟦ Pure function - still promise-shaped ⟧
+```sigil module
+e fs::promises
+
 λadd(a:Int,b:Int)=>Int=a+b
 
-⟦ I/O function - same surface form ⟧
-e fs::promises
 λread(path:String)=>!IO String=fs::promises.readFile(path,"utf8")
 ```
 
@@ -215,7 +214,7 @@ Sigil bans local shadowing.
 
 If a name is already bound in a function, lambda, or match scope, nested scopes must use a fresh name instead of rebinding it.
 
-```sigil
+```text
 ⟦ GOOD ⟧
 λprocess_user(name:String)=>String={
   l normalized_name=(stdlib::string.trim(name):String);
@@ -240,7 +239,7 @@ Sigil prefers explicit renamed stages like `normalized_name`, `validated_name`, 
 
 Sigil also rejects the opposite source of variation: naming a pure intermediate that is used only once.
 
-```sigil
+```text
 ⟦ BAD ⟧
 λformulaText(checksums:Checksums,version:String)=>String={
   l repo=(releaseRepo():String);

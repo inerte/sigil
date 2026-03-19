@@ -1,0 +1,44 @@
+i src::docsDrift
+
+i stdlib::string
+
+λmain()=>Unit=()
+
+test "bare sigil fence is rejected" {
+  match src::docsDrift.extractSnippets("docs/test.md",stdlib::string.unlines(["```sigil","λmain()=>Unit=()","```"])).issues{
+    [issue]=>issue.line=1|
+    _=>false
+  }
+}
+
+test "decl block extracts documented names" {
+  src::docsDrift.documentedRefsForSnippet("stdlib::process","λcommand(argv:[String])=>Command\nλrun(command:Command)=>!IO ProcessResult\n")=["stdlib::process.command","stdlib::process.run"]
+}
+
+test "invalid module path extension is rejected" {
+  match src::docsDrift.parseFenceInfo("sigil module src/main.sigilx"){
+    Err(_)=>true|
+    Ok(_)=>false
+  }
+}
+
+test "qualified refs are collected uniquely" {
+  src::docsDrift.collectQualifiedRefs("stdlib::list.sum(xs)\nstdlib::list.sum(ys)\nstdlib::string.trim(s)\n")=["stdlib::list.sum","stdlib::string.trim"]
+}
+
+test "sigil expr fence is extracted" {
+  match src::docsDrift.extractSnippets("docs/test.md",stdlib::string.unlines(["```sigil expr","#xs","```"])).results{
+    [snippet]=>snippet.info.kind="expr" and snippet.line=1|
+    _=>false
+  }
+}
+
+test "sigil program fence keeps custom virtual path" {
+  match src::docsDrift.extractSnippets("docs/test.md",stdlib::string.unlines(["```sigil program tests/my-feature.sigil","λmain()=>Unit=()","```"])).results{
+    [snippet]=>match snippet.info.context{
+      Some(path)=>path="tests/my-feature.sigil" and snippet.info.kind="program"|
+      None()=>false
+    }|
+    _=>false
+  }
+}

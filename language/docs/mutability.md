@@ -1,4 +1,10 @@
-# Sigil Mutability System
+# Sigil Mutability Design Note
+
+This document describes an older or future mutability design direction, not the
+current implemented Sigil surface in this repository.
+
+The examples below are explanatory design sketches unless explicitly updated
+elsewhere to match the current compiler.
 
 ## Overview
 
@@ -14,7 +20,7 @@ Sigil uses **immutable by default** with explicit `mut` annotations for mutabili
 
 All values are immutable unless marked `mut`:
 
-```sigil
+```text
 λsum(list:[Int])=>Int=list⊕(λ(a:Int,x:Int)=>Int=a+x)⊕0
 ⟦ list cannot be modified ⟧
 ```
@@ -23,7 +29,7 @@ All values are immutable unless marked `mut`:
 
 Use `mut` keyword for mutable parameters:
 
-```sigil
+```text
 λsort(list:mut [Int])=>Unit=quicksort_impl(list)
 ⟦ list will be modified in place ⟧
 ```
@@ -32,7 +38,7 @@ Use `mut` keyword for mutable parameters:
 
 Cannot create multiple references to mutable values:
 
-```sigil
+```text
 ⟦ ERROR: Cannot alias mutable ⟧
 λbad(x:mut [Int])=>Unit match {
   let y=x    ⟦ ERROR: Can't create alias ⟧
@@ -46,7 +52,7 @@ Cannot create multiple references to mutable values:
 
 The `mut` keyword is used when calling JavaScript functions that mutate:
 
-```sigil
+```text
 e Array
 λsortJS(arr:mut [Int])=>Unit=Array.sort(arr)  ⟦ JS Array.sort mutates ⟧
 
@@ -58,7 +64,7 @@ e Array
 
 ### Valid Code
 
-```sigil
+```text
 ⟦ Immutable list operations (canonical form) ⟧
 λdouble(list:[Int])=>[Int]=list↦λ(x:Int)=>Int=x*2
 
@@ -76,7 +82,7 @@ e Array
 
 ### Errors Prevented
 
-```sigil
+```text
 ⟦ Error: Aliasing mutable ⟧
 λbad1(x:mut [Int])=>Unit match {
   let y=x    ⟦ Error: Cannot create alias of mutable value 'x' ⟧
@@ -95,7 +101,7 @@ e Array
 ### Problems It Prevents
 
 **1. Accidental Mutation (FFI):**
-```sigil
+```text
 e Array
 
 ⟦ Without mutability checking: ⟧
@@ -109,7 +115,7 @@ e Array
 ```
 
 **2. Aliasing Bugs:**
-```sigil
+```text
 ⟦ Without mutability checking: ⟧
 λbug(x:mut [Int])=>Unit match {
   let y=x
@@ -122,7 +128,7 @@ e Array
 ```
 
 **3. Unclear Intent:**
-```sigil
+```text
 ⟦ Pure Sigil code - always immutable ⟧
 λsorted(data:[Int])=>[Int]=...        ⟦ Returns new list (canonical) ⟧
 
@@ -170,7 +176,7 @@ let y = &mut data;                                 // Mutable borrow
 ```
 
 **Sigil's simpler approach:**
-```sigil
+```text
 λprocess(data:[Int])=>Int=...           ⟦ Immutable by default ⟧
 λmodify(data:mut [Int])=>Unit=...        ⟦ Explicit mut ⟧
 ```
@@ -182,7 +188,7 @@ let y = &mut data;                                 // Mutable borrow
 Sigil enforces canonical forms—one way to do each thing.
 
 **No tail-call optimization:**
-```sigil
+```text
 ⟦ This style is BLOCKED: ⟧
 λfactorial(n:Int,acc:Int)=>Int match n{
   0=>acc|
@@ -224,7 +230,7 @@ Mutability Error: Cannot mutate immutable parameter 'list'
 
 Effect tracking will be added to track side effects:
 
-```sigil
+```text
 λread()=>!IO String=...                    ⟦ IO effect ⟧
 λfetch(url:String)=>!Network Response=... ⟦ Network effect ⟧
 ```
@@ -256,7 +262,7 @@ Sigil enforces **ONE way** to write each algorithm. All list operations are immu
 
 ### Example: FFI with Mutation
 
-```sigil
+```text
 e Array
 e console
 

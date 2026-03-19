@@ -30,16 +30,10 @@ claude "Write a Hello World in Sigil and run it"
 
 ## Quick Example
 
-```sigil
+```sigil program
 i stdlib::list
 
-λsum(numbers:[Int])=>Int match numbers{
-  []=>0|
-  [first,.rest]=>first+sum(rest)
-}
-
-test sum_test()=>Unit|AssertionFailure =
-  assert sum([1,2,3,4,5])=15
+λmain()=>Bool=stdlib::list.sum([1,2,3,4,5])=15
 ```
 
 ---

@@ -57,9 +57,11 @@ Current operationally relevant expression forms include:
 Local bindings evaluate their right-hand side, then continue with the bound
 value in scope:
 
-```sigil
-l x=(2+3:Int);
-x*2
+```sigil module
+λdoubledSum()=>Int={
+  l x=(2+3:Int);
+  x+x
+}
 ```
 
 Canonical note:
@@ -74,8 +76,8 @@ Canonical note:
 
 Examples:
 
-```sigil
-match 5{
+```sigil module
+λclassify(n:Int)=>String match n{
   0=>"zero"|
   5=>"five"|
   _=>"other"
@@ -98,7 +100,7 @@ Concatenation is expressed with `⧺`, not by implicit flattening.
 
 Record access selects a field from an already-evaluated record value.
 
-```sigil
+```sigil expr
 {id:1,name:"Alice"}.name
 ```
 
@@ -110,9 +112,14 @@ Effectful functions and tests declare effects explicitly in the surface syntax.
 
 Examples:
 
-```sigil
-λmain()=>!IO Unit=console.log("hello")
-test "writes log" =>!IO { console.log("x")=() }
+```sigil program language/test-fixtures/tests/semanticsEffects.sigil
+e console
+
+λmain()=>Unit=()
+
+test "writes log" =>!IO  {
+  console.log("x")=()
+}
 ```
 
 ## What This Spec Does Not Claim

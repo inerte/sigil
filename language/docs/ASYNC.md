@@ -37,11 +37,12 @@ Sigil may overlap their resolution, but it does not silently reorder effect star
 
 ## Example
 
-```sigil
+```sigil program
 λleft()=>Int=21
-λright()=>Int=21
 
 λmain()=>Int=left()+right()
+
+λright()=>Int=21
 ```
 
 The important property is:

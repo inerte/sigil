@@ -28,7 +28,7 @@ secondary matches.
 
 Sigil added `when` guards on match arms:
 
-```sigil
+```text
 match value{
   pattern when condition=>result
 }

@@ -11,7 +11,9 @@ mod commands;
 mod module_graph;
 mod project;
 
-use commands::{compile_command, lex_command, parse_command, run_command, test_command, validate_command};
+use commands::{
+    compile_command, lex_command, parse_command, run_command, test_command, validate_command,
+};
 
 const SIGIL_VERSION: &str = match option_env!("SIGIL_VERSION") {
     Some(version) => version,
@@ -61,6 +63,10 @@ enum Command {
         /// Runtime topology environment name (required for topology-aware projects)
         #[arg(long)]
         env: Option<String>,
+
+        /// Arguments passed through to the Sigil program
+        #[arg(last = true)]
+        args: Vec<String>,
     },
 
     /// Run Sigil tests
@@ -101,8 +107,10 @@ fn main() {
             output,
             show_types,
         } => compile_command(&file, output.as_deref(), show_types),
-        Command::Run { file, env } => run_command(&file, env.as_deref()),
-        Command::Test { path, env, r#match } => test_command(&path, env.as_deref(), r#match.as_deref()),
+        Command::Run { file, env, args } => run_command(&file, env.as_deref(), &args),
+        Command::Test { path, env, r#match } => {
+            test_command(&path, env.as_deref(), r#match.as_deref())
+        }
         Command::Validate { path, env } => validate_command(&path, &env),
     };
 

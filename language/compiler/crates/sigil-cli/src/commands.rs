@@ -319,7 +319,7 @@ pub fn compile_command(
 }
 
 /// Run command: compile and execute a Sigil file
-pub fn run_command(file: &Path, selected_env: Option<&str>) -> Result<(), CliError> {
+pub fn run_command(file: &Path, selected_env: Option<&str>, args: &[String]) -> Result<(), CliError> {
     let graph = ModuleGraph::build(file)?;
     let compiled = compile_module_graph(graph, None)?;
     let entry_output_path = compiled.entry_output_path;
@@ -363,6 +363,7 @@ if (result !== undefined) {{
     let output = Command::new("pnpm")
         .args(&["exec", "node", "--import", "tsx"])
         .arg(&abs_runner_path)
+        .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .output()

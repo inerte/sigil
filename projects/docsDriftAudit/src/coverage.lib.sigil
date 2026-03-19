@@ -1,0 +1,103 @@
+i stdlib::path
+
+i stdlib::regex
+
+i stdlib::list
+
+i stdlib::string
+
+λcollectQualifiedRefs(source:String)=>[String] match stdlib::regex.compile("","stdlib::[A-Za-z0-9]+\\.[a-z][A-Za-z0-9]*"){
+  Ok(pattern)=>collectQualifiedRefsLines(stdlib::string.lines(source),pattern,[])|
+  Err(_)=>[]
+}
+
+λcollectQualifiedRefsLine(pattern:stdlib::regex.Regex,refs:[String],source:String)=>[String] match stdlib::regex.find(source,pattern){
+  Some(found)=>collectQualifiedRefsLine(pattern,insertUnique(found.full,refs),stdlib::string.substring(#source,source,found.end))|
+  None()=>refs
+}
+
+λcollectQualifiedRefsLines(lines:[String],pattern:stdlib::regex.Regex,refs:[String])=>[String] match lines{
+  []=>refs|
+  [line,.rest]=>collectQualifiedRefsLines(rest,pattern,collectQualifiedRefsLine(pattern,refs,line))
+}
+
+λcollectStdlibExports(filePath:String,parseJson:String)=>[String]=qualifyExports(functionNamesFromParseJson(parseJson),modulePathFromStdlibFile(filePath))
+
+λdocumentedRefsForSnippet(modulePath:String,source:String)=>[String]=documentedRefsForSnippetLines(stdlib::string.lines(source),modulePath,[])
+
+λdocumentedRefsForSnippetLines(lines:[String],modulePath:String,refs:[String])=>[String] match lines{
+  []=>refs|
+  [line,.rest]=>match extractFunctionName(stdlib::string.trim(line)){
+    Some(name)=>documentedRefsForSnippetLines(rest,modulePath,insertUnique(modulePath++"."++name,refs))|
+    None()=>documentedRefsForSnippetLines(rest,modulePath,refs)
+  }
+}
+
+λdropUntilBoundary(acc:String,text:String)=>String match #text=0{
+  true=>acc|
+  false=>match isIdentifierChar(stdlib::string.charAt(0,text)){
+    true=>dropUntilBoundary(acc++stdlib::string.charAt(0,text),stdlib::string.drop(1,text))|
+    false=>acc
+  }
+}
+
+λextractFunctionName(line:String)=>Option[String] match stdlib::string.startsWith("λ",line){
+  true=>Some(extractFunctionNameInner("",stdlib::string.drop(1,line)))|
+  false=>None()
+}
+
+λextractFunctionNameInner(acc:String,text:String)=>String match #text=0{
+  true=>acc|
+  false=>{
+    l ch=(stdlib::string.charAt(0,text):String);
+    match isIdentifierChar(ch){
+      true=>extractFunctionNameInner(acc++ch,stdlib::string.drop(1,text))|
+      false=>acc
+    }
+  }
+}
+
+λfunctionNamesFromParseJson(parseJson:String)=>[String] match stdlib::regex.compile("","\"type\":\"FunctionDecl\"|\"name\":\"[A-Za-z_][A-Za-z0-9_]*\""){
+  Ok(pattern)=>functionNamesFromTokens(false,[],pattern,parseJson)|
+  Err(_)=>[]
+}
+
+λfunctionNamesFromTokens(expectName:Bool,names:[String],pattern:stdlib::regex.Regex,source:String)=>[String] match stdlib::regex.find(source,pattern){
+  Some(found)=>{
+    l remaining=(stdlib::string.substring(#source-found.end,source,found.end):String);
+    match found.full="\"type\":\"FunctionDecl\""{
+      true=>functionNamesFromTokens(true,names,pattern,remaining)|
+      false=>match expectName{
+        true=>functionNamesFromTokens(false,insertUnique(tokenName(found.full),names),pattern,remaining)|
+        false=>functionNamesFromTokens(false,names,pattern,remaining)
+      }
+    }
+  }|
+  None()=>names
+}
+
+λinsertUnique(item:String,items:[String])=>[String] match stdlib::list.contains(item,items){
+  true=>items|
+  false=>items⧺[item]
+}
+
+λisIdentifierChar(ch:String)=>Bool match stdlib::regex.compile("","^[A-Za-z0-9_]$"){
+  Ok(pattern)=>stdlib::regex.isMatch(ch,pattern)|
+  Err(_)=>false
+}
+
+λmergeUnique(left:[String],right:[String])=>[String] match right{
+  []=>left|
+  [head,.tail]=>mergeUnique(insertUnique(head,left),tail)
+}
+
+λmoduleNameFromStdlibFile(filePath:String)=>String={
+  l fileName=(stdlib::path.basename(filePath):String);
+  stdlib::string.substring(#fileName-10,fileName,0)
+}
+
+λmodulePathFromStdlibFile(filePath:String)=>String="stdlib::"++moduleNameFromStdlibFile(filePath)
+
+λqualifyExports(exports:[String],modulePath:String)=>[String]=exports↦(λ(name:String)=>String=modulePath++"."++name)
+
+λtokenName(token:String)=>String=dropUntilBoundary("",stdlib::string.substring(#token-8,token,8))

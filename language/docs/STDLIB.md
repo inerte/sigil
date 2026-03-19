@@ -31,26 +31,34 @@ The Sigil standard library provides core utility functions and predicates for co
 
 ## Import Syntax
 
-```sigil
-⟦ Import modules (works like FFI - no selective imports) ⟧
-i stdlib::list
-i stdlib::json
+```sigil program
+e console
+
 i stdlib::file
-i stdlib::numeric
-i stdlib::path
-i stdlib::process
-i stdlib::regex
-i stdlib::string
-i stdlib::time
-i stdlib::url
+
 i stdlib::httpClient
+
 i stdlib::httpServer
 
-⟦ Use with fully qualified names ⟧
-λmain()=>Unit=console.log(
-  stdlib::string.intToString(#[1,2,3]) ++ " " ++
-  stdlib::time.formatIso(stdlib::time.fromEpochMillis(0))
-)
+i stdlib::json
+
+i stdlib::list
+
+i stdlib::numeric
+
+i stdlib::path
+
+i stdlib::process
+
+i stdlib::regex
+
+i stdlib::string
+
+i stdlib::time
+
+i stdlib::url
+
+λmain()=>Unit=console.log(stdlib::string.intToString(#[1,2,3])++" "++stdlib::time.formatIso(stdlib::time.fromEpochMillis(0)))
 ```
 
 **Design:** Imports work exactly like FFI (`e module::path`). No selective imports, always use fully qualified names. This prevents name collisions and makes code explicit.
@@ -60,7 +68,7 @@ i stdlib::httpServer
 The `#` operator is a **built-in language operator** that returns the length of strings and lists.
 
 **Syntax:**
-```sigil
+```text
 #expression => Int
 ```
 
@@ -70,11 +78,8 @@ The `#` operator is a **built-in language operator** that returns the length of 
 - Always returns integer (`Int`)
 
 **Examples:**
-```sigil
-#"hello"        ⟦ => 5 ⟧
-#""             ⟦ => 0 ⟧
-#[1,2,3]        ⟦ => 3 ⟧
-#[]             ⟦ => 0 (empty list type inferred from context) ⟧
+```sigil program
+λmain()=>Bool=#"hello"=5 and #""=0 and #[1,2,3]=3
 ```
 
 **Note on Empty Lists:**
@@ -110,15 +115,17 @@ There is no `export` keyword.
 
 `stdlib::file` exposes canonical UTF-8 filesystem helpers:
 
-```sigil
+```sigil program
 i stdlib::file
+
 i stdlib::path
 
-λmain()=>!IO Unit=
+λmain()=>!IO Unit={
   l out=(stdlib::path.join("/tmp","sigil.txt"):String);
-  l _=(stdlib::file.writeText("hello",out):Unit);
-  l _2=(stdlib::file.readText(out):String);
+  l written=(stdlib::file.writeText("hello",out):Unit);
+  l text=(stdlib::file.readText(out):String);
   ()
+}
 ```
 
 It also exposes `makeTempDir(prefix)` for canonical temp workspace creation in
@@ -126,27 +133,28 @@ tooling and harness code.
 
 `stdlib::path` exposes canonical filesystem path operations:
 
-```sigil
+```sigil program
 i stdlib::path
 
-λmain()=>Unit=
-  l _=(stdlib::path.basename("website/articles/hello.md"):String);
-  l _2=(stdlib::path.join("website","articles"):String);
+λmain()=>Unit={
+  l article=(stdlib::path.basename("website/articles/hello.md"):String);
+  l directory=(stdlib::path.join("website","articles"):String);
   ()
+}
 ```
 
 `stdlib::process` exposes canonical argv-based child-process execution:
 
-```sigil
+```sigil program
 i stdlib::process
 
-λmain()=>!IO Unit=
-  l command=(stdlib::process.command(["git","status"]):stdlib::process.Command);
-  l result=(stdlib::process.run(command):stdlib::process.ProcessResult);
+λmain()=>!IO Unit={
+  l result=(stdlib::process.run(stdlib::process.command(["git","status"])):stdlib::process.ProcessResult);
   match result.code=0{
     true=>()|
     false=>()
   }
+}
 ```
 
 The canonical process surface is:
@@ -164,19 +172,19 @@ Commands are argv-based only. Non-zero exit status is returned in
 
 `stdlib::regex` exposes a small JavaScript-backed regular-expression surface:
 
-```sigil
+```sigil program
 i stdlib::regex
 
-λmain()=>Unit=
-  match stdlib::regex.compile("i","^(sigil)-(.*)$"){
-    Ok(regex)=>match stdlib::regex.find("Sigil-lang",regex){
-      Some(found)=>
-        l _=(found.full:String);
-        ()|
-      None()=>()
+λmain()=>Unit match stdlib::regex.compile("i","^(sigil)-(.*)$"){
+  Ok(regex)=>match stdlib::regex.find("Sigil-lang",regex){
+    Some(found)=>{
+      l matched=(found.full:String);
+      ()
     }|
-    Err(_)=>()
-  }
+    None()=>()
+  }|
+  Err(_)=>()
+}
 ```
 
 The canonical regex surface is:
@@ -190,44 +198,43 @@ input. `find` returns only the first match.
 
 `stdlib::json` exposes a typed JSON AST with safe parsing:
 
-```sigil
+```sigil program
 i stdlib::json
 
-λmain()=>Unit=
-  match stdlib::json.parse("{\"ok\":true}"){
-    Ok(value)=>match stdlib::json.asObject(value){
-      Some(_)=>()|
-      None()=>()
-    }|
-    Err(_)=>()
-  }
+λmain()=>Unit match stdlib::json.parse("{\"ok\":true}"){
+  Ok(value)=>match stdlib::json.asObject(value){
+    Some(_)=>()|
+    None()=>()
+  }|
+  Err(_)=>()
+}
 ```
 
 `stdlib::decode` is the canonical layer for turning raw `JsonValue` into trusted
 internal Sigil values:
 
-```sigil
-i stdlib::decode
-i stdlib::json
-i stdlib::time
-
+```sigil module
 t Message={createdAt:stdlib::time.Instant,text:String}
 
+i stdlib::decode
+
+i stdlib::json
+
+i stdlib::time
+
 λinstant(value:stdlib::json.JsonValue)=>Result[stdlib::time.Instant,stdlib::decode.DecodeError] match stdlib::decode.string(value){
-  Ok(text)=>
-    match stdlib::time.parseIso(text){
-      Ok(instant)=>Ok(instant)|
-      Err(error)=>Err({message:error.message,path:[]})
-    }|
+  Ok(text)=>match stdlib::time.parseIso(text){
+    Ok(instant)=>Ok(instant)|
+    Err(error)=>Err({message:error.message,path:[]})
+  }|
   Err(error)=>Err(error)
 }
 
 λmessage(value:stdlib::json.JsonValue)=>Result[Message,stdlib::decode.DecodeError] match stdlib::decode.field(instant,"createdAt")(value){
-  Ok(createdAt)=>
-    match stdlib::decode.field(stdlib::decode.string,"text")(value){
-      Ok(text)=>Ok({createdAt:createdAt,text:text})|
-      Err(error)=>Err(error)
-    }|
+  Ok(createdAt)=>match stdlib::decode.field(stdlib::decode.string,"text")(value){
+    Ok(text)=>Ok({createdAt:createdAt,text:text})|
+    Err(error)=>Err(error)
+  }|
   Err(error)=>Err(error)
 }
 ```
@@ -241,16 +248,16 @@ field. Sigil does not use open or partial records for this.
 
 `stdlib::time` exposes strict ISO parsing, instant comparison, and harness sleep:
 
-```sigil
+```sigil program
 i stdlib::time
 
-λmain()=>Unit=
-  match stdlib::time.parseIso("2026-03-03"){
-    Ok(instant)=>
-      l _=(stdlib::time.toEpochMillis(instant):Int);
-      ()|
-    Err(_)=>()
-  }
+λmain()=>Unit match stdlib::time.parseIso("2026-03-03"){
+  Ok(instant)=>{
+    l millis=(stdlib::time.toEpochMillis(instant):Int);
+    ()
+  }|
+  Err(_)=>()
+}
 ```
 
 Effectful code may also use `stdlib::time.sleepMs(ms)` for retry loops and
@@ -258,17 +265,17 @@ process orchestration.
 
 `stdlib::url` exposes strict parse results and typed URL fields for both absolute and relative targets:
 
-```sigil
+```sigil program
 i stdlib::url
 
-λmain()=>Unit=
-  match stdlib::url.parse("../language/spec/cli-json.md?view=raw#schema"){
-    Ok(url)=>
-      l _=(url.path:String);
-      l _2=(stdlib::url.suffix(url):String);
-      ()|
-    Err(_)=>()
-  }
+λmain()=>Unit match stdlib::url.parse("../language/spec/cli-json.md?view=raw#schema"){
+  Ok(url)=>{
+    l path=(url.path:String);
+    l suffix=(stdlib::url.suffix(url):String);
+    ()
+  }|
+  Err(_)=>()
+}
 ```
 
 ## HTTP Client and Server
@@ -278,23 +285,21 @@ i stdlib::url
 For topology-aware projects, the canonical surface is handle-based rather than
 raw-URL based:
 
-```sigil
+```sigil program projects/topology-http/src/getClient.sigil
 i stdlib::httpClient
+
 i src::topology
 
-λmain()=>!IO Unit=
-  match stdlib::httpClient.get(
-    src::topology.mailerApi,
-    stdlib::httpClient.emptyHeaders(),
-    "/health"
-  ){
-    Ok(response)=>
-      l _=(response.body:String);
-      ()|
-    Err(error)=>
-      l _=(error.message:String);
-      ()
+λmain()=>!IO Unit match stdlib::httpClient.get(src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/health"){
+  Ok(response)=>{
+    l body=(response.body:String);
+    ()
+  }|
+  Err(error)=>{
+    l message=(error.message:String);
+    ()
   }
+}
 ```
 
 The split is:
@@ -308,7 +313,7 @@ The split is:
 
 `stdlib::httpServer` is the canonical request/response server layer:
 
-```sigil
+```sigil program
 i stdlib::httpServer
 
 λhandle(request:stdlib::httpServer.Request)=>!IO stdlib::httpServer.Response match request.path{
@@ -328,19 +333,21 @@ process stays open until it is terminated externally.
 
 For topology-aware projects, the canonical surface is handle-based:
 
-```sigil
+```sigil program projects/topology-tcp/src/pingClient.sigil
 i src::topology
+
 i stdlib::tcpClient
 
-λmain()=>!IO Unit=
-  match stdlib::tcpClient.send(src::topology.eventStream,"ping"){
-    Ok(response)=>
-      l _=(response.message:String);
-      ()|
-    Err(error)=>
-      l _=(error.message:String);
-      ()
+λmain()=>!IO Unit match stdlib::tcpClient.send(src::topology.eventStream,"ping"){
+  Ok(response)=>{
+    l message=(response.message:String);
+    ()
+  }|
+  Err(error)=>{
+    l errorMessage=(error.message:String);
+    ()
   }
+}
 ```
 
 The canonical framing model is:
@@ -353,11 +360,10 @@ The canonical framing model is:
 
 `stdlib::tcpServer` is the matching minimal TCP server layer:
 
-```sigil
+```sigil program
 i stdlib::tcpServer
 
-λhandle(request:stdlib::tcpServer.Request)=>!IO stdlib::tcpServer.Response=
-  stdlib::tcpServer.response(request.message)
+λhandle(request:stdlib::tcpServer.Request)=>!IO stdlib::tcpServer.Response=stdlib::tcpServer.response(request.message)
 
 λmain()=>!IO Unit=stdlib::tcpServer.serve(handle,45120)
 ```
@@ -374,68 +380,70 @@ Topology-aware projects define `src/topology.lib.sigil`, the selected
 `config/<env>.lib.sigil`, and use typed handles instead
 of raw endpoints in application code:
 
-```sigil
+```sigil program projects/topology-http/src/getClient.sigil
 i src::topology
+
 i stdlib::httpClient
 
-λmain()=>!IO Unit=
-  match stdlib::httpClient.get(src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/health"){
-    Ok(_)=>()|
-    Err(_)=>()
-  }
+λmain()=>!IO Unit match stdlib::httpClient.get(src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/health"){
+  Ok(_)=>()|
+  Err(_)=>()
+}
 ```
 
-See [topology.md](REPO_ROOT/language/docs/topology.md) for the full model.
+See [topology.md](./topology.md) for the full model.
 
 ## List Predicates
 
 **Module:** `stdlib/list`
 
-### sorted_asc
+### sortedAsc
 
 Check if a list is sorted in ascending order.
 
-```sigil
-λsorted_asc(xs:[Int])=>Bool
+```sigil decl stdlib::list
+λsortedAsc(xs:[Int])=>Bool
 ```
 
 **Examples:**
-```sigil
-sorted_asc([1,2,3])    ⟦ => true ⟧
-sorted_asc([3,2,1])    ⟦ => false ⟧
-sorted_asc([])         ⟦ => true (empty is sorted) ⟧
-sorted_asc([5])        ⟦ => true (single element is sorted) ⟧
+```sigil program
+i stdlib::list
+
+λmain()=>Bool=stdlib::list.sortedAsc([1,2,3]) and ¬stdlib::list.sortedAsc([3,2,1]) and stdlib::list.sortedAsc([]) and stdlib::list.sortedAsc([5])
 ```
 
 **Use case:** Validate precondition for binary search or other sorted-list algorithms.
 
-### sorted_desc
+### sortedDesc
 
 Check if a list is sorted in descending order.
 
-```sigil
-λsorted_desc(xs:[Int])=>Bool
+```sigil decl stdlib::list
+λsortedDesc(xs:[Int])=>Bool
 ```
 
 **Examples:**
-```sigil
-sorted_desc([3,2,1])   ⟦ => true ⟧
-sorted_desc([1,2,3])   ⟦ => false ⟧
+```sigil program
+i stdlib::list
+
+λmain()=>Bool=stdlib::list.sortedDesc([3,2,1]) and ¬stdlib::list.sortedDesc([1,2,3])
 ```
 
 ### all
 
 Check if all elements in a list satisfy a predicate.
 
-```sigil
+```sigil decl stdlib::list
 λall[T](pred:λ(T)=>Bool,xs:[T])=>Bool
 ```
 
 **Examples:**
-```sigil
-all(is_positive,[1,2,3])      ⟦ => true ⟧
-all(is_positive,[1,-2,3])     ⟦ => false ⟧
-all(is_even,[2,4,6])          ⟦ => true ⟧
+```sigil program
+i stdlib::list
+
+i stdlib::numeric
+
+λmain()=>Bool=stdlib::list.all(stdlib::numeric.isPositive,[1,2,3]) and ¬stdlib::list.all(stdlib::numeric.isPositive,[1,-2,3]) and stdlib::list.all(stdlib::numeric.isEven,[2,4,6])
 ```
 
 **Use case:** Validate that all elements meet a requirement.
@@ -444,15 +452,17 @@ all(is_even,[2,4,6])          ⟦ => true ⟧
 
 Check if any element in a list satisfies a predicate.
 
-```sigil
+```sigil decl stdlib::list
 λany[T](pred:λ(T)=>Bool,xs:[T])=>Bool
 ```
 
 **Examples:**
-```sigil
-any(is_even,[1,3,5])          ⟦ => false ⟧
-any(is_even,[1,2,3])          ⟦ => true ⟧
-any(is_prime,[4,6,8,7])       ⟦ => true (7 is prime) ⟧
+```sigil program
+i stdlib::list
+
+i stdlib::numeric
+
+λmain()=>Bool=¬stdlib::list.any(stdlib::numeric.isEven,[1,3,5]) and stdlib::list.any(stdlib::numeric.isEven,[1,2,3]) and stdlib::list.any(stdlib::numeric.isPrime,[4,6,8,7])
 ```
 
 **Use case:** Check if at least one element meets a requirement.
@@ -461,15 +471,15 @@ any(is_prime,[4,6,8,7])       ⟦ => true (7 is prime) ⟧
 
 Check if an element exists in a list.
 
-```sigil
-λcontains(item:Int,xs:[Int])=>Bool
+```sigil decl stdlib::list
+λcontains[T](item:T,xs:[T])=>Bool
 ```
 
 **Examples:**
-```sigil
-contains(3,[1,2,3,4])         ⟦ => true ⟧
-contains(5,[1,2,3,4])         ⟦ => false ⟧
-contains(1,[])                ⟦ => false ⟧
+```sigil program
+i stdlib::list
+
+λmain()=>Bool=stdlib::list.contains(3,[1,2,3,4]) and ¬stdlib::list.contains(5,[1,2,3,4]) and ¬stdlib::list.contains(1,[])
 ```
 
 **Use case:** Membership testing.
@@ -478,15 +488,15 @@ contains(1,[])                ⟦ => false ⟧
 
 Count occurrences of an element in a list.
 
-```sigil
-λcount(item:Int,xs:[Int])=>Int
+```sigil decl stdlib::list
+λcount[T](item:T,xs:[T])=>Int
 ```
 
 ### countIf
 
 Count elements that satisfy a predicate.
 
-```sigil
+```sigil decl stdlib::list
 λcountIf[T](pred:λ(T)=>Bool,xs:[T])=>Int
 ```
 
@@ -494,66 +504,78 @@ Count elements that satisfy a predicate.
 
 Drop the first `n` elements.
 
-```sigil
-λdrop(n:Int,xs:[Int])=>[Int]
+```sigil decl stdlib::list
+λdrop[T](n:Int,xs:[T])=>[T]
 ```
 
 ### find
 
 Find the first element that satisfies a predicate.
 
-```sigil
+```sigil decl stdlib::list
 λfind[T](pred:λ(T)=>Bool,xs:[T])=>Option[T]
 ```
 
 Examples:
-```sigil
-stdlib::list.find(stdlib::numeric.is_even,[1,3,4,6])   ⟦ => Some(4) ⟧
-stdlib::list.find(stdlib::numeric.is_even,[1,3,5])     ⟦ => None() ⟧
+```sigil program
+i stdlib::list
+
+i stdlib::numeric
+
+λmain()=>Bool=(match stdlib::list.find(stdlib::numeric.isEven,[1,3,4,6]){
+  Some(value)=>value=4|
+  None()=>false
+}) and (match stdlib::list.find(stdlib::numeric.isEven,[1,3,5]){
+  Some(_)=>false|
+  None()=>true
+})
 ```
 
 ### flatMap
 
 Map each element to a list and flatten the results in order.
 
-```sigil
+```sigil decl stdlib::list
 λflatMap[T,U](fn:λ(T)=>[U],xs:[T])=>[U]
 ```
 
 Examples:
-```sigil
-stdlib::list.flatMap(λ(x:Int)=>[Int]=[x,x],[1,2,3])   ⟦ => [1,1,2,2,3,3] ⟧
+```sigil program
+i stdlib::list
+
+λmain()=>Bool=stdlib::list.flatMap(λ(x:Int)=>[Int]=[x,x],[1,2,3])=[1,1,2,2,3,3]
 ```
 
 ### fold
 
 Reduce a list to a single value by threading an accumulator from left to right.
 
-```sigil
+```sigil decl stdlib::list
 λfold[T,U](acc:U,fn:λ(U,T)=>U,xs:[T])=>U
 ```
 
 Examples:
-```sigil
-stdlib::list.fold(0,λ(acc:Int,x:Int)=>Int=acc+x,[1,2,3])   ⟦ => 6 ⟧
-stdlib::list.fold(0,λ(acc:Int,x:Int)=>Int=acc*10+x,[1,2,3]) ⟦ => 123 ⟧
+```sigil program
+i stdlib::list
+
+λappendDigit(acc:Int,x:Int)=>Int=acc*10+x
+
+λmain()=>Bool=stdlib::list.fold(0,λ(acc:Int,x:Int)=>Int=acc+x,[1,2,3])=6 and stdlib::list.fold(0,appendDigit,[1,2,3])=123
 ```
 
-### in_bounds
+### inBounds
 
 Check if an index is valid for a list (in range [0, len-1]).
 
-```sigil
-λin_bounds(idx:Int,xs:[Int])=>Bool
+```sigil decl stdlib::list
+λinBounds[T](idx:Int,xs:[T])=>Bool
 ```
 
 **Examples:**
-```sigil
-in_bounds(0,[1,2,3])          ⟦ => true ⟧
-in_bounds(2,[1,2,3])          ⟦ => true ⟧
-in_bounds(3,[1,2,3])          ⟦ => false (out of bounds) ⟧
-in_bounds(-1,[1,2,3])         ⟦ => false (negative index) ⟧
-in_bounds(0,[])               ⟦ => false (empty list) ⟧
+```sigil program
+i stdlib::list
+
+λmain()=>Bool=stdlib::list.inBounds(0,[1,2,3]) and stdlib::list.inBounds(2,[1,2,3]) and ¬stdlib::list.inBounds(3,[1,2,3]) and ¬stdlib::list.inBounds(-1,[1,2,3]) and ¬stdlib::list.inBounds(0,[])
 ```
 
 **Use case:** Validate array/list access before indexing. Prevents out-of-bounds errors.
@@ -570,108 +592,138 @@ in_bounds(0,[])               ⟦ => false (empty list) ⟧
 
 Get the last element safely.
 
-```sigil
+```sigil decl stdlib::list
 λlast[T](xs:[T])=>Option[T]
 ```
 
 Examples:
-```sigil
-stdlib::list.last([])         ⟦ => None() ⟧
-stdlib::list.last([1,2,3])    ⟦ => Some(3) ⟧
+```sigil program
+i stdlib::list
+
+λmain()=>Bool=(match stdlib::list.last([]){
+  Some(_)=>false|
+  None()=>true
+}) and (match stdlib::list.last([1,2,3]){
+  Some(value)=>value=3|
+  None()=>false
+})
 ```
 
 ### max
 
 Get the maximum element safely.
 
-```sigil
+```sigil decl stdlib::list
 λmax(xs:[Int])=>Option[Int]
 ```
 
 Examples:
-```sigil
-stdlib::list.max([])          ⟦ => None() ⟧
-stdlib::list.max([3,9,4])     ⟦ => Some(9) ⟧
+```sigil program
+i stdlib::list
+
+λmain()=>Bool=(match stdlib::list.max([]){
+  Some(_)=>false|
+  None()=>true
+}) and (match stdlib::list.max([3,9,4]){
+  Some(value)=>value=9|
+  None()=>false
+})
 ```
 
 ### min
 
 Get the minimum element safely.
 
-```sigil
+```sigil decl stdlib::list
 λmin(xs:[Int])=>Option[Int]
 ```
 
 Examples:
-```sigil
-stdlib::list.min([])          ⟦ => None() ⟧
-stdlib::list.min([3,9,4])     ⟦ => Some(3) ⟧
+```sigil program
+i stdlib::list
+
+λmain()=>Bool=(match stdlib::list.min([]){
+  Some(_)=>false|
+  None()=>true
+}) and (match stdlib::list.min([3,9,4]){
+  Some(value)=>value=3|
+  None()=>false
+})
 ```
 
 ### nth
 
 Get the item at a zero-based index safely.
 
-```sigil
+```sigil decl stdlib::list
 λnth[T](idx:Int,xs:[T])=>Option[T]
 ```
 
 Examples:
-```sigil
-stdlib::list.nth(0,[7,8])     ⟦ => Some(7) ⟧
-stdlib::list.nth(2,[7,8])     ⟦ => None() ⟧
+```sigil program
+i stdlib::list
+
+λmain()=>Bool=(match stdlib::list.nth(0,[7,8]){
+  Some(value)=>value=7|
+  None()=>false
+}) and (match stdlib::list.nth(2,[7,8]){
+  Some(_)=>false|
+  None()=>true
+})
 ```
 
 ### product
 
 Multiply all integers in a list.
 
-```sigil
+```sigil decl stdlib::list
 λproduct(xs:[Int])=>Int
 ```
 
 Examples:
-```sigil
-stdlib::list.product([])         ⟦ => 1 ⟧
-stdlib::list.product([2,3,4])    ⟦ => 24 ⟧
+```sigil program
+i stdlib::list
+
+λmain()=>Bool=stdlib::list.product([])=1 and stdlib::list.product([2,3,4])=24
 ```
 
-### remove_first
+### removeFirst
 
 Remove the first occurrence of an element.
 
-```sigil
-λremove_first(item:Int,xs:[Int])=>[Int]
+```sigil decl stdlib::list
+λremoveFirst[T](item:T,xs:[T])=>[T]
 ```
 
 ### reverse
 
 Reverse a list.
 
-```sigil
-λreverse(xs:[Int])=>[Int]
+```sigil decl stdlib::list
+λreverse[T](xs:[T])=>[T]
 ```
 
 ### sum
 
 Sum all integers in a list.
 
-```sigil
+```sigil decl stdlib::list
 λsum(xs:[Int])=>Int
 ```
 
 Examples:
-```sigil
-stdlib::list.sum([])          ⟦ => 0 ⟧
-stdlib::list.sum([1,2,3,4])   ⟦ => 10 ⟧
+```sigil program
+i stdlib::list
+
+λmain()=>Bool=stdlib::list.sum([])=0 and stdlib::list.sum([1,2,3,4])=10
 ```
 
 ### take
 
 Take the first `n` elements.
 
-```sigil
-λtake(n:Int,xs:[Int])=>[Int]
+```sigil decl stdlib::list
+λtake[T](n:Int,xs:[T])=>[T]
 ```
 
 ## Numeric Helpers
@@ -682,15 +734,15 @@ Take the first `n` elements.
 
 Build an ascending integer range, inclusive at both ends.
 
-```sigil
+```sigil decl stdlib::numeric
 λrange(start:Int,stop:Int)=>[Int]
 ```
 
 Examples:
-```sigil
-stdlib::numeric.range(2,5)   ⟦ => [2,3,4,5] ⟧
-stdlib::numeric.range(3,3)   ⟦ => [3] ⟧
-stdlib::numeric.range(5,2)   ⟦ => [] ⟧
+```sigil program
+i stdlib::numeric
+
+λmain()=>Bool=stdlib::numeric.range(2,5)=[2,3,4,5] and stdlib::numeric.range(3,3)=[3] and stdlib::numeric.range(5,2)=[]
 ```
 
 ## Canonical List-Processing Surface
@@ -719,18 +771,19 @@ Sigil now rejects exact recursive clones of `all`, `any`, `map`, `filter`,
 
 Comprehensive string manipulation functions. These are **compiler intrinsics** - the compiler emits optimized JavaScript directly instead of calling Sigil functions.
 
-### char_at
+### charAt
 
 Get character at index.
 
-```sigil
-λchar_at(idx:Int,s:String)=>String
+```sigil decl stdlib::string
+λcharAt(idx:Int,s:String)=>String
 ```
 
 **Examples:**
-```sigil
-stdlib::string.char_at(0,"hello")    ⟦ => "h" ⟧
-stdlib::string.char_at(4,"hello")    ⟦ => "o" ⟧
+```sigil program
+i stdlib::string
+
+λmain()=>Bool=stdlib::string.charAt(0,"hello")="h" and stdlib::string.charAt(4,"hello")="o"
 ```
 
 **Codegen:** `s.charAt(idx)`
@@ -739,14 +792,15 @@ stdlib::string.char_at(4,"hello")    ⟦ => "o" ⟧
 
 Get substring from start to end index.
 
-```sigil
+```sigil decl stdlib::string
 λsubstring(end:Int,s:String,start:Int)=>String
 ```
 
 **Examples:**
-```sigil
-stdlib::string.substring(11,"hello world",6)    ⟦ => "world" ⟧
-stdlib::string.substring(3,"hello",0)           ⟦ => "hel" ⟧
+```sigil program
+i stdlib::string
+
+λmain()=>Bool=stdlib::string.substring(11,"hello world",6)="world" and stdlib::string.substring(3,"hello",0)="hel"
 ```
 
 **Codegen:** `s.substring(start, end)`
@@ -755,14 +809,15 @@ stdlib::string.substring(3,"hello",0)           ⟦ => "hel" ⟧
 
 Take first n characters.
 
-```sigil
+```sigil decl stdlib::string
 λtake(n:Int,s:String)=>String
 ```
 
 **Examples:**
-```sigil
-stdlib::string.take(3,"hello")    ⟦ => "hel" ⟧
-stdlib::string.take(5,"hi")       ⟦ => "hi" (takes available chars) ⟧
+```sigil program
+i stdlib::string
+
+λmain()=>Bool=stdlib::string.take(3,"hello")="hel" and stdlib::string.take(5,"hi")="hi"
 ```
 
 **Implementation:** `substring(n, s, 0)` (in Sigil)
@@ -771,14 +826,15 @@ stdlib::string.take(5,"hi")       ⟦ => "hi" (takes available chars) ⟧
 
 Drop first n characters.
 
-```sigil
+```sigil decl stdlib::string
 λdrop(n:Int,s:String)=>String
 ```
 
 **Examples:**
-```sigil
-stdlib::string.drop(2,"hello")    ⟦ => "llo" ⟧
-stdlib::string.drop(5,"hi")       ⟦ => "" (drops all available) ⟧
+```sigil program
+i stdlib::string
+
+λmain()=>Bool=stdlib::string.drop(2,"hello")="llo" and stdlib::string.drop(5,"hi")=""
 ```
 
 **Implementation:** `substring(#s, s, n)` (in Sigil, uses `#` operator)
@@ -787,44 +843,49 @@ stdlib::string.drop(5,"hi")       ⟦ => "" (drops all available) ⟧
 
 Split a string on newline characters.
 
-```sigil
+```sigil decl stdlib::string
 λlines(s:String)=>[String]
 ```
 
 **Examples:**
-```sigil
-stdlib::string.lines("a\nb\nc")    ⟦ => ["a","b","c"] ⟧
-stdlib::string.lines("hello")      ⟦ => ["hello"] ⟧
+```sigil program
+i stdlib::string
+
+λmain()=>Bool=stdlib::string.lines("a\nb\nc")=["a","b","c"] and stdlib::string.lines("hello")=["hello"]
 ```
 
 **Implementation:** `split("\n", s)` (in Sigil)
 
-### to_upper
+### toUpper
 
 Convert to uppercase.
 
-```sigil
-λto_upper(s:String)=>String
+```sigil decl stdlib::string
+λtoUpper(s:String)=>String
 ```
 
 **Examples:**
-```sigil
-stdlib::string.to_upper("hello")    ⟦ => "HELLO" ⟧
+```sigil program
+i stdlib::string
+
+λmain()=>Bool=stdlib::string.toUpper("hello")="HELLO"
 ```
 
 **Codegen:** `s.toUpperCase()`
 
-### to_lower
+### toLower
 
 Convert to lowercase.
 
-```sigil
-λto_lower(s:String)=>String
+```sigil decl stdlib::string
+λtoLower(s:String)=>String
 ```
 
 **Examples:**
-```sigil
-stdlib::string.to_lower("WORLD")    ⟦ => "world" ⟧
+```sigil program
+i stdlib::string
+
+λmain()=>Bool=stdlib::string.toLower("WORLD")="world"
 ```
 
 **Codegen:** `s.toLowerCase()`
@@ -833,30 +894,32 @@ stdlib::string.to_lower("WORLD")    ⟦ => "world" ⟧
 
 Remove leading and trailing whitespace.
 
-```sigil
+```sigil decl stdlib::string
 λtrim(s:String)=>String
 ```
 
 **Examples:**
-```sigil
-stdlib::string.trim("  hello  ")    ⟦ => "hello" ⟧
-stdlib::string.trim("\n\ttest\n")   ⟦ => "test" ⟧
+```sigil program
+i stdlib::string
+
+λmain()=>Bool=stdlib::string.trim("  hello  ")="hello" and stdlib::string.trim("\n\ttest\n")="test"
 ```
 
 **Codegen:** `s.trim()`
 
-### index_of
+### indexOf
 
 Find index of first occurrence (returns -1 if not found).
 
-```sigil
-λindex_of(s:String,search:String)=>Int
+```sigil decl stdlib::string
+λindexOf(s:String,search:String)=>Int
 ```
 
 **Examples:**
-```sigil
-stdlib::string.index_of("hello world","world")    ⟦ => 6 ⟧
-stdlib::string.index_of("hello","xyz")            ⟦ => -1 ⟧
+```sigil program
+i stdlib::string
+
+λmain()=>Bool=stdlib::string.indexOf("hello world","world")=6 and stdlib::string.indexOf("hello","xyz")=-1
 ```
 
 **Codegen:** `s.indexOf(search)`
@@ -865,29 +928,32 @@ stdlib::string.index_of("hello","xyz")            ⟦ => -1 ⟧
 
 Split string by delimiter.
 
-```sigil
+```sigil decl stdlib::string
 λsplit(delimiter:String,s:String)=>[String]
 ```
 
 **Examples:**
-```sigil
-stdlib::string.split(",","a,b,c")           ⟦ => ["a","b","c"] ⟧
-stdlib::string.split("\n","line1\nline2")   ⟦ => ["line1","line2"] ⟧
+```sigil program
+i stdlib::string
+
+λmain()=>Bool=stdlib::string.split(",","a,b,c")=["a","b","c"] and stdlib::string.split("\n","line1\nline2")=["line1","line2"]
 ```
 
 **Codegen:** `s.split(delimiter)`
 
-### replace_all
+### replaceAll
 
 Replace all occurrences of pattern with replacement.
 
-```sigil
-λreplace_all(pattern:String,replacement:String,s:String)=>String
+```sigil decl stdlib::string
+λreplaceAll(pattern:String,replacement:String,s:String)=>String
 ```
 
 **Examples:**
-```sigil
-stdlib::string.replace_all("hello","hi","hello hello")    ⟦ => "hi hi" ⟧
+```sigil program
+i stdlib::string
+
+λmain()=>Bool=stdlib::string.replaceAll("hello","hi","hello hello")="hi hi"
 ```
 
 **Codegen:** `s.replaceAll(pattern, replacement)`
@@ -896,14 +962,15 @@ stdlib::string.replace_all("hello","hi","hello hello")    ⟦ => "hi hi" ⟧
 
 Repeat a string `count` times.
 
-```sigil
+```sigil decl stdlib::string
 λrepeat(count:Int,s:String)=>String
 ```
 
 **Examples:**
-```sigil
-stdlib::string.repeat(3,"ab")    ⟦ => "ababab" ⟧
-stdlib::string.repeat(0,"ab")    ⟦ => "" ⟧
+```sigil program
+i stdlib::string
+
+λmain()=>Bool=stdlib::string.repeat(3,"ab")="ababab" and stdlib::string.repeat(0,"ab")=""
 ```
 
 **Implementation:** recursive concatenation in Sigil
@@ -912,525 +979,127 @@ stdlib::string.repeat(0,"ab")    ⟦ => "" ⟧
 
 Reverse a string.
 
-```sigil
+```sigil decl stdlib::string
 λreverse(s:String)=>String
 ```
 
 **Examples:**
-```sigil
-stdlib::string.reverse("stressed")    ⟦ => "desserts" ⟧
-stdlib::string.reverse("abc")         ⟦ => "cba" ⟧
+```sigil program
+i stdlib::string
+
+λmain()=>Bool=stdlib::string.reverse("stressed")="desserts" and stdlib::string.reverse("abc")="cba"
 ```
 
 **Codegen:** `s.split("").reverse().join("")`
 
-## String Predicates
+## Current String Surface
 
-**Module:** `stdlib/string`
+`stdlib::string` currently exposes:
 
-Boolean validation predicates for string properties. These are **compiler intrinsics**.
+- `charAt`
+- `drop`
+- `endsWith`
+- `indexOf`
+- `intToString`
+- `isDigit`
+- `join`
+- `lines`
+- `replaceAll`
+- `repeat`
+- `reverse`
+- `split`
+- `startsWith`
+- `substring`
+- `take`
+- `toLower`
+- `toUpper`
+- `trim`
+- `unlines`
 
-### starts_with
+Design notes:
 
-Check if string starts with prefix.
+- use `#s=0` instead of a dedicated `isEmpty`
+- use `stdlib::string.trim(s)=""` instead of a dedicated whitespace predicate
+- use `stdlib::string.indexOf(s,search)≠-1` for containment checks
 
-```sigil
-λstarts_with(prefix:String,s:String)=>Bool
-```
+## Current Numeric Surface
 
-**Examples:**
-```sigil
-stdlib::string.starts_with("# ","# Title")    ⟦ => true ⟧
-stdlib::string.starts_with("# ","Title")      ⟦ => false ⟧
-```
+`stdlib::numeric` currently exposes:
 
-**Codegen:** `s.startsWith(prefix)`
-
-**Use case:** Parse markdown headers, check file extensions.
-
-### ends_with
-
-Check if string ends with suffix.
-
-```sigil
-λends_with(s:String,suffix:String)=>Bool
-```
-
-**Examples:**
-```sigil
-stdlib::string.ends_with("test.sigil",".sigil")    ⟦ => true ⟧
-stdlib::string.ends_with("test.txt",".sigil")      ⟦ => false ⟧
-```
-
-**Codegen:** `s.endsWith(suffix)`
-
-**Use case:** File extension checking, URL validation.
-
-### is_digit
-
-Check whether a string is exactly one decimal digit.
-
-```sigil
-λis_digit(s:String)=>Bool
-```
-
-**Examples:**
-```sigil
-stdlib::string.is_digit("5")     ⟦ => true ⟧
-stdlib::string.is_digit("42")    ⟦ => false ⟧
-```
-
-**Codegen:** `/^[0-9]$/.test(s)`
-
-### unlines
-
-Join lines with newline separators.
-
-```sigil
-λunlines(lines:[String])=>String
-```
-
-**Examples:**
-```sigil
-stdlib::string.unlines(["a","b","c"])    ⟦ => "a\nb\nc" ⟧
-stdlib::string.unlines([])               ⟦ => "" ⟧
-```
-
-**Implementation:** `join("\n", lines)` (in Sigil)
-
-**Design Note:** No redundant predicates like `is_empty`, `is_whitespace`, or `contains`. Users compose these:
-- `is_empty(s)` => `#s = 0`
-- `is_whitespace(s)` => `stdlib::string.trim(s) = ""`
-- `contains(s, search)` => `stdlib::string.index_of(s, search) ≠ -1`
-
-This follows Sigil's "ONE way to do things" philosophy.
-
-## Numeric Predicates
-
-**Module:** `stdlib/numeric`
-
-### abs
-
-Absolute value of an integer.
-
-```sigil
-λabs(x:Int)=>Int
-```
+- `abs`
+- `clamp`
+- `divisible`
+- `divmod`
+- `gcd`
+- `inRange`
+- `isEven`
+- `isNegative`
+- `isNonNegative`
+- `isOdd`
+- `isPositive`
+- `isPrime`
+- `lcm`
+- `max`
+- `min`
+- `mod`
+- `pow`
+- `range`
+- `sign`
 
 Examples:
-```sigil
-stdlib::numeric.abs(-5)   ⟦ => 5 ⟧
-stdlib::numeric.abs(7)    ⟦ => 7 ⟧
+
+```sigil program
+i stdlib::numeric
+
+λmain()=>Bool=stdlib::numeric.abs(-5)=5 and stdlib::numeric.isEven(4) and stdlib::numeric.isPrime(17) and stdlib::numeric.range(2,5)=[2,3,4,5]
 ```
-
-### DivMod
-
-Quotient and remainder pair returned by `divmod`.
-
-```sigil
-t DivMod={quotient:Int,remainder:Int}
-```
-
-### divmod
-
-Return integer quotient and Euclidean remainder together.
-
-```sigil
-λdivmod(a:Int,b:Int)=>stdlib::numeric.DivMod
-```
-
-Examples:
-```sigil
-stdlib::numeric.divmod(17,5)    ⟦ => DivMod{quotient:3,remainder:2} ⟧
-stdlib::numeric.divmod(-17,5)   ⟦ => DivMod{quotient:-4,remainder:3} ⟧
-```
-
-### is_positive
-
-Check if a number is positive (> 0).
-
-```sigil
-λis_positive(x:Int)=>Bool
-```
-
-**Examples:**
-```sigil
-is_positive(5)                ⟦ => true ⟧
-is_positive(-3)               ⟦ => false ⟧
-is_positive(0)                ⟦ => false ⟧
-```
-
-### is_negative
-
-Check if a number is negative (< 0).
-
-```sigil
-λis_negative(x:Int)=>Bool
-```
-
-**Examples:**
-```sigil
-is_negative(-5)               ⟦ => true ⟧
-is_negative(3)                ⟦ => false ⟧
-is_negative(0)                ⟦ => false ⟧
-```
-
-### is_non_negative
-
-Check if a number is non-negative (>= 0).
-
-```sigil
-λis_non_negative(x:Int)=>Bool
-```
-
-**Examples:**
-```sigil
-is_non_negative(0)            ⟦ => true ⟧
-is_non_negative(5)            ⟦ => true ⟧
-is_non_negative(-1)           ⟦ => false ⟧
-```
-
-### is_even
-
-Check if a number is even.
-
-```sigil
-λis_even(x:Int)=>Bool
-```
-
-**Examples:**
-```sigil
-is_even(4)                    ⟦ => true ⟧
-is_even(5)                    ⟦ => false ⟧
-is_even(0)                    ⟦ => true ⟧
-```
-
-### is_odd
-
-Check if a number is odd.
-
-```sigil
-λis_odd(x:Int)=>Bool
-```
-
-**Examples:**
-```sigil
-is_odd(3)                     ⟦ => true ⟧
-is_odd(4)                     ⟦ => false ⟧
-```
-
-**Implementation:** Uses negation of `is_even` for correctness.
-
-### is_prime
-
-Check if a number is prime.
-
-```sigil
-λis_prime(n:Int)=>Bool
-```
-
-**Examples:**
-```sigil
-is_prime(2)                   ⟦ => true ⟧
-is_prime(7)                   ⟦ => true ⟧
-is_prime(8)                   ⟦ => false ⟧
-is_prime(17)                  ⟦ => true ⟧
-is_prime(1)                   ⟦ => false (1 is not prime) ⟧
-is_prime(0)                   ⟦ => false ⟧
-```
-
-**Algorithm:** Trial division up to sqrt(n). Uses helper function `is_prime_helper`.
-
-**Performance:** O(sqrt(n)) time complexity.
-
-### lcm
-
-Least common multiple.
-
-```sigil
-λlcm(a:Int,b:Int)=>Int
-```
-
-Examples:
-```sigil
-stdlib::numeric.lcm(6,8)     ⟦ => 24 ⟧
-stdlib::numeric.lcm(-6,8)    ⟦ => 24 ⟧
-stdlib::numeric.lcm(0,7)     ⟦ => 0 ⟧
-```
-
-### mod
-
-Euclidean modulo with a non-negative remainder.
-
-```sigil
-λmod(a:Int,b:Int)=>Int
-```
-
-Examples:
-```sigil
-stdlib::numeric.mod(17,5)     ⟦ => 2 ⟧
-stdlib::numeric.mod(-17,5)    ⟦ => 3 ⟧
-stdlib::numeric.mod(17,-5)    ⟦ => 2 ⟧
-```
-
-### in_range
-
-Check if a number is in the inclusive range [min, max].
-
-```sigil
-λin_range(x:Int,min:Int,max:Int)=>Bool
-```
-
-**Examples:**
-```sigil
-in_range(5,1,10)              ⟦ => true ⟧
-in_range(0,1,10)              ⟦ => false ⟧
-in_range(1,1,10)              ⟦ => true (inclusive bounds) ⟧
-in_range(10,1,10)             ⟦ => true (inclusive bounds) ⟧
-```
-
-**Use case:** Bounds validation, input checking.
-
-### sign
-
-Return `-1`, `0`, or `1` based on the sign of the input.
-
-```sigil
-λsign(x:Int)=>Int
-```
-
-Examples:
-```sigil
-stdlib::numeric.sign(-8)    ⟦ => -1 ⟧
-stdlib::numeric.sign(0)     ⟦ => 0 ⟧
-stdlib::numeric.sign(12)    ⟦ => 1 ⟧
-```
-
-## Common Patterns
-
-### Validation with Predicates
-
-```sigil
-⟦ Validate input before processing ⟧
-λprocess_positive(x:Int)=>String match is_positive(x){
-  false=>"Error: Must be positive"|
-  true=>"Processing..."
-}
-```
-
-### Filtering Lists
-
-```sigil
-⟦ Filter primes from a list ⟧
-λget_primes(xs:[Int])=>[Int]=xs⊳is_prime
-```
-
-### Higher-Order Validation
-
-```sigil
-⟦ Check all values are in range ⟧
-λall_in_range(xs:[Int])=>Bool=all(λx=>in_range(x,0,100),xs)
-```
-
-### Precondition Checks
-
-```sigil
-⟦ Algorithm that requires sorted input ⟧
-λbinary_search(xs:[Int],target:Int)=>String match sorted_asc(xs){
-  false=>"Error: List must be sorted"|
-  true=>"Searching..."
-}
-```
-
-## Design Principles
-
-### Canonical Forms Only
-
-Each predicate has exactly ONE implementation:
-- ❌ NO iterative versions
-- ❌ NO accumulator-passing variants
-- ✅ ONLY primitive recursion
-
-### Helper Functions Allowed
-
-Predicates can use helper functions for complex logic:
-```sigil
-λis_prime(n:Int)=>Bool=...
-λis_prime_helper(n:Int,divisor:Int)=>Bool=...  ⟦ Allowed ⟧
-```
-
-### Pure Functions
-
-All predicates are pure (no side effects):
-- Same input always produces same output
-- No mutation
-- No I/O
-- No state
-
-### Type Safety
-
-All predicates have explicit type signatures:
-- Parameter types declared
-- Return types declared
-- No type inference needed
-
-## Limitations & Known Issues
-
-### ~~Module Imports Not Working~~ ✅ FIXED
-
-**Issue:** ~~Imports don't currently register in the typechecker.~~
-
-**Resolution:** Module imports now fully working. Use like FFI: `i stdlib::module` then `stdlib::module.function()`.
-
-### ~~Missing Unicode Operators~~ ✅ FIXED
-
-**Issue:** ~~Typechecker doesn't support ≤, ≥, ≠, and, or.~~
-
-**Resolution:** Unicode operators now fully supported in typechecker. Predicates updated to use cleaner Unicode syntax.
 
 ## Core Prelude
 
 `Option[T]`, `Result[T,E]`, `Some`, `None`, `Ok`, and `Err` are part of the implicit `core::prelude`. They do not require imports.
 
-### Option[T]
+Current canonical type forms:
 
-Represents an optional value - either `Some(T)` or `None`.
+```sigil module
+t Option[T]=Some(T)|None()
 
-**Type declaration:**
-```sigil
-t Option[T]=Some(T)|None
-```
-
-**Usage:**
-```sigil
-⟦ Pattern matching on Option ⟧
-λgetOrDefault(default:Int,opt:Option[Int])=>Int match opt{
-  Some(x)=>x|
-  None()=>default
-}
-
-⟦ Safe division returning Option ⟧
-λdivide(a:Int,b:Int)=>Option[Int] match b{
-  0=>None()|
-  b=>Some(a/b)
-}
-```
-
-**Implemented helpers:**
-```sigil
-λbind_option[T,U](fn:λ(T)=>Option[U],opt:Option[T])=>Option[U]
-λis_none[T](opt:Option[T])=>Bool
-λis_some[T](opt:Option[T])=>Bool
-λmap_option[T,U](fn:λ(T)=>U,opt:Option[T])=>Option[U]
-λunwrap_or[T](fallback:T,opt:Option[T])=>T
-```
-
-### Result[T,E]
-
-Represents success (`Ok(T)`) or failure (`Err(E)`).
-
-**Type declaration:**
-```sigil
 t Result[T,E]=Ok(T)|Err(E)
 ```
 
-**Usage:**
-```sigil
-⟦ Pattern matching on Result ⟧
+Typical usage:
+
+```sigil module
+λgetOrDefault(default:Int,opt:Option[Int])=>Int match opt{
+  Some(value)=>value|
+  None()=>default
+}
+
 λprocessResult(res:Result[String,String])=>String match res{
-  Ok(value)=>"Success: "+value|
-  Err(msg)=>"Error: "+msg
-}
-
-⟦ Safe parsing returning Result ⟧
-λparsePositive(s:String)=>Result[Int,String] match validInput(s){
-  true=>Ok(parseInt(s))|
-  false=>Err("invalid input")
+  Ok(value)=>"Success: "++value|
+  Err(msg)=>"Error: "++msg
 }
 ```
 
-**Implemented helpers:**
-```sigil
-λbind_result[T,U,E](fn:λ(T)=>Result[U,E],res:Result[T,E])=>Result[U,E]
-λis_err[T,E](res:Result[T,E])=>Bool
-λis_ok[T,E](res:Result[T,E])=>Bool
-λmap_result[T,U,E](fn:λ(T)=>U,res:Result[T,E])=>Result[U,E]
-λunwrap_or_result[T,E](fallback:T,res:Result[T,E])=>T
-```
+## Core Map
 
-**See also:** `examples/sumTypesDemo.sigil` for comprehensive examples.
-
-### Core Helper Modules
-
-Use these when you need operational helpers:
-
-```sigil
-i core::map
-i core::option
-i core::result
-```
-
-### Core Map
-
-`Map` is a core collection concept, not a stdlib-only add-on.
+`core::map` is the canonical helper surface for `{K↦V}` values.
 
 Canonical type and literal forms:
 
-```sigil
-{String↦String}
-{"content-type"↦"text/plain"}
-({↦}:{String↦String})
+```sigil module
+t Headers={String↦String}
+
+c empty=(({↦}:{String↦String}):{String↦String})
+
+c filled=({"content-type"↦"text/plain"}:{String↦String})
 ```
 
-Canonical helper module:
+Canonical helper import:
 
-```sigil
+```sigil module
 i core::map
 ```
 
-## Future Additions
+## Stability Note
 
-### String Predicates
-
-```sigil
-λstr_contains(s:String,substr:String)=>Bool
-λstr_starts_with(s:String,prefix:String)=>Bool
-λstr_ends_with(s:String,suffix:String)=>Bool
-λstr_is_empty(s:String)=>Bool
-```
-
-### List Utility Functions
-
-```sigil
-λlen[T](xs:[T])=>Int
-λhead[T](xs:[T])=>Option[T]
-λtail[T](xs:[T])=>[T]
-λreverse[T](xs:[T])=>[T]
-```
-
-## Contracts (Future)
-
-Predicates will integrate with the future contract system:
-
-```sigil
-⟦ Today - manual validation ⟧
-λbinary_search(xs:[Int],target:Int)=>Int match sorted_asc(xs){
-  false=>-1|
-  true=>...
-}
-
-⟦ Future - contracts with predicates ⟧
-λbinary_search(xs:[Int],target:Int)=>Int
-  [requires sorted_asc(xs)]
-  [ensures in_range(result,0,len(xs))]
-=...
-```
-
-This ensures predicates are useful TODAY while setting foundation for formal verification later.
-
----
-
-**See also:**
-- `spec/stdlib-spec.md` - Full standard library specification
-- `examples/` - Example programs using predicates
-- `AGENTS.md` - Sigil language guide
+This document describes the current shipped stdlib surface. Placeholder future APIs and older snake_case names are intentionally omitted here. When the surface changes, update the checked declarations and examples in this file instead of keeping speculative or legacy aliases around.

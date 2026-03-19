@@ -17,7 +17,7 @@ inside match arms.
 
 Consider a function like this:
 
-```sigil
+```sigil exprs
 λtail(xs:[Int])=>[Int] match xs{
   []=>[]|
   [x,.xs]=>xs

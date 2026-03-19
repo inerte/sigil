@@ -45,13 +45,15 @@ Environment names are flexible, but the file path is canonical:
 
 `src/topology.lib.sigil` declares only dependency handles and environment names:
 
-```sigil
+```sigil module projects/topology-http/src/topology.lib.sigil
 i stdlib::topology
 
-c eventStream=(stdlib::topology.tcpService("eventStream"):stdlib::topology.TcpServiceDependency)
 c local=(stdlib::topology.environment("local"):stdlib::topology.Environment)
+
 c mailerApi=(stdlib::topology.httpService("mailerApi"):stdlib::topology.HttpServiceDependency)
-c production=(stdlib::topology.environment("production"):stdlib::topology.Environment)
+
+c prod=(stdlib::topology.environment("prod"):stdlib::topology.Environment)
+
 c test=(stdlib::topology.environment("test"):stdlib::topology.Environment)
 ```
 
@@ -67,47 +69,36 @@ Those belong in config.
 
 Each declared environment gets one config module:
 
-```sigil
-⟦ config/test.lib.sigil ⟧
+```sigil module projects/topology-http/config/test.lib.sigil
 i src::topology
+
 i stdlib::config
 
-c bindings=(stdlib::config.bindings([
-  stdlib::config.bindHttp("http://127.0.0.1:45110",src::topology.mailerApi)
-],[
-  stdlib::config.bindTcp(src::topology.eventStream,"127.0.0.1",45120)
-]):stdlib::config.Bindings)
+c bindings=(stdlib::config.bindings([stdlib::config.bindHttp("http://127.0.0.1:45110",src::topology.mailerApi)],[]):stdlib::config.Bindings)
 ```
 
 Production-style config can read env vars, but only there:
 
-```sigil
-⟦ config/production.lib.sigil ⟧
+```sigil module projects/topology-http/config/prod.lib.sigil
 e process
 
 i src::topology
+
 i stdlib::config
 
-c bindings=(stdlib::config.bindings([
-  stdlib::config.bindHttpEnv(src::topology.mailerApi,"MAILER_API_URL")
-],[
-  stdlib::config.bindTcpEnv(src::topology.eventStream,"EVENT_STREAM_HOST","EVENT_STREAM_PORT")
-]):stdlib::config.Bindings)
+c bindings=(stdlib::config.bindings([stdlib::config.bindHttpEnv(src::topology.mailerApi,"MAILER_API_URL")],[]):stdlib::config.Bindings)
 ```
 
 ## Application Code Uses Handles, Not Endpoints
 
 Canonical HTTP usage:
 
-```sigil
+```sigil program projects/topology-http/src/getClient.sigil
 i src::topology
+
 i stdlib::httpClient
 
-λmain()=>!IO String match stdlib::httpClient.get(
-  src::topology.mailerApi,
-  stdlib::httpClient.emptyHeaders(),
-  "/health"
-){
+λmain()=>!IO String match stdlib::httpClient.get(src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/health"){
   Ok(response)=>response.body|
   Err(error)=>error.message
 }
@@ -115,8 +106,9 @@ i stdlib::httpClient
 
 Canonical TCP usage:
 
-```sigil
+```sigil program projects/topology-tcp/src/pingClient.sigil
 i src::topology
+
 i stdlib::tcpClient
 
 λmain()=>!IO String match stdlib::tcpClient.send(src::topology.eventStream,"ping"){
@@ -127,7 +119,7 @@ i stdlib::tcpClient
 
 Forbidden patterns:
 
-```sigil
+```text
 stdlib::httpClient.get("http://127.0.0.1:45110",headers,"/health")
 stdlib::tcpClient.send("127.0.0.1","ping",45120)
 process.env.MAILER_API_URL

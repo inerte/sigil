@@ -23,8 +23,8 @@ The prelude is automatically imported into every Sigil module. No explicit impor
 
 Represents an optional value - Sigil's null-safe alternative.
 
-```sigil
-t Option[T]=Some(T)|None
+```sigil module
+t Option[T]=Some(T)|None()
 ```
 
 **Constructors:**
@@ -33,19 +33,19 @@ t Option[T]=Some(T)|None
 
 **Functions:**
 
-```sigil
-λmap_option[T,U](fn:λ(T)=>U,opt:Option[T])=>Option[U] match opt{Some(v)=>Some(fn(v))|None()=>None()}
-λbind_option[T,U](fn:λ(T)=>Option[U],opt:Option[T])=>Option[U] match opt{Some(v)=>fn(v)|None()=>None()}
-λunwrap_or[T](fallback:T,opt:Option[T])=>T match opt{Some(v)=>v|None()=>fallback}
-λis_some[T](opt:Option[T])=>Bool match opt{Some(_)=>true|None()=>false}
-λis_none[T](opt:Option[T])=>Bool match opt{Some(_)=>false|None()=>true}
+```text
+mapOption(fn,opt)
+bindOption(fn,opt)
+unwrapOr(fallback,opt)
+isSome(opt)
+isNone(opt)
 ```
 
 ### Result[T,E]
 
 Represents a computation that may fail - Sigil's exception-free error handling.
 
-```sigil
+```sigil module
 t Result[T,E]=Ok(T)|Err(E)
 ```
 
@@ -55,19 +55,19 @@ t Result[T,E]=Ok(T)|Err(E)
 
 **Functions:**
 
-```sigil
-λmap_result[T,U,E](fn:λ(T)=>U,res:Result[T,E])=>Result[U,E] match res{Ok(v)=>Ok(fn(v))|Err(e)=>Err(e)}
-λbind_result[T,U,E](fn:λ(T)=>Result[U,E],res:Result[T,E])=>Result[U,E] match res{Ok(v)=>fn(v)|Err(e)=>Err(e)}
-λunwrap_or_result[T,E](fallback:T,res:Result[T,E])=>T match res{Ok(v)=>v|Err(_)=>fallback}
-λis_ok[T,E](res:Result[T,E])=>Bool match res{Ok(_)=>true|Err(_)=>false}
-λis_err[T,E](res:Result[T,E])=>Bool match res{Ok(_)=>false|Err(_)=>true}
+```text
+mapResult(fn,res)
+bindResult(fn,res)
+unwrapOrResult(fallback,res)
+isOk(res)
+isErr(res)
 ```
 
 ## List Operations
 
 ### Implemented `stdlib::list` Functions
 
-```sigil
+```sigil decl stdlib::list
 λall[T](pred:λ(T)=>Bool,xs:[T])=>Bool
 λany[T](pred:λ(T)=>Bool,xs:[T])=>Bool
 λcontains[T](item:T,xs:[T])=>Bool
@@ -121,20 +121,20 @@ prover.
 
 ### Implemented `stdlib::numeric` Helpers
 
-```sigil
+```sigil decl stdlib::numeric
 t DivMod={quotient:Int,remainder:Int}
 λabs(x:Int)=>Int
 λclamp(hi:Int,lo:Int,x:Int)=>Int
 λdivisible(d:Int,n:Int)=>Bool
 λdivmod(a:Int,b:Int)=>DivMod
 λgcd(a:Int,b:Int)=>Int
-λin_range(max:Int,min:Int,x:Int)=>Bool
-λis_even(x:Int)=>Bool
-λis_negative(x:Int)=>Bool
-λis_non_negative(x:Int)=>Bool
-λis_odd(x:Int)=>Bool
-λis_positive(x:Int)=>Bool
-λis_prime(n:Int)=>Bool
+λinRange(max:Int,min:Int,x:Int)=>Bool
+λisEven(x:Int)=>Bool
+λisNegative(x:Int)=>Bool
+λisNonNegative(x:Int)=>Bool
+λisOdd(x:Int)=>Bool
+λisPositive(x:Int)=>Bool
+λisPrime(n:Int)=>Bool
 λlcm(a:Int,b:Int)=>Int
 λmax(a:Int,b:Int)=>Int
 λmin(a:Int,b:Int)=>Int
@@ -146,144 +146,33 @@ t DivMod={quotient:Int,remainder:Int}
 
 ## String Operations
 
-```sigil
-λchar_at(idx:Int,s:String)=>String
-```
-Get character at index.
-- Complexity: O(1)
-- Pure: Yes
-
-```sigil
+```sigil decl stdlib::string
+λcharAt(idx:Int,s:String)=>String
 λdrop(n:Int,s:String)=>String
-```
-Drop first `n` characters.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λends_with(s:String,suffix:String)=>Bool
-```
-Check if string ends with suffix.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λindex_of(s:String,search:String)=>Int
-```
-Find index of first occurrence, or `-1` if missing.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
+λendsWith(s:String,suffix:String)=>Bool
+λindexOf(s:String,search:String)=>Int
 λintToString(n:Int)=>String
-```
-Convert an integer to a string.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λis_digit(s:String)=>Bool
-```
-Check whether a string is exactly one decimal digit.
-- Complexity: O(1)
-- Pure: Yes
-
-```sigil
+λisDigit(s:String)=>Bool
 λjoin(separator:String,strings:[String])=>String
-```
-Join strings with a separator.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
 λlines(s:String)=>[String]
-```
-Split a string on newline characters.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λreplace_all(pattern:String,replacement:String,s:String)=>String
-```
-Replace all occurrences of a pattern with a replacement string.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
+λreplaceAll(pattern:String,replacement:String,s:String)=>String
 λrepeat(count:Int,s:String)=>String
-```
-Repeat a string `count` times.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
 λreverse(s:String)=>String
-```
-Reverse a string.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
 λsplit(delimiter:String,s:String)=>[String]
-```
-Split a string by delimiter.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λstarts_with(prefix:String,s:String)=>Bool
-```
-Check if string starts with prefix.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
+λstartsWith(prefix:String,s:String)=>Bool
 λsubstring(end:Int,s:String,start:Int)=>String
-```
-Get substring from `start` to `end`.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
 λtake(n:Int,s:String)=>String
-```
-Take first `n` characters.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λto_lower(s:String)=>String
-```
-Convert to lowercase.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λto_upper(s:String)=>String
-```
-Convert to uppercase.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
+λtoLower(s:String)=>String
+λtoUpper(s:String)=>String
 λtrim(s:String)=>String
-```
-Remove leading/trailing whitespace.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
 λunlines(lines:[String])=>String
 ```
-Join lines with newline separators.
-- Complexity: O(n)
-- Pure: Yes
 
 ## File and Process Operations
 
 ### Implemented `stdlib::file` Functions
 
-```sigil
+```sigil decl stdlib::file
 λappendText(content:String,path:String)=>!IO Unit
 λexists(path:String)=>!IO Bool
 λlistDir(path:String)=>!IO [String]
@@ -301,7 +190,7 @@ path. Cleanup remains explicit through `removeTree`.
 
 ### Implemented `stdlib::process` Types and Functions
 
-```sigil
+```sigil decl stdlib::process
 t Command={argv:[String],cwd:Option[String],env:{String↦String}}
 t RunningProcess={pid:Int}
 t ProcessResult={code:Int,stderr:String,stdout:String}
@@ -325,7 +214,7 @@ Process rules:
 
 ### Implemented `stdlib::regex` Types and Functions
 
-```sigil
+```sigil decl stdlib::regex
 t Regex={flags:String,pattern:String}
 t RegexError={message:String}
 t RegexMatch={captures:[String],end:Int,full:String,start:Int}
@@ -343,7 +232,7 @@ Regex rules:
 
 ### Implemented `stdlib::time` Additions
 
-```sigil
+```sigil decl stdlib::time
 λsleepMs(ms:Int)=>!IO Unit
 ```
 
@@ -352,65 +241,31 @@ orchestration.
 
 ## Map Operations
 
-```sigil
+Maps are a core collection concept, and helper functions live in `core::map`.
+
+```sigil decl core::map
+t Entry[K,V]={key:K,value:V}
+
 λempty[K,V]()=>{K↦V}
-```
-Create empty map.
-- Complexity: O(1)
-- Pure: Yes
-
-```sigil
-λinsert[K,V](key:K,map:{K↦V},value:V)=>{K↦V}
-```
-Insert key-value pair. Returns new map.
-- Complexity: O(log n)
-- Pure: Yes
-
-```sigil
+λentries[K,V](map:{K↦V})=>[Entry[K,V]]
+λfilter[K,V](map:{K↦V},pred:λ(K,V)=>Bool)=>{K↦V}
+λfold[K,V,U](fn:λ(U,K,V)=>U,init:U,map:{K↦V})=>U
+λfromList[K,V](entries:[Entry[K,V]])=>{K↦V}
 λget[K,V](key:K,map:{K↦V})=>Option[V]
-```
-Get value for key.
-- Complexity: O(log n)
-- Pure: Yes
-
-```sigil
-λremove[K,V](key:K,map:{K↦V})=>{K↦V}
-```
-Remove key. Returns new map.
-- Complexity: O(log n)
-- Pure: Yes
-
-```sigil
 λhas[K,V](key:K,map:{K↦V})=>Bool
-```
-Check if key exists.
-- Complexity: O(log n)
-- Pure: Yes
-
-```sigil
+λinsert[K,V](key:K,map:{K↦V},value:V)=>{K↦V}
 λkeys[K,V](map:{K↦V})=>[K]
-```
-Get all keys.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
+λmapValues[K,V,U](fn:λ(V)=>U,map:{K↦V})=>{K↦U}
+λmerge[K,V](left:{K↦V},right:{K↦V})=>{K↦V}
+λremove[K,V](key:K,map:{K↦V})=>{K↦V}
+λsingleton[K,V](key:K,value:V)=>{K↦V}
+λsize[K,V](map:{K↦V})=>Int
 λvalues[K,V](map:{K↦V})=>[V]
 ```
-Get all values.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λentries[K,V](map:{K↦V})=>[(K,V)]
-```
-Get all key-value pairs.
-- Complexity: O(n)
-- Pure: Yes
 
 ## JSON Operations
 
-```sigil
+```sigil decl stdlib::json
 t JsonError={message:String}
 t JsonValue=JsonArray([JsonValue])|JsonBool(Bool)|JsonNull|JsonNumber(Float)|JsonObject({String↦JsonValue})|JsonString(String)
 
@@ -435,7 +290,7 @@ Notes:
 `stdlib::decode` is the canonical boundary layer from raw `JsonValue` to trusted
 internal Sigil values.
 
-```sigil
+```sigil decl stdlib::decode
 t DecodeError={message:String,path:[String]}
 t Decoder[T]=λ(JsonValue)=>Result[T,DecodeError]
 
@@ -466,7 +321,7 @@ Notes:
 
 ## Time Operations
 
-```sigil
+```sigil decl stdlib::time
 t Instant={epochMillis:Int}
 t TimeError={message:String}
 
@@ -486,177 +341,33 @@ Notes:
 
 ## Math Operations
 
-```sigil
-λabs(n:Int)=>Int
-```
-Absolute value.
-- Complexity: O(1)
-- Pure: Yes
-
-```sigil
-λmin(a:Int,b:Int)=>Int
-```
-Minimum of two integers.
-- Complexity: O(1)
-- Pure: Yes
-
-```sigil
-λmax(a:Int,b:Int)=>Int
-```
-Maximum of two integers.
-- Complexity: O(1)
-- Pure: Yes
-
-```sigil
-λpow(base:Int,exp:Int)=>Int
-```
-Exponentiation (integer power).
-- Complexity: O(log exp)
-- Pure: Yes
-
-```sigil
-λsqrt(n:Float)=>Float
-```
-Square root.
-- Complexity: O(1)
-- Pure: Yes
-
-```sigil
-λfloor(n:Float)=>Int
-```
-Round down to integer.
-- Complexity: O(1)
-- Pure: Yes
-
-```sigil
-λceil(n:Float)=>Int
-```
-Round up to integer.
-- Complexity: O(1)
-- Pure: Yes
-
-```sigil
-λround(n:Float)=>Int
-```
-Round to nearest integer.
-- Complexity: O(1)
-- Pure: Yes
+The numeric helper surface is owned by `stdlib::numeric`; there is no separate
+math module today.
 
 ## I/O Operations
 
 All I/O operations have the `!IO` effect.
 
-```sigil
-λprint(s:String)=>Unit!IO
+```sigil decl stdlib::io
+λdebug(msg:String)=>!IO Unit
+λeprintln(msg:String)=>!IO Unit
+λprint(msg:String)=>!IO Unit
+λprintln(msg:String)=>!IO Unit
+λwarn(msg:String)=>!IO Unit
 ```
-Print string to stdout.
-- Effect: IO
-- Complexity: O(n)
-
-```sigil
-λprintln(s:String)=>Unit!IO
-```
-Print string with newline.
-- Effect: IO
-- Complexity: O(n)
-
-```sigil
-λread_line()=>String!IO
-```
-Read line from stdin.
-- Effect: IO
-- Complexity: O(n)
-
-```sigil
-λread_file(path:String)=>Result[String,IoError]!IO
-```
-Read entire file as string.
-- Effect: IO
-- Complexity: O(file size)
-
-```sigil
-λwrite_file(path:String,content:String)=>Result[Unit,IoError]!IO
-```
-Write string to file.
-- Effect: IO
-- Complexity: O(n)
-
-## Error Handling
-
-```sigil
-t IoError={kind:String,msg:String}
-t ParseError={column:Int,line:Int,msg:String}
-```
-
-```sigil
-λpanic[T](msg:String)=>T
-```
-Immediately terminate program with error message.
-- Effect: Diverges (returns Never)
-- Use sparingly - prefer Result for recoverable errors
-
-```sigil
-λassert(condition:Bool,msg:String)=>Unit
-```
-Assert condition is true, panic if false.
-- Effect: May diverge
-- Use for invariants that should never be violated
-
-## Type Conversion
-
-```sigil
-λintToString(n:Int)=>String
-```
-Convert integer to string.
-- Complexity: O(log n)
-- Pure: Yes
-
-```sigil
-λstring_to_int(s:String)=>Result[Int,ParseError]
-```
-Parse integer from string.
-- Complexity: O(n)
-- Pure: Yes
-
-```sigil
-λfloat_to_string(n:Float)=>String
-```
-Convert float to string.
-- Complexity: O(1)
-- Pure: Yes
-
-```sigil
-λstring_to_float(s:String)=>Result[Float,ParseError]
-```
-Parse float from string.
-- Complexity: O(n)
-- Pure: Yes
-
-## Composition Operators
-
-```sigil
-λcompose[T,U,V](f:λ(U)=>V,g:λ(T)=>U)=>λ(T)=>V
-```
-Function composition: (f ∘ g)(x) = f(g(x))
-- Operator: `>>`
-- Pure: Yes
-
-```sigil
-λpipe[T,U](value:T,fn:λ(T)=>U)=>U
-```
-Pipe value through function.
-- Operator: `|>`
-- Pure: Yes
 
 ## Module System
 
 ### Import Syntax
 
-```sigil
+```sigil module
 i stdlib::file
+
 i stdlib::list
+
 i stdlib::path
-i core::result
+
+i stdlib::process
 ```
 
 ### Export Visibility
@@ -685,7 +396,7 @@ Auto-imported. Contains the foundational vocabulary types:
 - `Ok`
 - `Err`
 
-### std/file
+### stdlib::file
 
 UTF-8 filesystem helpers:
 - `appendText`
@@ -698,7 +409,7 @@ UTF-8 filesystem helpers:
 - `removeTree`
 - `writeText`
 
-### std/path
+### stdlib::path
 
 Filesystem path helpers:
 - `basename`
@@ -708,51 +419,52 @@ Filesystem path helpers:
 - `normalize`
 - `relative`
 
-### std/io
+### stdlib::io
 
 Console and process I/O only (`print`, `println`, `eprintln`, `warn`, `debug`)
 
-### std/collections
+### core::map
 
-Advanced collections: Set[T], Queue[T], Stack[T]
+Dynamic keyed collection helpers over `{K↦V}` values.
 
-### std/numeric
+### stdlib::numeric
 
-Mathematical functions: sin, cos, tan, log, exp, etc.
+Integer helpers (`abs`, `divmod`, `gcd`, `lcm`, `max`, `min`, `mod`,
+predicates like `isEven`, and ranges).
 
-### std/json
+### stdlib::json
 
 Typed JSON parsing and serialization (`JsonValue`, `parse`, `stringify`)
 
-```sigil
+```sigil decl stdlib::json
 λparse(input:String)=>Result[JsonValue,JsonError]
 λstringify(value:JsonValue)=>String
 ```
 
-### std/decode
+### stdlib::decode
 
 Canonical JSON-to-domain decoding (`Decoder[T]`, `DecodeError`, `run`, `parse`)
 
-```sigil
+```sigil decl stdlib::decode
 λrun[T](decoder:Decoder[T],value:JsonValue)=>Result[T,DecodeError]
 λparse[T](decoder:Decoder[T],input:String)=>Result[T,DecodeError]
 ```
 
-### std/time
+### stdlib::time
 
 Time and instant handling (`Instant`, strict ISO parsing, clock access)
 
-```sigil
+```sigil decl stdlib::time
 λparseIso(input:String)=>Result[Instant,TimeError]
 λformatIso(instant:Instant)=>String
 λnow()=>!IO Instant
 ```
 
-### std/topology
+### stdlib::topology
 
 Canonical declaration layer for external HTTP and TCP runtime dependencies.
 
-```sigil
+```sigil decl stdlib::topology
 t Environment=Environment(String)
 t HttpServiceDependency=HttpServiceDependency(String)
 t TcpServiceDependency=TcpServiceDependency(String)
@@ -762,11 +474,11 @@ t TcpServiceDependency=TcpServiceDependency(String)
 λtcpService(name:String)=>TcpServiceDependency
 ```
 
-### std/config
+### stdlib::config
 
 Canonical binding layer for topology-backed environment config.
 
-```sigil
+```sigil decl stdlib::config
 t BindingValue=EnvVar(String)|Literal(String)
 t Bindings={httpBindings:[HttpBinding],tcpBindings:[TcpBinding]}
 t HttpBinding={baseUrl:BindingValue,dependencyName:String}
@@ -780,11 +492,11 @@ t TcpBinding={dependencyName:String,host:BindingValue,port:PortBindingValue}
 λbindings(httpBindings:[HttpBinding],tcpBindings:[TcpBinding])=>Bindings
 ```
 
-### std/httpClient
+### stdlib::httpClient
 
 Canonical text-based HTTP client.
 
-```sigil
+```sigil decl stdlib::httpClient
 t Headers={String↦String}
 t HttpError={kind:HttpErrorKind,message:String}
 t HttpErrorKind=InvalidJson()|InvalidUrl()|Network()|Timeout()|Topology()
@@ -817,11 +529,11 @@ Semantics:
 - invalid URL, transport failure, topology resolution failure, and JSON parse failure return `Err(HttpError)`
 - request and response bodies are UTF-8 text in v1
 
-### std/httpServer
+### stdlib::httpServer
 
 Canonical request/response HTTP server.
 
-```sigil
+```sigil decl stdlib::httpServer
 t Headers={String↦String}
 t Request={body:String,headers:Headers,method:String,path:String}
 t Response={body:String,headers:Headers,status:Int}
@@ -839,11 +551,11 @@ t Response={body:String,headers:Headers,status:Int}
 `serve` is long-lived: once the server is listening, the process remains active
 until it is terminated externally.
 
-### std/tcpClient
+### stdlib::tcpClient
 
 Canonical one-request, one-response TCP client.
 
-```sigil
+```sigil decl stdlib::tcpClient
 t TcpError={kind:TcpErrorKind,message:String}
 t TcpErrorKind=Connection()|InvalidAddress()|Protocol()|Timeout()|Topology()
 t TcpRequest={dependency:stdlib::topology.TcpServiceDependency,message:String}
@@ -858,11 +570,11 @@ Semantics:
 - the client writes one newline-delimited message and expects one newline-delimited response
 - address validation, socket failure, timeout, topology resolution failure, and framing failure return `Err(TcpError)`
 
-### std/tcpServer
+### stdlib::tcpServer
 
 Canonical one-request, one-response TCP server.
 
-```sigil
+```sigil decl stdlib::tcpServer
 t Request={host:String,message:String,port:Int}
 t Response={message:String}
 
@@ -876,15 +588,10 @@ Semantics:
 - the server closes each connection after the response is written
 - `serve` is long-lived once listening succeeds
 
-### std/test
+### Testing
 
-Testing utilities
-
-```sigil
-λtest(name:String,fn:λ()=>Unit)=>Unit!Test
-λassert_eq[T](expected:T,actual:T)=>Unit
-λassert_ne[T](a:T,b:T)=>Unit
-```
+Testing is built into the language with `test` declarations and the `sigil
+test` runner. There is no current `stdlib::test` module surface.
 
 ## Implementation Notes
 
@@ -913,10 +620,10 @@ Effects are tracked at type level:
 
 Planned for future stdlib versions:
 
-- **std/crypto** - Cryptographic functions
-- **std/random** - Random number generation
-- **std/stream** - Streaming I/O
-- **std/concurrency** - Threads and channels
+- **stdlib::crypto** - Cryptographic functions
+- **stdlib::random** - Random number generation
+- **stdlib::stream** - Streaming I/O
+- **stdlib::concurrency** - Threads and channels
 
 ## See Also
 

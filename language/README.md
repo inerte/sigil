@@ -25,23 +25,27 @@ Sigil is optimized for:
 ## Quick Example
 
 ### What's Written (Dense, Canonical Format)
-```sigil
-λfibonacci(n:Int)=>Int match n{
-  0=>0|
-  1=>1|
-  value=>fibonacci(value-1)+fibonacci(value-2)
+```sigil module
+λfibonacci(n:Int)=>Int=fibonacciHelper(0,1,n)
+
+λfibonacciHelper(a:Int,b:Int,n:Int)=>Int match n{
+  0=>a|
+  count=>fibonacciHelper(b,a+b,count-1)
 }
 ```
 
 ### How Humans Understand It
 ```
 You: "Claude, what does fibonacci.sigil do?"
-Claude Code: "This function calculates the nth Fibonacci number recursively.
-              Base cases: F(0)=0, F(1)=1
-              Recursive case: F(n) = F(n-1) + F(n-2)
+Claude Code: "This function calculates the nth Fibonacci number with a helper
+              that threads the current and next values through one recursive
+              step at a time.
 
-              Complexity: O(2^n) time, O(n) space
-              Warning: Inefficient for large n - consider memoization"
+              Base case: when n is 0, return the accumulator
+              Recursive step: shift (a,b) to (b,a+b)
+
+              Complexity: O(n) time, O(n) stack unless the backend turns the
+              helper into a loop"
 ```
 
 **~10-15% fewer tokens than TypeScript (11.2% avg in current benchmark suite)** - More code fits in LLM context windows!
@@ -72,9 +76,12 @@ Sigil-to-Sigil imports are typechecked across modules (not trust-mode `any`).
 
 Canonical Sigil imports:
 
-```sigil
+```sigil module projects/todo-app/src/countTodos.lib.sigil
 i src::todoDomain
+
 i stdlib::list
+
+λtodoCount(todos:[src::todoDomain.Todo])=>Int=#todos
 ```
 
 Exports are determined by file extension:
@@ -185,48 +192,56 @@ Compact canonical syntax for model-facing efficiency:
 ## Syntax Examples
 
 ### Function Definition
-```sigil
+```sigil module
 λadd(x:Int,y:Int)=>Int=x+y
 ```
 
 ### Pattern Matching
-```sigil
-λfactorial(n:Int)=>Int match n{0=>1|1=>1|n=>n*factorial(n-1)}
+```sigil module
+λfactorial(n:Int)=>Int match n{
+  0=>1|
+  1=>1|
+  value=>value*factorial(value-1)
+}
 ```
 
 ### HTTP Handler Example
-```sigil
-λhandle_request(req:Request)=>Response!Error match req.path{"/users"=>get_users(req)|"/health"=>Ok(Response{status:200,body:"OK"})|_=>Err(Error{code:404,msg:"Not found"})}
+```sigil module
+λhandleRequest(path:String)=>String match path{
+  "/health"=>"OK"|
+  "/users"=>"users"|
+  _=>"not found"
+}
 ```
 
 ### Data Types
-```sigil
-t Option[T]=Some(T)|None
+```sigil module
+t Option[T]=Some(T)|None()
+
 t Result[T,E]=Ok(T)|Err(E)
-t User={id:Int,name:String,email:String,active:Bool}
+
+t User={active:Bool,email:String,id:Int,name:String}
 ```
 
 Sigil supports explicit parametric polymorphism on top-level declarations.
 It does not use Hindley-Milner let-polymorphism for local bindings.
 
 ### Built-in List Operations
-```sigil
-⟦ Map: ↦ - Apply function to each element ⟧
-[1,2,3,4,5]↦λx=>x*2  ⟦ Result: [2,4,6,8,10] ⟧
+```sigil module
+i stdlib::numeric
 
-⟦ Filter: ⊳ - Keep elements matching predicate ⟧
-[1,2,3,4,5]⊳λx=>x%2=0  ⟦ Result: [2,4] ⟧
+λdoubled()=>[Int]=[1,2,3,4,5]↦(λ(x:Int)=>Int=x*2)
 
-⟦ Fold: ⊕ - Reduce with function and initial value ⟧
-[1,2,3,4,5]⊕λ(acc,x)=>acc+x⊕0  ⟦ Result: 15 ⟧
+λevens()=>[Int]=[1,2,3,4,5]⊳stdlib::numeric.isEven
 
-⟦ Chained operations ⟧
-[1,2,3,4,5]↦λx=>x*2⊳λx=>x>5⊕λ(acc,x)=>acc+x⊕0  ⟦ Result: 30 ⟧
+λtotal()=>Int=[1,2,3,4,5]⊕(λ(acc:Int,x:Int)=>Int=acc+x)⊕0
 ```
 
-### Pipeline Operations
-```sigil
-λprocess_users(users:[User])=>[String]=users|>filter(λu=>u.active)|>map(λu=>u.name)
+### Composed List Operations
+```sigil module
+t User={active:Bool,name:String}
+
+λactiveNames(users:[User])=>[String]=users⊳(λ(user:User)=>Bool=user.active)↦(λ(user:User)=>String=user.name)
 ```
 
 ## Token Efficiency Comparison

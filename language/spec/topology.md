@@ -28,7 +28,7 @@ config/<env>.lib.sigil
 
 `stdlib::topology` defines:
 
-```sigil
+```sigil decl stdlib::topology
 t Environment=Environment(String)
 t HttpServiceDependency=HttpServiceDependency(String)
 t TcpServiceDependency=TcpServiceDependency(String)
@@ -40,7 +40,7 @@ t TcpServiceDependency=TcpServiceDependency(String)
 
 `stdlib::config` defines:
 
-```sigil
+```sigil decl stdlib::config
 t BindingValue=EnvVar(String)|Literal(String)
 t Bindings={httpBindings:[HttpBinding],tcpBindings:[TcpBinding]}
 t HttpBinding={baseUrl:BindingValue,dependencyName:String}

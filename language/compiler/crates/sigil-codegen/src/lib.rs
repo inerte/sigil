@@ -319,6 +319,9 @@ impl TypeScriptGenerator {
         self.emit("  const handle = await __sigil_process_spawn(command);");
         self.emit("  return __sigil_process_wait(handle);");
         self.emit("}");
+        self.emit("async function __sigil_process_argv() {");
+        self.emit("  return process.argv.slice(2);");
+        self.emit("}");
         self.emit("async function __sigil_process_exit(code) {");
         self.emit("  process.exit(Number(code));");
         self.emit("  return null;");
@@ -1726,6 +1729,9 @@ impl TypeScriptGenerator {
             .collect::<Result<Vec<_>, CodegenError>>()?;
 
         match member {
+            "argv" if generated_args.is_empty() => {
+                Ok(Some("__sigil_process_argv()".to_string()))
+            }
             "kill" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__process) => __sigil_process_kill(__process))",
                 generated_args[0]

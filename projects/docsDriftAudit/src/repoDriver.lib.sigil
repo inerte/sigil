@@ -1,0 +1,157 @@
+t MarkdownAudit={documentedRefs:[String],issues:[src::types.Issue],snippetRefs:[String]}
+
+i src::coverage
+
+i src::docsDrift
+
+i src::types
+
+i stdlib::decode
+
+i stdlib::file
+
+i stdlib::list
+
+i stdlib::path
+
+i stdlib::process
+
+i stdlib::string
+
+λcommand(args:[String],root:String)=>stdlib::process.Command=stdlib::process.withCwd(stdlib::process.command([stdlib::path.join(root,"language/compiler/target/debug/sigil"),"run"]⧺args),stdlib::path.join(root,"projects/docsDriftAudit"))
+
+λemptyAudit()=>MarkdownAudit={documentedRefs:[],issues:[],snippetRefs:[]}
+
+λinsertUnique(item:String,items:[String])=>[String] match stdlib::list.contains(item,items){
+  true=>items|
+  false=>items⧺[item]
+}
+
+λmergeAudit(left:MarkdownAudit,right:MarkdownAudit)=>MarkdownAudit={documentedRefs:mergeUnique(left.documentedRefs,right.documentedRefs),issues:mergeIssues(left.issues,right.issues),snippetRefs:mergeUnique(left.snippetRefs,right.snippetRefs)}
+
+λmergeIssues(left:[src::types.Issue],right:[src::types.Issue])=>[src::types.Issue] match right{
+  []=>left|
+  [head,.tail]=>mergeIssues(left⧺[head],tail)
+}
+
+λmergeUnique(left:[String],right:[String])=>[String] match right{
+  []=>left|
+  [head,.tail]=>mergeUnique(insertUnique(head,left),tail)
+}
+
+λnonEmpty(line:String)=>Bool=#stdlib::string.trim(line)>0
+
+λoutputPath(fileName:String,root:String)=>String=stdlib::path.join(stdlib::path.join(root,".local/docsDriftAuditDriver"),fileName)
+
+λparseIssueLine(line:String)=>Option[src::types.Issue] match stdlib::string.split("\t",line){
+  [path,lineText,message]=>match stdlib::decode.intFromText(lineText){
+    Ok(lineNumber)=>Some({line:lineNumber,message:message,path:path})|
+    Err(_)=>None()
+  }|
+  _=>None()
+}
+
+λparseIssueLines(lines:[String])=>[src::types.Issue] match lines{
+  []=>[]|
+  [head,.tail]=>match parseIssueLine(head){
+    Some(issue)=>[issue]⧺parseIssueLines(tail)|
+    None()=>parseIssueLines(tail)
+  }
+}
+
+λparseRefs(lines:[String])=>MarkdownAudit=parseRefsInner(lines,emptyAudit())
+
+λparseRefsInner(lines:[String],state:MarkdownAudit)=>MarkdownAudit match lines{
+  []=>state|
+  [head,.tail]=>match stdlib::string.startsWith("DOC ",head){
+    true=>parseRefsInner(tail,{documentedRefs:insertUnique(stdlib::string.drop(4,head),state.documentedRefs),issues:state.issues,snippetRefs:state.snippetRefs})|
+    false=>match stdlib::string.startsWith("SNIP ",head){
+      true=>parseRefsInner(tail,{documentedRefs:state.documentedRefs,issues:state.issues,snippetRefs:insertUnique(stdlib::string.drop(5,head),state.snippetRefs)})|
+      false=>parseRefsInner(tail,state)
+    }
+  }
+}
+
+λprocessOutput(result:stdlib::process.ProcessResult)=>String match #stdlib::string.trim(result.stderr)>0{
+  true=>stdlib::string.trim(result.stderr)|
+  false=>stdlib::string.trim(result.stdout)
+}
+
+λreadLines(filePath:String)=>[String]=(stdlib::string.lines(stdlib::file.readText(filePath)):[String])⊳nonEmpty
+
+λrun()=>!IO Result[[src::types.Issue],String] match src::docsDrift.gitTopLevel(){
+  Ok(root)=>{
+    l driverDir=(stdlib::path.join(root,".local/docsDriftAuditDriver"):String);
+    l _=(stdlib::file.removeTree(driverDir):Unit);
+    l _=(stdlib::file.makeDirs(driverDir):Unit);
+    match src::docsDrift.gitTrackedMarkdown(){
+      Ok(markdownPaths)=>match runMarkdown(markdownPaths,root){
+        Ok(markdownAudit)=>match #markdownAudit.issues>0{
+          true=>Ok(markdownAudit.issues)|
+          false=>match src::docsDrift.gitTrackedStdlib(){
+            Ok(stdlibPaths)=>match runStdlibExports(stdlibPaths,root){
+              Ok(actualExports)=>match src::docsDrift.gitTrackedStdlibTests(){
+                Ok(testPaths)=>{
+                  l stdlibRefs=(src::docsDrift.readCoverageRefs(testPaths,root):[String]);
+                  Ok(src::docsDrift.runCoverageChecks(actualExports,markdownAudit.documentedRefs,markdownAudit.issues,markdownAudit.snippetRefs,stdlibRefs))
+                }|
+                Err(message)=>Err(message)
+              }|
+              Err(message)=>Err(message)
+            }|
+            Err(message)=>Err(message)
+          }
+        }|
+        Err(message)=>Err(message)
+      }|
+      Err(message)=>Err(message)
+    }
+  }|
+  Err(message)=>Err(message)
+}
+
+λrunMarkdown(paths:[String],root:String)=>!IO Result[MarkdownAudit,String]=runMarkdownInner(emptyAudit(),paths,root)
+
+λrunMarkdownInner(acc:MarkdownAudit,paths:[String],root:String)=>!IO Result[MarkdownAudit,String] match paths{
+  []=>Ok(acc)|
+  [head,.tail]=>match runMarkdownPath(head,root){
+    Ok(current)=>match #current.issues>0{
+      true=>Ok(mergeAudit(acc,current))|
+      false=>runMarkdownInner(mergeAudit(acc,current),tail,root)
+    }|
+    Err(message)=>Err(message)
+  }
+}
+
+λrunMarkdownPath(filePath:String,root:String)=>!IO Result[MarkdownAudit,String]={
+  l issuesPath=(outputPath("issues.txt",root):String);
+  l refsPath=(outputPath("refs.txt",root):String);
+  l _=(stdlib::file.writeText("",issuesPath):Unit);
+  l _=(stdlib::file.writeText("",refsPath):Unit);
+  l checkResult=(stdlib::process.run(command(["src/checkMain.sigil","--",filePath,issuesPath],root)):stdlib::process.ProcessResult);
+  match checkResult.code=0{
+    true=>{
+      l refsResult=(stdlib::process.run(command(["src/refsMain.sigil","--",filePath,refsPath],root)):stdlib::process.ProcessResult);
+      match refsResult.code=0{
+        true=>Ok(parseRefs(readLines(refsPath)))|
+        false=>Err("refs extraction failed for "++filePath++": "++processOutput(refsResult))
+      }
+    }|
+    false=>Ok({documentedRefs:[],issues:parseIssueLines(readLines(issuesPath)),snippetRefs:[]})
+  }
+}
+
+λrunStdlibExports(paths:[String],root:String)=>!IO Result[[String],String]=runStdlibExportsInner([],paths,root)
+
+λrunStdlibExportsInner(acc:[String],paths:[String],root:String)=>!IO Result[[String],String] match paths{
+  []=>Ok(acc)|
+  [head,.tail]=>{
+    l exportsPath=(outputPath("exports.txt",root):String);
+    l _=(stdlib::file.writeText("",exportsPath):Unit);
+    l result=(stdlib::process.run(command(["src/exportsMain.sigil","--",head,exportsPath],root)):stdlib::process.ProcessResult);
+    match result.code=0{
+      true=>runStdlibExportsInner(mergeUnique(acc,readLines(exportsPath)),tail,root)|
+      false=>Err("stdlib export extraction failed for "++head++": "++processOutput(result))
+    }
+  }
+}

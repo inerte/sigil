@@ -36,7 +36,7 @@ The language did not need another namespace decision for a primitive operation.
 
 Sigil uses a dedicated prefix operator:
 
-```sigil
+```sigil exprs
 #"hello"
 #[1,2,3]
 ```

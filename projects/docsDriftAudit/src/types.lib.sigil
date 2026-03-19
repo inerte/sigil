@@ -1,0 +1,7 @@
+t ExtractResult={issues:[Issue],results:[Snippet]}
+
+t FenceInfo={context:Option[String],kind:String}
+
+t Issue={line:Int,message:String,path:String}
+
+t Snippet={content:String,filePath:String,info:FenceInfo,line:Int}

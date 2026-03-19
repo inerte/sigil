@@ -14,14 +14,14 @@ rule is small, but it removes a common form of stylistic variation.
 
 Consider these two forms:
 
-```sigil
+```sigil exprs
 λformulaText(checksums:Checksums,version:String)=>String={
   l repo=(releaseRepo():String);
   src::formula.formula({checksums:checksums,repo:repo,version:version})
 }
 ```
 
-```sigil
+```sigil exprs
 λformulaText(checksums:Checksums,version:String)=>String=
   src::formula.formula({checksums:checksums,repo:releaseRepo(),version:version})
 ```

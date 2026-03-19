@@ -1,0 +1,108 @@
+t ScanState={current:Option[OpenSnippet],issues:[src::types.Issue],line:Int,results:[src::types.Snippet]}
+
+t OpenSnippet={content:[String],filePath:String,info:src::types.FenceInfo,line:Int}
+
+i src::types
+
+i stdlib::list
+
+i stdlib::string
+
+λappendContent(current:OpenSnippet,line:String)=>OpenSnippet={content:current.content⧺[line],filePath:current.filePath,info:current.info,line:current.line}
+
+λcloseSnippet(current:OpenSnippet,results:[src::types.Snippet])=>[src::types.Snippet]=results⧺[{content:stdlib::string.join("\n",current.content),filePath:current.filePath,info:current.info,line:current.line}]
+
+λextractSnippets(filePath:String,markdown:String)=>src::types.ExtractResult={
+  l scan=(finishScan(scanLines(filePath,stdlib::string.lines(markdown),{current:None(),issues:[],line:1,results:[]})):ScanState);
+  {issues:scan.issues,results:scan.results}
+}
+
+λfinishScan(state:ScanState)=>ScanState match state.current{
+  Some(current)=>{current:None(),issues:state.issues⧺[{line:current.line,message:"unterminated Sigil code fence",path:current.filePath}],line:state.line,results:state.results}|
+  None()=>state
+}
+
+λinvalidFenceIssue(filePath:String,line:Int,message:String)=>src::types.Issue={line:line,message:message,path:filePath}
+
+λisFence(line:String)=>Bool=stdlib::string.startsWith("```",line)
+
+λisSigilFence(line:String)=>Bool=stdlib::string.startsWith("```sigil",line)
+
+λnonEmpty(text:String)=>Bool=#text>0
+
+λparseFenceInfo(info:String)=>Result[src::types.FenceInfo,String]={
+  l trimmed=(stdlib::string.trim(info):String);
+  match stdlib::string.indexOf(trimmed," "){
+    idx when idx≥0=>match stdlib::string.substring(idx,trimmed,0){
+      "sigil"=>parseFenceKind(stdlib::string.trim(stdlib::string.drop(idx+1,trimmed)))|
+      _=>Err("Sigil code fences must start with 'sigil'")
+    }|
+    _=>match trimmed{
+      "sigil"=>Err("Sigil code fences must declare an explicit kind: decl, expr, exprs, invalid-expr, invalid-module, invalid-program, invalid-type, module, program, or type")|
+      _=>Err("Sigil code fences must start with 'sigil'")
+    }
+  }
+}
+
+λparseFenceKind(rest:String)=>Result[src::types.FenceInfo,String] match stdlib::string.indexOf(rest," "){
+  idx when idx≥0=>parseFenceKindWithContext(stdlib::string.substring(idx,rest,0),stdlib::string.trim(stdlib::string.drop(idx+1,rest)))|
+  _=>parseFenceKindWithoutContext(rest)
+}
+
+λparseFenceKindWithContext(kind:String,rest:String)=>Result[src::types.FenceInfo,String] match stdlib::string.indexOf(rest," "){
+  idx when idx≥0=>Err("Sigil fence '"++kind++"' has too many arguments")|
+  _=>match kind{
+    "decl"=>Ok({context:Some(rest),kind:"decl"})|
+    "invalid-module"=>parseModulePath("invalid-module",rest)|
+    "invalid-program"=>parseProgramPath("invalid-program",rest)|
+    "module"=>parseModulePath("module",rest)|
+    "program"=>parseProgramPath("program",rest)|
+    _=>Err("Sigil fence '"++kind++"' does not accept an argument")
+  }
+}
+
+λparseFenceKindWithoutContext(kind:String)=>Result[src::types.FenceInfo,String] match kind{
+  "decl"=>Err("sigil decl fences must include a module path like 'sigil decl stdlib::list'")|
+  "expr"=>Ok({context:None(),kind:"expr"})|
+  "exprs"=>Ok({context:None(),kind:"exprs"})|
+  "invalid-expr"=>Ok({context:None(),kind:"invalid-expr"})|
+  "invalid-module"=>Ok({context:None(),kind:"invalid-module"})|
+  "invalid-program"=>Ok({context:None(),kind:"invalid-program"})|
+  "invalid-type"=>Ok({context:None(),kind:"invalid-type"})|
+  "module"=>Ok({context:None(),kind:"module"})|
+  "program"=>Ok({context:None(),kind:"program"})|
+  "type"=>Ok({context:None(),kind:"type"})|
+  _=>Err("unknown Sigil fence kind '"++kind++"'")
+}
+
+λparseModulePath(kind:String,virtualPath:String)=>Result[src::types.FenceInfo,String] match stdlib::string.endsWith(virtualPath,".lib.sigil"){
+  true=>Ok({context:Some(virtualPath),kind:kind})|
+  false=>Err("sigil "++kind++" fences must use a .lib.sigil virtual path")
+}
+
+λparseProgramPath(kind:String,virtualPath:String)=>Result[src::types.FenceInfo,String] match stdlib::string.endsWith(virtualPath,".sigil"){
+  true=>match stdlib::string.endsWith(virtualPath,".lib.sigil"){
+    true=>Err("sigil "++kind++" fences must use a .sigil virtual path")|
+    false=>Ok({context:Some(virtualPath),kind:kind})
+  }|
+  false=>Err("sigil "++kind++" fences must use a .sigil virtual path")
+}
+
+λscanLines(filePath:String,lines:[String],state:ScanState)=>ScanState match lines{
+  []=>state|
+  [line,.rest]=>scanLines(filePath,rest,scanNextLine(filePath,line,state))
+}
+
+λscanNextLine(filePath:String,line:String,state:ScanState)=>ScanState match state.current{
+  Some(current)=>match isFence(line){
+    true=>{current:None(),issues:state.issues,line:state.line+1,results:closeSnippet(current,state.results)}|
+    false=>{current:Some(appendContent(current,line)),issues:state.issues,line:state.line+1,results:state.results}
+  }|
+  None()=>match isSigilFence(line){
+    true=>match parseFenceInfo(stdlib::string.drop(3,line)){
+      Ok(info)=>{current:Some({content:[],filePath:filePath,info:info,line:state.line}),issues:state.issues,line:state.line+1,results:state.results}|
+      Err(message)=>{current:None(),issues:state.issues⧺[invalidFenceIssue(filePath,state.line,message)],line:state.line+1,results:state.results}
+    }|
+    false=>{current:None(),issues:state.issues,line:state.line+1,results:state.results}
+  }
+}

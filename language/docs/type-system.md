@@ -30,16 +30,18 @@ Function and lambda signatures must be fully typed.
 
 Examples:
 
-```sigil
+```sigil module
+c pi=(3.14:Float)
+
 λfactorial(n:Int)=>Int match n{
   0=>1|
   1=>1|
   value=>value*factorial(value-1)
 }
+```
 
+```sigil expr
 λ(x:Int)=>Int=x*2
-
-c pi=(3.14:Float)
 ```
 
 Missing parameter or return type annotations are parse errors.
@@ -48,9 +50,9 @@ Missing parameter or return type annotations are parse errors.
 
 Sigil supports explicit generic declarations at top level:
 
-```sigil
+```sigil decl generic
 λidentity[T](x:T)=>T=x
-λmapOption[T,U](fn:λ(T)=>U,opt:Option[T])=>Option[U]=...
+λmapOption[T,U](fn:λ(T)=>U,opt:Option[T])=>Option[U]
 ```
 
 Polymorphism comes from those declarations.
@@ -84,8 +86,9 @@ Records and maps are different concepts:
 
 Examples:
 
-```sigil
+```sigil module
 t User={id:Int,name:String}
+
 t Scores={String↦Int}
 ```
 
@@ -112,15 +115,24 @@ That means:
 
 Effect annotations are part of the current surface:
 
-```sigil
-λmain()=>!IO Unit=console.log("hello")
+```sigil program
+e axios
+
+e console
+
 λfetch()=>!Network String=axios.get("https://example.com")
+
+λmain()=>!IO Unit=console.log("hello")
 ```
 
 Tests can also declare effects:
 
-```sigil
-test "writes log" =>!IO {
+```sigil program tests/writesLog.sigil
+e console
+
+λmain()=>Unit=()
+
+test "writes log" =>!IO  {
   console.log("x")=()
 }
 ```
@@ -151,8 +163,9 @@ raw input
 
 Examples:
 
-```sigil
+```sigil module
 t Message={createdAt:stdlib::time.Instant,text:String}
+
 t Email=Email(String)
 ```
 

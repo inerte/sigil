@@ -296,8 +296,7 @@ language/compiler/target/debug/sigil test projects/algorithms/tests
 ```
 
 Create new test file:
-```sigil
-// tests/my-feature.sigil
+```sigil program tests/myFeature.sigil
 i stdlib::list
 
 λmain()=>Unit=()
@@ -318,7 +317,7 @@ Sigil rejects one narrow recursive shape as non-canonical:
 
 Blocked example:
 
-```sigil
+```sigil invalid-module
 λfib(n:Int)=>Int match n{
   0=>0|
   1=>1|
@@ -335,7 +334,7 @@ Use one of these instead:
 
 Canonical example:
 
-```sigil
+```sigil module
 λfib(n:Int)=>Int=fibHelper(0,1,n)
 
 λfibHelper(a:Int,b:Int,n:Int)=>Int match n{
@@ -420,6 +419,18 @@ cargo test --manifest-path language/compiler/Cargo.toml
 - `docs/` = current practical/canonical usage
 - `spec/` = formal / broader design contracts
 - If implementation intentionally diverges from spec, note it explicitly instead of silently drifting examples
+- Markdown Sigil fences are checked by `projects/docsDriftAudit`
+- Use explicit fence kinds only:
+  - `sigil program`
+  - `sigil module`
+  - `sigil expr`
+  - `sigil exprs`
+  - `sigil type`
+  - `sigil decl <context>`
+  - `sigil invalid-program`
+  - `sigil invalid-module`
+  - `sigil invalid-expr`
+  - `sigil invalid-type`
 
 ### `tools/vscode-extension`
 - Update syntax highlighting patterns when syntax tokens/operators change.

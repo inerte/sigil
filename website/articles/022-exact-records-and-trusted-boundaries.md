@@ -25,7 +25,7 @@ starts to disappear.
 
 If a Sigil value has type:
 
-```sigil
+```sigil module
 t Message={createdAt:stdlib::time.Instant,text:String}
 ```
 
@@ -37,7 +37,7 @@ then the language treats that as an exact internal shape:
 
 If absence is real, Sigil expects it in the type:
 
-```sigil
+```sigil module
 t MaybeMessage={createdAt:Option[stdlib::time.Instant],text:String}
 ```
 

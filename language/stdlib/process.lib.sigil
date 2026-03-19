@@ -4,6 +4,8 @@ t RunningProcess={pid:Int}
 
 t ProcessResult={code:Int,stderr:String,stdout:String}
 
+λargv()=>!IO [String]=[]
+
 λcommand(argv:[String])=>Command={argv:argv,cwd:None(),env:({↦}:{String↦String})}
 
 λexit(code:Int)=>!IO Unit=()

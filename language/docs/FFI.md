@@ -6,7 +6,7 @@ Sigil can call external modules (including TypeScript/JavaScript packages) using
 
 ## Syntax
 
-```sigil
+```sigil module
 e module::path
 ```
 
@@ -16,7 +16,7 @@ That's it. Exactly ONE way to do FFI (canonical form).
 
 ### Console Output
 
-```sigil
+```sigil program
 e console
 
 λmain()=>Unit=console.log("Hello from Sigil!")
@@ -24,12 +24,12 @@ e console
 
 ### Node.js Built-ins
 
-```sigil
+```sigil program
 e fs::promises
 
-λwriteFile(path:String,content:String)=>Unit=fs::promises.writeFile(path,content)
-
 λmain()=>Unit=writeFile("output.txt","Hello, Sigil!")
+
+λwriteFile(content:String,path:String)=>Unit=fs::promises.writeFile(path,content)
 ```
 
 ### NPM Packages
@@ -40,10 +40,10 @@ npm install axios
 ```
 
 Then use it:
-```sigil
+```sigil program
 e axios
 
-λfetchUser(id:Int)=>Unit=axios.get("https://api.example.com/users/" + id)
+λfetchUser(id:Int)=>Unit=axios.get("https://api.example.com/users/"+id)
 
 λmain()=>Unit=fetchUser(123)
 ```
@@ -52,7 +52,7 @@ e axios
 
 ### 1. Declaration
 
-```sigil
+```sigil module
 e module::path
 ```
 
@@ -60,7 +60,7 @@ Declares that you'll use an external module.
 
 ### 2. Usage
 
-```sigil
+```sigil expr
 module::path.member(args)
 ```
 
@@ -77,8 +77,9 @@ This catches typos WITHOUT needing type annotations!
 
 ### 4. Code Generation
 
-```sigil
+```sigil program
 e fs::promises
+
 λmain()=>Unit=fs::promises.readFile("file.txt","utf-8")
 ```
 
@@ -104,15 +105,17 @@ export async function main() {
 
 ### ✅ Works - Correct member
 
-```sigil
+```sigil program
 e console
+
 λmain()=>Unit=console.log("works!")
 ```
 
 ### ❌ Fails - Typo in member
 
-```sigil
+```text
 e console
+
 λmain()=>Unit=console.logg("typo!")
 ```
 
@@ -124,8 +127,9 @@ Check for typos or see module documentation.
 
 ### ❌ Fails - Module not installed
 
-```sigil
+```text
 e axios
+
 λmain()=>Unit=axios.get("url")
 ```
 
@@ -141,8 +145,9 @@ Sigil supports both **untyped** and **typed** FFI declarations.
 
 ### Untyped FFI (Trust Mode)
 
-```sigil
+```sigil module
 e console
+
 e fs::promises
 ```
 
@@ -154,17 +159,12 @@ general-purpose surface type you should write in Sigil source.
 
 You can optionally provide type signatures for extern members:
 
-```sigil
-t MkdirOptions = { recursive: Bool }
+```sigil module
+t MkdirOptions={recursive:Bool}
 
-e fs::promises : {
-  mkdir : λ(String, MkdirOptions) => Unit
-}
+e fs::promises:{mkdir:λ(String,MkdirOptions)=>Unit}
 
-λensureDir(dir:String)=>Unit={
-  l opts=({recursive:true}:MkdirOptions);
-  fs::promises.mkdir(dir, opts)
-}
+λensureDir(dir:String)=>Unit=fs::promises.mkdir(dir,({recursive:true}:MkdirOptions))
 ```
 
 **Benefits:**
@@ -186,7 +186,7 @@ When modeling JavaScript data:
 Example: HTTP headers are maps, not records.
 
 **Syntax:**
-```sigil
+```text
 e module::path : {
   member1 : λ(ParamType1, ParamType2) => ReturnType,
   member2 : λ(ParamType3) => ReturnType
@@ -197,14 +197,15 @@ e module::path : {
 
 **IMPORTANT:** Because typed extern declarations can reference named types, **types must be declared before externs** in Sigil's canonical ordering:
 
-```sigil
-✅ VALID: Type before extern
-t MkdirOptions = { recursive: Bool }
-e fs::promises : { mkdir : λ(String, MkdirOptions) => Unit }
+```sigil module
+t MkdirOptions={recursive:Bool}
 
-❌ INVALID: Extern before type (compiler error)
-e fs::promises : { mkdir : λ(String, MkdirOptions) => Unit }
-t MkdirOptions = { recursive: Bool }
+e fs::promises:{mkdir:λ(String,MkdirOptions)=>Unit}
+```
+
+```sigil invalid-module
+e fs::promises:{mkdir:λ(String,MkdirOptions)=>Unit}
+t MkdirOptions={recursive:Bool}
 ```
 
 This is why Sigil's canonical declaration ordering is: **`t => e => i => c => λ => test`**
@@ -215,12 +216,12 @@ See [Canonical Declaration Ordering](/articles/canonical-declaration-ordering) f
 
 Sigil uses one promise-shaped runtime model for FFI too. Promise-returning FFI calls are started automatically and joined only when a strict consumer needs their values:
 
-```sigil
+```sigil program
 e fs::promises
 
-λread_file(path:String)=>!IO String=fs::promises.readFile(path,"utf8")
+λmain()=>!IO String=readFile("data.txt")
 
-λmain()=>!IO String=read_file("data.txt")
+λreadFile(path:String)=>!IO String=fs::promises.readFile(path,"utf8")
 ```
 
 Compiles to:
@@ -258,7 +259,7 @@ This ensures deterministic, unambiguous code generation for LLMs.
 
 ### No Direct Object Construction
 
-```sigil
+```text
 ❌ Cannot: new Date()
 ❌ Cannot: new RegExp(pattern)
 ```
@@ -267,7 +268,7 @@ Must use factory functions or FFI wrappers.
 
 ### No Method Chaining (Yet)
 
-```sigil
+```sigil invalid-expr
 ❌ Cannot: axios.get(url).then(fn)
 ```
 
@@ -277,7 +278,7 @@ Future: Expression-level member access.
 
 ### No Class Interop (Yet)
 
-```sigil
+```text
 ❌ Cannot: class instances
 ❌ Cannot: this binding
 ```
@@ -288,25 +289,27 @@ Use functional APIs or wrapper functions.
 
 ### 1. Wrap FFI in Sigil Functions
 
-```sigil
+```sigil program
 e console
 
-λlog(msg:String)=>Unit=console.log(msg)
 λerror(msg:String)=>Unit=console.error(msg)
 
+λlog(msg:String)=>Unit=console.log(msg)
+
 λmain()=>Unit={
+  l _=(error("Error message"):Unit);
   log("Info message")
-  error("Error message")
 }
 ```
 
 ### 2. Use Semantic Names
 
-```sigil
+```sigil module
 e fs::promises
 
 λreadFile(path:String)=>Unit=fs::promises.readFile(path,"utf-8")
-λwriteFile(path:String,content:String)=>Unit=fs::promises.writeFile(path,content)
+
+λwriteFile(content:String,path:String)=>Unit=fs::promises.writeFile(path,content)
 ```
 
 ### 3. Validate at Boundaries
@@ -337,4 +340,4 @@ Why keep a separate bridge?
 
 ---
 
-**FFI unlocks the TypeScript/JavaScript ecosystem for Sigil programs!** 🚀
+FFI unlocks the TypeScript/JavaScript ecosystem for Sigil programs.

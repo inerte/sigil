@@ -132,13 +132,13 @@ The published baseline remains `openai_cl100k_base`.
 
 Example:
 
-```sigil
-λends_with(s:String,suffix:String)=>Bool=false
+```sigil module
+λendsWith(s:String,suffix:String)=>Bool=false
 ```
 
 may become:
 
-```sigil
+```text
 function ends_with(s:String,suffix:String)=>Bool=false
 ```
 

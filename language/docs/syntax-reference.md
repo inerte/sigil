@@ -42,7 +42,7 @@ Invalid examples:
 
 Sigil uses one comment syntax:
 
-```sigil
+```text
 ⟦ This is a comment ⟧
 ```
 
@@ -86,13 +86,13 @@ Function declarations require:
 
 Regular expression body:
 
-```sigil
+```sigil module
 λadd(x:Int,y:Int)=>Int=x+y
 ```
 
 Match body:
 
-```sigil
+```sigil module
 λfactorial(n:Int)=>Int match n{
   0=>1|
   1=>1|
@@ -109,9 +109,16 @@ For function declarations:
 
 Effects, when present, appear between `=>` and the return type:
 
-```sigil
-λmain()=>!IO Unit=console.log("hello")
+```sigil program
+e axios
+
+e console
+
+i stdlib::string
+
 λfetchUser(id:Int)=>!Network String=axios.get("https://example.com/"+stdlib::string.intToString(id))
+
+λmain()=>!IO Unit=console.log("hello")
 ```
 
 ## Lambda Expressions
@@ -119,8 +126,11 @@ Effects, when present, appear between `=>` and the return type:
 Lambda expressions are fully typed and use the same body rule as top-level
 functions:
 
-```sigil
+```sigil expr
 λ(x:Int)=>Int=x*2
+```
+
+```sigil expr
 λ(value:Int)=>Int match value{
   0=>1|
   n=>n+1
@@ -139,7 +149,7 @@ Generic lambdas are not part of Sigil's surface.
 
 ### Product Types
 
-```sigil
+```sigil module
 t User={active:Bool,id:Int,name:String}
 ```
 
@@ -147,20 +157,22 @@ Record fields are canonical alphabetical order everywhere records appear.
 
 ### Sum Types
 
-```sigil
-t Color=Red|Green|Blue
-t Option[T]=Some(T)|None
+```sigil module
+t Color=Red()|Green()|Blue()
+
+t Option[T]=Some(T)|None()
+
 t Result[T,E]=Ok(T)|Err(E)
 ```
 
 Imported constructors use qualified module syntax in expressions and patterns:
 
-```sigil
+```sigil module projects/algorithms/src/orderingExample.lib.sigil
 i src::graphTypes
 
-src::graphTypes.Ordering([1,2,3])
+λorderingResult()=>src::graphTypes.TopologicalSortResult=src::graphTypes.Ordering([1,2,3])
 
-match result{
+λorderingValues()=>[Int] match orderingResult(){
   src::graphTypes.Ordering(order)=>order|
   src::graphTypes.CycleDetected()=>[]
 }
@@ -170,8 +182,9 @@ match result{
 
 Constants require a value ascription:
 
-```sigil
+```sigil module
 c answer=(42:Int)
+
 c greeting=("hello":String)
 ```
 
@@ -182,17 +195,23 @@ older `c name:Type=value` surface are not current Sigil.
 
 Sigil imports are namespace imports only:
 
-```sigil
+```sigil module projects/todo-app/src/importsExample.lib.sigil
 i core::map
+
 i src::todoDomain
+
 i stdlib::list
+
 i stdlib::json
 ```
 
 Use imported members through the namespace:
 
-```sigil
+```sigil expr
 src::todoDomain.completedCount(todos)
+```
+
+```sigil expr
 stdlib::list.last(items)
 ```
 
@@ -208,8 +227,9 @@ There are no selective imports and no import aliases.
 
 Extern declarations use `e`:
 
-```sigil
+```sigil module
 e console
+
 e axios:{get:λ(String)=>!Network String}
 ```
 
@@ -217,10 +237,10 @@ e axios:{get:λ(String)=>!Network String}
 
 Local bindings use `l` inside expressions:
 
-```sigil
+```sigil module
 λdoubleAndAdd(x:Int,y:Int)=>Int={
   l doubled=(x*2:Int);
-  doubled+y
+  doubled+doubled+y
 }
 ```
 
@@ -232,8 +252,8 @@ Pure local bindings used exactly once are non-canonical and must be inlined.
 
 Sigil uses `match` for value-based branching:
 
-```sigil
-match value{
+```sigil module
+λclassify(value:Int)=>String match value{
   0=>"zero"|
   1=>"one"|
   _=>"many"
@@ -258,13 +278,13 @@ Patterns include:
 
 Examples:
 
-```sigil
-match option{
+```sigil module
+λfromOption(option:Option[Int])=>Int match option{
   Some(value)=>value|
   None()=>0
 }
 
-match list{
+λheadOrZero(list:[Int])=>Int match list{
   []=>0|
   [head,.rest]=>head
 }
@@ -274,34 +294,35 @@ match list{
 
 List type:
 
-```sigil
-[Int]
+```sigil module
+t IntList=[Int]
 ```
 
 List literal:
 
-```sigil
+```sigil expr
 [1,2,3]
 ```
 
 Map type:
 
-```sigil
-{String↦Int}
+```sigil module
+t StringIntMap={String↦Int}
 ```
 
 Map literals use `↦`:
 
-```sigil
+```sigil exprs
 {"a"↦1,"b"↦2}
 ({↦}:{String↦Int})
 ```
 
 Record types and literals use `:`:
 
-```sigil
+```sigil module
 t User={id:Int,name:String}
-{id:1,name:"Ana"}
+
+λsampleUser()=>User={id:1,name:"Ana"}
 ```
 
 ## Built-In List Operators
@@ -315,11 +336,14 @@ Sigil includes canonical list operators:
 
 Examples:
 
-```sigil
-[1,2,3]↦λ(x:Int)=>Int=x*2
-[1,2,3]⊳λ(x:Int)=>Bool=x>1
-[1,2,3]⊕λ(acc:Int,x:Int)=>Int=acc+x⊕0
-[1,2]⧺[3,4]
+```sigil module
+λconcatenated()=>[Int]=[1,2]⧺[3,4]
+
+λdoubled()=>[Int]=[1,2,3]↦(λ(x:Int)=>Int=x*2)
+
+λfiltered()=>[Int]=[1,2,3]⊳(λ(x:Int)=>Bool=x>1)
+
+λsummed()=>Int=[1,2,3]⊕(λ(acc:Int,x:Int)=>Int=acc+x)⊕0
 ```
 
 `↦` and `⊳` require pure callbacks.
@@ -342,7 +366,9 @@ plumbing:
 
 Tests are top-level declarations and must live under `tests/`:
 
-```sigil
+```sigil program language/test-fixtures/tests/addsNumbers.sigil
+λmain()=>Unit=()
+
 test "adds numbers" {
   1+1=2
 }
@@ -350,8 +376,12 @@ test "adds numbers" {
 
 Effectful tests use explicit effect annotations:
 
-```sigil
-test "writes log" =>!IO {
+```sigil program language/test-fixtures/tests/writesLog.sigil
+e console
+
+λmain()=>Unit=()
+
+test "writes log" =>!IO  {
   console.log("x")=()
 }
 ```
@@ -360,13 +390,13 @@ test "writes log" =>!IO {
 
 Sigil includes a built-in `withMock(...) { ... }` expression for tests:
 
-```sigil
+```sigil program language/test-fixtures/tests/withMockExample.sigil
 λfetchUser(id:Int)=>!Network String="real"
 
-test "fallback on API failure" =>!Network {
-  withMock(fetchUser, λ(id:Int)=>!Network String="ERR") {
-    fetchUser(1)="ERR"
-  }
+λmain()=>Unit=()
+
+test "fallback on API failure" =>!Network  {
+  withMock(fetchUser,λ(id:Int)=>!Network String="ERR"){fetchUser(1)="ERR"}
 }
 ```
 

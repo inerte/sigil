@@ -21,7 +21,9 @@ design ideas such as TDAI, semantic maps, coverage mode, or generated tests.
 
 Canonical surface:
 
-```sigil
+```sigil program tests/sampleTest.sigil
+λmain()=>Unit=()
+
 test "adds numbers" {
   1+1=2
 }
@@ -29,8 +31,12 @@ test "adds numbers" {
 
 Effectful test:
 
-```sigil
-test "writes log" =>!IO {
+```sigil program tests/effectTest.sigil
+e console
+
+λmain()=>Unit=()
+
+test "writes log" =>!IO  {
   console.log("x")=()
 }
 ```
@@ -62,11 +68,13 @@ Test files are executable-oriented and must define `main`.
 
 Current built-in mocking form:
 
-```sigil
-test "fallback on API failure" =>!Network {
-  withMock(fetchUser, λ(id:Int)=>!Network String="ERR") {
-    fetchUser(1)="ERR"
-  }
+```sigil program tests/mockTest.sigil
+λfetchUser(id:Int)=>!Network String="OK"
+
+λmain()=>Unit=()
+
+test "fallback on API failure" =>!Network  {
+  withMock(fetchUser,λ(id:Int)=>!Network String="ERR"){fetchUser(1)="ERR"}
 }
 ```
 

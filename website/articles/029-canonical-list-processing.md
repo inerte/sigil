@@ -61,7 +61,7 @@ into one obvious path.
 
 Rejected:
 
-```sigil
+```sigil invalid-module
 λallPositive(xs:[Int])=>Bool match xs{
   []=>true|
   [x,.rest]=>isPositive(x) and allPositive(rest)
@@ -70,15 +70,19 @@ Rejected:
 
 Required:
 
-```sigil
+```sigil module
+i stdlib::list
+
 λallPositive(xs:[Int])=>Bool=stdlib::list.all(isPositive,xs)
+
+λisPositive(x:Int)=>Bool=x>0
 ```
 
 ### Any
 
 Rejected:
 
-```sigil
+```sigil invalid-module
 λanyEven(xs:[Int])=>Bool match xs{
   []=>false|
   [x,.rest]=>isEven(x) or anyEven(rest)
@@ -87,15 +91,19 @@ Rejected:
 
 Required:
 
-```sigil
+```sigil module
+i stdlib::list
+
 λanyEven(xs:[Int])=>Bool=stdlib::list.any(isEven,xs)
+
+λisEven(x:Int)=>Bool=x%2=0
 ```
 
 ### Map
 
 Rejected:
 
-```sigil
+```sigil invalid-module
 λdouble(xs:[Int])=>[Int] match xs{
   []=>[]|
   [x,.rest]=>[x*2]⧺double(rest)
@@ -104,7 +112,7 @@ Rejected:
 
 Required:
 
-```sigil
+```sigil module
 λdouble(xs:[Int])=>[Int]=xs↦(λ(x:Int)=>Int=x*2)
 ```
 
@@ -112,21 +120,25 @@ Required:
 
 Rejected:
 
-```sigil
+```sigil invalid-module
 λcountEven(xs:[Int])=>Int=#(xs⊳isEven)
 ```
 
 Required:
 
-```sigil
+```sigil module
+i stdlib::list
+
 λcountEven(xs:[Int])=>Int=stdlib::list.countIf(isEven,xs)
+
+λisEven(x:Int)=>Bool=x%2=0
 ```
 
 ### Filter
 
 Rejected:
 
-```sigil
+```sigil invalid-module
 λevens(xs:[Int])=>[Int] match xs{
   []=>[]|
   [x,.rest]=>match isEven(x){
@@ -138,15 +150,17 @@ Rejected:
 
 Required:
 
-```sigil
+```sigil module
 λevens(xs:[Int])=>[Int]=xs⊳isEven
+
+λisEven(x:Int)=>Bool=x%2=0
 ```
 
 ### Find
 
 Rejected:
 
-```sigil
+```sigil invalid-module
 λfindEven(xs:[Int])=>Option[Int] match xs{
   []=>None()|
   [x,.rest]=>match isEven(x){
@@ -158,15 +172,19 @@ Rejected:
 
 Required:
 
-```sigil
+```sigil module
+i stdlib::list
+
 λfindEven(xs:[Int])=>Option[Int]=stdlib::list.find(isEven,xs)
+
+λisEven(x:Int)=>Bool=x%2=0
 ```
 
 ### FlatMap
 
 Rejected:
 
-```sigil
+```sigil invalid-module
 λexplode(xs:[Int])=>[Int] match xs{
   []=>[]|
   [x,.rest]=>digits(x)⧺explode(rest)
@@ -175,7 +193,11 @@ Rejected:
 
 Required:
 
-```sigil
+```sigil module
+i stdlib::list
+
+λdigits(x:Int)=>[Int]=[x]
+
 λexplode(xs:[Int])=>[Int]=stdlib::list.flatMap(digits,xs)
 ```
 
@@ -183,7 +205,7 @@ Required:
 
 Rejected:
 
-```sigil
+```sigil invalid-module
 λreverse(xs:[Int])=>[Int] match xs{
   []=>[]|
   [x,.rest]=>reverse(rest)⧺[x]
@@ -192,7 +214,9 @@ Rejected:
 
 Required:
 
-```sigil
+```sigil module
+i stdlib::list
+
 λreverse(xs:[Int])=>[Int]=stdlib::list.reverse(xs)
 ```
 
@@ -200,7 +224,7 @@ Required:
 
 Rejected:
 
-```sigil
+```sigil invalid-module
 λsum(xs:[Int])=>Int match xs{
   []=>0|
   [x,.rest]=>x+sum(rest)
@@ -209,7 +233,7 @@ Rejected:
 
 Required:
 
-```sigil
+```sigil module
 λsum(xs:[Int])=>Int=xs⊕(λ(acc:Int,x:Int)=>Int=acc+x)⊕0
 ```
 

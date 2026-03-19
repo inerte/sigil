@@ -84,7 +84,7 @@ Canonical function/lambda rules:
 
 Examples:
 
-```sigil
+```sigil module
 λadd(x:Int,y:Int)=>Int=x+y
 
 λfactorial(n:Int)=>Int match n{
@@ -92,15 +92,13 @@ Examples:
   1=>1|
   value=>value*factorial(value-1)
 }
-
-λ(x:Int)=>Int=x*2
 ```
 
 ## Constants
 
 Current constant syntax is typed value ascription:
 
-```sigil
+```sigil module
 c answer=(42:Int)
 ```
 
@@ -115,8 +113,9 @@ Records and maps are distinct.
 
 Examples:
 
-```sigil
+```sigil module
 t User={id:Int,name:String}
+
 t Scores={String↦Int}
 ```
 
@@ -144,18 +143,17 @@ Sigil currently rejects pure local bindings used exactly once.
 
 Example:
 
-```sigil
-λformulaText(checksums:Checksums,version:String)=>String={
-  l repo=(releaseRepo():String);
-  src::formula.formula({checksums:checksums,repo:repo,version:version})
+```sigil module
+λgreeting(name:String)=>String={
+  l prefix=("Hello, ":String);
+  prefix++name++prefix
 }
 ```
 
 Required canonical form:
 
-```sigil
-λformulaText(checksums:Checksums,version:String)=>String=
-  src::formula.formula({checksums:checksums,repo:releaseRepo(),version:version})
+```sigil module
+λgreeting(name:String)=>String="Hello, "++name++"Hello, "
 ```
 
 Current mechanical rule:
@@ -237,14 +235,12 @@ Some surface constraints are still easiest to think about mechanically:
 
 Canonical examples:
 
-```sigil
+```sigil invalid-program
 λfib(n:Int)=>Int match n{
   0=>0|
   1=>1|
   value=>fib(value-1)+fib(value-2)
 }
-
-λmain()=>Int=fib(10)
 ```
 
 ## Canonical Branching Recursion
@@ -253,7 +249,7 @@ Sigil rejects one narrow recursive shape as non-canonical: sibling self-calls th
 
 ### Blocked Pattern
 
-```sigil
+```sigil invalid-module
 λfib(n:Int)=>Int match n{
   0=>0|
   1=>1|
@@ -265,7 +261,7 @@ Sigil rejects this shape because it duplicates work instead of following one can
 
 ### Canonical Replacement
 
-```sigil
+```sigil module
 λfib(n:Int)=>Int=fibHelper(0,1,n)
 
 λfibHelper(a:Int,b:Int,n:Int)=>Int match n{
@@ -286,14 +282,14 @@ Sigil rejects only exact branching self-recursion when all of these are true:
 
 Sigil also rejects obvious nested amplification of that same shape, such as:
 
-```sigil
+```sigil invalid-module
 λbad(n:Int)=>Int=bad(bad(n-1)+bad(n-2))
 ```
 
 ### Allowed Patterns
 
 **Single recursive call:**
-```sigil
+```sigil module
 λlength(xs:[Int])=>Int match xs{
   []=>0|
   [h,.tail]=>1+length(tail)
@@ -301,7 +297,7 @@ Sigil also rejects obvious nested amplification of that same shape, such as:
 ```
 
 **Different non-reduced arguments:**
-```sigil
+```sigil module
 λmerge(left:[Int],right:[Int])=>[Int] match left{
   []=>right|
   [lh,.lt]=>match right{

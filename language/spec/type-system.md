@@ -46,9 +46,9 @@ Polymorphism comes from explicitly generic top-level declarations.
 
 Generic declarations are allowed at top level:
 
-```sigil
+```sigil decl generic
 λidentity[T](x:T)=>T=x
-λmapOption[T,U](fn:λ(T)=>U,opt:Option[T])=>Option[U]=...
+λmapOption[T,U](fn:λ(T)=>U,opt:Option[T])=>Option[U]
 ```
 
 Generic instantiation is driven by ordinary bidirectional typing.
@@ -81,10 +81,12 @@ Constructed types:
 
 Examples:
 
-```sigil
-t Option[T]=Some(T)|None
+```sigil module
+t Option[T]=Some(T)|None()
+
 t Result[T,E]=Ok(T)|Err(E)
-t Color=Red|Green|Blue
+
+t Color=Red()|Green()|Blue()
 ```
 
 Imported constructors use fully qualified module syntax in expressions and
@@ -124,9 +126,14 @@ Sigil supports explicit effect annotations in function and test signatures.
 
 Examples:
 
-```sigil
-λmain()=>!IO Unit=console.log("hello")
+```sigil program
+e axios:{get:λ(String)=>!Network String}
+
+e console
+
 λfetch()=>!Network String=axios.get("https://example.com")
+
+λmain()=>!IO Unit=console.log("hello")
 ```
 
 Effects are explicit surface syntax. The checker tracks them as part of the

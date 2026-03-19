@@ -20,25 +20,30 @@ normal Sigil imports.
 
 Library code is file-based, not `export`-based:
 
-```sigil
-⟦ src/math.lib.sigil ⟧
-λdouble(x:Int)=>Int=x*2
+```sigil module projects/todo-app/src/todoDomain.lib.sigil
+t Todo={done:Bool,id:Int,text:String}
+
+λcompletedCount(todos:[Todo])=>Int=todos⊕(λ(acc:Int,todo:Todo)=>Int match todo.done{
+  true=>acc+1|
+  false=>acc
+})⊕0
 ```
 
-```sigil
-⟦ tests/math.sigil ⟧
-i src::math
+```sigil program projects/todo-app/tests/todoDomain.sigil
+i src::todoDomain
 
 λmain()=>Unit=()
 
-test "double 2" {
-  src::math.double(2)=4
+test "count completed todos" {
+  src::todoDomain.completedCount([{done:true,id:1,text:"A"},{done:false,id:2,text:"B"}])=1
 }
 ```
 
 ## Test Syntax
 
-```sigil
+```sigil program tests/basic.sigil
+λmain()=>Unit=()
+
 test "adds numbers" {
   1+1=2
 }
@@ -52,8 +57,12 @@ Rules:
 
 Effectful tests use explicit effects:
 
-```sigil
-test "writes log" =>!IO {
+```sigil program language/test-fixtures/tests/effects.sigil
+e console
+
+λmain()=>Unit=()
+
+test "writes log" =>!IO  {
   console.log("x")=()
 }
 ```
@@ -73,13 +82,13 @@ Placement rule:
 
 Example:
 
-```sigil
+```sigil program language/test-fixtures/tests/mocking.sigil
 λfetchUser(id:Int)=>!Network String="real"
 
-test "fallback on API failure" =>!Network {
-  withMock(fetchUser, λ(id:Int)=>!Network String="ERR") {
-    fetchUser(1)="ERR"
-  }
+λmain()=>Unit=()
+
+test "fallback on API failure" =>!Network  {
+  withMock(fetchUser,λ(id:Int)=>!Network String="ERR"){fetchUser(1)="ERR"}
 }
 ```
 

@@ -1,5 +1,7 @@
 # Sigil Testing
 
+<h2 id="first-class-tests">First-Class Tests</h2>
+
 Sigil tests are first-class language declarations, not a separate test framework.
 
 Repo-level integration tests are ordinary Sigil test files under

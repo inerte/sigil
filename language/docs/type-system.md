@@ -1,7 +1,7 @@
 # Sigil Type System
 
-Sigil uses bidirectional type checking with explicit types in canonical
-positions.
+Sigil uses bidirectional type checking with explicit function, lambda, and
+effect annotations.
 
 This page describes the current implemented system, not older design ideas.
 
@@ -26,7 +26,10 @@ Not implemented today:
 
 ## Explicit Types
 
-Function and lambda signatures must be fully typed.
+Function and lambda signatures must be fully typed. Sigil does not implement
+general-purpose let-polymorphism or broad signature inference, but ordinary
+expression checking is still bidirectional rather than requiring every
+subexpression to carry an explicit `:T`.
 
 Examples:
 

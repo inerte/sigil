@@ -16,17 +16,17 @@ claude "Write a Hello World in Sigil and run it"
 
 ## Why Sigil?
 
-**Radical Canonicalization** - ONE way to write everything. Not one preferred style: one accepted textual representation per program. The compiler owns the canonical printer internally and rejects any parseable source that does not match it.
+**<a href="/docs/philosophy/#radical-canonicalization">Radical Canonicalization</a>** - ONE way to write everything. Not one preferred style: one accepted textual representation per program. The compiler owns the canonical printer internally and rejects any parseable source that does not match it.
 
-**Canonical Programming Paths** - Sigil canonicalizes common programming patterns, not just syntax. Projection, filtering, reduction, search, and reversal flow through one blessed surface so humans and AI agents converge on the same code shapes.
+**<a href="/articles/canonical-list-processing/">Canonical Programming Paths</a>** - Sigil canonicalizes common programming patterns, not just syntax. Projection, filtering, reduction, search, and reversal flow through one blessed surface so humans and AI agents converge on the same code shapes.
 
-**Zero Ambiguity** - Explicit bidirectional types, no shadowing, deterministic execution. Code means exactly what it says. Perfect for AI code generation.
+**<a href="/docs/philosophy/#zero-ambiguity">Zero Ambiguity</a>** - Explicit bidirectional types, no shadowing, deterministic execution. Code means exactly what it says. Perfect for AI code generation.
 
-**Async Without Await** - Built for async I/O without `await` syntax. Wider concurrency is explicit through named concurrent regions.
+**<a href="/docs/async/#named-concurrent-regions">Async Without Await</a>** - Built for async I/O without `await` syntax. Wider concurrency is explicit through named concurrent regions.
 
-**Testing Built In** - Sigil treats tests as first-class code, with language-level test declarations, JSON-readable results, and runtime-aware validation for things like topology-backed environments.
+**<a href="/docs/testing/#first-class-tests">Testing Built In</a>** - Sigil treats tests as first-class code, with language-level test declarations, JSON-readable results, and runtime-aware validation for things like topology-backed environments.
 
-**Topology as Runtime Truth** - External dependencies (such as HTTP and database calls) are declared once, bound per environment, and used through typed handles instead of raw endpoints. Runtime wiring becomes compiler-validated project structure.
+**<a href="/docs/topology/#topology-is-runtime-truth">Topology as Runtime Truth</a>** - External dependencies (such as HTTP and database calls) are declared once, bound per environment, and used through typed handles instead of raw endpoints. Runtime wiring becomes compiler-validated project structure.
 
 ## Quick Example
 

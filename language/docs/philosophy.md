@@ -28,7 +28,7 @@ Optimize for machine generation (dense syntax, zero ambiguity, minimal tokens)
 
 ## Key Principles
 
-### 1. Radical Canonicalization
+<h3 id="radical-canonicalization">1. Radical Canonicalization</h3>
 
 **"There is exactly ONE way to write it"**
 
@@ -299,17 +299,13 @@ More code fits in LLM context windows = better understanding = better code gener
 
 **Why Unicode?** Modern LLMs tokenize Unicode efficiently, and it provides unambiguous semantic meaning. `Int` universally means "integers" in mathematics.
 
-### 3. Zero Ambiguity
+<h3 id="zero-ambiguity">3. Zero Ambiguity</h3>
 
-**"The type checker catches everything"**
-
-- Bidirectional type checking with mandatory explicit annotations
+- Bidirectional type checking with explicit function, lambda, and effect annotations
 - No `any`, no type coercion, no `null`, no `undefined`
 - Algebraic data types (sum + product types)
 - Effect system tracks IO, network, async operations
-- Borrow checker for memory safety
-
-**Why?** Static analysis prevents ~80% of runtime errors. LLMs can generate code confidently knowing the type checker will catch mistakes.
+- Immutable-by-default semantics, no ambient nullability, and explicit effects
 
 ### 4. Enforced Canonical Formatting
 

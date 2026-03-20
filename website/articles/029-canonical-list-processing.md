@@ -68,6 +68,18 @@ Rejected:
 }
 ```
 
+```json
+{
+  "formatVersion": 1,
+  "ok": false,
+  "phase": "canonical",
+  "error": {
+    "code": "SIGIL-CANON-RECURSION-ALL-CLONE",
+    "message": "SIGIL-CANON-RECURSION-ALL-CLONE: Recursive function 'allPositive' is a hand-rolled all."
+  }
+}
+```
+
 Required:
 
 ```sigil module
@@ -86,6 +98,18 @@ Rejected:
 λanyEven(xs:[Int])=>Bool match xs{
   []=>false|
   [x,.rest]=>isEven(x) or anyEven(rest)
+}
+```
+
+```json
+{
+  "formatVersion": 1,
+  "ok": false,
+  "phase": "canonical",
+  "error": {
+    "code": "SIGIL-CANON-RECURSION-ANY-CLONE",
+    "message": "SIGIL-CANON-RECURSION-ANY-CLONE: Recursive function 'anyEven' is a hand-rolled any."
+  }
 }
 ```
 
@@ -110,6 +134,18 @@ Rejected:
 }
 ```
 
+```json
+{
+  "formatVersion": 1,
+  "ok": false,
+  "phase": "canonical",
+  "error": {
+    "code": "SIGIL-CANON-RECURSION-MAP-CLONE",
+    "message": "SIGIL-CANON-RECURSION-MAP-CLONE: Recursive function 'double' is a hand-rolled map."
+  }
+}
+```
+
 Required:
 
 ```sigil module
@@ -122,6 +158,18 @@ Rejected:
 
 ```sigil invalid-module
 λcountEven(xs:[Int])=>Int=#(xs⊳isEven)
+```
+
+```json
+{
+  "formatVersion": 1,
+  "ok": false,
+  "phase": "canonical",
+  "error": {
+    "code": "SIGIL-CANON-TRAVERSAL-FILTER-COUNT",
+    "message": "SIGIL-CANON-TRAVERSAL-FILTER-COUNT: Expression uses filter then length for counting."
+  }
+}
 ```
 
 Required:
@@ -148,6 +196,18 @@ Rejected:
 }
 ```
 
+```json
+{
+  "formatVersion": 1,
+  "ok": false,
+  "phase": "canonical",
+  "error": {
+    "code": "SIGIL-CANON-RECURSION-FILTER-CLONE",
+    "message": "SIGIL-CANON-RECURSION-FILTER-CLONE: Recursive function 'evens' is a hand-rolled filter."
+  }
+}
+```
+
 Required:
 
 ```sigil module
@@ -166,6 +226,18 @@ Rejected:
   [x,.rest]=>match isEven(x){
     true=>Some(x)|
     false=>findEven(rest)
+  }
+}
+```
+
+```json
+{
+  "formatVersion": 1,
+  "ok": false,
+  "phase": "canonical",
+  "error": {
+    "code": "SIGIL-CANON-RECURSION-FIND-CLONE",
+    "message": "SIGIL-CANON-RECURSION-FIND-CLONE: Recursive function 'findEven' is a hand-rolled find."
   }
 }
 ```
@@ -191,6 +263,18 @@ Rejected:
 }
 ```
 
+```json
+{
+  "formatVersion": 1,
+  "ok": false,
+  "phase": "canonical",
+  "error": {
+    "code": "SIGIL-CANON-RECURSION-FLATMAP-CLONE",
+    "message": "SIGIL-CANON-RECURSION-FLATMAP-CLONE: Recursive function 'explode' is a hand-rolled flatMap."
+  }
+}
+```
+
 Required:
 
 ```sigil module
@@ -212,6 +296,18 @@ Rejected:
 }
 ```
 
+```json
+{
+  "formatVersion": 1,
+  "ok": false,
+  "phase": "canonical",
+  "error": {
+    "code": "SIGIL-CANON-RECURSION-REVERSE-CLONE",
+    "message": "SIGIL-CANON-RECURSION-REVERSE-CLONE: Recursive function 'reverse' is a hand-rolled reverse."
+  }
+}
+```
+
 Required:
 
 ```sigil module
@@ -228,6 +324,18 @@ Rejected:
 λsum(xs:[Int])=>Int match xs{
   []=>0|
   [x,.rest]=>x+sum(rest)
+}
+```
+
+```json
+{
+  "formatVersion": 1,
+  "ok": false,
+  "phase": "canonical",
+  "error": {
+    "code": "SIGIL-CANON-RECURSION-FOLD-CLONE",
+    "message": "SIGIL-CANON-RECURSION-FOLD-CLONE: Recursive function 'sum' is a hand-rolled fold."
+  }
 }
 ```
 

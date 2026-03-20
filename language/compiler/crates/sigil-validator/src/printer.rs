@@ -443,6 +443,7 @@ impl Printer {
                 self.wrap_expr(&fold.func, indent, precedence(expr).saturating_add(1)),
                 self.wrap_expr(&fold.init, indent, precedence(expr).saturating_add(1))
             ),
+            Expr::Concurrent(concurrent) => self.concurrent_text(concurrent, indent),
             Expr::MemberAccess(member) => format!("{}.{}", member.namespace.join("::"), member.member),
             Expr::WithMock(with_mock) => self.with_mock_text(with_mock, indent),
             Expr::TypeAscription(ascription) => {
@@ -574,6 +575,44 @@ impl Printer {
         out
     }
 
+    fn concurrent_text(&self, concurrent: &ConcurrentExpr, indent: usize) -> String {
+        let mut out = format!(
+            "concurrent {}({}){{",
+            concurrent.name,
+            self.record_text(&concurrent.config, indent)
+        );
+        for step in &concurrent.steps {
+            out.push('\n');
+            out.push_str(&INDENT.repeat(indent + 1));
+            match step {
+                ConcurrentStep::Spawn(spawn) => {
+                    out.push_str("spawn ");
+                    out.push_str(&self.expr(&spawn.expr, indent + 1, 0));
+                }
+                ConcurrentStep::SpawnEach(spawn_each) => {
+                    out.push_str("spawnEach ");
+                    out.push_str(&self.expr(&spawn_each.list, indent + 1, 0));
+                    out.push(' ');
+                    out.push_str(&self.expr(&spawn_each.func, indent + 1, 0));
+                }
+            }
+        }
+        out.push('\n');
+        out.push_str(&INDENT.repeat(indent));
+        out.push('}');
+        out
+    }
+
+    fn record_text(&self, record: &RecordExpr, indent: usize) -> String {
+        let fields = record
+            .fields
+            .iter()
+            .map(|field| format!("{}:{}", field.name, self.expr(&field.value, indent, 0)))
+            .collect::<Vec<_>>()
+            .join(",");
+        format!("{{{}}}", fields)
+    }
+
     fn pattern_text(&self, pattern: &Pattern) -> String {
         match pattern {
             Pattern::Literal(literal) => pattern_literal_text(literal),
@@ -658,7 +697,7 @@ fn flatten_lets<'a>(let_expr: &'a LetExpr) -> (Vec<LetBindingRef<'a>>, &'a Expr)
 
 fn precedence(expr: &Expr) -> u8 {
     match expr {
-        Expr::Let(_) | Expr::Match(_) | Expr::If(_) | Expr::WithMock(_) | Expr::Lambda(_) => 1,
+        Expr::Let(_) | Expr::Match(_) | Expr::If(_) | Expr::WithMock(_) | Expr::Lambda(_) | Expr::Concurrent(_) => 1,
         Expr::Pipeline(_) | Expr::Map(_) | Expr::Filter(_) | Expr::Fold(_) => 2,
         Expr::Binary(binary) => match binary.operator {
             BinaryOperator::Pipe | BinaryOperator::ComposeFwd | BinaryOperator::ComposeBwd => 2,

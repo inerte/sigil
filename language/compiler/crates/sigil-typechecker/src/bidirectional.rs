@@ -13,13 +13,14 @@ use crate::environment::{
 use crate::errors::{format_type, TypeError};
 use crate::typed_ir::{
     MethodSelector, PurityClass, StrictnessClass, TypeCheckResult, TypedBinaryExpr, TypedCallExpr,
-    TypedConstDecl, TypedConstructorCallExpr, TypedDeclaration, TypedExpr, TypedExprKind,
-    TypedExternCallExpr, TypedExternDecl, TypedFieldAccessExpr, TypedFilterExpr, TypedFoldExpr,
-    TypedFunctionDecl, TypedIfExpr, TypedImportDecl, TypedIndexExpr, TypedLambdaExpr, TypedLetExpr,
-    TypedListExpr, TypedMapEntryExpr, TypedMapExpr, TypedMapLiteralExpr, TypedMatchArm,
-    TypedMatchExpr, TypedMethodCallExpr, TypedPipelineExpr, TypedProgram, TypedRecordExpr,
-    TypedRecordField, TypedTestDecl, TypedTupleExpr, TypedTypeDecl, TypedUnaryExpr,
-    TypedWithMockExpr, WithMockTarget,
+    TypedConcurrentConfig, TypedConcurrentExpr, TypedConcurrentStep, TypedConstDecl,
+    TypedConstructorCallExpr, TypedDeclaration, TypedExpr, TypedExprKind, TypedExternCallExpr,
+    TypedExternDecl, TypedFieldAccessExpr, TypedFilterExpr, TypedFoldExpr, TypedFunctionDecl,
+    TypedIfExpr, TypedImportDecl, TypedIndexExpr, TypedLambdaExpr, TypedLetExpr, TypedListExpr,
+    TypedMapEntryExpr, TypedMapExpr, TypedMapLiteralExpr, TypedMatchArm, TypedMatchExpr,
+    TypedMethodCallExpr, TypedPipelineExpr, TypedProgram, TypedRecordExpr, TypedRecordField,
+    TypedSpawnEachStep, TypedSpawnStep, TypedTestDecl, TypedTupleExpr, TypedTypeDecl,
+    TypedUnaryExpr, TypedWithMockExpr, WithMockTarget,
 };
 use crate::types::{
     ast_type_to_inference_type_with_params, apply_subst, unify, EffectSet, InferenceType,
@@ -719,6 +720,23 @@ fn validate_expr_surface_types(expr: &Expr) -> Result<(), TypeError> {
             validate_expr_surface_types(&fold_expr.func)?;
             validate_expr_surface_types(&fold_expr.init)
         }
+        Expr::Concurrent(concurrent_expr) => {
+            for field in &concurrent_expr.config.fields {
+                validate_expr_surface_types(&field.value)?;
+            }
+            for step in &concurrent_expr.steps {
+                match step {
+                    sigil_ast::ConcurrentStep::Spawn(spawn) => {
+                        validate_expr_surface_types(&spawn.expr)?;
+                    }
+                    sigil_ast::ConcurrentStep::SpawnEach(spawn_each) => {
+                        validate_expr_surface_types(&spawn_each.list)?;
+                        validate_expr_surface_types(&spawn_each.func)?;
+                    }
+                }
+            }
+            Ok(())
+        }
         Expr::MemberAccess(_) => Ok(()),
         Expr::WithMock(with_mock) => {
             validate_expr_surface_types(&with_mock.target)?;
@@ -894,6 +912,126 @@ fn typed_expr(
         strictness,
         location,
     }
+}
+
+fn bool_type() -> InferenceType {
+    InferenceType::Primitive(TPrimitive {
+        name: PrimitiveName::Bool,
+    })
+}
+
+fn int_type() -> InferenceType {
+    InferenceType::Primitive(TPrimitive {
+        name: PrimitiveName::Int,
+    })
+}
+
+fn concurrent_outcome_type(success_type: InferenceType, error_type: InferenceType) -> InferenceType {
+    InferenceType::Constructor(TConstructor {
+        name: "ConcurrentOutcome".to_string(),
+        type_args: vec![success_type, error_type],
+    })
+}
+
+fn option_type(inner: InferenceType) -> InferenceType {
+    InferenceType::Constructor(TConstructor {
+        name: "Option".to_string(),
+        type_args: vec![inner],
+    })
+}
+
+fn concurrent_jitter_record_type() -> InferenceType {
+    InferenceType::Record(TRecord {
+        fields: HashMap::from([
+            ("max".to_string(), int_type()),
+            ("min".to_string(), int_type()),
+        ]),
+        name: None,
+    })
+}
+
+fn concurrent_config_fields<'a>(
+    config: &'a sigil_ast::RecordExpr,
+    location: sigil_ast::SourceLocation,
+) -> Result<(&'a Expr, &'a Expr, &'a Expr, &'a Expr), TypeError> {
+    let mut concurrency = None;
+    let mut jitter_ms = None;
+    let mut stop_on = None;
+    let mut window_ms = None;
+    let mut seen = HashSet::new();
+
+    for field in &config.fields {
+        if !seen.insert(field.name.clone()) {
+            return Err(TypeError::new(
+                format!(
+                    "Concurrent region config field '{}' is duplicated",
+                    field.name
+                ),
+                Some(field.location),
+            ));
+        }
+
+        match field.name.as_str() {
+            "concurrency" => concurrency = Some(&field.value),
+            "jitterMs" => jitter_ms = Some(&field.value),
+            "stopOn" => stop_on = Some(&field.value),
+            "windowMs" => window_ms = Some(&field.value),
+            _ => {
+                return Err(TypeError::new(
+                    format!(
+                        "Unknown concurrent region config field '{}'. Use exactly concurrency, jitterMs, stopOn, and windowMs.",
+                        field.name
+                    ),
+                    Some(field.location),
+                ));
+            }
+        }
+    }
+
+    let Some(concurrency) = concurrency else {
+        return Err(TypeError::new(
+            "Concurrent region config must include field 'concurrency'".to_string(),
+            Some(location),
+        ));
+    };
+    let Some(jitter_ms) = jitter_ms else {
+        return Err(TypeError::new(
+            "Concurrent region config must include field 'jitterMs'".to_string(),
+            Some(location),
+        ));
+    };
+    let Some(stop_on) = stop_on else {
+        return Err(TypeError::new(
+            "Concurrent region config must include field 'stopOn'".to_string(),
+            Some(location),
+        ));
+    };
+    let Some(window_ms) = window_ms else {
+        return Err(TypeError::new(
+            "Concurrent region config must include field 'windowMs'".to_string(),
+            Some(location),
+        ));
+    };
+
+    Ok((concurrency, jitter_ms, stop_on, window_ms))
+}
+
+fn result_type_parts(
+    env: &TypeEnvironment,
+    typ: &InferenceType,
+) -> Option<(InferenceType, InferenceType)> {
+    let normalized = env.normalize_type(typ);
+    match normalized {
+        InferenceType::Constructor(tcons) if tcons.name == "Result" && tcons.type_args.len() == 2 => {
+            Some((tcons.type_args[0].clone(), tcons.type_args[1].clone()))
+        }
+        _ => None,
+    }
+}
+
+fn same_type(env: &TypeEnvironment, left: &InferenceType, right: &InferenceType) -> bool {
+    let (normalized_left, normalized_right) = canonical_pair(env, left, right);
+    types_equal(&normalized_left, &normalized_right)
 }
 
 fn build_typed_function_decl(
@@ -1288,6 +1426,7 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
                 fold_expr.location,
             ))
         }
+        Expr::Concurrent(concurrent_expr) => build_typed_concurrent(env, concurrent_expr, typ),
         Expr::Pipeline(pipeline) => {
             let left = build_typed_expr(env, &pipeline.left)?;
             let right = build_typed_expr(env, &pipeline.right)?;
@@ -1352,6 +1491,67 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
             }
         }
     }
+}
+
+fn build_typed_concurrent(
+    env: &TypeEnvironment,
+    concurrent_expr: &sigil_ast::ConcurrentExpr,
+    typ: InferenceType,
+) -> Result<TypedExpr, TypeError> {
+    let (concurrency_expr, jitter_ms_expr, stop_on_expr, window_ms_expr) =
+        concurrent_config_fields(&concurrent_expr.config, concurrent_expr.location)?;
+
+    let config = TypedConcurrentConfig {
+        concurrency: Box::new(build_typed_expr(env, concurrency_expr)?),
+        jitter_ms: Box::new(build_typed_expr(env, jitter_ms_expr)?),
+        stop_on: Box::new(build_typed_expr(env, stop_on_expr)?),
+        window_ms: Box::new(build_typed_expr(env, window_ms_expr)?),
+    };
+
+    let mut effects = merge_effects([
+        config.concurrency.effects.clone(),
+        config.jitter_ms.effects.clone(),
+        config.stop_on.effects.clone(),
+        config.window_ms.effects.clone(),
+    ]);
+    effects.insert("IO".to_string());
+
+    let mut steps = Vec::new();
+    for step in &concurrent_expr.steps {
+        match step {
+            sigil_ast::ConcurrentStep::Spawn(spawn) => {
+                let expr = build_typed_expr(env, &spawn.expr)?;
+                effects.extend(expr.effects.clone());
+                steps.push(TypedConcurrentStep::Spawn(TypedSpawnStep {
+                    expr: Box::new(expr),
+                    location: spawn.location,
+                }));
+            }
+            sigil_ast::ConcurrentStep::SpawnEach(spawn_each) => {
+                let list = build_typed_expr(env, &spawn_each.list)?;
+                let func = build_typed_expr(env, &spawn_each.func)?;
+                effects.extend(list.effects.clone());
+                effects.extend(func.effects.clone());
+                steps.push(TypedConcurrentStep::SpawnEach(TypedSpawnEachStep {
+                    func: Box::new(func),
+                    list: Box::new(list),
+                    location: spawn_each.location,
+                }));
+            }
+        }
+    }
+
+    Ok(typed_expr(
+        TypedExprKind::Concurrent(TypedConcurrentExpr {
+            config,
+            name: concurrent_expr.name.clone(),
+            steps,
+        }),
+        typ,
+        effects,
+        StrictnessClass::Deferred,
+        concurrent_expr.location,
+    ))
 }
 
 fn build_typed_application(
@@ -1521,6 +1721,8 @@ fn synthesize(env: &TypeEnvironment, expr: &Expr) -> Result<InferenceType, TypeE
         Expr::Filter(filter_expr) => synthesize_filter(env, filter_expr),
 
         Expr::Fold(fold_expr) => synthesize_fold(env, fold_expr),
+
+        Expr::Concurrent(concurrent_expr) => synthesize_concurrent(env, concurrent_expr),
 
         Expr::WithMock(with_mock) => synthesize_with_mock(env, with_mock),
 
@@ -2499,6 +2701,228 @@ fn synthesize_fold(
     unreachable!()
 }
 
+fn synthesize_concurrent(
+    env: &TypeEnvironment,
+    concurrent_expr: &sigil_ast::ConcurrentExpr,
+) -> Result<InferenceType, TypeError> {
+    let (concurrency_expr, jitter_ms_expr, stop_on_expr, window_ms_expr) =
+        concurrent_config_fields(&concurrent_expr.config, concurrent_expr.location)?;
+
+    check(env, concurrency_expr, &int_type())?;
+    check(env, jitter_ms_expr, &option_type(concurrent_jitter_record_type()))?;
+    check(env, window_ms_expr, &option_type(int_type()))?;
+
+    if concurrent_expr.steps.is_empty() {
+        return Err(TypeError::new(
+            "Concurrent region must contain at least one spawn or spawnEach step".to_string(),
+            Some(concurrent_expr.location),
+        ));
+    }
+
+    let mut common_success_type: Option<InferenceType> = None;
+    let mut common_error_type: Option<InferenceType> = None;
+
+    for step in &concurrent_expr.steps {
+        match step {
+            sigil_ast::ConcurrentStep::Spawn(spawn) => {
+                let typed_expr = build_typed_expr(env, &spawn.expr)?;
+                if typed_expr.effects.is_empty() {
+                    return Err(TypeError::new(
+                        "spawn requires an effectful computation returning Result[T,E]".to_string(),
+                        Some(spawn.location),
+                    ));
+                }
+
+                let Some((success_type, error_type)) = result_type_parts(env, &typed_expr.typ) else {
+                    return Err(TypeError::new(
+                        format!(
+                            "spawn requires a Result[T,E] computation, got {}",
+                            format_type(&typed_expr.typ)
+                        ),
+                        Some(spawn.location),
+                    ));
+                };
+
+                if let Some(common_success) = &common_success_type {
+                    if !same_type(env, common_success, &success_type) {
+                        return Err(TypeError::new(
+                            format!(
+                                "Concurrent region child success types must match, found {} and {}",
+                                format_type(common_success),
+                                format_type(&success_type)
+                            ),
+                            Some(spawn.location),
+                        ));
+                    }
+                } else {
+                    common_success_type = Some(success_type);
+                }
+
+                if let Some(common_error) = &common_error_type {
+                    if !same_type(env, common_error, &error_type) {
+                        return Err(TypeError::new(
+                            format!(
+                                "Concurrent region child error types must match, found {} and {}",
+                                format_type(common_error),
+                                format_type(&error_type)
+                            ),
+                            Some(spawn.location),
+                        ));
+                    }
+                } else {
+                    common_error_type = Some(error_type);
+                }
+            }
+            sigil_ast::ConcurrentStep::SpawnEach(spawn_each) => {
+                let list_type = env.normalize_type(&synthesize(env, &spawn_each.list)?);
+                let InferenceType::List(list) = list_type else {
+                    return Err(TypeError::new(
+                        format!(
+                            "spawnEach requires a list, got {}",
+                            format_type(&synthesize(env, &spawn_each.list)?)
+                        ),
+                        Some(spawn_each.location),
+                    ));
+                };
+
+                let fn_type = env.normalize_type(&synthesize(env, &spawn_each.func)?);
+                let InferenceType::Function(func) = fn_type else {
+                    return Err(TypeError::new(
+                        format!(
+                            "spawnEach requires a function, got {}",
+                            format_type(&synthesize(env, &spawn_each.func)?)
+                        ),
+                        Some(spawn_each.location),
+                    ));
+                };
+
+                if func.effects.as_ref().is_none_or(|effects| effects.is_empty()) {
+                    return Err(TypeError::new(
+                        "spawnEach requires an effectful function returning Result[T,E]".to_string(),
+                        Some(spawn_each.location),
+                    ));
+                }
+
+                if func.params.len() != 1 {
+                    return Err(TypeError::new(
+                        format!(
+                            "spawnEach function should take 1 parameter, got {}",
+                            func.params.len()
+                        ),
+                        Some(spawn_each.location),
+                    ));
+                }
+
+                if !same_type(env, &func.params[0], &list.element_type) {
+                    return Err(TypeError::new(
+                        format!(
+                            "spawnEach function parameter type {} doesn't match list element type {}",
+                            format_type(&func.params[0]),
+                            format_type(&list.element_type)
+                        ),
+                        Some(spawn_each.location),
+                    ));
+                }
+
+                let Some((success_type, error_type)) = result_type_parts(env, &func.return_type) else {
+                    return Err(TypeError::new(
+                        format!(
+                            "spawnEach function must return Result[T,E], got {}",
+                            format_type(&func.return_type)
+                        ),
+                        Some(spawn_each.location),
+                    ));
+                };
+
+                if let Some(common_success) = &common_success_type {
+                    if !same_type(env, common_success, &success_type) {
+                        return Err(TypeError::new(
+                            format!(
+                                "Concurrent region child success types must match, found {} and {}",
+                                format_type(common_success),
+                                format_type(&success_type)
+                            ),
+                            Some(spawn_each.location),
+                        ));
+                    }
+                } else {
+                    common_success_type = Some(success_type);
+                }
+
+                if let Some(common_error) = &common_error_type {
+                    if !same_type(env, common_error, &error_type) {
+                        return Err(TypeError::new(
+                            format!(
+                                "Concurrent region child error types must match, found {} and {}",
+                                format_type(common_error),
+                                format_type(&error_type)
+                            ),
+                            Some(spawn_each.location),
+                        ));
+                    }
+                } else {
+                    common_error_type = Some(error_type);
+                }
+            }
+        }
+    }
+
+    let success_type = common_success_type.unwrap();
+    let error_type = common_error_type.unwrap();
+    let stop_on_type = env.normalize_type(&synthesize(env, stop_on_expr)?);
+    let InferenceType::Function(stop_on_fn) = stop_on_type else {
+        return Err(TypeError::new(
+            format!(
+                "Concurrent region stopOn must be a pure function, got {}",
+                format_type(&synthesize(env, stop_on_expr)?)
+            ),
+            Some(concurrent_expr.location),
+        ));
+    };
+
+    if stop_on_fn.effects.as_ref().is_some_and(|effects| !effects.is_empty()) {
+        return Err(TypeError::new(
+            "Concurrent region stopOn must be pure".to_string(),
+            Some(concurrent_expr.location),
+        ));
+    }
+
+    if stop_on_fn.params.len() != 1 {
+        return Err(TypeError::new(
+            format!(
+                "Concurrent region stopOn must take 1 parameter, got {}",
+                stop_on_fn.params.len()
+            ),
+            Some(concurrent_expr.location),
+        ));
+    }
+
+    if !same_type(env, &stop_on_fn.params[0], &error_type) {
+        return Err(TypeError::new(
+            format!(
+                "Concurrent region stopOn parameter type {} doesn't match child error type {}",
+                format_type(&stop_on_fn.params[0]),
+                format_type(&error_type)
+            ),
+            Some(concurrent_expr.location),
+        ));
+    }
+
+    if !same_type(env, &stop_on_fn.return_type, &bool_type()) {
+        return Err(TypeError::new(
+            format!(
+                "Concurrent region stopOn must return Bool, got {}",
+                format_type(&stop_on_fn.return_type)
+            ),
+            Some(concurrent_expr.location),
+        ));
+    }
+
+    Ok(InferenceType::List(Box::new(crate::types::TList {
+        element_type: concurrent_outcome_type(success_type, error_type),
+    })))
+}
+
 fn synthesize_with_mock(
     env: &TypeEnvironment,
     with_mock: &sigil_ast::WithMockExpr,
@@ -2987,6 +3411,36 @@ mod tests {
     }
 
     fn core_prelude_type_options() -> TypeCheckOptions {
+        let concurrent_outcome_info = TypeInfo {
+            type_params: vec!["T".to_string(), "E".to_string()],
+            definition: TypeDef::Sum(sigil_ast::SumType {
+                variants: vec![
+                    sigil_ast::Variant {
+                        name: "Aborted".to_string(),
+                        types: vec![],
+                        location: synthetic_loc(),
+                    },
+                    sigil_ast::Variant {
+                        name: "Failure".to_string(),
+                        types: vec![Type::Variable(sigil_ast::TypeVariable {
+                            name: "E".to_string(),
+                            location: synthetic_loc(),
+                        })],
+                        location: synthetic_loc(),
+                    },
+                    sigil_ast::Variant {
+                        name: "Success".to_string(),
+                        types: vec![Type::Variable(sigil_ast::TypeVariable {
+                            name: "T".to_string(),
+                            location: synthetic_loc(),
+                        })],
+                        location: synthetic_loc(),
+                    },
+                ],
+                location: synthetic_loc(),
+            }),
+        };
+
         let option_info = TypeInfo {
             type_params: vec!["T".to_string()],
             definition: TypeDef::Sum(sigil_ast::SumType {
@@ -3035,10 +3489,41 @@ mod tests {
         };
 
         let prelude_registry = HashMap::from([
+            ("ConcurrentOutcome".to_string(), concurrent_outcome_info.clone()),
             ("Option".to_string(), option_info.clone()),
             ("Result".to_string(), result_info.clone()),
         ]);
 
+        let concurrent_outcome_aborted_type = create_constructor_type_with_result_name(
+            &TypeEnvironment::new(),
+            match &concurrent_outcome_info.definition {
+                TypeDef::Sum(sum) => &sum.variants[0],
+                _ => unreachable!(),
+            },
+            &concurrent_outcome_info.type_params,
+            "ConcurrentOutcome",
+        )
+        .unwrap();
+        let concurrent_outcome_failure_type = create_constructor_type_with_result_name(
+            &TypeEnvironment::new(),
+            match &concurrent_outcome_info.definition {
+                TypeDef::Sum(sum) => &sum.variants[1],
+                _ => unreachable!(),
+            },
+            &concurrent_outcome_info.type_params,
+            "ConcurrentOutcome",
+        )
+        .unwrap();
+        let concurrent_outcome_success_type = create_constructor_type_with_result_name(
+            &TypeEnvironment::new(),
+            match &concurrent_outcome_info.definition {
+                TypeDef::Sum(sum) => &sum.variants[2],
+                _ => unreachable!(),
+            },
+            &concurrent_outcome_info.type_params,
+            "ConcurrentOutcome",
+        )
+        .unwrap();
         let option_some_type = create_constructor_type_with_result_name(
             &TypeEnvironment::new(),
             match &option_info.definition {
@@ -3082,6 +3567,9 @@ mod tests {
 
         let mut prelude_schemes = HashMap::new();
         for (name, typ) in [
+            ("Aborted", concurrent_outcome_aborted_type),
+            ("Failure", concurrent_outcome_failure_type),
+            ("Success", concurrent_outcome_success_type),
             ("Some", option_some_type),
             ("None", option_none_type),
             ("Ok", result_ok_type),
@@ -3847,6 +4335,41 @@ mod tests {
         let failing_result =
             type_check(&failing_program, failing_source, TypeCheckOptions::default());
         assert!(failing_result.is_err());
+    }
+
+    #[test]
+    fn test_concurrent_region_typechecks() {
+        let source = "λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit({concurrency:1,jitterMs:None(),stopOn:stopOn,windowMs:None()}){spawnEach [1,2] process}\nλprocess(value:Int)=>!IO Result[Int,String]=Ok(value)\nλstopOn(err:String)=>Bool=false";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, core_prelude_type_options());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_concurrent_spawn_rejects_pure_result() {
+        let source = "λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit({concurrency:1,jitterMs:None(),stopOn:stopOn,windowMs:None()}){spawn Ok(1)}\nλstopOn(err:String)=>Bool=false";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, core_prelude_type_options());
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("spawn requires an effectful computation"));
+    }
+
+    #[test]
+    fn test_concurrent_stop_on_must_match_error_type() {
+        let source = "λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit({concurrency:1,jitterMs:None(),stopOn:stopOn,windowMs:None()}){spawn one()}\nλone()=>!IO Result[Int,String]=Ok(1)\nλstopOn(err:Int)=>Bool=false";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, core_prelude_type_options());
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("stopOn parameter type"));
     }
 
     // TODO: Add list pattern test when parser fully supports match expression syntax

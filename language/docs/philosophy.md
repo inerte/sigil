@@ -76,7 +76,7 @@ That is why Sigil now distinguishes:
 - **runtime/backend**: implementation detail only
 
 Examples:
-- `Option[T]`, `Result[T,E]`, `Some`, `None`, `Ok`, and `Err` are implicit core vocabulary
+- `ConcurrentOutcome[T,E]`, `Option[T]`, `Result[T,E]`, `Aborted`, `Failure`, `Success`, `Some`, `None`, `Ok`, and `Err` are implicit core vocabulary
 - `core::map` owns map operations
 - `stdlib::string` owns string helpers like `join`
 - `stdlib::file` owns UTF-8 filesystem helpers
@@ -162,9 +162,9 @@ Legitimate multi-parameter algorithms like GCD, binary search, and nth element h
 
 This makes Sigil **more principled** (precise distinction) while **more practical** (enables O(log n) algorithms) - a rare win-win.
 
-#### Concurrent-by-Default: The Canonical Runtime Model
+#### Named Concurrent Regions: The Canonical Runtime Model
 
-**"One function model, concurrent execution by default."**
+**"One function model, explicit widening through named concurrent regions."**
 
 In 2026, modern JavaScript interop is promise-shaped:
 - Node.js fs/promises
@@ -172,9 +172,13 @@ In 2026, modern JavaScript interop is promise-shaped:
 - database clients
 - HTTP and streaming APIs
 
-The problem with a naive async-first language is not the Promise boundary. It is the tendency to compile every call to `await`, which keeps the language uniform on paper while leaving the generated code mostly sequential.
+The problem with a broad implicit concurrency model is not the Promise
+boundary. It is hidden fanout, missing rate/backpressure control, and poor
+failure policy at the exact places where real programs need those decisions.
 
-**Sigil's solution:** keep one function model, but join values only when a strict construct actually needs them.
+**Sigil's solution:** keep one function model, keep ordinary expression
+composition promise-shaped, and introduce widening only through named
+`concurrent` regions with explicit policy.
 
 ```sigil module
 e fs::promises
@@ -184,13 +188,15 @@ e fs::promises
 λread(path:String)=>!IO String=fs::promises.readFile(path,"utf8")
 ```
 
-Both use the same source form. The compiler starts work early and only joins it at strict demand points like arithmetic, branching, matching, indexing, and final observable results.
+Both use the same source form. Ordinary composition stays uniform, but explicit
+batch concurrency now lives in named regions like
+`concurrent urlAudit({concurrency:5,...}){...}`.
 
 **Benefits:**
 - **Canonical forms preserved** - ONE way to write functions
 - **FFI just works** - Promise-returning APIs compose directly
-- **Real overlap** - generated code stops eagerly awaiting every call
-- **No mental overhead** - users never choose between sync and async spellings
+- **Controlled overlap** - widening is bounded and policy-driven
+- **No helper zoo** - concurrency policy belongs to the region, not a pile of alternate `map` names
 
 ### Declaration-Only Module Scope
 

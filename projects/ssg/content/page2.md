@@ -1,6 +1,6 @@
-# About Async
+# About Effects
 
-All Sigil functions are async, which means:
+Sigil keeps one async-capable runtime model, which means:
 - File operations work seamlessly
-- No Promise wrapping needed
+- No manual Promise plumbing
 - Clean, simple code

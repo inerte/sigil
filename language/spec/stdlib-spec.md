@@ -19,6 +19,18 @@ The prelude is automatically imported into every Sigil module. No explicit impor
 
 ## Core Types
 
+### ConcurrentOutcome[T,E]
+
+Implicit core prelude sum type:
+
+```sigil decl core::prelude
+t ConcurrentOutcome[T,E]=Aborted()|Failure(E)|Success(T)
+```
+
+- `Aborted[T,E]()=>ConcurrentOutcome[T,E]`
+- `Failure[T,E](error:E)=>ConcurrentOutcome[T,E]`
+- `Success[T,E](value:T)=>ConcurrentOutcome[T,E]`
+
 ### Option[T]
 
 Represents an optional value - Sigil's null-safe alternative.
@@ -200,7 +212,7 @@ t ProcessResult={code:Int,stderr:String,stdout:String}
 λwithCwd(command:Command,cwd:String)=>Command
 λwithEnv(command:Command,env:{String↦String})=>Command
 λrun(command:Command)=>!IO ProcessResult
-λspawn(command:Command)=>!IO RunningProcess
+λstart(command:Command)=>!IO RunningProcess
 λwait(process:RunningProcess)=>!IO ProcessResult
 λkill(process:RunningProcess)=>!IO Unit
 ```

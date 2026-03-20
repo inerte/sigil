@@ -14,7 +14,7 @@ t ProcessResult={code:Int,stderr:String,stdout:String}
 
 λrun(command:Command)=>!IO ProcessResult={code:-1,stderr:"process intrinsic unavailable",stdout:""}
 
-λspawn(command:Command)=>!IO RunningProcess={pid:-1}
+λstart(command:Command)=>!IO RunningProcess={pid:-1}
 
 λwait(process:RunningProcess)=>!IO ProcessResult={code:-1,stderr:"process intrinsic unavailable",stdout:""}
 

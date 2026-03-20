@@ -45,6 +45,8 @@ pub enum Expr {
     Filter(Box<FilterExpr>),
     #[cfg_attr(feature = "serde", serde(rename = "FoldExpr"))]
     Fold(Box<FoldExpr>),
+    #[cfg_attr(feature = "serde", serde(rename = "ConcurrentExpr"))]
+    Concurrent(Box<ConcurrentExpr>),
     #[cfg_attr(feature = "serde", serde(rename = "MemberAccessExpr"))]
     MemberAccess(MemberAccessExpr),
     #[cfg_attr(feature = "serde", serde(rename = "WithMockExpr"))]
@@ -488,6 +490,41 @@ pub struct FoldExpr {
     #[cfg_attr(feature = "serde", serde(rename = "fn"))]
     pub func: Expr,
     pub init: Expr,
+    pub location: SourceLocation,
+}
+
+/// Concurrent region: concurrent name({config}){spawn ...}
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ConcurrentExpr {
+    pub config: RecordExpr,
+    pub name: String,
+    pub steps: Vec<ConcurrentStep>,
+    pub location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "type"))]
+pub enum ConcurrentStep {
+    #[cfg_attr(feature = "serde", serde(rename = "SpawnStep"))]
+    Spawn(SpawnStep),
+    #[cfg_attr(feature = "serde", serde(rename = "SpawnEachStep"))]
+    SpawnEach(SpawnEachStep),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct SpawnStep {
+    pub expr: Expr,
+    pub location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct SpawnEachStep {
+    pub func: Expr,
+    pub list: Expr,
     pub location: SourceLocation,
 }
 

@@ -125,6 +125,7 @@ pub enum TypedExprKind {
     Map(TypedMapExpr),
     Filter(TypedFilterExpr),
     Fold(TypedFoldExpr),
+    Concurrent(TypedConcurrentExpr),
     Pipeline(TypedPipelineExpr),
     WithMock(TypedWithMockExpr),
 }
@@ -269,6 +270,40 @@ pub struct TypedFoldExpr {
     pub list: Box<TypedExpr>,
     pub func: Box<TypedExpr>,
     pub init: Box<TypedExpr>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypedConcurrentExpr {
+    pub config: TypedConcurrentConfig,
+    pub name: String,
+    pub steps: Vec<TypedConcurrentStep>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypedConcurrentConfig {
+    pub concurrency: Box<TypedExpr>,
+    pub jitter_ms: Box<TypedExpr>,
+    pub stop_on: Box<TypedExpr>,
+    pub window_ms: Box<TypedExpr>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TypedConcurrentStep {
+    Spawn(TypedSpawnStep),
+    SpawnEach(TypedSpawnEachStep),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypedSpawnStep {
+    pub expr: Box<TypedExpr>,
+    pub location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypedSpawnEachStep {
+    pub func: Box<TypedExpr>,
+    pub list: Box<TypedExpr>,
+    pub location: SourceLocation,
 }
 
 #[derive(Debug, Clone, PartialEq)]

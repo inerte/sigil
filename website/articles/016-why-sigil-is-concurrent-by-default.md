@@ -7,32 +7,20 @@ slug: why-sigil-is-concurrentByDefault
 
 # Why Sigil Is Concurrent by Default
 
-Sigil used to describe itself as "async by default," but that phrasing obscured
-what the compiler was actually trying to do. The more precise statement is that
-Sigil is concurrent by default.
+This article described an earlier direction for Sigil's runtime model.
 
-## The Model
+It is now superseded.
 
-Sigil keeps one function form. User code does not introduce separate `async`
-syntax, explicit futures, or manual `await` choreography.
+Sigil no longer uses broad implicit fanout as the concurrency story. The current
+model keeps one promise-shaped runtime but introduces widening only through
+named concurrent regions with explicit policy.
 
-Instead, the compiler starts independent work in source order, keeps values in a
-promise-shaped form while they flow through expressions, and only joins them at
-strict demand points.
+See:
 
-## Why This Matters
+- `/articles/named-concurrent-regions`
 
-The point is not to hide effects. Effects are still tracked in the type system.
-The point is to avoid forcing the programmer to spell concurrency management at
-every ordinary call site when the dependencies between operations are already
-clear from the expression graph.
+The current language docs and specs are the source of truth:
 
-That gives Sigil a simpler surface while still allowing overlapping effectful
-work where the program structure permits it.
-
-## Why the Terminology Changed
-
-"Async by default" suggested a looser runtime story than Sigil actually wanted.
-"Concurrent by default" is narrower and more accurate: the compiler preserves the
-declaration of effects, but it does not serialize independent work unless the
-program demands it.
+- `language/docs/ASYNC.md`
+- `language/docs/syntax-reference.md`
+- `language/spec/semantics.md`

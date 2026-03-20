@@ -9,6 +9,7 @@
 
 use sigil_ast::*;
 use sigil_typechecker::{PurityClass, TypedDeclaration, TypedExpr, TypedExprKind, TypedProgram};
+use sigil_typechecker::typed_ir::TypedConcurrentStep;
 use std::collections::{HashMap, HashSet};
 use crate::error::ValidationError;
 use crate::printer::print_canonical_program;
@@ -266,6 +267,7 @@ fn expr_location(expr: &Expr) -> SourceLocation {
         Expr::Map(expr) => expr.location,
         Expr::Filter(expr) => expr.location,
         Expr::Fold(expr) => expr.location,
+        Expr::Concurrent(expr) => expr.location,
         Expr::MemberAccess(expr) => expr.location,
         Expr::WithMock(expr) => expr.location,
         Expr::TypeAscription(expr) => expr.location,
@@ -450,6 +452,7 @@ fn validate_redundant_parens_in_body(expr: &Expr, source: &str) -> Result<(), Ve
             | Expr::Map(_)
             | Expr::Filter(_)
             | Expr::Fold(_)
+            | Expr::Concurrent(_)
             | Expr::TypeAscription(_)
     );
     if !can_be_meaningfully_wrapped {
@@ -552,6 +555,20 @@ fn validate_expr_layout(expr: &Expr, source: &str, errors: &mut Vec<ValidationEr
             validate_expr_layout(&fold.list, source, errors);
             validate_expr_layout(&fold.func, source, errors);
             validate_expr_layout(&fold.init, source, errors);
+        }
+        Expr::Concurrent(concurrent) => {
+            for field in &concurrent.config.fields {
+                validate_expr_layout(&field.value, source, errors);
+            }
+            for step in &concurrent.steps {
+                match step {
+                    ConcurrentStep::Spawn(spawn) => validate_expr_layout(&spawn.expr, source, errors),
+                    ConcurrentStep::SpawnEach(spawn_each) => {
+                        validate_expr_layout(&spawn_each.list, source, errors);
+                        validate_expr_layout(&spawn_each.func, source, errors);
+                    }
+                }
+            }
         }
         Expr::WithMock(with_mock) => validate_expr_layout(&with_mock.body, source, errors),
         Expr::TypeAscription(ascription) => validate_expr_layout(&ascription.expr, source, errors),
@@ -815,6 +832,21 @@ fn collect_single_use_pure_bindings(expr: &TypedExpr, errors: &mut Vec<Validatio
             collect_single_use_pure_bindings(&pipeline.left, errors);
             collect_single_use_pure_bindings(&pipeline.right, errors);
         }
+        TypedExprKind::Concurrent(concurrent) => {
+            collect_single_use_pure_bindings(&concurrent.config.concurrency, errors);
+            collect_single_use_pure_bindings(&concurrent.config.jitter_ms, errors);
+            collect_single_use_pure_bindings(&concurrent.config.stop_on, errors);
+            collect_single_use_pure_bindings(&concurrent.config.window_ms, errors);
+            for step in &concurrent.steps {
+                match step {
+                    TypedConcurrentStep::Spawn(spawn) => collect_single_use_pure_bindings(&spawn.expr, errors),
+                    TypedConcurrentStep::SpawnEach(spawn_each) => {
+                        collect_single_use_pure_bindings(&spawn_each.list, errors);
+                        collect_single_use_pure_bindings(&spawn_each.func, errors);
+                    }
+                }
+            }
+        }
         TypedExprKind::WithMock(with_mock) => {
             collect_single_use_pure_bindings(&with_mock.body, errors);
         }
@@ -925,6 +957,23 @@ fn count_identifier_uses(expr: &TypedExpr, name: &str) -> usize {
         }
         TypedExprKind::Pipeline(pipeline) => {
             count_identifier_uses(&pipeline.left, name) + count_identifier_uses(&pipeline.right, name)
+        }
+        TypedExprKind::Concurrent(concurrent) => {
+            count_identifier_uses(&concurrent.config.concurrency, name)
+                + count_identifier_uses(&concurrent.config.jitter_ms, name)
+                + count_identifier_uses(&concurrent.config.stop_on, name)
+                + count_identifier_uses(&concurrent.config.window_ms, name)
+                + concurrent
+                    .steps
+                    .iter()
+                    .map(|step| match step {
+                        TypedConcurrentStep::Spawn(spawn) => count_identifier_uses(&spawn.expr, name),
+                        TypedConcurrentStep::SpawnEach(spawn_each) => {
+                            count_identifier_uses(&spawn_each.list, name)
+                                + count_identifier_uses(&spawn_each.func, name)
+                        }
+                    })
+                    .sum::<usize>()
         }
         TypedExprKind::WithMock(with_mock) => count_identifier_uses(&with_mock.body, name),
     }
@@ -1212,6 +1261,23 @@ fn validate_expr_record_fields(expr: &Expr, errors: &mut Vec<ValidationError>) {
             validate_expr_record_fields(&fold.func, errors);
             validate_expr_record_fields(&fold.init, errors);
         }
+        Expr::Concurrent(concurrent) => {
+            if let Err(e) = validate_record_literal_field_ordering(&concurrent.config.fields, concurrent.config.location) {
+                errors.extend(e);
+            }
+            for field in &concurrent.config.fields {
+                validate_expr_record_fields(&field.value, errors);
+            }
+            for step in &concurrent.steps {
+                match step {
+                    ConcurrentStep::Spawn(spawn) => validate_expr_record_fields(&spawn.expr, errors),
+                    ConcurrentStep::SpawnEach(spawn_each) => {
+                        validate_expr_record_fields(&spawn_each.list, errors);
+                        validate_expr_record_fields(&spawn_each.func, errors);
+                    }
+                }
+            }
+        }
         Expr::WithMock(with_mock) => {
             validate_expr_record_fields(&with_mock.target, errors);
             validate_expr_record_fields(&with_mock.replacement, errors);
@@ -1490,6 +1556,20 @@ fn validate_expr_no_shadowing(expr: &Expr, scopes: &mut Vec<ScopeFrame>, errors:
             validate_expr_no_shadowing(&fold.list, scopes, errors);
             validate_expr_no_shadowing(&fold.func, scopes, errors);
             validate_expr_no_shadowing(&fold.init, scopes, errors);
+        }
+        Expr::Concurrent(concurrent) => {
+            for field in &concurrent.config.fields {
+                validate_expr_no_shadowing(&field.value, scopes, errors);
+            }
+            for step in &concurrent.steps {
+                match step {
+                    ConcurrentStep::Spawn(spawn) => validate_expr_no_shadowing(&spawn.expr, scopes, errors),
+                    ConcurrentStep::SpawnEach(spawn_each) => {
+                        validate_expr_no_shadowing(&spawn_each.list, scopes, errors);
+                        validate_expr_no_shadowing(&spawn_each.func, scopes, errors);
+                    }
+                }
+            }
         }
         Expr::WithMock(with_mock) => {
             validate_expr_no_shadowing(&with_mock.target, scopes, errors);
@@ -2071,6 +2151,34 @@ fn validate_identifier_forms_in_expr(expr: &Expr, errors: &mut Vec<ValidationErr
             validate_identifier_forms_in_expr(&fold.func, errors);
             validate_identifier_forms_in_expr(&fold.init, errors);
         }
+        Expr::Concurrent(concurrent) => {
+            if !is_lower_camel_case(&concurrent.name) {
+                errors.push(ValidationError::IdentifierForm {
+                    found: concurrent.name.clone(),
+                    suggestion: suggestion_suffix(&concurrent.name, to_lower_camel_case(&concurrent.name)),
+                    location: concurrent.location,
+                });
+            }
+            for field in &concurrent.config.fields {
+                if !is_lower_camel_case(&field.name) {
+                    errors.push(ValidationError::RecordFieldForm {
+                        found: field.name.clone(),
+                        suggestion: suggestion_suffix(&field.name, to_lower_camel_case(&field.name)),
+                        location: field.location,
+                    });
+                }
+                validate_identifier_forms_in_expr(&field.value, errors);
+            }
+            for step in &concurrent.steps {
+                match step {
+                    ConcurrentStep::Spawn(spawn) => validate_identifier_forms_in_expr(&spawn.expr, errors),
+                    ConcurrentStep::SpawnEach(spawn_each) => {
+                        validate_identifier_forms_in_expr(&spawn_each.list, errors);
+                        validate_identifier_forms_in_expr(&spawn_each.func, errors);
+                    }
+                }
+            }
+        }
         Expr::MemberAccess(member_access) => {
             for segment in &member_access.namespace {
                 if !is_lower_camel_case(segment) {
@@ -2541,6 +2649,22 @@ fn collect_with_mock_outside_tests_in_test_expr(
         Expr::TypeAscription(type_ascription) => {
             collect_with_mock_outside_tests_in_test_expr(&type_ascription.expr, in_test_body, errors);
         }
+        Expr::Concurrent(concurrent) => {
+            for field in &concurrent.config.fields {
+                collect_with_mock_outside_tests_in_test_expr(&field.value, in_test_body, errors);
+            }
+            for step in &concurrent.steps {
+                match step {
+                    ConcurrentStep::Spawn(spawn) => {
+                        collect_with_mock_outside_tests_in_test_expr(&spawn.expr, in_test_body, errors);
+                    }
+                    ConcurrentStep::SpawnEach(spawn_each) => {
+                        collect_with_mock_outside_tests_in_test_expr(&spawn_each.list, in_test_body, errors);
+                        collect_with_mock_outside_tests_in_test_expr(&spawn_each.func, in_test_body, errors);
+                    }
+                }
+            }
+        }
         Expr::MemberAccess(_) => {}
         Expr::WithMock(with_mock) => {
             if !in_test_body {
@@ -2639,6 +2763,13 @@ fn is_recursive(expr: &Expr, function_name: &str) -> bool {
                 is_recursive(&w.replacement, function_name) ||
                 is_recursive(&w.body, function_name)
         }
+
+        Expr::Concurrent(concurrent) => concurrent.steps.iter().any(|step| match step {
+            ConcurrentStep::Spawn(spawn) => is_recursive(&spawn.expr, function_name),
+            ConcurrentStep::SpawnEach(spawn_each) => {
+                is_recursive(&spawn_each.list, function_name) || is_recursive(&spawn_each.func, function_name)
+            }
+        }),
 
         Expr::TypeAscription(t) => is_recursive(&t.expr, function_name),
     }
@@ -2889,6 +3020,13 @@ fn contains_recursive_append_result(expr: &Expr, function_name: &str) -> bool {
                 || contains_recursive_append_result(&fold.func, function_name)
                 || contains_recursive_append_result(&fold.init, function_name)
         }
+        Expr::Concurrent(concurrent) => concurrent.steps.iter().any(|step| match step {
+            ConcurrentStep::Spawn(spawn) => contains_recursive_append_result(&spawn.expr, function_name),
+            ConcurrentStep::SpawnEach(spawn_each) => {
+                contains_recursive_append_result(&spawn_each.list, function_name)
+                    || contains_recursive_append_result(&spawn_each.func, function_name)
+            }
+        }),
         Expr::WithMock(with_mock) => {
             contains_recursive_append_result(&with_mock.target, function_name)
                 || contains_recursive_append_result(&with_mock.replacement, function_name)
@@ -3134,6 +3272,17 @@ fn count_self_calls(expr: &Expr, function_name: &str) -> usize {
         Expr::Map(map) => count_self_calls(&map.list, function_name) + count_self_calls(&map.func, function_name),
         Expr::Filter(filter) => count_self_calls(&filter.list, function_name) + count_self_calls(&filter.predicate, function_name),
         Expr::Fold(fold) => count_self_calls(&fold.list, function_name) + count_self_calls(&fold.func, function_name) + count_self_calls(&fold.init, function_name),
+        Expr::Concurrent(concurrent) => concurrent
+            .steps
+            .iter()
+            .map(|step| match step {
+                ConcurrentStep::Spawn(spawn) => count_self_calls(&spawn.expr, function_name),
+                ConcurrentStep::SpawnEach(spawn_each) => {
+                    count_self_calls(&spawn_each.list, function_name)
+                        + count_self_calls(&spawn_each.func, function_name)
+                }
+            })
+            .sum(),
         Expr::WithMock(with_mock) => count_self_calls(&with_mock.target, function_name) + count_self_calls(&with_mock.replacement, function_name) + count_self_calls(&with_mock.body, function_name),
         Expr::TypeAscription(type_ascription) => count_self_calls(&type_ascription.expr, function_name),
         Expr::Literal(_) | Expr::Identifier(_) | Expr::MemberAccess(_) | Expr::Lambda(_) => 0,
@@ -3177,6 +3326,12 @@ fn expr_contains_identifier(expr: &Expr, name: &str) -> bool {
         Expr::Map(map) => expr_contains_identifier(&map.list, name) || expr_contains_identifier(&map.func, name),
         Expr::Filter(filter) => expr_contains_identifier(&filter.list, name) || expr_contains_identifier(&filter.predicate, name),
         Expr::Fold(fold) => expr_contains_identifier(&fold.list, name) || expr_contains_identifier(&fold.func, name) || expr_contains_identifier(&fold.init, name),
+        Expr::Concurrent(concurrent) => concurrent.steps.iter().any(|step| match step {
+            ConcurrentStep::Spawn(spawn) => expr_contains_identifier(&spawn.expr, name),
+            ConcurrentStep::SpawnEach(spawn_each) => {
+                expr_contains_identifier(&spawn_each.list, name) || expr_contains_identifier(&spawn_each.func, name)
+            }
+        }),
         Expr::WithMock(with_mock) => expr_contains_identifier(&with_mock.target, name) || expr_contains_identifier(&with_mock.replacement, name) || expr_contains_identifier(&with_mock.body, name),
         Expr::TypeAscription(type_ascription) => expr_contains_identifier(&type_ascription.expr, name),
         Expr::Literal(_) | Expr::Lambda(_) | Expr::MemberAccess(_) => false,
@@ -3306,6 +3461,20 @@ fn collect_filter_then_count_in_expr(expr: &Expr, errors: &mut Vec<ValidationErr
             collect_filter_then_count_in_expr(&fold.list, errors);
             collect_filter_then_count_in_expr(&fold.func, errors);
             collect_filter_then_count_in_expr(&fold.init, errors);
+        }
+        Expr::Concurrent(concurrent) => {
+            for field in &concurrent.config.fields {
+                collect_filter_then_count_in_expr(&field.value, errors);
+            }
+            for step in &concurrent.steps {
+                match step {
+                    ConcurrentStep::Spawn(spawn) => collect_filter_then_count_in_expr(&spawn.expr, errors),
+                    ConcurrentStep::SpawnEach(spawn_each) => {
+                        collect_filter_then_count_in_expr(&spawn_each.list, errors);
+                        collect_filter_then_count_in_expr(&spawn_each.func, errors);
+                    }
+                }
+            }
         }
         Expr::WithMock(with_mock) => {
             collect_filter_then_count_in_expr(&with_mock.target, errors);
@@ -3443,6 +3612,27 @@ mod tests {
 
         let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
         assert!(result.is_ok(), "{:?}", result.unwrap_err());
+    }
+
+    #[test]
+    fn test_concurrent_config_fields_must_be_alphabetical() {
+        let source = r#"λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit({windowMs:None(),concurrency:1,jitterMs:None(),stopOn:stopOn}){
+  spawn one()
+}
+
+λone()=>!IO Result[Int,String]=Ok(1)
+
+λstopOn(err:String)=>Bool=false
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().iter().any(|error| matches!(
+            error,
+            ValidationError::RecordLiteralFieldOrder { .. }
+        )));
     }
 
     #[test]

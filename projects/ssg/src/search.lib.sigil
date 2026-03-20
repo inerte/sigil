@@ -1,0 +1,17 @@
+i src::content
+
+i src::types
+
+i stdlib::json
+
+i stdlib::string
+
+λallPages(data:src::types.SiteData)=>[src::types.SitePage]=[data.home,data.articlesIntro]⧺data.articles⧺data.docs⧺data.spec⧺data.standalone
+
+λpageText(page:src::types.SitePage)=>String=stdlib::string.trim(page.bodyMarkdown)
+
+λpageValue(page:src::types.SitePage)=>stdlib::json.JsonValue=stdlib::json.JsonObject({"description"↦stdlib::json.JsonString(page.meta.description),"section"↦stdlib::json.JsonString(src::content.sectionNameLowercase(page.section)),"sourcePath"↦stdlib::json.JsonString(page.sourcePath),"text"↦stdlib::json.JsonString(pageText(page)),"title"↦stdlib::json.JsonString(page.meta.title),"url"↦stdlib::json.JsonString(src::content.canonicalRoute(page))})
+
+λpagesValue(pages:[src::types.SitePage])=>stdlib::json.JsonValue=stdlib::json.JsonArray(pages↦pageValue)
+
+λsearchIndexJson(data:src::types.SiteData)=>String=stdlib::json.stringify(pagesValue(allPages(data)))

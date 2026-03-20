@@ -6,6 +6,8 @@ i src::feed
 
 i src::frontmatter
 
+i src::search
+
 i src::sitemap
 
 i src::templates
@@ -52,6 +54,7 @@ i stdlib::time
   l _=(writePages(config,data.spec):Unit);
   l _=(writePages(config,data.standalone):Unit);
   l _=(writeFeed(config,data):Unit);
+  l _=(writeSearchIndex(config,data):Unit);
   l _=(writeSiteManifest(config,data):Unit);
   l _=(writeSitemap(config,data):Unit);
   writeNotFound(config)
@@ -185,6 +188,8 @@ i stdlib::time
     writePages(config,rest)
   }
 }
+
+λwriteSearchIndex(config:src::types.SiteBuildConfig,data:src::types.SiteData)=>!IO Unit=stdlib::file.writeText(src::search.searchIndexJson(data),stdlib::path.join(config.outputDir,"search-index.json"))
 
 λwriteSiteManifest(config:src::types.SiteBuildConfig,data:src::types.SiteData)=>!IO Unit={
   l generatedAt=(stdlib::time.formatIso(stdlib::time.now()):String);

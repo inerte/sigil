@@ -47,7 +47,7 @@ i src::types
 
 λlatestArticles(articles:[src::types.SitePage],config:src::types.SiteBuildConfig)=>String="<section class=\"listing\"><h2>Latest Articles</h2><ul class=\"page-list\">"++pageCards(config,src::content.takeFirst(5,articles))++"</ul><p><a href=\""++siteUrl(config.basePath,"/articles/")++"\" class=\"view-all\">View all articles =></a></p></section>"
 
-λnav(config:src::types.SiteBuildConfig)=>String="<header class=\"site-header\"><div class=\"site-brand\"><a href=\""++siteUrl(config.basePath,"/")++"\">"++config.siteTitle++"</a></div><nav class=\"site-nav\"><a href=\""++siteUrl(config.basePath,"/articles/")++"\">Articles</a><a href=\""++siteUrl(config.basePath,"/docs/")++"\">Docs</a><a href=\""++siteUrl(config.basePath,"/spec/")++"\">Spec</a>"++githubNav(config)++"</nav></header>"
+λnav(config:src::types.SiteBuildConfig)=>String="<header class=\"site-header\"><div class=\"site-brand\"><a href=\""++siteUrl(config.basePath,"/")++"\">"++config.siteTitle++"</a></div>"++searchSection(config)++"<nav class=\"site-nav\"><a href=\""++siteUrl(config.basePath,"/articles/")++"\">Articles</a><a href=\""++siteUrl(config.basePath,"/docs/")++"\">Docs</a><a href=\""++siteUrl(config.basePath,"/spec/")++"\">Spec</a>"++githubNav(config)++"</nav></header>"
 
 λnotFoundPage(config:src::types.SiteBuildConfig)=>String=shell("",config,sectionIntro("The requested route does not exist.","Page not found"),"<p><a href=\""++siteUrl(config.basePath,"/")++"\">Return home</a></p>","","Not Found")
 
@@ -72,6 +72,8 @@ i src::types
 
 λreferenceLists(config:src::types.SiteBuildConfig,docs:[src::types.SitePage],spec:[src::types.SitePage])=>String="<div class=\"home-grid secondary\">"++referenceList(config,"Docs",docs)++referenceList(config,"Spec",spec)++"</div>"
 
+λsearchSection(config:src::types.SiteBuildConfig)=>String="<section class=\"search-panel\" data-search-root data-search-index-url=\""++siteUrl(config.basePath,"/search-index.json")++"\"><input class=\"search-input\" data-search-input id=\"site-search\" placeholder=\"Search docs, articles, and spec pages\" type=\"search\"/><div class=\"search-dropdown\" data-search-dropdown hidden><p class=\"search-status\" data-search-status>Loading search index...</p><p class=\"search-empty\" data-search-empty hidden></p><ul class=\"page-list search-results\" data-search-results></ul></div></section>"
+
 λsectionCard(body:String,config:src::types.SiteBuildConfig,cta:String,heading:String,route:String)=>String="<section class=\"section-card\"><h2>"++heading++"</h2><p>"++body++"</p><a class=\"cta\" href=\""++siteUrl(config.basePath,route)++"\">"++cta++"</a></section>"
 
 λsectionIntro(body:String,title:String)=>String="<section class=\"section-intro\"><h1>"++title++"</h1><p>"++body++"</p></section>"
@@ -83,7 +85,7 @@ i src::types
   src::types.Spec()=>siteUrl(basePath,"/spec/")
 }
 
-λshell(aside:String,config:src::types.SiteBuildConfig,intro:String,mainHtml:String,meta:String,title:String)=>String="<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>"++title++" · "++config.siteTitle++"</title><meta name=\"description\" content=\""++config.siteDescription++"\"><link rel=\"stylesheet\" href=\""++siteUrl(config.basePath,"/assets/site.css")++"\"><link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css\"></head><body><div class=\"site-shell\">"++nav(config)++"<main class=\"site-main\">"++intro++meta++"<article class=\"prose\">"++mainHtml++"</article>"++aside++"</main>"++footer(config)++"</div><script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js\"></script><script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js\"></script><script>hljs.highlightAll();</script></body></html>"
+λshell(aside:String,config:src::types.SiteBuildConfig,intro:String,mainHtml:String,meta:String,title:String)=>String="<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><title>"++title++" · "++config.siteTitle++"</title><meta name=\"description\" content=\""++config.siteDescription++"\"><link rel=\"stylesheet\" href=\""++siteUrl(config.basePath,"/assets/site.css")++"\"><link rel=\"stylesheet\" href=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css\"></head><body><div class=\"site-shell\">"++nav(config)++"<main class=\"site-main\">"++intro++meta++"<article class=\"prose\">"++mainHtml++"</article>"++aside++"</main>"++footer(config)++"</div><script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js\"></script><script src=\"https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/bash.min.js\"></script><script src=\""++siteUrl(config.basePath,"/assets/search.js")++"\"></script><script>hljs.highlightAll();</script></body></html>"
 
 λsiteUrl(basePath:String,route:String)=>String=src::content.basePathPrefix(basePath,route)
 

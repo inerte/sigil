@@ -18,6 +18,7 @@ language/compiler/target/debug/sigil run projects/ssg/src/main.sigil
 This produces HTML pages plus:
 
 - `website/.local/site/feed.xml` for article feed consumers
+- `website/.local/site/search-index.json` for client-side search consumers
 - `website/.local/site/site.json` with build metadata
 - `website/.local/site/sitemap.xml` for crawlers
 

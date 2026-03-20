@@ -48,7 +48,7 @@ i stdlib::url
 
 λblankPage(markdown:String,meta:src::types.PageMeta,outputDir:String,section:src::types.Section,sourcePath:String)=>src::types.SitePage={bodyHtml:"",bodyMarkdown:markdown,meta:meta,outputDir:outputDir,section:section,sourcePath:sourcePath}
 
-λbuildAliasRoutes(data:src::types.SiteData)=>[src::types.AliasRoute]=aliasRoutesForPage(data.home)⧺aliasRoutesForPage(data.articlesIntro)⧺pagesAliasRoutes(data.articles)⧺pagesAliasRoutes(data.docs)⧺pagesAliasRoutes(data.spec)
+λbuildAliasRoutes(data:src::types.SiteData)=>[src::types.AliasRoute]=aliasRoutesForPage(data.home)⧺aliasRoutesForPage(data.articlesIntro)⧺pagesAliasRoutes(data.articles)⧺pagesAliasRoutes(data.docs)⧺pagesAliasRoutes(data.spec)⧺pagesAliasRoutes(data.standalone)
 
 λcanonicalRoute(page:src::types.SitePage)=>String match page.outputDir{
   ""=>"/"|

@@ -61,7 +61,12 @@ test "http headers client reaches roundtrip server" =>!IO  {
 }
 
 test "http missing client returns 404" =>!IO  {
-  stdlib::string.indexOf(runClientOutput("src/missingClient.sigil"),"404")≥0=true
+  stdlib::string.indexOf(runClientOutput("src/missingClient.sigil"),"404:<h1>404 Not Found</h1>")≥0=true
+}
+
+test "http routes client returns canonical route summary" =>!IO  {
+  l output=(runClientOutput("src/routesClient.sigil"):String);
+  stdlib::string.indexOf(output,"200:/echo")≥0=true and stdlib::string.indexOf(output,"/routes")≥0=true
 }
 
 test "http raw endpoint compile is forbidden" =>!IO  {

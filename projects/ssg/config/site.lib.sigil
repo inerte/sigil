@@ -13,3 +13,10 @@ e process
   true=>(process.env.sigilSiteRepoUrl:String)|
   false=>""
 }
+
+λsiteUrl()=>String=siteUrlFromProperty(process.env.hasOwnProperty("sigilSiteUrl"))
+
+λsiteUrlFromProperty(hasValue:Bool)=>String match hasValue{
+  true=>(process.env.sigilSiteUrl:String)|
+  false=>"https://inerte.github.io/sigil"
+}

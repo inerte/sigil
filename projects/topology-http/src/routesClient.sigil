@@ -6,7 +6,7 @@ i stdlib::httpClient
 
 i stdlib::string
 
-λmain()=>!IO String match stdlib::httpClient.get(src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/missing"){
+λmain()=>!IO String match stdlib::httpClient.get(src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/routes"){
   Ok(response)=>stdlib::string.intToString(response.status)++":"++response.body|
   Err(error)=>"ERR:"++error.message
 }

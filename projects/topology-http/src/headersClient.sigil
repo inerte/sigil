@@ -1,6 +1,8 @@
-i core::map
+i src::httpHelpers
 
 i src::topology
+
+i core::map
 
 i stdlib::httpClient
 

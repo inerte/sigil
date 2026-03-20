@@ -1,0 +1,44 @@
+i src::content
+
+i src::types
+
+i stdlib::string
+
+λabsoluteFeedUrl(config:src::types.SiteBuildConfig)=>String=trimTrailingSlash(config.siteUrl)++"/feed.xml"
+
+λabsolutePageUrl(config:src::types.SiteBuildConfig,page:src::types.SitePage)=>String=trimTrailingSlash(config.siteUrl)++src::content.canonicalRoute(page)
+
+λarticleAuthor(page:src::types.SitePage)=>String match #page.meta.author>0{
+  true=>"<author><name>"++escapeXml(page.meta.author)++"</name></author>"|
+  false=>""
+}
+
+λarticleEntries(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>String=stdlib::string.join("",pages↦(λ(page:src::types.SitePage)=>String=articleEntry(config,page)))
+
+λarticleEntry(config:src::types.SiteBuildConfig,page:src::types.SitePage)=>String="<entry><id>"++escapeXml(absolutePageUrl(config,page))++"</id><title>"++escapeXml(page.meta.title)++"</title><link href=\""++escapeXml(absolutePageUrl(config,page))++"\"/>"++articleUpdated(page)++articleSummary(page)++articleAuthor(page)++"</entry>"
+
+λarticleSummary(page:src::types.SitePage)=>String match #page.meta.description>0{
+  true=>"<summary>"++escapeXml(page.meta.description)++"</summary>"|
+  false=>""
+}
+
+λarticleUpdated(page:src::types.SitePage)=>String="<updated>"++isoDate(page.meta.date)++"</updated>"
+
+λatomFeedXml(config:src::types.SiteBuildConfig,data:src::types.SiteData)=>String="<?xml version=\"1.0\" encoding=\"UTF-8\"?>"++"<feed xmlns=\"http://www.w3.org/2005/Atom\"><id>"++escapeXml(trimTrailingSlash(config.siteUrl)++"/")++"</id><title>"++escapeXml(config.siteTitle)++"</title><subtitle>"++escapeXml(config.siteDescription)++"</subtitle><link href=\""++escapeXml(trimTrailingSlash(config.siteUrl)++"/")++"\"/><link href=\""++escapeXml(absoluteFeedUrl(config))++"\" rel=\"self\"/>"++feedUpdated(data.articles)++articleEntries(config,data.articles)++"</feed>"
+
+λescapeXml(text:String)=>String=stdlib::string.replaceAll(">","&gt;",stdlib::string.replaceAll("<","&lt;",stdlib::string.replaceAll("\"","&quot;",stdlib::string.replaceAll("'","&apos;",stdlib::string.replaceAll("&","&amp;",text)))))
+
+λfeedUpdated(articles:[src::types.SitePage])=>String match articles{
+  []=>"<updated>1970-01-01T00:00:00Z</updated>"|
+  [page,.rest]=>"<updated>"++isoDate(page.meta.date)++"</updated>"
+}
+
+λisoDate(date:String)=>String match #date>0{
+  true=>date++"T00:00:00Z"|
+  false=>"1970-01-01T00:00:00Z"
+}
+
+λtrimTrailingSlash(path:String)=>String match #path>1 and stdlib::string.endsWith(path,"/"){
+  true=>trimTrailingSlash(stdlib::string.substring(#path-1,path,0))|
+  false=>path
+}

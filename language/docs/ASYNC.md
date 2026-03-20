@@ -2,35 +2,32 @@
 
 ## Overview
 
-Sigil keeps one promise-shaped runtime model, but it no longer widens ordinary
-expression evaluation into broad implicit overlap.
+Sigil uses one async-capable runtime model and one explicit concurrency surface.
 
-The current rule is:
+The rule is:
 
 - ordinary Sigil expressions compose through one async-capable runtime model
 - explicit concurrency is introduced only through named concurrent regions
 
 That gives Sigil one function model without forcing users to write `await`,
-while also making batching, rate limits, and stop behavior explicit.
+while keeping batching, rate limits, and stop behavior visible in the source.
 
 ## Ordinary Evaluation
 
-Sigil functions still compile to JavaScript functions that return promise-shaped
-values.
+Sigil functions compile to JavaScript functions that return promise-shaped
+values. Ordinary expression structure is not a concurrency surface.
 
-What changed is the widening model:
-
-- sibling expressions are no longer treated as an implicit fanout boundary
-- list operators no longer lower through broad `Promise.all`
+- sibling expressions are not an implicit fanout boundary
+- list operators do not lower through broad `Promise.all`
 - pure `↦` and `⊳` remain canonical list transforms
 - `⊕` remains ordered reduction
 
-So Sigil still hides promise plumbing, but it does not silently turn ordinary
-expression structure into unbounded concurrent work.
+So Sigil hides promise plumbing, but it does not treat ordinary expression
+structure as permission to widen work.
 
-## Named Concurrent Regions
+<h2 id="named-concurrent-regions">Named Concurrent Regions</h2>
 
-Explicit concurrency uses one surface:
+Sigil uses one concurrency surface:
 
 ```sigil module
 λisTransportFailure(err:String)=>Bool=false
@@ -57,7 +54,7 @@ Region rules:
 
 ## Region Policy
 
-Current config surface:
+The region config surface is:
 
 - `concurrency:Int`
 - `jitterMs:Option[{max:Int,min:Int}]`
@@ -89,8 +86,8 @@ Ordering is stable:
 - `spawn` preserves spawn order
 - `spawnEach` preserves input order
 
-That means a concurrent batch still has one deterministic result shape, even
-when work resolves at different times.
+That means a concurrent batch has one deterministic result shape even when work
+resolves at different times.
 
 ## Stop Behavior
 
@@ -122,18 +119,18 @@ Real batch workflows need more than width:
 
 Those are properties of an execution region, not properties of `↦` itself.
 
-So Sigil keeps:
+So Sigil has:
 
 - one canonical list-processing surface for value transforms
 - one canonical concurrent-region surface for explicit widening
 
 ## What This Does Not Mean
 
-Sigil still does not promise:
+Sigil does not promise:
 
 - automatic CPU parallelism
 - general cancellation of arbitrary started tasks
 - implicit concurrency everywhere a collection is traversed
 
-The language keeps one async-capable runtime model, but explicit widening now
+The language keeps one async-capable runtime model, and explicit widening
 belongs to named concurrent regions.

@@ -1,5 +1,7 @@
 # Topology
 
+<h2 id="topology-is-runtime-truth">Topology Is Runtime Truth</h2>
+
 Sigil topology is the canonical, compiler-visible declaration of a project's
 external runtime dependencies.
 

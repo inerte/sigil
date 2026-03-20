@@ -10,7 +10,7 @@ i stdlib::path
 
 i stdlib::string
 
-λbaseConfig(outputDir:String)=>src::types.SiteBuildConfig={basePath:"/",outputDir:outputDir,repoUrl:"https://github.com/inerte/sigil",siteDescription:"Machine-first programming language designed for canonical code generation.",siteTitle:"Sigil"}
+λbaseConfig(outputDir:String)=>src::types.SiteBuildConfig={basePath:"/",outputDir:outputDir,repoUrl:"https://github.com/inerte/sigil",siteDescription:"Machine-first programming language designed for canonical code generation.",siteTitle:"Sigil",siteUrl:"https://inerte.github.io/sigil"}
 
 λcontains(haystack:String,needle:String)=>Bool=stdlib::string.indexOf(haystack,needle)≥0
 
@@ -62,4 +62,20 @@ test "build site writes manifest with repo url and counts" =>!IO  {
   l _=(src::build.buildSite(baseConfig(outputDir)):Unit);
   l manifest=(stdlib::file.readText(stdlib::path.join(outputDir,"site.json")):String);
   contains(manifest,"\"repoUrl\":\"https://github.com/inerte/sigil\"") and contains(manifest,"\"articlesCount\":\"") and contains(manifest,"\"docsCount\":\"") and contains(manifest,"\"specCount\":\"")
+}
+
+test "build site writes feed with article metadata" =>!IO  {
+  l outputDir=("/tmp/sigil-ssg-e2e-feed":String);
+  l _=(stdlib::file.removeTree(outputDir):Unit);
+  l _=(src::build.buildSite(baseConfig(outputDir)):Unit);
+  l feed=(stdlib::file.readText(stdlib::path.join(outputDir,"feed.xml")):String);
+  contains(feed,"<feed xmlns=\"http://www.w3.org/2005/Atom\">") and contains(feed,"https://inerte.github.io/sigil/feed.xml") and contains(feed,"https://inerte.github.io/sigil/articles/named-concurrent-regions/") and contains(feed,"<title>Named Concurrent Regions in Sigil</title>")
+}
+
+test "build site writes sitemap with canonical urls" =>!IO  {
+  l outputDir=("/tmp/sigil-ssg-e2e-sitemap":String);
+  l _=(stdlib::file.removeTree(outputDir):Unit);
+  l _=(src::build.buildSite(baseConfig(outputDir)):Unit);
+  l sitemap=(stdlib::file.readText(stdlib::path.join(outputDir,"sitemap.xml")):String);
+  contains(sitemap,"https://inerte.github.io/sigil/") and contains(sitemap,"https://inerte.github.io/sigil/articles/") and contains(sitemap,"https://inerte.github.io/sigil/about-site/") and contains(sitemap,"https://inerte.github.io/sigil/docs/stdlib/")
 }

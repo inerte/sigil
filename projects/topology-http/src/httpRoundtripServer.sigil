@@ -1,10 +1,13 @@
+i src::httpHelpers
+
 i stdlib::httpServer
 
-λhandleRequest(req:stdlib::httpServer.Request)=>!IO stdlib::httpServer.Response match req.path{
-  "/echo"=>{body:req.body,headers:{"content-type"↦"text/plain; charset=utf-8"},status:201}|
-  "/headers"=>{body:"ok",headers:{"content-type"↦"text/plain; charset=utf-8","x-request-id"↦"abc-123"},status:202}|
+λhandleRequest(req:stdlib::httpServer.Request)=>!IO stdlib::httpServer.Response match src::httpHelpers.routePath(req.path){
+  "/echo"=>{body:req.body,headers:src::httpHelpers.serverHeaders(({↦}:{String↦String})),status:201}|
+  "/headers"=>{body:"ok",headers:src::httpHelpers.serverHeaders({"x-request-id"↦"abc-123"}),status:202}|
   "/json"=>stdlib::httpServer.json("{\"ok\":true}",200)|
   "/health"=>stdlib::httpServer.ok("healthy")|
+  "/routes"=>{body:src::httpHelpers.routeSummary(src::httpHelpers.allRoutes()),headers:src::httpHelpers.serverHeaders(({↦}:{String↦String})),status:200}|
   _=>stdlib::httpServer.notFound()
 }
 

@@ -2,7 +2,11 @@ e fs::promises
 
 i src::content
 
+i src::feed
+
 i src::frontmatter
+
+i src::sitemap
 
 i src::templates
 
@@ -37,18 +41,19 @@ i stdlib::time
 λbuildSite(config:src::types.SiteBuildConfig)=>!IO Unit={
   l _=(prepareOutputDir(config.outputDir):Unit);
   l rawData=(loadSiteData(config):src::types.SiteData);
-  l aliasRoutes=(src::content.buildAliasRoutes(rawData):[src::types.AliasRoute]);
-  l data=(renderSiteData(aliasRoutes,config.basePath,rawData):src::types.SiteData);
+  l data=(renderSiteData((src::content.buildAliasRoutes(rawData):[src::types.AliasRoute]),config.basePath,rawData):src::types.SiteData);
   l _=(copyStaticAssets(assetOutputDir(config)):Unit);
   l _=(writePage(config,src::templates.homePage(data.articles,config,data.docs,data.home,data.spec),data.home):Unit);
-  l _=(writeStandalonePages(aliasRoutes,config):Unit);
   l _=(writePage(config,src::templates.articlesIndex(config,data.articlesIntro.bodyHtml,data.articles),data.articlesIntro):Unit);
   l _=(writeArticlePages(config,data.articles):Unit);
   l _=(writeIndexHtml(stdlib::path.join(config.outputDir,"docs"),src::templates.docsIndex(config,data.docs)):Unit);
   l _=(writePages(config,data.docs):Unit);
   l _=(writeIndexHtml(stdlib::path.join(config.outputDir,"spec"),src::templates.specIndex(config,data.spec)):Unit);
   l _=(writePages(config,data.spec):Unit);
+  l _=(writePages(config,data.standalone):Unit);
+  l _=(writeFeed(config,data):Unit);
   l _=(writeSiteManifest(config,data):Unit);
+  l _=(writeSitemap(config,data):Unit);
   writeNotFound(config)
 }
 
@@ -99,18 +104,24 @@ i stdlib::time
 }
 
 λloadSiteData(config:src::types.SiteBuildConfig)=>!IO src::types.SiteData={
+  l aboutSite=(loadStandalonePages(config):[src::types.SitePage]);
   l home=(loadPage(config,src::types.Home(),"website/README.md"):src::types.SitePage);
   l articlesIntro=(loadPage(config,src::types.Article(),"website/articles/README.md"):src::types.SitePage);
   l articles=(loadArticles(config):[src::types.SitePage]);
   l docs=(loadDocs(config):[src::types.SitePage]);
   l spec=(loadSpec(config):[src::types.SitePage]);
-  {articles:articles,articlesIntro:{bodyHtml:articlesIntro.bodyHtml,bodyMarkdown:articlesIntro.bodyMarkdown,meta:articlesIntro.meta,outputDir:"articles",section:articlesIntro.section,sourcePath:articlesIntro.sourcePath},docs:docs,home:{bodyHtml:home.bodyHtml,bodyMarkdown:home.bodyMarkdown,meta:home.meta,outputDir:"",section:home.section,sourcePath:home.sourcePath},spec:spec}
+  {articles:articles,articlesIntro:{bodyHtml:articlesIntro.bodyHtml,bodyMarkdown:articlesIntro.bodyMarkdown,meta:articlesIntro.meta,outputDir:"articles",section:articlesIntro.section,sourcePath:articlesIntro.sourcePath},docs:docs,home:{bodyHtml:home.bodyHtml,bodyMarkdown:home.bodyMarkdown,meta:home.meta,outputDir:"",section:home.section,sourcePath:home.sourcePath},spec:spec,standalone:aboutSite}
 }
 
 λloadSpec(config:src::types.SiteBuildConfig)=>!IO [src::types.SitePage]={
   l files=(filterMarkdownFiles(stdlib::file.listDir("language/spec")):[String]);
   l pages=(loadPagesFromFiles(config,"language/spec",files,src::types.Spec()):[src::types.SitePage]);
   src::content.pagesSortedByTitle(pages)
+}
+
+λloadStandalonePages(config:src::types.SiteBuildConfig)=>!IO [src::types.SitePage]={
+  l page=(loadPage(config,src::types.Home(),"website/about-site.md"):src::types.SitePage);
+  [{bodyHtml:page.bodyHtml,bodyMarkdown:page.bodyMarkdown,meta:page.meta,outputDir:"about-site",section:page.section,sourcePath:page.sourcePath}]
 }
 
 λoutputDirPath(config:src::types.SiteBuildConfig,page:src::types.SitePage)=>String match page.outputDir{
@@ -140,7 +151,7 @@ i stdlib::time
   [page,.rest]=>[src::content.renderPage(aliasRoutes,basePath,page)]⧺renderPages(aliasRoutes,basePath,rest)
 }
 
-λrenderSiteData(aliasRoutes:[src::types.AliasRoute],basePath:String,data:src::types.SiteData)=>src::types.SiteData={articles:renderPages(aliasRoutes,basePath,data.articles),articlesIntro:src::content.renderPage(aliasRoutes,basePath,data.articlesIntro),docs:renderPages(aliasRoutes,basePath,data.docs),home:src::content.renderPage(aliasRoutes,basePath,data.home),spec:renderPages(aliasRoutes,basePath,data.spec)}
+λrenderSiteData(aliasRoutes:[src::types.AliasRoute],basePath:String,data:src::types.SiteData)=>src::types.SiteData={articles:renderPages(aliasRoutes,basePath,data.articles),articlesIntro:src::content.renderPage(aliasRoutes,basePath,data.articlesIntro),docs:renderPages(aliasRoutes,basePath,data.docs),home:src::content.renderPage(aliasRoutes,basePath,data.home),spec:renderPages(aliasRoutes,basePath,data.spec),standalone:renderPages(aliasRoutes,basePath,data.standalone)}
 
 λwriteArticlePages(config:src::types.SiteBuildConfig,pages:[src::types.SitePage])=>!IO Unit=writeArticlePagesInner(config,pages,None())
 
@@ -152,6 +163,8 @@ i stdlib::time
   }|
   [page]=>writePage(config,src::templates.articlePage(config,articleNav(config,"",articlePreviousCard(config,previousPage)),page),page)
 }
+
+λwriteFeed(config:src::types.SiteBuildConfig,data:src::types.SiteData)=>!IO Unit=stdlib::file.writeText(src::feed.atomFeedXml(config,data),stdlib::path.join(config.outputDir,"feed.xml"))
 
 λwriteIndexHtml(dir:String,html:String)=>!IO Unit={
   l _=(stdlib::file.makeDirs(dir):Unit);
@@ -178,7 +191,4 @@ i stdlib::time
   stdlib::file.writeText(stdlib::json.stringify(buildSiteManifestJson(data,generatedAt,config.repoUrl)),stdlib::path.join(config.outputDir,"site.json"))
 }
 
-λwriteStandalonePages(aliasRoutes:[src::types.AliasRoute],config:src::types.SiteBuildConfig)=>!IO Unit={
-  l aboutPage=(loadPage(config,src::types.Home(),"website/about-site.md"):src::types.SitePage);
-  writePage(config,src::templates.articlePage(config,"",src::content.renderPage(aliasRoutes,config.basePath,{bodyHtml:aboutPage.bodyHtml,bodyMarkdown:aboutPage.bodyMarkdown,meta:aboutPage.meta,outputDir:"about-site",section:aboutPage.section,sourcePath:aboutPage.sourcePath})),src::content.renderPage(aliasRoutes,config.basePath,{bodyHtml:aboutPage.bodyHtml,bodyMarkdown:aboutPage.bodyMarkdown,meta:aboutPage.meta,outputDir:"about-site",section:aboutPage.section,sourcePath:aboutPage.sourcePath}))
-}
+λwriteSitemap(config:src::types.SiteBuildConfig,data:src::types.SiteData)=>!IO Unit=stdlib::file.writeText(src::sitemap.sitemapXml(config,data),stdlib::path.join(config.outputDir,"sitemap.xml"))

@@ -4,8 +4,8 @@ t PageMeta={author:String,category:String,date:String,description:String,slug:St
 
 t Section=Article()|Doc()|Home()|Spec()
 
-t SiteBuildConfig={basePath:String,outputDir:String,repoUrl:String,siteDescription:String,siteTitle:String}
+t SiteBuildConfig={basePath:String,outputDir:String,repoUrl:String,siteDescription:String,siteTitle:String,siteUrl:String}
 
-t SiteData={articles:[SitePage],articlesIntro:SitePage,docs:[SitePage],home:SitePage,spec:[SitePage]}
+t SiteData={articles:[SitePage],articlesIntro:SitePage,docs:[SitePage],home:SitePage,spec:[SitePage],standalone:[SitePage]}
 
 t SitePage={bodyHtml:String,bodyMarkdown:String,meta:PageMeta,outputDir:String,section:Section,sourcePath:String}

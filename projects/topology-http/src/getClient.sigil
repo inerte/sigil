@@ -1,3 +1,5 @@
+i src::httpHelpers
+
 i src::topology
 
 i stdlib::httpClient

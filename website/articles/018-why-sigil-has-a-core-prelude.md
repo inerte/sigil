@@ -31,6 +31,14 @@ This keeps the distinction narrow:
 - foundational language vocabulary goes in core
 - operational helpers stay in the standard library
 
+Current examples of implicit core vocabulary include:
+
+- `ConcurrentOutcome[T,E]`
+- `Option[T]`
+- `Result[T,E]`
+- `Aborted`, `Failure`, `Success`
+- `Some`, `None`, `Ok`, `Err`
+
 ## Why This Matters
 
 The goal is not to maximize or minimize prefixes. The goal is to keep ownership

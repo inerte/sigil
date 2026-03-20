@@ -68,6 +68,7 @@ Effect = "!" , UpperIdentifier ;
 Expr = LetExpr
      | MatchExpr
      | LambdaExpr
+     | ConcurrentExpr
      | WithMockExpr
      | BinaryExpr ;
 
@@ -75,6 +76,16 @@ LetExpr = "l" , Pattern , "=" , Expr , ";" , Expr ;
 
 LambdaExpr = "λ" , "(" , [ ParamList ] , ")" , "=>" , [ Effects ] , Type , LambdaBody ;
 LambdaBody = "=" , Expr | MatchExpr ;
+
+ConcurrentExpr = "concurrent" , Identifier , "(" , ConcurrentConfig , ")" , "{" , ConcurrentStep , { ConcurrentStep } , "}" ;
+ConcurrentConfig = "{" , ConcurrentConfigField , { "," , ConcurrentConfigField } , "}" ;
+ConcurrentConfigField = "concurrency" , ":" , Expr
+                      | "jitterMs" , ":" , Expr
+                      | "stopOn" , ":" , Expr
+                      | "windowMs" , ":" , Expr ;
+ConcurrentStep = SpawnStep | SpawnEachStep ;
+SpawnStep = "spawn" , Expr ;
+SpawnEachStep = "spawnEach" , Expr , Expr ;
 
 WithMockExpr = "withMock" , "(" , Expr , "," , Expr , ")" , BlockExpr ;
 

@@ -110,15 +110,16 @@ Current constructor and list invariants:
 - if a canonical helper exists in `stdlib`, prefer it over project-local reimplementation
 - in first-party Sigil code outside `language/stdlib/`, do not locally redefine canonical stdlib helpers; use qualified calls like `stdlib::list.sum` and `stdlib::numeric.max`
 - for safe integer list lookup/end access, prefer `stdlib::list.nth` and `stdlib::list.last`
-- Sigil is concurrent by default; do not describe it as "await every call"
-- effectful operations start in source order, even when their resolution overlaps
+- Sigil keeps one promise-shaped runtime model, but broad implicit fanout is no longer the concurrency story
+- explicit widening uses named `concurrent` regions with alphabetical config fields: `concurrency`, `jitterMs`, `stopOn`, `windowMs`
+- ordinary `↦` and `⊳` are pure list transforms, not concurrency controls
 - `↦` and `⊳` require pure callbacks; `⊕` is the ordered reduction form
 - `!Async` is not a valid effect annotation
 - Sigil supports explicit parametric polymorphism on top-level declarations
 - do not describe Sigil as using Hindley-Milner let-polymorphism
 - prefer canonical `Option[T]` / `Result[T,E]` over monomorphic wrappers like `IntOption`
 - generic lambdas and call-site type arguments like `f[Int](x)` are not part of Sigil's surface
-- `Option`, `Result`, `Some`, `None`, `Ok`, and `Err` are implicit core vocabulary from `core::prelude`
+- `ConcurrentOutcome`, `Option`, `Result`, `Aborted`, `Failure`, `Success`, `Some`, `None`, `Ok`, and `Err` are implicit core vocabulary from `core::prelude`
 - `Map` is a core collection concept with type syntax `{K↦V}` and literal syntax `{key↦value,...}` / `{↦}`
 - helper operations for foundational core types stay namespaced under `core::...`
 - operational helpers live in canonical stdlib modules; use `language/docs/STDLIB.md` and `language/spec/stdlib-spec.md` as the source of truth for the current surface

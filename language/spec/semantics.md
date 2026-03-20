@@ -1,35 +1,121 @@
 # Sigil Operational Semantics
 
 Version: 1.0.0
-Last Updated: 2026-03-14
+Last Updated: 2026-03-19
 
 ## Overview
 
-This document records the current operational model described by the language
-docs and enforced surface, without specifying unimplemented ownership or borrow
-semantics.
+This document records the current operational model enforced by the implemented
+Sigil surface.
 
 Sigil is:
 
 - immutable by default
 - explicit about effects
-- concurrent by default at the runtime model level
+- promise-shaped at runtime
+- explicit about concurrency widening
 
 ## Evaluation Strategy
 
-### Demand-Driven Execution
+### Ordinary Evaluation
 
-Sigil may start independent work early and join results when a strict consumer
-needs the value.
-
-### Effect Initiation Order
-
-Effectful sibling expressions are initiated in source order.
+Ordinary Sigil expressions do not introduce broad implicit sibling fanout.
 
 That means:
 
-- pure sibling work may overlap
-- effectful sibling work starts left-to-right
+- expression evaluation stays promise-shaped
+- sibling subexpressions are not treated as a hidden unbounded concurrency
+  boundary
+- strict consumers still demand concrete values when needed
+
+Examples of strict consumers include:
+
+- arithmetic and comparison operators
+- `if` conditions
+- `match` scrutinees and guards
+- field access and indexing
+
+### Explicit Concurrent Regions
+
+Sigil widens work only through named concurrent regions:
+
+```text
+concurrent regionName(config){
+  spawn expr
+  spawnEach list fn
+}
+```
+
+Current region invariants:
+
+- the region is named
+- the config is an exact record literal
+- record fields are canonical alphabetical order
+- the body is spawn-only
+
+Current config surface:
+
+- `concurrency:Int`
+- `jitterMs:Option[{max:Int,min:Int}]`
+- `stopOn: λ(E)=>Bool`
+- `windowMs:Option[Int]`
+
+Current child surface:
+
+- `spawn expr` where `expr : !IO Result[T,E]`
+- `spawnEach list fn` where `fn : A=>!IO Result[T,E]`
+
+Region result:
+
+- `!IO [ConcurrentOutcome[T,E]]`
+
+with:
+
+```text
+ConcurrentOutcome[T,E]=Aborted()|Failure(E)|Success(T)
+```
+
+### Ordering
+
+Region outcomes are stable:
+
+- `spawn` preserves lexical spawn order
+- `spawnEach` preserves input order
+
+This is independent of completion order.
+
+### Stop Behavior
+
+Each child returns `Result[T,E]`.
+
+The region maps child completion into outcomes:
+
+- `Ok(value)` => `Success(value)`
+- `Err(error)` => `Failure(error)`
+- unfinished or stopped work => `Aborted()`
+
+When `stopOn(error)` returns `true`:
+
+- new work is no longer scheduled
+- unfinished work becomes `Aborted()` on a best-effort basis
+
+The current implementation does not claim universal force-cancellation for
+already-started backend operations.
+
+### Window and Jitter
+
+`windowMs` means:
+
+- no more than `concurrency` child starts in any `windowMs` window
+
+`jitterMs` means:
+
+- each child start may be delayed by a randomized value inside the configured
+  range
+
+These controls apply only inside the named region that declares them.
+
+Nested regions are allowed and use their own policies independently.
 
 ## Values
 
@@ -50,7 +136,8 @@ Current operationally relevant expression forms include:
 - `match`
 - lambdas
 - record access
-- list operations
+- canonical list operators
+- named concurrent regions
 
 ## Local Bindings
 
@@ -74,27 +161,19 @@ Canonical note:
 
 `match` evaluates the scrutinee, then selects the first matching arm.
 
-Examples:
-
-```sigil module
-λclassify(n:Int)=>String match n{
-  0=>"zero"|
-  5=>"five"|
-  _=>"other"
-}
-```
-
 ## Lists
 
 List literals preserve nesting exactly as written.
 
-Examples:
-
-```text
-[[1,2]] ≠ [1,2]
-```
-
 Concatenation is expressed with `⧺`, not by implicit flattening.
+
+Pure list operators remain canonical value transforms:
+
+- `↦`
+- `⊳`
+- `⊕`
+
+They are not the concurrency surface.
 
 ## Records
 
@@ -110,18 +189,6 @@ Pure code has no observable effects.
 
 Effectful functions and tests declare effects explicitly in the surface syntax.
 
-Examples:
-
-```sigil program language/test-fixtures/tests/semanticsEffects.sigil
-e console
-
-λmain()=>Unit=()
-
-test "writes log" =>!IO  {
-  console.log("x")=()
-}
-```
-
 ## What This Spec Does Not Claim
 
 This document intentionally does not specify:
@@ -131,6 +198,8 @@ This document intentionally does not specify:
 - borrowing with `&` or `&mut`
 - borrow checker constraints
 - lifetimes
+- automatic CPU parallelism
+- general cancellation of arbitrary started backend effects
 
 Those semantics are not part of the current implemented Sigil surface.
 

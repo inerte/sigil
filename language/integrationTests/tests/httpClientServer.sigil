@@ -26,7 +26,7 @@ i src::support
 }
 
 λrunClientOutput(target:String)=>!IO String={
-  l server=(stdlib::process.spawn(httpCommand(["run","src/httpRoundtripServer.sigil","--env","test"])):stdlib::process.RunningProcess);
+  l server=(stdlib::process.start(httpCommand(["run","src/httpRoundtripServer.sigil","--env","test"])):stdlib::process.RunningProcess);
   l ready=(src::support.retryRunStdoutContains(50,httpCommand(["run","src/getClient.sigil","--env","test"]),200,"200:healthy"):stdlib::process.ProcessResult);
   l result=match src::support.runStdoutContains("200:healthy",ready){
     true=>(stdlib::process.run(httpCommand(["run",target,"--env","test"])):stdlib::process.ProcessResult)|

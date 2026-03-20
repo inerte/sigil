@@ -2,5 +2,5 @@
 
 This static site generator demonstrates:
 - Reading directories
-- Reading multiple files in parallel
+- Reading multiple files under explicit concurrency control
 - Processing content with map/fold operations

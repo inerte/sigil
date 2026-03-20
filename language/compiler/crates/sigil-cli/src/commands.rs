@@ -1182,7 +1182,10 @@ fn build_imported_namespaces(
 }
 
 fn is_core_prelude_name(name: &str) -> bool {
-    matches!(name, "Option" | "Result" | "Some" | "None" | "Ok" | "Err")
+    matches!(
+        name,
+        "ConcurrentOutcome" | "Option" | "Result" | "Aborted" | "Failure" | "Success" | "Some" | "None" | "Ok" | "Err"
+    )
 }
 
 fn qualify_inference_type_in_context(typ: &InferenceType, module_id: &str) -> InferenceType {

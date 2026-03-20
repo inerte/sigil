@@ -120,6 +120,13 @@ fn has_direct_branching_shape(expr: &Expr, function_name: &str) -> bool {
                 || has_direct_branching_shape(&fold.init, function_name)
                 || has_direct_branching_shape(&fold.func, function_name)
         }
+        Expr::Concurrent(concurrent) => concurrent.steps.iter().any(|step| match step {
+            ConcurrentStep::Spawn(spawn) => has_direct_branching_shape(&spawn.expr, function_name),
+            ConcurrentStep::SpawnEach(spawn_each) => {
+                has_direct_branching_shape(&spawn_each.list, function_name)
+                    || has_direct_branching_shape(&spawn_each.func, function_name)
+            }
+        }),
         Expr::WithMock(with_mock) => {
             has_direct_branching_shape(&with_mock.target, function_name)
                 || has_direct_branching_shape(&with_mock.replacement, function_name)
@@ -217,6 +224,15 @@ fn contains_nested_branching_shape(expr: &Expr, function_name: &str) -> bool {
                 || contains_nested_branching_shape(&fold.init, function_name)
                 || contains_nested_branching_shape(&fold.func, function_name)
         }
+        Expr::Concurrent(concurrent) => concurrent.steps.iter().any(|step| match step {
+            ConcurrentStep::Spawn(spawn) => {
+                contains_nested_branching_shape(&spawn.expr, function_name)
+            }
+            ConcurrentStep::SpawnEach(spawn_each) => {
+                contains_nested_branching_shape(&spawn_each.list, function_name)
+                    || contains_nested_branching_shape(&spawn_each.func, function_name)
+            }
+        }),
         Expr::Lambda(lambda) => contains_nested_branching_shape(&lambda.body, function_name),
         Expr::WithMock(with_mock) => {
             contains_nested_branching_shape(&with_mock.target, function_name)
@@ -322,8 +338,7 @@ fn contains_forbidden_branching_group(calls: &[ReducedCall<'_>]) -> bool {
 
     let first = &calls[0];
     calls.iter().skip(1).all(|call| {
-        call.reduced_param == first.reduced_param
-            && call.non_reduced_args == first.non_reduced_args
+        call.reduced_param == first.reduced_param && call.non_reduced_args == first.non_reduced_args
     })
 }
 

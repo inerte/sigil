@@ -1247,6 +1247,11 @@ impl Parser {
             return self.match_expression();
         }
 
+        // Concurrent expression: concurrent name({config}){spawn ...}
+        if self.match_token(TokenType::Concurrent) {
+            return self.concurrent_expression();
+        }
+
         // Let expression: l x = 5 { body }
         if self.match_token(TokenType::LET) {
             return self.let_expression();
@@ -1410,6 +1415,72 @@ impl Parser {
             pattern,
             value,
             body,
+            location: self.make_location(start.location.start, end.location.end),
+        })))
+    }
+
+    fn concurrent_expression(&mut self) -> Result<Expr, ParseError> {
+        let start = self.previous();
+        let name = self
+            .consume(TokenType::IDENTIFIER, "Expected concurrent region name")?
+            .value
+            .clone();
+        self.consume(
+            TokenType::LPAREN,
+            "Expected \"(\" before concurrent region config",
+        )?;
+        self.consume(
+            TokenType::LBRACE,
+            "Expected record literal config for concurrent region",
+        )?;
+        let config = self.record_expression()?;
+        let Expr::Record(config) = config else {
+            return Err(self.error(
+                "Concurrent region config must be a record literal (canonical form: concurrent name({concurrency:...,jitterMs:...,stopOn:...,windowMs:...}){...})",
+            ));
+        };
+        self.consume(
+            TokenType::RPAREN,
+            "Expected \")\" after concurrent region config",
+        )?;
+        self.consume(
+            TokenType::LBRACE,
+            "Expected \"{\" before concurrent region body",
+        )?;
+
+        let mut steps = Vec::new();
+        while !self.check(TokenType::RBRACE) {
+            let step_start = self.peek().location.start;
+            if self.match_token(TokenType::Spawn) {
+                let expr = self.expression()?;
+                let location = self.make_location(step_start, expr.location().end);
+                steps.push(ConcurrentStep::Spawn(SpawnStep { expr, location }));
+                continue;
+            }
+
+            if self.match_token(TokenType::SpawnEach) {
+                let list = self.expression()?;
+                let func = self.expression()?;
+                let location = self.make_location(step_start, func.location().end);
+                steps.push(ConcurrentStep::SpawnEach(SpawnEachStep {
+                    func,
+                    list,
+                    location,
+                }));
+                continue;
+            }
+
+            return Err(self.error(
+                "Concurrent region bodies are spawn-only blocks; use spawn expr or spawnEach list fn",
+            ));
+        }
+
+        self.consume(TokenType::RBRACE, "Expected \"}\" after concurrent region body")?;
+        let end = self.previous();
+        Ok(Expr::Concurrent(Box::new(ConcurrentExpr {
+            config,
+            name,
+            steps,
             location: self.make_location(start.location.start, end.location.end),
         })))
     }
@@ -1999,6 +2070,7 @@ impl HasLocation for Expr {
             Expr::Map(e) => e.location,
             Expr::Filter(e) => e.location,
             Expr::Fold(e) => e.location,
+            Expr::Concurrent(e) => e.location,
             Expr::MemberAccess(e) => e.location,
             Expr::WithMock(e) => e.location,
             Expr::TypeAscription(e) => e.location,
@@ -2031,5 +2103,21 @@ mod tests {
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
         assert_eq!(program.declarations.len(), 1);
+    }
+
+    #[test]
+    fn test_concurrent_region_parse() {
+        let source = "λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit({concurrency:1,jitterMs:None(),stopOn:stopOn,windowMs:None()}){spawnEach [1,2] process}\nλprocess(value:Int)=>!IO Result[Int,String]=Ok(value)\nλstopOn(err:String)=>Bool=false";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let Declaration::Function(function) = &program.declarations[0] else {
+            panic!("expected function declaration");
+        };
+        let Expr::Concurrent(concurrent) = &function.body else {
+            panic!("expected concurrent expression");
+        };
+        assert_eq!(concurrent.name, "urlAudit");
+        assert_eq!(concurrent.steps.len(), 1);
+        assert!(matches!(concurrent.steps[0], ConcurrentStep::SpawnEach(_)));
     }
 }

@@ -51,6 +51,15 @@ pub enum TokenType {
     #[token("match", priority = 3)]
     MATCH,
 
+    #[token("concurrent", priority = 3)]
+    Concurrent,
+
+    #[token("spawn", priority = 3)]
+    Spawn,
+
+    #[token("spawnEach", priority = 3)]
+    SpawnEach,
+
     // ========================================================================
     // DECLARATION KEYWORDS
     // ========================================================================

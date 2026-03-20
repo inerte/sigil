@@ -82,6 +82,8 @@ Constructed types:
 Examples:
 
 ```sigil module
+t ConcurrentOutcome[T,E]=Aborted()|Failure(E)|Success(T)
+
 t Option[T]=Some(T)|None()
 
 t Result[T,E]=Ok(T)|Err(E)

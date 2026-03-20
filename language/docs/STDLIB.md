@@ -163,7 +163,7 @@ The canonical process surface is:
 - `withCwd`
 - `withEnv`
 - `run`
-- `spawn`
+- `start`
 - `wait`
 - `kill`
 
@@ -1056,11 +1056,15 @@ i stdlib::numeric
 
 ## Core Prelude
 
-`Option[T]`, `Result[T,E]`, `Some`, `None`, `Ok`, and `Err` are part of the implicit `core::prelude`. They do not require imports.
+`ConcurrentOutcome[T,E]`, `Option[T]`, `Result[T,E]`, `Aborted`, `Failure`,
+`Success`, `Some`, `None`, `Ok`, and `Err` are part of the implicit
+`core::prelude`. They do not require imports.
 
 Current canonical type forms:
 
 ```sigil module
+t ConcurrentOutcome[T,E]=Aborted()|Failure(E)|Success(T)
+
 t Option[T]=Some(T)|None()
 
 t Result[T,E]=Ok(T)|Err(E)

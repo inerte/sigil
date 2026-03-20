@@ -15,6 +15,7 @@ use sigil_ast::{
 };
 use sigil_typechecker::typed_ir::{
     MethodSelector, TypedBinaryExpr, TypedCallExpr, TypedConstDecl, TypedConstructorCallExpr,
+    TypedConcurrentExpr, TypedConcurrentStep,
     TypedDeclaration, TypedExpr, TypedExprKind, TypedExternCallExpr, TypedFieldAccessExpr,
     TypedFilterExpr, TypedFoldExpr, TypedFunctionDecl, TypedIfExpr, TypedIndexExpr,
     TypedLambdaExpr, TypedLetExpr, TypedListExpr, TypedMapExpr, TypedMapLiteralExpr,
@@ -133,7 +134,7 @@ impl TypeScriptGenerator {
         };
 
         self.emit(&format!(
-            "import {{ Some, None, Ok, Err }} from '{}';",
+            "import {{ Some, None, Ok, Err, Aborted, Failure, Success }} from '{}';",
             import_path
         ));
         self.output.push("\n".to_string());
@@ -150,7 +151,14 @@ impl TypeScriptGenerator {
     }
 
     fn js_all(&self, exprs: &[String]) -> String {
-        format!("__sigil_all([{}])", exprs.join(", "))
+        format!(
+            "__sigil_all([{}])",
+            exprs
+                .iter()
+                .map(|expr| format!("() => {}", expr))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )
     }
 
     fn emit_mock_runtime_helpers(&mut self) {
@@ -159,7 +167,101 @@ impl TypeScriptGenerator {
         self.emit("  return Promise.resolve(value);");
         self.emit("}");
         self.emit("function __sigil_all(values) {");
-        self.emit("  return Promise.all(values.map((value) => Promise.resolve(value)));");
+        self.emit("  return values.reduce(async (__sigil_acc_promise, __sigil_thunk) => {");
+        self.emit("    const __sigil_acc = await __sigil_acc_promise;");
+        self.emit("    __sigil_acc.push(await __sigil_thunk());");
+        self.emit("    return __sigil_acc;");
+        self.emit("  }, Promise.resolve([]));");
+        self.emit("}");
+        self.emit("function __sigil_sleep(ms) {");
+        self.emit("  return new Promise((resolve) => setTimeout(resolve, Math.max(0, ms)));");
+        self.emit("}");
+        self.emit("function __sigil_option_value(option) {");
+        self.emit("  return option && option.__tag === 'Some' ? option.__fields[0] : null;");
+        self.emit("}");
+        self.emit("async function __sigil_map_list(items, fn) {");
+        self.emit("  const results = [];");
+        self.emit("  for (const item of items) {");
+        self.emit("    results.push(await fn(item));");
+        self.emit("  }");
+        self.emit("  return results;");
+        self.emit("}");
+        self.emit("async function __sigil_filter_list(items, predicate) {");
+        self.emit("  const results = [];");
+        self.emit("  for (const item of items) {");
+        self.emit("    if (await predicate(item)) {");
+        self.emit("      results.push(item);");
+        self.emit("    }");
+        self.emit("  }");
+        self.emit("  return results;");
+        self.emit("}");
+        self.emit("async function __sigil_concurrent_region(name, config, tasks) {");
+        self.emit("  const concurrency = Math.max(1, Number(config.concurrency));");
+        self.emit("  const jitter = __sigil_option_value(config.jitterMs);");
+        self.emit("  const stopOn = config.stopOn;");
+        self.emit("  const windowMs = __sigil_option_value(config.windowMs);");
+        self.emit("  const outcomes = new Array(tasks.length);");
+        self.emit("  const startTimes = [];");
+        self.emit("  let nextIndex = 0;");
+        self.emit("  let stopRequested = false;");
+        self.emit("  function abortedOutcome() { return { __tag: 'Aborted', __fields: [] }; }");
+        self.emit("  function failureOutcome(errorValue) { return { __tag: 'Failure', __fields: [errorValue] }; }");
+        self.emit("  function successOutcome(value) { return { __tag: 'Success', __fields: [value] }; }");
+        self.emit("  async function waitForWindowSlot() {");
+        self.emit("    if (windowMs === null) return;");
+        self.emit("    while (true) {");
+        self.emit("      const now = Date.now();");
+        self.emit("      while (startTimes.length > 0 && now - startTimes[0] >= windowMs) {");
+        self.emit("        startTimes.shift();");
+        self.emit("      }");
+        self.emit("      if (startTimes.length < concurrency) return;");
+        self.emit("      await __sigil_sleep(startTimes[0] + windowMs - now);");
+        self.emit("    }");
+        self.emit("  }");
+        self.emit("  function jitterDelayMs() {");
+        self.emit("    if (jitter === null) return 0;");
+        self.emit("    const min = Number(jitter.min);");
+        self.emit("    const max = Number(jitter.max);");
+        self.emit("    if (!Number.isFinite(min) || !Number.isFinite(max)) return 0;");
+        self.emit("    if (max <= min) return Math.max(0, min);");
+        self.emit("    return Math.floor(Math.random() * (max - min + 1)) + min;");
+        self.emit("  }");
+        self.emit("  async function worker() {");
+        self.emit("    while (true) {");
+        self.emit("      const index = nextIndex;");
+        self.emit("      if (index >= tasks.length) return;");
+        self.emit("      nextIndex += 1;");
+      self.emit("      if (stopRequested) {");
+        self.emit("        outcomes[index] = abortedOutcome();");
+        self.emit("        continue;");
+        self.emit("      }");
+      self.emit("      await waitForWindowSlot();");
+      self.emit("      if (stopRequested) {");
+        self.emit("        outcomes[index] = abortedOutcome();");
+        self.emit("        continue;");
+        self.emit("      }");
+        self.emit("      const delay = jitterDelayMs();");
+        self.emit("      if (delay > 0) {");
+        self.emit("        await __sigil_sleep(delay);");
+        self.emit("      }");
+        self.emit("      startTimes.push(Date.now());");
+      self.emit("      const result = await tasks[index]();");
+      self.emit("      if (result && result.__tag === 'Ok') {");
+        self.emit("        outcomes[index] = successOutcome(result.__fields[0]);");
+        self.emit("        continue;");
+      self.emit("      }");
+        self.emit("      if (!result || result.__tag !== 'Err') {");
+        self.emit("        throw new Error(`Concurrent region ${name} child returned a non-Result value`);");
+        self.emit("      }");
+      self.emit("      const errorValue = result.__fields[0];");
+      self.emit("      outcomes[index] = failureOutcome(errorValue);");
+      self.emit("      if (await stopOn(errorValue)) {");
+        self.emit("        stopRequested = true;");
+      self.emit("      }");
+        self.emit("    }");
+        self.emit("  }");
+        self.emit("  await Promise.all(Array.from({ length: concurrency }, () => worker()));");
+        self.emit("  return outcomes.map((outcome) => outcome ?? abortedOutcome());");
         self.emit("}");
         self.emit("function __sigil_map_empty() {");
         self.emit("  return { __sigil_map: [] };");
@@ -1261,6 +1363,7 @@ impl TypeScriptGenerator {
             TypedExprKind::Map(map) => self.generate_map(map),
             TypedExprKind::Filter(filter) => self.generate_filter(filter),
             TypedExprKind::Fold(fold) => self.generate_fold(fold),
+            TypedExprKind::Concurrent(concurrent) => self.generate_concurrent(concurrent),
             TypedExprKind::Pipeline(pipeline) => self.generate_pipeline(pipeline),
             TypedExprKind::WithMock(with_mock) => self.generate_with_mock(with_mock),
         }
@@ -1744,7 +1847,7 @@ impl TypeScriptGenerator {
                 "{}.then((__code) => __sigil_process_exit(__code))",
                 generated_args[0]
             ))),
-            "spawn" if generated_args.len() == 1 => Ok(Some(format!(
+            "start" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__command) => __sigil_process_spawn(__command))",
                 generated_args[0]
             ))),
@@ -2383,7 +2486,7 @@ impl TypeScriptGenerator {
         let list = self.generate_expression(&map.list)?;
         let func = self.generate_expression(&map.func)?;
         Ok(format!(
-            "{}.then(([__items, __fn]) => Promise.all(__items.map((x) => __fn(x))))",
+            "{}.then(([__items, __fn]) => __sigil_map_list(__items, __fn))",
             self.js_all(&[list, func])
         ))
     }
@@ -2391,9 +2494,8 @@ impl TypeScriptGenerator {
     fn generate_filter(&mut self, filter: &TypedFilterExpr) -> Result<String, CodegenError> {
         let list = self.generate_expression(&filter.list)?;
         let predicate = self.generate_expression(&filter.predicate)?;
-        // Inline filter expansion keeps generated output deterministic
         Ok(format!(
-            "{}.then(([__items, __predicate]) => Promise.all(__items.map((x) => Promise.resolve(__predicate(x)).then((keep) => ({{ x, keep }})))).then((__pairs) => __pairs.filter(({{ keep }}) => keep).map(({{ x }}) => x)))",
+            "{}.then(([__items, __predicate]) => __sigil_filter_list(__items, __predicate))",
             self.js_all(&[list, predicate])
         ))
     }
@@ -2406,6 +2508,56 @@ impl TypeScriptGenerator {
         Ok(format!(
             "{}.then(([__items, __fn, __init]) => __items.reduce((__acc, x) => __acc.then((acc) => __fn(acc, x)), Promise.resolve(__init)))",
             self.js_all(&[list, func, init])
+        ))
+    }
+
+    fn generate_concurrent(
+        &mut self,
+        concurrent: &TypedConcurrentExpr,
+    ) -> Result<String, CodegenError> {
+        let concurrency = self.generate_expression(&concurrent.config.concurrency)?;
+        let jitter_ms = self.generate_expression(&concurrent.config.jitter_ms)?;
+        let stop_on = self.generate_expression(&concurrent.config.stop_on)?;
+        let window_ms = self.generate_expression(&concurrent.config.window_ms)?;
+
+        let mut body_lines = Vec::new();
+        body_lines.push("const __sigil_tasks = [];".to_string());
+
+        for (index, step) in concurrent.steps.iter().enumerate() {
+            match step {
+                TypedConcurrentStep::Spawn(spawn) => {
+                    let expr = self.generate_expression(&spawn.expr)?;
+                    body_lines.push(format!("__sigil_tasks.push(() => {});", expr));
+                }
+                TypedConcurrentStep::SpawnEach(spawn_each) => {
+                    let list = self.generate_expression(&spawn_each.list)?;
+                    let func = self.generate_expression(&spawn_each.func)?;
+                    body_lines.push(format!(
+                        "const [__sigil_items_{index}, __sigil_fn_{index}] = await {};",
+                        self.js_all(&[list, func])
+                    ));
+                    body_lines.push(format!(
+                        "for (const __sigil_item_{index} of __sigil_items_{index}) {{"
+                    ));
+                    body_lines.push(format!(
+                        "  __sigil_tasks.push(() => __sigil_fn_{index}(__sigil_item_{index}));"
+                    ));
+                    body_lines.push("}".to_string());
+                }
+            }
+        }
+
+        let body = body_lines
+            .into_iter()
+            .map(|line| format!("    {}", line))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        Ok(format!(
+            "(async () => {{\n  const [__sigil_concurrency, __sigil_jitterMs, __sigil_stopOn, __sigil_windowMs] = await {};\n{}\n  return __sigil_concurrent_region({}, {{ concurrency: __sigil_concurrency, jitterMs: __sigil_jitterMs, stopOn: __sigil_stopOn, windowMs: __sigil_windowMs }}, __sigil_tasks);\n}})()",
+            self.js_all(&[concurrency, jitter_ms, stop_on, window_ms]),
+            body,
+            serde_json::to_string(&concurrent.name).unwrap()
         ))
     }
 
@@ -2756,5 +2908,29 @@ mod tests {
 
         assert!(result.contains("id: 'tests/smoke.sigil::smoke'"));
         assert!(result.contains("location: { start: { line: 3, column: 1 } }"));
+    }
+
+    #[test]
+    fn test_generate_map_uses_ordered_helper_not_promise_all_map() {
+        let source = "λdouble(xs:[Int])=>[Int]=xs↦(λ(x:Int)=>Int=x*2)";
+        let program = typed_program_for(source, "test.sigil");
+
+        let mut gen = TypeScriptGenerator::new(CodegenOptions::default());
+        let result = gen.generate(&program).unwrap();
+
+        assert!(result.contains("__sigil_map_list"));
+        assert!(!result.contains("Promise.all(__items.map"));
+    }
+
+    #[test]
+    fn test_generate_concurrent_region_uses_scheduler_helper() {
+        let source = "t ConcurrentOutcome[T,E]=Aborted()|Failure(E)|Success(T)\nt Option[T]=Some(T)|None()\nt Result[T,E]=Ok(T)|Err(E)\nλmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit({concurrency:2,jitterMs:None(),stopOn:stopOn,windowMs:None()}){spawnEach [1,2] process}\nλprocess(value:Int)=>!IO Result[Int,String]=Ok(value)\nλstopOn(err:String)=>Bool=false";
+        let program = typed_program_for(source, "test.sigil");
+
+        let mut gen = TypeScriptGenerator::new(CodegenOptions::default());
+        let result = gen.generate(&program).unwrap();
+
+        assert!(result.contains("__sigil_concurrent_region(\"urlAudit\""));
+        assert!(result.contains("__sigil_tasks.push(() => __sigil_fn_0(__sigil_item_0));"));
     }
 }

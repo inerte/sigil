@@ -160,6 +160,8 @@ Record fields are canonical alphabetical order everywhere records appear.
 ```sigil module
 t Color=Red()|Green()|Blue()
 
+t ConcurrentOutcome[T,E]=Aborted()|Failure(E)|Success(T)
+
 t Option[T]=Some(T)|None()
 
 t Result[T,E]=Ok(T)|Err(E)
@@ -347,6 +349,41 @@ Examples:
 ```
 
 `↦` and `⊳` require pure callbacks.
+
+## Concurrent Regions
+
+Sigil uses one explicit concurrency surface:
+
+```sigil module
+λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit({concurrency:5,jitterMs:Some({max:25,min:1}),stopOn:shouldStop,windowMs:Some(1000)}){
+  spawn one()
+  spawnEach [1,2,3] process
+}
+
+λone()=>!IO Result[Int,String]=Ok(1)
+
+λprocess(value:Int)=>!IO Result[Int,String]=Ok(value)
+
+λshouldStop(err:String)=>Bool=false
+```
+
+Rules:
+
+- regions are named: `concurrent name(config){...}`
+- config must be a record literal
+- config fields are canonical alphabetical order:
+  - `concurrency`
+  - `jitterMs`
+  - `stopOn`
+  - `windowMs`
+- region bodies are spawn-only:
+  - `spawn expr`
+  - `spawnEach list fn`
+- `spawn` requires an effectful computation returning `Result[T,E]`
+- `spawnEach` requires a list and an effectful function returning `Result[T,E]`
+- regions return `[ConcurrentOutcome[T,E]]`
+
+`windowMs` and `jitterMs` belong to the region policy, not to `↦` or `⊳`.
 
 Sigil also treats these operators as the canonical surface for common list
 plumbing:

@@ -22,7 +22,7 @@ claude "Write a Hello World in Sigil and run it"
 
 **Zero Ambiguity** - Explicit bidirectional types, no shadowing, deterministic execution. Code means exactly what it says. Perfect for AI code generation.
 
-**Concurrent by Default** - Built for async I/O without await syntax. Functions compose naturally with effects tracked in the type system.
+**Async Without Await** - Built for async I/O without `await` syntax. Wider concurrency is explicit through named concurrent regions.
 
 **Testing Built In** - Sigil treats tests as first-class code, with language-level test declarations, JSON-readable results, and runtime-aware validation for things like topology-backed environments.
 

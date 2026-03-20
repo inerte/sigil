@@ -24,7 +24,7 @@ i src::support
 }
 
 λrunClientOutput(target:String)=>!IO String={
-  l server=(stdlib::process.spawn(tcpCommand(["run","src/tcpRoundtripServer.sigil","--env","test"])):stdlib::process.RunningProcess);
+  l server=(stdlib::process.start(tcpCommand(["run","src/tcpRoundtripServer.sigil","--env","test"])):stdlib::process.RunningProcess);
   l ready=(src::support.retryRunStdoutContains(50,tcpCommand(["run","src/pingClient.sigil","--env","test"]),200,"pong"):stdlib::process.ProcessResult);
   l result=match src::support.runStdoutContains("pong",ready){
     true=>(stdlib::process.run(tcpCommand(["run",target,"--env","test"])):stdlib::process.ProcessResult)|

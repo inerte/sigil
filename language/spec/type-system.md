@@ -126,20 +126,40 @@ This is a checker invariant, not inference.
 
 Sigil supports explicit effect annotations in function and test signatures.
 
+Sigil ships with primitive effects:
+
+- `Clock`
+- `Fs`
+- `Http`
+- `Log`
+- `Process`
+- `Tcp`
+- `Timer`
+
+Projects may define reusable multi-effect aliases only in `src/effects.lib.sigil`.
+Aliases must expand to at least two primitive effects.
+
+Example:
+
+```sigil module projects/docsDriftAudit/src/effects.lib.sigil
+effect CliIo=!Fs!Log!Process
+```
+
 Examples:
 
 ```sigil program
-e axios:{get:λ(String)=>!Network String}
+e axios:{get:λ(String)=>!Http String}
 
-e console
+e console:{log:λ(String)=>!Log Unit}
 
-λfetch()=>!Network String=axios.get("https://example.com")
+λfetch()=>!Http String=axios.get("https://example.com")
 
-λmain()=>!IO Unit=console.log("hello")
+λmain()=>!Log Unit=console.log("hello")
 ```
 
 Effects are explicit surface syntax. The checker tracks them as part of the
-typed program.
+typed program and rejects callees or bodies whose required effects are not
+covered by the enclosing signature.
 
 ## Canonical Typed Rules
 

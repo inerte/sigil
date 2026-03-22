@@ -8,7 +8,7 @@ t RoomRoll={rng:Rng,room:Room}
 
 t World={room1:Room,room2:Room,room3:Room}
 
-e console
+e console:{log:λ(String)=>!Log Unit}
 
 c height=(18:Int)
 
@@ -42,7 +42,7 @@ c width=(48:Int)
 
 λisPlayer(world:World,x:Int,y:Int)=>Bool=x=centerX(world.room1) and y=centerY(world.room1)
 
-λmain()=>!IO Unit=console.log(renderRows(makeWorld(seed0),0))
+λmain()=>!Log Unit=console.log(renderRows(makeWorld(seed0),0))
 
 λmakeWorld(seed:Int)=>World={
   l r1=(randRoomInZone({seed:seed},6,13,2,2):RoomRoll);

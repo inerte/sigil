@@ -14,13 +14,13 @@ use sigil_ast::{
     PatternLiteralValue, PipelineOperator, TypeDecl, TypeDef, UnaryOperator,
 };
 use sigil_typechecker::typed_ir::{
-    MethodSelector, TypedBinaryExpr, TypedCallExpr, TypedConstDecl, TypedConstructorCallExpr,
-    TypedConcurrentExpr, TypedConcurrentStep,
-    TypedDeclaration, TypedExpr, TypedExprKind, TypedExternCallExpr, TypedFieldAccessExpr,
-    TypedFilterExpr, TypedFoldExpr, TypedFunctionDecl, TypedIfExpr, TypedIndexExpr,
-    TypedLambdaExpr, TypedLetExpr, TypedListExpr, TypedMapExpr, TypedMapLiteralExpr,
-    TypedMatchExpr, TypedMethodCallExpr, TypedPipelineExpr, TypedProgram, TypedRecordExpr,
-    TypedTestDecl, TypedTupleExpr, TypedUnaryExpr, TypedWithMockExpr, WithMockTarget,
+    MethodSelector, TypedBinaryExpr, TypedCallExpr, TypedConcurrentExpr, TypedConcurrentStep,
+    TypedConstDecl, TypedConstructorCallExpr, TypedDeclaration, TypedExpr, TypedExprKind,
+    TypedExternCallExpr, TypedFieldAccessExpr, TypedFilterExpr, TypedFoldExpr, TypedFunctionDecl,
+    TypedIfExpr, TypedIndexExpr, TypedLambdaExpr, TypedLetExpr, TypedListExpr, TypedMapExpr,
+    TypedMapLiteralExpr, TypedMatchExpr, TypedMethodCallExpr, TypedPipelineExpr, TypedProgram,
+    TypedRecordExpr, TypedTestDecl, TypedTupleExpr, TypedUnaryExpr, TypedWithMockExpr,
+    WithMockTarget,
 };
 use std::path::{Component, Path, PathBuf};
 use thiserror::Error;
@@ -206,7 +206,9 @@ impl TypeScriptGenerator {
         self.emit("  let stopRequested = false;");
         self.emit("  function abortedOutcome() { return { __tag: 'Aborted', __fields: [] }; }");
         self.emit("  function failureOutcome(errorValue) { return { __tag: 'Failure', __fields: [errorValue] }; }");
-        self.emit("  function successOutcome(value) { return { __tag: 'Success', __fields: [value] }; }");
+        self.emit(
+            "  function successOutcome(value) { return { __tag: 'Success', __fields: [value] }; }",
+        );
         self.emit("  async function waitForWindowSlot() {");
         self.emit("    if (windowMs === null) return;");
         self.emit("    while (true) {");
@@ -231,12 +233,12 @@ impl TypeScriptGenerator {
         self.emit("      const index = nextIndex;");
         self.emit("      if (index >= tasks.length) return;");
         self.emit("      nextIndex += 1;");
-      self.emit("      if (stopRequested) {");
+        self.emit("      if (stopRequested) {");
         self.emit("        outcomes[index] = abortedOutcome();");
         self.emit("        continue;");
         self.emit("      }");
-      self.emit("      await waitForWindowSlot();");
-      self.emit("      if (stopRequested) {");
+        self.emit("      await waitForWindowSlot();");
+        self.emit("      if (stopRequested) {");
         self.emit("        outcomes[index] = abortedOutcome();");
         self.emit("        continue;");
         self.emit("      }");
@@ -245,19 +247,19 @@ impl TypeScriptGenerator {
         self.emit("        await __sigil_sleep(delay);");
         self.emit("      }");
         self.emit("      startTimes.push(Date.now());");
-      self.emit("      const result = await tasks[index]();");
-      self.emit("      if (result && result.__tag === 'Ok') {");
+        self.emit("      const result = await tasks[index]();");
+        self.emit("      if (result && result.__tag === 'Ok') {");
         self.emit("        outcomes[index] = successOutcome(result.__fields[0]);");
         self.emit("        continue;");
-      self.emit("      }");
+        self.emit("      }");
         self.emit("      if (!result || result.__tag !== 'Err') {");
         self.emit("        throw new Error(`Concurrent region ${name} child returned a non-Result value`);");
         self.emit("      }");
-      self.emit("      const errorValue = result.__fields[0];");
-      self.emit("      outcomes[index] = failureOutcome(errorValue);");
-      self.emit("      if (await stopOn(errorValue)) {");
+        self.emit("      const errorValue = result.__fields[0];");
+        self.emit("      outcomes[index] = failureOutcome(errorValue);");
+        self.emit("      if (await stopOn(errorValue)) {");
         self.emit("        stopRequested = true;");
-      self.emit("      }");
+        self.emit("      }");
         self.emit("    }");
         self.emit("  }");
         self.emit("  await Promise.all(Array.from({ length: concurrency }, () => worker()));");
@@ -363,7 +365,9 @@ impl TypeScriptGenerator {
         self.emit("const __sigil_processes = new Map();");
         self.emit("function __sigil_process_env_to_object(envMap) {");
         self.emit("  const out = {};");
-        self.emit("  for (const [key, value] of __sigil_map_entries(envMap ?? __sigil_map_empty())) {");
+        self.emit(
+            "  for (const [key, value] of __sigil_map_entries(envMap ?? __sigil_map_empty())) {",
+        );
         self.emit("    out[String(key)] = String(value);");
         self.emit("  }");
         self.emit("  return out;");
@@ -476,10 +480,14 @@ impl TypeScriptGenerator {
         self.emit("function __sigil_url_from_relative(input) {");
         self.emit("  const fragmentIndex = input.indexOf('#');");
         self.emit("  const fragment = fragmentIndex >= 0 ? input.slice(fragmentIndex) : '';");
-        self.emit("  const withoutFragment = fragmentIndex >= 0 ? input.slice(0, fragmentIndex) : input;");
+        self.emit(
+            "  const withoutFragment = fragmentIndex >= 0 ? input.slice(0, fragmentIndex) : input;",
+        );
         self.emit("  const queryIndex = withoutFragment.indexOf('?');");
         self.emit("  const path = queryIndex >= 0 ? withoutFragment.slice(0, queryIndex) : withoutFragment;");
-        self.emit("  const queryString = queryIndex >= 0 ? withoutFragment.slice(queryIndex) : '';");
+        self.emit(
+            "  const queryString = queryIndex >= 0 ? withoutFragment.slice(queryIndex) : '';",
+        );
         self.emit("  return {");
         self.emit("    fragment,");
         self.emit("    host: '',");
@@ -508,7 +516,9 @@ impl TypeScriptGenerator {
         self.emit("  return __sigil_map_from_entries(entries.map(([key, value]) => [String(key).toLowerCase(), String(value)]));");
         self.emit("}");
         self.emit("function __sigil_http_header_value(value) {");
-        self.emit("  if (Array.isArray(value)) return value.map((item) => String(item)).join(', ');");
+        self.emit(
+            "  if (Array.isArray(value)) return value.map((item) => String(item)).join(', ');",
+        );
         self.emit("  if (value === undefined || value === null) return null;");
         self.emit("  return String(value);");
         self.emit("}");
@@ -564,7 +574,9 @@ impl TypeScriptGenerator {
         self.emit("  const name = __sigil_topology_dependency_name(dep, 'TcpServiceDependency');");
         self.emit("  const bindings = globalThis.__sigil_topology_bindings?.tcp;");
         self.emit("  const target = bindings ? bindings[name] : undefined;");
-        self.emit("  if (!target || typeof target.host !== 'string' || !Number.isInteger(target.port)) {");
+        self.emit(
+            "  if (!target || typeof target.host !== 'string' || !Number.isInteger(target.port)) {",
+        );
         self.emit("    throw new Error(`missing TCP topology binding for '${name}'`);");
         self.emit("  }");
         self.emit("  return target;");
@@ -573,19 +585,27 @@ impl TypeScriptGenerator {
         self.emit("  try {");
         self.emit("    const parsed = new URL(__sigil_topology_http_url(request.dependency, request.path));");
         self.emit("    const init = { headers: __sigil_http_headers_to_js(request.headers), method: __sigil_http_method_to_string(request.method) };");
-        self.emit("    if (request.body?.__tag === 'Some') { init.body = request.body.__fields[0]; }");
+        self.emit(
+            "    if (request.body?.__tag === 'Some') { init.body = request.body.__fields[0]; }",
+        );
         self.emit("    const response = await fetch(parsed, init);");
         self.emit("    const body = await response.text();");
         self.emit("    return { __tag: 'Ok', __fields: [{ body, headers: __sigil_http_headers_from_web(response.headers), status: response.status, url: response.url }] };");
         self.emit("  } catch (error) {");
         self.emit("    const message = error instanceof Error ? error.message : String(error);");
         self.emit("    if (message.includes('topology binding') || message.includes('dependency handle')) {");
-        self.emit("      return { __tag: 'Err', __fields: [__sigil_http_error('Topology', message)] };");
+        self.emit(
+            "      return { __tag: 'Err', __fields: [__sigil_http_error('Topology', message)] };",
+        );
         self.emit("    }");
         self.emit("    if (message.includes('Invalid URL')) {");
-        self.emit("      return { __tag: 'Err', __fields: [__sigil_http_error('InvalidUrl', message)] };");
+        self.emit(
+            "      return { __tag: 'Err', __fields: [__sigil_http_error('InvalidUrl', message)] };",
+        );
         self.emit("    }");
-        self.emit("    return { __tag: 'Err', __fields: [__sigil_http_error('Network', message)] };");
+        self.emit(
+            "    return { __tag: 'Err', __fields: [__sigil_http_error('Network', message)] };",
+        );
         self.emit("  }");
         self.emit("}");
         self.emit("function __sigil_http_request_path(url) {");
@@ -608,7 +628,9 @@ impl TypeScriptGenerator {
         self.emit("        path: __sigil_http_request_path(req.url)");
         self.emit("      };");
         self.emit("      const response = await Promise.resolve(handler(request));");
-        self.emit("      res.writeHead(response.status, __sigil_http_headers_to_js(response.headers));");
+        self.emit(
+            "      res.writeHead(response.status, __sigil_http_headers_to_js(response.headers));",
+        );
         self.emit("      res.end(String(response.body));");
         self.emit("    } catch (error) {");
         self.emit("      const message = error instanceof Error ? error.message : String(error);");
@@ -642,7 +664,9 @@ impl TypeScriptGenerator {
         self.emit("    target = __sigil_topology_tcp_target(request?.dependency);");
         self.emit("  } catch (error) {");
         self.emit("    const message = error instanceof Error ? error.message : String(error);");
-        self.emit("    return { __tag: 'Err', __fields: [__sigil_tcp_error('Topology', message)] };");
+        self.emit(
+            "    return { __tag: 'Err', __fields: [__sigil_tcp_error('Topology', message)] };",
+        );
         self.emit("  }");
         self.emit("  if (!__sigil_tcp_is_valid_host(target?.host) || !__sigil_tcp_is_valid_port(target?.port)) {");
         self.emit("    return { __tag: 'Err', __fields: [__sigil_tcp_error('InvalidAddress', 'TCP requests require a valid host and port')] };");
@@ -705,7 +729,9 @@ impl TypeScriptGenerator {
         self.emit("        const response = await Promise.resolve(handler(request));");
         self.emit("        socket.write(`${String(response.message)}\\n`, () => socket.end());");
         self.emit("      } catch (error) {");
-        self.emit("        const message = error instanceof Error ? error.message : String(error);");
+        self.emit(
+            "        const message = error instanceof Error ? error.message : String(error);",
+        );
         self.emit("        socket.write(`${message}\\n`, () => socket.end());");
         self.emit("      }");
         self.emit("    });");
@@ -1291,7 +1317,10 @@ impl TypeScriptGenerator {
         } else {
             // Untyped extern or no declared members: namespace import
             let namespace = sanitize_js_identifier(&extern_decl.module_path.join("_"));
-            self.emit(&format!("import * as {} from '{}';", namespace, module_path));
+            self.emit(&format!(
+                "import * as {} from '{}';",
+                namespace, module_path
+            ));
         }
 
         Ok(())
@@ -1832,9 +1861,7 @@ impl TypeScriptGenerator {
             .collect::<Result<Vec<_>, CodegenError>>()?;
 
         match member {
-            "argv" if generated_args.is_empty() => {
-                Ok(Some("__sigil_process_argv()".to_string()))
-            }
+            "argv" if generated_args.is_empty() => Ok(Some("__sigil_process_argv()".to_string())),
             "kill" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__process) => __sigil_process_kill(__process))",
                 generated_args[0]
@@ -2007,7 +2034,11 @@ impl TypeScriptGenerator {
     ) -> Result<String, CodegenError> {
         let func = match &call.module_path {
             Some(module_path) => {
-                let namespace = module_path.iter().cloned().collect::<Vec<String>>().join("_");
+                let namespace = module_path
+                    .iter()
+                    .cloned()
+                    .collect::<Vec<String>>()
+                    .join("_");
                 format!(
                     "{}.{}",
                     sanitize_js_identifier(&namespace),
@@ -2862,7 +2893,8 @@ mod tests {
 
     #[test]
     fn test_generate_match_with_guard_falls_through_to_later_arms() {
-        let source = "λclassify(x:Int)=>String match x{n when n>1=>\"big\"|0=>\"zero\"|_=>\"other\"}";
+        let source =
+            "λclassify(x:Int)=>String match x{n when n>1=>\"big\"|0=>\"zero\"|_=>\"other\"}";
         let program = typed_program_for(source, "test.sigil");
 
         let mut gen = TypeScriptGenerator::new(CodegenOptions::default());
@@ -2903,9 +2935,7 @@ mod tests {
 
         let mut gen = TypeScriptGenerator::new(CodegenOptions {
             source_file: Some("projects/algorithms/src/topologicalSort.sigil".to_string()),
-            output_file: Some(
-                "/tmp/projects/algorithms/.local/src/topologicalSort.ts".to_string(),
-            ),
+            output_file: Some("/tmp/projects/algorithms/.local/src/topologicalSort.ts".to_string()),
         });
         let result = gen.generate(&program).unwrap();
 
@@ -2942,7 +2972,7 @@ mod tests {
 
     #[test]
     fn test_generate_concurrent_region_uses_scheduler_helper() {
-        let source = "t ConcurrentOutcome[T,E]=Aborted()|Failure(E)|Success(T)\nt Option[T]=Some(T)|None()\nt Result[T,E]=Ok(T)|Err(E)\nλmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit@2{spawnEach [1,2] process}\nλprocess(value:Int)=>!IO Result[Int,String]=Ok(value)";
+        let source = "e clock:{tick:λ()=>!Timer Unit}\nt ConcurrentOutcome[T,E]=Aborted()|Failure(E)|Success(T)\nt Option[T]=Some(T)|None()\nt Result[T,E]=Ok(T)|Err(E)\nλmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@2{spawnEach [1,2] process}\nλprocess(value:Int)=>!Timer Result[Int,String]={l _=(clock.tick():Unit);Ok(value)}";
         let program = typed_program_for(source, "test.sigil");
 
         let mut gen = TypeScriptGenerator::new(CodegenOptions::default());

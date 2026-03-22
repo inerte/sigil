@@ -3,6 +3,7 @@
 //! Manages variable bindings during type checking.
 //! Uses explicit schemes for declared generic bindings without HM let-polymorphism.
 
+use crate::effects::EffectCatalog;
 use crate::types::{apply_subst, fresh_type_var, InferenceType, Substitution, TMap, TypeScheme};
 use sigil_ast::{TypeDef, Variant};
 use std::collections::{HashMap, HashSet};
@@ -10,8 +11,8 @@ use std::collections::{HashMap, HashSet};
 /// Type information for user-defined types
 #[derive(Debug, Clone)]
 pub struct TypeInfo {
-    pub type_params: Vec<String>,   // Generic type parameters (e.g., ['T', 'E'] for Result[T,E])
-    pub definition: TypeDef,         // The type definition (SumType, ProductType, or TypeAlias)
+    pub type_params: Vec<String>, // Generic type parameters (e.g., ['T', 'E'] for Result[T,E])
+    pub definition: TypeDef,      // The type definition (SumType, ProductType, or TypeAlias)
 }
 
 #[derive(Debug, Clone, Default)]
@@ -28,9 +29,10 @@ pub struct TypeEnvironment {
     bindings: HashMap<String, InferenceType>,
     schemes: HashMap<String, TypeScheme>,
     binding_meta: HashMap<String, BindingMeta>,
-    type_registry: HashMap<String, TypeInfo>,               // User-defined types
+    type_registry: HashMap<String, TypeInfo>, // User-defined types
     imported_type_registries: HashMap<String, HashMap<String, TypeInfo>>, // Types from imported modules
     imported_value_schemes: HashMap<String, HashMap<String, TypeScheme>>,
+    effect_catalog: EffectCatalog,
     source_file: Option<String>,
     parent: Option<Box<TypeEnvironment>>,
 }
@@ -45,6 +47,7 @@ impl TypeEnvironment {
             type_registry: HashMap::new(),
             imported_type_registries: HashMap::new(),
             imported_value_schemes: HashMap::new(),
+            effect_catalog: EffectCatalog::empty(),
             source_file: None,
             parent: None,
         }
@@ -59,6 +62,7 @@ impl TypeEnvironment {
             type_registry: HashMap::new(),
             imported_type_registries: HashMap::new(),
             imported_value_schemes: HashMap::new(),
+            effect_catalog: parent.effect_catalog.clone(),
             source_file: parent.source_file.clone(),
             parent: Some(Box::new(parent)),
         }
@@ -70,6 +74,14 @@ impl TypeEnvironment {
 
     pub fn source_file(&self) -> Option<&str> {
         self.source_file.as_deref()
+    }
+
+    pub fn set_effect_catalog(&mut self, effect_catalog: EffectCatalog) {
+        self.effect_catalog = effect_catalog;
+    }
+
+    pub fn effect_catalog(&self) -> &EffectCatalog {
+        &self.effect_catalog
     }
 
     /// Look up a variable's type
@@ -158,7 +170,11 @@ impl TypeEnvironment {
     /// Look up a qualified type from an imported module
     ///
     /// Example: lookup_qualified_type(["src", "types"], "ArticleMeta")
-    pub fn lookup_qualified_type(&self, module_path: &[String], type_name: &str) -> Option<TypeInfo> {
+    pub fn lookup_qualified_type(
+        &self,
+        module_path: &[String],
+        type_name: &str,
+    ) -> Option<TypeInfo> {
         let module_id = module_path.join("::");
         if let Some(registry) = self.imported_type_registries.get(&module_id) {
             if let Some(info) = registry.get(type_name) {
@@ -167,7 +183,9 @@ impl TypeEnvironment {
         }
 
         // Check parent scope
-        self.parent.as_ref()?.lookup_qualified_type(module_path, type_name)
+        self.parent
+            .as_ref()?
+            .lookup_qualified_type(module_path, type_name)
     }
 
     /// Look up an imported value member with fresh instantiation.
@@ -238,7 +256,9 @@ impl TypeEnvironment {
             return Some(names);
         }
 
-        self.parent.as_ref()?.get_imported_module_type_names(module_id)
+        self.parent
+            .as_ref()?
+            .get_imported_module_type_names(module_id)
     }
 
     /// Create a child environment with additional bindings
@@ -284,8 +304,10 @@ impl TypeEnvironment {
     pub fn normalize_type(&self, ty: &InferenceType) -> InferenceType {
         match ty {
             InferenceType::Constructor(ctor) => {
-                let qualified_lookup = split_qualified_type_name(&ctor.name)
-                    .and_then(|(module_path, type_name)| self.lookup_qualified_type(&module_path, &type_name));
+                let qualified_lookup =
+                    split_qualified_type_name(&ctor.name).and_then(|(module_path, type_name)| {
+                        self.lookup_qualified_type(&module_path, &type_name)
+                    });
                 let local_lookup = self.lookup_type(&ctor.name);
                 let normalized_type_args: Vec<InferenceType> = ctor
                     .type_args
@@ -360,21 +382,15 @@ impl TypeEnvironment {
                 }))
             }
             InferenceType::Tuple(tuple) => {
-                let normalized_types: Vec<InferenceType> = tuple
-                    .types
-                    .iter()
-                    .map(|t| self.normalize_type(t))
-                    .collect();
+                let normalized_types: Vec<InferenceType> =
+                    tuple.types.iter().map(|t| self.normalize_type(t)).collect();
                 InferenceType::Tuple(crate::types::TTuple {
                     types: normalized_types,
                 })
             }
             InferenceType::Function(func) => {
-                let normalized_params: Vec<InferenceType> = func
-                    .params
-                    .iter()
-                    .map(|p| self.normalize_type(p))
-                    .collect();
+                let normalized_params: Vec<InferenceType> =
+                    func.params.iter().map(|p| self.normalize_type(p)).collect();
                 let normalized_return = self.normalize_type(&func.return_type);
                 InferenceType::Function(Box::new(crate::types::TFunction {
                     params: normalized_params,

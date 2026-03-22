@@ -1,6 +1,6 @@
 i stdlib::time
 
-λmain()=>!IO Unit={
+λmain()=>!Clock Unit={
   l _=(stdlib::time.formatIso((stdlib::time.now():stdlib::time.Instant)):String);
   ()
 }

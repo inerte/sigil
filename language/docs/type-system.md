@@ -116,29 +116,53 @@ That means:
 
 ## Effects
 
-Effect annotations are part of the current surface:
+Effect annotations are part of the current surface. Sigil ships with primitive
+effects:
+
+- `Clock`
+- `Fs`
+- `Http`
+- `Log`
+- `Process`
+- `Tcp`
+- `Timer`
+
+Projects may define reusable multi-effect aliases only in `src/effects.lib.sigil`.
+Aliases must expand to at least two primitive effects.
+
+Example:
+
+```sigil module projects/docsDriftAudit/src/effects.lib.sigil
+effect CliIo=!Fs!Log!Process
+```
+
+Examples:
 
 ```sigil program
-e axios
+e axios:{get:λ(String)=>!Http String}
 
-e console
+e console:{log:λ(String)=>!Log Unit}
 
-λfetch()=>!Network String=axios.get("https://example.com")
+λfetch()=>!Http String=axios.get("https://example.com")
 
-λmain()=>!IO Unit=console.log("hello")
+λmain()=>!Log Unit=console.log("hello")
 ```
 
 Tests can also declare effects:
 
 ```sigil program tests/writesLog.sigil
-e console
+i stdlib::io
 
 λmain()=>Unit=()
 
-test "writes log" =>!IO  {
-  console.log("x")=()
+test "writes log" =>!Log  {
+  stdlib::io.println("x")=()
 }
 ```
+
+The checker enforces effect propagation. If a body or callee requires `!Fs`,
+`!Http`, or any other declared effect, the enclosing signature must declare a
+covering effect set or compilation fails.
 
 ## Canonical Typed Rules
 

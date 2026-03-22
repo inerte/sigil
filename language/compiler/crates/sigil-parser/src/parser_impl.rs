@@ -3,9 +3,9 @@
 //! This parser converts a stream of tokens into an Abstract Syntax Tree (AST).
 //! It matches the TypeScript parser implementation exactly for compatibility.
 
+use crate::error::ParseError;
 use sigil_ast::*;
 use sigil_lexer::{Position, SourceLocation, Token, TokenType};
-use crate::error::ParseError;
 
 /// The Sigil parser
 pub struct Parser {
@@ -60,6 +60,11 @@ impl Parser {
             return self.type_declaration();
         }
 
+        // Effect declaration: effect AppIo=!Fs!Log!Process
+        if self.match_token(TokenType::Effect) {
+            return self.effect_declaration();
+        }
+
         // Const declaration: c name = value
         if self.match_token(TokenType::CONST) {
             return self.const_declaration();
@@ -81,12 +86,15 @@ impl Parser {
             return self.test_declaration();
         }
 
-        Err(self.error("Expected top-level declaration (t, e, i, c, λ, or test)"))
+        Err(self.error("Expected top-level declaration (t, effect, e, i, c, λ, or test)"))
     }
 
     fn function_declaration(&mut self) -> Result<Declaration, ParseError> {
         let start = self.previous();
-        let name = self.consume(TokenType::IDENTIFIER, "Expected function name")?.value.clone();
+        let name = self
+            .consume(TokenType::IDENTIFIER, "Expected function name")?
+            .value
+            .clone();
 
         // Optional generic type parameters: λfunc[T,U](...)
         let mut type_params = Vec::new();
@@ -117,7 +125,7 @@ impl Parser {
             ),
         )?;
 
-        // Parse optional effect annotations: =>!IO !Network Type
+        // Parse optional effect annotations: =>!Fs !Process Type
         let effects = self.parse_effects()?;
 
         let return_type = Some(self.parse_type()?);
@@ -127,9 +135,13 @@ impl Parser {
         let is_match_expr = self.check(TokenType::MATCH);
 
         if is_match_expr && has_equal {
-            return Err(self.error("Unexpected \"=\" before match expression (canonical form: λf()=>T match ...)"));
+            return Err(self.error(
+                "Unexpected \"=\" before match expression (canonical form: λf()=>T match ...)",
+            ));
         } else if !is_match_expr && !has_equal {
-            return Err(self.error("Expected \"=\" before function body (canonical form: λf()=>T=...)"));
+            return Err(
+                self.error("Expected \"=\" before function body (canonical form: λf()=>T=...)")
+            );
         }
 
         let body = self.expression()?;
@@ -156,7 +168,10 @@ impl Parser {
         let mut params = Vec::new();
         loop {
             let start = self.peek();
-            let name = self.consume(TokenType::IDENTIFIER, "Expected parameter name")?.value.clone();
+            let name = self
+                .consume(TokenType::IDENTIFIER, "Expected parameter name")?
+                .value
+                .clone();
 
             // Type annotation is MANDATORY (canonical form)
             self.consume(
@@ -192,13 +207,18 @@ impl Parser {
 
     fn type_declaration(&mut self) -> Result<Declaration, ParseError> {
         let start = self.previous();
-        let name = self.consume(TokenType::UpperIdentifier, "Expected type name")?.value.clone();
+        let name = self
+            .consume(TokenType::UpperIdentifier, "Expected type name")?
+            .value
+            .clone();
 
         let mut type_params = Vec::new();
         if self.match_token(TokenType::LBRACKET) {
             loop {
                 type_params.push(
-                    self.consume(TokenType::UpperIdentifier, "Expected type parameter")?.value.clone(),
+                    self.consume(TokenType::UpperIdentifier, "Expected type parameter")?
+                        .value
+                        .clone(),
                 );
                 if !self.match_token(TokenType::COMMA) {
                     break;
@@ -218,6 +238,25 @@ impl Parser {
             type_params,
             definition,
             location,
+        }))
+    }
+
+    fn effect_declaration(&mut self) -> Result<Declaration, ParseError> {
+        let start = self.previous();
+        let name = self
+            .consume(TokenType::UpperIdentifier, "Expected effect name")?
+            .value
+            .clone();
+        self.consume(TokenType::EQUAL, "Expected \"=\" after effect name")?;
+        let effects = self.parse_effects()?;
+        if effects.is_empty() {
+            return Err(self.error("Expected at least one effect after \"=\""));
+        }
+        let end = self.previous();
+        Ok(Declaration::Effect(EffectDecl {
+            name,
+            effects,
+            location: self.make_location(start.location.start, end.location.end),
         }))
     }
 
@@ -303,7 +342,10 @@ impl Parser {
 
     fn variant_or_type(&mut self) -> Result<TypeConstructor, ParseError> {
         let start = self.peek();
-        let name = self.consume(TokenType::UpperIdentifier, "Expected type or variant name")?.value.clone();
+        let name = self
+            .consume(TokenType::UpperIdentifier, "Expected type or variant name")?
+            .value
+            .clone();
 
         let mut type_args = Vec::new();
         if self.match_token(TokenType::LPAREN) {
@@ -363,7 +405,10 @@ impl Parser {
                     return Err(self.record_exactness_error("record types"));
                 }
                 let field_start = self.peek();
-                let name = self.consume(TokenType::IDENTIFIER, "Expected field name")?.value.clone();
+                let name = self
+                    .consume(TokenType::IDENTIFIER, "Expected field name")?
+                    .value
+                    .clone();
                 self.consume(TokenType::COLON, "Expected \":\"")?;
                 let field_type = self.parse_type()?;
 
@@ -371,7 +416,8 @@ impl Parser {
                 fields.push(Field {
                     name,
                     field_type,
-                    location: self.make_location(field_start.location.start, field_end.location.end),
+                    location: self
+                        .make_location(field_start.location.start, field_end.location.end),
                 });
 
                 if !self.match_token(TokenType::COMMA) {
@@ -403,7 +449,10 @@ impl Parser {
             });
         }
 
-        let name = self.consume(TokenType::IDENTIFIER, "Expected constant name")?.value.clone();
+        let name = self
+            .consume(TokenType::IDENTIFIER, "Expected constant name")?
+            .value
+            .clone();
 
         self.consume(TokenType::EQUAL, "Expected \"=\" after constant name")?;
         let value = self.expression()?;
@@ -487,12 +536,21 @@ impl Parser {
 
         // Optional type annotation: e console : { log : (String) => Unit, ... }
         let members = if self.match_token(TokenType::COLON) {
-            self.consume(TokenType::LBRACE, "Expected \"{\" after \":\" in typed extern declaration")?;
+            self.consume(
+                TokenType::LBRACE,
+                "Expected \"{\" after \":\" in typed extern declaration",
+            )?;
             let mut members_list = Vec::new();
 
             while !self.check(TokenType::RBRACE) && !self.is_at_end() {
                 let member_start = self.peek();
-                let member_name = self.consume(TokenType::IDENTIFIER, "Expected member name in extern type declaration")?.value.clone();
+                let member_name = self
+                    .consume(
+                        TokenType::IDENTIFIER,
+                        "Expected member name in extern type declaration",
+                    )?
+                    .value
+                    .clone();
                 self.consume(TokenType::COLON, "Expected \":\" after member name")?;
                 let member_type = self.parse_type()?;
 
@@ -500,7 +558,8 @@ impl Parser {
                 members_list.push(ExternMember {
                     name: member_name,
                     member_type,
-                    location: self.make_location(member_start.location.start, member_end.location.end),
+                    location: self
+                        .make_location(member_start.location.start, member_end.location.end),
                 });
 
                 // Allow comma as separator, break if we hit }
@@ -559,7 +618,10 @@ impl Parser {
 
     fn test_declaration(&mut self) -> Result<Declaration, ParseError> {
         let start = self.previous();
-        let description = self.consume(TokenType::STRING, "Expected test description")?.value.clone();
+        let description = self
+            .consume(TokenType::STRING, "Expected test description")?
+            .value
+            .clone();
 
         let effects = if self.match_token(TokenType::ARROW) {
             self.parse_effects()?
@@ -586,30 +648,12 @@ impl Parser {
 
     fn parse_effects(&mut self) -> Result<Vec<String>, ParseError> {
         let mut effects = Vec::new();
-        let valid_effects = vec!["IO", "Network", "Error", "Mut"];
 
         while self.match_token(TokenType::BANG) {
             if self.match_token(TokenType::UpperIdentifier) {
-                let effect = self.previous().value.clone();
-
-                if !valid_effects.contains(&effect.as_str()) {
-                    let loc = self.previous().location;
-                    return Err(ParseError::InvalidEffect {
-                        file: self.filename.clone(),
-                        effect,
-                        valid: valid_effects.join(", "),
-                        line: loc.start.line,
-                        column: loc.start.column,
-                        location: loc,
-                    });
-                }
-
-                effects.push(effect);
+                effects.push(self.previous().value.clone());
             } else {
-                return Err(self.error(&format!(
-                    "Expected effect name ({}) after \"!\"",
-                    valid_effects.join(", ")
-                )));
+                return Err(self.error("Expected effect name after \"!\""));
             }
         }
 
@@ -685,7 +729,9 @@ impl Parser {
             let start = self.previous();
             if self.match_token(TokenType::MAP) {
                 self.consume(TokenType::RBRACE, "Expected \"}\" after empty map type")?;
-                return Err(self.error("Empty map types are not valid. Use {K↦V} with explicit key and value types."));
+                return Err(self.error(
+                    "Empty map types are not valid. Use {K↦V} with explicit key and value types.",
+                ));
             }
             let key_type = self.parse_type()?;
             self.consume(TokenType::MAP, "Expected \"↦\" in map type")?;
@@ -699,7 +745,7 @@ impl Parser {
             })));
         }
 
-        // Function type: λ(T1, T2)=>!IO !Network R
+        // Function type: λ(T1, T2)=>!Fs !Process R
         if self.match_token(TokenType::LAMBDA) {
             let start = self.previous();
             self.consume(TokenType::LPAREN, "Expected \"(\"")?;
@@ -752,7 +798,10 @@ impl Parser {
                     ),
                 )?;
 
-                let type_name = self.consume(TokenType::UpperIdentifier, "Expected type name after \".\"")?.value.clone();
+                let type_name = self
+                    .consume(TokenType::UpperIdentifier, "Expected type name after \".\"")?
+                    .value
+                    .clone();
 
                 // Check for type arguments
                 let mut type_args = Vec::new();
@@ -866,7 +915,10 @@ impl Parser {
             } else if self.match_identifier("reduce") {
                 // [1,2,3] reduce λ(acc,x)=>acc+x from 0
                 let func = self.logical()?;
-                self.consume_identifier("from", "Expected \"from\" before reduction initial value")?;
+                self.consume_identifier(
+                    "from",
+                    "Expected \"from\" before reduction initial value",
+                )?;
                 let init = self.logical()?;
                 let end = self.previous().location.end;
                 expr = Expr::Fold(Box::new(FoldExpr {
@@ -1046,7 +1098,9 @@ impl Parser {
                                 let field_name = if self.check(TokenType::STRING) {
                                     self.advance().value.clone()
                                 } else {
-                                    self.consume(TokenType::IDENTIFIER, "Expected field name")?.value.clone()
+                                    self.consume(TokenType::IDENTIFIER, "Expected field name")?
+                                        .value
+                                        .clone()
                                 };
                                 self.consume(TokenType::COLON, "Expected ':' after field name")?;
                                 let field_value = self.expression()?;
@@ -1064,7 +1118,8 @@ impl Parser {
                             }
                         }
 
-                        let rbrace = self.consume(TokenType::RBRACE, "Expected '}' after record fields")?;
+                        let rbrace =
+                            self.consume(TokenType::RBRACE, "Expected '}' after record fields")?;
                         let end = rbrace.location.end;
 
                         // Treat as RecordExpr (type checker will verify it matches the type)
@@ -1100,7 +1155,10 @@ impl Parser {
             }
             // Field access: record.field
             else if self.match_token(TokenType::DOT) {
-                let field = self.consume(TokenType::IDENTIFIER, "Expected field name")?.value.clone();
+                let field = self
+                    .consume(TokenType::IDENTIFIER, "Expected field name")?
+                    .value
+                    .clone();
                 let end = self.previous().location.end;
                 let start = expr.location().start;
                 expr = Expr::FieldAccess(Box::new(FieldAccessExpr {
@@ -1132,9 +1190,10 @@ impl Parser {
         // Literals
         if self.match_token(TokenType::INTEGER) {
             let tok = self.previous();
-            let value = tok.value.parse::<i64>().map_err(|_| {
-                self.error_at(tok.location, "Invalid integer literal")
-            })?;
+            let value = tok
+                .value
+                .parse::<i64>()
+                .map_err(|_| self.error_at(tok.location, "Invalid integer literal"))?;
             return Ok(Expr::Literal(LiteralExpr {
                 value: LiteralValue::Int(value),
                 literal_type: LiteralType::Int,
@@ -1144,9 +1203,10 @@ impl Parser {
 
         if self.match_token(TokenType::FLOAT) {
             let tok = self.previous();
-            let value = tok.value.parse::<f64>().map_err(|_| {
-                self.error_at(tok.location, "Invalid float literal")
-            })?;
+            let value = tok
+                .value
+                .parse::<f64>()
+                .map_err(|_| self.error_at(tok.location, "Invalid float literal"))?;
             return Ok(Expr::Literal(LiteralExpr {
                 value: LiteralValue::Float(value),
                 literal_type: LiteralType::Float,
@@ -1165,9 +1225,11 @@ impl Parser {
 
         if self.match_token(TokenType::CHAR) {
             let tok = self.previous();
-            let ch = tok.value.chars().next().ok_or_else(|| {
-                self.error_at(tok.location, "Invalid character literal")
-            })?;
+            let ch = tok
+                .value
+                .chars()
+                .next()
+                .ok_or_else(|| self.error_at(tok.location, "Invalid character literal"))?;
             return Ok(Expr::Literal(LiteralExpr {
                 value: LiteralValue::Char(ch),
                 literal_type: LiteralType::Char,
@@ -1269,8 +1331,8 @@ impl Parser {
         }
 
         if self.match_token(TokenType::LPAREN) {
-            let lparen_start = self.previous().location.start;  // Save LPAREN position
-            // Could be tuple or grouped expression
+            let lparen_start = self.previous().location.start; // Save LPAREN position
+                                                               // Could be tuple or grouped expression
             if self.check(TokenType::RPAREN) {
                 // Empty tuple? Or unit? In Sigil, () is unit literal
                 self.advance();
@@ -1278,7 +1340,7 @@ impl Parser {
                 return Ok(Expr::Literal(LiteralExpr {
                     value: LiteralValue::Unit,
                     literal_type: LiteralType::Unit,
-                    location: SourceLocation::new(lparen_start, end),  // Use saved LPAREN start
+                    location: SourceLocation::new(lparen_start, end), // Use saved LPAREN start
                 }));
             }
 
@@ -1342,9 +1404,13 @@ impl Parser {
         let is_match_expr = self.check(TokenType::MATCH);
 
         if is_match_expr && has_equal {
-            return Err(self.error("Unexpected \"=\" before match expression (canonical form: λ()=>T match ...)"));
+            return Err(self.error(
+                "Unexpected \"=\" before match expression (canonical form: λ()=>T match ...)",
+            ));
         } else if !is_match_expr && !has_equal {
-            return Err(self.error("Expected \"=\" before lambda body (canonical form: λ()=>T=...)"));
+            return Err(
+                self.error("Expected \"=\" before lambda body (canonical form: λ()=>T=...)")
+            );
         }
 
         let body = self.expression()?;
@@ -1426,7 +1492,10 @@ impl Parser {
             .consume(TokenType::IDENTIFIER, "Expected concurrent region name")?
             .value
             .clone();
-        self.consume(TokenType::AT, "Expected \"@\" before concurrent region width")?;
+        self.consume(
+            TokenType::AT,
+            "Expected \"@\" before concurrent region width",
+        )?;
         let width = self.concurrent_width_expression()?;
         let policy = if self.match_token(TokenType::COLON) {
             self.consume(
@@ -1475,7 +1544,10 @@ impl Parser {
             ));
         }
 
-        self.consume(TokenType::RBRACE, "Expected \"}\" after concurrent region body")?;
+        self.consume(
+            TokenType::RBRACE,
+            "Expected \"}\" after concurrent region body",
+        )?;
         let end = self.previous();
         Ok(Expr::Concurrent(Box::new(ConcurrentExpr {
             name,
@@ -1569,7 +1641,8 @@ impl Parser {
                 let mut entries = vec![MapEntryExpr {
                     key: first_expr,
                     value: self.expression()?,
-                    location: self.make_location(start.location.start, self.previous().location.end),
+                    location: self
+                        .make_location(start.location.start, self.previous().location.end),
                 }];
 
                 while self.match_token(TokenType::COMMA) {
@@ -1580,24 +1653,31 @@ impl Parser {
                     entries.push(MapEntryExpr {
                         key,
                         value,
-                        location: self.make_location(entry_start.location.start, self.previous().location.end),
+                        location: self.make_location(
+                            entry_start.location.start,
+                            self.previous().location.end,
+                        ),
                     });
                 }
 
                 self.consume(TokenType::RBRACE, "Expected \"}\"")?;
                 return Ok(Expr::MapLiteral(MapLiteralExpr {
                     entries,
-                    location: self.make_location(start.location.start, self.previous().location.end),
+                    location: self
+                        .make_location(start.location.start, self.previous().location.end),
                 }));
             } else if self.match_token(TokenType::COLON) {
                 let Expr::Identifier(name_token) = first_expr else {
-                    return Err(self.error("Record literals require identifier field names. Use ↦ for map literals."));
+                    return Err(self.error(
+                        "Record literals require identifier field names. Use ↦ for map literals.",
+                    ));
                 };
 
                 let mut fields = vec![RecordField {
                     name: name_token.name,
                     value: self.expression()?,
-                    location: self.make_location(name_token.location.start, self.previous().location.end),
+                    location: self
+                        .make_location(name_token.location.start, self.previous().location.end),
                 }];
 
                 while self.match_token(TokenType::COMMA) {
@@ -1605,20 +1685,27 @@ impl Parser {
                         return Err(self.record_exactness_error("record literals"));
                     }
                     let field_start = self.peek();
-                    let field_name = self.consume(TokenType::IDENTIFIER, "Expected record field name")?.value.clone();
+                    let field_name = self
+                        .consume(TokenType::IDENTIFIER, "Expected record field name")?
+                        .value
+                        .clone();
                     self.consume(TokenType::COLON, "Expected \":\" in record literal")?;
                     let field_value = self.expression()?;
                     fields.push(RecordField {
                         name: field_name,
                         value: field_value,
-                        location: self.make_location(field_start.location.start, self.previous().location.end),
+                        location: self.make_location(
+                            field_start.location.start,
+                            self.previous().location.end,
+                        ),
                     });
                 }
 
                 self.consume(TokenType::RBRACE, "Expected \"}\"")?;
                 return Ok(Expr::Record(RecordExpr {
                     fields,
-                    location: self.make_location(start.location.start, self.previous().location.end),
+                    location: self
+                        .make_location(start.location.start, self.previous().location.end),
                 }));
             } else {
                 self.current = checkpoint;
@@ -1668,15 +1755,17 @@ impl Parser {
             let tok = self.previous();
             let (value, literal_type) = match tok.token_type {
                 TokenType::INTEGER => {
-                    let val = tok.value.parse::<i64>().map_err(|_| {
-                        self.error_at(tok.location, "Invalid integer literal")
-                    })?;
+                    let val = tok
+                        .value
+                        .parse::<i64>()
+                        .map_err(|_| self.error_at(tok.location, "Invalid integer literal"))?;
                     (PatternLiteralValue::Int(val), PatternLiteralType::Int)
                 }
                 TokenType::FLOAT => {
-                    let val = tok.value.parse::<f64>().map_err(|_| {
-                        self.error_at(tok.location, "Invalid float literal")
-                    })?;
+                    let val = tok
+                        .value
+                        .parse::<f64>()
+                        .map_err(|_| self.error_at(tok.location, "Invalid float literal"))?;
                     (PatternLiteralValue::Float(val), PatternLiteralType::Float)
                 }
                 TokenType::STRING => (
@@ -1684,9 +1773,10 @@ impl Parser {
                     PatternLiteralType::String,
                 ),
                 TokenType::CHAR => {
-                    let ch = tok.value.chars().next().ok_or_else(|| {
-                        self.error_at(tok.location, "Invalid character literal")
-                    })?;
+                    let ch =
+                        tok.value.chars().next().ok_or_else(|| {
+                            self.error_at(tok.location, "Invalid character literal")
+                        })?;
                     (PatternLiteralValue::Char(ch), PatternLiteralType::Char)
                 }
                 TokenType::TRUE => (PatternLiteralValue::Bool(true), PatternLiteralType::Bool),
@@ -1732,7 +1822,10 @@ impl Parser {
                 )?;
 
                 let constructor_name = self
-                    .consume(TokenType::UpperIdentifier, "Expected constructor name after \".\"")?
+                    .consume(
+                        TokenType::UpperIdentifier,
+                        "Expected constructor name after \".\"",
+                    )?
                     .value
                     .clone();
 
@@ -1760,7 +1853,8 @@ impl Parser {
                     module_path,
                     name: constructor_name,
                     patterns: vec![],
-                    location: self.make_location(start.location.start, self.previous().location.end),
+                    location: self
+                        .make_location(start.location.start, self.previous().location.end),
                 }));
             }
 
@@ -1814,7 +1908,10 @@ impl Parser {
                 )?;
 
                 let constructor_name = self
-                    .consume(TokenType::UpperIdentifier, "Expected constructor name after \".\"")?
+                    .consume(
+                        TokenType::UpperIdentifier,
+                        "Expected constructor name after \".\"",
+                    )?
                     .value
                     .clone();
 
@@ -1842,7 +1939,8 @@ impl Parser {
                     module_path,
                     name: constructor_name,
                     patterns: vec![],
-                    location: self.make_location(start.location.start, self.previous().location.end),
+                    location: self
+                        .make_location(start.location.start, self.previous().location.end),
                 }));
             }
 
@@ -1862,7 +1960,11 @@ impl Parser {
                 loop {
                     // Check for rest pattern: .xs
                     if self.match_token(TokenType::DOT) {
-                        rest = Some(self.consume(TokenType::IDENTIFIER, "Expected identifier after \".\"")?.value.clone());
+                        rest = Some(
+                            self.consume(TokenType::IDENTIFIER, "Expected identifier after \".\"")?
+                                .value
+                                .clone(),
+                        );
                         break;
                     }
 
@@ -1893,7 +1995,10 @@ impl Parser {
                         return Err(self.record_exactness_error("record patterns"));
                     }
                     let field_start = self.peek();
-                    let name = self.consume(TokenType::IDENTIFIER, "Expected field name")?.value.clone();
+                    let name = self
+                        .consume(TokenType::IDENTIFIER, "Expected field name")?
+                        .value
+                        .clone();
 
                     let pattern = if self.match_token(TokenType::COLON) {
                         Some(self.pattern()?)
@@ -1905,7 +2010,8 @@ impl Parser {
                     fields.push(RecordPatternField {
                         name,
                         pattern,
-                        location: self.make_location(field_start.location.start, field_end.location.end),
+                        location: self
+                            .make_location(field_start.location.start, field_end.location.end),
                     });
 
                     if !self.match_token(TokenType::COMMA) {
@@ -2019,13 +2125,16 @@ impl Parser {
     }
 
     fn previous(&self) -> Token {
-        self.tokens.get(self.current.saturating_sub(1)).cloned().unwrap_or_else(|| {
-            Token::new(
-                TokenType::EOF,
-                String::new(),
-                SourceLocation::single(Position::new(0, 0, 0)),
-            )
-        })
+        self.tokens
+            .get(self.current.saturating_sub(1))
+            .cloned()
+            .unwrap_or_else(|| {
+                Token::new(
+                    TokenType::EOF,
+                    String::new(),
+                    SourceLocation::single(Position::new(0, 0, 0)),
+                )
+            })
     }
 
     fn consume(&mut self, token_type: TokenType, message: &str) -> Result<Token, ParseError> {
@@ -2147,12 +2256,17 @@ mod tests {
 
     #[test]
     fn test_concurrent_region_parse() {
-        let source = "λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit@getLimit():{stopOn:shouldStop}{spawnEach [1,2] process}\nλgetLimit()=>Int=1\nλprocess(value:Int)=>!IO Result[Int,String]=Ok(value)\nλshouldStop(err:String)=>Bool=false";
+        let source = "e clock:{tick:λ()=>!Timer Unit}\nλmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@getLimit():{stopOn:shouldStop}{spawnEach [1,2] process}\nλgetLimit()=>Int=1\nλprocess(value:Int)=>!Timer Result[Int,String]={l _=(clock.tick():Unit);Ok(value)}\nλshouldStop(err:String)=>Bool=false";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
-        let Declaration::Function(function) = &program.declarations[0] else {
-            panic!("expected function declaration");
-        };
+        let function = program
+            .declarations
+            .iter()
+            .find_map(|decl| match decl {
+                Declaration::Function(function) if function.name == "main" => Some(function),
+                _ => None,
+            })
+            .expect("expected main function declaration");
         let Expr::Concurrent(concurrent) = &function.body else {
             panic!("expected concurrent expression");
         };
@@ -2164,7 +2278,7 @@ mod tests {
 
     #[test]
     fn test_legacy_concurrent_region_syntax_rejected() {
-        let source = "λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit({concurrency:1}){spawnEach [1,2] process}\nλprocess(value:Int)=>!IO Result[Int,String]=Ok(value)";
+        let source = "e clock:{tick:λ()=>!Timer Unit}\nλmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit({concurrency:1}){spawnEach [1,2] process}\nλprocess(value:Int)=>!Timer Result[Int,String]={l _=(clock.tick():Unit);Ok(value)}";
         let tokens = tokenize(source).unwrap();
         let result = parse(tokens, "test.sigil");
         assert!(result.is_err());

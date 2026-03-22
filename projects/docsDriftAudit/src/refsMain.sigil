@@ -8,7 +8,7 @@ i stdlib::string
 
 i stdlib::process
 
-λmain()=>!IO Unit match stdlib::process.argv(){
+λmain()=>!CliIo Unit match stdlib::process.argv(){
   [filePath,outPath]=>match src::docsDrift.runRefsForFile(filePath){
     Ok(audit)=>match #audit.issues=0{
       true=>{
@@ -37,7 +37,7 @@ i stdlib::process
   [head,.tail]=>[prefix++head]⧺prefixed(prefix,tail)
 }
 
-λprintLines(lines:[String])=>!IO Unit match lines{
+λprintLines(lines:[String])=>!Log Unit match lines{
   []=>()|
   [head,.tail]=>{
     l _=(stdlib::io.println(head):Unit);

@@ -4,7 +4,7 @@ i stdlib::io
 
 i stdlib::process
 
-λmain()=>!IO Unit match src::docsDrift.runCoverageOnly(){
+λmain()=>!CliIo Unit match src::docsDrift.runCoverageOnly(){
   Ok(issues)=>match #issues=0{
     true=>{
       l _=(stdlib::io.println("Docs/example drift coverage OK"):Unit);

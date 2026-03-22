@@ -27,7 +27,7 @@ i stdlib::string
   Err(error)=>Err("failed to compile regex rule '"++spec.name++"': "++error.message)
 }
 
-λgitTopLevel()=>!IO Result[String,String]={
+λgitTopLevel()=>!Process Result[String,String]={
   l result=(stdlib::process.run(stdlib::process.command(["git","rev-parse","--show-toplevel"])):stdlib::process.ProcessResult);
   match result.code=0{
     true=>Ok((stdlib::string.trim(result.stdout):String))|
@@ -35,7 +35,7 @@ i stdlib::string
   }
 }
 
-λgitTrackedFiles()=>!IO Result[[String],String]=parseTrackedFiles(stdlib::process.run(stdlib::process.command(["git","ls-files","*.sigil","*.lib.sigil"])))
+λgitTrackedFiles()=>!Process Result[[String],String]=parseTrackedFiles(stdlib::process.run(stdlib::process.command(["git","ls-files","*.sigil","*.lib.sigil"])))
 
 λignorePath(path:String)=>Bool=stdlib::string.startsWith("language/stdlib/",path)
 
@@ -53,7 +53,7 @@ i stdlib::string
   false=>Err("git ls-files failed: "++result.stderr)
 }
 
-λprintIssues(issues:[Issue])=>!IO Unit match issues{
+λprintIssues(issues:[Issue])=>!Log Unit match issues{
   []=>()|
   [head,.tail]=>{
     l _=(stdlib::io.println(issueMessage(head)):Unit);
@@ -61,7 +61,7 @@ i stdlib::string
   }
 }
 
-λreadIssues(paths:[String],root:String,rules:[Rule])=>!IO [Issue] match paths{
+λreadIssues(paths:[String],root:String,rules:[Rule])=>!Fs [Issue] match paths{
   []=>[]|
   [path,.rest]=>match ignorePath(path){
     true=>readIssues(rest,root,rules)|
@@ -88,7 +88,7 @@ i stdlib::string
   Err(message)=>Err(message)
 },ruleSpecs())
 
-λrunCheck()=>!IO Result[[Issue],String] match rules(){
+λrunCheck()=>!AuditIo Result[[Issue],String] match rules(){
   Ok(compiled)=>match gitTopLevel(){
     Ok(root)=>match gitTrackedFiles(){
       Ok(paths)=>Ok((readIssues(paths,root,compiled):[Issue]))|

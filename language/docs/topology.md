@@ -100,7 +100,7 @@ i src::topology
 
 i stdlib::httpClient
 
-λmain()=>!IO String match stdlib::httpClient.get(src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/health"){
+λmain()=>!Http String match stdlib::httpClient.get(src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/health"){
   Ok(response)=>response.body|
   Err(error)=>error.message
 }
@@ -113,7 +113,7 @@ i src::topology
 
 i stdlib::tcpClient
 
-λmain()=>!IO String match stdlib::tcpClient.send(src::topology.eventStream,"ping"){
+λmain()=>!Tcp String match stdlib::tcpClient.send(src::topology.eventStream,"ping"){
   Ok(response)=>response.message|
   Err(error)=>error.message
 }

@@ -110,16 +110,34 @@ For function declarations:
 Effects, when present, appear between `=>` and the return type:
 
 ```sigil program
-e axios
+e axios:{get:λ(String)=>!Http String}
 
-e console
+e console:{log:λ(String)=>!Log Unit}
 
 i stdlib::string
 
-λfetchUser(id:Int)=>!Network String=axios.get("https://example.com/"+stdlib::string.intToString(id))
+λfetchUser(id:Int)=>!Http String=axios.get("https://example.com/"+stdlib::string.intToString(id))
 
-λmain()=>!IO Unit=console.log("hello")
+λmain()=>!Log Unit=console.log("hello")
 ```
+
+The built-in primitive effects are:
+
+- `Clock`
+- `Fs`
+- `Http`
+- `Log`
+- `Process`
+- `Tcp`
+- `Timer`
+
+Projects may define reusable multi-effect aliases only in `src/effects.lib.sigil`:
+
+```sigil module projects/docsDriftAudit/src/effects.lib.sigil
+effect CliIo=!Fs!Log!Process
+```
+
+Those aliases are project-global and may be used directly in signatures.
 
 ## Lambda Expressions
 
@@ -230,9 +248,9 @@ There are no selective imports and no import aliases.
 Extern declarations use `e`:
 
 ```sigil module
-e console
+e console:{log:λ(String)=>!Log Unit}
 
-e axios:{get:λ(String)=>!Network String}
+e axios:{get:λ(String)=>!Http String}
 ```
 
 ## Local Bindings
@@ -354,15 +372,23 @@ Examples:
 
 Sigil uses one explicit concurrency surface:
 
-```sigil module
-λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit@5:{jitterMs:Some({max:25,min:1}),stopOn:shouldStop,windowMs:Some(1000)}{
+```sigil program
+i stdlib::time
+
+λmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@5:{jitterMs:Some({max:25,min:1}),stopOn:shouldStop,windowMs:Some(1000)}{
   spawn one()
   spawnEach [1,2,3] process
 }
 
-λone()=>!IO Result[Int,String]=Ok(1)
+λone()=>!Timer Result[Int,String]={
+  l _=(stdlib::time.sleepMs(0):Unit);
+  Ok(1)
+}
 
-λprocess(value:Int)=>!IO Result[Int,String]=Ok(value)
+λprocess(value:Int)=>!Timer Result[Int,String]={
+  l _=(stdlib::time.sleepMs(0):Unit);
+  Ok(value)
+}
 
 λshouldStop(err:String)=>Bool=false
 ```
@@ -416,12 +442,12 @@ test "adds numbers" {
 Effectful tests use explicit effect annotations:
 
 ```sigil program language/test-fixtures/tests/writesLog.sigil
-e console
+i stdlib::io
 
 λmain()=>Unit=()
 
-test "writes log" =>!IO  {
-  console.log("x")=()
+test "writes log" =>!Log  {
+  stdlib::io.println("x")=()
 }
 ```
 
@@ -430,12 +456,12 @@ test "writes log" =>!IO  {
 Sigil includes a built-in `withMock(...) { ... }` expression for tests:
 
 ```sigil program language/test-fixtures/tests/withMockExample.sigil
-λfetchUser(id:Int)=>!Network String="real"
+λfetchUser(id:Int)=>String="real"
 
 λmain()=>Unit=()
 
-test "fallback on API failure" =>!Network  {
-  withMock(fetchUser,λ(id:Int)=>!Network String="ERR"){fetchUser(1)="ERR"}
+test "fallback on API failure" {
+  withMock(fetchUser,λ(id:Int)=>String="ERR"){fetchUser(1)="ERR"}
 }
 ```
 

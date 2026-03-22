@@ -224,18 +224,29 @@ Mutability Error: Cannot mutate immutable parameter 'list'
                          ^^^^^^^^^^^^^^^^
 ```
 
-## Future Enhancements
+## Effect Tracking
 
-### Planned: Effect Tracking
+Sigil tracks effects explicitly and checks them at compile time.
 
-Effect tracking will be added to track side effects:
+Current primitive effects are:
+
+- `Clock`
+- `Fs`
+- `Http`
+- `Log`
+- `Process`
+- `Tcp`
+- `Timer`
+
+Examples:
 
 ```text
-λread()=>!IO String=...                    ⟦ IO effect ⟧
-λfetch(url:String)=>!Network Response=... ⟦ Network effect ⟧
+λread()=>!Fs String=...
+λfetch(url:String)=>!Http Response=...
+λsleep()=>!Timer Unit=...
 ```
 
-This helps prevent accidental side effects and documents function behavior clearly.
+Projects may also define reusable multi-effect aliases in `src/effects.lib.sigil`.
 
 ### NOT Planned: Mutating Operations
 

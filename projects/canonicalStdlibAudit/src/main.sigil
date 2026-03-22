@@ -4,7 +4,7 @@ i stdlib::io
 
 i stdlib::process
 
-λmain()=>!IO Unit match src::canonicalStdlibUsage.runCheck(){
+λmain()=>!CliIo Unit match src::canonicalStdlibUsage.runCheck(){
   Ok(issues)=>match #issues=0{
     true=>{
       l _=(stdlib::io.println("Canonical stdlib usage OK"):Unit);

@@ -320,7 +320,7 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 ### SIGIL-CANON-EFFECT-ORDER
 **Description:** Function effects out of alphabetical order.
 **Message:** "Effect 'X' out of alphabetical order in function 'name'"
-**Example:** `λf()=>!IO !Error Unit=()` => should be `λf()=>!Error !IO Unit=()`
+**Example:** `λf()=>!Process!Fs Unit=()` => should be `λf()=>!Fs!Process Unit=()`
 **How to fix:** Sort effects alphabetically
 
 ### SIGIL-CANON-RECORD-TYPE-FIELD-ORDER

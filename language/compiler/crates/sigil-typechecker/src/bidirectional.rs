@@ -23,15 +23,15 @@ use crate::typed_ir::{
     TypedUnaryExpr, TypedWithMockExpr, WithMockTarget,
 };
 use crate::types::{
-    ast_type_to_inference_type_with_params, apply_subst, unify, EffectSet, InferenceType,
-    TConstructor, TFunction, TMap, TPrimitive, TRecord, types_equal,
+    apply_subst, ast_type_to_inference_type_with_params, types_equal, unify, EffectSet,
+    InferenceType, TConstructor, TFunction, TMap, TPrimitive, TRecord,
 };
-use crate::{TypeCheckOptions};
-use sigil_diagnostics::codes;
+use crate::TypeCheckOptions;
 use sigil_ast::{
     BinaryOperator, Declaration, Expr, FunctionDecl, LiteralType, PrimitiveName, Program, Type,
     TypeDef,
 };
+use sigil_diagnostics::codes;
 use std::collections::{HashMap, HashSet};
 
 type TypeParamEnv = HashMap<String, InferenceType>;
@@ -47,6 +47,7 @@ pub fn type_check(
     validate_surface_types(program)?;
 
     let mut env = TypeEnvironment::create_initial();
+    env.set_effect_catalog(options.effect_catalog.clone().unwrap_or_default());
     env.set_source_file(options.source_file.clone());
     let mut types = HashMap::new();
     let mut schemes = HashMap::new();
@@ -131,6 +132,8 @@ pub fn type_check(
                 }
             }
 
+            Declaration::Effect(_) => {}
+
             Declaration::Function(func_decl) => {
                 let type_param_env = make_type_param_env(&func_decl.type_params);
                 // Extract function type from signature
@@ -138,7 +141,9 @@ pub fn type_check(
                     .params
                     .iter()
                     .map(|p| match &p.type_annotation {
-                        Some(ty) => ast_type_to_inference_type_resolved(&env, Some(&type_param_env), ty),
+                        Some(ty) => {
+                            ast_type_to_inference_type_resolved(&env, Some(&type_param_env), ty)
+                        }
                         None => Ok(InferenceType::Any),
                     })
                     .collect::<Result<_, _>>()?;
@@ -153,7 +158,12 @@ pub fn type_check(
                 let effects = if func_decl.effects.is_empty() {
                     None
                 } else {
-                    Some(func_decl.effects.iter().cloned().collect())
+                    Some(resolve_effect_names(
+                        &env,
+                        &func_decl.effects,
+                        func_decl.location,
+                        "function signature",
+                    )?)
                 };
 
                 let func_type = InferenceType::Function(Box::new(TFunction {
@@ -246,7 +256,9 @@ pub fn type_check(
     for decl in &program.declarations {
         if let Declaration::Function(func_decl) = decl {
             check_function_decl(&env, func_decl)?;
-            typed_declarations.push(TypedDeclaration::Function(build_typed_function_decl(&env, func_decl)?));
+            typed_declarations.push(TypedDeclaration::Function(build_typed_function_decl(
+                &env, func_decl,
+            )?));
         } else if let Declaration::Const(const_decl) = decl {
             // Type check constant value
             let value_type = synthesize(&env, &const_decl.value)?;
@@ -256,25 +268,34 @@ pub fn type_check(
                     canonical_pair(&env, &value_type, &expected_type);
                 if !types_equal(&normalized_value, &normalized_expected) {
                     return Err(TypeError::mismatch(
-                        format!(
-                            "Constant '{}' type mismatch",
-                            const_decl.name
-                        ),
+                        format!("Constant '{}' type mismatch", const_decl.name),
                         Some(const_decl.location),
                         normalized_expected,
                         normalized_value,
                     ));
                 }
             }
-            typed_declarations.push(TypedDeclaration::Const(build_typed_const_decl(&env, const_decl)?));
+            typed_declarations.push(TypedDeclaration::Const(build_typed_const_decl(
+                &env, const_decl,
+            )?));
         } else if let Declaration::Type(type_decl) = decl {
-            typed_declarations.push(TypedDeclaration::Type(TypedTypeDecl { ast: type_decl.clone() }));
+            typed_declarations.push(TypedDeclaration::Type(TypedTypeDecl {
+                ast: type_decl.clone(),
+            }));
         } else if let Declaration::Import(import_decl) = decl {
-            typed_declarations.push(TypedDeclaration::Import(TypedImportDecl { ast: import_decl.clone() }));
+            typed_declarations.push(TypedDeclaration::Import(TypedImportDecl {
+                ast: import_decl.clone(),
+            }));
         } else if let Declaration::Extern(extern_decl) = decl {
-            typed_declarations.push(TypedDeclaration::Extern(TypedExternDecl { ast: extern_decl.clone() }));
+            typed_declarations.push(TypedDeclaration::Extern(TypedExternDecl {
+                ast: extern_decl.clone(),
+            }));
         } else if let Declaration::Test(test_decl) = decl {
-            typed_declarations.push(TypedDeclaration::Test(build_typed_test_decl(&env, test_decl)?));
+            typed_declarations.push(TypedDeclaration::Test(build_typed_test_decl(
+                &env, test_decl,
+            )?));
+        } else if let Declaration::Effect(_) = decl {
+            // Effect declarations are compile-time only and do not appear in typed IR.
         }
     }
 
@@ -361,7 +382,11 @@ fn resolve_qualified_type(
                 "Type argument mismatch: {} expects {} type argument{}, but got {}",
                 qualified.type_name,
                 type_info.type_params.len(),
-                if type_info.type_params.len() == 1 { "" } else { "s" },
+                if type_info.type_params.len() == 1 {
+                    ""
+                } else {
+                    "s"
+                },
                 type_args.len()
             ),
             Some(qualified.location),
@@ -376,7 +401,11 @@ fn resolve_qualified_type(
                 for field in &product.fields {
                     fields.insert(
                         field.name.clone(),
-                        ast_type_to_inference_type_resolved(env, type_param_env, &field.field_type)?,
+                        ast_type_to_inference_type_resolved(
+                            env,
+                            type_param_env,
+                            &field.field_type,
+                        )?,
                     );
                 }
 
@@ -386,7 +415,11 @@ fn resolve_qualified_type(
                 }));
             }
             TypeDef::Alias(alias) => {
-                return ast_type_to_inference_type_resolved(env, type_param_env, &alias.aliased_type);
+                return ast_type_to_inference_type_resolved(
+                    env,
+                    type_param_env,
+                    &alias.aliased_type,
+                );
             }
             TypeDef::Sum(_) => {}
         }
@@ -446,7 +479,9 @@ fn resolve_named_type(
 ) -> Result<InferenceType, TypeError> {
     match inference_type {
         InferenceType::Constructor(constructor) if constructor.type_args.is_empty() => {
-            if let Some((module_path, type_name)) = split_qualified_constructor_name(&constructor.name) {
+            if let Some((module_path, type_name)) =
+                split_qualified_constructor_name(&constructor.name)
+            {
                 if let Some(type_info) = env.lookup_qualified_type(&module_path, &type_name) {
                     if type_info.type_params.is_empty() {
                         return match &type_info.definition {
@@ -455,7 +490,11 @@ fn resolve_named_type(
                                 for field in &product.fields {
                                     fields.insert(
                                         field.name.clone(),
-                                        ast_type_to_inference_type_resolved(env, None, &field.field_type)?,
+                                        ast_type_to_inference_type_resolved(
+                                            env,
+                                            None,
+                                            &field.field_type,
+                                        )?,
                                     );
                                 }
                                 Ok(InferenceType::Record(TRecord {
@@ -480,7 +519,11 @@ fn resolve_named_type(
                             for field in &product.fields {
                                 fields.insert(
                                     field.name.clone(),
-                                    ast_type_to_inference_type_resolved(env, None, &field.field_type)?,
+                                    ast_type_to_inference_type_resolved(
+                                        env,
+                                        None,
+                                        &field.field_type,
+                                    )?,
                                 );
                             }
                             Ok(InferenceType::Record(TRecord {
@@ -539,7 +582,11 @@ fn ast_type_to_inference_type_resolved(
     match ast_type {
         Type::Qualified(qualified) => resolve_qualified_type(env, type_param_env, qualified),
         Type::List(list_type) => Ok(InferenceType::List(Box::new(crate::types::TList {
-            element_type: ast_type_to_inference_type_resolved(env, type_param_env, &list_type.element_type)?,
+            element_type: ast_type_to_inference_type_resolved(
+                env,
+                type_param_env,
+                &list_type.element_type,
+            )?,
         }))),
         Type::Tuple(tuple_type) => Ok(InferenceType::Tuple(crate::types::TTuple {
             types: tuple_type
@@ -554,11 +601,20 @@ fn ast_type_to_inference_type_resolved(
                 .iter()
                 .map(|ty| ast_type_to_inference_type_resolved(env, type_param_env, ty))
                 .collect::<Result<Vec<_>, _>>()?,
-            return_type: ast_type_to_inference_type_resolved(env, type_param_env, &func_type.return_type)?,
+            return_type: ast_type_to_inference_type_resolved(
+                env,
+                type_param_env,
+                &func_type.return_type,
+            )?,
             effects: if func_type.effects.is_empty() {
                 None
             } else {
-                Some(func_type.effects.iter().cloned().collect())
+                Some(resolve_effect_names(
+                    env,
+                    &func_type.effects,
+                    func_type.location,
+                    "function type",
+                )?)
             },
         }))),
         _ => {
@@ -595,6 +651,7 @@ fn validate_declaration_surface_types(decl: &Declaration) -> Result<(), TypeErro
                 Ok(())
             }
         },
+        Declaration::Effect(_) => Ok(()),
         Declaration::Function(func_decl) => {
             for param in &func_decl.params {
                 if let Some(param_type) = &param.type_annotation {
@@ -822,7 +879,9 @@ fn create_constructor_type_with_result_name(
     let params: Vec<InferenceType> = variant
         .types
         .iter()
-        .map(|field_type| ast_type_to_inference_type_resolved(env, Some(&type_param_env), field_type))
+        .map(|field_type| {
+            ast_type_to_inference_type_resolved(env, Some(&type_param_env), field_type)
+        })
         .collect::<Result<_, _>>()?;
 
     // Result type is the generic constructor with all declared type arguments.
@@ -872,6 +931,14 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
 
     // Type check body
     check(&func_env, &func_decl.body, &expected_return_type)?;
+    let typed_body = build_typed_expr(&func_env, &func_decl.body)?;
+    declared_effects_cover_actual(
+        env,
+        &func_decl.effects,
+        &typed_body.effects,
+        func_decl.location,
+        &format!("Function '{}'", func_decl.name),
+    )?;
 
     Ok(())
 }
@@ -880,8 +947,48 @@ fn effects_option_to_set(effects: &Option<EffectSet>) -> EffectSet {
     effects.clone().unwrap_or_default()
 }
 
-fn effects_vec_to_set(effects: &[String]) -> EffectSet {
-    effects.iter().cloned().collect()
+fn resolve_effect_names(
+    env: &TypeEnvironment,
+    effects: &[String],
+    location: sigil_ast::SourceLocation,
+    context: &str,
+) -> Result<EffectSet, TypeError> {
+    env.effect_catalog()
+        .expand_effect_names(effects)
+        .map(|expanded| expanded.into_iter().collect())
+        .map_err(|message| TypeError::new(format!("{}: {}", context, message), Some(location)))
+}
+
+fn declared_effects_cover_actual(
+    env: &TypeEnvironment,
+    declared_surface_effects: &[String],
+    actual_effects: &EffectSet,
+    location: sigil_ast::SourceLocation,
+    context: &str,
+) -> Result<(), TypeError> {
+    let declared_effects = resolve_effect_names(env, declared_surface_effects, location, context)?;
+    if actual_effects.is_subset(&declared_effects) {
+        return Ok(());
+    }
+
+    let mut missing: Vec<String> = actual_effects
+        .difference(&declared_effects)
+        .cloned()
+        .collect();
+    missing.sort();
+
+    Err(TypeError::new(
+        format!(
+            "{} is missing declared effects: {}",
+            context,
+            missing
+                .into_iter()
+                .map(|effect| format!("!{}", effect))
+                .collect::<Vec<_>>()
+                .join(" ")
+        ),
+        Some(location),
+    ))
 }
 
 fn merge_effects(values: impl IntoIterator<Item = EffectSet>) -> EffectSet {
@@ -929,7 +1036,10 @@ fn int_type() -> InferenceType {
     })
 }
 
-fn concurrent_outcome_type(success_type: InferenceType, error_type: InferenceType) -> InferenceType {
+fn concurrent_outcome_type(
+    success_type: InferenceType,
+    error_type: InferenceType,
+) -> InferenceType {
     InferenceType::Constructor(TConstructor {
         name: "ConcurrentOutcome".to_string(),
         type_args: vec![success_type, error_type],
@@ -1009,7 +1119,9 @@ fn result_type_parts(
 ) -> Option<(InferenceType, InferenceType)> {
     let normalized = env.normalize_type(typ);
     match normalized {
-        InferenceType::Constructor(tcons) if tcons.name == "Result" && tcons.type_args.len() == 2 => {
+        InferenceType::Constructor(tcons)
+            if tcons.name == "Result" && tcons.type_args.len() == 2 =>
+        {
             Some((tcons.type_args[0].clone(), tcons.type_args[1].clone()))
         }
         _ => None,
@@ -1053,7 +1165,12 @@ fn build_typed_function_decl(
         effects: if func_decl.effects.is_empty() {
             None
         } else {
-            Some(effects_vec_to_set(&func_decl.effects))
+            Some(resolve_effect_names(
+                env,
+                &func_decl.effects,
+                func_decl.location,
+                "function signature",
+            )?)
         },
         body,
         location: func_decl.location,
@@ -1086,12 +1203,24 @@ fn build_typed_test_decl(
     test_decl: &sigil_ast::TestDecl,
 ) -> Result<TypedTestDecl, TypeError> {
     let body = build_typed_expr(env, &test_decl.body)?;
+    declared_effects_cover_actual(
+        env,
+        &test_decl.effects,
+        &body.effects,
+        test_decl.location,
+        &format!("Test '{}'", test_decl.description),
+    )?;
     Ok(TypedTestDecl {
         description: test_decl.description.clone(),
         effects: if test_decl.effects.is_empty() {
             None
         } else {
-            Some(effects_vec_to_set(&test_decl.effects))
+            Some(resolve_effect_names(
+                env,
+                &test_decl.effects,
+                test_decl.location,
+                "test signature",
+            )?)
         },
         body,
         location: test_decl.location,
@@ -1116,7 +1245,9 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
             id.location,
         )),
         Expr::MemberAccess(member_access) => {
-            if lookup_constructor_type(env, &member_access.namespace, &member_access.member)?.is_some() {
+            if lookup_constructor_type(env, &member_access.namespace, &member_access.member)?
+                .is_some()
+            {
                 Ok(typed_expr(
                     TypedExprKind::NamespaceMember {
                         namespace: member_access.namespace.clone(),
@@ -1156,12 +1287,21 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
             }
             let lambda_env = env.extend(Some(lambda_env_bindings));
             let body = build_typed_expr(&lambda_env, &lambda.body)?;
-            let effects = effects_vec_to_set(&lambda.effects);
+            let effects =
+                resolve_effect_names(env, &lambda.effects, lambda.location, "lambda signature")?;
             Ok(typed_expr(
                 TypedExprKind::Lambda(TypedLambdaExpr {
                     params: lambda.params.clone(),
-                    effects: if effects.is_empty() { None } else { Some(effects.clone()) },
-                    return_type: ast_type_to_inference_type_resolved(env, None, &lambda.return_type)?,
+                    effects: if effects.is_empty() {
+                        None
+                    } else {
+                        Some(effects.clone())
+                    },
+                    return_type: ast_type_to_inference_type_resolved(
+                        env,
+                        None,
+                        &lambda.return_type,
+                    )?,
                     body: Box::new(body),
                 }),
                 typ,
@@ -1254,7 +1394,11 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
                 let mut bindings = HashMap::new();
                 check_pattern(env, &arm.pattern, &scrutinee_type, &mut bindings)?;
                 let arm_env = env.extend(Some(bindings));
-                let guard = arm.guard.as_ref().map(|g| build_typed_expr(&arm_env, g).map(Box::new)).transpose()?;
+                let guard = arm
+                    .guard
+                    .as_ref()
+                    .map(|g| build_typed_expr(&arm_env, g).map(Box::new))
+                    .transpose()?;
                 let body = Box::new(build_typed_expr(&arm_env, &arm.body)?);
                 if let Some(ref guard_expr) = guard {
                     arm_effects.push(guard_expr.effects.clone());
@@ -1279,7 +1423,11 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
             ))
         }
         Expr::List(list) => {
-            let elements = list.elements.iter().map(|element| build_typed_expr(env, element)).collect::<Result<Vec<_>, _>>()?;
+            let elements = list
+                .elements
+                .iter()
+                .map(|element| build_typed_expr(env, element))
+                .collect::<Result<Vec<_>, _>>()?;
             let effects = merge_effects(elements.iter().map(|element| element.effects.clone()));
             Ok(typed_expr(
                 TypedExprKind::List(TypedListExpr { elements }),
@@ -1290,7 +1438,11 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
             ))
         }
         Expr::Tuple(tuple) => {
-            let elements = tuple.elements.iter().map(|element| build_typed_expr(env, element)).collect::<Result<Vec<_>, _>>()?;
+            let elements = tuple
+                .elements
+                .iter()
+                .map(|element| build_typed_expr(env, element))
+                .collect::<Result<Vec<_>, _>>()?;
             let effects = merge_effects(elements.iter().map(|element| element.effects.clone()));
             Ok(typed_expr(
                 TypedExprKind::Tuple(TypedTupleExpr { elements }),
@@ -1301,13 +1453,17 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
             ))
         }
         Expr::Record(record) => {
-            let fields = record.fields.iter().map(|field| {
-                Ok(TypedRecordField {
-                    name: field.name.clone(),
-                    value: build_typed_expr(env, &field.value)?,
-                    location: field.location,
+            let fields = record
+                .fields
+                .iter()
+                .map(|field| {
+                    Ok(TypedRecordField {
+                        name: field.name.clone(),
+                        value: build_typed_expr(env, &field.value)?,
+                        location: field.location,
+                    })
                 })
-            }).collect::<Result<Vec<_>, TypeError>>()?;
+                .collect::<Result<Vec<_>, TypeError>>()?;
             let effects = merge_effects(fields.iter().map(|field| field.value.effects.clone()));
             Ok(typed_expr(
                 TypedExprKind::Record(TypedRecordExpr { fields }),
@@ -1318,17 +1474,22 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
             ))
         }
         Expr::MapLiteral(map) => {
-            let entries = map.entries.iter().map(|entry| {
-                Ok(TypedMapEntryExpr {
-                    key: build_typed_expr(env, &entry.key)?,
-                    value: build_typed_expr(env, &entry.value)?,
-                    location: entry.location,
+            let entries = map
+                .entries
+                .iter()
+                .map(|entry| {
+                    Ok(TypedMapEntryExpr {
+                        key: build_typed_expr(env, &entry.key)?,
+                        value: build_typed_expr(env, &entry.value)?,
+                        location: entry.location,
+                    })
                 })
-            }).collect::<Result<Vec<_>, TypeError>>()?;
-            let effects = merge_effects(entries.iter().flat_map(|entry| [
-                entry.key.effects.clone(),
-                entry.value.effects.clone(),
-            ]));
+                .collect::<Result<Vec<_>, TypeError>>()?;
+            let effects = merge_effects(
+                entries
+                    .iter()
+                    .flat_map(|entry| [entry.key.effects.clone(), entry.value.effects.clone()]),
+            );
             Ok(typed_expr(
                 TypedExprKind::MapLiteral(TypedMapLiteralExpr { entries }),
                 typ,
@@ -1400,7 +1561,11 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
             let list = build_typed_expr(env, &fold_expr.list)?;
             let func = build_typed_expr(env, &fold_expr.func)?;
             let init = build_typed_expr(env, &fold_expr.init)?;
-            let effects = merge_effects([list.effects.clone(), func.effects.clone(), init.effects.clone()]);
+            let effects = merge_effects([
+                list.effects.clone(),
+                func.effects.clone(),
+                init.effects.clone(),
+            ]);
             Ok(typed_expr(
                 TypedExprKind::Fold(TypedFoldExpr {
                     list: Box::new(list),
@@ -1438,11 +1603,16 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
                 Expr::MemberAccess(member_access) => WithMockTarget::ExternMember {
                     namespace: member_access.namespace.clone(),
                     member: member_access.member.clone(),
-                    mock_key: format!("extern:{}.{}", member_access.namespace.join("/"), member_access.member),
+                    mock_key: format!(
+                        "extern:{}.{}",
+                        member_access.namespace.join("/"),
+                        member_access.member
+                    ),
                 },
                 _ => {
                     return Err(TypeError::new(
-                        "withMock target must be an identifier or imported member access".to_string(),
+                        "withMock target must be an identifier or imported member access"
+                            .to_string(),
                         Some(with_mock.location),
                     ))
                 }
@@ -1464,7 +1634,9 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
                 ast_type_to_inference_type_resolved(env, None, &type_asc.ascribed_type)?;
             match &type_asc.expr {
                 Expr::MapLiteral(map_expr) if map_expr.entries.is_empty() => Ok(typed_expr(
-                    TypedExprKind::MapLiteral(TypedMapLiteralExpr { entries: Vec::new() }),
+                    TypedExprKind::MapLiteral(TypedMapLiteralExpr {
+                        entries: Vec::new(),
+                    }),
                     ascribed_type,
                     HashSet::new(),
                     StrictnessClass::Deferred,
@@ -1518,7 +1690,6 @@ fn build_typed_concurrent(
         effect_sets.push(window_ms.effects.clone());
     }
     let mut effects = merge_effects(effect_sets);
-    effects.insert("IO".to_string());
 
     let mut steps = Vec::new();
     for step in &concurrent_expr.steps {
@@ -1563,10 +1734,19 @@ fn build_typed_application(
     app: &sigil_ast::ApplicationExpr,
     typ: InferenceType,
 ) -> Result<TypedExpr, TypeError> {
-    let args = app.args.iter().map(|arg| build_typed_expr(env, arg)).collect::<Result<Vec<_>, _>>()?;
+    let args = app
+        .args
+        .iter()
+        .map(|arg| build_typed_expr(env, arg))
+        .collect::<Result<Vec<_>, _>>()?;
 
     if let Expr::MemberAccess(member_access) = &app.func {
-        if member_access.member.chars().next().is_some_and(|ch| ch.is_uppercase()) {
+        if member_access
+            .member
+            .chars()
+            .next()
+            .is_some_and(|ch| ch.is_uppercase())
+        {
             let effects = merge_effects(args.iter().map(|arg| arg.effects.clone()));
             return Ok(typed_expr(
                 TypedExprKind::ConstructorCall(TypedConstructorCallExpr {
@@ -1589,7 +1769,11 @@ fn build_typed_application(
             TypedExprKind::ExternCall(TypedExternCallExpr {
                 namespace: member_access.namespace.clone(),
                 member: member_access.member.clone(),
-                mock_key: format!("extern:{}.{}", member_access.namespace.join("/"), member_access.member),
+                mock_key: format!(
+                    "extern:{}.{}",
+                    member_access.namespace.join("/"),
+                    member_access.member
+                ),
                 args,
             }),
             typ,
@@ -1683,14 +1867,9 @@ fn synthesize(env: &TypeEnvironment, expr: &Expr) -> Result<InferenceType, TypeE
     match expr {
         Expr::Literal(lit) => Ok(synthesize_literal(lit)),
 
-        Expr::Identifier(id) => {
-            env.lookup(&id.name).ok_or_else(|| {
-                TypeError::new(
-                    format!("Unbound variable: {}", id.name),
-                    Some(id.location),
-                )
-            })
-        }
+        Expr::Identifier(id) => env.lookup(&id.name).ok_or_else(|| {
+            TypeError::new(format!("Unbound variable: {}", id.name), Some(id.location))
+        }),
 
         Expr::Binary(bin) => synthesize_binary(env, bin),
 
@@ -1983,9 +2162,7 @@ fn topology_call_member(expr: &Expr) -> Option<(&[String], &str)> {
 
 fn field_access_starts_with_process_env(field_access: &sigil_ast::FieldAccessExpr) -> bool {
     match &field_access.object {
-        Expr::Identifier(identifier) => {
-            identifier.name == "process" && field_access.field == "env"
-        }
+        Expr::Identifier(identifier) => identifier.name == "process" && field_access.field == "env",
         Expr::FieldAccess(parent) => field_access_starts_with_process_env(parent),
         _ => false,
     }
@@ -2010,12 +2187,7 @@ fn validate_topology_application(
     let module_id = namespace.join("::");
 
     if module_id == "stdlib::topology" {
-        let restricted = matches!(
-            member,
-            "httpService"
-                | "tcpService"
-                | "environment"
-        );
+        let restricted = matches!(member, "httpService" | "tcpService" | "environment");
 
         if restricted && !is_canonical_topology_source(env) {
             return Err(TypeError::new(
@@ -2058,11 +2230,12 @@ fn validate_topology_application(
     } else {
         None
     };
-    let tcp_handle_arg_index = if module_id == "stdlib::tcpClient" && matches!(member, "request" | "send") {
-        Some(0)
-    } else {
-        None
-    };
+    let tcp_handle_arg_index =
+        if module_id == "stdlib::tcpClient" && matches!(member, "request" | "send") {
+            Some(0)
+        } else {
+            None
+        };
 
     if http_handle_arg_index.is_none() && tcp_handle_arg_index.is_none() {
         return Ok(());
@@ -2258,7 +2431,12 @@ fn synthesize_match(
     // Synthesize first arm to establish expected type
     let first_arm = &match_expr.arms[0];
     let mut first_bindings = HashMap::new();
-    check_pattern(env, &first_arm.pattern, &scrutinee_type, &mut first_bindings)?;
+    check_pattern(
+        env,
+        &first_arm.pattern,
+        &scrutinee_type,
+        &mut first_bindings,
+    )?;
     let first_arm_env = env.extend(Some(first_bindings));
 
     // Check guard if present (must be boolean)
@@ -2348,7 +2526,8 @@ fn synthesize_map_literal(
 ) -> Result<InferenceType, TypeError> {
     if map_expr.entries.is_empty() {
         return Err(TypeError::new(
-            "Cannot infer empty map literal type. Add contextual type information for {↦}.".to_string(),
+            "Cannot infer empty map literal type. Add contextual type information for {↦}."
+                .to_string(),
             Some(map_expr.location),
         ));
     }
@@ -2440,10 +2619,7 @@ fn synthesize_index(
             Ok(InferenceType::Any)
         }
         _ => Err(TypeError::new(
-            format!(
-                "Cannot index into non-list type {}",
-                format_type(&obj_type)
-            ),
+            format!("Cannot index into non-list type {}", format_type(&obj_type)),
             Some(index_expr.location),
         )),
     }
@@ -2523,8 +2699,14 @@ fn synthesize_map(
         ));
     }
 
-    if let (InferenceType::List(ref list), InferenceType::Function(ref func)) = (&list_type, &fn_type) {
-        if func.effects.as_ref().is_some_and(|effects| !effects.is_empty()) {
+    if let (InferenceType::List(ref list), InferenceType::Function(ref func)) =
+        (&list_type, &fn_type)
+    {
+        if func
+            .effects
+            .as_ref()
+            .is_some_and(|effects| !effects.is_empty())
+        {
             return Err(TypeError::new(
                 "map callback must be pure. Sigil treats map as a canonical data-parallel operator, so effectful callbacks are not allowed.".to_string(),
                 Some(map_expr.location),
@@ -2534,13 +2716,17 @@ fn synthesize_map(
         // Function should take 1 parameter
         if func.params.len() != 1 {
             return Err(TypeError::new(
-                format!("map function should take 1 parameter, got {}", func.params.len()),
+                format!(
+                    "map function should take 1 parameter, got {}",
+                    func.params.len()
+                ),
                 Some(map_expr.location),
             ));
         }
 
         // Check function parameter matches list element type
-        let (normalized_param, normalized_elem) = canonical_pair(env, &func.params[0], &list.element_type);
+        let (normalized_param, normalized_elem) =
+            canonical_pair(env, &func.params[0], &list.element_type);
         if !types_equal(&normalized_param, &normalized_elem) {
             return Err(TypeError::new(
                 format!(
@@ -2578,15 +2764,26 @@ fn synthesize_filter(
 
     if !matches!(predicate_type, InferenceType::Function(_)) {
         return Err(TypeError::new(
-            format!("filter requires a predicate function, got {}", format_type(&predicate_type)),
+            format!(
+                "filter requires a predicate function, got {}",
+                format_type(&predicate_type)
+            ),
             Some(filter_expr.location),
         ));
     }
 
-    let bool_type = InferenceType::Primitive(TPrimitive { name: PrimitiveName::Bool });
+    let bool_type = InferenceType::Primitive(TPrimitive {
+        name: PrimitiveName::Bool,
+    });
 
-    if let (InferenceType::List(ref list), InferenceType::Function(ref pred)) = (&list_type, &predicate_type) {
-        if pred.effects.as_ref().is_some_and(|effects| !effects.is_empty()) {
+    if let (InferenceType::List(ref list), InferenceType::Function(ref pred)) =
+        (&list_type, &predicate_type)
+    {
+        if pred
+            .effects
+            .as_ref()
+            .is_some_and(|effects| !effects.is_empty())
+        {
             return Err(TypeError::new(
                 "filter predicate must be pure. Sigil treats filter as a canonical data-parallel operator, so effectful callbacks are not allowed.".to_string(),
                 Some(filter_expr.location),
@@ -2596,12 +2793,16 @@ fn synthesize_filter(
         // Predicate should be T => Bool
         if pred.params.len() != 1 {
             return Err(TypeError::new(
-                format!("filter predicate should take 1 parameter, got {}", pred.params.len()),
+                format!(
+                    "filter predicate should take 1 parameter, got {}",
+                    pred.params.len()
+                ),
                 Some(filter_expr.location),
             ));
         }
 
-        let (normalized_param, normalized_elem) = canonical_pair(env, &pred.params[0], &list.element_type);
+        let (normalized_param, normalized_elem) =
+            canonical_pair(env, &pred.params[0], &list.element_type);
         if !types_equal(&normalized_param, &normalized_elem) {
             return Err(TypeError::new(
                 format!(
@@ -2613,10 +2814,14 @@ fn synthesize_filter(
             ));
         }
 
-        let (normalized_return, normalized_bool) = canonical_pair(env, &pred.return_type, &bool_type);
+        let (normalized_return, normalized_bool) =
+            canonical_pair(env, &pred.return_type, &bool_type);
         if !types_equal(&normalized_return, &normalized_bool) {
             return Err(TypeError::new(
-                format!("filter predicate must return Bool, got {}", format_type(&normalized_return)),
+                format!(
+                    "filter predicate must return Bool, got {}",
+                    format_type(&normalized_return)
+                ),
                 Some(filter_expr.location),
             ));
         }
@@ -2652,17 +2857,23 @@ fn synthesize_fold(
 
     let init_type = synthesize(env, &fold_expr.init)?;
 
-    if let (InferenceType::List(ref list), InferenceType::Function(ref func)) = (&list_type, &fn_type) {
+    if let (InferenceType::List(ref list), InferenceType::Function(ref func)) =
+        (&list_type, &fn_type)
+    {
         // Function should be (Acc, T) => Acc
         if func.params.len() != 2 {
             return Err(TypeError::new(
-                format!("reduce function should take 2 parameters, got {}", func.params.len()),
+                format!(
+                    "reduce function should take 2 parameters, got {}",
+                    func.params.len()
+                ),
                 Some(fold_expr.location),
             ));
         }
 
         // Check function signature matches (Acc, T) => Acc
-        let (normalized_acc_param, normalized_init) = canonical_pair(env, &func.params[0], &init_type);
+        let (normalized_acc_param, normalized_init) =
+            canonical_pair(env, &func.params[0], &init_type);
         if !types_equal(&normalized_acc_param, &normalized_init) {
             return Err(TypeError::new(
                 format!(
@@ -2674,7 +2885,8 @@ fn synthesize_fold(
             ));
         }
 
-        let (normalized_elem_param, normalized_elem) = canonical_pair(env, &func.params[1], &list.element_type);
+        let (normalized_elem_param, normalized_elem) =
+            canonical_pair(env, &func.params[1], &list.element_type);
         if !types_equal(&normalized_elem_param, &normalized_elem) {
             return Err(TypeError::new(
                 format!(
@@ -2686,7 +2898,8 @@ fn synthesize_fold(
             ));
         }
 
-        let (normalized_return, normalized_init) = canonical_pair(env, &func.return_type, &init_type);
+        let (normalized_return, normalized_init) =
+            canonical_pair(env, &func.return_type, &init_type);
         if !types_equal(&normalized_return, &normalized_init) {
             return Err(TypeError::new(
                 format!(
@@ -2714,7 +2927,11 @@ fn synthesize_concurrent(
 
     check(env, &concurrent_expr.width, &int_type())?;
     if let Some(jitter_ms_expr) = jitter_ms_expr {
-        check(env, jitter_ms_expr, &option_type(concurrent_jitter_record_type()))?;
+        check(
+            env,
+            jitter_ms_expr,
+            &option_type(concurrent_jitter_record_type()),
+        )?;
     }
     if let Some(window_ms_expr) = window_ms_expr {
         check(env, window_ms_expr, &option_type(int_type()))?;
@@ -2741,7 +2958,8 @@ fn synthesize_concurrent(
                     ));
                 }
 
-                let Some((success_type, error_type)) = result_type_parts(env, &typed_expr.typ) else {
+                let Some((success_type, error_type)) = result_type_parts(env, &typed_expr.typ)
+                else {
                     return Err(TypeError::new(
                         format!(
                             "spawn requires a Result[T,E] computation, got {}",
@@ -2804,9 +3022,14 @@ fn synthesize_concurrent(
                     ));
                 };
 
-                if func.effects.as_ref().is_none_or(|effects| effects.is_empty()) {
+                if func
+                    .effects
+                    .as_ref()
+                    .is_none_or(|effects| effects.is_empty())
+                {
                     return Err(TypeError::new(
-                        "spawnEach requires an effectful function returning Result[T,E]".to_string(),
+                        "spawnEach requires an effectful function returning Result[T,E]"
+                            .to_string(),
                         Some(spawn_each.location),
                     ));
                 }
@@ -2832,7 +3055,8 @@ fn synthesize_concurrent(
                     ));
                 }
 
-                let Some((success_type, error_type)) = result_type_parts(env, &func.return_type) else {
+                let Some((success_type, error_type)) = result_type_parts(env, &func.return_type)
+                else {
                     return Err(TypeError::new(
                         format!(
                             "spawnEach function must return Result[T,E], got {}",
@@ -2889,7 +3113,11 @@ fn synthesize_concurrent(
             ));
         };
 
-        if stop_on_fn.effects.as_ref().is_some_and(|effects| !effects.is_empty()) {
+        if stop_on_fn
+            .effects
+            .as_ref()
+            .is_some_and(|effects| !effects.is_empty())
+        {
             return Err(TypeError::new(
                 "Concurrent region stopOn must be pure".to_string(),
                 Some(concurrent_expr.location),
@@ -2943,7 +3171,10 @@ fn synthesize_with_mock(
     let replacement_type = synthesize(env, &with_mock.replacement)?;
 
     // Replacement must be a function
-    if !matches!(replacement_type, InferenceType::Function(_) | InferenceType::Any) {
+    if !matches!(
+        replacement_type,
+        InferenceType::Function(_) | InferenceType::Any
+    ) {
         return Err(TypeError::new(
             format!(
                 "withMock replacement must be a function, got {}",
@@ -2954,7 +3185,9 @@ fn synthesize_with_mock(
     }
 
     // If both are functions, check they match
-    if let (InferenceType::Function(_), InferenceType::Function(_)) = (&target_type, &replacement_type) {
+    if let (InferenceType::Function(_), InferenceType::Function(_)) =
+        (&target_type, &replacement_type)
+    {
         let (normalized_target, normalized_replacement) =
             canonical_pair(env, &target_type, &replacement_type);
         if !types_equal(&normalized_target, &normalized_replacement) {
@@ -3004,7 +3237,12 @@ fn synthesize_lambda(
     let effects = if lambda_expr.effects.is_empty() {
         None
     } else {
-        Some(lambda_expr.effects.iter().cloned().collect())
+        Some(resolve_effect_names(
+            env,
+            &lambda_expr.effects,
+            lambda_expr.location,
+            "lambda signature",
+        )?)
     };
 
     // Create environment with parameter bindings
@@ -3016,9 +3254,14 @@ fn synthesize_lambda(
 
     // Check body against declared return type
     check(&lambda_env, &lambda_expr.body, &return_type)?;
-
-    // TODO: Effect inference and checking
-    // For now, we trust the declared effects
+    let typed_body = build_typed_expr(&lambda_env, &lambda_expr.body)?;
+    declared_effects_cover_actual(
+        env,
+        &lambda_expr.effects,
+        &typed_body.effects,
+        lambda_expr.location,
+        "Lambda",
+    )?;
 
     Ok(InferenceType::Function(Box::new(TFunction {
         params: param_types,
@@ -3069,7 +3312,8 @@ fn check_pattern(
                 }),
             };
 
-            let (normalized_lit, normalized_scrutinee) = canonical_pair(env, &lit_type, scrutinee_type);
+            let (normalized_lit, normalized_scrutinee) =
+                canonical_pair(env, &lit_type, scrutinee_type);
             if !types_equal(&normalized_lit, &normalized_scrutinee) {
                 return Err(TypeError::new(
                     format!(
@@ -3189,8 +3433,10 @@ fn check_pattern(
                 ));
             }
 
-            if let (InferenceType::Function(ref ctor_fn), InferenceType::Constructor(ref scrutinee_ctor)) =
-                (&constructor_type, scrutinee_type)
+            if let (
+                InferenceType::Function(ref ctor_fn),
+                InferenceType::Constructor(ref scrutinee_ctor),
+            ) = (&constructor_type, scrutinee_type)
             {
                 // Check that constructor's return type matches scrutinee type
                 if let InferenceType::Constructor(ref return_ctor) = ctor_fn.return_type {
@@ -3393,7 +3639,8 @@ fn check_application(
     }
 
     let actual_return = apply_subst(&subst, &tfunc.return_type);
-    let (normalized_actual, normalized_expected) = canonical_pair(env, &actual_return, expected_type);
+    let (normalized_actual, normalized_expected) =
+        canonical_pair(env, &actual_return, expected_type);
     let next_subst = unify(&normalized_actual, &normalized_expected).map_err(|message| {
         TypeError::new(
             format!(
@@ -3412,9 +3659,9 @@ fn check_application(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use sigil_lexer::tokenize;
     use sigil_parser::parse;
+    use std::collections::HashMap;
 
     fn synthetic_loc() -> sigil_ast::SourceLocation {
         sigil_ast::SourceLocation::single(sigil_ast::Position::new(1, 1, 0))
@@ -3499,7 +3746,10 @@ mod tests {
         };
 
         let prelude_registry = HashMap::from([
-            ("ConcurrentOutcome".to_string(), concurrent_outcome_info.clone()),
+            (
+                "ConcurrentOutcome".to_string(),
+                concurrent_outcome_info.clone(),
+            ),
             ("Option".to_string(), option_info.clone()),
             ("Result".to_string(), result_info.clone()),
         ]);
@@ -3591,6 +3841,7 @@ mod tests {
         }
 
         TypeCheckOptions {
+            effect_catalog: None,
             imported_namespaces: None,
             imported_type_registries: Some(HashMap::from([(
                 "core::prelude".to_string(),
@@ -3707,24 +3958,30 @@ mod tests {
 
     #[test]
     fn test_map_rejects_effectful_callback() {
-        let source = "λdouble(x:Int)=>!IO Int=x*2\nλmain()=>[Int]=[1,2,3] map double";
+        let source = "e console:{log:λ(String)=>!Log Unit}\nλdouble(x:Int)=>!Log Int={l _=(console.log(\"x\"):Unit);x*2}\nλmain()=>[Int]=[1,2,3] map double";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
         let result = type_check(&program, source, TypeCheckOptions::default());
         assert!(result.is_err());
-        assert!(result.unwrap_err().message.contains("map callback must be pure"));
+        assert!(result
+            .unwrap_err()
+            .message
+            .contains("map callback must be pure"));
     }
 
     #[test]
     fn test_filter_rejects_effectful_callback() {
-        let source = "λkeep(x:Int)=>!IO Bool=x>0\nλmain()=>[Int]=[1,2,3] filter keep";
+        let source = "e console:{log:λ(String)=>!Log Unit}\nλkeep(x:Int)=>!Log Bool={l _=(console.log(\"x\"):Unit);x>0}\nλmain()=>[Int]=[1,2,3] filter keep";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
         let result = type_check(&program, source, TypeCheckOptions::default());
         assert!(result.is_err());
-        assert!(result.unwrap_err().message.contains("filter predicate must be pure"));
+        assert!(result
+            .unwrap_err()
+            .message
+            .contains("filter predicate must be pure"));
     }
 
     #[test]
@@ -3815,6 +4072,7 @@ mod tests {
             &program,
             source,
             TypeCheckOptions {
+                effect_catalog: None,
                 imported_namespaces: None,
                 imported_type_registries: Some(imported_type_registries),
                 imported_value_schemes: None,
@@ -3862,7 +4120,10 @@ mod tests {
 
         let result = type_check(&program, source, TypeCheckOptions::default());
         assert!(result.is_err());
-        assert!(result.unwrap_err().message.contains("Function argument type mismatch"));
+        assert!(result
+            .unwrap_err()
+            .message
+            .contains("Function argument type mismatch"));
     }
 
     #[test]
@@ -3885,6 +4146,7 @@ mod tests {
             &program,
             source,
             TypeCheckOptions {
+                effect_catalog: None,
                 imported_namespaces: None,
                 imported_type_registries: None,
                 imported_value_schemes: None,
@@ -3908,6 +4170,7 @@ mod tests {
             &program,
             source,
             TypeCheckOptions {
+                effect_catalog: None,
                 imported_namespaces: None,
                 imported_type_registries: None,
                 imported_value_schemes: None,
@@ -3970,6 +4233,7 @@ mod tests {
             &program,
             source,
             TypeCheckOptions {
+                effect_catalog: None,
                 imported_namespaces: None,
                 imported_type_registries: Some(imported_type_registries),
                 imported_value_schemes: None,
@@ -4021,6 +4285,7 @@ mod tests {
             &program,
             source,
             TypeCheckOptions {
+                effect_catalog: None,
                 imported_namespaces: None,
                 imported_type_registries: Some(imported_type_registries),
                 imported_value_schemes: None,
@@ -4342,14 +4607,17 @@ mod tests {
         let failing_source = "λmain()=>Unit=l id=(λ(x:Int)=>Int=x);id(\"oops\")";
         let failing_tokens = tokenize(failing_source).unwrap();
         let failing_program = parse(failing_tokens, "test.sigil").unwrap();
-        let failing_result =
-            type_check(&failing_program, failing_source, TypeCheckOptions::default());
+        let failing_result = type_check(
+            &failing_program,
+            failing_source,
+            TypeCheckOptions::default(),
+        );
         assert!(failing_result.is_err());
     }
 
     #[test]
     fn test_concurrent_region_typechecks() {
-        let source = "λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit@1{spawnEach [1,2] process}\nλprocess(value:Int)=>!IO Result[Int,String]=Ok(value)";
+        let source = "e clock:{tick:λ()=>!Timer Unit}\nλmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@1{spawnEach [1,2] process}\nλprocess(value:Int)=>!Timer Result[Int,String]={l _=(clock.tick():Unit);Ok(value)}";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
@@ -4359,7 +4627,7 @@ mod tests {
 
     #[test]
     fn test_concurrent_spawn_rejects_pure_result() {
-        let source = "λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit@1{spawn Ok(1)}";
+        let source = "λmain()=>[ConcurrentOutcome[Int,String]]=concurrent urlAudit@1{spawn Ok(1)}";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
@@ -4373,13 +4641,16 @@ mod tests {
 
     #[test]
     fn test_concurrent_stop_on_must_match_error_type() {
-        let source = "λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit@1:{stopOn:stopOn}{spawn one()}\nλone()=>!IO Result[Int,String]=Ok(1)\nλstopOn(err:Int)=>Bool=false";
+        let source = "e clock:{tick:λ()=>!Timer Unit}\nλmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@1:{stopOn:stopOn}{spawn one()}\nλone()=>!Timer Result[Int,String]={l _=(clock.tick():Unit);Ok(1)}\nλstopOn(err:Int)=>Bool=false";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
         let result = type_check(&program, source, core_prelude_type_options());
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("stopOn parameter type"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("stopOn parameter type"));
     }
 
     // TODO: Add list pattern test when parser fully supports match expression syntax

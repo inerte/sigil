@@ -6,7 +6,8 @@ use crate::project::{get_project_config, ProjectConfig};
 use sigil_ast::{Declaration, Program};
 use sigil_lexer::Lexer;
 use sigil_parser::Parser;
-use sigil_validator::{validate_canonical_form, ValidationError};
+use sigil_typechecker::EffectCatalog;
+use sigil_validator::{validate_canonical_form_with_options, ValidationError, ValidationOptions};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -141,8 +142,17 @@ impl ModuleGraphBuilder {
             .parse()
             .map_err(|e| ModuleGraphError::Parser(format!("{}", e)))?;
 
+        let effect_catalog = load_project_effect_catalog(project.as_ref())?;
+
         // Validate
-        validate_canonical_form(&ast, Some(&filename), Some(&source))
+        validate_canonical_form_with_options(
+            &ast,
+            Some(&filename),
+            Some(&source),
+            ValidationOptions {
+                effect_catalog,
+            },
+        )
             .map_err(|e| ModuleGraphError::Validation(e))?;
 
         // Process implicit core prelude first for non-core modules.
@@ -198,6 +208,11 @@ impl ModuleGraphBuilder {
 
         Ok(())
     }
+}
+
+pub fn load_project_effect_catalog_for(file_path: &Path) -> Result<Option<EffectCatalog>, ModuleGraphError> {
+    let project = get_project_config(file_path);
+    load_project_effect_catalog(project.as_ref())
 }
 
 fn is_sigil_import_path(module_path: &str) -> bool {
@@ -269,6 +284,44 @@ fn resolve_import_path(base_path: &Path, file_path_str: &str) -> Result<PathBuf,
             expected_path: format!("Expected: {:?} (libraries must use .lib.sigil extension)", lib_path),
         })
     }
+}
+
+fn load_project_effect_catalog(
+    project: Option<&ProjectConfig>,
+) -> Result<Option<EffectCatalog>, ModuleGraphError> {
+    let Some(project) = project else {
+        return Ok(None);
+    };
+
+    let effects_path = project.root.join("src/effects.lib.sigil");
+    if !effects_path.exists() {
+        return Ok(None);
+    }
+
+    let source = fs::read_to_string(&effects_path)?;
+    let mut lexer = Lexer::new(&source);
+    let tokens = lexer
+        .tokenize()
+        .map_err(|e| ModuleGraphError::Lexer(format!("{}", e)))?;
+    let filename = effects_path.to_string_lossy().to_string();
+    let mut parser = Parser::new(tokens, &filename);
+    let ast = parser
+        .parse()
+        .map_err(|e| ModuleGraphError::Parser(format!("{}", e)))?;
+    let effect_catalog = EffectCatalog::from_program(&ast)
+        .map_err(|message| ModuleGraphError::Parser(message))?;
+
+    validate_canonical_form_with_options(
+        &ast,
+        Some(&filename),
+        Some(&source),
+        ValidationOptions {
+            effect_catalog: Some(effect_catalog.clone()),
+        },
+    )
+    .map_err(ModuleGraphError::Validation)?;
+
+    Ok(Some(effect_catalog))
 }
 
 fn resolve_sigil_import(

@@ -1,0 +1,3 @@
+effect AuditIo=!Fs!Process
+
+effect CliIo=!AuditIo!Log

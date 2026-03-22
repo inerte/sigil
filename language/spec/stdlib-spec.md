@@ -185,16 +185,16 @@ t DivMod={quotient:Int,remainder:Int}
 ### Implemented `stdlib::file` Functions
 
 ```sigil decl stdlib::file
-λappendText(content:String,path:String)=>!IO Unit
-λexists(path:String)=>!IO Bool
-λlistDir(path:String)=>!IO [String]
-λmakeDir(path:String)=>!IO Unit
-λmakeDirs(path:String)=>!IO Unit
-λmakeTempDir(prefix:String)=>!IO String
-λreadText(path:String)=>!IO String
-λremove(path:String)=>!IO Unit
-λremoveTree(path:String)=>!IO Unit
-λwriteText(content:String,path:String)=>!IO Unit
+λappendText(content:String,path:String)=>!Fs Unit
+λexists(path:String)=>!Fs Bool
+λlistDir(path:String)=>!Fs [String]
+λmakeDir(path:String)=>!Fs Unit
+λmakeDirs(path:String)=>!Fs Unit
+λmakeTempDir(prefix:String)=>!Fs String
+λreadText(path:String)=>!Fs String
+λremove(path:String)=>!Fs Unit
+λremoveTree(path:String)=>!Fs Unit
+λwriteText(content:String,path:String)=>!Fs Unit
 ```
 
 `makeTempDir(prefix)` creates a fresh temp directory and returns its absolute
@@ -208,13 +208,13 @@ t RunningProcess={pid:Int}
 t ProcessResult={code:Int,stderr:String,stdout:String}
 
 λcommand(argv:[String])=>Command
-λexit(code:Int)=>!IO Unit
+λexit(code:Int)=>!Process Unit
 λwithCwd(command:Command,cwd:String)=>Command
 λwithEnv(command:Command,env:{String↦String})=>Command
-λrun(command:Command)=>!IO ProcessResult
-λstart(command:Command)=>!IO RunningProcess
-λwait(process:RunningProcess)=>!IO ProcessResult
-λkill(process:RunningProcess)=>!IO Unit
+λrun(command:Command)=>!Process ProcessResult
+λstart(command:Command)=>!Process RunningProcess
+λwait(process:RunningProcess)=>!Process ProcessResult
+λkill(process:RunningProcess)=>!Process Unit
 ```
 
 Process rules:
@@ -245,7 +245,7 @@ Regex rules:
 ### Implemented `stdlib::time` Additions
 
 ```sigil decl stdlib::time
-λsleepMs(ms:Int)=>!IO Unit
+λsleepMs(ms:Int)=>!Timer Unit
 ```
 
 `sleepMs` is the canonical delay primitive for retry loops and harness
@@ -339,7 +339,7 @@ t TimeError={message:String}
 
 λparseIso(input:String)=>Result[Instant,TimeError]
 λformatIso(instant:Instant)=>String
-λnow()=>!IO Instant
+λnow()=>!Clock Instant
 λfromEpochMillis(millis:Int)=>Instant
 λtoEpochMillis(instant:Instant)=>Int
 λcompare(left:Instant,right:Instant)=>Int
@@ -356,16 +356,14 @@ Notes:
 The numeric helper surface is owned by `stdlib::numeric`; there is no separate
 math module today.
 
-## I/O Operations
-
-All I/O operations have the `!IO` effect.
+## Logging Operations
 
 ```sigil decl stdlib::io
-λdebug(msg:String)=>!IO Unit
-λeprintln(msg:String)=>!IO Unit
-λprint(msg:String)=>!IO Unit
-λprintln(msg:String)=>!IO Unit
-λwarn(msg:String)=>!IO Unit
+λdebug(msg:String)=>!Log Unit
+λeprintln(msg:String)=>!Log Unit
+λprint(msg:String)=>!Log Unit
+λprintln(msg:String)=>!Log Unit
+λwarn(msg:String)=>!Log Unit
 ```
 
 ## Module System
@@ -469,7 +467,7 @@ Time and instant handling (`Instant`, strict ISO parsing, clock access)
 ```sigil decl stdlib::time
 λparseIso(input:String)=>Result[Instant,TimeError]
 λformatIso(instant:Instant)=>String
-λnow()=>!IO Instant
+λnow()=>!Clock Instant
 ```
 
 ### stdlib::topology
@@ -516,18 +514,18 @@ t HttpMethod=Delete()|Get()|Patch()|Post()|Put()
 t HttpRequest={body:Option[String],dependency:stdlib::topology.HttpServiceDependency,headers:Headers,method:HttpMethod,path:String}
 t HttpResponse={body:String,headers:Headers,status:Int,url:String}
 
-λrequest(request:HttpRequest)=>!IO Result[HttpResponse,HttpError]
-λget(dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[HttpResponse,HttpError]
-λdelete(dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[HttpResponse,HttpError]
-λpost(body:String,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[HttpResponse,HttpError]
-λput(body:String,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[HttpResponse,HttpError]
-λpatch(body:String,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[HttpResponse,HttpError]
+λrequest(request:HttpRequest)=>!Http Result[HttpResponse,HttpError]
+λget(dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[HttpResponse,HttpError]
+λdelete(dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[HttpResponse,HttpError]
+λpost(body:String,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[HttpResponse,HttpError]
+λput(body:String,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[HttpResponse,HttpError]
+λpatch(body:String,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[HttpResponse,HttpError]
 
-λgetJson(dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[JsonValue,HttpError]
-λdeleteJson(dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[JsonValue,HttpError]
-λpostJson(body:JsonValue,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[JsonValue,HttpError]
-λputJson(body:JsonValue,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[JsonValue,HttpError]
-λpatchJson(body:JsonValue,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!IO Result[JsonValue,HttpError]
+λgetJson(dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[JsonValue,HttpError]
+λdeleteJson(dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[JsonValue,HttpError]
+λpostJson(body:JsonValue,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[JsonValue,HttpError]
+λputJson(body:JsonValue,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[JsonValue,HttpError]
+λpatchJson(body:JsonValue,dependency:stdlib::topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[JsonValue,HttpError]
 λresponseJson(response:HttpResponse)=>Result[JsonValue,HttpError]
 
 λemptyHeaders()=>Headers
@@ -556,8 +554,8 @@ t Response={body:String,headers:Headers,status:Int}
 λnotFound()=>Response
 λnotFoundMsg(message:String)=>Response
 λserverError(message:String)=>Response
-λlogRequest(request:Request)=>!IO Unit
-λserve(handler:λ(Request)=>!IO Response,port:Int)=>!IO Unit
+λlogRequest(request:Request)=>!Log Unit
+λserve(handler:λ(Request)=>Response,port:Int)=>!Http Unit
 ```
 
 `serve` is long-lived: once the server is listening, the process remains active
@@ -573,8 +571,8 @@ t TcpErrorKind=Connection()|InvalidAddress()|Protocol()|Timeout()|Topology()
 t TcpRequest={dependency:stdlib::topology.TcpServiceDependency,message:String}
 t TcpResponse={message:String}
 
-λrequest(request:TcpRequest)=>!IO Result[TcpResponse,TcpError]
-λsend(dependency:stdlib::topology.TcpServiceDependency,message:String)=>!IO Result[TcpResponse,TcpError]
+λrequest(request:TcpRequest)=>!Tcp Result[TcpResponse,TcpError]
+λsend(dependency:stdlib::topology.TcpServiceDependency,message:String)=>!Tcp Result[TcpResponse,TcpError]
 ```
 
 Semantics:
@@ -591,7 +589,7 @@ t Request={host:String,message:String,port:Int}
 t Response={message:String}
 
 λresponse(message:String)=>Response
-λserve(handler:λ(Request)=>!IO Response,port:Int)=>!IO Unit
+λserve(handler:λ(Request)=>Response,port:Int)=>!Tcp Unit
 ```
 
 Semantics:
@@ -624,9 +622,16 @@ test` runner. There is no current `stdlib::test` module surface.
 ### Effect System
 
 Effects are tracked at type level:
-- `!IO` - Input/output operations
-- `!Test` - Test operations
+- `!Clock`
+- `!Fs`
+- `!Http`
+- `!Log`
+- `!Process`
+- `!Tcp`
+- `!Timer`
 - Pure functions have no effect annotation
+
+Projects may define reusable multi-effect aliases in `src/effects.lib.sigil`.
 
 ## Future Extensions
 

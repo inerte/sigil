@@ -412,13 +412,13 @@ fn test_dotdot_in_list() {
 
 #[test]
 fn test_effect_markers() {
-    let source = "!IO !Network !Error !Mut";
+    let source = "!Fs !Http !Process !Timer";
     let tokens = tokenize(source).unwrap();
 
     // Each !X should be BANG followed by UpperIdentifier
     assert_eq!(tokens[0].token_type, TokenType::BANG);
     assert_eq!(tokens[1].token_type, TokenType::UpperIdentifier);
-    assert_eq!(tokens[1].value, "IO");
+    assert_eq!(tokens[1].value, "Fs");
 }
 
 #[test]

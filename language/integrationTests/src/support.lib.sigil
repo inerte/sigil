@@ -16,7 +16,7 @@ i stdlib::time
 
 λrepoRoot()=>String=process.cwd()
 
-λretryRunStdoutContains(attempts:Int,command:stdlib::process.Command,delayMs:Int,expected:String)=>!IO stdlib::process.ProcessResult={
+λretryRunStdoutContains(attempts:Int,command:stdlib::process.Command,delayMs:Int,expected:String)=>!Process!Timer stdlib::process.ProcessResult={
   l result=(stdlib::process.run(command):stdlib::process.ProcessResult);
   match runStdoutContains(expected,result){
     true=>result|
@@ -38,7 +38,7 @@ i stdlib::time
 
 λtrimmedOutput(result:stdlib::process.ProcessResult)=>String=stdlib::string.trim(combinedOutput(result))
 
-λuniqueRepoTempDir(prefix:String)=>!IO String={
+λuniqueRepoTempDir(prefix:String)=>!Clock!Fs String={
   l millis=(stdlib::time.toEpochMillis(stdlib::time.now()):Int);
   l path=(repoPath("language/integrationTests/.tmp"++prefix++stdlib::string.intToString(millis)):String);
   l _=(stdlib::file.makeDirs(path):Unit);

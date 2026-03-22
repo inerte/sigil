@@ -1,9 +1,9 @@
 i stdlib::tcpServer
 
-λhandleRequest(request:stdlib::tcpServer.Request)=>!IO stdlib::tcpServer.Response match request.message{
+λhandleRequest(request:stdlib::tcpServer.Request)=>stdlib::tcpServer.Response match request.message{
   "ping"=>stdlib::tcpServer.response("pong")|
   "upper:hello"=>stdlib::tcpServer.response("HELLO")|
   _=>stdlib::tcpServer.response(request.message)
 }
 
-λmain()=>!IO Unit=stdlib::tcpServer.serve(handleRequest,45120)
+λmain()=>!Tcp Unit=stdlib::tcpServer.serve(handleRequest,45120)

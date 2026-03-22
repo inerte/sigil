@@ -185,7 +185,7 @@ e fs::promises
 
 λadd(a:Int,b:Int)=>Int=a+b
 
-λread(path:String)=>!IO String=fs::promises.readFile(path,"utf8")
+λread(path:String)=>!Fs String=fs::promises.readFile(path,"utf8")
 ```
 
 Both use the same source form. Ordinary composition stays uniform, but explicit
@@ -304,7 +304,7 @@ More code fits in LLM context windows = better understanding = better code gener
 - Bidirectional type checking with explicit function, lambda, and effect annotations
 - No `any`, no type coercion, no `null`, no `undefined`
 - Algebraic data types (sum + product types)
-- Effect system tracks IO, network, async operations
+- Effect system tracks explicit capabilities like `Fs`, `Http`, `Log`, `Process`, `Tcp`, `Clock`, and `Timer`
 - Immutable-by-default semantics, no ambient nullability, and explicit effects
 
 ### 4. Enforced Canonical Formatting

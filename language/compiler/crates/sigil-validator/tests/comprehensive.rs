@@ -18,7 +18,10 @@ fn test_duplicate_types() {
     assert!(result.is_err());
     let errors = result.unwrap_err();
     assert_eq!(errors.len(), 1);
-    assert!(matches!(errors[0], ValidationError::DuplicateDeclaration { .. }));
+    assert!(matches!(
+        errors[0],
+        ValidationError::DuplicateDeclaration { .. }
+    ));
 }
 
 #[test]
@@ -87,7 +90,8 @@ fn test_recursive_single_param() {
 #[test]
 fn test_accumulator_blocked() {
     // Current validator heuristic does not yet reject accumulator-style recursion.
-    let source = "λfactorial(acc:Int,n:Int)=>Int match n{0=>acc|value=>factorial(acc*value,value-1)}";
+    let source =
+        "λfactorial(acc:Int,n:Int)=>Int match n{0=>acc|value=>factorial(acc*value,value-1)}";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.lib.sigil").unwrap();
 
@@ -117,7 +121,8 @@ fn test_invalid_helper_pattern_blocked() {
 #[test]
 fn test_cps_rejected() {
     // Continuation-passing style factorial (forbidden)
-    let source = "λfactorial(n:Int)=>λ(Int)=>Int match n{0=>λ(k:Int)=>k|n=>λ(k:Int)=>factorial(n-1)(n*k)}";
+    let source =
+        "λfactorial(n:Int)=>λ(Int)=>Int match n{0=>λ(k:Int)=>k|n=>λ(k:Int)=>factorial(n-1)(n*k)}";
     let tokens = tokenize(source).unwrap();
     let result = parse(tokens, "test.lib.sigil");
 
@@ -130,7 +135,9 @@ fn test_cps_rejected() {
     let result = validate_canonical_form(&program, Some("test.lib.sigil"), None);
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(errors.iter().any(|error| matches!(error, ValidationError::ContinuationPassingStyle { .. })));
+    assert!(errors
+        .iter()
+        .any(|error| matches!(error, ValidationError::ContinuationPassingStyle { .. })));
 }
 
 #[test]
@@ -149,7 +156,9 @@ fn test_cps_factorial_blocked() {
     let result = validate_canonical_form(&program, Some("test.sigil"), None);
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(errors.iter().any(|error| matches!(error, ValidationError::ContinuationPassingStyle { .. })));
+    assert!(errors
+        .iter()
+        .any(|error| matches!(error, ValidationError::ContinuationPassingStyle { .. })));
 }
 
 // ============================================================================
@@ -161,7 +170,6 @@ fn test_surface_form_with_type_annotations() {
     let source = "λfoo(x:Int)=>Int=x";
     let tokens = tokenize(source).unwrap();
     let _program = parse(tokens, "test.lib.sigil").unwrap();
-
 }
 
 #[test]
@@ -169,7 +177,6 @@ fn test_surface_form_const_with_type() {
     let source = "c answer=(42:Int)";
     let tokens = tokenize(source).unwrap();
     let _program = parse(tokens, "test.lib.sigil").unwrap();
-
 }
 
 #[test]
@@ -177,7 +184,6 @@ fn test_surface_form_multiple_functions() {
     let source = "λa()=>Int=1\nλb()=>Int=2";
     let tokens = tokenize(source).unwrap();
     let _program = parse(tokens, "test.lib.sigil").unwrap();
-
 }
 
 // ============================================================================
@@ -226,13 +232,16 @@ fn test_function_declaration_valid() {
 
 #[test]
 fn test_with_mock_outside_test_body_is_invalid() {
-    let source = "λfetch()=>!IO String=\"real\"\nλhelper()=>!IO String=withMock(fetch, λ()=>!IO String=\"fake\") { fetch() }\n";
+    let source = "λfetch()=>String=\"real\"\nλhelper()=>String=withMock(fetch, λ()=>String=\"fake\") { fetch() }\n";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "tests/testWithMock.sigil").unwrap();
 
     let result = validate_canonical_form(&program, Some("tests/testWithMock.sigil"), Some(source));
     assert!(result.is_err());
-    assert!(result.unwrap_err().iter().any(|error| matches!(error, ValidationError::WithMockTestOnly { .. })));
+    assert!(result
+        .unwrap_err()
+        .iter()
+        .any(|error| matches!(error, ValidationError::WithMockTestOnly { .. })));
 }
 
 #[test]
@@ -264,7 +273,7 @@ fn test_const_lower_camel_case_name() {
 
 #[test]
 fn test_effect_annotations_valid() {
-    let source = "λread()=>!IO String=\"\"";
+    let source = "λread()=>!Fs String=\"\"";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.lib.sigil").unwrap();
 
@@ -305,7 +314,10 @@ fn test_record_type_field_order_invalid() {
     let result = validate_canonical_form(&program, Some("test.lib.sigil"), None);
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(matches!(errors[0], ValidationError::RecordTypeFieldOrder { .. }));
+    assert!(matches!(
+        errors[0],
+        ValidationError::RecordTypeFieldOrder { .. }
+    ));
 }
 
 #[test]
@@ -326,7 +338,9 @@ fn test_record_literal_field_order_invalid() {
     let result = validate_canonical_form(&program, Some("test.sigil"), None);
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(errors.iter().any(|error| matches!(error, ValidationError::RecordLiteralFieldOrder { .. })));
+    assert!(errors
+        .iter()
+        .any(|error| matches!(error, ValidationError::RecordLiteralFieldOrder { .. })));
 }
 
 #[test]
@@ -340,14 +354,18 @@ fn test_map_literal_is_not_subject_to_record_field_ordering() {
 
 #[test]
 fn test_record_pattern_field_order_invalid() {
-    let source = "t User={age:Int,name:String}\nλmain()=>Int match User{age:1,name:\"b\"}{{name,age}=>age}";
+    let source =
+        "t User={age:Int,name:String}\nλmain()=>Int match User{age:1,name:\"b\"}{{name,age}=>age}";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
     let result = validate_canonical_form(&program, Some("test.sigil"), None);
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(matches!(errors[0], ValidationError::RecordPatternFieldOrder { .. }));
+    assert!(matches!(
+        errors[0],
+        ValidationError::RecordPatternFieldOrder { .. }
+    ));
 }
 
 // ============================================================================
@@ -384,7 +402,9 @@ fn test_no_shadowing_rejects_let_shadowing_function_param() {
     let result = validate_canonical_form(&program, Some("test.sigil"), None);
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(errors.iter().any(|error| matches!(error, ValidationError::NoShadowing { name, .. } if name == "value")));
+    assert!(errors.iter().any(
+        |error| matches!(error, ValidationError::NoShadowing { name, .. } if name == "value")
+    ));
 }
 
 #[test]
@@ -396,7 +416,9 @@ fn test_no_shadowing_rejects_lambda_param_shadowing_outer_local() {
     let result = validate_canonical_form(&program, Some("test.sigil"), None);
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(errors.iter().any(|error| matches!(error, ValidationError::NoShadowing { name, .. } if name == "x")));
+    assert!(errors
+        .iter()
+        .any(|error| matches!(error, ValidationError::NoShadowing { name, .. } if name == "x")));
 }
 
 #[test]
@@ -408,7 +430,9 @@ fn test_no_shadowing_rejects_pattern_binding_shadowing_outer_local() {
     let result = validate_canonical_form(&program, Some("test.sigil"), None);
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(errors.iter().any(|error| matches!(error, ValidationError::NoShadowing { name, .. } if name == "item")));
+    assert!(errors
+        .iter()
+        .any(|error| matches!(error, ValidationError::NoShadowing { name, .. } if name == "item")));
 }
 
 #[test]
@@ -420,7 +444,9 @@ fn test_no_shadowing_rejects_duplicate_names_inside_pattern() {
     let result = validate_canonical_form(&program, Some("test.sigil"), None);
     assert!(result.is_err());
     let errors = result.unwrap_err();
-    assert!(errors.iter().any(|error| matches!(error, ValidationError::NoShadowing { name, .. } if name == "item")));
+    assert!(errors
+        .iter()
+        .any(|error| matches!(error, ValidationError::NoShadowing { name, .. } if name == "item")));
 }
 
 // ============================================================================

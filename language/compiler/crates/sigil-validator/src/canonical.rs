@@ -7,13 +7,20 @@
 //! 4. No CPS (continuation passing style)
 #![allow(dead_code)]
 
-use sigil_ast::*;
-use sigil_typechecker::{PurityClass, TypedDeclaration, TypedExpr, TypedExprKind, TypedProgram};
-use sigil_typechecker::typed_ir::TypedConcurrentStep;
-use std::collections::{HashMap, HashSet};
 use crate::error::ValidationError;
-use crate::printer::print_canonical_program;
+use crate::printer::print_canonical_program_with_effects;
+use sigil_ast::*;
 use sigil_lexer::{tokenize, Position, SourceLocation, Token, TokenType};
+use sigil_typechecker::typed_ir::TypedConcurrentStep;
+use sigil_typechecker::{
+    EffectCatalog, PurityClass, TypedDeclaration, TypedExpr, TypedExprKind, TypedProgram,
+};
+use std::collections::{HashMap, HashSet};
+
+#[derive(Debug, Clone, Default)]
+pub struct ValidationOptions {
+    pub effect_catalog: Option<EffectCatalog>,
+}
 
 fn is_lower_camel_case(name: &str) -> bool {
     let mut chars = name.chars();
@@ -117,8 +124,16 @@ fn first_source_difference(source: &str, canonical_source: &str) -> SourceLocati
     for (left, right) in source.chars().zip(canonical_source.chars()) {
         if left != right {
             return SourceLocation {
-                start: Position { line, column, offset },
-                end: Position { line, column, offset },
+                start: Position {
+                    line,
+                    column,
+                    offset,
+                },
+                end: Position {
+                    line,
+                    column,
+                    offset,
+                },
             };
         }
 
@@ -132,8 +147,16 @@ fn first_source_difference(source: &str, canonical_source: &str) -> SourceLocati
     }
 
     SourceLocation {
-        start: Position { line, column, offset },
-        end: Position { line, column, offset },
+        start: Position {
+            line,
+            column,
+            offset,
+        },
+        end: Position {
+            line,
+            column,
+            offset,
+        },
     }
 }
 
@@ -147,8 +170,16 @@ fn validate_eof_newline(source: &str, file_path: &str) -> Result<(), Vec<Validat
         return Err(vec![ValidationError::EOFNewline {
             filename: file_path.to_string(),
             location: SourceLocation {
-                start: Position { line: 1, column: 1, offset: 0 },
-                end: Position { line: 1, column: 1, offset: 0 },
+                start: Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
+                end: Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
             },
         }]);
     }
@@ -157,7 +188,10 @@ fn validate_eof_newline(source: &str, file_path: &str) -> Result<(), Vec<Validat
 }
 
 /// Validate no trailing whitespace
-fn validate_no_trailing_whitespace(source: &str, file_path: &str) -> Result<(), Vec<ValidationError>> {
+fn validate_no_trailing_whitespace(
+    source: &str,
+    file_path: &str,
+) -> Result<(), Vec<ValidationError>> {
     let lines: Vec<&str> = source.split('\n').collect();
 
     for (i, line) in lines.iter().enumerate() {
@@ -166,8 +200,16 @@ fn validate_no_trailing_whitespace(source: &str, file_path: &str) -> Result<(), 
                 filename: file_path.to_string(),
                 line: i + 1,
                 location: SourceLocation {
-                    start: Position { line: i + 1, column: 1, offset: 0 },
-                    end: Position { line: i + 1, column: 1, offset: 0 },
+                    start: Position {
+                        line: i + 1,
+                        column: 1,
+                        offset: 0,
+                    },
+                    end: Position {
+                        line: i + 1,
+                        column: 1,
+                        offset: 0,
+                    },
                 },
             }]);
         }
@@ -186,8 +228,16 @@ fn validate_blank_lines(source: &str, file_path: &str) -> Result<(), Vec<Validat
                 filename: file_path.to_string(),
                 line: i + 2,
                 location: SourceLocation {
-                    start: Position { line: i + 2, column: 1, offset: 0 },
-                    end: Position { line: i + 2, column: 1, offset: 0 },
+                    start: Position {
+                        line: i + 2,
+                        column: 1,
+                        offset: 0,
+                    },
+                    end: Position {
+                        line: i + 2,
+                        column: 1,
+                        offset: 0,
+                    },
                 },
             }]);
         }
@@ -235,7 +285,11 @@ fn contains_space_outside_comments(slice: &str) -> bool {
 
 fn has_space_gap(source: &str, left: &Token, right: &Token) -> bool {
     left.location.end.line == right.location.start.line
-        && contains_space_outside_comments(slice_between(source, left.location.end.offset, right.location.start.offset))
+        && contains_space_outside_comments(slice_between(
+            source,
+            left.location.end.offset,
+            right.location.start.offset,
+        ))
 }
 
 fn char_before(source: &str, offset: usize) -> Option<char> {
@@ -288,11 +342,17 @@ fn type_location(ty: &Type) -> SourceLocation {
 }
 
 fn token_is_open_delimiter(token_type: TokenType) -> bool {
-    matches!(token_type, TokenType::LPAREN | TokenType::LBRACKET | TokenType::LBRACE)
+    matches!(
+        token_type,
+        TokenType::LPAREN | TokenType::LBRACKET | TokenType::LBRACE
+    )
 }
 
 fn token_is_close_delimiter(token_type: TokenType) -> bool {
-    matches!(token_type, TokenType::RPAREN | TokenType::RBRACKET | TokenType::RBRACE)
+    matches!(
+        token_type,
+        TokenType::RPAREN | TokenType::RBRACKET | TokenType::RBRACE
+    )
 }
 
 fn token_forbids_surrounding_spaces(token_type: TokenType) -> bool {
@@ -311,15 +371,19 @@ fn token_forbids_surrounding_spaces(token_type: TokenType) -> bool {
 }
 
 fn validate_token_spacing(source: &str, file_path: &str) -> Result<(), Vec<ValidationError>> {
-    let tokens = tokenize(source).map_err(|error| vec![ValidationError::FilenameFormat {
-        filename: file_path.to_string(),
-        message: error.to_string(),
-        location: SourceLocation::new(Position::new(1, 1, 0), Position::new(1, 1, 0)),
-    }])?;
+    let tokens = tokenize(source).map_err(|error| {
+        vec![ValidationError::FilenameFormat {
+            filename: file_path.to_string(),
+            message: error.to_string(),
+            location: SourceLocation::new(Position::new(1, 1, 0), Position::new(1, 1, 0)),
+        }]
+    })?;
 
     let significant: Vec<&Token> = tokens
         .iter()
-        .filter(|token| token.token_type != TokenType::NEWLINE && token.token_type != TokenType::EOF)
+        .filter(|token| {
+            token.token_type != TokenType::NEWLINE && token.token_type != TokenType::EOF
+        })
         .collect();
 
     for window in significant.windows(2) {
@@ -344,7 +408,8 @@ fn validate_token_spacing(source: &str, file_path: &str) -> Result<(), Vec<Valid
             }]);
         }
 
-        if token_forbids_surrounding_spaces(right.token_type) && has_space_gap(source, left, right) {
+        if token_forbids_surrounding_spaces(right.token_type) && has_space_gap(source, left, right)
+        {
             return Err(vec![ValidationError::OperatorSpacing {
                 location: SourceLocation::new(left.location.end, right.location.end),
             }]);
@@ -354,7 +419,10 @@ fn validate_token_spacing(source: &str, file_path: &str) -> Result<(), Vec<Valid
     Ok(())
 }
 
-fn validate_function_body_layout(function: &FunctionDecl, source: &str) -> Result<(), Vec<ValidationError>> {
+fn validate_function_body_layout(
+    function: &FunctionDecl,
+    source: &str,
+) -> Result<(), Vec<ValidationError>> {
     let body_location = expr_location(&function.body);
     if function.location.start.line != body_location.start.line {
         return Err(vec![ValidationError::SignatureLayout {
@@ -363,7 +431,13 @@ fn validate_function_body_layout(function: &FunctionDecl, source: &str) -> Resul
     }
 
     if matches!(function.body, Expr::Match(_)) {
-        let between = slice_between(source, type_location(function.return_type.as_ref().unwrap()).end.offset, body_location.start.offset);
+        let between = slice_between(
+            source,
+            type_location(function.return_type.as_ref().unwrap())
+                .end
+                .offset,
+            body_location.start.offset,
+        );
         if between.contains('{') {
             return Err(vec![ValidationError::MatchBodyBlock {
                 location: function.location,
@@ -374,7 +448,10 @@ fn validate_function_body_layout(function: &FunctionDecl, source: &str) -> Resul
     Ok(())
 }
 
-fn validate_lambda_body_layout(lambda: &LambdaExpr, source: &str) -> Result<(), Vec<ValidationError>> {
+fn validate_lambda_body_layout(
+    lambda: &LambdaExpr,
+    source: &str,
+) -> Result<(), Vec<ValidationError>> {
     let body_location = expr_location(&lambda.body);
     if lambda.location.start.line != body_location.start.line {
         return Err(vec![ValidationError::SignatureLayout {
@@ -383,7 +460,11 @@ fn validate_lambda_body_layout(lambda: &LambdaExpr, source: &str) -> Result<(), 
     }
 
     if matches!(lambda.body, Expr::Match(_)) {
-        let between = slice_between(source, type_location(&lambda.return_type).end.offset, body_location.start.offset);
+        let between = slice_between(
+            source,
+            type_location(&lambda.return_type).end.offset,
+            body_location.start.offset,
+        );
         if between.contains('{') {
             return Err(vec![ValidationError::MatchBodyBlock {
                 location: lambda.location,
@@ -433,7 +514,10 @@ fn validate_match_layout(match_expr: &MatchExpr, source: &str) -> Result<(), Vec
     Ok(())
 }
 
-fn validate_redundant_parens_in_body(expr: &Expr, source: &str) -> Result<(), Vec<ValidationError>> {
+fn validate_redundant_parens_in_body(
+    expr: &Expr,
+    source: &str,
+) -> Result<(), Vec<ValidationError>> {
     let can_be_meaningfully_wrapped = matches!(
         expr,
         Expr::Application(_)
@@ -565,7 +649,9 @@ fn validate_expr_layout(expr: &Expr, source: &str, errors: &mut Vec<ValidationEr
             }
             for step in &concurrent.steps {
                 match step {
-                    ConcurrentStep::Spawn(spawn) => validate_expr_layout(&spawn.expr, source, errors),
+                    ConcurrentStep::Spawn(spawn) => {
+                        validate_expr_layout(&spawn.expr, source, errors)
+                    }
                     ConcurrentStep::SpawnEach(spawn_each) => {
                         validate_expr_layout(&spawn_each.list, source, errors);
                         validate_expr_layout(&spawn_each.func, source, errors);
@@ -579,7 +665,11 @@ fn validate_expr_layout(expr: &Expr, source: &str, errors: &mut Vec<ValidationEr
     }
 }
 
-fn validate_source_layout(program: &Program, source: &str, file_path: &str) -> Result<(), Vec<ValidationError>> {
+fn validate_source_layout(
+    program: &Program,
+    source: &str,
+    file_path: &str,
+) -> Result<(), Vec<ValidationError>> {
     let mut errors = Vec::new();
 
     if let Err(error) = validate_token_spacing(source, file_path) {
@@ -603,7 +693,10 @@ fn validate_source_layout(program: &Program, source: &str, file_path: &str) -> R
             Declaration::Test(test_decl) => {
                 validate_expr_layout(&test_decl.body, source, &mut errors);
             }
-            Declaration::Type(_) | Declaration::Import(_) | Declaration::Extern(_) => {}
+            Declaration::Type(_)
+            | Declaration::Effect(_)
+            | Declaration::Import(_)
+            | Declaration::Extern(_) => {}
         }
     }
 
@@ -615,11 +708,25 @@ fn validate_source_layout(program: &Program, source: &str, file_path: &str) -> R
 }
 
 /// Validate that a program follows canonical form rules
-pub fn validate_canonical_form(program: &Program, file_path: Option<&str>, source: Option<&str>) -> Result<(), Vec<ValidationError>> {
+pub fn validate_canonical_form(
+    program: &Program,
+    file_path: Option<&str>,
+    source: Option<&str>,
+) -> Result<(), Vec<ValidationError>> {
+    validate_canonical_form_with_options(program, file_path, source, ValidationOptions::default())
+}
+
+pub fn validate_canonical_form_with_options(
+    program: &Program,
+    file_path: Option<&str>,
+    source: Option<&str>,
+    options: ValidationOptions,
+) -> Result<(), Vec<ValidationError>> {
     let mut errors = Vec::new();
 
     if let (Some(_path), Some(src)) = (file_path, source) {
-        let canonical_source = print_canonical_program(program);
+        let canonical_source =
+            print_canonical_program_with_effects(program, options.effect_catalog.as_ref());
         if src != canonical_source {
             let location = first_source_difference(src, &canonical_source);
             errors.push(ValidationError::SourceForm {
@@ -631,6 +738,10 @@ pub fn validate_canonical_form(program: &Program, file_path: Option<&str>, sourc
 
     // Rule 1: No duplicate declarations
     if let Err(e) = validate_no_duplicates(program) {
+        errors.extend(e);
+    }
+
+    if let Err(e) = validate_effect_declaration_placement(program, file_path) {
         errors.extend(e);
     }
 
@@ -848,7 +959,9 @@ fn collect_single_use_pure_bindings(expr: &TypedExpr, errors: &mut Vec<Validatio
             }
             for step in &concurrent.steps {
                 match step {
-                    TypedConcurrentStep::Spawn(spawn) => collect_single_use_pure_bindings(&spawn.expr, errors),
+                    TypedConcurrentStep::Spawn(spawn) => {
+                        collect_single_use_pure_bindings(&spawn.expr, errors)
+                    }
                     TypedConcurrentStep::SpawnEach(spawn_each) => {
                         collect_single_use_pure_bindings(&spawn_each.list, errors);
                         collect_single_use_pure_bindings(&spawn_each.func, errors);
@@ -915,7 +1028,8 @@ fn count_identifier_uses(expr: &TypedExpr, name: &str) -> usize {
                     .sum::<usize>()
         }
         TypedExprKind::Let(let_expr) => {
-            count_identifier_uses(&let_expr.value, name) + count_identifier_uses(&let_expr.body, name)
+            count_identifier_uses(&let_expr.value, name)
+                + count_identifier_uses(&let_expr.body, name)
         }
         TypedExprKind::If(if_expr) => {
             count_identifier_uses(&if_expr.condition, name)
@@ -953,7 +1067,8 @@ fn count_identifier_uses(expr: &TypedExpr, name: &str) -> usize {
             count_identifier_uses(&index.object, name) + count_identifier_uses(&index.index, name)
         }
         TypedExprKind::Map(map_expr) => {
-            count_identifier_uses(&map_expr.list, name) + count_identifier_uses(&map_expr.func, name)
+            count_identifier_uses(&map_expr.list, name)
+                + count_identifier_uses(&map_expr.func, name)
         }
         TypedExprKind::Filter(filter) => {
             count_identifier_uses(&filter.list, name)
@@ -965,7 +1080,8 @@ fn count_identifier_uses(expr: &TypedExpr, name: &str) -> usize {
                 + count_identifier_uses(&fold.init, name)
         }
         TypedExprKind::Pipeline(pipeline) => {
-            count_identifier_uses(&pipeline.left, name) + count_identifier_uses(&pipeline.right, name)
+            count_identifier_uses(&pipeline.left, name)
+                + count_identifier_uses(&pipeline.right, name)
         }
         TypedExprKind::Concurrent(concurrent) => {
             count_identifier_uses(&concurrent.config.width, name)
@@ -991,7 +1107,9 @@ fn count_identifier_uses(expr: &TypedExpr, name: &str) -> usize {
                     .steps
                     .iter()
                     .map(|step| match step {
-                        TypedConcurrentStep::Spawn(spawn) => count_identifier_uses(&spawn.expr, name),
+                        TypedConcurrentStep::Spawn(spawn) => {
+                            count_identifier_uses(&spawn.expr, name)
+                        }
                         TypedConcurrentStep::SpawnEach(spawn_each) => {
                             count_identifier_uses(&spawn_each.list, name)
                                 + count_identifier_uses(&spawn_each.func, name)
@@ -1007,7 +1125,7 @@ fn count_identifier_uses(expr: &TypedExpr, name: &str) -> usize {
 fn validate_parameter_ordering(
     params: &[Param],
     func_name: &str,
-    location: SourceLocation
+    location: SourceLocation,
 ) -> Result<(), Vec<ValidationError>> {
     if params.len() <= 1 {
         return Ok(());
@@ -1018,7 +1136,8 @@ fn validate_parameter_ordering(
         let curr = &params[i];
 
         if curr.name < prev.name {
-            let expected_order: Vec<String> = params.iter()
+            let expected_order: Vec<String> = params
+                .iter()
                 .map(|p| p.name.clone())
                 .collect::<Vec<_>>()
                 .iter()
@@ -1045,7 +1164,7 @@ fn validate_parameter_ordering(
 fn validate_effect_ordering(
     effects: &[String],
     func_name: &str,
-    location: SourceLocation
+    location: SourceLocation,
 ) -> Result<(), Vec<ValidationError>> {
     if effects.len() <= 1 {
         return Ok(());
@@ -1075,13 +1194,26 @@ fn validate_function_signature_ordering(program: &Program) -> Result<(), Vec<Val
     let mut errors = Vec::new();
 
     for decl in &program.declarations {
-        if let Declaration::Function(func) = decl {
-            if let Err(e) = validate_parameter_ordering(&func.params, &func.name, func.location) {
-                errors.extend(e);
+        match decl {
+            Declaration::Function(func) => {
+                if let Err(e) = validate_parameter_ordering(&func.params, &func.name, func.location)
+                {
+                    errors.extend(e);
+                }
+                if let Err(e) = validate_effect_ordering(&func.effects, &func.name, func.location) {
+                    errors.extend(e);
+                }
             }
-            if let Err(e) = validate_effect_ordering(&func.effects, &func.name, func.location) {
-                errors.extend(e);
+            Declaration::Effect(effect_decl) => {
+                if let Err(e) = validate_effect_ordering(
+                    &effect_decl.effects,
+                    &effect_decl.name,
+                    effect_decl.location,
+                ) {
+                    errors.extend(e);
+                }
             }
+            _ => {}
         }
     }
 
@@ -1117,7 +1249,8 @@ fn validate_record_type_field_ordering(
 ) -> Result<(), Vec<ValidationError>> {
     let names: Vec<String> = fields.iter().map(|field| field.name.clone()).collect();
 
-    if let Some((index, field_name, prev_field, expected_order)) = first_out_of_order_field(&names) {
+    if let Some((index, field_name, prev_field, expected_order)) = first_out_of_order_field(&names)
+    {
         return Err(vec![ValidationError::RecordTypeFieldOrder {
             type_name: type_name.to_string(),
             field_name: field_name.to_string(),
@@ -1137,7 +1270,8 @@ fn validate_record_literal_field_ordering(
 ) -> Result<(), Vec<ValidationError>> {
     let names: Vec<String> = fields.iter().map(|field| field.name.clone()).collect();
 
-    if let Some((index, field_name, prev_field, expected_order)) = first_out_of_order_field(&names) {
+    if let Some((index, field_name, prev_field, expected_order)) = first_out_of_order_field(&names)
+    {
         return Err(vec![ValidationError::RecordLiteralFieldOrder {
             field_name: field_name.to_string(),
             prev_field: prev_field.to_string(),
@@ -1156,7 +1290,8 @@ fn validate_record_pattern_field_ordering(
 ) -> Result<(), Vec<ValidationError>> {
     let names: Vec<String> = fields.iter().map(|field| field.name.clone()).collect();
 
-    if let Some((index, field_name, prev_field, expected_order)) = first_out_of_order_field(&names) {
+    if let Some((index, field_name, prev_field, expected_order)) = first_out_of_order_field(&names)
+    {
         return Err(vec![ValidationError::RecordPatternFieldOrder {
             field_name: field_name.to_string(),
             prev_field: prev_field.to_string(),
@@ -1183,7 +1318,8 @@ fn validate_pattern_record_fields(pattern: &Pattern, errors: &mut Vec<Validation
             }
         }
         Pattern::Record(record) => {
-            if let Err(e) = validate_record_pattern_field_ordering(&record.fields, record.location) {
+            if let Err(e) = validate_record_pattern_field_ordering(&record.fields, record.location)
+            {
                 errors.extend(e);
             }
 
@@ -1244,7 +1380,8 @@ fn validate_expr_record_fields(expr: &Expr, errors: &mut Vec<ValidationError>) {
             }
         }
         Expr::Record(record) => {
-            if let Err(e) = validate_record_literal_field_ordering(&record.fields, record.location) {
+            if let Err(e) = validate_record_literal_field_ordering(&record.fields, record.location)
+            {
                 errors.extend(e);
             }
 
@@ -1263,7 +1400,9 @@ fn validate_expr_record_fields(expr: &Expr, errors: &mut Vec<ValidationError>) {
                 validate_expr_record_fields(element, errors);
             }
         }
-        Expr::FieldAccess(field_access) => validate_expr_record_fields(&field_access.object, errors),
+        Expr::FieldAccess(field_access) => {
+            validate_expr_record_fields(&field_access.object, errors)
+        }
         Expr::Index(index) => {
             validate_expr_record_fields(&index.object, errors);
             validate_expr_record_fields(&index.index, errors);
@@ -1288,7 +1427,9 @@ fn validate_expr_record_fields(expr: &Expr, errors: &mut Vec<ValidationError>) {
         Expr::Concurrent(concurrent) => {
             validate_expr_record_fields(&concurrent.width, errors);
             if let Some(policy) = &concurrent.policy {
-                if let Err(e) = validate_record_literal_field_ordering(&policy.fields, policy.location) {
+                if let Err(e) =
+                    validate_record_literal_field_ordering(&policy.fields, policy.location)
+                {
                     errors.extend(e);
                 }
                 for field in &policy.fields {
@@ -1297,7 +1438,9 @@ fn validate_expr_record_fields(expr: &Expr, errors: &mut Vec<ValidationError>) {
             }
             for step in &concurrent.steps {
                 match step {
-                    ConcurrentStep::Spawn(spawn) => validate_expr_record_fields(&spawn.expr, errors),
+                    ConcurrentStep::Spawn(spawn) => {
+                        validate_expr_record_fields(&spawn.expr, errors)
+                    }
                     ConcurrentStep::SpawnEach(spawn_each) => {
                         validate_expr_record_fields(&spawn_each.list, errors);
                         validate_expr_record_fields(&spawn_each.func, errors);
@@ -1310,7 +1453,9 @@ fn validate_expr_record_fields(expr: &Expr, errors: &mut Vec<ValidationError>) {
             validate_expr_record_fields(&with_mock.replacement, errors);
             validate_expr_record_fields(&with_mock.body, errors);
         }
-        Expr::TypeAscription(type_ascription) => validate_expr_record_fields(&type_ascription.expr, errors),
+        Expr::TypeAscription(type_ascription) => {
+            validate_expr_record_fields(&type_ascription.expr, errors)
+        }
     }
 }
 
@@ -1321,15 +1466,25 @@ fn validate_record_field_ordering(program: &Program) -> Result<(), Vec<Validatio
         match decl {
             Declaration::Type(type_decl) => {
                 if let TypeDef::Product(product) = &type_decl.definition {
-                    if let Err(e) = validate_record_type_field_ordering(&type_decl.name, &product.fields, product.location) {
+                    if let Err(e) = validate_record_type_field_ordering(
+                        &type_decl.name,
+                        &product.fields,
+                        product.location,
+                    ) {
                         errors.extend(e);
                     }
                 }
             }
-            Declaration::Function(function) => validate_expr_record_fields(&function.body, &mut errors),
-            Declaration::Const(const_decl) => validate_expr_record_fields(&const_decl.value, &mut errors),
-            Declaration::Test(test_decl) => validate_expr_record_fields(&test_decl.body, &mut errors),
-            Declaration::Extern(_) | Declaration::Import(_) => {}
+            Declaration::Function(function) => {
+                validate_expr_record_fields(&function.body, &mut errors)
+            }
+            Declaration::Const(const_decl) => {
+                validate_expr_record_fields(&const_decl.value, &mut errors)
+            }
+            Declaration::Test(test_decl) => {
+                validate_expr_record_fields(&test_decl.body, &mut errors)
+            }
+            Declaration::Effect(_) | Declaration::Extern(_) | Declaration::Import(_) => {}
         }
     }
 
@@ -1369,7 +1524,11 @@ struct BindingInfo {
 
 type ScopeFrame = HashMap<String, BindingInfo>;
 
-fn first_existing_binding(name: &str, local: &ScopeFrame, scopes: &[ScopeFrame]) -> Option<BindingInfo> {
+fn first_existing_binding(
+    name: &str,
+    local: &ScopeFrame,
+    scopes: &[ScopeFrame],
+) -> Option<BindingInfo> {
     if let Some(info) = local.get(name) {
         return Some(*info);
     }
@@ -1471,7 +1630,11 @@ fn validate_pattern_no_shadowing(
     }
 }
 
-fn validate_expr_no_shadowing(expr: &Expr, scopes: &mut Vec<ScopeFrame>, errors: &mut Vec<ValidationError>) {
+fn validate_expr_no_shadowing(
+    expr: &Expr,
+    scopes: &mut Vec<ScopeFrame>,
+    errors: &mut Vec<ValidationError>,
+) {
     match expr {
         Expr::Literal(_) | Expr::Identifier(_) | Expr::MemberAccess(_) => {}
         Expr::Lambda(lambda) => {
@@ -1562,7 +1725,9 @@ fn validate_expr_no_shadowing(expr: &Expr, scopes: &mut Vec<ScopeFrame>, errors:
                 validate_expr_no_shadowing(element, scopes, errors);
             }
         }
-        Expr::FieldAccess(field_access) => validate_expr_no_shadowing(&field_access.object, scopes, errors),
+        Expr::FieldAccess(field_access) => {
+            validate_expr_no_shadowing(&field_access.object, scopes, errors)
+        }
         Expr::Index(index) => {
             validate_expr_no_shadowing(&index.object, scopes, errors);
             validate_expr_no_shadowing(&index.index, scopes, errors);
@@ -1593,7 +1758,9 @@ fn validate_expr_no_shadowing(expr: &Expr, scopes: &mut Vec<ScopeFrame>, errors:
             }
             for step in &concurrent.steps {
                 match step {
-                    ConcurrentStep::Spawn(spawn) => validate_expr_no_shadowing(&spawn.expr, scopes, errors),
+                    ConcurrentStep::Spawn(spawn) => {
+                        validate_expr_no_shadowing(&spawn.expr, scopes, errors)
+                    }
                     ConcurrentStep::SpawnEach(spawn_each) => {
                         validate_expr_no_shadowing(&spawn_each.list, scopes, errors);
                         validate_expr_no_shadowing(&spawn_each.func, scopes, errors);
@@ -1606,7 +1773,9 @@ fn validate_expr_no_shadowing(expr: &Expr, scopes: &mut Vec<ScopeFrame>, errors:
             validate_expr_no_shadowing(&with_mock.replacement, scopes, errors);
             validate_expr_no_shadowing(&with_mock.body, scopes, errors);
         }
-        Expr::TypeAscription(type_ascription) => validate_expr_no_shadowing(&type_ascription.expr, scopes, errors),
+        Expr::TypeAscription(type_ascription) => {
+            validate_expr_no_shadowing(&type_ascription.expr, scopes, errors)
+        }
     }
 }
 
@@ -1639,7 +1808,10 @@ fn validate_no_shadowing(program: &Program) -> Result<(), Vec<ValidationError>> 
                 let mut scopes = Vec::new();
                 validate_expr_no_shadowing(&test_decl.body, &mut scopes, &mut errors);
             }
-            Declaration::Type(_) | Declaration::Extern(_) | Declaration::Import(_) => {}
+            Declaration::Type(_)
+            | Declaration::Effect(_)
+            | Declaration::Extern(_)
+            | Declaration::Import(_) => {}
         }
     }
 
@@ -1655,6 +1827,7 @@ fn validate_no_duplicates(program: &Program) -> Result<(), Vec<ValidationError>>
     let mut errors = Vec::new();
 
     let mut type_names: HashMap<String, SourceLocation> = HashMap::new();
+    let mut effect_names: HashMap<String, SourceLocation> = HashMap::new();
     let mut extern_names: HashMap<String, SourceLocation> = HashMap::new();
     let mut import_paths: HashMap<String, SourceLocation> = HashMap::new();
     let mut const_names: HashMap<String, SourceLocation> = HashMap::new();
@@ -1677,7 +1850,25 @@ fn validate_no_duplicates(program: &Program) -> Result<(), Vec<ValidationError>>
                 }
             }
 
-            Declaration::Extern(ExternDecl { module_path, location, .. }) => {
+            Declaration::Effect(EffectDecl { name, location, .. }) => {
+                if let Some(first_loc) = effect_names.get(name) {
+                    errors.push(ValidationError::DuplicateDeclaration {
+                        kind: "EFFECT".to_string(),
+                        what: "effect".to_string(),
+                        name: name.clone(),
+                        location: *location,
+                        first_location: *first_loc,
+                    });
+                } else {
+                    effect_names.insert(name.clone(), *location);
+                }
+            }
+
+            Declaration::Extern(ExternDecl {
+                module_path,
+                location,
+                ..
+            }) => {
                 let name = module_path.join("::");
                 if let Some(first_loc) = extern_names.get(&name) {
                     errors.push(ValidationError::DuplicateDeclaration {
@@ -1692,7 +1883,10 @@ fn validate_no_duplicates(program: &Program) -> Result<(), Vec<ValidationError>>
                 }
             }
 
-            Declaration::Import(ImportDecl { module_path, location }) => {
+            Declaration::Import(ImportDecl {
+                module_path,
+                location,
+            }) => {
                 let path = module_path.join("::");
                 if let Some(first_loc) = import_paths.get(&path) {
                     errors.push(ValidationError::DuplicateDeclaration {
@@ -1735,7 +1929,11 @@ fn validate_no_duplicates(program: &Program) -> Result<(), Vec<ValidationError>>
                 }
             }
 
-            Declaration::Test(TestDecl { description, location, .. }) => {
+            Declaration::Test(TestDecl {
+                description,
+                location,
+                ..
+            }) => {
                 if let Some(first_loc) = test_names.get(description) {
                     errors.push(ValidationError::DuplicateDeclaration {
                         kind: "TEST".to_string(),
@@ -1764,9 +1962,15 @@ fn validate_no_duplicates(program: &Program) -> Result<(), Vec<ValidationError>>
 /// - `.lib.sigil` files CANNOT have main() function
 /// - `.sigil` files (non-test) MUST have main() function
 /// - Test files (`tests/` in path) can have either
-fn validate_file_purpose(program: &Program, file_path: Option<&str>) -> Result<(), Vec<ValidationError>> {
+fn validate_file_purpose(
+    program: &Program,
+    file_path: Option<&str>,
+) -> Result<(), Vec<ValidationError>> {
     let mut has_main = false;
-    let has_tests = program.declarations.iter().any(|d| matches!(d, Declaration::Test(_)));
+    let has_tests = program
+        .declarations
+        .iter()
+        .any(|d| matches!(d, Declaration::Test(_)));
 
     for decl in &program.declarations {
         if let Declaration::Function(FunctionDecl { name, .. }) = decl {
@@ -1797,11 +2001,53 @@ fn validate_file_purpose(program: &Program, file_path: Option<&str>) -> Result<(
     // Test-specific validation
     if has_tests && !has_main {
         return Err(vec![ValidationError::TestNeedsMain {
-            message: "Test files must have λmain()=>Unit=()\n\nHint: Test files are executables".to_string(),
+            message: "Test files must have λmain()=>Unit=()\n\nHint: Test files are executables"
+                .to_string(),
         }]);
     }
 
     Ok(())
+}
+
+fn validate_effect_declaration_placement(
+    program: &Program,
+    file_path: Option<&str>,
+) -> Result<(), Vec<ValidationError>> {
+    let normalized_path = file_path.map(|path| path.replace('\\', "/"));
+    let is_effects_file = normalized_path
+        .as_deref()
+        .is_some_and(|path| path.ends_with("/src/effects.lib.sigil"));
+
+    let mut errors = Vec::new();
+
+    for decl in &program.declarations {
+        match decl {
+            Declaration::Effect(effect_decl) => {
+                if !is_effects_file {
+                    errors.push(ValidationError::EffectDeclarationPlacement {
+                        message: "Project-defined effects must live in src/effects.lib.sigil"
+                            .to_string(),
+                        location: effect_decl.location,
+                    });
+                }
+            }
+            _ => {
+                if is_effects_file {
+                    errors.push(ValidationError::EffectDeclarationPlacement {
+                        message: "src/effects.lib.sigil may only contain effect declarations"
+                            .to_string(),
+                        location: *get_declaration_location(decl),
+                    });
+                }
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
 }
 
 /// Validate filename format - lowerCamelCase only
@@ -1814,8 +2060,16 @@ fn validate_filename_format(file_path: &str) -> Result<(), Vec<ValidationError>>
         .unwrap_or("");
 
     let location = SourceLocation {
-        start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
-        end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+        start: sigil_lexer::Position {
+            line: 1,
+            column: 1,
+            offset: 0,
+        },
+        end: sigil_lexer::Position {
+            line: 1,
+            column: 1,
+            offset: 0,
+        },
     };
 
     if basename
@@ -2075,7 +2329,10 @@ fn validate_identifier_forms_in_expr(expr: &Expr, errors: &mut Vec<ValidationErr
                 if !is_lower_camel_case(&param.name) {
                     errors.push(ValidationError::IdentifierForm {
                         found: param.name.clone(),
-                        suggestion: suggestion_suffix(&param.name, to_lower_camel_case(&param.name)),
+                        suggestion: suggestion_suffix(
+                            &param.name,
+                            to_lower_camel_case(&param.name),
+                        ),
                         location: param.location,
                     });
                 }
@@ -2129,7 +2386,10 @@ fn validate_identifier_forms_in_expr(expr: &Expr, errors: &mut Vec<ValidationErr
                 if !is_lower_camel_case(&field.name) {
                     errors.push(ValidationError::RecordFieldForm {
                         found: field.name.clone(),
-                        suggestion: suggestion_suffix(&field.name, to_lower_camel_case(&field.name)),
+                        suggestion: suggestion_suffix(
+                            &field.name,
+                            to_lower_camel_case(&field.name),
+                        ),
                         location: field.location,
                     });
                 }
@@ -2185,7 +2445,10 @@ fn validate_identifier_forms_in_expr(expr: &Expr, errors: &mut Vec<ValidationErr
             if !is_lower_camel_case(&concurrent.name) {
                 errors.push(ValidationError::IdentifierForm {
                     found: concurrent.name.clone(),
-                    suggestion: suggestion_suffix(&concurrent.name, to_lower_camel_case(&concurrent.name)),
+                    suggestion: suggestion_suffix(
+                        &concurrent.name,
+                        to_lower_camel_case(&concurrent.name),
+                    ),
                     location: concurrent.location,
                 });
             }
@@ -2195,7 +2458,10 @@ fn validate_identifier_forms_in_expr(expr: &Expr, errors: &mut Vec<ValidationErr
                     if !is_lower_camel_case(&field.name) {
                         errors.push(ValidationError::RecordFieldForm {
                             found: field.name.clone(),
-                            suggestion: suggestion_suffix(&field.name, to_lower_camel_case(&field.name)),
+                            suggestion: suggestion_suffix(
+                                &field.name,
+                                to_lower_camel_case(&field.name),
+                            ),
                             location: field.location,
                         });
                     }
@@ -2204,7 +2470,9 @@ fn validate_identifier_forms_in_expr(expr: &Expr, errors: &mut Vec<ValidationErr
             }
             for step in &concurrent.steps {
                 match step {
-                    ConcurrentStep::Spawn(spawn) => validate_identifier_forms_in_expr(&spawn.expr, errors),
+                    ConcurrentStep::Spawn(spawn) => {
+                        validate_identifier_forms_in_expr(&spawn.expr, errors)
+                    }
                     ConcurrentStep::SpawnEach(spawn_each) => {
                         validate_identifier_forms_in_expr(&spawn_each.list, errors);
                         validate_identifier_forms_in_expr(&spawn_each.func, errors);
@@ -2369,6 +2637,18 @@ fn validate_naming_forms(program: &Program, errors: &mut Vec<ValidationError>) {
                     }
                 }
             }
+            Declaration::Effect(effect_decl) => {
+                if !is_upper_camel_case(&effect_decl.name) {
+                    errors.push(ValidationError::TypeNameForm {
+                        found: effect_decl.name.clone(),
+                        suggestion: suggestion_suffix(
+                            &effect_decl.name,
+                            to_upper_camel_case(&effect_decl.name),
+                        ),
+                        location: effect_decl.location,
+                    });
+                }
+            }
             Declaration::Import(import_decl) => {
                 for segment in &import_decl.module_path {
                     if !is_lower_camel_case(segment) {
@@ -2396,7 +2676,9 @@ fn validate_naming_forms(program: &Program, errors: &mut Vec<ValidationError>) {
                 }
                 validate_identifier_forms_in_expr(&const_decl.value, errors);
             }
-            Declaration::Test(test_decl) => validate_identifier_forms_in_expr(&test_decl.body, errors),
+            Declaration::Test(test_decl) => {
+                validate_identifier_forms_in_expr(&test_decl.body, errors)
+            }
             Declaration::Extern(extern_decl) => {
                 for segment in &extern_decl.module_path {
                     if !is_lower_camel_case(segment) {
@@ -2429,7 +2711,10 @@ fn validate_naming_forms(program: &Program, errors: &mut Vec<ValidationError>) {
 
 /// Validate that test blocks only appear in tests/ directories
 fn validate_test_location(program: &Program, file_path: &str) -> Result<(), Vec<ValidationError>> {
-    let has_tests = program.declarations.iter().any(|d| matches!(d, Declaration::Test(_)));
+    let has_tests = program
+        .declarations
+        .iter()
+        .any(|d| matches!(d, Declaration::Test(_)));
 
     if !has_tests {
         return Ok(());
@@ -2575,6 +2860,7 @@ fn validate_with_mock_placement(program: &Program) -> Result<(), Vec<ValidationE
                 collect_with_mock_outside_tests_in_test_expr(&test_decl.body, true, &mut errors);
             }
             Declaration::Type(_)
+            | Declaration::Effect(_)
             | Declaration::Import(_)
             | Declaration::Extern(_) => {}
         }
@@ -2615,7 +2901,11 @@ fn collect_with_mock_outside_tests_in_test_expr(
             collect_with_mock_outside_tests_in_test_expr(&unary.operand, in_test_body, errors);
         }
         Expr::Match(match_expr) => {
-            collect_with_mock_outside_tests_in_test_expr(&match_expr.scrutinee, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(
+                &match_expr.scrutinee,
+                in_test_body,
+                errors,
+            );
             for arm in &match_expr.arms {
                 collect_with_mock_outside_tests_in_test_expr(&arm.body, in_test_body, errors);
                 if let Some(guard) = &arm.guard {
@@ -2629,7 +2919,11 @@ fn collect_with_mock_outside_tests_in_test_expr(
         }
         Expr::If(if_expr) => {
             collect_with_mock_outside_tests_in_test_expr(&if_expr.condition, in_test_body, errors);
-            collect_with_mock_outside_tests_in_test_expr(&if_expr.then_branch, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(
+                &if_expr.then_branch,
+                in_test_body,
+                errors,
+            );
             if let Some(else_branch) = &if_expr.else_branch {
                 collect_with_mock_outside_tests_in_test_expr(else_branch, in_test_body, errors);
             }
@@ -2656,7 +2950,11 @@ fn collect_with_mock_outside_tests_in_test_expr(
             }
         }
         Expr::FieldAccess(field_access) => {
-            collect_with_mock_outside_tests_in_test_expr(&field_access.object, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(
+                &field_access.object,
+                in_test_body,
+                errors,
+            );
         }
         Expr::Index(index) => {
             collect_with_mock_outside_tests_in_test_expr(&index.object, in_test_body, errors);
@@ -2680,23 +2978,43 @@ fn collect_with_mock_outside_tests_in_test_expr(
             collect_with_mock_outside_tests_in_test_expr(&pipeline.right, in_test_body, errors);
         }
         Expr::TypeAscription(type_ascription) => {
-            collect_with_mock_outside_tests_in_test_expr(&type_ascription.expr, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(
+                &type_ascription.expr,
+                in_test_body,
+                errors,
+            );
         }
         Expr::Concurrent(concurrent) => {
             collect_with_mock_outside_tests_in_test_expr(&concurrent.width, in_test_body, errors);
             if let Some(policy) = &concurrent.policy {
                 for field in &policy.fields {
-                    collect_with_mock_outside_tests_in_test_expr(&field.value, in_test_body, errors);
+                    collect_with_mock_outside_tests_in_test_expr(
+                        &field.value,
+                        in_test_body,
+                        errors,
+                    );
                 }
             }
             for step in &concurrent.steps {
                 match step {
                     ConcurrentStep::Spawn(spawn) => {
-                        collect_with_mock_outside_tests_in_test_expr(&spawn.expr, in_test_body, errors);
+                        collect_with_mock_outside_tests_in_test_expr(
+                            &spawn.expr,
+                            in_test_body,
+                            errors,
+                        );
                     }
                     ConcurrentStep::SpawnEach(spawn_each) => {
-                        collect_with_mock_outside_tests_in_test_expr(&spawn_each.list, in_test_body, errors);
-                        collect_with_mock_outside_tests_in_test_expr(&spawn_each.func, in_test_body, errors);
+                        collect_with_mock_outside_tests_in_test_expr(
+                            &spawn_each.list,
+                            in_test_body,
+                            errors,
+                        );
+                        collect_with_mock_outside_tests_in_test_expr(
+                            &spawn_each.func,
+                            in_test_body,
+                            errors,
+                        );
                     }
                 }
             }
@@ -2709,7 +3027,11 @@ fn collect_with_mock_outside_tests_in_test_expr(
                 });
             }
             collect_with_mock_outside_tests_in_test_expr(&with_mock.target, in_test_body, errors);
-            collect_with_mock_outside_tests_in_test_expr(&with_mock.replacement, in_test_body, errors);
+            collect_with_mock_outside_tests_in_test_expr(
+                &with_mock.replacement,
+                in_test_body,
+                errors,
+            );
             collect_with_mock_outside_tests_in_test_expr(&with_mock.body, in_test_body, errors);
         }
     }
@@ -2720,12 +3042,13 @@ fn is_recursive(expr: &Expr, function_name: &str) -> bool {
     match expr {
         Expr::Application(app) => {
             // Check if calling itself
-            if matches!(app.func, Expr::Identifier(IdentifierExpr { ref name, .. }) if name == function_name) {
+            if matches!(app.func, Expr::Identifier(IdentifierExpr { ref name, .. }) if name == function_name)
+            {
                 return true;
             }
             // Check function and args
-            is_recursive(&app.func, function_name) ||
-                app.args.iter().any(|arg| is_recursive(arg, function_name))
+            is_recursive(&app.func, function_name)
+                || app.args.iter().any(|arg| is_recursive(arg, function_name))
         }
 
         Expr::Identifier(_) | Expr::Literal(_) => false,
@@ -2739,10 +3062,13 @@ fn is_recursive(expr: &Expr, function_name: &str) -> bool {
         Expr::Unary(un) => is_recursive(&un.operand, function_name),
 
         Expr::Match(m) => {
-            is_recursive(&m.scrutinee, function_name) ||
-                m.arms.iter().any(|arm| {
-                    arm.guard.as_ref().map(|g| is_recursive(g, function_name)).unwrap_or(false) ||
-                        is_recursive(&arm.body, function_name)
+            is_recursive(&m.scrutinee, function_name)
+                || m.arms.iter().any(|arm| {
+                    arm.guard
+                        .as_ref()
+                        .map(|g| is_recursive(g, function_name))
+                        .unwrap_or(false)
+                        || is_recursive(&arm.body, function_name)
                 })
         }
 
@@ -2751,20 +3077,24 @@ fn is_recursive(expr: &Expr, function_name: &str) -> bool {
         }
 
         Expr::If(i) => {
-            is_recursive(&i.condition, function_name) ||
-                is_recursive(&i.then_branch, function_name) ||
-                i.else_branch.as_ref().map(|e| is_recursive(e, function_name)).unwrap_or(false)
+            is_recursive(&i.condition, function_name)
+                || is_recursive(&i.then_branch, function_name)
+                || i.else_branch
+                    .as_ref()
+                    .map(|e| is_recursive(e, function_name))
+                    .unwrap_or(false)
         }
 
         Expr::List(l) => l.elements.iter().any(|e| is_recursive(e, function_name)),
 
-        Expr::Record(r) => r.fields.iter().any(|f| is_recursive(&f.value, function_name)),
+        Expr::Record(r) => r
+            .fields
+            .iter()
+            .any(|f| is_recursive(&f.value, function_name)),
 
-        Expr::MapLiteral(m) => {
-            m.entries.iter().any(|entry| {
-                is_recursive(&entry.key, function_name) || is_recursive(&entry.value, function_name)
-            })
-        }
+        Expr::MapLiteral(m) => m.entries.iter().any(|entry| {
+            is_recursive(&entry.key, function_name) || is_recursive(&entry.value, function_name)
+        }),
 
         Expr::Tuple(t) => t.elements.iter().any(|e| is_recursive(e, function_name)),
 
@@ -2787,23 +3117,24 @@ fn is_recursive(expr: &Expr, function_name: &str) -> bool {
         }
 
         Expr::Fold(f) => {
-            is_recursive(&f.list, function_name) ||
-                is_recursive(&f.func, function_name) ||
-                is_recursive(&f.init, function_name)
+            is_recursive(&f.list, function_name)
+                || is_recursive(&f.func, function_name)
+                || is_recursive(&f.init, function_name)
         }
 
         Expr::MemberAccess(_) => false,
 
         Expr::WithMock(w) => {
-            is_recursive(&w.target, function_name) ||
-                is_recursive(&w.replacement, function_name) ||
-                is_recursive(&w.body, function_name)
+            is_recursive(&w.target, function_name)
+                || is_recursive(&w.replacement, function_name)
+                || is_recursive(&w.body, function_name)
         }
 
         Expr::Concurrent(concurrent) => concurrent.steps.iter().any(|step| match step {
             ConcurrentStep::Spawn(spawn) => is_recursive(&spawn.expr, function_name),
             ConcurrentStep::SpawnEach(spawn_each) => {
-                is_recursive(&spawn_each.list, function_name) || is_recursive(&spawn_each.func, function_name)
+                is_recursive(&spawn_each.list, function_name)
+                    || is_recursive(&spawn_each.func, function_name)
             }
         }),
 
@@ -2899,7 +3230,12 @@ fn empty_and_cons_arms<'a>(
     let Pattern::Identifier(head_pat) = &cons_pat.patterns[0] else {
         return None;
     };
-    Some((empty_arm, cons_arm, head_pat.name.as_str(), cons_pat.rest.as_deref()?))
+    Some((
+        empty_arm,
+        cons_arm,
+        head_pat.name.as_str(),
+        cons_pat.rest.as_deref()?,
+    ))
 }
 
 fn is_empty_list_expr(expr: &Expr) -> bool {
@@ -2984,13 +3320,17 @@ fn is_unary_constructor_expr<'a>(expr: &'a Expr, name: &str) -> Option<&'a Expr>
 fn contains_recursive_append_result(expr: &Expr, function_name: &str) -> bool {
     match expr {
         Expr::Binary(binary) => {
-            (binary.operator == BinaryOperator::ListAppend && is_self_call(&binary.left, function_name))
+            (binary.operator == BinaryOperator::ListAppend
+                && is_self_call(&binary.left, function_name))
                 || contains_recursive_append_result(&binary.left, function_name)
                 || contains_recursive_append_result(&binary.right, function_name)
         }
         Expr::Application(app) => {
             contains_recursive_append_result(&app.func, function_name)
-                || app.args.iter().any(|arg| contains_recursive_append_result(arg, function_name))
+                || app
+                    .args
+                    .iter()
+                    .any(|arg| contains_recursive_append_result(arg, function_name))
         }
         Expr::Lambda(lambda) => contains_recursive_append_result(&lambda.body, function_name),
         Expr::Match(match_expr) => {
@@ -3057,7 +3397,9 @@ fn contains_recursive_append_result(expr: &Expr, function_name: &str) -> bool {
                 || contains_recursive_append_result(&fold.init, function_name)
         }
         Expr::Concurrent(concurrent) => concurrent.steps.iter().any(|step| match step {
-            ConcurrentStep::Spawn(spawn) => contains_recursive_append_result(&spawn.expr, function_name),
+            ConcurrentStep::Spawn(spawn) => {
+                contains_recursive_append_result(&spawn.expr, function_name)
+            }
             ConcurrentStep::SpawnEach(spawn_each) => {
                 contains_recursive_append_result(&spawn_each.list, function_name)
                     || contains_recursive_append_result(&spawn_each.func, function_name)
@@ -3102,8 +3444,10 @@ fn is_binary_predicate_with_self(
     let Some((left, right)) = is_binary_operator(expr, operator) else {
         return false;
     };
-    (is_predicate_application(left, head_name) && is_self_call_with_rest(right, function_name, rest_name))
-        || (is_self_call_with_rest(left, function_name, rest_name) && is_predicate_application(right, head_name))
+    (is_predicate_application(left, head_name)
+        && is_self_call_with_rest(right, function_name, rest_name))
+        || (is_self_call_with_rest(left, function_name, rest_name)
+            && is_predicate_application(right, head_name))
 }
 
 fn detect_exact_recursive_all_clone(func: &FunctionDecl) -> bool {
@@ -3199,7 +3543,9 @@ fn detect_exact_recursive_filter_clone(func: &FunctionDecl) -> bool {
                     .unwrap_or(false)
         }
         Expr::Match(nested_match) => {
-            if !is_predicate_application(&nested_match.scrutinee, head_name) || nested_match.arms.len() != 2 {
+            if !is_predicate_application(&nested_match.scrutinee, head_name)
+                || nested_match.arms.len() != 2
+            {
                 return false;
             }
             let keep_arm = &nested_match.arms[0];
@@ -3239,7 +3585,9 @@ fn detect_exact_recursive_find_clone(func: &FunctionDecl) -> bool {
                     .unwrap_or(false)
         }
         Expr::Match(nested_match) => {
-            if !is_predicate_application(&nested_match.scrutinee, head_name) || nested_match.arms.len() != 2 {
+            if !is_predicate_application(&nested_match.scrutinee, head_name)
+                || nested_match.arms.len() != 2
+            {
                 return false;
             }
             let some_arm = &nested_match.arms[0];
@@ -3279,35 +3627,91 @@ fn detect_exact_recursive_flat_map_clone(func: &FunctionDecl) -> bool {
 fn count_self_calls(expr: &Expr, function_name: &str) -> usize {
     match expr {
         Expr::Application(app) => {
-            usize::from(matches!(&app.func, Expr::Identifier(identifier) if identifier.name == function_name))
-                + count_self_calls(&app.func, function_name)
-                + app.args.iter().map(|arg| count_self_calls(arg, function_name)).sum::<usize>()
+            usize::from(
+                matches!(&app.func, Expr::Identifier(identifier) if identifier.name == function_name),
+            ) + count_self_calls(&app.func, function_name)
+                + app
+                    .args
+                    .iter()
+                    .map(|arg| count_self_calls(arg, function_name))
+                    .sum::<usize>()
         }
-        Expr::Binary(binary) => count_self_calls(&binary.left, function_name) + count_self_calls(&binary.right, function_name),
+        Expr::Binary(binary) => {
+            count_self_calls(&binary.left, function_name)
+                + count_self_calls(&binary.right, function_name)
+        }
         Expr::Unary(unary) => count_self_calls(&unary.operand, function_name),
         Expr::Match(match_expr) => {
             count_self_calls(&match_expr.scrutinee, function_name)
-                + match_expr.arms.iter().map(|arm| {
-                    arm.guard.as_ref().map(|guard| count_self_calls(guard, function_name)).unwrap_or(0)
-                        + count_self_calls(&arm.body, function_name)
-                }).sum::<usize>()
+                + match_expr
+                    .arms
+                    .iter()
+                    .map(|arm| {
+                        arm.guard
+                            .as_ref()
+                            .map(|guard| count_self_calls(guard, function_name))
+                            .unwrap_or(0)
+                            + count_self_calls(&arm.body, function_name)
+                    })
+                    .sum::<usize>()
         }
-        Expr::Let(let_expr) => count_self_calls(&let_expr.value, function_name) + count_self_calls(&let_expr.body, function_name),
+        Expr::Let(let_expr) => {
+            count_self_calls(&let_expr.value, function_name)
+                + count_self_calls(&let_expr.body, function_name)
+        }
         Expr::If(if_expr) => {
             count_self_calls(&if_expr.condition, function_name)
                 + count_self_calls(&if_expr.then_branch, function_name)
-                + if_expr.else_branch.as_ref().map(|branch| count_self_calls(branch, function_name)).unwrap_or(0)
+                + if_expr
+                    .else_branch
+                    .as_ref()
+                    .map(|branch| count_self_calls(branch, function_name))
+                    .unwrap_or(0)
         }
-        Expr::List(list) => list.elements.iter().map(|element| count_self_calls(element, function_name)).sum(),
-        Expr::Record(record) => record.fields.iter().map(|field| count_self_calls(&field.value, function_name)).sum(),
-        Expr::MapLiteral(map) => map.entries.iter().map(|entry| count_self_calls(&entry.key, function_name) + count_self_calls(&entry.value, function_name)).sum(),
-        Expr::Tuple(tuple) => tuple.elements.iter().map(|element| count_self_calls(element, function_name)).sum(),
+        Expr::List(list) => list
+            .elements
+            .iter()
+            .map(|element| count_self_calls(element, function_name))
+            .sum(),
+        Expr::Record(record) => record
+            .fields
+            .iter()
+            .map(|field| count_self_calls(&field.value, function_name))
+            .sum(),
+        Expr::MapLiteral(map) => map
+            .entries
+            .iter()
+            .map(|entry| {
+                count_self_calls(&entry.key, function_name)
+                    + count_self_calls(&entry.value, function_name)
+            })
+            .sum(),
+        Expr::Tuple(tuple) => tuple
+            .elements
+            .iter()
+            .map(|element| count_self_calls(element, function_name))
+            .sum(),
         Expr::FieldAccess(field_access) => count_self_calls(&field_access.object, function_name),
-        Expr::Index(index) => count_self_calls(&index.object, function_name) + count_self_calls(&index.index, function_name),
-        Expr::Pipeline(pipeline) => count_self_calls(&pipeline.left, function_name) + count_self_calls(&pipeline.right, function_name),
-        Expr::Map(map) => count_self_calls(&map.list, function_name) + count_self_calls(&map.func, function_name),
-        Expr::Filter(filter) => count_self_calls(&filter.list, function_name) + count_self_calls(&filter.predicate, function_name),
-        Expr::Fold(fold) => count_self_calls(&fold.list, function_name) + count_self_calls(&fold.func, function_name) + count_self_calls(&fold.init, function_name),
+        Expr::Index(index) => {
+            count_self_calls(&index.object, function_name)
+                + count_self_calls(&index.index, function_name)
+        }
+        Expr::Pipeline(pipeline) => {
+            count_self_calls(&pipeline.left, function_name)
+                + count_self_calls(&pipeline.right, function_name)
+        }
+        Expr::Map(map) => {
+            count_self_calls(&map.list, function_name) + count_self_calls(&map.func, function_name)
+        }
+        Expr::Filter(filter) => {
+            count_self_calls(&filter.list, function_name)
+                + count_self_calls(&filter.predicate, function_name)
+        }
+        Expr::Fold(fold) => {
+            count_self_calls(&fold.list, function_name)
+                + count_self_calls(&fold.func, function_name)
+                + count_self_calls(&fold.init, function_name)
+        }
         Expr::Concurrent(concurrent) => concurrent
             .steps
             .iter()
@@ -3319,8 +3723,14 @@ fn count_self_calls(expr: &Expr, function_name: &str) -> usize {
                 }
             })
             .sum(),
-        Expr::WithMock(with_mock) => count_self_calls(&with_mock.target, function_name) + count_self_calls(&with_mock.replacement, function_name) + count_self_calls(&with_mock.body, function_name),
-        Expr::TypeAscription(type_ascription) => count_self_calls(&type_ascription.expr, function_name),
+        Expr::WithMock(with_mock) => {
+            count_self_calls(&with_mock.target, function_name)
+                + count_self_calls(&with_mock.replacement, function_name)
+                + count_self_calls(&with_mock.body, function_name)
+        }
+        Expr::TypeAscription(type_ascription) => {
+            count_self_calls(&type_ascription.expr, function_name)
+        }
         Expr::Literal(_) | Expr::Identifier(_) | Expr::MemberAccess(_) | Expr::Lambda(_) => 0,
     }
 }
@@ -3330,10 +3740,14 @@ fn expr_contains_identifier(expr: &Expr, name: &str) -> bool {
         Expr::Identifier(identifier) => identifier.name == name,
         Expr::Application(app) => {
             expr_contains_identifier(&app.func, name)
-                || app.args.iter().any(|arg| expr_contains_identifier(arg, name))
+                || app
+                    .args
+                    .iter()
+                    .any(|arg| expr_contains_identifier(arg, name))
         }
         Expr::Binary(binary) => {
-            expr_contains_identifier(&binary.left, name) || expr_contains_identifier(&binary.right, name)
+            expr_contains_identifier(&binary.left, name)
+                || expr_contains_identifier(&binary.right, name)
         }
         Expr::Unary(unary) => expr_contains_identifier(&unary.operand, name),
         Expr::Match(match_expr) => {
@@ -3346,44 +3760,98 @@ fn expr_contains_identifier(expr: &Expr, name: &str) -> bool {
                         || expr_contains_identifier(&arm.body, name)
                 })
         }
-        Expr::Let(let_expr) => expr_contains_identifier(&let_expr.value, name) || expr_contains_identifier(&let_expr.body, name),
+        Expr::Let(let_expr) => {
+            expr_contains_identifier(&let_expr.value, name)
+                || expr_contains_identifier(&let_expr.body, name)
+        }
         Expr::If(if_expr) => {
             expr_contains_identifier(&if_expr.condition, name)
                 || expr_contains_identifier(&if_expr.then_branch, name)
-                || if_expr.else_branch.as_ref().map(|branch| expr_contains_identifier(branch, name)).unwrap_or(false)
+                || if_expr
+                    .else_branch
+                    .as_ref()
+                    .map(|branch| expr_contains_identifier(branch, name))
+                    .unwrap_or(false)
         }
-        Expr::List(list) => list.elements.iter().any(|element| expr_contains_identifier(element, name)),
-        Expr::Record(record) => record.fields.iter().any(|field| expr_contains_identifier(&field.value, name)),
-        Expr::MapLiteral(map) => map.entries.iter().any(|entry| expr_contains_identifier(&entry.key, name) || expr_contains_identifier(&entry.value, name)),
-        Expr::Tuple(tuple) => tuple.elements.iter().any(|element| expr_contains_identifier(element, name)),
+        Expr::List(list) => list
+            .elements
+            .iter()
+            .any(|element| expr_contains_identifier(element, name)),
+        Expr::Record(record) => record
+            .fields
+            .iter()
+            .any(|field| expr_contains_identifier(&field.value, name)),
+        Expr::MapLiteral(map) => map.entries.iter().any(|entry| {
+            expr_contains_identifier(&entry.key, name)
+                || expr_contains_identifier(&entry.value, name)
+        }),
+        Expr::Tuple(tuple) => tuple
+            .elements
+            .iter()
+            .any(|element| expr_contains_identifier(element, name)),
         Expr::FieldAccess(field_access) => expr_contains_identifier(&field_access.object, name),
-        Expr::Index(index) => expr_contains_identifier(&index.object, name) || expr_contains_identifier(&index.index, name),
-        Expr::Pipeline(pipeline) => expr_contains_identifier(&pipeline.left, name) || expr_contains_identifier(&pipeline.right, name),
-        Expr::Map(map) => expr_contains_identifier(&map.list, name) || expr_contains_identifier(&map.func, name),
-        Expr::Filter(filter) => expr_contains_identifier(&filter.list, name) || expr_contains_identifier(&filter.predicate, name),
-        Expr::Fold(fold) => expr_contains_identifier(&fold.list, name) || expr_contains_identifier(&fold.func, name) || expr_contains_identifier(&fold.init, name),
+        Expr::Index(index) => {
+            expr_contains_identifier(&index.object, name)
+                || expr_contains_identifier(&index.index, name)
+        }
+        Expr::Pipeline(pipeline) => {
+            expr_contains_identifier(&pipeline.left, name)
+                || expr_contains_identifier(&pipeline.right, name)
+        }
+        Expr::Map(map) => {
+            expr_contains_identifier(&map.list, name) || expr_contains_identifier(&map.func, name)
+        }
+        Expr::Filter(filter) => {
+            expr_contains_identifier(&filter.list, name)
+                || expr_contains_identifier(&filter.predicate, name)
+        }
+        Expr::Fold(fold) => {
+            expr_contains_identifier(&fold.list, name)
+                || expr_contains_identifier(&fold.func, name)
+                || expr_contains_identifier(&fold.init, name)
+        }
         Expr::Concurrent(concurrent) => concurrent.steps.iter().any(|step| match step {
             ConcurrentStep::Spawn(spawn) => expr_contains_identifier(&spawn.expr, name),
             ConcurrentStep::SpawnEach(spawn_each) => {
-                expr_contains_identifier(&spawn_each.list, name) || expr_contains_identifier(&spawn_each.func, name)
+                expr_contains_identifier(&spawn_each.list, name)
+                    || expr_contains_identifier(&spawn_each.func, name)
             }
         }),
-        Expr::WithMock(with_mock) => expr_contains_identifier(&with_mock.target, name) || expr_contains_identifier(&with_mock.replacement, name) || expr_contains_identifier(&with_mock.body, name),
-        Expr::TypeAscription(type_ascription) => expr_contains_identifier(&type_ascription.expr, name),
+        Expr::WithMock(with_mock) => {
+            expr_contains_identifier(&with_mock.target, name)
+                || expr_contains_identifier(&with_mock.replacement, name)
+                || expr_contains_identifier(&with_mock.body, name)
+        }
+        Expr::TypeAscription(type_ascription) => {
+            expr_contains_identifier(&type_ascription.expr, name)
+        }
         Expr::Literal(_) | Expr::Lambda(_) | Expr::MemberAccess(_) => false,
     }
 }
 
-fn is_obvious_fold_step(expr: &Expr, function_name: &str, head_name: &str, rest_name: &str) -> bool {
+fn is_obvious_fold_step(
+    expr: &Expr,
+    function_name: &str,
+    head_name: &str,
+    rest_name: &str,
+) -> bool {
     match expr {
         Expr::Binary(binary) => {
-            (expr_contains_identifier(&binary.left, head_name) && is_self_call_with_rest(&binary.right, function_name, rest_name))
-                || (is_self_call_with_rest(&binary.left, function_name, rest_name) && expr_contains_identifier(&binary.right, head_name))
+            (expr_contains_identifier(&binary.left, head_name)
+                && is_self_call_with_rest(&binary.right, function_name, rest_name))
+                || (is_self_call_with_rest(&binary.left, function_name, rest_name)
+                    && expr_contains_identifier(&binary.right, head_name))
         }
         Expr::Application(app) => {
             count_self_calls(expr, function_name) == 1
-                && app.args.iter().any(|arg| is_self_call_with_rest(arg, function_name, rest_name))
-                && app.args.iter().any(|arg| expr_contains_identifier(arg, head_name))
+                && app
+                    .args
+                    .iter()
+                    .any(|arg| is_self_call_with_rest(arg, function_name, rest_name))
+                && app
+                    .args
+                    .iter()
+                    .any(|arg| expr_contains_identifier(arg, head_name))
         }
         _ => false,
     }
@@ -3405,10 +3873,19 @@ fn detect_exact_recursive_fold_clone(func: &FunctionDecl) -> bool {
 fn collect_filter_then_count_errors(program: &Program, errors: &mut Vec<ValidationError>) {
     for declaration in &program.declarations {
         match declaration {
-            Declaration::Function(function) => collect_filter_then_count_in_expr(&function.body, errors),
-            Declaration::Const(const_decl) => collect_filter_then_count_in_expr(&const_decl.value, errors),
-            Declaration::Test(test_decl) => collect_filter_then_count_in_expr(&test_decl.body, errors),
-            Declaration::Type(_) | Declaration::Import(_) | Declaration::Extern(_) => {}
+            Declaration::Function(function) => {
+                collect_filter_then_count_in_expr(&function.body, errors)
+            }
+            Declaration::Const(const_decl) => {
+                collect_filter_then_count_in_expr(&const_decl.value, errors)
+            }
+            Declaration::Test(test_decl) => {
+                collect_filter_then_count_in_expr(&test_decl.body, errors)
+            }
+            Declaration::Type(_)
+            | Declaration::Effect(_)
+            | Declaration::Import(_)
+            | Declaration::Extern(_) => {}
         }
     }
 }
@@ -3428,7 +3905,8 @@ fn collect_filter_then_count_in_expr(expr: &Expr, errors: &mut Vec<ValidationErr
             collect_filter_then_count_in_expr(&binary.right, errors);
         }
         Expr::Unary(unary) => {
-            if unary.operator == UnaryOperator::Length && matches!(&unary.operand, Expr::Filter(_)) {
+            if unary.operator == UnaryOperator::Length && matches!(&unary.operand, Expr::Filter(_))
+            {
                 errors.push(ValidationError::FilterThenCount {
                     location: unary.location,
                 });
@@ -3476,7 +3954,9 @@ fn collect_filter_then_count_in_expr(expr: &Expr, errors: &mut Vec<ValidationErr
                 collect_filter_then_count_in_expr(element, errors);
             }
         }
-        Expr::FieldAccess(field_access) => collect_filter_then_count_in_expr(&field_access.object, errors),
+        Expr::FieldAccess(field_access) => {
+            collect_filter_then_count_in_expr(&field_access.object, errors)
+        }
         Expr::Index(index) => {
             collect_filter_then_count_in_expr(&index.object, errors);
             collect_filter_then_count_in_expr(&index.index, errors);
@@ -3507,7 +3987,9 @@ fn collect_filter_then_count_in_expr(expr: &Expr, errors: &mut Vec<ValidationErr
             }
             for step in &concurrent.steps {
                 match step {
-                    ConcurrentStep::Spawn(spawn) => collect_filter_then_count_in_expr(&spawn.expr, errors),
+                    ConcurrentStep::Spawn(spawn) => {
+                        collect_filter_then_count_in_expr(&spawn.expr, errors)
+                    }
                     ConcurrentStep::SpawnEach(spawn_each) => {
                         collect_filter_then_count_in_expr(&spawn_each.list, errors);
                         collect_filter_then_count_in_expr(&spawn_each.func, errors);
@@ -3520,7 +4002,9 @@ fn collect_filter_then_count_in_expr(expr: &Expr, errors: &mut Vec<ValidationErr
             collect_filter_then_count_in_expr(&with_mock.replacement, errors);
             collect_filter_then_count_in_expr(&with_mock.body, errors);
         }
-        Expr::TypeAscription(type_ascription) => collect_filter_then_count_in_expr(&type_ascription.expr, errors),
+        Expr::TypeAscription(type_ascription) => {
+            collect_filter_then_count_in_expr(&type_ascription.expr, errors)
+        }
     }
 }
 
@@ -3556,7 +4040,9 @@ mod tests {
         assert!(result.is_err());
 
         let errors = result.unwrap_err();
-        assert!(errors.iter().any(|error| matches!(error, ValidationError::DuplicateDeclaration { .. })));
+        assert!(errors
+            .iter()
+            .any(|error| matches!(error, ValidationError::DuplicateDeclaration { .. })));
     }
 
     #[test]
@@ -3611,8 +4097,12 @@ mod tests {
 
     #[test]
     fn test_single_use_effectful_binding_allowed() {
-        let source = r#"λemit()=>!IO String="x"
-λmain()=>!IO String={
+        let source = r#"e console:{log:λ(String)=>!Log Unit}
+λemit()=>!Log String={
+  l _=(console.log("x"):Unit);
+  "x"
+}
+λmain()=>!Log String={
   l value=(emit():String);
   value
 }"#;
@@ -3634,7 +4124,10 @@ mod tests {
 
         let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
         assert!(result.is_err());
-        assert!(result.unwrap_err().iter().any(|error| matches!(error, ValidationError::SourceForm { .. })));
+        assert!(result
+            .unwrap_err()
+            .iter()
+            .any(|error| matches!(error, ValidationError::SourceForm { .. })));
     }
 
     #[test]
@@ -3655,11 +4148,15 @@ mod tests {
 
     #[test]
     fn test_concurrent_config_fields_must_be_alphabetical() {
-        let source = r#"λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit@1:{windowMs:None(),jitterMs:None(),stopOn:stopOn}{
+        let source = r#"e clock:{tick:λ()=>!Timer Unit}
+λmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@1:{windowMs:None(),jitterMs:None(),stopOn:stopOn}{
   spawn one()
 }
 
-λone()=>!IO Result[Int,String]=Ok(1)
+λone()=>!Timer Result[Int,String]={
+  l _=(clock.tick():Unit);
+  Ok(1)
+}
 
 λstopOn(err:String)=>Bool=false
 "#;
@@ -3668,29 +4165,33 @@ mod tests {
 
         let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
         assert!(result.is_err());
-        assert!(result.unwrap_err().iter().any(|error| matches!(
-            error,
-            ValidationError::RecordLiteralFieldOrder { .. }
-        )));
+        assert!(result
+            .unwrap_err()
+            .iter()
+            .any(|error| matches!(error, ValidationError::RecordLiteralFieldOrder { .. })));
     }
 
     #[test]
     fn test_concurrent_default_policy_fields_must_be_omitted() {
-        let source = r#"λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit@1:{jitterMs:None(),windowMs:None()}{
+        let source = r#"e clock:{tick:λ()=>!Timer Unit}
+λmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@1:{jitterMs:None(),windowMs:None()}{
   spawn one()
 }
 
-λone()=>!IO Result[Int,String]=Ok(1)
+λone()=>!Timer Result[Int,String]={
+  l _=(clock.tick():Unit);
+  Ok(1)
+}
 "#;
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
         let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
         assert!(result.is_err());
-        assert!(result.unwrap_err().iter().any(|error| matches!(
-            error,
-            ValidationError::SourceForm { .. }
-        )));
+        assert!(result
+            .unwrap_err()
+            .iter()
+            .any(|error| matches!(error, ValidationError::SourceForm { .. })));
     }
 
     #[test]
@@ -3720,7 +4221,10 @@ mod tests {
 
         let result = validate_canonical_form(&program, Some("test.sigil"), Some(source));
         assert!(result.is_err());
-        assert!(result.unwrap_err().iter().any(|error| matches!(error, ValidationError::SourceForm { .. })));
+        assert!(result
+            .unwrap_err()
+            .iter()
+            .any(|error| matches!(error, ValidationError::SourceForm { .. })));
     }
 
     #[test]
@@ -3975,27 +4479,50 @@ mod tests {
         let program = parse(tokens, "test.sigil").unwrap();
         assert!(validate_canonical_form(&program, Some("test.sigil"), Some(source)).is_ok());
     }
-
 }
 
 /// Validate canonical declaration ordering
 fn validate_declaration_ordering(program: &Program) -> Result<(), Vec<ValidationError>> {
     let mut errors = Vec::new();
-    
+
     // Check category order (type => extern => import => const => function => test)
     if let Err(e) = validate_category_boundaries(&program.declarations) {
         errors.extend(e);
     }
-    
+
     // Check alphabetical order within each category
-    let functions: Vec<_> = program.declarations.iter()
-        .filter_map(|d| if let Declaration::Function(f) = d { Some(f) } else { None })
+    let functions: Vec<_> = program
+        .declarations
+        .iter()
+        .filter_map(|d| {
+            if let Declaration::Function(f) = d {
+                Some(f)
+            } else {
+                None
+            }
+        })
         .collect();
-    
+
+    let effects: Vec<_> = program
+        .declarations
+        .iter()
+        .filter_map(|d| {
+            if let Declaration::Effect(e) = d {
+                Some(e)
+            } else {
+                None
+            }
+        })
+        .collect();
+
     if let Err(e) = validate_alphabetical_order(&functions) {
         errors.extend(e);
     }
-    
+
+    if let Err(e) = validate_effect_alphabetical_order(&effects) {
+        errors.extend(e);
+    }
+
     if errors.is_empty() {
         Ok(())
     } else {
@@ -4008,38 +4535,41 @@ fn validate_category_boundaries(declarations: &[Declaration]) -> Result<(), Vec<
     let get_category_index = |decl: &Declaration| -> usize {
         match decl {
             Declaration::Type(_) => 0,
-            Declaration::Extern(_) => 1,
-            Declaration::Import(_) => 2,
-            Declaration::Const(_) => 3,
-            Declaration::Function(_) => 4,
-            Declaration::Test(_) => 5,
+            Declaration::Effect(_) => 1,
+            Declaration::Extern(_) => 2,
+            Declaration::Import(_) => 3,
+            Declaration::Const(_) => 4,
+            Declaration::Function(_) => 5,
+            Declaration::Test(_) => 6,
         }
     };
-    
+
     let mut last_category_index: i32 = -1;
-    
+
     for decl in declarations {
         let current_index = get_category_index(decl) as i32;
-        
+
         if current_index < last_category_index {
-            let category_names = ["type", "extern", "import", "const", "function", "test"];
-            let category_symbols = ["t", "e", "i", "c", "λ", "test"];
-            
+            let category_names = [
+                "type", "effect", "extern", "import", "const", "function", "test",
+            ];
+            let category_symbols = ["t", "effect", "e", "i", "c", "λ", "test"];
+
             return Err(vec![ValidationError::DeclarationOrderOld {
                 message: format!(
                     "SIGIL-CANON-DECL-CATEGORY-ORDER: Wrong category position\n\
                      Found: {} ({}) at line {}\n\
-                     Category order: t => e => i => c => λ => test",
+                     Category order: t => effect => e => i => c => λ => test",
                     category_symbols[current_index as usize],
                     category_names[current_index as usize],
                     get_declaration_location(decl).start.line
                 ),
             }]);
         }
-        
+
         last_category_index = last_category_index.max(current_index);
     }
-    
+
     Ok(())
 }
 
@@ -4048,7 +4578,7 @@ fn validate_alphabetical_order(functions: &[&FunctionDecl]) -> Result<(), Vec<Va
     for i in 1..functions.len() {
         let prev = functions[i - 1];
         let curr = functions[i];
-        
+
         if curr.name < prev.name {
             return Err(vec![ValidationError::DeclarationOrderOld {
                 message: format!(
@@ -4072,7 +4602,34 @@ fn validate_alphabetical_order(functions: &[&FunctionDecl]) -> Result<(), Vec<Va
             }]);
         }
     }
-    
+
+    Ok(())
+}
+
+fn validate_effect_alphabetical_order(effects: &[&EffectDecl]) -> Result<(), Vec<ValidationError>> {
+    for i in 1..effects.len() {
+        let prev = effects[i - 1];
+        let curr = effects[i];
+
+        if curr.name < prev.name {
+            return Err(vec![ValidationError::DeclarationOrderOld {
+                message: format!(
+                    "SIGIL-CANON-DECL-ALPHABETICAL: Declaration out of alphabetical order\n\n\
+                     Found: effect {} at line {}\n\
+                     After: effect {} at line {}\n\n\
+                     Within 'effect' category, declarations must be alphabetical.\n\
+                     Solution: Move effect {} before effect {}",
+                    curr.name,
+                    curr.location.start.line,
+                    prev.name,
+                    prev.location.start.line,
+                    curr.name,
+                    prev.name
+                ),
+            }]);
+        }
+    }
+
     Ok(())
 }
 
@@ -4080,6 +4637,7 @@ fn validate_alphabetical_order(functions: &[&FunctionDecl]) -> Result<(), Vec<Va
 fn get_declaration_location(decl: &Declaration) -> &SourceLocation {
     match decl {
         Declaration::Type(TypeDecl { location, .. }) => location,
+        Declaration::Effect(EffectDecl { location, .. }) => location,
         Declaration::Extern(ExternDecl { location, .. }) => location,
         Declaration::Import(ImportDecl { location, .. }) => location,
         Declaration::Const(ConstDecl { location, .. }) => location,

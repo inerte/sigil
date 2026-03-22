@@ -32,12 +32,12 @@ test "adds numbers" {
 Effectful test:
 
 ```sigil program tests/effectTest.sigil
-e console
+i stdlib::io
 
 λmain()=>Unit=()
 
-test "writes log" =>!IO  {
-  console.log("x")=()
+test "writes log" =>!Log  {
+  stdlib::io.println("x")=()
 }
 ```
 
@@ -69,12 +69,12 @@ Test files are executable-oriented and must define `main`.
 Current built-in mocking form:
 
 ```sigil program tests/mockTest.sigil
-λfetchUser(id:Int)=>!Network String="OK"
+λfetchUser(id:Int)=>String="OK"
 
 λmain()=>Unit=()
 
-test "fallback on API failure" =>!Network  {
-  withMock(fetchUser,λ(id:Int)=>!Network String="ERR"){fetchUser(1)="ERR"}
+test "fallback on API failure" {
+  withMock(fetchUser,λ(id:Int)=>String="ERR"){fetchUser(1)="ERR"}
 }
 ```
 

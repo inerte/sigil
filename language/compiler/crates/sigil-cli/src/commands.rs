@@ -1,6 +1,6 @@
 //! Command implementations for CLI
 
-use crate::module_graph::{ModuleGraph, ModuleGraphError, LoadedModule};
+use crate::module_graph::{load_project_effect_catalog_for, ModuleGraph, ModuleGraphError, LoadedModule};
 use crate::project::{find_project_root, get_project_config};
 use rayon::prelude::*;
 use sigil_ast::{Declaration, Program, Type, TypeDef};
@@ -10,7 +10,12 @@ use sigil_lexer::Lexer;
 use sigil_parser::Parser;
 use sigil_typechecker::{type_check, TypeError, TypeCheckOptions, TypeInfo, TypeScheme};
 use sigil_typechecker::types::{InferenceType, TConstructor, TFunction, TList, TMap, TRecord, TTuple};
-use sigil_validator::{validate_canonical_form, validate_typed_canonical_form, ValidationError};
+use sigil_validator::{
+    validate_canonical_form_with_options,
+    validate_typed_canonical_form,
+    ValidationError,
+    ValidationOptions,
+};
 use std::collections::HashMap;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -141,8 +146,15 @@ pub fn parse_command(file: &Path) -> Result<(), CliError> {
     let mut parser = Parser::new(tokens, &filename);
     let ast = parser.parse().map_err(|e| CliError::Parser(format!("{}", e)))?;
 
+    let effect_catalog = load_project_effect_catalog_for(file)?;
+
     // Validate canonical form (includes formatting)
-    validate_canonical_form(&ast, Some(&filename), Some(&source))
+    validate_canonical_form_with_options(
+        &ast,
+        Some(&filename),
+        Some(&source),
+        ValidationOptions { effect_catalog },
+    )
         .map_err(|errors: Vec<ValidationError>| CliError::Validation(format_validation_errors(&errors)))?;
 
     let ast_json = serde_json::to_value(&ast).unwrap_or_else(|e| {
@@ -213,12 +225,14 @@ pub fn compile_command(
         let imported_namespaces = build_imported_namespaces(&module.ast, &compiled_modules);
         let imported_type_regs = build_imported_type_registries(&module.ast, &type_registries);
         let imported_value_schemes = build_imported_value_schemes(&module.ast, &compiled_schemes);
+        let effect_catalog = load_project_effect_catalog_for(&module.file_path)?;
 
         // Type check with cross-module context
         let typecheck_result = type_check(
             &module.ast,
             &module.source,
             Some(TypeCheckOptions {
+                effect_catalog,
                 imported_namespaces: Some(imported_namespaces),
                 imported_type_registries: Some(imported_type_regs),
                 imported_value_schemes: Some(imported_value_schemes),
@@ -646,11 +660,13 @@ fn compile_module_graph(
         let imported_namespaces = build_imported_namespaces(&module.ast, &compiled_modules);
         let imported_type_regs = build_imported_type_registries(&module.ast, &type_registries);
         let imported_value_schemes = build_imported_value_schemes(&module.ast, &compiled_schemes);
+        let effect_catalog = load_project_effect_catalog_for(&module.file_path)?;
 
         let typecheck_result = type_check(
             &module.ast,
             &module.source,
             Some(TypeCheckOptions {
+                effect_catalog,
                 imported_namespaces: Some(imported_namespaces),
                 imported_type_registries: Some(imported_type_regs),
                 imported_value_schemes: Some(imported_value_schemes),

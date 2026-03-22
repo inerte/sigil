@@ -8,6 +8,6 @@ t TcpResponse={message:String}
 
 i stdlib::topology
 
-λrequest(request:TcpRequest)=>!IO Result[TcpResponse,TcpError]=Err({kind:Connection(),message:"tcp client runtime unavailable"})
+λrequest(request:TcpRequest)=>!Tcp Result[TcpResponse,TcpError]=Err({kind:Connection(),message:"tcp client runtime unavailable"})
 
-λsend(dependency:stdlib::topology.TcpServiceDependency,message:String)=>!IO Result[TcpResponse,TcpError]=request({dependency:dependency,message:message})
+λsend(dependency:stdlib::topology.TcpServiceDependency,message:String)=>!Tcp Result[TcpResponse,TcpError]=request({dependency:dependency,message:message})

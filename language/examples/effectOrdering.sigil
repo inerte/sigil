@@ -1,7 +1,15 @@
 t Pair={a:String,b:String}
 
-λfirst()=>!IO String="first"
+e console
 
-λmain()=>!IO Pair={a:first(),b:second()}
+λfirst()=>!Log String={
+  l _=(console.log("first"):Unit);
+  "first"
+}
 
-λsecond()=>!IO String="second"
+λmain()=>!Log Pair={a:first(),b:second()}
+
+λsecond()=>!Log String={
+  l _=(console.log("second"):Unit);
+  "second"
+}

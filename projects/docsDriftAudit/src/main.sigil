@@ -8,7 +8,7 @@ i stdlib::io
 
 i stdlib::process
 
-λfinish(result:Result[[src::types.Issue],String])=>!IO Unit match result{
+λfinish(result:Result[[src::types.Issue],String])=>!CliIo Unit match result{
   Ok(issues)=>match #issues=0{
     true=>{
       l _=(stdlib::io.println("Docs/example drift OK"):Unit);
@@ -26,7 +26,7 @@ i stdlib::process
   }
 }
 
-λmain()=>!IO Unit match stdlib::process.argv(){
+λmain()=>!CliIo Unit match stdlib::process.argv(){
   []=>finish(src::repoDriver.run())|
   paths=>finish(src::docsDrift.runCheckForPaths(paths))
 }

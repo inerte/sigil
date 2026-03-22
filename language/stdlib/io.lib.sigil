@@ -2,12 +2,12 @@ e console
 
 e process
 
-λdebug(msg:String)=>!IO Unit=console.debug(msg)
+λdebug(msg:String)=>!Log Unit=console.debug(msg)
 
-λeprintln(msg:String)=>!IO Unit=console.error(msg)
+λeprintln(msg:String)=>!Log Unit=console.error(msg)
 
-λprint(msg:String)=>!IO Unit=process.stdout.write(msg)
+λprint(msg:String)=>!Log Unit=process.stdout.write(msg)
 
-λprintln(msg:String)=>!IO Unit=console.log(msg)
+λprintln(msg:String)=>!Log Unit=console.log(msg)
 
-λwarn(msg:String)=>!IO Unit=console.warn(msg)
+λwarn(msg:String)=>!Log Unit=console.warn(msg)

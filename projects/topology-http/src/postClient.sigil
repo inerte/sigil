@@ -6,7 +6,7 @@ i stdlib::httpClient
 
 i stdlib::string
 
-λmain()=>!IO String match stdlib::httpClient.post("echoed",src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/echo"){
+λmain()=>!Http String match stdlib::httpClient.post("echoed",src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/echo"){
   Ok(response)=>stdlib::string.intToString(response.status)++":"++response.body|
   Err(error)=>"ERR:"++error.message
 }

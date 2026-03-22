@@ -12,13 +12,13 @@ i src::support
 
 λbadSignatureSource()=>String="λfib(n:Int)=>Int\nmatch n{0=>0}\nλmain()=>Int=fib(5)\n"
 
-λcompile(file:String)=>!IO stdlib::process.ProcessResult=stdlib::process.run(src::support.sigil(["compile",file]))
+λcompile(file:String)=>!Process stdlib::process.ProcessResult=stdlib::process.run(src::support.sigil(["compile",file]))
 
 λgoodFibSource()=>String="λfib(n:Int)=>Int=fibHelper(0,1,n)\n\nλfibHelper(a:Int,b:Int,n:Int)=>Int match n{\n  0=>a|\n  value=>fibHelper(b,a+b,value-1)\n}\n\nλmain()=>Int=fib(5)\n"
 
 λmain()=>Unit=()
 
-test "canonical rejects single-line multi-arm match" =>!IO  {
+test "canonical rejects single-line multi-arm match" =>!Clock!Fs!Process  {
   l root=(src::support.uniqueRepoTempDir("canonicalMatch"):String);
   l file=(stdlib::path.join(root,"badMatch.sigil"):String);
   l _=(stdlib::file.writeText(badMatchSource(),file):Unit);
@@ -27,7 +27,7 @@ test "canonical rejects single-line multi-arm match" =>!IO  {
   stdlib::string.indexOf(src::support.combinedOutput(result),"SIGIL-CANON-SOURCE-FORM")≥0=true
 }
 
-test "canonical rejects split signature before match" =>!IO  {
+test "canonical rejects split signature before match" =>!Clock!Fs!Process  {
   l root=(src::support.uniqueRepoTempDir("canonicalSignature"):String);
   l file=(stdlib::path.join(root,"badSignature.sigil"):String);
   l _=(stdlib::file.writeText(badSignatureSource(),file):Unit);
@@ -36,7 +36,7 @@ test "canonical rejects split signature before match" =>!IO  {
   stdlib::string.indexOf(src::support.combinedOutput(result),"SIGIL-CANON-SOURCE-FORM")≥0=true
 }
 
-test "canonical fib fixture compiles" =>!IO  {
+test "canonical fib fixture compiles" =>!Clock!Fs!Process  {
   l root=(src::support.uniqueRepoTempDir("canonicalGood"):String);
   l file=(stdlib::path.join(root,"goodFib.sigil"):String);
   l _=(stdlib::file.writeText(goodFibSource(),file):Unit);
@@ -45,12 +45,12 @@ test "canonical fib fixture compiles" =>!IO  {
   result.code=0
 }
 
-test "list reverse example compiles" =>!IO  {
+test "list reverse example compiles" =>!Process  {
   l result=(compile(src::support.repoPath("projects/algorithms/src/listReverse.sigil")):stdlib::process.ProcessResult);
   result.code=0
 }
 
-test "list length example compiles" =>!IO  {
+test "list length example compiles" =>!Process  {
   l result=(compile(src::support.repoPath("projects/algorithms/src/listLength.sigil")):stdlib::process.ProcessResult);
   result.code=0
 }

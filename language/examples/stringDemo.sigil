@@ -2,7 +2,7 @@ e console
 
 i stdlib::string
 
-λmain()=>!IO Unit={
+λmain()=>!Log Unit={
   l _=(console.log("Text: "++("Hello, Sigil!":String)):Unit);
   l _=(console.log("Length: "++stdlib::string.intToString(#("Hello, Sigil!":String))):Unit);
   l _=(console.log("Upper: "++(stdlib::string.toUpper("hello"):String)):Unit);

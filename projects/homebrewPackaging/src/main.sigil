@@ -1,4 +1,4 @@
-e console
+e console:{error:λ(String)=>!Log Unit}
 
 i config::release
 
@@ -10,12 +10,12 @@ i stdlib::path
 
 i stdlib::process
 
-λfail(message:String)=>!IO Unit={
+λfail(message:String)=>!CliIo Unit={
   l _=(console.error(message):Unit);
   stdlib::process.exit(1)
 }
 
-λmain()=>!IO Unit match releaseVersion(){
+λmain()=>!CliIo Unit match releaseVersion(){
   Ok(version)=>match sha256SumsPath(){
     Ok(path)=>{
       l text=(stdlib::file.readText(path):String);

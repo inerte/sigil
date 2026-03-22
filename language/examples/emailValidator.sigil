@@ -31,7 +31,7 @@ i stdlib::string
   Invalid(reason)=>"✗ '"++email++"': "++reason
 }
 
-λmain()=>!IO Unit={
+λmain()=>!Log Unit={
   l _=(console.log("=== Email Validator ===\n"):Unit);
   l _=(console.log("Valid examples:"):Unit);
   l _=(console.log(formatResult("user@example.com",validateEmail("user@example.com"))):Unit);

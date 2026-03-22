@@ -1,20 +1,33 @@
 use sigil_ast::*;
+use sigil_typechecker::EffectCatalog;
 
 const INDENT: &str = "  ";
 
 pub fn print_canonical_program(program: &Program) -> String {
+    print_canonical_program_with_effects(program, None)
+}
+
+pub fn print_canonical_program_with_effects(
+    program: &Program,
+    effect_catalog: Option<&EffectCatalog>,
+) -> String {
     let mut printer = Printer::new();
+    printer.effect_catalog = effect_catalog.cloned();
     printer.program(program);
     printer.finish()
 }
 
 struct Printer {
     out: String,
+    effect_catalog: Option<EffectCatalog>,
 }
 
 impl Printer {
     fn new() -> Self {
-        Self { out: String::new() }
+        Self {
+            out: String::new(),
+            effect_catalog: None,
+        }
     }
 
     fn finish(mut self) -> String {
@@ -52,6 +65,7 @@ impl Printer {
         match declaration {
             Declaration::Function(function) => self.function_decl(function, indent),
             Declaration::Type(type_decl) => self.type_decl(type_decl, indent),
+            Declaration::Effect(effect_decl) => self.effect_decl(effect_decl, indent),
             Declaration::Import(import_decl) => {
                 self.indent(indent);
                 self.push("i ");
@@ -77,7 +91,7 @@ impl Printer {
         self.push("(");
         self.params(&function.params);
         self.push(")=>");
-        self.effects(&function.effects);
+        self.effects(&function.effects, None);
         if let Some(return_type) = &function.return_type {
             self.push(&self.type_text(return_type));
         }
@@ -104,13 +118,24 @@ impl Printer {
         self.push(&string_literal(&test_decl.description));
         if !test_decl.effects.is_empty() {
             self.push(" =>");
-            self.effects(&test_decl.effects);
+            self.effects(&test_decl.effects, None);
         }
         self.push(" {");
         self.block_body(&test_decl.body, indent + 1);
         self.newline();
         self.indent(indent);
         self.push("}");
+    }
+
+    fn effect_decl(&mut self, effect_decl: &EffectDecl, indent: usize) {
+        self.indent(indent);
+        self.push("effect ");
+        self.push(&effect_decl.name);
+        self.push("=");
+        self.effects(&effect_decl.effects, Some(effect_decl.name.as_str()));
+        if self.out.ends_with(' ') {
+            self.out.pop();
+        }
     }
 
     fn extern_decl(&mut self, extern_decl: &ExternDecl, indent: usize) {
@@ -190,12 +215,18 @@ impl Printer {
         }
     }
 
-    fn effects(&mut self, effects: &[String]) {
-        for effect in effects {
+    fn effects(&mut self, effects: &[String], exclude_alias: Option<&str>) {
+        let surface_effects = self
+            .effect_catalog
+            .as_ref()
+            .and_then(|catalog| catalog.canonicalize_names(effects, exclude_alias).ok())
+            .unwrap_or_else(|| effects.to_vec());
+
+        for effect in &surface_effects {
             self.push("!");
             self.push(effect);
         }
-        if !effects.is_empty() {
+        if !surface_effects.is_empty() {
             self.push(" ");
         }
     }
@@ -218,7 +249,11 @@ impl Printer {
         match ty {
             Type::Primitive(primitive) => primitive.name.to_string(),
             Type::List(list) => format!("[{}]", self.type_text(&list.element_type)),
-            Type::Map(map) => format!("{{{}↦{}}}", self.type_text(&map.key_type), self.type_text(&map.value_type)),
+            Type::Map(map) => format!(
+                "{{{}↦{}}}",
+                self.type_text(&map.key_type),
+                self.type_text(&map.value_type)
+            ),
             Type::Function(function) => {
                 let params = function
                     .param_types
@@ -226,15 +261,24 @@ impl Printer {
                     .map(|ty| self.type_text(ty))
                     .collect::<Vec<_>>()
                     .join(",");
-                let effects = function
-                    .effects
-                    .iter()
+                let effects = function.effects.to_vec();
+                let effect_text = self
+                    .effect_catalog
+                    .as_ref()
+                    .and_then(|catalog| catalog.canonicalize_names(&effects, None).ok())
+                    .unwrap_or(effects)
+                    .into_iter()
                     .map(|effect| format!("!{}", effect))
                     .collect::<String>();
-                if effects.is_empty() {
+                if effect_text.is_empty() {
                     format!("λ({})=>{}", params, self.type_text(&function.return_type))
                 } else {
-                    format!("λ({})=>{} {}", params, effects, self.type_text(&function.return_type))
+                    format!(
+                        "λ({})=>{} {}",
+                        params,
+                        effect_text,
+                        self.type_text(&function.return_type)
+                    )
                 }
             }
             Type::Constructor(constructor) => {
@@ -274,7 +318,12 @@ impl Printer {
                             .join(",")
                     )
                 };
-                format!("{}.{}{}", qualified.module_path.join("::"), qualified.type_name, args)
+                format!(
+                    "{}.{}{}",
+                    qualified.module_path.join("::"),
+                    qualified.type_name,
+                    args
+                )
             }
         }
     }
@@ -282,7 +331,11 @@ impl Printer {
     fn const_value(&self, const_decl: &ConstDecl) -> String {
         match &const_decl.type_annotation {
             Some(type_annotation) => {
-                format!("({}:{})", self.expr(&const_decl.value, 0, 0), self.type_text(type_annotation))
+                format!(
+                    "({}:{})",
+                    self.expr(&const_decl.value, 0, 0),
+                    self.type_text(type_annotation)
+                )
             }
             None => self.expr(&const_decl.value, 0, 0),
         }
@@ -348,7 +401,11 @@ impl Printer {
                     _ => format!("{}{}{}", left, binary.operator, right),
                 }
             }
-            Expr::Unary(unary) => format!("{}{}", unary.operator, self.wrap_expr(&unary.operand, indent, precedence(expr))),
+            Expr::Unary(unary) => format!(
+                "{}{}",
+                unary.operator,
+                self.wrap_expr(&unary.operand, indent, precedence(expr))
+            ),
             Expr::Match(match_expr) => self.match_text(match_expr, indent),
             Expr::Let(let_expr) => self.let_text(let_expr, indent),
             Expr::If(if_expr) => {
@@ -389,7 +446,13 @@ impl Printer {
                     let entries = map
                         .entries
                         .iter()
-                        .map(|entry| format!("{}↦{}", self.expr(&entry.key, indent, 0), self.expr(&entry.value, indent, 0)))
+                        .map(|entry| {
+                            format!(
+                                "{}↦{}",
+                                self.expr(&entry.key, indent, 0),
+                                self.expr(&entry.value, indent, 0)
+                            )
+                        })
                         .collect::<Vec<_>>()
                         .join(",");
                     format!("{{{}}}", entries)
@@ -405,7 +468,11 @@ impl Printer {
                 format!("({})", elements)
             }
             Expr::FieldAccess(access) => {
-                format!("{}.{}", self.wrap_expr(&access.object, indent, precedence(expr)), access.field)
+                format!(
+                    "{}.{}",
+                    self.wrap_expr(&access.object, indent, precedence(expr)),
+                    access.field
+                )
             }
             Expr::Index(index) => {
                 format!(
@@ -435,7 +502,11 @@ impl Printer {
             Expr::Filter(filter) => format!(
                 "{} filter {}",
                 self.wrap_expr(&filter.list, indent, precedence(expr)),
-                self.wrap_expr(&filter.predicate, indent, precedence(expr).saturating_add(1))
+                self.wrap_expr(
+                    &filter.predicate,
+                    indent,
+                    precedence(expr).saturating_add(1)
+                )
             ),
             Expr::Fold(fold) => format!(
                 "{} reduce {} from {}",
@@ -444,10 +515,16 @@ impl Printer {
                 self.wrap_expr(&fold.init, indent, precedence(expr).saturating_add(1))
             ),
             Expr::Concurrent(concurrent) => self.concurrent_text(concurrent, indent),
-            Expr::MemberAccess(member) => format!("{}.{}", member.namespace.join("::"), member.member),
+            Expr::MemberAccess(member) => {
+                format!("{}.{}", member.namespace.join("::"), member.member)
+            }
             Expr::WithMock(with_mock) => self.with_mock_text(with_mock, indent),
             Expr::TypeAscription(ascription) => {
-                format!("({}:{})", self.expr(&ascription.expr, indent, 0), self.type_text(&ascription.ascribed_type))
+                format!(
+                    "({}:{})",
+                    self.expr(&ascription.expr, indent, 0),
+                    self.type_text(&ascription.ascribed_type)
+                )
             }
         };
 
@@ -488,7 +565,12 @@ impl Printer {
         let head = if effects.is_empty() {
             format!("λ({})=>{}", params, self.type_text(&lambda.return_type))
         } else {
-            format!("λ({})=>{} {}", params, effects, self.type_text(&lambda.return_type))
+            format!(
+                "λ({})=>{} {}",
+                params,
+                effects,
+                self.type_text(&lambda.return_type)
+            )
         };
 
         match &lambda.body {
@@ -699,7 +781,11 @@ impl Printer {
                 let prefix = if constructor.module_path.is_empty() {
                     constructor.name.clone()
                 } else {
-                    format!("{}.{}", constructor.module_path.join("::"), constructor.name)
+                    format!(
+                        "{}.{}",
+                        constructor.module_path.join("::"),
+                        constructor.name
+                    )
                 };
                 if constructor.patterns.is_empty() {
                     format!("{}()", prefix)
@@ -774,7 +860,12 @@ fn flatten_lets<'a>(let_expr: &'a LetExpr) -> (Vec<LetBindingRef<'a>>, &'a Expr)
 
 fn precedence(expr: &Expr) -> u8 {
     match expr {
-        Expr::Let(_) | Expr::Match(_) | Expr::If(_) | Expr::WithMock(_) | Expr::Lambda(_) | Expr::Concurrent(_) => 1,
+        Expr::Let(_)
+        | Expr::Match(_)
+        | Expr::If(_)
+        | Expr::WithMock(_)
+        | Expr::Lambda(_)
+        | Expr::Concurrent(_) => 1,
         Expr::Pipeline(_) | Expr::Map(_) | Expr::Filter(_) | Expr::Fold(_) => 2,
         Expr::Binary(binary) => match binary.operator {
             BinaryOperator::Pipe | BinaryOperator::ComposeFwd | BinaryOperator::ComposeBwd => 2,
@@ -790,7 +881,10 @@ fn precedence(expr: &Expr) -> u8 {
             | BinaryOperator::Subtract
             | BinaryOperator::Append
             | BinaryOperator::ListAppend => 6,
-            BinaryOperator::Multiply | BinaryOperator::Divide | BinaryOperator::Modulo | BinaryOperator::Power => 7,
+            BinaryOperator::Multiply
+            | BinaryOperator::Divide
+            | BinaryOperator::Modulo
+            | BinaryOperator::Power => 7,
         },
         Expr::Unary(_) => 8,
         Expr::Application(_) | Expr::FieldAccess(_) | Expr::Index(_) => 9,

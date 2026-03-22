@@ -6,27 +6,27 @@ i stdlib::path
 
 λmain()=>Unit=()
 
-test "file listDir includes written entry" =>!IO  {
+test "file listDir includes written entry" =>!Fs  {
   l _=(stdlib::file.removeTree(("/tmp/sigil-stdlib-file-list":String)):Unit);
   l _=(stdlib::file.makeDirs(("/tmp/sigil-stdlib-file-list":String)):Unit);
   l _=(stdlib::file.writeText("hello",(stdlib::path.join(("/tmp/sigil-stdlib-file-list":String),"entry.txt"):String)):Unit);
   stdlib::list.contains("entry.txt",(stdlib::file.listDir(("/tmp/sigil-stdlib-file-list":String)):[String]))
 }
 
-test "file makeDir creates a single directory" =>!IO  {
+test "file makeDir creates a single directory" =>!Fs  {
   l _=(stdlib::file.removeTree(("/tmp/sigil-stdlib-file-mkdir":String)):Unit);
   l _=(stdlib::file.makeDirs(("/tmp/sigil-stdlib-file-mkdir":String)):Unit);
   l _=(stdlib::file.makeDir((stdlib::path.join(("/tmp/sigil-stdlib-file-mkdir":String),"child"):String)):Unit);
   stdlib::file.exists((stdlib::path.join(("/tmp/sigil-stdlib-file-mkdir":String),"child"):String))
 }
 
-test "file makeDirs creates nested directories" =>!IO  {
+test "file makeDirs creates nested directories" =>!Fs  {
   l _=(stdlib::file.removeTree("/tmp/sigil-stdlib-file-nested"):Unit);
   l _=(stdlib::file.makeDirs(("/tmp/sigil-stdlib-file-nested/a/b":String)):Unit);
   stdlib::file.exists(("/tmp/sigil-stdlib-file-nested/a/b":String))
 }
 
-test "file readText and appendText preserve utf8 content" =>!IO  {
+test "file readText and appendText preserve utf8 content" =>!Fs  {
   l _=(stdlib::file.removeTree(("/tmp/sigil-stdlib-file-read-write":String)):Unit);
   l _=(stdlib::file.makeDirs(("/tmp/sigil-stdlib-file-read-write":String)):Unit);
   l _=(stdlib::file.writeText("hello",(stdlib::path.join(("/tmp/sigil-stdlib-file-read-write":String),"sample.txt"):String)):Unit);
@@ -34,7 +34,7 @@ test "file readText and appendText preserve utf8 content" =>!IO  {
   (stdlib::file.readText((stdlib::path.join(("/tmp/sigil-stdlib-file-read-write":String),"sample.txt"):String)):String)="hello world"
 }
 
-test "file remove removes a file" =>!IO  {
+test "file remove removes a file" =>!Fs  {
   l _=(stdlib::file.removeTree(("/tmp/sigil-stdlib-file-delete":String)):Unit);
   l _=(stdlib::file.makeDirs(("/tmp/sigil-stdlib-file-delete":String)):Unit);
   l _=(stdlib::file.writeText("hello",(stdlib::path.join(("/tmp/sigil-stdlib-file-delete":String),"sample.txt"):String)):Unit);
@@ -42,7 +42,7 @@ test "file remove removes a file" =>!IO  {
   stdlib::file.exists((stdlib::path.join(("/tmp/sigil-stdlib-file-delete":String),"sample.txt"):String))=false
 }
 
-test "file removeTree removes nested output" =>!IO  {
+test "file removeTree removes nested output" =>!Fs  {
   l _=(stdlib::file.removeTree(("/tmp/sigil-stdlib-file-rmtree":String)):Unit);
   l _=(stdlib::file.makeDirs((stdlib::path.join(("/tmp/sigil-stdlib-file-rmtree":String),"a/b"):String)):Unit);
   l _=(stdlib::file.writeText("hello",(stdlib::path.join((stdlib::path.join(("/tmp/sigil-stdlib-file-rmtree":String),"a/b"):String),"sample.txt"):String)):Unit);

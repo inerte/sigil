@@ -63,12 +63,13 @@ Current region surface:
 
 Current child surface:
 
-- `spawn expr` where `expr : !IO Result[T,E]`
-- `spawnEach list fn` where `fn : A=>!IO Result[T,E]`
+- `spawn expr` where `expr : !Fx Result[T,E]`
+- `spawnEach list fn` where `fn : A=>!Fx Result[T,E]`
 
 Region result:
 
-- `!IO [ConcurrentOutcome[T,E]]`
+- `[ConcurrentOutcome[T,E]]` under the combined effect set of width, policy,
+  and child computations
 
 with:
 

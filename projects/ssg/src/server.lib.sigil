@@ -2,7 +2,7 @@ e fs::promises
 
 i stdlib::httpServer
 
-λstartServer(distDir:String,port:Int)=>!IO Unit={
+λstartServer(distDir:String,port:Int)=>!Http Unit={
   l noopDist=(distDir:String);
   l noopPort=(port:Int);
   ()

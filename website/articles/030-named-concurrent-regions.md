@@ -30,11 +30,16 @@ Those are not properties of `map`. They are properties of an execution region.
 Sigil has one canonical concurrency surface:
 
 ```sigil module
+i stdlib::time
+
 λisSystemic(err:String)=>Bool=err="NETWORK"
 
-λprocessUrl(url:String)=>!IO Result[Int,String]=Ok(#url)
+λprocessUrl(url:String)=>!Timer Result[Int,String]={
+  l _=(stdlib::time.sleepMs(0):Unit);
+  Ok(#url)
+}
 
-λrun(urls:[String])=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit@5:{jitterMs:Some({max:25,min:1}),stopOn:isSystemic,windowMs:Some(1000)}{
+λrun(urls:[String])=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@5:{jitterMs:Some({max:25,min:1}),stopOn:isSystemic,windowMs:Some(1000)}{
   spawnEach urls processUrl
 }
 ```
@@ -56,8 +61,15 @@ Current policy fields are:
 Minimal form:
 
 ```sigil module
-λrun(urls:[String])=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit@5{
+i stdlib::time
+
+λrun(urls:[String])=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@5{
   spawnEach urls processUrl
+}
+
+λprocessUrl(url:String)=>!Timer Result[Int,String]={
+  l _=(stdlib::time.sleepMs(0):Unit);
+  Ok(#url)
 }
 ```
 

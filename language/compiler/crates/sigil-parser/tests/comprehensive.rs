@@ -2,8 +2,8 @@
 
 use sigil_ast::*;
 use sigil_lexer::tokenize;
-use sigil_parser::ParseError;
 use sigil_parser::parse;
+use sigil_parser::ParseError;
 
 // ============================================================================
 // DECLARATION TESTS
@@ -62,14 +62,14 @@ fn test_function_declaration_with_type_params() {
 
 #[test]
 fn test_function_with_effects() {
-    let source = "λread_file()=>!IO String=\"\"";
+    let source = "λread_file()=>!Fs String=\"\"";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
         Declaration::Function(f) => {
             assert_eq!(f.effects.len(), 1);
-            assert_eq!(f.effects[0], "IO");
+            assert_eq!(f.effects[0], "Fs");
         }
         _ => panic!("Expected function declaration"),
     }
@@ -77,15 +77,15 @@ fn test_function_with_effects() {
 
 #[test]
 fn test_function_multiple_effects() {
-    let source = "λfetch()=>!IO !Network String=\"\"";
+    let source = "λfetch()=>!Fs !Http String=\"\"";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
         Declaration::Function(f) => {
             assert_eq!(f.effects.len(), 2);
-            assert!(f.effects.contains(&"IO".to_string()));
-            assert!(f.effects.contains(&"Network".to_string()));
+            assert!(f.effects.contains(&"Fs".to_string()));
+            assert!(f.effects.contains(&"Http".to_string()));
         }
         _ => panic!("Expected function declaration"),
     }
@@ -260,7 +260,10 @@ fn test_qualified_constructor_application_parses() {
         Declaration::Function(f) => match &f.body {
             Expr::Application(app) => match &app.func {
                 Expr::MemberAccess(member) => {
-                    assert_eq!(member.namespace, vec!["src".to_string(), "graphTypes".to_string()]);
+                    assert_eq!(
+                        member.namespace,
+                        vec!["src".to_string(), "graphTypes".to_string()]
+                    );
                     assert_eq!(member.member, "Ordering");
                 }
                 _ => panic!("Expected qualified constructor member access"),
@@ -282,7 +285,10 @@ fn test_qualified_constructor_pattern_parses() {
             Expr::Match(match_expr) => {
                 match &match_expr.arms[0].pattern {
                     Pattern::Constructor(ctor) => {
-                        assert_eq!(ctor.module_path, vec!["src".to_string(), "graphTypes".to_string()]);
+                        assert_eq!(
+                            ctor.module_path,
+                            vec!["src".to_string(), "graphTypes".to_string()]
+                        );
                         assert_eq!(ctor.name, "Ordering");
                         assert_eq!(ctor.patterns.len(), 1);
                     }
@@ -291,7 +297,10 @@ fn test_qualified_constructor_pattern_parses() {
 
                 match &match_expr.arms[1].pattern {
                     Pattern::Constructor(ctor) => {
-                        assert_eq!(ctor.module_path, vec!["src".to_string(), "graphTypes".to_string()]);
+                        assert_eq!(
+                            ctor.module_path,
+                            vec!["src".to_string(), "graphTypes".to_string()]
+                        );
                         assert_eq!(ctor.name, "CycleDetected");
                         assert!(ctor.patterns.is_empty());
                     }
@@ -332,15 +341,13 @@ fn test_integer_literal() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::Literal(lit) => {
-                    assert_eq!(lit.literal_type, LiteralType::Int);
-                    assert_eq!(lit.value, LiteralValue::Int(42));
-                }
-                _ => panic!("Expected integer literal"),
+        Declaration::Function(f) => match &f.body {
+            Expr::Literal(lit) => {
+                assert_eq!(lit.literal_type, LiteralType::Int);
+                assert_eq!(lit.value, LiteralValue::Int(42));
             }
-        }
+            _ => panic!("Expected integer literal"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -352,14 +359,12 @@ fn test_float_literal() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::Literal(lit) => {
-                    assert_eq!(lit.literal_type, LiteralType::Float);
-                }
-                _ => panic!("Expected float literal"),
+        Declaration::Function(f) => match &f.body {
+            Expr::Literal(lit) => {
+                assert_eq!(lit.literal_type, LiteralType::Float);
             }
-        }
+            _ => panic!("Expected float literal"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -371,15 +376,13 @@ fn test_string_literal() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::Literal(lit) => {
-                    assert_eq!(lit.literal_type, LiteralType::String);
-                    assert_eq!(lit.value, LiteralValue::String("hello".to_string()));
-                }
-                _ => panic!("Expected string literal"),
+        Declaration::Function(f) => match &f.body {
+            Expr::Literal(lit) => {
+                assert_eq!(lit.literal_type, LiteralType::String);
+                assert_eq!(lit.value, LiteralValue::String("hello".to_string()));
             }
-        }
+            _ => panic!("Expected string literal"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -391,15 +394,13 @@ fn test_char_literal() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::Literal(lit) => {
-                    assert_eq!(lit.literal_type, LiteralType::Char);
-                    assert_eq!(lit.value, LiteralValue::Char('a'));
-                }
-                _ => panic!("Expected char literal"),
+        Declaration::Function(f) => match &f.body {
+            Expr::Literal(lit) => {
+                assert_eq!(lit.literal_type, LiteralType::Char);
+                assert_eq!(lit.value, LiteralValue::Char('a'));
             }
-        }
+            _ => panic!("Expected char literal"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -411,14 +412,12 @@ fn test_unit_literal() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::Literal(lit) => {
-                    assert_eq!(lit.literal_type, LiteralType::Unit);
-                }
-                _ => panic!("Expected unit literal"),
+        Declaration::Function(f) => match &f.body {
+            Expr::Literal(lit) => {
+                assert_eq!(lit.literal_type, LiteralType::Unit);
             }
-        }
+            _ => panic!("Expected unit literal"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -430,14 +429,12 @@ fn test_identifier_expression() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::Identifier(id) => {
-                    assert_eq!(id.name, "x");
-                }
-                _ => panic!("Expected identifier"),
+        Declaration::Function(f) => match &f.body {
+            Expr::Identifier(id) => {
+                assert_eq!(id.name, "x");
             }
-        }
+            _ => panic!("Expected identifier"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -449,14 +446,12 @@ fn test_binary_addition() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::Binary(bin) => {
-                    assert_eq!(bin.operator, BinaryOperator::Add);
-                }
-                _ => panic!("Expected binary expression"),
+        Declaration::Function(f) => match &f.body {
+            Expr::Binary(bin) => {
+                assert_eq!(bin.operator, BinaryOperator::Add);
             }
-        }
+            _ => panic!("Expected binary expression"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -468,14 +463,12 @@ fn test_binary_subtraction() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::Binary(bin) => {
-                    assert_eq!(bin.operator, BinaryOperator::Subtract);
-                }
-                _ => panic!("Expected binary expression"),
+        Declaration::Function(f) => match &f.body {
+            Expr::Binary(bin) => {
+                assert_eq!(bin.operator, BinaryOperator::Subtract);
             }
-        }
+            _ => panic!("Expected binary expression"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -487,14 +480,12 @@ fn test_binary_multiplication() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::Binary(bin) => {
-                    assert_eq!(bin.operator, BinaryOperator::Multiply);
-                }
-                _ => panic!("Expected binary expression"),
+        Declaration::Function(f) => match &f.body {
+            Expr::Binary(bin) => {
+                assert_eq!(bin.operator, BinaryOperator::Multiply);
             }
-        }
+            _ => panic!("Expected binary expression"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -506,14 +497,12 @@ fn test_binary_comparison() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::Binary(bin) => {
-                    assert_eq!(bin.operator, BinaryOperator::Greater);
-                }
-                _ => panic!("Expected binary expression"),
+        Declaration::Function(f) => match &f.body {
+            Expr::Binary(bin) => {
+                assert_eq!(bin.operator, BinaryOperator::Greater);
             }
-        }
+            _ => panic!("Expected binary expression"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -525,14 +514,12 @@ fn test_binary_logical_and() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::Binary(bin) => {
-                    assert_eq!(bin.operator, BinaryOperator::And);
-                }
-                _ => panic!("Expected binary expression"),
+        Declaration::Function(f) => match &f.body {
+            Expr::Binary(bin) => {
+                assert_eq!(bin.operator, BinaryOperator::And);
             }
-        }
+            _ => panic!("Expected binary expression"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -561,14 +548,12 @@ fn test_unary_negation() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::Unary(un) => {
-                    assert_eq!(un.operator, UnaryOperator::Negate);
-                }
-                _ => panic!("Expected unary expression"),
+        Declaration::Function(f) => match &f.body {
+            Expr::Unary(un) => {
+                assert_eq!(un.operator, UnaryOperator::Negate);
             }
-        }
+            _ => panic!("Expected unary expression"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -580,14 +565,12 @@ fn test_unary_not() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::Unary(un) => {
-                    assert_eq!(un.operator, UnaryOperator::Not);
-                }
-                _ => panic!("Expected unary expression"),
+        Declaration::Function(f) => match &f.body {
+            Expr::Unary(un) => {
+                assert_eq!(un.operator, UnaryOperator::Not);
             }
-        }
+            _ => panic!("Expected unary expression"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -599,14 +582,12 @@ fn test_function_application() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::Application(app) => {
-                    assert_eq!(app.args.len(), 2);
-                }
-                _ => panic!("Expected application"),
+        Declaration::Function(f) => match &f.body {
+            Expr::Application(app) => {
+                assert_eq!(app.args.len(), 2);
             }
-        }
+            _ => panic!("Expected application"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -629,14 +610,12 @@ fn test_list_literal_empty() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::List(list) => {
-                    assert_eq!(list.elements.len(), 0);
-                }
-                _ => panic!("Expected list"),
+        Declaration::Function(f) => match &f.body {
+            Expr::List(list) => {
+                assert_eq!(list.elements.len(), 0);
             }
-        }
+            _ => panic!("Expected list"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -648,14 +627,12 @@ fn test_list_literal_with_elements() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::List(list) => {
-                    assert_eq!(list.elements.len(), 3);
-                }
-                _ => panic!("Expected list"),
+        Declaration::Function(f) => match &f.body {
+            Expr::List(list) => {
+                assert_eq!(list.elements.len(), 3);
             }
-        }
+            _ => panic!("Expected list"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -677,16 +654,14 @@ fn test_record_literal() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::Record(rec) => {
-                    assert_eq!(rec.fields.len(), 2);
-                    assert_eq!(rec.fields[0].name, "x");
-                    assert_eq!(rec.fields[1].name, "y");
-                }
-                _ => panic!("Expected record"),
+        Declaration::Function(f) => match &f.body {
+            Expr::Record(rec) => {
+                assert_eq!(rec.fields.len(), 2);
+                assert_eq!(rec.fields[0].name, "x");
+                assert_eq!(rec.fields[1].name, "y");
             }
-        }
+            _ => panic!("Expected record"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -725,14 +700,12 @@ fn test_field_access() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.body {
-                Expr::FieldAccess(fa) => {
-                    assert_eq!(fa.field, "x");
-                }
-                _ => panic!("Expected field access"),
+        Declaration::Function(f) => match &f.body {
+            Expr::FieldAccess(fa) => {
+                assert_eq!(fa.field, "x");
             }
-        }
+            _ => panic!("Expected field access"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -828,14 +801,12 @@ fn test_type_primitive_int() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.return_type {
-                Some(Type::Primitive(p)) => {
-                    assert_eq!(p.name, PrimitiveName::Int);
-                }
-                _ => panic!("Expected primitive type"),
+        Declaration::Function(f) => match &f.return_type {
+            Some(Type::Primitive(p)) => {
+                assert_eq!(p.name, PrimitiveName::Int);
             }
-        }
+            _ => panic!("Expected primitive type"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -847,12 +818,10 @@ fn test_type_list() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.return_type {
-                Some(Type::List(_)) => {}
-                _ => panic!("Expected list type"),
-            }
-        }
+        Declaration::Function(f) => match &f.return_type {
+            Some(Type::List(_)) => {}
+            _ => panic!("Expected list type"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -889,15 +858,13 @@ fn test_type_constructor() {
     let program = parse(tokens, "test.sigil").unwrap();
 
     match &program.declarations[0] {
-        Declaration::Function(f) => {
-            match &f.return_type {
-                Some(Type::Constructor(tc)) => {
-                    assert_eq!(tc.name, "Maybe");
-                    assert_eq!(tc.type_args.len(), 1);
-                }
-                _ => panic!("Expected constructor type"),
+        Declaration::Function(f) => match &f.return_type {
+            Some(Type::Constructor(tc)) => {
+                assert_eq!(tc.name, "Maybe");
+                assert_eq!(tc.type_args.len(), 1);
             }
-        }
+            _ => panic!("Expected constructor type"),
+        },
         _ => panic!("Expected function"),
     }
 }
@@ -1051,7 +1018,7 @@ fn test_list_operations_parse_with_word_forms() {
 #[test]
 fn test_tuple_matching_rejected() {
     // Tuple pattern matching in match expressions (not supported)
-  let source = r#"λbinary_search(xs:[Int],target:Int,low:Int,high:Int)=>Int=
+    let source = r#"λbinary_search(xs:[Int],target:Int,low:Int,high:Int)=>Int=
   match (high<low,xs[0]=target,xs[0]<target){
     (true,_,_)=>-1|
     (false,true,_)=>0|
@@ -1063,17 +1030,20 @@ fn test_tuple_matching_rejected() {
     let result = parse(tokens, "test.sigil");
 
     // Parser should reject tuple patterns or they should fail later validation
-    assert!(result.is_err() || {
-        // If it parses, it should fail in validation
-        let program = result.unwrap();
-        program.declarations.len() > 0 // Just check it has declarations
-    });
+    assert!(
+        result.is_err() || {
+            // If it parses, it should fail in validation
+            let program = result.unwrap();
+            program.declarations.len() > 0 // Just check it has declarations
+        }
+    );
 }
 
 #[test]
 fn test_deeply_nested_lambdas_parse() {
     // Complex nested lambda expression
-    let source = "λmain()=>Int=(λ(x:Int)=>match x{0=>1|x=>x*(λ(y:Int)=>match y{0=>1|y=>y*1})(x-1)})(4)";
+    let source =
+        "λmain()=>Int=(λ(x:Int)=>match x{0=>1|x=>x*(λ(y:Int)=>match y{0=>1|y=>y*1})(x-1)})(4)";
 
     let tokens = tokenize(source).unwrap();
     let result = parse(tokens, "test.sigil");

@@ -1,5 +1,10 @@
-λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit@1{
+i stdlib::time
+
+λmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@1{
   spawnEach [1,2,3] process
 }
 
-λprocess(value:Int)=>!IO Result[Int,String]=Ok(value)
+λprocess(value:Int)=>!Timer Result[Int,String]={
+  l _=(stdlib::time.sleepMs(0):Unit);
+  Ok(value)
+}

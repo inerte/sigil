@@ -77,9 +77,9 @@ i stdlib::string
   false=>stdlib::string.trim(result.stdout)
 }
 
-λreadLines(filePath:String)=>[String]=(stdlib::string.lines(stdlib::file.readText(filePath)):[String]) filter nonEmpty
+λreadLines(filePath:String)=>!Fs [String]=(stdlib::string.lines(stdlib::file.readText(filePath)):[String]) filter nonEmpty
 
-λrun()=>!IO Result[[src::types.Issue],String] match src::docsDrift.gitTopLevel(){
+λrun()=>!AuditIo Result[[src::types.Issue],String] match src::docsDrift.gitTopLevel(){
   Ok(root)=>{
     l driverDir=(stdlib::path.join(root,".local/docsDriftAuditDriver"):String);
     l _=(stdlib::file.removeTree(driverDir):Unit);
@@ -110,9 +110,9 @@ i stdlib::string
   Err(message)=>Err(message)
 }
 
-λrunMarkdown(paths:[String],root:String)=>!IO Result[MarkdownAudit,String]=runMarkdownInner(emptyAudit(),paths,root)
+λrunMarkdown(paths:[String],root:String)=>!AuditIo Result[MarkdownAudit,String]=runMarkdownInner(emptyAudit(),paths,root)
 
-λrunMarkdownInner(acc:MarkdownAudit,paths:[String],root:String)=>!IO Result[MarkdownAudit,String] match paths{
+λrunMarkdownInner(acc:MarkdownAudit,paths:[String],root:String)=>!AuditIo Result[MarkdownAudit,String] match paths{
   []=>Ok(acc)|
   [head,.tail]=>match runMarkdownPath(head,root){
     Ok(current)=>match #current.issues>0{
@@ -123,7 +123,7 @@ i stdlib::string
   }
 }
 
-λrunMarkdownPath(filePath:String,root:String)=>!IO Result[MarkdownAudit,String]={
+λrunMarkdownPath(filePath:String,root:String)=>!AuditIo Result[MarkdownAudit,String]={
   l issuesPath=(outputPath("issues.txt",root):String);
   l refsPath=(outputPath("refs.txt",root):String);
   l _=(stdlib::file.writeText("",issuesPath):Unit);
@@ -141,9 +141,9 @@ i stdlib::string
   }
 }
 
-λrunStdlibExports(paths:[String],root:String)=>!IO Result[[String],String]=runStdlibExportsInner([],paths,root)
+λrunStdlibExports(paths:[String],root:String)=>!AuditIo Result[[String],String]=runStdlibExportsInner([],paths,root)
 
-λrunStdlibExportsInner(acc:[String],paths:[String],root:String)=>!IO Result[[String],String] match paths{
+λrunStdlibExportsInner(acc:[String],paths:[String],root:String)=>!AuditIo Result[[String],String] match paths{
   []=>Ok(acc)|
   [head,.tail]=>{
     l exportsPath=(outputPath("exports.txt",root):String);

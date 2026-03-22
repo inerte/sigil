@@ -4,19 +4,19 @@ t RunningProcess={pid:Int}
 
 t ProcessResult={code:Int,stderr:String,stdout:String}
 
-λargv()=>!IO [String]=[]
+λargv()=>!Process [String]=[]
 
 λcommand(argv:[String])=>Command={argv:argv,cwd:None(),env:({↦}:{String↦String})}
 
-λexit(code:Int)=>!IO Unit=()
+λexit(code:Int)=>!Process Unit=()
 
-λkill(process:RunningProcess)=>!IO Unit=()
+λkill(process:RunningProcess)=>!Process Unit=()
 
-λrun(command:Command)=>!IO ProcessResult={code:-1,stderr:"process intrinsic unavailable",stdout:""}
+λrun(command:Command)=>!Process ProcessResult={code:-1,stderr:"process intrinsic unavailable",stdout:""}
 
-λstart(command:Command)=>!IO RunningProcess={pid:-1}
+λstart(command:Command)=>!Process RunningProcess={pid:-1}
 
-λwait(process:RunningProcess)=>!IO ProcessResult={code:-1,stderr:"process intrinsic unavailable",stdout:""}
+λwait(process:RunningProcess)=>!Process ProcessResult={code:-1,stderr:"process intrinsic unavailable",stdout:""}
 
 λwithCwd(command:Command,cwd:String)=>Command={argv:command.argv,cwd:Some(cwd),env:command.env}
 

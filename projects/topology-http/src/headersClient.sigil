@@ -8,7 +8,7 @@ i stdlib::httpClient
 
 i stdlib::string
 
-λmain()=>!IO String match stdlib::httpClient.get(src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/headers"){
+λmain()=>!Http String match stdlib::httpClient.get(src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/headers"){
   Ok(response)=>match core::map.get("x-request-id",response.headers){
     Some(value)=>stdlib::string.intToString(response.status)++":"++value|
     None()=>"ERR:missing-header"

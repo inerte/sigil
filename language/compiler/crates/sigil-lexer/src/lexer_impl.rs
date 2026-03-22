@@ -31,7 +31,9 @@ pub enum LexError {
         column: usize,
     },
 
-    #[error("SIGIL-LEX-UNTERMINATED-COMMENT {file}:{line}:{column} unterminated multi-line comment")]
+    #[error(
+        "SIGIL-LEX-UNTERMINATED-COMMENT {file}:{line}:{column} unterminated multi-line comment"
+    )]
     UnterminatedComment {
         file: String,
         line: usize,
@@ -59,7 +61,9 @@ pub enum LexError {
         column: usize,
     },
 
-    #[error("SIGIL-LEX-INVALID-ESCAPE {file}:{line}:{column} invalid escape sequence '\\{escape}'")]
+    #[error(
+        "SIGIL-LEX-INVALID-ESCAPE {file}:{line}:{column} invalid escape sequence '\\{escape}'"
+    )]
     InvalidEscape {
         file: String,
         escape: char,
@@ -238,10 +242,10 @@ impl Lexer {
                         column = 1;
                     } else if ch == '\t' {
                         return Err(LexError::TabNotAllowed {
-                        file: self.filename.clone(),
-                        line,
-                        column,
-                    });
+                            file: self.filename.clone(),
+                            line,
+                            column,
+                        });
                     } else {
                         column += 1;
                     }
@@ -321,7 +325,11 @@ impl Lexer {
                     if self.peek() == '\n' {
                         self.advance();
                         let location = SourceLocation::new(start, self.current_position());
-                        final_tokens.push(Token::new(TokenType::NEWLINE, "\n".to_string(), location));
+                        final_tokens.push(Token::new(
+                            TokenType::NEWLINE,
+                            "\n".to_string(),
+                            location,
+                        ));
                     } else {
                         return Err(LexError::StandaloneCarriageReturn {
                             file: self.filename.clone(),
@@ -372,12 +380,20 @@ impl Lexer {
             // Whitespace
             ' ' => {} // Skip spaces
             '\n' => {
-                tokens.push(Token::new(TokenType::NEWLINE, "\n".to_string(), SourceLocation::new(start, self.current_position())));
+                tokens.push(Token::new(
+                    TokenType::NEWLINE,
+                    "\n".to_string(),
+                    SourceLocation::new(start, self.current_position()),
+                ));
             }
             '\r' => {
                 if self.peek() == '\n' {
                     self.advance();
-                    tokens.push(Token::new(TokenType::NEWLINE, "\n".to_string(), SourceLocation::new(start, self.current_position())));
+                    tokens.push(Token::new(
+                        TokenType::NEWLINE,
+                        "\n".to_string(),
+                        SourceLocation::new(start, self.current_position()),
+                    ));
                 } else {
                     return Err(LexError::StandaloneCarriageReturn {
                         file: self.filename.clone(),
@@ -699,6 +715,7 @@ impl Lexer {
             "mut" => TokenType::MUT,
             "withMock" => TokenType::WithMock,
             "when" => TokenType::WHEN,
+            "effect" => TokenType::Effect,
             "match" => TokenType::MATCH,
             "concurrent" => TokenType::Concurrent,
             "spawn" => TokenType::Spawn,

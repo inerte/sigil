@@ -120,7 +120,7 @@ i stdlib::file
 
 i stdlib::path
 
-λmain()=>!IO Unit={
+λmain()=>!Fs Unit={
   l out=(stdlib::path.join("/tmp","sigil.txt"):String);
   l written=(stdlib::file.writeText("hello",out):Unit);
   l text=(stdlib::file.readText(out):String);
@@ -148,7 +148,7 @@ i stdlib::path
 ```sigil program
 i stdlib::process
 
-λmain()=>!IO Unit={
+λmain()=>!Process Unit={
   l result=(stdlib::process.run(stdlib::process.command(["git","status"])):stdlib::process.ProcessResult);
   match result.code=0{
     true=>()|
@@ -290,7 +290,7 @@ i stdlib::httpClient
 
 i src::topology
 
-λmain()=>!IO Unit match stdlib::httpClient.get(src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/health"){
+λmain()=>!Http Unit match stdlib::httpClient.get(src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/health"){
   Ok(response)=>{
     l body=(response.body:String);
     ()
@@ -316,12 +316,12 @@ The split is:
 ```sigil program
 i stdlib::httpServer
 
-λhandle(request:stdlib::httpServer.Request)=>!IO stdlib::httpServer.Response match request.path{
+λhandle(request:stdlib::httpServer.Request)=>stdlib::httpServer.Response match request.path{
   "/health"=>stdlib::httpServer.ok("healthy")|
   _=>stdlib::httpServer.notFound()
 }
 
-λmain()=>!IO Unit=stdlib::httpServer.serve(handle,8080)
+λmain()=>!Http Unit=stdlib::httpServer.serve(handle,8080)
 ```
 
 `serve` is a long-lived runtime entrypoint: once the server is listening, the
@@ -338,7 +338,7 @@ i src::topology
 
 i stdlib::tcpClient
 
-λmain()=>!IO Unit match stdlib::tcpClient.send(src::topology.eventStream,"ping"){
+λmain()=>!Tcp Unit match stdlib::tcpClient.send(src::topology.eventStream,"ping"){
   Ok(response)=>{
     l message=(response.message:String);
     ()
@@ -363,9 +363,9 @@ The canonical framing model is:
 ```sigil program
 i stdlib::tcpServer
 
-λhandle(request:stdlib::tcpServer.Request)=>!IO stdlib::tcpServer.Response=stdlib::tcpServer.response(request.message)
+λhandle(request:stdlib::tcpServer.Request)=>stdlib::tcpServer.Response=stdlib::tcpServer.response(request.message)
 
-λmain()=>!IO Unit=stdlib::tcpServer.serve(handle,45120)
+λmain()=>!Tcp Unit=stdlib::tcpServer.serve(handle,45120)
 ```
 
 `serve` is long-lived: once the TCP server is listening, the process stays open
@@ -385,7 +385,7 @@ i src::topology
 
 i stdlib::httpClient
 
-λmain()=>!IO Unit match stdlib::httpClient.get(src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/health"){
+λmain()=>!Http Unit match stdlib::httpClient.get(src::topology.mailerApi,stdlib::httpClient.emptyHeaders(),"/health"){
   Ok(_)=>()|
   Err(_)=>()
 }

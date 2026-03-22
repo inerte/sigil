@@ -12,7 +12,7 @@ test "bare sigil fence is rejected" {
 }
 
 test "decl block extracts documented names" {
-  src::docsDrift.documentedRefsForSnippet("stdlib::process","λcommand(argv:[String])=>Command\nλrun(command:Command)=>!IO ProcessResult\n")=["stdlib::process.command","stdlib::process.run"]
+  src::docsDrift.documentedRefsForSnippet("stdlib::process","λcommand(argv:[String])=>Command\nλrun(command:Command)=>!Process ProcessResult\n")=["stdlib::process.command","stdlib::process.run"]
 }
 
 test "invalid module path extension is rejected" {

@@ -16,7 +16,7 @@ i stdlib::string
 
 λmain()=>Unit=()
 
-test "build site removes stale output files" =>!IO  {
+test "build site removes stale output files" =>!SiteBuild  {
   l outputDir=("/tmp/sigil-ssg-e2e-clean":String);
   l _=(stdlib::file.removeTree(outputDir):Unit);
   l _=(stdlib::file.makeDirs(outputDir):Unit);
@@ -26,7 +26,7 @@ test "build site removes stale output files" =>!IO  {
   stdlib::list.contains("stale.txt",rootEntries)=false
 }
 
-test "build site renders docs content page" =>!IO  {
+test "build site renders docs content page" =>!SiteBuild  {
   l outputDir=("/tmp/sigil-ssg-e2e-docs":String);
   l _=(stdlib::file.removeTree(outputDir):Unit);
   l _=(src::build.buildSite(baseConfig(outputDir)):Unit);
@@ -34,7 +34,7 @@ test "build site renders docs content page" =>!IO  {
   contains(stdlibDoc,"Sigil Standard Library")
 }
 
-test "build site renders nav sections on homepage" =>!IO  {
+test "build site renders nav sections on homepage" =>!SiteBuild  {
   l outputDir=("/tmp/sigil-ssg-e2e-home":String);
   l _=(stdlib::file.removeTree(outputDir):Unit);
   l _=(src::build.buildSite(baseConfig(outputDir)):Unit);
@@ -42,7 +42,7 @@ test "build site renders nav sections on homepage" =>!IO  {
   contains(home,">Articles<") and contains(home,">Docs<") and contains(home,">Spec<") and contains(home,"placeholder=\"Search docs, articles, and spec pages\"") and contains(home,"/assets/search.js")
 }
 
-test "build site writes key output files" =>!IO  {
+test "build site writes key output files" =>!SiteBuild  {
   l outputDir=("/tmp/sigil-ssg-e2e-files":String);
   l _=(stdlib::file.removeTree(outputDir):Unit);
   l _=(src::build.buildSite(baseConfig(outputDir)):Unit);
@@ -56,7 +56,7 @@ test "build site writes key output files" =>!IO  {
   contains(about,"About This Site") and contains(articles,"Latest Articles") and #css>0 and contains(docs,"Docs") and contains(notFound,"Page not found") and contains(siteJson,"\"generatedAt\":\"") and contains(spec,"Spec")
 }
 
-test "build site writes manifest with repo url and counts" =>!IO  {
+test "build site writes manifest with repo url and counts" =>!SiteBuild  {
   l outputDir=("/tmp/sigil-ssg-e2e-manifest":String);
   l _=(stdlib::file.removeTree(outputDir):Unit);
   l _=(src::build.buildSite(baseConfig(outputDir)):Unit);
@@ -64,7 +64,7 @@ test "build site writes manifest with repo url and counts" =>!IO  {
   contains(manifest,"\"repoUrl\":\"https://github.com/inerte/sigil\"") and contains(manifest,"\"articlesCount\":\"") and contains(manifest,"\"docsCount\":\"") and contains(manifest,"\"specCount\":\"")
 }
 
-test "build site writes feed with article metadata" =>!IO  {
+test "build site writes feed with article metadata" =>!SiteBuild  {
   l outputDir=("/tmp/sigil-ssg-e2e-feed":String);
   l _=(stdlib::file.removeTree(outputDir):Unit);
   l _=(src::build.buildSite(baseConfig(outputDir)):Unit);
@@ -72,7 +72,7 @@ test "build site writes feed with article metadata" =>!IO  {
   contains(feed,"<feed xmlns=\"http://www.w3.org/2005/Atom\">") and contains(feed,"https://inerte.github.io/sigil/feed.xml") and contains(feed,"https://inerte.github.io/sigil/articles/named-concurrent-regions/") and contains(feed,"<title>Named Concurrent Regions in Sigil</title>")
 }
 
-test "build site writes search index with core page fields" =>!IO  {
+test "build site writes search index with core page fields" =>!SiteBuild  {
   l outputDir=("/tmp/sigil-ssg-e2e-search":String);
   l _=(stdlib::file.removeTree(outputDir):Unit);
   l _=(src::build.buildSite(baseConfig(outputDir)):Unit);
@@ -80,7 +80,7 @@ test "build site writes search index with core page fields" =>!IO  {
   contains(searchIndex,"\"section\":\"article\"") and contains(searchIndex,"\"title\":\"Named Concurrent Regions in Sigil\"") and contains(searchIndex,"\"url\":\"/articles/named-concurrent-regions/\"") and contains(searchIndex,"\"sourcePath\":\"website/articles/030-named-concurrent-regions.md\"")
 }
 
-test "build site writes sitemap with canonical urls" =>!IO  {
+test "build site writes sitemap with canonical urls" =>!SiteBuild  {
   l outputDir=("/tmp/sigil-ssg-e2e-sitemap":String);
   l _=(stdlib::file.removeTree(outputDir):Unit);
   l _=(src::build.buildSite(baseConfig(outputDir)):Unit);

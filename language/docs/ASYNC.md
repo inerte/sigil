@@ -29,14 +29,19 @@ structure as permission to widen work.
 
 Sigil uses one concurrency surface:
 
-```sigil module
+```sigil program
+i stdlib::time
+
 λisTransportFailure(err:String)=>Bool=err="NETWORK"
 
-λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit@5:{jitterMs:Some({max:25,min:1}),stopOn:isTransportFailure,windowMs:Some(1000)}{
-  spawnEach urls processUrl
+λmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@5:{jitterMs:Some({max:25,min:1}),stopOn:isTransportFailure,windowMs:Some(1000)}{
+  spawnEach ["alpha","beta"] processUrl
 }
 
-λprocessUrl(url:String)=>!IO Result[Int,String]=Ok(#url)
+λprocessUrl(url:String)=>!Timer Result[Int,String]={
+  l _=(stdlib::time.sleepMs(0):Unit);
+  Ok(#url)
+}
 ```
 
 Region rules:
@@ -79,9 +84,16 @@ Defaults:
 
 Canonical code omits default-valued policy entirely, so the smallest region is:
 
-```sigil module
-λmain()=>!IO [ConcurrentOutcome[Int,String]]=concurrent urlAudit@5{
-  spawnEach urls processUrl
+```sigil program
+i stdlib::time
+
+λmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@5{
+  spawnEach ["alpha","beta"] processUrl
+}
+
+λprocessUrl(url:String)=>!Timer Result[Int,String]={
+  l _=(stdlib::time.sleepMs(0):Unit);
+  Ok(#url)
 }
 ```
 

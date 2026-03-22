@@ -60,12 +60,12 @@ Rules:
 Effectful tests use explicit effects:
 
 ```sigil program language/test-fixtures/tests/effects.sigil
-e console
+i stdlib::io
 
 λmain()=>Unit=()
 
-test "writes log" =>!IO  {
-  console.log("x")=()
+test "writes log" =>!Log  {
+  stdlib::io.println("x")=()
 }
 ```
 
@@ -85,12 +85,12 @@ Placement rule:
 Example:
 
 ```sigil program language/test-fixtures/tests/mocking.sigil
-λfetchUser(id:Int)=>!Network String="real"
+λfetchUser(id:Int)=>String="real"
 
 λmain()=>Unit=()
 
-test "fallback on API failure" =>!Network  {
-  withMock(fetchUser,λ(id:Int)=>!Network String="ERR"){fetchUser(1)="ERR"}
+test "fallback on API failure" {
+  withMock(fetchUser,λ(id:Int)=>String="ERR"){fetchUser(1)="ERR"}
 }
 ```
 

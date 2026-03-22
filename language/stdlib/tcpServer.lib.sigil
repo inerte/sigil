@@ -4,4 +4,4 @@ t Response={message:String}
 
 λresponse(message:String)=>Response={message:message}
 
-λserve(handler:λ(Request)=>!IO Response,port:Int)=>!IO Unit=()
+λserve(handler:λ(Request)=>Response,port:Int)=>!Tcp Unit=()

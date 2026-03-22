@@ -219,9 +219,9 @@ Sigil uses one promise-shaped runtime model for FFI too. Promise-returning FFI c
 ```sigil program
 e fs::promises
 
-λmain()=>!IO String=readFile("data.txt")
+λmain()=>!Fs String=readFile("data.txt")
 
-λreadFile(path:String)=>!IO String=fs::promises.readFile(path,"utf8")
+λreadFile(path:String)=>!Fs String=fs::promises.readFile(path,"utf8")
 ```
 
 Compiles to:

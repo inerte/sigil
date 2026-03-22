@@ -90,9 +90,7 @@ pub enum ValidationError {
     },
 
     #[error("SIGIL-CANON-TRAVERSAL-FILTER-COUNT: Expression uses filter then length for counting.\n\nSigil rejects the exact shape #(xs filter pred) when a canonical one-pass counting path exists.\n\nUse stdlib::list.countIf(pred,xs) instead.")]
-    FilterThenCount {
-        location: SourceLocation,
-    },
+    FilterThenCount { location: SourceLocation },
 
     #[error("SIGIL-CANON-RECURSION-COLLECTION-NONSTRUCTURAL: Recursive function '{function_name}' has collection parameter but doesn't use structural recursion.\n\nSigil enforces ONE way: structural recursion for collections.")]
     NonStructuralRecursion {
@@ -120,45 +118,28 @@ pub enum ValidationError {
     },
 
     #[error("SIGIL-CANON-FILE-PURPOSE-NONE: {message}")]
-    FilePurposeNone {
-        message: String,
-    },
+    FilePurposeNone { message: String },
 
     #[error("SIGIL-CANON-FILE-PURPOSE-BOTH: {message}")]
-    FilePurposeBoth {
-        message: String,
-    },
+    FilePurposeBoth { message: String },
 
     #[error("SIGIL-CANON-TEST-LOCATION: {message}")]
-    TestLocationInvalid {
-        message: String,
-        file_path: String,
-    },
+    TestLocationInvalid { message: String, file_path: String },
 
     #[error("SIGIL-CANON-TEST-NO-EXPORTS: {message}")]
-    TestNoExports {
-        message: String,
-    },
+    TestNoExports { message: String },
 
     #[error("SIGIL-CANON-LIB-NO-MAIN: {message}")]
-    LibNoMain {
-        message: String,
-    },
+    LibNoMain { message: String },
 
     #[error("SIGIL-CANON-EXEC-NEEDS-MAIN: {message}")]
-    ExecNeedsMain {
-        message: String,
-    },
+    ExecNeedsMain { message: String },
 
     #[error("SIGIL-CANON-TEST-NEEDS-MAIN: {message}")]
-    TestNeedsMain {
-        message: String,
-    },
+    TestNeedsMain { message: String },
 
     #[error("SIGIL-CANON-DECL-CATEGORY-ORDER: {message}")]
-    DeclarationOrderOld {
-        message: String,
-    },
+    DeclarationOrderOld { message: String },
 
     #[error("SIGIL-CANON-FILENAME-CASE: filenames must start with a lowercase letter\n\nFile: {filename}\nFound: {basename}\nRename to: {suggested}\n\nSigil enforces ONE way: filenames must be lowerCamelCase.")]
     FilenameCase {
@@ -187,6 +168,12 @@ pub enum ValidationError {
     #[error("SIGIL-CANON-SOURCE-FORM: source is not written in Sigil's one true canonical form\n\nWrite the file exactly as:\n\n{canonical_source}")]
     SourceForm {
         canonical_source: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-EFFECT-DECL-PLACEMENT: {message}")]
+    EffectDeclarationPlacement {
+        message: String,
         location: SourceLocation,
     },
 
@@ -238,7 +225,9 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
-    #[error("SIGIL-CANON-TRAILING-WHITESPACE: trailing whitespace\n\nFile: {filename}\nLine: {line}")]
+    #[error(
+        "SIGIL-CANON-TRAILING-WHITESPACE: trailing whitespace\n\nFile: {filename}\nLine: {line}"
+    )]
     TrailingWhitespace {
         filename: String,
         line: usize,
@@ -253,39 +242,25 @@ pub enum ValidationError {
     },
 
     #[error("SIGIL-CANON-DELIMITER-SPACING: non-canonical delimiter spacing\n\nUse tight delimiters with no spaces just inside brackets, parentheses, or braces.")]
-    DelimiterSpacing {
-        location: SourceLocation,
-    },
+    DelimiterSpacing { location: SourceLocation },
 
     #[error("SIGIL-CANON-OPERATOR-SPACING: non-canonical operator spacing\n\nUse no spaces around ':', '=>', '=', '|', '+', '-', '*', '/', and '%'.")]
-    OperatorSpacing {
-        location: SourceLocation,
-    },
+    OperatorSpacing { location: SourceLocation },
 
     #[error("SIGIL-CANON-SIGNATURE-LAYOUT: function and lambda signatures must stay on one line\n\nKeep the full signature and direct body introducer on a single line.")]
-    SignatureLayout {
-        location: SourceLocation,
-    },
+    SignatureLayout { location: SourceLocation },
 
     #[error("SIGIL-CANON-MATCH-LAYOUT: non-canonical match layout\n\nSingle-arm match may stay on one line. Multi-arm match must use multiline canonical layout.")]
-    MatchLayout {
-        location: SourceLocation,
-    },
+    MatchLayout { location: SourceLocation },
 
     #[error("SIGIL-CANON-MATCH-ARM-LAYOUT: non-canonical match arm layout\n\nEach multiline match arm header must start as 'pattern=>'. The body must begin on that same line. Continued body lines must stay in canonical indented form.")]
-    MatchArmLayout {
-        location: SourceLocation,
-    },
+    MatchArmLayout { location: SourceLocation },
 
     #[error("SIGIL-CANON-REDUNDANT-PARENS: redundant parentheses\n\nRemove parentheses that do not change the canonical expression shape.")]
-    RedundantParens {
-        location: SourceLocation,
-    },
+    RedundantParens { location: SourceLocation },
 
     #[error("SIGIL-CANON-MATCH-BODY-BLOCK: direct match bodies must not be wrapped in a block\n\nUse 'λf()=>T match ...' instead of wrapping the match in '{{...}}'.")]
-    MatchBodyBlock {
-        location: SourceLocation,
-    },
+    MatchBodyBlock { location: SourceLocation },
 
     #[error("SIGIL-CANON-PARAM-ORDER: Parameter out of alphabetical order in function '{function_name}'\n\nFound: {param_name} at position {position}\nAfter: {prev_param}\n\nParameters must be alphabetically ordered.\nExpected '{param_name}' to come before '{prev_param}'.\n\nCorrect order: {expected_order:?}\n\nSigil enforces ONE WAY: canonical parameter ordering.")]
     ParameterOrder {
@@ -353,9 +328,7 @@ pub enum ValidationError {
     },
 
     #[error("SIGIL-CANON-WITH-MOCK-TEST-ONLY: withMock is only allowed directly inside test declaration bodies\n\nSigil allows mocking only in tests. Move this withMock expression into a test body.")]
-    WithMockTestOnly {
-        location: SourceLocation,
-    },
+    WithMockTestOnly { location: SourceLocation },
 
     #[error("SIGIL-CANON-DECL-EXPORT-ORDER: Declarations with 'export' must come before non-exported declarations\n\nFound non-exported '{prev_name}' before exported '{current_name}'")]
     DeclExportOrder {
@@ -385,14 +358,10 @@ pub enum ValidationError {
     },
 
     #[error("SIGIL-CANON-MATCH-BOOLEAN: Cannot pattern match on boolean expression\n\nUse if-expression instead: (condition)=>thenBranch|elseBranch")]
-    MatchBoolean {
-        location: SourceLocation,
-    },
+    MatchBoolean { location: SourceLocation },
 
     #[error("SIGIL-CANON-MATCH-TUPLE-BOOLEAN: Cannot pattern match on tuple containing booleans\n\nPattern match discriminates on structure, not boolean values.")]
-    MatchTupleBoolean {
-        location: SourceLocation,
-    },
+    MatchTupleBoolean { location: SourceLocation },
 
     #[error("SIGIL-CANON-DECL-CATEGORY-ORDER: Declarations out of category order\n\nExpected: types => externs => imports => consts => functions => tests\nFound: {found_category} after {prev_category}")]
     DeclCategoryOrder {
@@ -433,41 +402,106 @@ impl ValidationError {
             ValidationError::MissingReturnType { location, .. } => *location,
             ValidationError::MissingParamType { location, .. } => *location,
             ValidationError::FilePurposeNone { .. } => SourceLocation {
-                start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
-                end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+                start: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
+                end: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
             },
             ValidationError::FilePurposeBoth { .. } => SourceLocation {
-                start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
-                end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+                start: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
+                end: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
             },
             ValidationError::TestLocationInvalid { .. } => SourceLocation {
-                start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
-                end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+                start: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
+                end: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
             },
             ValidationError::TestNoExports { .. } => SourceLocation {
-                start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
-                end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+                start: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
+                end: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
             },
             ValidationError::LibNoMain { .. } => SourceLocation {
-                start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
-                end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+                start: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
+                end: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
             },
             ValidationError::ExecNeedsMain { .. } => SourceLocation {
-                start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
-                end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+                start: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
+                end: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
             },
             ValidationError::TestNeedsMain { .. } => SourceLocation {
-                start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
-                end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+                start: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
+                end: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
             },
             ValidationError::DeclarationOrderOld { .. } => SourceLocation {
-                start: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
-                end: sigil_lexer::Position { line: 1, column: 1, offset: 0 },
+                start: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
+                end: sigil_lexer::Position {
+                    line: 1,
+                    column: 1,
+                    offset: 0,
+                },
             },
             ValidationError::FilenameCase { location, .. } => *location,
             ValidationError::FilenameInvalidChar { location, .. } => *location,
             ValidationError::FilenameFormat { location, .. } => *location,
             ValidationError::SourceForm { location, .. } => *location,
+            ValidationError::EffectDeclarationPlacement { location, .. } => *location,
             ValidationError::IdentifierForm { location, .. } => *location,
             ValidationError::TypeNameForm { location, .. } => *location,
             ValidationError::ConstructorNameForm { location, .. } => *location,
@@ -800,6 +834,13 @@ impl From<ValidationError> for Diagnostic {
                 .with_location(source_location_to_span(get_file(), location))
                 .with_details("canonical_source", canonical_source)
             }
+
+            ValidationError::EffectDeclarationPlacement { message, location } => Diagnostic::new(
+                codes::canonical::SOURCE_FORM,
+                SigilPhase::Canonical,
+                message,
+            )
+            .with_location(source_location_to_span(get_file(), location)),
 
             ValidationError::IdentifierForm { found, suggestion, location } => Diagnostic::new(
                 codes::canonical::IDENTIFIER_FORM,

@@ -1,3 +1,5 @@
+e axios:{get:λ(String)=>!Http String}
+
 e console
 
 λadd(a:Int,b:Int)=>Int=a+b
@@ -6,14 +8,14 @@ e console
 
 λdouble(x:Int)=>Int=x*2
 
-λfetchData()=>!Network String="network-data"
+λfetchData()=>!Http String=axios.get("https://example.com")
 
-λlog(msg:String)=>!IO Unit=console.log(msg)
+λlog(msg:String)=>!Log Unit=console.log(msg)
 
-λlogDoubled(x:Int)=>!IO Unit=logValue(double(x))
+λlogDoubled(x:Int)=>!Log Unit=logValue(double(x))
 
-λlogValue(x:Int)=>!IO Unit=console.log(x)
+λlogValue(x:Int)=>!Log Unit=console.log(x)
 
-λmain()=>!IO!Network Unit=processAndLog()
+λmain()=>!Http!Log Unit=processAndLog()
 
-λprocessAndLog()=>!IO!Network Unit=log(fetchData())
+λprocessAndLog()=>!Http!Log Unit=log(fetchData())

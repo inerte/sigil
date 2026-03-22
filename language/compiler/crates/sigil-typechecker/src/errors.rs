@@ -58,7 +58,11 @@ impl TypeError {
                 // Add caret pointing to error location
                 let line_num_str = loc.start.line.to_string();
                 let padding = " ".repeat(line_num_str.len() + 3 + loc.start.column);
-                output.push_str(&format!("  {} | {}^\n", " ".repeat(line_num_str.len()), padding));
+                output.push_str(&format!(
+                    "  {} | {}^\n",
+                    " ".repeat(line_num_str.len()),
+                    padding
+                ));
             }
         }
 
@@ -81,17 +85,15 @@ pub fn format_type(typ: &InferenceType) -> String {
     let typ = prune(typ);
 
     match &typ {
-        InferenceType::Primitive(p) => {
-            match p.name {
-                PrimitiveName::Int => "Int".to_string(),
-                PrimitiveName::Float => "Float".to_string(),
-                PrimitiveName::Bool => "Bool".to_string(),
-                PrimitiveName::String => "String".to_string(),
-                PrimitiveName::Char => "Char".to_string(),
-                PrimitiveName::Unit => "Unit".to_string(),
-                PrimitiveName::Never => "Never".to_string(),
-            }
-        }
+        InferenceType::Primitive(p) => match p.name {
+            PrimitiveName::Int => "Int".to_string(),
+            PrimitiveName::Float => "Float".to_string(),
+            PrimitiveName::Bool => "Bool".to_string(),
+            PrimitiveName::String => "String".to_string(),
+            PrimitiveName::Char => "Char".to_string(),
+            PrimitiveName::Unit => "Unit".to_string(),
+            PrimitiveName::Never => "Never".to_string(),
+        },
 
         InferenceType::Var(tvar) => {
             // Use Greek letters for type variables
@@ -109,7 +111,9 @@ pub fn format_type(typ: &InferenceType) -> String {
 
             // Use Sigil syntax: (T1, T2) => R
             if let Some(ref effects) = tfunc.effects {
-                let effect_str = effects
+                let mut sorted_effects = effects.iter().cloned().collect::<Vec<_>>();
+                sorted_effects.sort();
+                let effect_str = sorted_effects
                     .iter()
                     .map(|e| format!("!{}", e))
                     .collect::<Vec<_>>()
@@ -125,7 +129,11 @@ pub fn format_type(typ: &InferenceType) -> String {
         }
 
         InferenceType::Map(tmap) => {
-            format!("{{{} ↦ {}}}", format_type(&tmap.key_type), format_type(&tmap.value_type))
+            format!(
+                "{{{} ↦ {}}}",
+                format_type(&tmap.key_type),
+                format_type(&tmap.value_type)
+            )
         }
 
         InferenceType::Tuple(ttuple) => {

@@ -6,7 +6,7 @@ use logos::Logos;
 
 /// All token types in the Sigil language.
 #[derive(Logos, Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[logos(skip r"[ ]+")]  // Skip spaces (but not newlines or tabs)
+#[logos(skip r"[ ]+")] // Skip spaces (but not newlines or tabs)
 pub enum TokenType {
     // ========================================================================
     // LITERALS
@@ -86,6 +86,9 @@ pub enum TokenType {
 
     #[token("when")]
     WHEN,
+
+    #[token("effect", priority = 3)]
+    Effect,
 
     // ========================================================================
     // TYPE SYMBOLS
@@ -271,7 +274,11 @@ pub struct Position {
 
 impl Position {
     pub fn new(line: usize, column: usize, offset: usize) -> Self {
-        Self { line, column, offset }
+        Self {
+            line,
+            column,
+            offset,
+        }
     }
 }
 
@@ -289,7 +296,10 @@ impl SourceLocation {
     }
 
     pub fn single(pos: Position) -> Self {
-        Self { start: pos, end: pos }
+        Self {
+            start: pos,
+            end: pos,
+        }
     }
 }
 

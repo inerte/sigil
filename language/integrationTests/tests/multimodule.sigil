@@ -12,14 +12,14 @@ i src::support
 
 λprojectConfig()=>String="{\"layout\":{\"src\":\"src\",\"tests\":\"tests\",\"out\":\".local\"}}"
 
-λrunProject(root:String,target:String)=>!IO String={
+λrunProject(root:String,target:String)=>!Process String={
   l result=(stdlib::process.run(src::support.sigilIn(["run",target],root)):stdlib::process.ProcessResult);
   src::support.combinedOutput(result)
 }
 
-λwriteProjectFile(content:String,path:String,root:String)=>!IO Unit=stdlib::file.writeText(content,stdlib::path.join(root,path))
+λwriteProjectFile(content:String,path:String,root:String)=>!Fs Unit=stdlib::file.writeText(content,stdlib::path.join(root,path))
 
-test "multimodule simple import runs" =>!IO  {
+test "multimodule simple import runs" =>!Clock!Fs!Process  {
   l root=(src::support.uniqueRepoTempDir("multimodule"):String);
   l _=(stdlib::file.makeDirs(stdlib::path.join(root,"src")):Unit);
   l _=(writeProjectFile(projectConfig(),"sigil.json",root):Unit);
@@ -30,7 +30,7 @@ test "multimodule simple import runs" =>!IO  {
   stdlib::string.indexOf(output,"42")≥0=true
 }
 
-test "multimodule multiple imports run" =>!IO  {
+test "multimodule multiple imports run" =>!Clock!Fs!Process  {
   l root=(src::support.uniqueRepoTempDir("multimodule"):String);
   l _=(stdlib::file.makeDirs(stdlib::path.join(root,"src")):Unit);
   l _=(writeProjectFile(projectConfig(),"sigil.json",root):Unit);
@@ -42,7 +42,7 @@ test "multimodule multiple imports run" =>!IO  {
   stdlib::string.indexOf(output,"35")≥0=true
 }
 
-test "multimodule transitive dependency runs" =>!IO  {
+test "multimodule transitive dependency runs" =>!Clock!Fs!Process  {
   l root=(src::support.uniqueRepoTempDir("multimodule"):String);
   l _=(stdlib::file.makeDirs(stdlib::path.join(root,"src")):Unit);
   l _=(writeProjectFile(projectConfig(),"sigil.json",root):Unit);

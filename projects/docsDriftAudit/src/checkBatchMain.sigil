@@ -1,0 +1,47 @@
+i src::docsDrift
+
+i src::types
+
+i stdlib::file
+
+i stdlib::io
+
+i stdlib::string
+
+i stdlib::process
+
+λmain()=>!CliIo Unit match stdlib::process.argv(){
+  [outPath,.paths]=>match #paths=0{
+    true=>{
+      l _=(stdlib::io.eprintln("usage: sigil run src/checkBatchMain.sigil -- <issues-output-path> <markdown-path>..."):Unit);
+      stdlib::process.exit(1)
+    }|
+    false=>match src::docsDrift.runCheckForPaths(paths){
+      Ok(issues)=>match #issues=0{
+        true=>{
+          l _=(stdlib::file.writeText("",outPath):Unit);
+          stdlib::process.exit(0)
+        }|
+        false=>{
+          l _=(stdlib::file.writeText(renderIssues(issues),outPath):Unit);
+          stdlib::process.exit(1)
+        }
+      }|
+      Err(message)=>{
+        l _=(stdlib::file.writeText(message++"\n",outPath):Unit);
+        stdlib::process.exit(1)
+      }
+    }
+  }|
+  _=>{
+    l _=(stdlib::io.eprintln("usage: sigil run src/checkBatchMain.sigil -- <issues-output-path> <markdown-path>..."):Unit);
+    stdlib::process.exit(1)
+  }
+}
+
+λrenderIssue(issue:src::types.Issue)=>String=issue.path++"\t"++stdlib::string.intToString(issue.line)++"\t"++issue.message
+
+λrenderIssues(issues:[src::types.Issue])=>String match #issues=0{
+  true=>""|
+  false=>stdlib::string.join("\n",issues map renderIssue)++"\n"
+}

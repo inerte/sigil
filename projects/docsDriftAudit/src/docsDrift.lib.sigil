@@ -403,6 +403,11 @@ i stdlib::string
   Err(message)=>Err(message)
 }
 
+λrunRefsForPaths(paths:[String])=>!AuditIo Result[MarkdownAudit,String] match gitTopLevel(){
+  Ok(root)=>Ok(runMarkdownCoverageAudit(paths,root))|
+  Err(message)=>Err(message)
+}
+
 λrunRepoCheck()=>!AuditIo Result[[src::types.Issue],String] match gitTopLevel(){
   Ok(root)=>match gitTrackedMarkdown(){
     Ok(markdownPaths)=>{

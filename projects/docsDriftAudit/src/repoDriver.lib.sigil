@@ -1,7 +1,5 @@
 t MarkdownAudit={documentedRefs:[String],issues:[src::types.Issue],snippetRefs:[String]}
 
-i src::coverage
-
 i src::docsDrift
 
 i src::types
@@ -18,7 +16,17 @@ i stdlib::process
 
 i stdlib::string
 
+λbatchSize()=>Int=8
+
 λcommand(args:[String],root:String)=>stdlib::process.Command=stdlib::process.withCwd(stdlib::process.command([stdlib::path.join(root,"language/compiler/target/debug/sigil"),"run"]⧺args),stdlib::path.join(root,"projects/docsDriftAudit"))
+
+λdropBatch(items:[String],remaining:Int)=>[String] match remaining=0{
+  true=>items|
+  false=>match items{
+    []=>[]|
+    [head,.tail]=>dropBatch(tail,remaining-1)
+  }
+}
 
 λemptyAudit()=>MarkdownAudit={documentedRefs:[],issues:[],snippetRefs:[]}
 
@@ -114,27 +122,27 @@ i stdlib::string
 
 λrunMarkdownInner(acc:MarkdownAudit,paths:[String],root:String)=>!AuditIo Result[MarkdownAudit,String] match paths{
   []=>Ok(acc)|
-  [head,.tail]=>match runMarkdownPath(head,root){
+  _=>match runMarkdownPath(takeBatch(paths,batchSize()),root){
     Ok(current)=>match #current.issues>0{
       true=>Ok(mergeAudit(acc,current))|
-      false=>runMarkdownInner(mergeAudit(acc,current),tail,root)
+      false=>runMarkdownInner(mergeAudit(acc,current),dropBatch(paths,batchSize()),root)
     }|
     Err(message)=>Err(message)
   }
 }
 
-λrunMarkdownPath(filePath:String,root:String)=>!AuditIo Result[MarkdownAudit,String]={
+λrunMarkdownPath(filePaths:[String],root:String)=>!AuditIo Result[MarkdownAudit,String]={
   l issuesPath=(outputPath("issues.txt",root):String);
   l refsPath=(outputPath("refs.txt",root):String);
   l _=(stdlib::file.writeText("",issuesPath):Unit);
   l _=(stdlib::file.writeText("",refsPath):Unit);
-  l checkResult=(stdlib::process.run(command(["src/checkMain.sigil","--",filePath,issuesPath],root)):stdlib::process.ProcessResult);
+  l checkResult=(stdlib::process.run(command(["src/checkBatchMain.sigil","--",issuesPath]⧺filePaths,root)):stdlib::process.ProcessResult);
   match checkResult.code=0{
     true=>{
-      l refsResult=(stdlib::process.run(command(["src/refsMain.sigil","--",filePath,refsPath],root)):stdlib::process.ProcessResult);
+      l refsResult=(stdlib::process.run(command(["src/refsBatchMain.sigil","--",refsPath]⧺filePaths,root)):stdlib::process.ProcessResult);
       match refsResult.code=0{
         true=>Ok(parseRefs(readLines(refsPath)))|
-        false=>Err("refs extraction failed for "++filePath++": "++processOutput(refsResult))
+        false=>Err("refs extraction failed: "++processOutput(refsResult))
       }
     }|
     false=>Ok({documentedRefs:[],issues:parseIssueLines(readLines(issuesPath)),snippetRefs:[]})
@@ -153,5 +161,13 @@ i stdlib::string
       true=>runStdlibExportsInner(mergeUnique(acc,readLines(exportsPath)),tail,root)|
       false=>Err("stdlib export extraction failed for "++head++": "++processOutput(result))
     }
+  }
+}
+
+λtakeBatch(items:[String],remaining:Int)=>[String] match remaining=0{
+  true=>[]|
+  false=>match items{
+    []=>[]|
+    [head,.tail]=>[head]⧺takeBatch(tail,remaining-1)
   }
 }

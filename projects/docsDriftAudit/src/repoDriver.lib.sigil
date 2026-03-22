@@ -136,16 +136,11 @@ i stdlib::string
   l refsPath=(outputPath("refs.txt",root):String);
   l _=(stdlib::file.writeText("",issuesPath):Unit);
   l _=(stdlib::file.writeText("",refsPath):Unit);
-  l checkResult=(stdlib::process.run(command(["src/checkBatchMain.sigil","--",issuesPath]⧺filePaths,root)):stdlib::process.ProcessResult);
-  match checkResult.code=0{
-    true=>{
-      l refsResult=(stdlib::process.run(command(["src/refsBatchMain.sigil","--",refsPath]⧺filePaths,root)):stdlib::process.ProcessResult);
-      match refsResult.code=0{
-        true=>Ok(parseRefs(readLines(refsPath)))|
-        false=>Err("refs extraction failed: "++processOutput(refsResult))
-      }
-    }|
-    false=>Ok({documentedRefs:[],issues:parseIssueLines(readLines(issuesPath)),snippetRefs:[]})
+  l result=(stdlib::process.run(command(["src/markdownBatchMain.sigil","--",issuesPath,refsPath]⧺filePaths,root)):stdlib::process.ProcessResult);
+  match result.code{
+    0=>Ok(parseRefs(readLines(refsPath)))|
+    1=>Ok({documentedRefs:[],issues:parseIssueLines(readLines(issuesPath)),snippetRefs:[]})|
+    _=>Err("markdown batch audit failed: "++processOutput(result))
   }
 }
 

@@ -2,17 +2,16 @@
 //!
 //! Handles detection and loading of sigil.json project configuration.
 //! `src/` and `tests/` are canonical project directories; `sigil.json`
-//! currently exists to mark the project root and optionally override the
-//! generated output directory.
+//! marks the project root and declares required project metadata.
 
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
+use thiserror::Error;
 
 /// Effective project layout used by the compiler.
 ///
-/// `src/` and `tests/` are fixed by the compiler. Only `out` is configurable
-/// through `sigil.json`.
+/// `src/`, `tests/`, and `.local/` are fixed by the compiler.
 #[derive(Debug, Clone, Serialize)]
 pub struct ProjectLayout {
     pub src: String,
@@ -54,16 +53,61 @@ pub struct ProjectConfig {
     pub layout: ProjectLayout,
 }
 
-#[derive(Debug, Deserialize)]
-struct RawProjectLayout {
-    #[serde(default = "default_out")]
-    out: String,
+#[derive(Debug, Error)]
+pub enum ProjectConfigError {
+    #[error("failed to read sigil.json at {}: {source}", path.display())]
+    Io {
+        path: PathBuf,
+        #[source]
+        source: std::io::Error,
+    },
+
+    #[error("invalid sigil.json at {}: {message}", path.display())]
+    Invalid { path: PathBuf, message: String },
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct RawProjectConfig {
-    #[serde(default)]
-    layout: Option<RawProjectLayout>,
+    name: String,
+    version: String,
+}
+
+fn invalid_config(path: PathBuf, message: impl Into<String>) -> ProjectConfigError {
+    ProjectConfigError::Invalid {
+        path,
+        message: message.into(),
+    }
+}
+
+fn parse_project_config(
+    config_path: PathBuf,
+    root: PathBuf,
+    source: &str,
+) -> Result<ProjectConfig, ProjectConfigError> {
+    let raw: RawProjectConfig = serde_json::from_str(source)
+        .map_err(|err| invalid_config(config_path.clone(), err.to_string()))?;
+    let name = raw.name.trim();
+    let version = raw.version.trim();
+
+    if name.is_empty() {
+        return Err(invalid_config(
+            config_path,
+            "field `name` must be a non-empty string",
+        ));
+    }
+
+    if version.is_empty() {
+        return Err(invalid_config(
+            config_path,
+            "field `version` must be a non-empty string",
+        ));
+    }
+
+    Ok(ProjectConfig {
+        root,
+        layout: ProjectLayout::default(),
+    })
 }
 
 /// Find the Sigil project root by searching for sigil.json
@@ -85,55 +129,68 @@ pub fn find_project_root(start_path: &Path) -> Option<PathBuf> {
 }
 
 /// Get Sigil project configuration
-pub fn get_project_config(start_path: &Path) -> Option<ProjectConfig> {
-    let root = find_project_root(start_path)?;
+pub fn get_project_config(start_path: &Path) -> Result<Option<ProjectConfig>, ProjectConfigError> {
+    let Some(root) = find_project_root(start_path) else {
+        return Ok(None);
+    };
     let config_path = root.join("sigil.json");
+    let source = fs::read_to_string(&config_path).map_err(|source| ProjectConfigError::Io {
+        path: config_path.clone(),
+        source,
+    })?;
 
-    let raw_config: RawProjectConfig = serde_json::from_str(&fs::read_to_string(config_path).ok()?).ok()?;
-    let out = raw_config
-        .layout
-        .map(|layout| layout.out)
-        .unwrap_or_else(default_out);
-
-    Some(ProjectConfig {
-        root,
-        layout: ProjectLayout::canonical(out),
-    })
+    parse_project_config(config_path, root, &source).map(Some)
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{ProjectLayout, RawProjectConfig};
+    use super::{parse_project_config, ProjectConfigError};
+    use std::path::PathBuf;
 
-    #[test]
-    fn empty_config_uses_canonical_layout_defaults() {
-        let raw: RawProjectConfig = serde_json::from_str("{}").unwrap();
-        let out = raw.layout.map(|layout| layout.out).unwrap_or_else(super::default_out);
-        let layout = ProjectLayout::canonical(out);
-
-        assert_eq!(layout.src, "src");
-        assert_eq!(layout.tests, "tests");
-        assert_eq!(layout.out, ".local");
+    fn parse(source: &str) -> Result<super::ProjectConfig, ProjectConfigError> {
+        parse_project_config(
+            PathBuf::from("/tmp/demo/sigil.json"),
+            PathBuf::from("/tmp/demo"),
+            source,
+        )
     }
 
     #[test]
-    fn legacy_src_and_tests_entries_are_ignored() {
-        let raw: RawProjectConfig = serde_json::from_str(
+    fn valid_config_requires_name_and_version_and_uses_canonical_layout() {
+        let config = parse(r#"{"name":"demo","version":"0.1.0"}"#).unwrap();
+
+        assert_eq!(config.layout.src, "src");
+        assert_eq!(config.layout.tests, "tests");
+        assert_eq!(config.layout.out, ".local");
+    }
+
+    #[test]
+    fn config_rejects_unknown_fields() {
+        let err = parse(
             r#"{
-  "name": "demo",
-  "version": "0.1.0",
-  "layout": {
-    "src": "custom-src",
-    "tests": "custom-tests",
-    "out": "build"
-  }
+  "name":"demo",
+  "version":"0.1.0",
+  "extra":true
 }"#,
         )
-        .unwrap();
+        .unwrap_err();
 
-        let layout = ProjectLayout::canonical(raw.layout.unwrap().out);
-        assert_eq!(layout.src, "src");
-        assert_eq!(layout.tests, "tests");
-        assert_eq!(layout.out, "build");
+        assert!(err.to_string().contains("unknown field `extra`"));
+    }
+
+    #[test]
+    fn config_rejects_missing_name() {
+        let err = parse(r#"{"version":"0.1.0"}"#).unwrap_err();
+
+        assert!(err.to_string().contains("missing field `name`"));
+    }
+
+    #[test]
+    fn config_rejects_empty_version() {
+        let err = parse(r#"{"name":"demo","version":"   "}"#).unwrap_err();
+
+        assert!(err
+            .to_string()
+            .contains("field `version` must be a non-empty string"));
     }
 }

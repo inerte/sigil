@@ -3,7 +3,7 @@
 Canonical practical Sigil corpus for algorithms and data-processing examples.
 
 Layout:
-- `sigil.json` (project root marker)
+- `sigil.json` (project root marker with required `name` and `version`)
 - `src/`
 - `tests/`
 

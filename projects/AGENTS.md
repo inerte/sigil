@@ -25,7 +25,7 @@ These are not the language implementation itself.
 ## Typical Sigil Project Layout
 
 Most Sigil projects in this repo use:
-- `sigil.json` (project root marker; optional `layout.out` override)
+- `sigil.json` (project root marker; required `name` and `version`)
 - `src/`
 - `tests/`
 - `.local/` (generated output)

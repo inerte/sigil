@@ -1,7 +1,4 @@
 {
-  "layout": {
-    "src": "src",
-    "tests": "tests",
-    "out": ".local"
-  }
+  "name": "integration-tests",
+  "version": "0.1.0"
 }

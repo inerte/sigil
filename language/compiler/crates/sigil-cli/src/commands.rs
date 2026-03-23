@@ -1,7 +1,7 @@
 //! Command implementations for CLI
 
 use crate::module_graph::{load_project_effect_catalog_for, ModuleGraph, ModuleGraphError, LoadedModule};
-use crate::project::{find_project_root, get_project_config};
+use crate::project::{get_project_config, ProjectConfigError};
 use rayon::prelude::*;
 use sigil_ast::{Declaration, Program, Type, TypeDef};
 use sigil_diagnostics::codes;
@@ -49,6 +49,9 @@ pub enum CliError {
 
     #[error("Module graph error: {0}")]
     ModuleGraph(#[from] ModuleGraphError),
+
+    #[error("Project config error: {0}")]
+    ProjectConfig(#[from] ProjectConfigError),
 }
 
 /// Extract error code from error message (format: "SIGIL-CANON-XXX: message")
@@ -538,7 +541,9 @@ pub fn test_command(
 }
 
 pub fn validate_command(path: &Path, env: &str) -> Result<(), CliError> {
-    let project_root = find_project_root(path).ok_or_else(|| {
+    let project_root = get_project_config(path)?
+        .map(|project| project.root)
+        .ok_or_else(|| {
         CliError::Validation(format!(
             "{}: no Sigil project found while validating topology",
             codes::topology::MISSING_MODULE
@@ -958,17 +963,19 @@ globalThis.__sigil_topology_bindings = __sigil_topology_build_bindings(__sigil_t
     ))
 }
 
-fn project_root_and_topology(path: &Path) -> Option<(PathBuf, bool)> {
-    let project = get_project_config(path)?;
+fn project_root_and_topology(path: &Path) -> Result<Option<(PathBuf, bool)>, ProjectConfigError> {
+    let Some(project) = get_project_config(path)? else {
+        return Ok(None);
+    };
     let topology_present = topology_source_path(&project.root).exists();
-    Some((project.root, topology_present))
+    Ok(Some((project.root, topology_present)))
 }
 
 fn runner_prelude(
     path: &Path,
     selected_env: Option<&str>,
 ) -> Result<Option<String>, CliError> {
-    let Some((project_root, topology_present)) = project_root_and_topology(path) else {
+    let Some((project_root, topology_present)) = project_root_and_topology(path)? else {
         return Ok(None);
     };
 
@@ -1636,7 +1643,7 @@ fn get_module_output_path(module: &LoadedModule) -> PathBuf {
     use std::fs;
 
     // Check if this is a project file
-    if let Some(project) = module.project.clone().or_else(|| crate::project::get_project_config(&module.file_path)) {
+    if let Some(project) = module.project.clone() {
         // Use project's output directory
         let path_str = module.id.replace("::", "/");
         return project.root.join(&project.layout.out).join(format!("{}.ts", path_str));

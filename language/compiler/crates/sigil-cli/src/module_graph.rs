@@ -2,7 +2,7 @@
 //!
 //! Handles building a dependency graph of Sigil modules for multi-module compilation
 
-use crate::project::{get_project_config, ProjectConfig};
+use crate::project::{get_project_config, ProjectConfig, ProjectConfigError};
 use sigil_ast::{Declaration, Program};
 use sigil_lexer::Lexer;
 use sigil_parser::Parser;
@@ -47,6 +47,9 @@ pub enum ModuleGraphError {
         module_id: String,
         expected_path: String,
     },
+
+    #[error(transparent)]
+    ProjectConfig(#[from] ProjectConfigError),
 }
 
 pub struct ModuleGraph {
@@ -99,7 +102,7 @@ impl ModuleGraphBuilder {
         let abs_file = fs::canonicalize(file_path)?;
 
         // Determine project
-        let project = get_project_config(&abs_file).or(inherited_project);
+        let project = get_project_config(&abs_file)?.or(inherited_project);
 
         // Compute logical ID
         let computed_id = logical_id.or_else(|| file_path_to_module_id(&abs_file, &project));
@@ -149,17 +152,19 @@ impl ModuleGraphBuilder {
             &ast,
             Some(&filename),
             Some(&source),
-            ValidationOptions {
-                effect_catalog,
-            },
+            ValidationOptions { effect_catalog },
         )
-            .map_err(|e| ModuleGraphError::Validation(e))?;
+        .map_err(|e| ModuleGraphError::Validation(e))?;
 
         // Process implicit core prelude first for non-core modules.
         if module_key != "core::prelude" {
             let resolved = resolve_sigil_import(&abs_file, project.as_ref(), "core::prelude")?;
             if resolved.file_path.exists() {
-                self.visit(&resolved.file_path, Some(resolved.module_id), resolved.project)?;
+                self.visit(
+                    &resolved.file_path,
+                    Some(resolved.module_id),
+                    resolved.project,
+                )?;
             }
         }
 
@@ -174,8 +179,7 @@ impl ModuleGraphBuilder {
                 }
 
                 // Resolve import to file path
-                let resolved =
-                    resolve_sigil_import(&abs_file, project.as_ref(), &module_id)?;
+                let resolved = resolve_sigil_import(&abs_file, project.as_ref(), &module_id)?;
 
                 if !resolved.file_path.exists() {
                     return Err(ModuleGraphError::ImportNotFound {
@@ -185,7 +189,11 @@ impl ModuleGraphBuilder {
                 }
 
                 // Recursively visit
-                self.visit(&resolved.file_path, Some(resolved.module_id), resolved.project)?;
+                self.visit(
+                    &resolved.file_path,
+                    Some(resolved.module_id),
+                    resolved.project,
+                )?;
             }
         }
 
@@ -210,8 +218,10 @@ impl ModuleGraphBuilder {
     }
 }
 
-pub fn load_project_effect_catalog_for(file_path: &Path) -> Result<Option<EffectCatalog>, ModuleGraphError> {
-    let project = get_project_config(file_path);
+pub fn load_project_effect_catalog_for(
+    file_path: &Path,
+) -> Result<Option<EffectCatalog>, ModuleGraphError> {
+    let project = get_project_config(file_path)?;
     load_project_effect_catalog(project.as_ref())
 }
 
@@ -281,7 +291,10 @@ fn resolve_import_path(base_path: &Path, file_path_str: &str) -> Result<PathBuf,
     } else {
         Err(ModuleGraphError::ImportNotFound {
             module_id: file_path_str.to_string(),
-            expected_path: format!("Expected: {:?} (libraries must use .lib.sigil extension)", lib_path),
+            expected_path: format!(
+                "Expected: {:?} (libraries must use .lib.sigil extension)",
+                lib_path
+            ),
         })
     }
 }
@@ -308,8 +321,8 @@ fn load_project_effect_catalog(
     let ast = parser
         .parse()
         .map_err(|e| ModuleGraphError::Parser(format!("{}", e)))?;
-    let effect_catalog = EffectCatalog::from_program(&ast)
-        .map_err(|message| ModuleGraphError::Parser(message))?;
+    let effect_catalog =
+        EffectCatalog::from_program(&ast).map_err(|message| ModuleGraphError::Parser(message))?;
 
     validate_canonical_form_with_options(
         &ast,

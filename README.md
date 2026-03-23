@@ -57,7 +57,7 @@ pnpm build
 
 - Root `pnpm` scripts are convenience wrappers around the Rust compiler.
 - `pnpm test` is for JS/workspace tests that exist; Sigil test runs are the explicit `sigil:test:*` scripts.
-- Sigil user projects use canonical `src/` and `tests/` directories; `sigil.json` marks the project root and may optionally set `layout.out` (default: `.local`).
+- Sigil user projects use canonical `src/`, `tests/`, and `.local/`; `sigil.json` marks the project root and must declare `name` and `version`.
 - This monorepo mixes language implementation and projects intentionally, but the user-facing layout is demonstrated under `projects/`
 
 ## Website

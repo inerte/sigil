@@ -339,7 +339,7 @@ The point is: when you want to **understand** code, asking Claude Code is more e
 
 ### "What if Claude Code is unavailable?"
 
-Then you read the source code directly, just like you'd read any programming language. Sigil syntax is documented in `REPO_ROOT/language/docs/syntax-reference.md`.
+Then you read the source code directly, just like you'd read any programming language. Sigil syntax is documented in `language/docs/syntax-reference.md`.
 
 But realistically, if Claude Code is unavailable, you have bigger problems than reading Sigil code.
 

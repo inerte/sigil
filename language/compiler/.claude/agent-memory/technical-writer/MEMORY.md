@@ -2,7 +2,7 @@
 
 ## Website Articles
 
-Website articles are stored at `REPO_ROOT/website/articles/`
+Website articles are stored at `website/articles/`
 
 ### Article Format
 

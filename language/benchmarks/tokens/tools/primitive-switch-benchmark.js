@@ -5,12 +5,12 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { measureSourceWithAllTokenizers } from './tokenizers.js';
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 
 const DEFAULT_FILES = [
-  'language/benchmarks/algorithms/fibonacci/fibonacci.sigil',
-  'language/benchmarks/algorithms/gcd/gcd.sigil',
-  'language/benchmarks/algorithms/is-palindrome/isPalindrome.sigil',
+  'language/benchmarks/tokens/algorithms/fibonacci/fibonacci.sigil',
+  'language/benchmarks/tokens/algorithms/gcd/gcd.sigil',
+  'language/benchmarks/tokens/algorithms/is-palindrome/isPalindrome.sigil',
   'projects/todo-app/src/todoDomain.lib.sigil',
   'language/examples/optionResultPractical.sigil'
 ];
@@ -26,7 +26,7 @@ const ASCII_TO_UNICODE = new Map([
 ]);
 
 function usage() {
-  console.error('Usage: node language/benchmarks/tools/primitive-switch-benchmark.js [file ...]');
+  console.error('Usage: node language/benchmarks/tokens/tools/primitive-switch-benchmark.js [file ...]');
 }
 
 function toLegacyUnicode(source) {

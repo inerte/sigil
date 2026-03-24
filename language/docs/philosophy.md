@@ -295,7 +295,7 @@ More code fits in LLM context windows = better understanding = better code gener
 - `match` instead of bespoke symbolic control-flow markers
 - Unicode type symbols: `IntFloatBoolString` instead of `Int,Float,Bool,String`
 
-**Result:** Current benchmarks show ~10-15% fewer tokens than TypeScript on average (see `language/benchmarks/RESULTS.md`)
+**Result:** The current published token corpus shows **28.1% fewer tokens than TypeScript** overall (see `language/benchmarks/tokens/RESULTS.md`)
 
 **Why Unicode?** Modern LLMs tokenize Unicode efficiently, and it provides unambiguous semantic meaning. `Int` universally means "integers" in mathematics.
 

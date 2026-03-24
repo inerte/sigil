@@ -5,7 +5,7 @@
  * Compares algorithm implementations across languages.
  *
  * Usage:
- *   node benchmarks/tools/compare.ts benchmarks/algorithms/factorial
+ *   node language/benchmarks/tokens/tools/compare.js language/benchmarks/tokens/algorithms/factorial
  */
 
 import * as fs from 'fs';
@@ -38,7 +38,7 @@ function main() {
 
   if (args.length === 0) {
     console.error('Usage: compare.ts <algorithm-directory>');
-    console.error('Example: compare.ts benchmarks/algorithms/factorial');
+    console.error('Example: compare.js language/benchmarks/tokens/algorithms/factorial');
     process.exit(1);
   }
 

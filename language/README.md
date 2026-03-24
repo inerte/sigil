@@ -48,7 +48,7 @@ Claude Code: "This function calculates the nth Fibonacci number with a helper
               helper into a loop"
 ```
 
-**~10-15% fewer tokens than TypeScript (11.2% avg in current benchmark suite)** - More code fits in LLM context windows!
+**28.1% fewer tokens than TypeScript in the current published benchmark corpus** - More code fits in LLM context windows.
 
 ## First-Class Testing (Agent-First)
 
@@ -250,21 +250,21 @@ t User={active:Bool,name:String}
 ## Token Efficiency Comparison
 
 **Measured with `tiktoken` (`cl100k_base`) vs TypeScript across 8 benchmark algorithms**  
-See `benchmarks/RESULTS.md` for methodology and per-algorithm code.
+See `benchmarks/tokens/RESULTS.md` for methodology and per-algorithm code.
 
-| Algorithm | Sigil Tokens | TypeScript Tokens | Improvement |
-|----------|-------------:|------------------:|------------:|
-| factorial | 45 | 52 | +15.6% |
-| fibonacci | 45 | 60 | +33.3% |
-| gcd | 43 | 48 | +11.6% |
-| power | 47 | 52 | +10.6% |
-| mapDouble | 53 | 59 | +11.3% |
-| filterEven | 61 | 67 | +9.8% |
-| isPalindrome | 45 | 49 | +8.9% |
-| sumList | 55 | 50 | -9.1% |
-| **Average** | **49.3** | **54.6** | **+11.2%** |
+| Algorithm | Sigil Tokens | TypeScript Tokens | Sigil Fewer Tokens vs TS |
+|----------|-------------:|------------------:|-------------------------:|
+| factorial | 44 | 52 | 15.4% |
+| fibonacci | 57 | 60 | 5.0% |
+| gcd | 21 | 48 | 56.3% |
+| power | 44 | 52 | 15.4% |
+| map-double | 44 | 59 | 25.4% |
+| filter-even | 47 | 67 | 29.9% |
+| is-palindrome | 31 | 49 | 36.7% |
+| sum-list | 26 | 50 | 48.0% |
+| **Average** | **39.3** | **54.6** | **28.1%** |
 
-**Practical takeaway:** current evidence supports a **~10-15% token reduction**, not 40-60%.
+**Practical takeaway:** current published evidence supports roughly **28% fewer tokens than TypeScript** across the active 8-algorithm corpus.
 
 ## Developer Workflow
 
@@ -392,7 +392,7 @@ This is a research project exploring machine-first language design. Contribution
 1. **Unicode Tokenization**: Do modern LLM tokenizers handle `λ` as 1 token or multiple?
 2. **Generation Accuracy**: Can LLMs achieve >99% syntax correctness with canonical format?
 3. **Developer Experience**: Do developers prefer AI-mediated coding over direct writing?
-4. **Token Efficiency**: How much token reduction do we achieve in practice beyond the current ~11.2% benchmark average?
+4. **Token Efficiency**: How much token reduction do we achieve in practice beyond the current 28.1% published benchmark result?
 5. **Context Utilization**: Does denser code enable better LLM reasoning?
 
 ## License

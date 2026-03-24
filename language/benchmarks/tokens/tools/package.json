@@ -9,10 +9,10 @@
     "unicode-benchmark:test": "node unicode-benchmark.test.js"
   },
   "dependencies": {
-    "tiktoken": "^1.0.18"
+    "tiktoken": "^1.0.22"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.7.2"
+    "@types/node": "^20.19.37",
+    "typescript": "^5.9.3"
   }
 }

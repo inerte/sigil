@@ -4,7 +4,7 @@ import { execFileSync, execSync } from 'child_process';
 import { fileURLToPath } from 'url';
 
 const toolsDir = path.dirname(fileURLToPath(import.meta.url));
-const repoRoot = path.resolve(toolsDir, '../../..');
+const repoRoot = path.resolve(toolsDir, '../../../..');
 const compilerManifest = path.join(repoRoot, 'language/compiler/Cargo.toml');
 const sigilBinary = path.join(repoRoot, 'language/compiler/target/debug/sigil');
 
@@ -70,7 +70,8 @@ export function lexSigilFile(filePath) {
   const binary = ensureSigilBinary();
   const output = execFileSync(binary, ['lex', filePath], {
     cwd: repoRoot,
-    encoding: 'utf8'
+    encoding: 'utf8',
+    maxBuffer: 32 * 1024 * 1024
   });
   return JSON.parse(output);
 }

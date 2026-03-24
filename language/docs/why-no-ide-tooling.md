@@ -347,7 +347,7 @@ But realistically, if Claude Code is unavailable, you have bigger problems than 
 
 Actually, this works **better** as codebases grow:
 
-- **Large codebases**: More code fits in LLM context (Sigil is 10-15% more token-efficient than TypeScript)
+- **Large codebases**: More code fits in LLM context (the current published corpus shows Sigil using 28.1% fewer tokens than TypeScript)
 - **Complex code**: AI explanations scale better than human documentation
 - **Maintenance**: No stale documentation to keep in sync
 

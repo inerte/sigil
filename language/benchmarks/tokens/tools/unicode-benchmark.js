@@ -17,7 +17,7 @@ const candidatesConfig = JSON.parse(
   fs.readFileSync(path.join(toolsDir, 'unicode-candidates.json'), 'utf8')
 );
 const repoRoot = getRepoRoot();
-const defaultResultsPath = path.join(repoRoot, 'language/benchmarks/results/unicode-replacements.json');
+const defaultResultsPath = path.join(repoRoot, 'language/benchmarks/tokens/results/unicode-replacements.json');
 
 function parseArgs(argv) {
   const [command, ...rest] = argv;
@@ -251,7 +251,7 @@ function main() {
   const { command, options, positional } = parseArgs(process.argv.slice(2));
 
   if (!command || ['inventory', 'candidates', 'measure', 'explain'].includes(command) === false) {
-    console.error('Usage: node language/benchmarks/tools/unicode-benchmark.js <inventory|candidates|measure|explain> [symbol] [--out file] [--symbol symbol]');
+    console.error('Usage: node language/benchmarks/tokens/tools/unicode-benchmark.js <inventory|candidates|measure|explain> [symbol] [--out file] [--symbol symbol]');
     process.exit(1);
   }
 

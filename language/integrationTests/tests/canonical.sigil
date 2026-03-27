@@ -1,10 +1,23 @@
-λbadMatchSource()=>String="λfib(n:Int)=>Int match n{0=>0|1=>1|value=>fib(value-1)+fib(value-2)}\nλmain()=>Int=fib(5)\n"
+λbadMatchSource()=>String="λfib(n:Int)=>Int match n{0=>0|1=>1|value=>fib(value-1)+fib(value-2)}
+λmain()=>Int=fib(5)
+"
 
-λbadSignatureSource()=>String="λfib(n:Int)=>Int\nmatch n{0=>0}\nλmain()=>Int=fib(5)\n"
+λbadSignatureSource()=>String="λfib(n:Int)=>Int
+match n{0=>0}
+λmain()=>Int=fib(5)
+"
 
 λcompile(file:String)=>!Process §process.ProcessResult=§process.run(•support.sigil(["compile",file]))
 
-λgoodFibSource()=>String="λfib(n:Int)=>Int=fibHelper(0,1,n)\n\nλfibHelper(a:Int,b:Int,n:Int)=>Int match n{\n  0=>a|\n  value=>fibHelper(b,a+b,value-1)\n}\n\nλmain()=>Int=fib(5)\n"
+λgoodFibSource()=>String="λfib(n:Int)=>Int=fibHelper(0,1,n)
+
+λfibHelper(a:Int,b:Int,n:Int)=>Int match n{
+  0=>a|
+  value=>fibHelper(b,a+b,value-1)
+}
+
+λmain()=>Int=fib(5)
+"
 
 λmain()=>Unit=()
 

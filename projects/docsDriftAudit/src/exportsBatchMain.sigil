@@ -23,7 +23,9 @@
 
 λrenderOutput(lines:[String])=>String match #lines=0{
   true=>""|
-  false=>§string.join("\n",lines)++"\n"
+  false=>§string.join("
+",lines)++"
+"
 }
 
 λusage()=>String="usage: sigil run src/exportsBatchMain.sigil -- <output-path> <stdlib-file>..."

@@ -134,6 +134,18 @@ Examples of values include:
 - constructor applications over values
 - lambdas
 
+## Strings
+
+Sigil string literals use one surface form: `"..."`
+
+Current implemented behavior:
+
+- string values are the exact contents between the quotes
+- raw `\n` inside the literal becomes a newline in the value
+- indentation spaces inside a multiline string literal remain part of the value
+- escape sequences such as `\\`, `\"`, `\n`, `\r`, and `\t` still decode as usual
+- there is no dedent or heredoc normalization step
+
 ## Core Expression Forms
 
 Current operationally relevant expression forms include:

@@ -1,6 +1,7 @@
 λappendContent(current:µOpenSnippet,line:String)=>µOpenSnippet={content:current.content⧺[line],filePath:current.filePath,info:current.info,line:current.line}
 
-λcloseSnippet(current:µOpenSnippet,results:[µSnippet])=>[µSnippet]=results⧺[{content:§string.join("\n",current.content),filePath:current.filePath,info:current.info,line:current.line}]
+λcloseSnippet(current:µOpenSnippet,results:[µSnippet])=>[µSnippet]=results⧺[{content:§string.join("
+",current.content),filePath:current.filePath,info:current.info,line:current.line}]
 
 λextractSnippets(filePath:String,markdown:String)=>µExtractResult={
   l scan=(finishScan(scanLines(filePath,§string.lines(markdown),{current:None(),issues:[],line:1,results:[]})):µScanState);

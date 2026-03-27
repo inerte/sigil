@@ -435,6 +435,24 @@ fn test_string_literal() {
 }
 
 #[test]
+fn test_multiline_string_literal() {
+    let source = "λf()=>String=\"hello\nworld\"";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    match &program.declarations[0] {
+        Declaration::Function(f) => match &f.body {
+            Expr::Literal(lit) => {
+                assert_eq!(lit.literal_type, LiteralType::String);
+                assert_eq!(lit.value, LiteralValue::String("hello\nworld".to_string()));
+            }
+            _ => panic!("Expected string literal"),
+        },
+        _ => panic!("Expected function"),
+    }
+}
+
+#[test]
 fn test_char_literal() {
     let source = "λf()=>Char='a'";
     let tokens = tokenize(source).unwrap();

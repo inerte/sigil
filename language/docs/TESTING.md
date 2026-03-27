@@ -49,6 +49,7 @@ test "adds numbers" {
 
 Rules:
 
+- test description is a string literal and may span lines
 - test body must evaluate to `Bool`
 - `true` passes
 - `false` fails
@@ -77,6 +78,18 @@ test "worlds capture logs" =>!Log world {
 } {
   l _=(§io.println("captured"):Unit);
   ※check::log.contains("captured")
+}
+```
+
+Multiline descriptions use the same string syntax:
+
+```sigil program language/tests/multilineStrings.sigil
+λmain()=>Unit=()
+
+test "multiline
+test description works" {
+  §string.lines("alpha
+beta")=["alpha","beta"]
 }
 ```
 

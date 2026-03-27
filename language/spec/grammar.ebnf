@@ -137,3 +137,7 @@ Literal = IntegerLiteral
         | "true"
         | "false"
         | "(" , ")" ;
+
+(* StringLiteral uses the ordinary "..." form.
+   Current implementation allows literal newlines inside the quotes and preserves
+   them exactly in the resulting string value. *)

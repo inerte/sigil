@@ -85,12 +85,16 @@
 
 λrenderIssues(issues:[µIssue])=>String match #issues=0{
   true=>""|
-  false=>§string.join("\n",issues map renderIssue)++"\n"
+  false=>§string.join("
+",issues map renderIssue)++"
+"
 }
 
 λrenderRefs(lines:[String])=>String match #lines=0{
   true=>""|
-  false=>§string.join("\n",lines)++"\n"
+  false=>§string.join("
+",lines)++"
+"
 }
 
 λrunMarkdownTask(task:µMarkdownTask)=>!AuditIo Result[µMarkdownAudit,String]=Ok(•docsDrift.processMarkdownFile(false,task.path,task.root,task.tempDir))

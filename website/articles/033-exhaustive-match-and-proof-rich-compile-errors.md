@@ -39,7 +39,7 @@ The current exhaustiveness pass handles:
 
 So these are real checked programs:
 
-```sigil
+```sigil module
 λchoose(flag:Bool)=>String match flag{
   true=>"enabled"|
   false=>"disabled"
@@ -74,7 +74,7 @@ The supported proof fragment is intentionally small:
 
 That means the checker can understand cases like:
 
-```sigil
+```sigil module
 λband(n:Int)=>String match n{
   value when value<0=>"negative"|
   0=>"zero"|

@@ -57,6 +57,7 @@ test "captured log contains line" =>!Log world {
 Rules:
 
 - test description is a string literal
+- test descriptions may span lines; the newline becomes part of the description
 - test body is an expression block
 - test body must evaluate to `Bool`
 - `true` means pass
@@ -162,6 +163,9 @@ Per-test results currently include:
 - `durationMs`
 - `location`
 - optional `failure`
+
+When a test description contains newlines, current JSON output preserves those
+newline characters in `id`, `name`, and `description`.
 
 Current output does not include:
 

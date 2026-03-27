@@ -25,7 +25,8 @@
       }
     }|
     Err(message)=>{
-      l _=(§file.writeText(message++"\n",outPath):Unit);
+      l _=(§file.writeText(message++"
+",outPath):Unit);
       §process.exit(1)
     }
   }|
@@ -39,5 +40,7 @@
 
 λrenderIssues(issues:[µIssue])=>String match #issues=0{
   true=>""|
-  false=>§string.join("\n",issues map renderIssue)++"\n"
+  false=>§string.join("
+",issues map renderIssue)++"
+"
 }

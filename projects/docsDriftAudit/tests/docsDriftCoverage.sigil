@@ -21,7 +21,10 @@ test "coverage helpers parse refs exports and identifiers" {
       },match •coverage.extractFunctionName("c sample=1"){
         Some(_)=>false|
         None()=>true
-      },•coverage.extractFunctionNameInner("","split(text:String)=>[String]")="split",•coverage.insertUnique("beta",["alpha"])=["alpha","beta"],•coverage.isIdentifierChar("Z"),¬•coverage.isIdentifierChar("-"),•coverage.mergeUnique(["alpha"],["beta","alpha"])=["alpha","beta"],•coverage.moduleNameFromStdlibFile("language/stdlib/string.lib.sigil")="string",•coverage.modulePathFromStdlibFile("language/stdlib/string.lib.sigil")="§string",•coverage.qualifyExports(["trim"],"§string")=["§string.trim"],•coverage.tokenName("\"name\":\"trim\"")="trim",•docsDrift.collectQualifiedRefs("§list.sum(xs)\n§list.sum(ys)\n")=["§list.sum"],•docsDrift.collectStdlibExports("language/stdlib/string.lib.sigil",parseJson)=["§string.trim","§string.split"],•docsDrift.documentedRefsForSnippet("§string","λtrim(s:String)=>String\nc ignored=1")=["§string.trim"]])|
+      },•coverage.extractFunctionNameInner("","split(text:String)=>[String]")="split",•coverage.insertUnique("beta",["alpha"])=["alpha","beta"],•coverage.isIdentifierChar("Z"),¬•coverage.isIdentifierChar("-"),•coverage.mergeUnique(["alpha"],["beta","alpha"])=["alpha","beta"],•coverage.moduleNameFromStdlibFile("language/stdlib/string.lib.sigil")="string",•coverage.modulePathFromStdlibFile("language/stdlib/string.lib.sigil")="§string",•coverage.qualifyExports(["trim"],"§string")=["§string.trim"],•coverage.tokenName("\"name\":\"trim\"")="trim",•docsDrift.collectQualifiedRefs("§list.sum(xs)
+§list.sum(ys)
+")=["§list.sum"],•docsDrift.collectStdlibExports("language/stdlib/string.lib.sigil",parseJson)=["§string.trim","§string.split"],•docsDrift.documentedRefsForSnippet("§string","λtrim(s:String)=>String
+c ignored=1")=["§string.trim"]])|
       Err(_)=>false
     }|
     Err(_)=>false
@@ -30,11 +33,11 @@ test "coverage helpers parse refs exports and identifiers" {
 
 test "docs drift helper surface normalizes snippets and issues" {
   l command=(•docsDrift.compilerCommand(["parse","sample.sigil"],"/repo"):§process.Command);
-  l exprSnippet=(snippet("\"hi\"\n\"bye\"","docs/test.md",fenceInfo(None(),"exprs"),1):µSnippet);
+  l exprSnippet=(snippet(§string.unlines(["\"hi\"","\"bye\""]),"docs/test.md",fenceInfo(None(),"exprs"),1):µSnippet);
   allOk([command.argv=[§path.join("/repo","language/compiler/target/debug/sigil"),"parse","sample.sigil"],match command.cwd{
     Some(cwd)=>cwd="/repo"|
     None()=>false
-  },•docsDrift.allLinesSatisfy(["alpha","beta"],λ(line:String)=>Bool=#line>0),¬•docsDrift.allLinesSatisfy(["alpha",""],λ(line:String)=>Bool=#line>0),•docsDrift.declSnippetIssues("docs/test.md",7,"c value=1")=[{line:7,message:"sigil decl snippets may only contain type or function signatures",path:"docs/test.md"}],•docsDrift.declSnippetIssuesInner("docs/test.md",3,["λtrim(s:String)=>String","c invalid=1"])=[{line:3,message:"sigil decl snippets may only contain type or function signatures",path:"docs/test.md"}],•docsDrift.defaultVirtualPath("module")="snippet.lib.sigil",•docsDrift.hasTopLevelPrefix(["l local=1","λmain()=>Unit=()"],"λmain("),•docsDrift.invalidFenceIssue("docs/test.md",4,"boom")={line:4,message:"boom",path:"docs/test.md"},•docsDrift.isCheckedKind("expr"),¬•docsDrift.isCheckedKind("unknown"),•docsDrift.isDocAnnotationLine("⟦ doc ⟧"),•docsDrift.isProgramLikeLines(["test \"x\" { true }"]),•docsDrift.isTopLevelLikeLine("λtrim(s:String)=>String=s"),•docsDrift.isTopLevelLikeLines(["λtrim(s:String)=>String=s"]),•docsDrift.issueMessage({line:9,message:"bad",path:"docs/test.md"})="docs/test.md:9: bad",•docsDrift.mergeIssueLists([{line:1,message:"left",path:"a.md"}],[{line:2,message:"right",path:"b.md"}])=[{line:1,message:"left",path:"a.md"},{line:2,message:"right",path:"b.md"}],•docsDrift.mergeUnique(["alpha"],["beta","alpha"])=["alpha","beta"],•docsDrift.normalizeSnippetContent("⟦ note ⟧\nλtrim(s:String)=>String=s\n")="λtrim(s:String)=>String=s",•docsDrift.normalizedExprsKind(exprSnippet)="exprs",•docsDrift.normalizedSnippetContentForKind("expr","⟦ note ⟧\n#xs\n")="#xs",•docsDrift.normalizedSnippetLines("⟦ note ⟧\nλtrim(s:String)=>String=s\n")=["λtrim(s:String)=>String=s"],•docsDrift.normalizedSnippetLinesInner(["⟦ note ⟧","λtrim(s:String)=>String=s"])=["λtrim(s:String)=>String=s"],•docsDrift.ordinalPath(2,"tmp")=§path.join("tmp","snippet-2"),match •docsDrift.parseFenceInfo("sigil expr"){
+  },•docsDrift.allLinesSatisfy(["alpha","beta"],λ(line:String)=>Bool=#line>0),¬•docsDrift.allLinesSatisfy(["alpha",""],λ(line:String)=>Bool=#line>0),•docsDrift.declSnippetIssues("docs/test.md",7,"c value=1")=[{line:7,message:"sigil decl snippets may only contain type or function signatures",path:"docs/test.md"}],•docsDrift.declSnippetIssuesInner("docs/test.md",3,["λtrim(s:String)=>String","c invalid=1"])=[{line:3,message:"sigil decl snippets may only contain type or function signatures",path:"docs/test.md"}],•docsDrift.defaultVirtualPath("module")="snippet.lib.sigil",•docsDrift.hasTopLevelPrefix(["l local=1","λmain()=>Unit=()"],"λmain("),•docsDrift.invalidFenceIssue("docs/test.md",4,"boom")={line:4,message:"boom",path:"docs/test.md"},•docsDrift.isCheckedKind("expr"),¬•docsDrift.isCheckedKind("unknown"),•docsDrift.isDocAnnotationLine("⟦ doc ⟧"),•docsDrift.isProgramLikeLines(["test \"x\" { true }"]),•docsDrift.isTopLevelLikeLine("λtrim(s:String)=>String=s"),•docsDrift.isTopLevelLikeLines(["λtrim(s:String)=>String=s"]),•docsDrift.issueMessage({line:9,message:"bad",path:"docs/test.md"})="docs/test.md:9: bad",•docsDrift.mergeIssueLists([{line:1,message:"left",path:"a.md"}],[{line:2,message:"right",path:"b.md"}])=[{line:1,message:"left",path:"a.md"},{line:2,message:"right",path:"b.md"}],•docsDrift.mergeUnique(["alpha"],["beta","alpha"])=["alpha","beta"],•docsDrift.normalizeSnippetContent(§string.unlines(["⟦ note ⟧","λtrim(s:String)=>String=s",""]))="λtrim(s:String)=>String=s",•docsDrift.normalizedExprsKind(exprSnippet)="exprs",•docsDrift.normalizedSnippetContentForKind("expr",§string.unlines(["⟦ note ⟧","#xs",""]))="#xs",•docsDrift.normalizedSnippetLines(§string.unlines(["⟦ note ⟧","λtrim(s:String)=>String=s",""]))=["λtrim(s:String)=>String=s"],•docsDrift.normalizedSnippetLinesInner(["⟦ note ⟧","λtrim(s:String)=>String=s"])=["λtrim(s:String)=>String=s"],•docsDrift.ordinalPath(2,"tmp")=§path.join("tmp","snippet-2"),match •docsDrift.parseFenceInfo("sigil expr"){
     Ok(info)=>{
       l parsed=(info:µFenceInfo);
       parsed.kind="expr" and (match parsed.context{
@@ -46,13 +49,16 @@ test "docs drift helper surface normalizes snippets and issues" {
   },match •docsDrift.parseFenceInfo("sigil mystery"){
     Ok(_)=>false|
     Err(message)=>§string.indexOf(message,"unknown Sigil fence kind")≥0
-  },match •docsDrift.parseTrackedFiles({code:0,stderr:"",stdout:"a.md\nb.md\n"}){
+  },match •docsDrift.parseTrackedFiles({code:0,stderr:"",stdout:"a.md
+b.md
+"}){
     Ok(paths)=>paths=["a.md","b.md"]|
     Err(_)=>false
   },match •docsDrift.parseTrackedFiles({code:1,stderr:"boom",stdout:""}){
     Ok(_)=>false|
     Err(message)=>message="boom"
-  },•docsDrift.processOutput({code:1,stderr:" boom \n",stdout:"ok"})="boom",match •docsDrift.projectRootFromVirtualPath("projects/docsDriftAudit/src/docsDrift.lib.sigil"){
+  },•docsDrift.processOutput({code:1,stderr:" boom 
+",stdout:"ok"})="boom",match •docsDrift.projectRootFromVirtualPath("projects/docsDriftAudit/src/docsDrift.lib.sigil"){
     Some(path)=>path="projects/docsDriftAudit"|
     None()=>false
   },match •docsDrift.projectRootFromVirtualPath("snippet.sigil"){
@@ -153,7 +159,11 @@ test "markdown coverage helpers read sandbox files" =>!Fs world {
   l _=(§file.makeDirs("docs"):Unit);
   l _=(§file.makeDirs("tests"):Unit);
   l _=(§file.writeText(§string.unlines(["```sigil decl §string","λtrim(s:String)=>String","```","","```sigil expr","§string.trim(\" hi \")","```"]),"docs/example.md"):Unit);
-  l _=(§file.writeText("λmain()=>Unit={\n  l sample=(§string.trim(\" hi \"):String);\n  ()\n}\n","tests/example.sigil"):Unit);
+  l _=(§file.writeText("λmain()=>Unit={
+  l sample=(§string.trim(\" hi \"):String);
+  ()
+}
+","tests/example.sigil"):Unit);
   l audit=(•docsDrift.collectMarkdownAuditRefs("docs/example.md","."):µMarkdownAudit);
   l coverageAudit=(•docsDrift.runMarkdownCoverageAudit(["docs/example.md"],"."):µMarkdownAudit);
   l refs=(•docsDrift.readCoverageRefs(["tests/example.sigil"],"."):[String]);
@@ -306,11 +316,19 @@ test "print issues writes formatted lines to captured log" =>!Log world {
 }
 
 test "repo style checks succeed under a controlled world" =>!AuditIo world {
-  c process=(†process.fixture([†process.rule(["git","rev-parse","--show-toplevel"],None(),{code:0,stderr:"",stdout:"/Users/jnobreganetto/Documents/GitHub/ai-pl\n"}),†process.rule(["git","ls-files","*.md"],None(),{code:0,stderr:"",stdout:".local/docsDriftAuditCoverage/runAll/sample.md\n"}),†process.rule(["git","ls-files","language/stdlib/*.lib.sigil"],None(),{code:0,stderr:"",stdout:"language/stdlib/string.lib.sigil\n"}),†process.rule(["git","ls-files","language/stdlib-tests/tests/*.sigil"],None(),{code:0,stderr:"",stdout:".local/docsDriftAuditCoverage/runAll/stdlibTests.sigil\n"}),†process.rule([§path.join("/Users/jnobreganetto/Documents/GitHub/ai-pl","language/compiler/target/debug/sigil"),"parse",§path.join("/Users/jnobreganetto/Documents/GitHub/ai-pl","language/stdlib/string.lib.sigil")],Some("/Users/jnobreganetto/Documents/GitHub/ai-pl"),{code:0,stderr:"",stdout:"{\"type\":\"FunctionDecl\",\"name\":\"trim\"}"})]):†process.ProcessEntry)
+  c process=(†process.fixture([†process.rule(["git","rev-parse","--show-toplevel"],None(),{code:0,stderr:"",stdout:"/Users/jnobreganetto/Documents/GitHub/ai-pl
+"}),†process.rule(["git","ls-files","*.md"],None(),{code:0,stderr:"",stdout:".local/docsDriftAuditCoverage/runAll/sample.md
+"}),†process.rule(["git","ls-files","language/stdlib/*.lib.sigil"],None(),{code:0,stderr:"",stdout:"language/stdlib/string.lib.sigil
+"}),†process.rule(["git","ls-files","language/stdlib-tests/tests/*.sigil"],None(),{code:0,stderr:"",stdout:".local/docsDriftAuditCoverage/runAll/stdlibTests.sigil
+"}),†process.rule([§path.join("/Users/jnobreganetto/Documents/GitHub/ai-pl","language/compiler/target/debug/sigil"),"parse",§path.join("/Users/jnobreganetto/Documents/GitHub/ai-pl","language/stdlib/string.lib.sigil")],Some("/Users/jnobreganetto/Documents/GitHub/ai-pl"),{code:0,stderr:"",stdout:"{\"type\":\"FunctionDecl\",\"name\":\"trim\"}"})]):†process.ProcessEntry)
 } {
   l _=(§file.makeDirs(".local/docsDriftAuditCoverage/runAll"):Unit);
   l _=(§file.writeText(§string.unlines(["```sigil decl §string","λtrim(s:String)=>String","```"]),".local/docsDriftAuditCoverage/runAll/sample.md"):Unit);
-  l _=(§file.writeText("λmain()=>Unit={\n  l sample=(§string.trim(\" hi \"):String);\n  ()\n}\n",".local/docsDriftAuditCoverage/runAll/stdlibTests.sigil"):Unit);
+  l _=(§file.writeText("λmain()=>Unit={
+  l sample=(§string.trim(\" hi \"):String);
+  ()
+}
+",".local/docsDriftAuditCoverage/runAll/stdlibTests.sigil"):Unit);
   match •docsDrift.runCheck(){
     Ok(checkIssues)=>allOk([checkIssues=[],match •docsDrift.runCoverageOnly(){
       Ok(coverageIssues)=>allOk([coverageIssues=[],match •docsDrift.runRepoCheck(){

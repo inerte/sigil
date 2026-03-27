@@ -749,10 +749,13 @@ Split a string on newline characters.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§string.lines("a\nb\nc")=["a","b","c"] and §string.lines("hello")=["hello"]
+λmain()=>Bool=§string.lines("a
+b
+c")=["a","b","c"] and §string.lines("hello")=["hello"]
 ```
 
-**Implementation:** `split("\n", s)` (in Sigil)
+**Implementation:** `split("
+", s)` (in Sigil)
 
 ### toUpper
 
@@ -794,7 +797,9 @@ Remove leading and trailing whitespace.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§string.trim("  hello  ")="hello" and §string.trim("\n\ttest\n")="test"
+λmain()=>Bool=§string.trim("  hello  ")="hello" and §string.trim("
+\ttest
+")="test"
 ```
 
 **Codegen:** `s.trim()`
@@ -824,7 +829,9 @@ Split string by delimiter.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§string.split(",","a,b,c")=["a","b","c"] and §string.split("\n","line1\nline2")=["line1","line2"]
+λmain()=>Bool=§string.split(",","a,b,c")=["a","b","c"] and §string.split("
+","line1
+line2")=["line1","line2"]
 ```
 
 **Codegen:** `s.split(delimiter)`

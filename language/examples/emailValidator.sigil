@@ -30,12 +30,14 @@ e console
 }
 
 λmain()=>!Log Unit={
-  l _=(console.log("=== Email Validator ===\n"):Unit);
+  l _=(console.log("=== Email Validator ===
+"):Unit);
   l _=(console.log("Valid examples:"):Unit);
   l _=(console.log(formatResult("user@example.com",validateEmail("user@example.com"))):Unit);
   l _=(console.log(formatResult("alice.bob@mail.co.uk",validateEmail("alice.bob@mail.co.uk"))):Unit);
   l _=(console.log(formatResult("test123@domain.org",validateEmail("test123@domain.org"))):Unit);
-  l _=(console.log("\nInvalid examples:"):Unit);
+  l _=(console.log("
+Invalid examples:"):Unit);
   l _=(console.log(formatResult("userexample.com",validateEmail("userexample.com"))):Unit);
   l _=(console.log(formatResult("user@@example.com",validateEmail("user@@example.com"))):Unit);
   l _=(console.log(formatResult("@example.com",validateEmail("@example.com"))):Unit);

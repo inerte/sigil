@@ -72,7 +72,8 @@ c width=(48:Int)
 
 λrenderRows(world:µWorld,y:Int)=>String match height-y{
   0=>""|
-  _=>renderRow(world,0,y)++"\n"++renderRows(world,y+1)
+  _=>renderRow(world,0,y)++"
++"++renderRows(world,y+1)
 }
 
 λtileAt(world:µWorld,x:Int,y:Int)=>String match isPlayer(world,x,y){

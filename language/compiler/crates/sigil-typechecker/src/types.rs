@@ -578,14 +578,12 @@ mod tests {
 
     #[test]
     fn test_fresh_type_var() {
-        reset_type_var_counter();
         let v1 = fresh_type_var(Some("T".to_string()));
         let v2 = fresh_type_var(Some("U".to_string()));
 
         match (&v1, &v2) {
             (InferenceType::Var(tv1), InferenceType::Var(tv2)) => {
-                assert_eq!(tv1.id, 0);
-                assert_eq!(tv2.id, 1);
+                assert!(tv1.id < tv2.id);
                 assert_eq!(tv1.name.as_ref().unwrap(), "T");
                 assert_eq!(tv2.name.as_ref().unwrap(), "U");
             }

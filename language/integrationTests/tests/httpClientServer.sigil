@@ -6,7 +6,11 @@
 
 λrawClientFile()=>String=§path.join(projectDir(),"src/rawEndpointClient.sigil")
 
-λrawClientSource()=>String="λmain()=>!Http String match §httpClient.get(\"http://127.0.0.1:45110\",§httpClient.emptyHeaders(),\"/health\"){\n  Ok(response)=>response.body|\n  Err(error)=>error.message\n}\n"
+λrawClientSource()=>String="λmain()=>!Http String match §httpClient.get(\"http://127.0.0.1:45110\",§httpClient.emptyHeaders(),\"/health\"){
+  Ok(response)=>response.body|
+  Err(error)=>error.message
+}
+"
 
 λrawEndpointCompileOutput()=>!Fs!Process String={
   l _=(§file.writeText(rawClientSource(),rawClientFile()):Unit);

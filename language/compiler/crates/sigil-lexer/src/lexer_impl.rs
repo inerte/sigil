@@ -572,8 +572,21 @@ impl Lexer {
         let mut value = String::new();
 
         while self.peek() != '"' && !self.is_at_end() {
-            if self.peek() == '\n' {
-                return Err(LexError::UnterminatedString {
+            if self.peek() == '\t' {
+                return Err(LexError::TabNotAllowed {
+                    file: self.filename.clone(),
+                    line: self.line,
+                    column: self.column,
+                });
+            }
+            if self.peek() == '\r' {
+                if self.peek_next() == '\n' {
+                    self.advance();
+                    self.advance();
+                    value.push('\n');
+                    continue;
+                }
+                return Err(LexError::StandaloneCarriageReturn {
                     file: self.filename.clone(),
                     line: self.line,
                     column: self.column,
@@ -866,6 +879,22 @@ mod tests {
     }
 
     #[test]
+    fn test_multiline_strings() {
+        let source = "\"hello\nworld\"";
+        let tokens = tokenize(source).unwrap();
+        assert_eq!(tokens[0].token_type, TokenType::STRING);
+        assert_eq!(tokens[0].value, "hello\nworld");
+    }
+
+    #[test]
+    fn test_multiline_strings_preserve_escapes() {
+        let source = "\"hello\\nworld\nindent\\tkept\"";
+        let tokens = tokenize(source).unwrap();
+        assert_eq!(tokens[0].token_type, TokenType::STRING);
+        assert_eq!(tokens[0].value, "hello\nworld\nindent\tkept");
+    }
+
+    #[test]
     fn test_identifiers() {
         let source = "foo Bar mut";
         let tokens = tokenize(source).unwrap();
@@ -879,5 +908,12 @@ mod tests {
         let source = "foo\tbar";
         let result = tokenize(source);
         assert!(matches!(result, Err(LexError::TabNotAllowed { .. })));
+    }
+
+    #[test]
+    fn test_unterminated_multiline_string_error() {
+        let source = "\"hello\nworld";
+        let result = tokenize(source);
+        assert!(matches!(result, Err(LexError::UnterminatedString { .. })));
     }
 }

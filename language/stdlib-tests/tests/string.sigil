@@ -81,7 +81,9 @@ test "join with separator" {
 }
 
 test "lines splits on newline" {
-  §string.lines("a\nb\nc")=["a","b","c"]
+  §string.lines("a
+b
+c")=["a","b","c"]
 }
 
 test "lines preserves single line" {
@@ -169,7 +171,9 @@ test "trim trailing" {
 }
 
 test "unlines joins with newline" {
-  §string.unlines(["a","b","c"])="a\nb\nc"
+  §string.unlines(["a","b","c"])="a
+b
+c"
 }
 
 test "unlines on empty list" {
@@ -177,8 +181,14 @@ test "unlines on empty list" {
 }
 
 test "extract title from markdown" {
-  match §string.startsWith("# ",§string.split("\n","# Hello World\nContent here")[0]){
-    true=>§string.substring(#§string.split("\n","# Hello World\nContent here")[0],§string.split("\n","# Hello World\nContent here")[0],2)="Hello World"|
+  match §string.startsWith("# ",§string.split("
+","# Hello World
+Content here")[0]){
+    true=>§string.substring(#§string.split("
+","# Hello World
+Content here")[0],§string.split("
+","# Hello World
+Content here")[0],2)="Hello World"|
     false=>false
   }
 }

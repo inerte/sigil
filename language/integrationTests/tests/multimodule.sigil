@@ -13,8 +13,12 @@ test "multimodule simple import runs" =>!Clock!Fs!Process {
   l root=(•support.uniqueRepoTempDir("multimodule"):String);
   l _=(§file.makeDirs(§path.join(root,"src")):Unit);
   l _=(writeProjectFile(projectConfig(),"sigil.json",root):Unit);
-  l _=(writeProjectFile("λdouble(x:Int)=>Int=x*2\n\nλtriple(x:Int)=>Int=x*3\n","src/utils.lib.sigil",root):Unit);
-  l _=(writeProjectFile("λmain()=>Int=•utils.double(21)\n","src/main.sigil",root):Unit);
+  l _=(writeProjectFile("λdouble(x:Int)=>Int=x*2
+
+λtriple(x:Int)=>Int=x*3
+","src/utils.lib.sigil",root):Unit);
+  l _=(writeProjectFile("λmain()=>Int=•utils.double(21)
+","src/main.sigil",root):Unit);
   l output=(runProject(root,"src/main.sigil"):String);
   l _=(§file.removeTree(root):Unit);
   §string.indexOf(output,"42")≥0=true
@@ -24,9 +28,16 @@ test "multimodule multiple imports run" =>!Clock!Fs!Process {
   l root=(•support.uniqueRepoTempDir("multimodule"):String);
   l _=(§file.makeDirs(§path.join(root,"src")):Unit);
   l _=(writeProjectFile(projectConfig(),"sigil.json",root):Unit);
-  l _=(writeProjectFile("λdouble(x:Int)=>Int=x*2\n\nλtriple(x:Int)=>Int=x*3\n","src/utils.lib.sigil",root):Unit);
-  l _=(writeProjectFile("λadd(x:Int,y:Int)=>Int=x+y\n\nλsubtract(x:Int,y:Int)=>Int=x-y\n","src/math.lib.sigil",root):Unit);
-  l _=(writeProjectFile("λmain()=>Int=•math.add(•utils.double(10),•utils.triple(5))\n","src/calc.sigil",root):Unit);
+  l _=(writeProjectFile("λdouble(x:Int)=>Int=x*2
+
+λtriple(x:Int)=>Int=x*3
+","src/utils.lib.sigil",root):Unit);
+  l _=(writeProjectFile("λadd(x:Int,y:Int)=>Int=x+y
+
+λsubtract(x:Int,y:Int)=>Int=x-y
+","src/math.lib.sigil",root):Unit);
+  l _=(writeProjectFile("λmain()=>Int=•math.add(•utils.double(10),•utils.triple(5))
+","src/calc.sigil",root):Unit);
   l output=(runProject(root,"src/calc.sigil"):String);
   l _=(§file.removeTree(root):Unit);
   §string.indexOf(output,"35")≥0=true
@@ -36,9 +47,12 @@ test "multimodule transitive dependency runs" =>!Clock!Fs!Process {
   l root=(•support.uniqueRepoTempDir("multimodule"):String);
   l _=(§file.makeDirs(§path.join(root,"src")):Unit);
   l _=(writeProjectFile(projectConfig(),"sigil.json",root):Unit);
-  l _=(writeProjectFile("λincrement(x:Int)=>Int=x+1\n","src/base.lib.sigil",root):Unit);
-  l _=(writeProjectFile("λaddTwo(x:Int)=>Int=•base.increment(•base.increment(x))\n","src/derived.lib.sigil",root):Unit);
-  l _=(writeProjectFile("λmain()=>Int=•derived.addTwo(5)\n","src/app.sigil",root):Unit);
+  l _=(writeProjectFile("λincrement(x:Int)=>Int=x+1
+","src/base.lib.sigil",root):Unit);
+  l _=(writeProjectFile("λaddTwo(x:Int)=>Int=•base.increment(•base.increment(x))
+","src/derived.lib.sigil",root):Unit);
+  l _=(writeProjectFile("λmain()=>Int=•derived.addTwo(5)
+","src/app.sigil",root):Unit);
   l output=(runProject(root,"src/app.sigil"):String);
   l _=(§file.removeTree(root):Unit);
   §string.indexOf(output,"7")≥0=true

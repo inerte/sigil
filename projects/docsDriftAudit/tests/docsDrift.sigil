@@ -8,7 +8,9 @@ test "bare sigil fence is rejected" {
 }
 
 test "decl block extracts documented names" {
-  •docsDrift.documentedRefsForSnippet("§process","λcommand(argv:[String])=>Command\nλrun(command:Command)=>!Process ProcessResult\n")=["§process.command","§process.run"]
+  •docsDrift.documentedRefsForSnippet("§process","λcommand(argv:[String])=>Command
+λrun(command:Command)=>!Process ProcessResult
+")=["§process.command","§process.run"]
 }
 
 test "invalid module path extension is rejected" {
@@ -19,7 +21,10 @@ test "invalid module path extension is rejected" {
 }
 
 test "qualified refs are collected uniquely" {
-  •docsDrift.collectQualifiedRefs("§list.sum(xs)\n§list.sum(ys)\n§string.trim(s)\n")=["§list.sum","§string.trim"]
+  •docsDrift.collectQualifiedRefs("§list.sum(xs)
+§list.sum(ys)
+§string.trim(s)
+")=["§list.sum","§string.trim"]
 }
 
 test "sigil expr fence is extracted" {

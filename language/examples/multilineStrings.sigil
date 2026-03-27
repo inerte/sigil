@@ -1,0 +1,13 @@
+e console
+
+λmain()=>!Log Unit={
+  l _=(console.log("# Heading
+
+- one
+- two
+"):Unit);
+  console.log("Roses are red
+  violets stay indented
+Sigil keeps the spaces
+")
+}

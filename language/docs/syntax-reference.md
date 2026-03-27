@@ -250,6 +250,33 @@ c greeting=("hello":String)
 Current parser behavior requires the typed form above. Untyped constants and the
 older `c name:Type=value` surface are not current Sigil.
 
+## String Literals
+
+Sigil uses one string literal surface:
+
+```sigil expr
+"hello"
+```
+
+The same `"` form also allows multiline strings:
+
+```sigil expr
+"hello
+world"
+```
+
+String literal rules:
+
+- the string value is exactly the raw contents between the quotes
+- literal newlines inside the quotes are preserved as newline characters
+- indentation spaces inside the quotes are preserved exactly
+- `\\`, `\"`, `\n`, `\r`, and `\t` remain valid escapes
+- there is no heredoc, triple-quote, dedent, or trim-first-line variant
+
+Canonical note:
+
+- if a string value contains newline characters, canonical source prints it as a multiline `"` string with literal line breaks rather than `\n` escapes
+
 ## Rooted References
 
 Sigil uses rooted module references directly at the use site. There are no

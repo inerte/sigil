@@ -2160,13 +2160,18 @@ impl TypeScriptGenerator {
         self.emit("}");
 
         // Add to test metadata
-        let description = test.description.replace('\"', "\\\"");
+        let source_file = self.source_file.as_deref().unwrap_or("<unknown>");
+        let test_id = format!("{}::{}", source_file, test.description);
+        let test_id_json = serde_json::to_string(&test_id)
+            .map_err(|e| CodegenError::General(format!("Failed to JSON-encode test id: {}", e)))?;
+        let description_json = serde_json::to_string(&test.description).map_err(|e| {
+            CodegenError::General(format!("Failed to JSON-encode test description: {}", e))
+        })?;
         self.test_meta_entries.push(format!(
-            "{{ id: '{}::{}', name: '{}', description: '{}', location: {{ start: {{ line: {}, column: {} }} }}, fn: __test_{} }}",
-            self.source_file.as_deref().unwrap_or("<unknown>"),
-            test_name,
-            test_name,
-            description,
+            "{{ id: {}, name: {}, description: {}, location: {{ start: {{ line: {}, column: {} }} }}, fn: __test_{} }}",
+            &test_id_json,
+            &description_json,
+            &description_json,
             test.location.start.line,
             test.location.start.column,
             test_name
@@ -4218,7 +4223,9 @@ mod tests {
         });
         let result = gen.generate(&program).unwrap();
 
-        assert!(result.contains("id: 'tests/smoke.sigil::smoke'"));
+        assert!(result.contains("id: \"tests/smoke.sigil::smoke\""));
+        assert!(result.contains("name: \"smoke\""));
+        assert!(result.contains("description: \"smoke\""));
         assert!(result.contains("location: { start: { line: 3, column: 1 } }"));
     }
 

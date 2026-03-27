@@ -124,4 +124,5 @@ Current high-signal printer choices:
 - `λfib(n:Int)=>Int match n{...}` is canonical; splitting the signature/body introducer is not
 - multi-arm `match` prints multiline
 - branching and non-trivial structure print multiline earlier than dense inline forms
+- newline-containing string values print as multiline `"` literals, not `\n`-escaped one-line strings
 - spacing is a consequence of the printer, not a second style system

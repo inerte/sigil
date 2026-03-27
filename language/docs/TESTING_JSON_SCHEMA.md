@@ -122,6 +122,7 @@ Fields:
 - `id`: stable identifier `<file>::<test description>`
 - `file`: source file path
 - `name`: test description string
+- `name` may contain newline characters when the source test description is multiline
 - `status`: `"pass" | "fail" | "error"`
 - `durationMs`: per-test execution duration
 - `location`: current aggregated location object with `line` and `column`

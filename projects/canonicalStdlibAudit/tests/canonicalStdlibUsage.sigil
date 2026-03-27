@@ -10,28 +10,32 @@ test "compile rule rejects invalid regex" {
 }
 
 test "duplicate numeric max is rejected" {
-  match •canonicalStdlibUsage.analyzeFile("projects/demo.sigil",compiledRules(),"λmax(a:Int,b:Int)=>Int=a\n"){
+  match •canonicalStdlibUsage.analyzeFile("projects/demo.sigil",compiledRules(),"λmax(a:Int,b:Int)=>Int=a
+"){
     [issue]=>issue.line=1 and issue.name="maxNumeric" and issue.path="projects/demo.sigil" and issue.replacement="§numeric.max"|
     _=>false
   }
 }
 
 test "duplicate reverse is rejected" {
-  match •canonicalStdlibUsage.analyzeFile("language/examples/example.sigil",compiledRules(),"λreverse[T](xs:[T])=>[T]=[]\n"){
+  match •canonicalStdlibUsage.analyzeFile("language/examples/example.sigil",compiledRules(),"λreverse[T](xs:[T])=>[T]=[]
+"){
     [issue]=>issue.line=1 and issue.name="reverseList" and issue.path="language/examples/example.sigil" and issue.replacement="§list.reverse"|
     _=>false
   }
 }
 
 test "duplicate string take is rejected" {
-  match •canonicalStdlibUsage.analyzeFile("projects/demo.sigil",compiledRules(),"λtake(n:Int,s:String)=>String=s\n"){
+  match •canonicalStdlibUsage.analyzeFile("projects/demo.sigil",compiledRules(),"λtake(n:Int,s:String)=>String=s
+"){
     [issue]=>issue.line=1 and issue.name="takeString" and issue.path="projects/demo.sigil" and issue.replacement="§string.take"|
     _=>false
   }
 }
 
 test "duplicate sum is rejected" {
-  match •canonicalStdlibUsage.analyzeFile("language/examples/example.sigil",compiledRules(),"λsum(xs:[Int])=>Int=0\n"){
+  match •canonicalStdlibUsage.analyzeFile("language/examples/example.sigil",compiledRules(),"λsum(xs:[Int])=>Int=0
+"){
     [issue]=>issue.line=1 and issue.name="sum" and issue.path="language/examples/example.sigil" and issue.replacement="§list.sum"|
     _=>false
   }
@@ -77,7 +81,8 @@ test "run check finds no canonical stdlib duplicates in repo" =>!AuditIo {
 }
 
 test "same name with different shape is allowed" {
-  •canonicalStdlibUsage.analyzeFile("language/tests/addsNumbers.sigil",compiledRules(),"λsum(acc:Int,x:Int)=>Int=acc+x\n")=[]
+  •canonicalStdlibUsage.analyzeFile("language/tests/addsNumbers.sigil",compiledRules(),"λsum(acc:Int,x:Int)=>Int=acc+x
+")=[]
 }
 
 test "stdlib path is ignored" {

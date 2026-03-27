@@ -51,7 +51,8 @@
 
 λderiveTitle(content:String,meta:µPageMeta,sourcePath:String)=>String match #meta.title>0{
   true=>meta.title|
-  false=>match firstH1Line(§string.split("\n",content)){
+  false=>match firstH1Line(§string.split("
+",content)){
     []=>humanizeStem(filenameStem(sourcePath))|
     [title,.rest]=>title
   }
@@ -98,7 +99,8 @@
 
 λnormalizeSlug(slug:String)=>String=trimHyphens(collapseHyphens(§string.replaceAll(" ","-",§string.replaceAll("_","-",§string.toLower(slug)))))
 
-λparseFrontmatter(markdown:String,sourcePath:String)=>µParseResult match §string.split("\n",markdown){
+λparseFrontmatter(markdown:String,sourcePath:String)=>µParseResult match §string.split("
+",markdown){
   []=>{
     l meta=(defaultMeta():µPageMeta);
     {content:markdown,meta:{author:"",category:"",date:"",description:"",slug:deriveSlug(meta,sourcePath),title:deriveTitle(markdown,meta,sourcePath)}}
@@ -106,7 +108,8 @@
   [line,.rest]=>match line{
     "---"=>{
       l parsed=(consumeFrontmatter(rest,defaultMeta()):µParseLinesResult);
-      l content=(§string.join("\n",parsed.contentLines):String);
+      l content=(§string.join("
+",parsed.contentLines):String);
       {content:content,meta:{author:parsed.meta.author,category:parsed.meta.category,date:parsed.meta.date,description:parsed.meta.description,slug:deriveSlug(parsed.meta,sourcePath),title:deriveTitle(content,parsed.meta,sourcePath)}}
     }|
     _=>{

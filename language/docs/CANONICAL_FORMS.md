@@ -248,6 +248,7 @@ Some surface constraints are still easiest to think about mechanically:
 - direct `match` bodies begin on that same line
 - multi-arm `match` prints multiline
 - branching and other non-trivial structure print multiline earlier than dense inline forms
+- string values containing newline characters print as multiline `"` literals with exact preserved line breaks
 
 Canonical examples:
 

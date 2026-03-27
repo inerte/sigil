@@ -47,7 +47,8 @@ t ParsingResult={blocks:[Block],state:ParserState}
 }
 
 λflushCodeBlock(state:ParserState)=>[Block] match state.inCodeBlock{
-  true=>[CodeBlock(state.codeLang,§string.join("\n",state.codeLines))]|
+  true=>[CodeBlock(state.codeLang,§string.join("
+",state.codeLines))]|
   false=>emptyBlocks()
 }
 
@@ -86,7 +87,8 @@ t ParsingResult={blocks:[Block],state:ParserState}
 
 λisUnorderedList(line:String)=>Bool=§string.startsWith("- ",line) or §string.startsWith("* ",line) or §string.startsWith("+ ",line)
 
-λparse(markdown:String)=>String=§string.join("\n",parseLines(markdown) map blockToHtml)
+λparse(markdown:String)=>String=§string.join("
+",parseLines(markdown) map blockToHtml)
 
 λparseLine(line:String,state:ParserState)=>ParsingResult match state.inCodeBlock{
   true when isCodeFence(line)=>{blocks:flushCodeBlock(state),state:emptyState()}|
@@ -106,7 +108,8 @@ t ParsingResult={blocks:[Block],state:ParserState}
   false=>{blocks:flushList(state),state:{codeLang:"",codeLines:[],inCodeBlock:false,inList:false,listItems:[],listType:"",paraLines:state.paraLines⧺[line]}}
 }
 
-λparseLines(markdown:String)=>[Block]=parseLinesHelper([],§string.split("\n",markdown),emptyState())
+λparseLines(markdown:String)=>[Block]=parseLinesHelper([],§string.split("
+",markdown),emptyState())
 
 λparseLinesHelper(blocks:[Block],lines:[String],state:ParserState)=>[Block] match lines{
   []=>blocks⧺flushCodeBlock(state)⧺flushList(state)⧺flushParagraph(state)|

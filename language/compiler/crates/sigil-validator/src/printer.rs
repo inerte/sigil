@@ -966,13 +966,20 @@ fn pattern_literal_text(literal: &LiteralPattern) -> String {
 }
 
 fn string_literal(value: &str) -> String {
-    let escaped = value
-        .replace('\\', "\\\\")
-        .replace('"', "\\\"")
-        .replace('\n', "\\n")
-        .replace('\r', "\\r")
-        .replace('\t', "\\t");
-    format!("\"{}\"", escaped)
+    let mut escaped = String::with_capacity(value.len() + 2);
+    escaped.push('"');
+    for ch in value.chars() {
+        match ch {
+            '\\' => escaped.push_str("\\\\"),
+            '"' => escaped.push_str("\\\""),
+            '\n' => escaped.push('\n'),
+            '\r' => escaped.push_str("\\r"),
+            '\t' => escaped.push_str("\\t"),
+            other => escaped.push(other),
+        }
+    }
+    escaped.push('"');
+    escaped
 }
 
 fn char_literal(value: char) -> String {
@@ -985,4 +992,19 @@ fn char_literal(value: char) -> String {
         other => other.to_string(),
     };
     format!("'{}'", escaped)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::string_literal;
+
+    #[test]
+    fn multiline_strings_print_with_literal_newlines() {
+        assert_eq!(string_literal("hello\nworld"), "\"hello\nworld\"");
+    }
+
+    #[test]
+    fn multiline_strings_still_escape_tabs_and_quotes() {
+        assert_eq!(string_literal("say\t\"hi\""), "\"say\\t\\\"hi\\\"\"");
+    }
 }

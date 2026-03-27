@@ -12,7 +12,8 @@
 
 λjoin(separator:String,strings:[String])=>String=""
 
-λlines(s:String)=>[String]=split("\n",s)
+λlines(s:String)=>[String]=split("
+",s)
 
 λrepeat(count:Int,s:String)=>String match count≤0{
   true=>""|
@@ -37,4 +38,5 @@
 
 λtrim(s:String)=>String=""
 
-λunlines(lines:[String])=>String=join("\n",lines)
+λunlines(lines:[String])=>String=join("
+",lines)

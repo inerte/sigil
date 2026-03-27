@@ -29,5 +29,7 @@
 
 λrenderOutput(lines:[String])=>String match #lines=0{
   true=>""|
-  false=>§string.join("\n",lines)++"\n"
+  false=>§string.join("
+",lines)++"
+"
 }

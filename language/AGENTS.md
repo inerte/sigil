@@ -98,6 +98,7 @@ Current high-signal printer choices:
 - direct `match` bodies begin on that same line
 - branching prints multiline early
 - multi-arm `match` is always multiline
+- newline-containing string literals print as multiline `"` strings with exact preserved line breaks
 - each arm starts as `pattern=>`
 - no discretionary alternative layout for the same AST shape
 - `match` is the branching surface; do not reintroduce a separate public `if` story

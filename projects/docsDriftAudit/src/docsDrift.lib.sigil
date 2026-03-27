@@ -71,7 +71,8 @@
   match #preparation>0{
     true=>preparation|
     false=>{
-      l _=(§file.writeText(wrappedSource++"\n",snippetPath):Unit);
+      l _=(§file.writeText(wrappedSource++"
+",snippetPath):Unit);
       l result=(§process.run(compilerCommand([subcommand,snippetPath],root)):§process.ProcessResult);
       match expectsSuccess{
         true=>match result.code=0{
@@ -150,7 +151,8 @@
   [head,.tail]=>mergeUnique(•coverage.insertUnique(head,left),tail)
 }
 
-λnormalizeSnippetContent(source:String)=>String=§string.join("\n",normalizedSnippetLines(source))
+λnormalizeSnippetContent(source:String)=>String=§string.join("
+",normalizedSnippetLines(source))
 
 λnormalizedExprsKind(snippet:µSnippet)=>String={
   l lines=(normalizedSnippetLines(snippet.content):[String]);
@@ -539,9 +541,12 @@
 }
 
 λwrapExprLines(idx:Int,lines:[String],prefix:String,suffix:String)=>String match lines{
-  []=>prefix++"\n  ()\n"++suffix|
+  []=>prefix++"
+  ()
+"++suffix|
   [head,.tail]=>match •fences.nonEmpty(§string.trim(head)){
-    true=>wrapExprLines(idx+1,tail,prefix++"\n  l sample"++§string.intToString(idx)++"=("++head++":String);",suffix)|
+    true=>wrapExprLines(idx+1,tail,prefix++"
+  l sample"++§string.intToString(idx)++"=("++head++":String);",suffix)|
     false=>wrapExprLines(idx,tail,prefix,suffix)
   }
 }

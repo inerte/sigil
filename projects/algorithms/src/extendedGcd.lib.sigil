@@ -1,9 +1,7 @@
-λextendedGcd(a:Int,b:Int)=>µExtendedGcd match b=0{
-  true=>match a<0{
-    true=>{gcd:-a,x:-1,y:0}|
-    false=>{gcd:a,x:1,y:0}
-  }|
-  false=>{
+λextendedGcd(a:Int,b:Int)=>µExtendedGcd match (b=0,a<0){
+  (true,true)=>{gcd:-a,x:-1,y:0}|
+  (true,false)=>{gcd:a,x:1,y:0}|
+  (false,_)=>{
     l recursiveResult=(extendedGcd(b,a%b):µExtendedGcd);
     {gcd:recursiveResult.gcd,x:recursiveResult.y,y:recursiveResult.x-((a-a%b)/b:Int)*recursiveResult.y}
   }

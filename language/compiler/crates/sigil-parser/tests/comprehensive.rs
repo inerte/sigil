@@ -182,7 +182,10 @@ fn test_project_type_root_parses_as_src_types() {
             let param_type = function.params[0].type_annotation.as_ref().unwrap();
             match param_type {
                 Type::Qualified(qualified) => {
-                    assert_eq!(qualified.module_path, vec!["src".to_string(), "types".to_string()]);
+                    assert_eq!(
+                        qualified.module_path,
+                        vec!["src".to_string(), "types".to_string()]
+                    );
                     assert_eq!(qualified.type_name, "ArticleMeta");
                 }
                 other => panic!("Expected qualified µ type, got {:?}", other),
@@ -241,7 +244,10 @@ fn test_root_qualified_member_access() {
         Declaration::Function(function) => match &function.body {
             sigil_ast::Expr::Application(application) => match &application.func {
                 sigil_ast::Expr::MemberAccess(member) => {
-                    assert_eq!(member.namespace, vec!["stdlib".to_string(), "list".to_string()]);
+                    assert_eq!(
+                        member.namespace,
+                        vec!["stdlib".to_string(), "list".to_string()]
+                    );
                     assert_eq!(member.member, "length");
                 }
                 other => panic!("Expected member access, got {:?}", other),
@@ -300,7 +306,10 @@ fn test_qualified_constructor_application_parses() {
         Declaration::Function(f) => match &f.body {
             Expr::Application(app) => match &app.func {
                 Expr::MemberAccess(member) => {
-                    assert_eq!(member.namespace, vec!["src".to_string(), "types".to_string()]);
+                    assert_eq!(
+                        member.namespace,
+                        vec!["src".to_string(), "types".to_string()]
+                    );
                     assert_eq!(member.member, "Ordering");
                 }
                 _ => panic!("Expected qualified constructor member access"),
@@ -323,7 +332,10 @@ fn test_qualified_constructor_pattern_parses() {
             Expr::Match(match_expr) => {
                 match &match_expr.arms[0].pattern {
                     Pattern::Constructor(ctor) => {
-                        assert_eq!(ctor.module_path, vec!["src".to_string(), "types".to_string()]);
+                        assert_eq!(
+                            ctor.module_path,
+                            vec!["src".to_string(), "types".to_string()]
+                        );
                         assert_eq!(ctor.name, "Ordering");
                         assert_eq!(ctor.patterns.len(), 1);
                     }
@@ -332,7 +344,10 @@ fn test_qualified_constructor_pattern_parses() {
 
                 match &match_expr.arms[1].pattern {
                     Pattern::Constructor(ctor) => {
-                        assert_eq!(ctor.module_path, vec!["src".to_string(), "types".to_string()]);
+                        assert_eq!(
+                            ctor.module_path,
+                            vec!["src".to_string(), "types".to_string()]
+                        );
                         assert_eq!(ctor.name, "CycleDetected");
                         assert!(ctor.patterns.is_empty());
                     }

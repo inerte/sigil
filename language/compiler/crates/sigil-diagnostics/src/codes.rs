@@ -85,10 +85,6 @@ pub mod canonical {
     pub const BRANCHING_SELF_RECURSION: &str = "SIGIL-CANON-BRANCHING-SELF-RECURSION";
     pub const TRAVERSAL_FILTER_COUNT: &str = "SIGIL-CANON-TRAVERSAL-FILTER-COUNT";
 
-    // Pattern matching
-    pub const MATCH_BOOLEAN: &str = "SIGIL-CANON-MATCH-BOOLEAN";
-    pub const MATCH_TUPLE_BOOLEAN: &str = "SIGIL-CANON-MATCH-TUPLE-BOOLEAN";
-
     // Parameter and effect ordering
     pub const PARAM_ORDER: &str = "SIGIL-CANON-PARAM-ORDER";
     pub const EFFECT_ORDER: &str = "SIGIL-CANON-EFFECT-ORDER";
@@ -118,6 +114,9 @@ pub mod canonical {
 pub mod typecheck {
     pub const ERROR: &str = "SIGIL-TYPE-ERROR";
     pub const MODULE_NOT_EXPORTED: &str = "SIGIL-TYPE-MODULE-NOT-EXPORTED";
+    pub const MATCH_NON_EXHAUSTIVE: &str = "SIGIL-TYPE-MATCH-NON-EXHAUSTIVE";
+    pub const MATCH_REDUNDANT_PATTERN: &str = "SIGIL-TYPE-MATCH-REDUNDANT-PATTERN";
+    pub const MATCH_UNREACHABLE_ARM: &str = "SIGIL-TYPE-MATCH-UNREACHABLE-ARM";
 }
 
 /// Mutability analysis error codes (SIGIL-MUTABILITY-*)
@@ -226,8 +225,6 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     canonical::RECURSION_REVERSE_CLONE,
     canonical::BRANCHING_SELF_RECURSION,
     canonical::TRAVERSAL_FILTER_COUNT,
-    canonical::MATCH_BOOLEAN,
-    canonical::MATCH_TUPLE_BOOLEAN,
     canonical::PARAM_ORDER,
     canonical::EFFECT_ORDER,
     canonical::RECORD_TYPE_FIELD_ORDER,
@@ -247,6 +244,9 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     // Typecheck (2 codes)
     typecheck::ERROR,
     typecheck::MODULE_NOT_EXPORTED,
+    typecheck::MATCH_NON_EXHAUSTIVE,
+    typecheck::MATCH_REDUNDANT_PATTERN,
+    typecheck::MATCH_UNREACHABLE_ARM,
     // Mutability (1 code)
     mutability::INVALID,
     // CLI (8 codes)
@@ -309,8 +309,8 @@ mod tests {
         // Keep this in sync when adding or removing diagnostic codes.
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            105,
-            "Expected 105 error codes, found {}",
+            106,
+            "Expected 106 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

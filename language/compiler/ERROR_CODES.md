@@ -295,17 +295,6 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Example:** `#(xs filter pred)`
 **How to fix:** Use `§list.countIf(pred,xs)`
 
-### SIGIL-CANON-MATCH-BOOLEAN
-**Description:** Cannot pattern match on boolean expression.
-**Message:** "Cannot pattern match on boolean expression"
-**Example:** `match (x<5){true=>...|false=>...}` => use `(x<5)=>...|...`
-**How to fix:** Use if-expression syntax: `(condition)=>thenBranch|elseBranch`
-
-### SIGIL-CANON-MATCH-TUPLE-BOOLEAN
-**Description:** Cannot pattern match on tuple containing booleans.
-**Message:** "Cannot pattern match on tuple containing booleans"
-**How to fix:** Pattern match discriminates on structure, not boolean values
-
 ### SIGIL-CANON-PARAM-ORDER
 **Description:** Function parameters out of alphabetical order.
 **Message:** "Parameter 'X' out of alphabetical order in function 'name'"
@@ -382,6 +371,21 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Message:** "Module member not exported"
 **How to fix:** Export the member in the module or don't access it
 
+### SIGIL-TYPE-MATCH-NON-EXHAUSTIVE
+**Description:** Match expression leaves part of the scrutinee space uncovered.
+**Message:** "Non-exhaustive match expression"
+**How to fix:** Add the missing arm(s) suggested in the compile error details, or add a canonical catch-all arm when the uncovered space is intentionally broad
+
+### SIGIL-TYPE-MATCH-REDUNDANT-PATTERN
+**Description:** Match arm is already fully covered by earlier arms.
+**Message:** "Redundant pattern in match expression"
+**How to fix:** Remove the redundant arm or rewrite earlier arms/guards so the arm covers a real remaining case
+
+### SIGIL-TYPE-MATCH-UNREACHABLE-ARM
+**Description:** Match arm appears after earlier arms have already covered the full scrutinee space.
+**Message:** "Unreachable match arm"
+**How to fix:** Remove the dead arm or rewrite the earlier arms if the intended branching order was different
+
 ## Mutability Errors (SIGIL-MUTABILITY-*)
 
 ### SIGIL-MUTABILITY-INVALID
@@ -443,12 +447,12 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Message:** "runtime engine not available"
 **How to fix:** Install Node.js or Deno
 
-## Total Error Codes: 56
+## Total Error Codes: 57
 
 - Lexer: 9 codes
 - Parser: 5 codes
-- Canonical: 29 codes
-- Typecheck: 2 codes
+- Canonical: 27 codes
+- Typecheck: 5 codes
 - Mutability: 1 code
 - CLI: 8 codes
 - Runtime: 2 codes

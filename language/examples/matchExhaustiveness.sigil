@@ -1,0 +1,33 @@
+λband(n:Int)=>String match n{
+  value when value<0=>"negative"|
+  0=>"zero"|
+  value when value<10=>"single-digit positive"|
+  _=>"double-digit or larger"
+}
+
+λchoose(flag:Bool)=>String match flag{
+  true=>"enabled"|
+  false=>"disabled"
+}
+
+λheadOrZero(xs:[Int])=>Int match xs{
+  []=>0|
+  [head,.tail]=>head
+}
+
+λmain()=>String=choose(true)++"|"++pairLabel(false,true)++"|"++§string.intToString(headOrZero([4,5,6]))++"|"++band(7)++"|"++resultLabel(Ok(3))
+
+λpairLabel(left:Bool,right:Bool)=>String match (left,right){
+  (true,true)=>"tt"|
+  (true,false)=>"tf"|
+  (false,true)=>"ft"|
+  (false,false)=>"ff"
+}
+
+λresultLabel(result:Result[Int,String])=>String match result{
+  Ok(value) when value>0=>"positive result"|
+  Ok(0)=>"zero result"|
+  Ok(_)=>"negative result"|
+  Err(message) when #message>0=>"named error"|
+  Err(_)=>"empty error"
+}

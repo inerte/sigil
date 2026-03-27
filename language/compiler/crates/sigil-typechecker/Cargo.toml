@@ -8,6 +8,8 @@ sigil-ast = { path = "../sigil-ast" }
 sigil-lexer = { path = "../sigil-lexer" }
 sigil-diagnostics = { path = "../sigil-diagnostics" }
 thiserror = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
 
 [dev-dependencies]
 sigil-parser = { path = "../sigil-parser" }

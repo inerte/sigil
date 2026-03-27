@@ -6,26 +6,33 @@ use crate::types::{prune, InferenceType};
 use sigil_ast::PrimitiveName;
 use sigil_diagnostics::{codes, Diagnostic, SigilPhase, SourcePoint, SourceSpan};
 use sigil_lexer::SourceLocation;
+use std::collections::HashMap;
 use thiserror::Error;
 
 /// Type error with source location information
 #[derive(Debug, Error)]
 #[error("{message}")]
 pub struct TypeError {
+    pub code: String,
     pub message: String,
     pub location: Option<SourceLocation>,
     pub expected: Option<InferenceType>,
     pub actual: Option<InferenceType>,
+    pub details: Option<HashMap<String, serde_json::Value>>,
+    pub source_file: Option<String>,
 }
 
 impl TypeError {
     /// Create a new type error
     pub fn new(message: String, location: Option<SourceLocation>) -> Self {
         Self {
+            code: codes::typecheck::ERROR.to_string(),
             message,
             location,
             expected: None,
             actual: None,
+            details: None,
+            source_file: None,
         }
     }
 
@@ -37,11 +44,39 @@ impl TypeError {
         actual: InferenceType,
     ) -> Self {
         Self {
+            code: codes::typecheck::ERROR.to_string(),
             message,
             location,
             expected: Some(expected),
             actual: Some(actual),
+            details: None,
+            source_file: None,
         }
+    }
+
+    pub fn with_code(mut self, code: impl Into<String>) -> Self {
+        self.code = code.into();
+        self
+    }
+
+    pub fn with_detail(mut self, key: impl Into<String>, value: impl serde::Serialize) -> Self {
+        let details = self.details.get_or_insert_with(HashMap::new);
+        if let Ok(json_value) = serde_json::to_value(value) {
+            details.insert(key.into(), json_value);
+        }
+        self
+    }
+
+    pub fn with_source_file(mut self, source_file: impl Into<String>) -> Self {
+        self.source_file = Some(source_file.into());
+        self
+    }
+
+    pub fn with_source_file_if_missing(mut self, source_file: Option<String>) -> Self {
+        if self.source_file.is_none() {
+            self.source_file = source_file;
+        }
+        self
     }
 
     /// Format error message with source context
@@ -189,15 +224,24 @@ fn source_location_to_span(file: String, loc: SourceLocation) -> SourceSpan {
 
 impl From<TypeError> for Diagnostic {
     fn from(error: TypeError) -> Self {
-        let code = codes::typecheck::ERROR;
-        let mut diag = Diagnostic::new(code, SigilPhase::Typecheck, error.message.clone());
+        let mut diag = Diagnostic::new(error.code, SigilPhase::Typecheck, error.message.clone());
 
         if let Some(loc) = error.location {
-            diag = diag.with_location(source_location_to_span("<unknown>".into(), loc));
+            let file = error
+                .source_file
+                .clone()
+                .unwrap_or_else(|| "<unknown>".to_string());
+            diag = diag.with_location(source_location_to_span(file, loc));
         }
 
         if let (Some(exp), Some(act)) = (error.expected, error.actual) {
             diag = diag.with_found_expected(format_type(&act), format_type(&exp));
+        }
+
+        if let Some(details) = error.details {
+            for (key, value) in details {
+                diag = diag.with_details(key, value);
+            }
         }
 
         diag

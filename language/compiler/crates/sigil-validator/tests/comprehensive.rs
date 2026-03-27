@@ -248,7 +248,8 @@ fn test_project_types_must_live_in_src_types_file() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, file_path.to_string_lossy().as_ref()).unwrap();
 
-    let result = validate_canonical_form(&program, Some(file_path.to_string_lossy().as_ref()), None);
+    let result =
+        validate_canonical_form(&program, Some(file_path.to_string_lossy().as_ref()), None);
     assert!(result.is_err());
     assert!(result
         .unwrap_err()
@@ -263,7 +264,8 @@ fn test_src_types_file_may_only_contain_type_declarations() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, file_path.to_string_lossy().as_ref()).unwrap();
 
-    let result = validate_canonical_form(&program, Some(file_path.to_string_lossy().as_ref()), None);
+    let result =
+        validate_canonical_form(&program, Some(file_path.to_string_lossy().as_ref()), None);
     assert!(result.is_err());
     assert!(result
         .unwrap_err()
@@ -278,7 +280,8 @@ fn test_src_types_file_rejects_non_foundational_roots() {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, file_path.to_string_lossy().as_ref()).unwrap();
 
-    let result = validate_canonical_form(&program, Some(file_path.to_string_lossy().as_ref()), None);
+    let result =
+        validate_canonical_form(&program, Some(file_path.to_string_lossy().as_ref()), None);
     assert!(result.is_err());
     assert!(result
         .unwrap_err()

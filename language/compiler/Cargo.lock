@@ -465,6 +465,8 @@ dependencies = [
 name = "sigil-typechecker"
 version = "0.1.0"
 dependencies = [
+ "serde",
+ "serde_json",
  "sigil-ast",
  "sigil-diagnostics",
  "sigil-lexer",

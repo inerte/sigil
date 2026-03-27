@@ -21,6 +21,13 @@ e console
   _=>"negative"
 }
 
+λclassifyPair(left:Bool,right:Bool)=>String match (left,right){
+  (true,true)=>"both true"|
+  (true,false)=>"left only"|
+  (false,true)=>"right only"|
+  (false,false)=>"both false"
+}
+
 λclassifyPoint(p:Point)=>String match p.x{
   x when x=0 and p.y=0=>"origin"|
   x when x=0=>"on y-axis"|
@@ -69,6 +76,9 @@ e console
   l _=(console.log(classifyPoint({x:3,y:7})):Unit);
   l _=(console.log("\n=== Color Conversion ==="):Unit);
   l _=(console.log(colorToHex(Red())):Unit);
+  l _=(console.log("\n=== Tuple Coverage ==="):Unit);
+  l _=(console.log(classifyPair(true,false)):Unit);
+  l _=(console.log(classifyPair(false,false)):Unit);
   l _=(console.log("\n=== State Transition ==="):Unit);
   l _=(console.log(stateToString(stateTransition(Increment(),{count:99,mode:"normal"}))):Unit);
   l _=(console.log(stateToString(stateTransition(Reset(),{count:5,mode:"busy"}))):Unit);

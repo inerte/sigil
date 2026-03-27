@@ -10,17 +10,23 @@ t User={active:Bool,email:String,id:Int,name:String}
 
 λmain()=>Int match ({active:true,email:"ada@example.com",id:7,name:"Ada"}:User){
   user=>match (Node(Leaf(1),2,Leaf(3)):Tree[Int]){
-    Node(Leaf(left),root,Leaf(right))=>match (Some(Green()):Option[Color]){
-      Some(color)=>match (Ok((match color{
-        Red()=>0|
-        Green()=>1|
-        Blue()=>2
-      })+user.id+left+root+right):Result[Int,String]){
-        Ok(total)=>total|
-        Err(_)=>0
+    Node(leftTree,root,rightTree)=>match leftTree{
+      Leaf(left)=>match rightTree{
+        Leaf(right)=>match (Some(Green()):Option[Color]){
+          Some(color)=>match (Ok((match color{
+            Red()=>0|
+            Green()=>1|
+            Blue()=>2
+          })+user.id+left+root+right):Result[Int,String]){
+            Ok(total)=>total|
+            Err(_)=>0
+          }|
+          None()=>0
+        }|
+        _=>0
       }|
-      None()=>0
+      _=>0
     }|
-    _=>0
+    Leaf(_)=>0
   }
 }

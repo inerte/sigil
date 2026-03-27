@@ -349,7 +349,20 @@ Patterns include:
 - `_`
 - constructors
 - list patterns
-- record patterns
+- tuple patterns
+
+Current match rules:
+
+- `match` is Sigil's only branching surface
+- matches over finite structural spaces must be exhaustive
+- redundant and unreachable arms are rejected
+- `Bool`, `Unit`, tuples, list shapes, and nominal sum constructors participate in exhaustiveness checking
+- guards participate in coverage only through a small proof fragment:
+  - `true` / `false`
+  - equality and order comparisons between a bound pattern variable and a literal
+  - boolean `and` / `or` / `not` over those supported facts
+- guards outside that fragment remain valid source, but they do not count as full coverage and do not make later arms dead by themselves
+- record patterns are not part of the current supported checker surface
 
 Examples:
 
@@ -362,6 +375,13 @@ Examples:
 λheadOrZero(list:[Int])=>Int match list{
   []=>0|
   [head,.rest]=>head
+}
+
+λpairLabel(left:Bool,right:Bool)=>String match (left,right){
+  (true,true)=>"tt"|
+  (true,false)=>"tf"|
+  (false,true)=>"ft"|
+  (false,false)=>"ff"
 }
 ```
 

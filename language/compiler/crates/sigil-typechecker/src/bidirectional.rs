@@ -16,11 +16,10 @@ use crate::typed_ir::{
     TypedConcurrentConfig, TypedConcurrentExpr, TypedConcurrentStep, TypedConstDecl,
     TypedConstructorCallExpr, TypedDeclaration, TypedExpr, TypedExprKind, TypedExternCallExpr,
     TypedExternDecl, TypedFieldAccessExpr, TypedFilterExpr, TypedFoldExpr, TypedFunctionDecl,
-    TypedIfExpr, TypedIndexExpr, TypedLambdaExpr, TypedLetExpr, TypedListExpr,
-    TypedMapEntryExpr, TypedMapExpr, TypedMapLiteralExpr, TypedMatchArm, TypedMatchExpr,
-    TypedMethodCallExpr, TypedPipelineExpr, TypedProgram, TypedRecordExpr, TypedRecordField,
-    TypedSpawnEachStep, TypedSpawnStep, TypedTestDecl, TypedTupleExpr, TypedTypeDecl,
-    TypedUnaryExpr,
+    TypedIfExpr, TypedIndexExpr, TypedLambdaExpr, TypedLetExpr, TypedListExpr, TypedMapEntryExpr,
+    TypedMapExpr, TypedMapLiteralExpr, TypedMatchArm, TypedMatchExpr, TypedMethodCallExpr,
+    TypedPipelineExpr, TypedProgram, TypedRecordExpr, TypedRecordField, TypedSpawnEachStep,
+    TypedSpawnStep, TypedTestDecl, TypedTupleExpr, TypedTypeDecl, TypedUnaryExpr,
 };
 use crate::types::{
     apply_subst, ast_type_to_inference_type_with_params, types_equal, unify, EffectSet,
@@ -29,7 +28,7 @@ use crate::types::{
 use crate::TypeCheckOptions;
 use sigil_ast::{
     BinaryOperator, Declaration, Expr, FunctionDecl, LiteralType, LiteralValue, PrimitiveName,
-    Program, Type, TypeDef, TypeDecl, UnaryOperator,
+    Program, Type, TypeDecl, TypeDef, UnaryOperator,
 };
 use sigil_diagnostics::codes;
 use std::collections::{HashMap, HashSet};
@@ -44,261 +43,271 @@ pub fn type_check(
     _source_code: &str,
     options: TypeCheckOptions,
 ) -> Result<TypeCheckResult, TypeError> {
-    validate_surface_types(program)?;
+    let source_file = options.source_file.clone();
+    (|| {
+        validate_surface_types(program)?;
 
-    let mut env = TypeEnvironment::create_initial();
-    env.set_effect_catalog(options.effect_catalog.clone().unwrap_or_default());
-    env.set_source_file(options.source_file.clone());
-    let mut types = HashMap::new();
-    let mut schemes = HashMap::new();
+        let mut env = TypeEnvironment::create_initial();
+        env.set_effect_catalog(options.effect_catalog.clone().unwrap_or_default());
+        env.set_source_file(options.source_file.clone());
+        let mut types = HashMap::new();
+        let mut schemes = HashMap::new();
 
-    // Register imported type registries
-    if let Some(imported_type_registries) = options.imported_type_registries.as_ref() {
-        for (module_id, type_registry) in imported_type_registries {
-            env.register_imported_types(module_id.clone(), type_registry.clone());
+        // Register imported type registries
+        if let Some(imported_type_registries) = options.imported_type_registries.as_ref() {
+            for (module_id, type_registry) in imported_type_registries {
+                env.register_imported_types(module_id.clone(), type_registry.clone());
+            }
         }
-    }
 
-    if let Some(imported_value_schemes) = options.imported_value_schemes.as_ref() {
-        for (module_id, value_schemes) in imported_value_schemes {
-            env.register_imported_value_schemes(module_id.clone(), value_schemes.clone());
+        if let Some(imported_value_schemes) = options.imported_value_schemes.as_ref() {
+            for (module_id, value_schemes) in imported_value_schemes {
+                env.register_imported_value_schemes(module_id.clone(), value_schemes.clone());
+            }
         }
-    }
 
-    // Seed the implicit core prelude into the unqualified environment.
-    if let Some(prelude_types) = options
-        .imported_type_registries
-        .as_ref()
-        .and_then(|registries| registries.get("core::prelude"))
-    {
-        for (name, info) in prelude_types {
-            env.register_type(name.clone(), info.clone());
+        // Seed the implicit core prelude into the unqualified environment.
+        if let Some(prelude_types) = options
+            .imported_type_registries
+            .as_ref()
+            .and_then(|registries| registries.get("core::prelude"))
+        {
+            for (name, info) in prelude_types {
+                env.register_type(name.clone(), info.clone());
+            }
         }
-    }
 
-    if let Some(prelude_schemes) = options
-        .imported_value_schemes
-        .as_ref()
-        .and_then(|schemes| schemes.get("core::prelude"))
-    {
-        for (name, scheme) in prelude_schemes {
-            env.bind_scheme(name.clone(), scheme.clone());
+        if let Some(prelude_schemes) = options
+            .imported_value_schemes
+            .as_ref()
+            .and_then(|schemes| schemes.get("core::prelude"))
+        {
+            for (name, scheme) in prelude_schemes {
+                env.bind_scheme(name.clone(), scheme.clone());
+            }
         }
-    }
 
-    if let Some(imported_namespaces) = options.imported_namespaces.as_ref() {
-        for (namespace_name, imported_type) in imported_namespaces {
-            env.bind(namespace_name.clone(), imported_type.clone());
+        if let Some(imported_namespaces) = options.imported_namespaces.as_ref() {
+            for (namespace_name, imported_type) in imported_namespaces {
+                env.bind(namespace_name.clone(), imported_type.clone());
+            }
         }
-    }
 
-    // First pass: Register all function signatures and types
-    for decl in &program.declarations {
-        match decl {
-            Declaration::Type(type_decl) => {
-                // Register the type in the type registry
-                env.register_type(
-                    type_decl.name.clone(),
-                    TypeInfo {
-                        type_params: type_decl.type_params.clone(),
-                        definition: type_decl.definition.clone(),
-                        constraint: type_decl.constraint.clone(),
-                    },
-                );
+        // First pass: Register all function signatures and types
+        for decl in &program.declarations {
+            match decl {
+                Declaration::Type(type_decl) => {
+                    // Register the type in the type registry
+                    env.register_type(
+                        type_decl.name.clone(),
+                        TypeInfo {
+                            type_params: type_decl.type_params.clone(),
+                            definition: type_decl.definition.clone(),
+                            constraint: type_decl.constraint.clone(),
+                        },
+                    );
 
-                // Register constructor functions for sum types
-                if let sigil_ast::TypeDef::Sum(sum_type) = &type_decl.definition {
-                    for variant in &sum_type.variants {
-                        let constructor_type = create_constructor_type(
-                            &env,
-                            variant,
-                            &type_decl.type_params,
-                            &type_decl.name,
-                        )?;
-                        if type_decl.type_params.is_empty() {
-                            env.bind(variant.name.clone(), constructor_type.clone());
-                            types.insert(variant.name.clone(), constructor_type.clone());
-                            schemes.insert(
-                                variant.name.clone(),
-                                explicit_scheme(&constructor_type, &HashSet::new()),
-                            );
-                        } else {
-                            let mut quantified_vars = HashSet::new();
-                            collect_type_var_ids(&constructor_type, &mut quantified_vars);
-                            types.insert(variant.name.clone(), constructor_type.clone());
-                            schemes.insert(
-                                variant.name.clone(),
-                                explicit_scheme(&constructor_type, &quantified_vars),
-                            );
-                            env.bind_scheme(
-                                variant.name.clone(),
-                                explicit_scheme(&constructor_type, &quantified_vars),
-                            );
+                    // Register constructor functions for sum types
+                    if let sigil_ast::TypeDef::Sum(sum_type) = &type_decl.definition {
+                        for variant in &sum_type.variants {
+                            let constructor_type = create_constructor_type(
+                                &env,
+                                variant,
+                                &type_decl.type_params,
+                                &type_decl.name,
+                            )?;
+                            if type_decl.type_params.is_empty() {
+                                env.bind(variant.name.clone(), constructor_type.clone());
+                                types.insert(variant.name.clone(), constructor_type.clone());
+                                schemes.insert(
+                                    variant.name.clone(),
+                                    explicit_scheme(&constructor_type, &HashSet::new()),
+                                );
+                            } else {
+                                let mut quantified_vars = HashSet::new();
+                                collect_type_var_ids(&constructor_type, &mut quantified_vars);
+                                types.insert(variant.name.clone(), constructor_type.clone());
+                                schemes.insert(
+                                    variant.name.clone(),
+                                    explicit_scheme(&constructor_type, &quantified_vars),
+                                );
+                                env.bind_scheme(
+                                    variant.name.clone(),
+                                    explicit_scheme(&constructor_type, &quantified_vars),
+                                );
+                            }
                         }
                     }
                 }
-            }
 
-            Declaration::Effect(_) => {}
+                Declaration::Effect(_) => {}
 
-            Declaration::Function(func_decl) => {
-                let type_param_env = make_type_param_env(&func_decl.type_params);
-                // Extract function type from signature
-                let params: Vec<InferenceType> = func_decl
-                    .params
-                    .iter()
-                    .map(|p| match &p.type_annotation {
-                        Some(ty) => {
+                Declaration::Function(func_decl) => {
+                    let type_param_env = make_type_param_env(&func_decl.type_params);
+                    // Extract function type from signature
+                    let params: Vec<InferenceType> = func_decl
+                        .params
+                        .iter()
+                        .map(|p| match &p.type_annotation {
+                            Some(ty) => {
+                                ast_type_to_inference_type_resolved(&env, Some(&type_param_env), ty)
+                            }
+                            None => Ok(InferenceType::Any),
+                        })
+                        .collect::<Result<_, _>>()?;
+
+                    let return_type = func_decl
+                        .return_type
+                        .as_ref()
+                        .map(|ty| {
                             ast_type_to_inference_type_resolved(&env, Some(&type_param_env), ty)
-                        }
-                        None => Ok(InferenceType::Any),
-                    })
-                    .collect::<Result<_, _>>()?;
+                        })
+                        .transpose()?
+                        .unwrap_or(InferenceType::Any);
 
-                let return_type = func_decl
-                    .return_type
-                    .as_ref()
-                    .map(|ty| ast_type_to_inference_type_resolved(&env, Some(&type_param_env), ty))
-                    .transpose()?
-                    .unwrap_or(InferenceType::Any);
+                    let effects = if func_decl.effects.is_empty() {
+                        None
+                    } else {
+                        Some(resolve_effect_names(
+                            &env,
+                            &func_decl.effects,
+                            func_decl.location,
+                            "function signature",
+                        )?)
+                    };
 
-                let effects = if func_decl.effects.is_empty() {
-                    None
-                } else {
-                    Some(resolve_effect_names(
-                        &env,
-                        &func_decl.effects,
-                        func_decl.location,
-                        "function signature",
-                    )?)
-                };
+                    let func_type = InferenceType::Function(Box::new(TFunction {
+                        params,
+                        return_type,
+                        effects,
+                    }));
 
-                let func_type = InferenceType::Function(Box::new(TFunction {
-                    params,
-                    return_type,
-                    effects,
-                }));
+                    let binding_type = if func_decl.type_params.is_empty() {
+                        func_type.clone()
+                    } else {
+                        let mut quantified_vars = HashSet::new();
+                        collect_type_var_ids(&func_type, &mut quantified_vars);
+                        let scheme = explicit_scheme(&func_type, &quantified_vars);
+                        env.bind_scheme(func_decl.name.clone(), scheme.clone());
+                        schemes.insert(func_decl.name.clone(), scheme);
+                        func_type.clone()
+                    };
 
-                let binding_type = if func_decl.type_params.is_empty() {
-                    func_type.clone()
-                } else {
-                    let mut quantified_vars = HashSet::new();
-                    collect_type_var_ids(&func_type, &mut quantified_vars);
-                    let scheme = explicit_scheme(&func_type, &quantified_vars);
-                    env.bind_scheme(func_decl.name.clone(), scheme.clone());
-                    schemes.insert(func_decl.name.clone(), scheme);
-                    func_type.clone()
-                };
-
-                if func_decl.type_params.is_empty() {
-                    env.bind(func_decl.name.clone(), binding_type.clone());
-                }
-
-                types.insert(func_decl.name.clone(), binding_type);
-            }
-
-            Declaration::Const(const_decl) => {
-                // Register constant type
-                let const_type = const_decl
-                    .type_annotation
-                    .as_ref()
-                    .map(|ty| ast_type_to_inference_type_resolved(&env, None, ty))
-                    .transpose()?
-                    .unwrap_or(InferenceType::Any);
-
-                env.bind(const_decl.name.clone(), const_type.clone());
-                types.insert(const_decl.name.clone(), const_type);
-            }
-
-            Declaration::Extern(extern_decl) => {
-                let namespace_name = extern_decl.module_path.join("::");
-
-                if let Some(members) = &extern_decl.members {
-                    let mut fields = HashMap::new();
-                    for member in members {
-                        let member_type =
-                            ast_type_to_inference_type_resolved(&env, None, &member.member_type)?;
-                        fields.insert(member.name.clone(), member_type);
+                    if func_decl.type_params.is_empty() {
+                        env.bind(func_decl.name.clone(), binding_type.clone());
                     }
-                    env.bind_with_meta(
-                        namespace_name,
-                        InferenceType::Record(TRecord { fields, name: None }),
-                        BindingMeta {
-                            is_extern_namespace: true,
-                        },
-                    );
-                } else {
-                    // Untyped extern: trust mode
-                    env.bind_with_meta(
-                        namespace_name,
-                        InferenceType::Any,
-                        BindingMeta {
-                            is_extern_namespace: true,
-                        },
-                    );
+
+                    types.insert(func_decl.name.clone(), binding_type);
+                }
+
+                Declaration::Const(const_decl) => {
+                    // Register constant type
+                    let const_type = const_decl
+                        .type_annotation
+                        .as_ref()
+                        .map(|ty| ast_type_to_inference_type_resolved(&env, None, ty))
+                        .transpose()?
+                        .unwrap_or(InferenceType::Any);
+
+                    env.bind(const_decl.name.clone(), const_type.clone());
+                    types.insert(const_decl.name.clone(), const_type);
+                }
+
+                Declaration::Extern(extern_decl) => {
+                    let namespace_name = extern_decl.module_path.join("::");
+
+                    if let Some(members) = &extern_decl.members {
+                        let mut fields = HashMap::new();
+                        for member in members {
+                            let member_type = ast_type_to_inference_type_resolved(
+                                &env,
+                                None,
+                                &member.member_type,
+                            )?;
+                            fields.insert(member.name.clone(), member_type);
+                        }
+                        env.bind_with_meta(
+                            namespace_name,
+                            InferenceType::Record(TRecord { fields, name: None }),
+                            BindingMeta {
+                                is_extern_namespace: true,
+                            },
+                        );
+                    } else {
+                        // Untyped extern: trust mode
+                        env.bind_with_meta(
+                            namespace_name,
+                            InferenceType::Any,
+                            BindingMeta {
+                                is_extern_namespace: true,
+                            },
+                        );
+                    }
+                }
+
+                Declaration::Test(_) => {
+                    // TODO: Check test declarations
                 }
             }
-
-            Declaration::Test(_) => {
-                // TODO: Check test declarations
-            }
         }
-    }
 
-    validate_type_constraints(&env, program)?;
+        validate_type_constraints(&env, program)?;
 
-    let mut typed_declarations = Vec::new();
+        let mut typed_declarations = Vec::new();
 
-    // Second pass: Type check function bodies and build typed IR
-    for decl in &program.declarations {
-        if let Declaration::Function(func_decl) = decl {
-            check_function_decl(&env, func_decl)?;
-            typed_declarations.push(TypedDeclaration::Function(build_typed_function_decl(
-                &env, func_decl,
-            )?));
-        } else if let Declaration::Const(const_decl) = decl {
-            // Type check constant value
-            let value_type = synthesize(&env, &const_decl.value)?;
-            if let Some(ref annotation) = const_decl.type_annotation {
-                let expected_type = ast_type_to_inference_type_resolved(&env, None, annotation)?;
-                let (normalized_value, normalized_expected) =
-                    canonical_pair(&env, &value_type, &expected_type);
-                if !types_equal(&normalized_value, &normalized_expected) {
-                    return Err(TypeError::mismatch(
-                        format!("Constant '{}' type mismatch", const_decl.name),
-                        Some(const_decl.location),
-                        normalized_expected,
-                        normalized_value,
-                    ));
+        // Second pass: Type check function bodies and build typed IR
+        for decl in &program.declarations {
+            if let Declaration::Function(func_decl) = decl {
+                check_function_decl(&env, func_decl)?;
+                typed_declarations.push(TypedDeclaration::Function(build_typed_function_decl(
+                    &env, func_decl,
+                )?));
+            } else if let Declaration::Const(const_decl) = decl {
+                // Type check constant value
+                let value_type = synthesize(&env, &const_decl.value)?;
+                if let Some(ref annotation) = const_decl.type_annotation {
+                    let expected_type =
+                        ast_type_to_inference_type_resolved(&env, None, annotation)?;
+                    let (normalized_value, normalized_expected) =
+                        canonical_pair(&env, &value_type, &expected_type);
+                    if !types_equal(&normalized_value, &normalized_expected) {
+                        return Err(TypeError::mismatch(
+                            format!("Constant '{}' type mismatch", const_decl.name),
+                            Some(const_decl.location),
+                            normalized_expected,
+                            normalized_value,
+                        ));
+                    }
                 }
+                typed_declarations.push(TypedDeclaration::Const(build_typed_const_decl(
+                    &env, const_decl,
+                )?));
+            } else if let Declaration::Type(type_decl) = decl {
+                typed_declarations.push(TypedDeclaration::Type(TypedTypeDecl {
+                    ast: type_decl.clone(),
+                }));
+            } else if let Declaration::Extern(extern_decl) = decl {
+                typed_declarations.push(TypedDeclaration::Extern(TypedExternDecl {
+                    ast: extern_decl.clone(),
+                }));
+            } else if let Declaration::Test(test_decl) = decl {
+                typed_declarations.push(TypedDeclaration::Test(build_typed_test_decl(
+                    &env, test_decl,
+                )?));
+            } else if let Declaration::Effect(_) = decl {
+                // Effect declarations are compile-time only and do not appear in typed IR.
             }
-            typed_declarations.push(TypedDeclaration::Const(build_typed_const_decl(
-                &env, const_decl,
-            )?));
-        } else if let Declaration::Type(type_decl) = decl {
-            typed_declarations.push(TypedDeclaration::Type(TypedTypeDecl {
-                ast: type_decl.clone(),
-            }));
-        } else if let Declaration::Extern(extern_decl) = decl {
-            typed_declarations.push(TypedDeclaration::Extern(TypedExternDecl {
-                ast: extern_decl.clone(),
-            }));
-        } else if let Declaration::Test(test_decl) = decl {
-            typed_declarations.push(TypedDeclaration::Test(build_typed_test_decl(
-                &env, test_decl,
-            )?));
-        } else if let Declaration::Effect(_) = decl {
-            // Effect declarations are compile-time only and do not appear in typed IR.
         }
-    }
 
-    Ok(TypeCheckResult {
-        declaration_types: types,
-        declaration_schemes: schemes,
-        typed_program: TypedProgram {
-            declarations: typed_declarations,
-        },
-    })
+        Ok(TypeCheckResult {
+            declaration_types: types,
+            declaration_schemes: schemes,
+            typed_program: TypedProgram {
+                declarations: typed_declarations,
+            },
+        })
+    })()
+    .map_err(|error| error.with_source_file_if_missing(source_file))
 }
 
 /// Canonicalize two types before any structural equality-sensitive comparison.
@@ -355,7 +364,10 @@ fn resolve_qualified_type(
         }
 
         return Err(TypeError::new(
-            format!("Module '{}' is unavailable or does not export any types.", module_id),
+            format!(
+                "Module '{}' is unavailable or does not export any types.",
+                module_id
+            ),
             Some(qualified.location),
         ));
     };
@@ -744,13 +756,21 @@ fn lookup_constrained_type_info(
     if let Some((module_path, type_name)) = split_qualified_constructor_name(&constructor.name) {
         let info = env.lookup_qualified_type(&module_path, &type_name)?;
         if info.constraint.is_some() {
-            return Some((constructor.name.clone(), info, constructor.type_args.clone()));
+            return Some((
+                constructor.name.clone(),
+                info,
+                constructor.type_args.clone(),
+            ));
         }
     }
 
     let info = env.lookup_type(&constructor.name)?;
     if info.constraint.is_some() {
-        return Some((constructor.name.clone(), info, constructor.type_args.clone()));
+        return Some((
+            constructor.name.clone(),
+            info,
+            constructor.type_args.clone(),
+        ));
     }
 
     None
@@ -906,9 +926,11 @@ fn eval_static_expr(
     locals: &HashMap<String, StaticValue>,
 ) -> Option<StaticValue> {
     match expr {
-        Expr::Literal(_) | Expr::List(_) | Expr::MapLiteral(_) | Expr::Tuple(_) | Expr::Record(_) => {
-            static_value_from_expr(expr)
-        }
+        Expr::Literal(_)
+        | Expr::List(_)
+        | Expr::MapLiteral(_)
+        | Expr::Tuple(_)
+        | Expr::Record(_) => static_value_from_expr(expr),
         Expr::Identifier(identifier) => {
             if identifier.name == "value" {
                 Some(value.clone())
@@ -941,18 +963,18 @@ fn eval_static_expr(
         }
         Expr::If(if_expr) => match eval_static_expr(&if_expr.condition, value, locals)? {
             StaticValue::Bool(true) => eval_static_expr(&if_expr.then_branch, value, locals),
-            StaticValue::Bool(false) => {
-                if_expr
-                    .else_branch
-                    .as_ref()
-                    .and_then(|branch| eval_static_expr(branch, value, locals))
+            StaticValue::Bool(false) => if_expr
+                .else_branch
+                .as_ref()
+                .and_then(|branch| eval_static_expr(branch, value, locals)),
+            _ => None,
+        },
+        Expr::FieldAccess(field_access) => {
+            match eval_static_expr(&field_access.object, value, locals)? {
+                StaticValue::Record(fields) => fields.get(&field_access.field).cloned(),
+                _ => None,
             }
-            _ => None,
-        },
-        Expr::FieldAccess(field_access) => match eval_static_expr(&field_access.object, value, locals)? {
-            StaticValue::Record(fields) => fields.get(&field_access.field).cloned(),
-            _ => None,
-        },
+        }
         Expr::TypeAscription(type_asc) => eval_static_expr(&type_asc.expr, value, locals),
         _ => None,
     }
@@ -965,21 +987,27 @@ fn eval_static_binary(
 ) -> Option<StaticValue> {
     match operator {
         BinaryOperator::Add => match (left, right) {
-            (StaticValue::Int(left), StaticValue::Int(right)) => Some(StaticValue::Int(left + right)),
+            (StaticValue::Int(left), StaticValue::Int(right)) => {
+                Some(StaticValue::Int(left + right))
+            }
             (StaticValue::Float(left), StaticValue::Float(right)) => {
                 Some(StaticValue::Float(left + right))
             }
             _ => None,
         },
         BinaryOperator::Subtract => match (left, right) {
-            (StaticValue::Int(left), StaticValue::Int(right)) => Some(StaticValue::Int(left - right)),
+            (StaticValue::Int(left), StaticValue::Int(right)) => {
+                Some(StaticValue::Int(left - right))
+            }
             (StaticValue::Float(left), StaticValue::Float(right)) => {
                 Some(StaticValue::Float(left - right))
             }
             _ => None,
         },
         BinaryOperator::Multiply => match (left, right) {
-            (StaticValue::Int(left), StaticValue::Int(right)) => Some(StaticValue::Int(left * right)),
+            (StaticValue::Int(left), StaticValue::Int(right)) => {
+                Some(StaticValue::Int(left * right))
+            }
             (StaticValue::Float(left), StaticValue::Float(right)) => {
                 Some(StaticValue::Float(left * right))
             }
@@ -987,7 +1015,9 @@ fn eval_static_binary(
         },
         BinaryOperator::Divide => match (left, right) {
             (_, StaticValue::Int(0)) | (_, StaticValue::Float(0.0)) => None,
-            (StaticValue::Int(left), StaticValue::Int(right)) => Some(StaticValue::Int(left / right)),
+            (StaticValue::Int(left), StaticValue::Int(right)) => {
+                Some(StaticValue::Int(left / right))
+            }
             (StaticValue::Float(left), StaticValue::Float(right)) => {
                 Some(StaticValue::Float(left / right))
             }
@@ -995,7 +1025,9 @@ fn eval_static_binary(
         },
         BinaryOperator::Modulo => match (left, right) {
             (_, StaticValue::Int(0)) => None,
-            (StaticValue::Int(left), StaticValue::Int(right)) => Some(StaticValue::Int(left % right)),
+            (StaticValue::Int(left), StaticValue::Int(right)) => {
+                Some(StaticValue::Int(left % right))
+            }
             _ => None,
         },
         BinaryOperator::Power => None,
@@ -2884,6 +2916,8 @@ fn synthesize_match(
         check(&arm_env, &arm.body, &expected_type)?;
     }
 
+    analyze_match_coverage(env, &scrutinee_type, match_expr)?;
+
     Ok(expected_type)
 }
 
@@ -3852,6 +3886,2110 @@ fn check_pattern(
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+enum LiteralAtom {
+    Float(u64),
+    String(String),
+    Char(char),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum PrimitiveEqKind {
+    Float,
+    String,
+    Char,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum PrimitiveSpace {
+    Bool {
+        allow_true: bool,
+        allow_false: bool,
+    },
+    Unit {
+        present: bool,
+    },
+    Int(IntRangeSet),
+    EqAny {
+        kind: PrimitiveEqKind,
+        excluded: std::collections::BTreeSet<LiteralAtom>,
+    },
+    EqFinite {
+        kind: PrimitiveEqKind,
+        values: std::collections::BTreeSet<LiteralAtom>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct VariantSpace {
+    owner: String,
+    name: String,
+    fields: Vec<MatchSpace>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum ListSpace {
+    Any(Box<MatchSpace>),
+    Nil,
+    Cons {
+        head: Box<MatchSpace>,
+        tail: Box<MatchSpace>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum MatchSpace {
+    Empty,
+    Primitive(PrimitiveSpace),
+    Variant(VariantSpace),
+    Tuple(Vec<MatchSpace>),
+    List(ListSpace),
+    Union(Vec<MatchSpace>),
+    Opaque(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct IntInterval {
+    start: Option<i64>,
+    end: Option<i64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct IntRangeSet {
+    intervals: Vec<IntInterval>,
+}
+
+impl IntRangeSet {
+    fn all() -> Self {
+        Self {
+            intervals: vec![IntInterval {
+                start: None,
+                end: None,
+            }],
+        }
+    }
+
+    fn singleton(value: i64) -> Self {
+        Self {
+            intervals: vec![IntInterval {
+                start: Some(value),
+                end: Some(value),
+            }],
+        }
+    }
+
+    fn empty() -> Self {
+        Self { intervals: vec![] }
+    }
+
+    fn greater_than(value: i64) -> Self {
+        value
+            .checked_add(1)
+            .map(|start| Self {
+                intervals: vec![IntInterval {
+                    start: Some(start),
+                    end: None,
+                }],
+            })
+            .unwrap_or_else(Self::empty)
+    }
+
+    fn greater_eq(value: i64) -> Self {
+        Self {
+            intervals: vec![IntInterval {
+                start: Some(value),
+                end: None,
+            }],
+        }
+    }
+
+    fn less_than(value: i64) -> Self {
+        value
+            .checked_sub(1)
+            .map(|end| Self {
+                intervals: vec![IntInterval {
+                    start: None,
+                    end: Some(end),
+                }],
+            })
+            .unwrap_or_else(Self::empty)
+    }
+
+    fn less_eq(value: i64) -> Self {
+        Self {
+            intervals: vec![IntInterval {
+                start: None,
+                end: Some(value),
+            }],
+        }
+    }
+
+    fn union(&self, other: &Self) -> Self {
+        let mut intervals = self.intervals.clone();
+        intervals.extend(other.intervals.clone());
+        normalize_int_ranges(intervals)
+    }
+
+    fn intersect(&self, other: &Self) -> Self {
+        let mut result = Vec::new();
+        for left in &self.intervals {
+            for right in &other.intervals {
+                if let Some(interval) = intersect_interval(left, right) {
+                    result.push(interval);
+                }
+            }
+        }
+        normalize_int_ranges(result)
+    }
+
+    fn difference(&self, other: &Self) -> Self {
+        let mut current = self.clone();
+        for interval in &other.intervals {
+            current = current.subtract_interval(interval);
+            if current.is_empty() {
+                break;
+            }
+        }
+        current
+    }
+
+    fn subtract_interval(&self, remove: &IntInterval) -> Self {
+        let mut result = Vec::new();
+        for interval in &self.intervals {
+            result.extend(subtract_interval(interval, remove));
+        }
+        normalize_int_ranges(result)
+    }
+
+    fn is_empty(&self) -> bool {
+        self.intervals.is_empty()
+    }
+}
+
+fn normalize_int_ranges(mut intervals: Vec<IntInterval>) -> IntRangeSet {
+    intervals.retain(|interval| interval_valid(interval));
+    intervals.sort_by(compare_interval_start);
+
+    let mut merged: Vec<IntInterval> = Vec::new();
+    for interval in intervals {
+        if let Some(last) = merged.last_mut() {
+            if intervals_touch_or_overlap(last, &interval) {
+                last.end = max_end(last.end, interval.end);
+                continue;
+            }
+        }
+        merged.push(interval);
+    }
+
+    IntRangeSet { intervals: merged }
+}
+
+fn compare_interval_start(left: &IntInterval, right: &IntInterval) -> std::cmp::Ordering {
+    match (left.start, right.start) {
+        (None, None) => std::cmp::Ordering::Equal,
+        (None, Some(_)) => std::cmp::Ordering::Less,
+        (Some(_), None) => std::cmp::Ordering::Greater,
+        (Some(left), Some(right)) => left.cmp(&right),
+    }
+}
+
+fn interval_valid(interval: &IntInterval) -> bool {
+    match (interval.start, interval.end) {
+        (Some(start), Some(end)) => start <= end,
+        _ => true,
+    }
+}
+
+fn intersect_interval(left: &IntInterval, right: &IntInterval) -> Option<IntInterval> {
+    let start = max_start(left.start, right.start);
+    let end = min_end(left.end, right.end);
+    let interval = IntInterval { start, end };
+    interval_valid(&interval).then_some(interval)
+}
+
+fn subtract_interval(base: &IntInterval, remove: &IntInterval) -> Vec<IntInterval> {
+    let Some(overlap) = intersect_interval(base, remove) else {
+        return vec![base.clone()];
+    };
+
+    let mut result = Vec::new();
+
+    if overlap.start != base.start {
+        let left_end = overlap.start.and_then(|start| start.checked_sub(1));
+        let left = IntInterval {
+            start: base.start,
+            end: left_end,
+        };
+        if interval_valid(&left) {
+            result.push(left);
+        }
+    }
+
+    if overlap.end != base.end {
+        let right_start = overlap.end.and_then(|end| end.checked_add(1));
+        let right = IntInterval {
+            start: right_start,
+            end: base.end,
+        };
+        if interval_valid(&right) {
+            result.push(right);
+        }
+    }
+
+    result
+}
+
+fn max_start(left: Option<i64>, right: Option<i64>) -> Option<i64> {
+    match (left, right) {
+        (Some(left), Some(right)) => Some(left.max(right)),
+        (Some(left), None) => Some(left),
+        (None, Some(right)) => Some(right),
+        (None, None) => None,
+    }
+}
+
+fn min_end(left: Option<i64>, right: Option<i64>) -> Option<i64> {
+    match (left, right) {
+        (Some(left), Some(right)) => Some(left.min(right)),
+        (Some(left), None) => Some(left),
+        (None, Some(right)) => Some(right),
+        (None, None) => None,
+    }
+}
+
+fn max_end(left: Option<i64>, right: Option<i64>) -> Option<i64> {
+    match (left, right) {
+        (Some(left), Some(right)) => Some(left.max(right)),
+        (None, _) | (_, None) => None,
+    }
+}
+
+fn intervals_touch_or_overlap(left: &IntInterval, right: &IntInterval) -> bool {
+    match (left.end, right.start) {
+        (Some(left_end), Some(right_start)) => left_end
+            .checked_add(1)
+            .is_some_and(|next| next >= right_start),
+        (None, _) | (_, None) => true,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+enum ValuePathStep {
+    VariantField(usize),
+    TupleIndex(usize),
+    ListHead,
+    ListTail,
+}
+
+type ValuePath = Vec<ValuePathStep>;
+
+#[derive(Debug, Clone)]
+struct ArmProof {
+    space: MatchSpace,
+    guard_supported: bool,
+    facts: Vec<String>,
+    unsupported_facts: Vec<String>,
+}
+
+fn analyze_match_coverage(
+    env: &TypeEnvironment,
+    scrutinee_type: &InferenceType,
+    match_expr: &sigil_ast::MatchExpr,
+) -> Result<(), TypeError> {
+    let scrutinee_space = total_space_for_type(env, scrutinee_type)?;
+    let mut remaining = scrutinee_space.clone();
+    let mut previous_facts: Vec<serde_json::Value> = Vec::new();
+    let mut unsupported_facts = Vec::new();
+
+    for (index, arm) in match_expr.arms.iter().enumerate() {
+        let arm_proof = arm_proof(env, scrutinee_type, &arm.pattern, arm.guard.as_ref())?;
+        if !arm_proof.unsupported_facts.is_empty() {
+            unsupported_facts.extend(arm_proof.unsupported_facts.clone());
+        }
+
+        if space_is_empty(&remaining) {
+            return Err(
+                TypeError::new("Unreachable match arm".to_string(), Some(arm.location))
+                    .with_code(codes::typecheck::MATCH_UNREACHABLE_ARM)
+                    .with_detail("armIndex", index)
+                    .with_detail(
+                        "scrutineeType",
+                        format_type(&env.normalize_type(scrutinee_type)),
+                    )
+                    .with_detail("coveredByArm", index.saturating_sub(1))
+                    .with_detail("coveredBy", previous_facts.clone())
+                    .with_detail("proofFragment", proof_fragment())
+                    .with_detail("unsupportedFacts", unsupported_facts.clone()),
+            );
+        }
+
+        let useful_space = space_intersection(&remaining, &arm_proof.space);
+        if space_is_empty(&useful_space) {
+            return Err(TypeError::new(
+                "Redundant pattern in match expression".to_string(),
+                Some(arm.location),
+            )
+            .with_code(codes::typecheck::MATCH_REDUNDANT_PATTERN)
+            .with_detail("armIndex", index)
+            .with_detail(
+                "scrutineeType",
+                format_type(&env.normalize_type(scrutinee_type)),
+            )
+            .with_detail("coveredBy", previous_facts.clone())
+            .with_detail("knownFacts", arm_proof.facts.clone())
+            .with_detail("remainingBeforeArm", space_to_case_summaries(&remaining, 8))
+            .with_detail("armCases", space_to_case_summaries(&arm_proof.space, 8))
+            .with_detail("proofFragment", proof_fragment())
+            .with_detail("unsupportedFacts", unsupported_facts.clone()));
+        }
+
+        previous_facts.push(serde_json::json!({
+            "armIndex": index,
+            "facts": arm_proof.facts,
+            "guardSupported": arm_proof.guard_supported,
+            "pattern": pattern_summary(&arm.pattern),
+        }));
+
+        if arm_proof.guard_supported {
+            remaining = space_difference(&remaining, &arm_proof.space);
+        }
+    }
+
+    if !space_is_empty(&remaining) {
+        let uncovered_cases = space_to_case_summaries(&remaining, 8);
+        let suggested_arms = space_to_case_summaries(&remaining, 4);
+        return Err(TypeError::new(
+            "Non-exhaustive match expression".to_string(),
+            Some(match_expr.location),
+        )
+        .with_code(codes::typecheck::MATCH_NON_EXHAUSTIVE)
+        .with_detail(
+            "scrutineeType",
+            format_type(&env.normalize_type(scrutinee_type)),
+        )
+        .with_detail("matchLocation", match_expr.location.start.line)
+        .with_detail("uncoveredCases", uncovered_cases)
+        .with_detail("suggestedMissingArms", suggested_arms)
+        .with_detail("coveredBy", previous_facts)
+        .with_detail("proofFragment", proof_fragment())
+        .with_detail("unsupportedFacts", unsupported_facts));
+    }
+
+    Ok(())
+}
+
+fn proof_fragment() -> serde_json::Value {
+    serde_json::json!({
+        "constructs": [
+            "constructors",
+            "bool_literals",
+            "unit_literal",
+            "list_shapes",
+            "tuple_shapes",
+            "int_literal_equality",
+            "int_literal_order",
+            "bool_and_or_not",
+            "guard_true_false"
+        ]
+    })
+}
+
+fn arm_proof(
+    env: &TypeEnvironment,
+    scrutinee_type: &InferenceType,
+    pattern: &sigil_ast::Pattern,
+    guard: Option<&Expr>,
+) -> Result<ArmProof, TypeError> {
+    let mut bindings = HashMap::new();
+    let mut visiting = std::collections::BTreeSet::new();
+    let mut base_space = pattern_to_space(
+        env,
+        scrutinee_type,
+        pattern,
+        &mut bindings,
+        &vec![],
+        &mut visiting,
+    )?;
+    let mut facts = vec![pattern_summary(pattern)];
+    let mut unsupported_facts = Vec::new();
+
+    if let Some(guard) = guard {
+        match guard_to_space_subset(&base_space, guard, &bindings) {
+            Ok(Some((guard_space, guard_facts))) => {
+                base_space = space_intersection(&base_space, &guard_space);
+                facts.extend(guard_facts);
+                Ok(ArmProof {
+                    space: base_space,
+                    guard_supported: true,
+                    facts,
+                    unsupported_facts,
+                })
+            }
+            Ok(None) => {
+                unsupported_facts.push(expr_summary(guard));
+                Ok(ArmProof {
+                    space: base_space,
+                    guard_supported: false,
+                    facts,
+                    unsupported_facts,
+                })
+            }
+            Err(message) => Err(TypeError::new(message, Some(expr_location(guard)))
+                .with_code(codes::typecheck::ERROR)),
+        }
+    } else {
+        Ok(ArmProof {
+            space: base_space,
+            guard_supported: true,
+            facts,
+            unsupported_facts,
+        })
+    }
+}
+
+fn total_space_for_type(
+    env: &TypeEnvironment,
+    typ: &InferenceType,
+) -> Result<MatchSpace, TypeError> {
+    total_space_for_type_inner(env, typ, &mut std::collections::BTreeSet::new())
+}
+
+fn total_space_for_type_inner(
+    env: &TypeEnvironment,
+    typ: &InferenceType,
+    visiting: &mut std::collections::BTreeSet<String>,
+) -> Result<MatchSpace, TypeError> {
+    let normalized = env.normalize_type(typ);
+    let recursion_key = match &normalized {
+        InferenceType::Constructor(constructor) => Some(format_type(&InferenceType::Constructor(
+            constructor.clone(),
+        ))),
+        _ => None,
+    };
+
+    if let Some(key) = &recursion_key {
+        if !visiting.insert(key.clone()) {
+            return Ok(MatchSpace::Opaque(key.clone()));
+        }
+    }
+
+    let result = match normalized {
+        InferenceType::Primitive(TPrimitive {
+            name: PrimitiveName::Bool,
+        }) => Ok(MatchSpace::Primitive(PrimitiveSpace::Bool {
+            allow_true: true,
+            allow_false: true,
+        })),
+        InferenceType::Primitive(TPrimitive {
+            name: PrimitiveName::Unit,
+        }) => Ok(MatchSpace::Primitive(PrimitiveSpace::Unit {
+            present: true,
+        })),
+        InferenceType::Primitive(TPrimitive {
+            name: PrimitiveName::Int,
+        }) => Ok(MatchSpace::Primitive(PrimitiveSpace::Int(
+            IntRangeSet::all(),
+        ))),
+        InferenceType::Primitive(TPrimitive {
+            name: PrimitiveName::String,
+        }) => Ok(MatchSpace::Primitive(PrimitiveSpace::EqAny {
+            kind: PrimitiveEqKind::String,
+            excluded: std::collections::BTreeSet::new(),
+        })),
+        InferenceType::Primitive(TPrimitive {
+            name: PrimitiveName::Char,
+        }) => Ok(MatchSpace::Primitive(PrimitiveSpace::EqAny {
+            kind: PrimitiveEqKind::Char,
+            excluded: std::collections::BTreeSet::new(),
+        })),
+        InferenceType::Primitive(TPrimitive {
+            name: PrimitiveName::Float,
+        }) => Ok(MatchSpace::Primitive(PrimitiveSpace::EqAny {
+            kind: PrimitiveEqKind::Float,
+            excluded: std::collections::BTreeSet::new(),
+        })),
+        InferenceType::Primitive(TPrimitive {
+            name: PrimitiveName::Never,
+        }) => Ok(MatchSpace::Empty),
+        InferenceType::Tuple(tuple) => Ok(MatchSpace::Tuple(
+            tuple
+                .types
+                .iter()
+                .map(|item| total_space_for_type_inner(env, item, visiting))
+                .collect::<Result<Vec<_>, _>>()?,
+        )),
+        InferenceType::List(list) => Ok(MatchSpace::List(ListSpace::Any(Box::new(
+            total_space_for_type_inner(env, &list.element_type, visiting)?,
+        )))),
+        InferenceType::Constructor(constructor) => {
+            total_space_for_constructor_inner(env, &constructor, visiting)
+        }
+        InferenceType::Record(_) => Ok(MatchSpace::Opaque(format_type(&normalized))),
+        InferenceType::Function(_)
+        | InferenceType::Any
+        | InferenceType::Var(_)
+        | InferenceType::Map(_) => Ok(MatchSpace::Opaque(format_type(&normalized))),
+    };
+
+    if let Some(key) = &recursion_key {
+        visiting.remove(key);
+    }
+
+    result
+}
+
+fn total_space_for_constructor_inner(
+    env: &TypeEnvironment,
+    constructor: &TConstructor,
+    visiting: &mut std::collections::BTreeSet<String>,
+) -> Result<MatchSpace, TypeError> {
+    let Some((result_name, info)) = lookup_type_info_for_constructor(env, constructor) else {
+        return Ok(MatchSpace::Opaque(format_type(
+            &InferenceType::Constructor(constructor.clone()),
+        )));
+    };
+
+    let TypeDef::Sum(sum_type) = info.definition else {
+        return Ok(MatchSpace::Opaque(result_name));
+    };
+
+    let mut variants = Vec::new();
+    for variant in &sum_type.variants {
+        let field_spaces = instantiate_variant_field_spaces(
+            env,
+            variant,
+            &info.type_params,
+            &result_name,
+            &constructor.type_args,
+            visiting,
+        )?;
+        variants.push(MatchSpace::Variant(VariantSpace {
+            owner: result_name.clone(),
+            name: variant.name.clone(),
+            fields: field_spaces,
+        }));
+    }
+
+    Ok(normalize_space(MatchSpace::Union(variants)))
+}
+
+fn lookup_type_info_for_constructor(
+    env: &TypeEnvironment,
+    constructor: &TConstructor,
+) -> Option<(String, TypeInfo)> {
+    if let Some((module_path, type_name)) = split_qualified_constructor_name(&constructor.name) {
+        env.lookup_qualified_type(&module_path, &type_name)
+            .map(|info| (constructor.name.clone(), info))
+    } else {
+        env.lookup_type(&constructor.name)
+            .map(|info| (constructor.name.clone(), info))
+    }
+}
+
+fn instantiate_variant_field_spaces(
+    env: &TypeEnvironment,
+    variant: &sigil_ast::Variant,
+    type_params: &[String],
+    result_name: &str,
+    result_type_args: &[InferenceType],
+    visiting: &mut std::collections::BTreeSet<String>,
+) -> Result<Vec<MatchSpace>, TypeError> {
+    let ctor_type =
+        create_constructor_type_with_result_name(env, variant, type_params, result_name)?;
+    let InferenceType::Function(ctor_fn) = ctor_type else {
+        return Ok(vec![]);
+    };
+    let expected_result = InferenceType::Constructor(TConstructor {
+        name: result_name.to_string(),
+        type_args: result_type_args.to_vec(),
+    });
+    let subst = unify(&ctor_fn.return_type, &expected_result).map_err(|message| {
+        TypeError::new(
+            format!(
+                "Could not instantiate variant '{}' for '{}': {}",
+                variant.name, result_name, message
+            ),
+            Some(variant.location),
+        )
+    })?;
+
+    ctor_fn
+        .params
+        .iter()
+        .map(|param| total_space_for_type_inner(env, &apply_subst(&subst, param), visiting))
+        .collect()
+}
+
+fn pattern_to_space(
+    env: &TypeEnvironment,
+    scrutinee_type: &InferenceType,
+    pattern: &sigil_ast::Pattern,
+    bindings: &mut HashMap<String, ValuePath>,
+    path: &ValuePath,
+    visiting: &mut std::collections::BTreeSet<String>,
+) -> Result<MatchSpace, TypeError> {
+    use sigil_ast::{Pattern, PatternLiteralType, PatternLiteralValue};
+    let normalized_scrutinee_type = env.normalize_type(scrutinee_type);
+
+    match pattern {
+        Pattern::Wildcard(_) => {
+            total_space_for_type_inner(env, &normalized_scrutinee_type, visiting)
+        }
+        Pattern::Identifier(identifier) => {
+            bindings.insert(identifier.name.clone(), path.clone());
+            total_space_for_type_inner(env, &normalized_scrutinee_type, visiting)
+        }
+        Pattern::Literal(literal) => Ok(match literal.literal_type {
+            PatternLiteralType::Bool => MatchSpace::Primitive(PrimitiveSpace::Bool {
+                allow_true: matches!(literal.value, PatternLiteralValue::Bool(true)),
+                allow_false: matches!(literal.value, PatternLiteralValue::Bool(false)),
+            }),
+            PatternLiteralType::Unit => {
+                MatchSpace::Primitive(PrimitiveSpace::Unit { present: true })
+            }
+            PatternLiteralType::Int => MatchSpace::Primitive(PrimitiveSpace::Int(
+                IntRangeSet::singleton(match literal.value {
+                    PatternLiteralValue::Int(value) => value,
+                    _ => 0,
+                }),
+            )),
+            PatternLiteralType::String => MatchSpace::Primitive(PrimitiveSpace::EqFinite {
+                kind: PrimitiveEqKind::String,
+                values: std::collections::BTreeSet::from([LiteralAtom::String(
+                    match &literal.value {
+                        PatternLiteralValue::String(value) => value.clone(),
+                        _ => String::new(),
+                    },
+                )]),
+            }),
+            PatternLiteralType::Char => MatchSpace::Primitive(PrimitiveSpace::EqFinite {
+                kind: PrimitiveEqKind::Char,
+                values: std::collections::BTreeSet::from([LiteralAtom::Char(
+                    match literal.value {
+                        PatternLiteralValue::Char(value) => value,
+                        _ => '\0',
+                    },
+                )]),
+            }),
+            PatternLiteralType::Float => MatchSpace::Primitive(PrimitiveSpace::EqFinite {
+                kind: PrimitiveEqKind::Float,
+                values: std::collections::BTreeSet::from([LiteralAtom::Float(
+                    match literal.value {
+                        PatternLiteralValue::Float(value) => value.to_bits(),
+                        _ => 0.0f64.to_bits(),
+                    },
+                )]),
+            }),
+        }),
+        Pattern::Tuple(tuple_pattern) => {
+            let InferenceType::Tuple(tuple_type) = &normalized_scrutinee_type else {
+                return Ok(MatchSpace::Empty);
+            };
+            let mut items = Vec::new();
+            for (index, (item_pattern, item_type)) in tuple_pattern
+                .patterns
+                .iter()
+                .zip(tuple_type.types.iter())
+                .enumerate()
+            {
+                let mut item_path = path.clone();
+                item_path.push(ValuePathStep::TupleIndex(index));
+                items.push(pattern_to_space(
+                    env,
+                    item_type,
+                    item_pattern,
+                    bindings,
+                    &item_path,
+                    visiting,
+                )?);
+            }
+            Ok(MatchSpace::Tuple(items))
+        }
+        Pattern::List(list_pattern) => {
+            let InferenceType::List(list_type) = &normalized_scrutinee_type else {
+                return Ok(MatchSpace::Empty);
+            };
+            list_pattern_to_space(
+                env,
+                &list_type.element_type,
+                &list_pattern.patterns,
+                list_pattern.rest.as_ref(),
+                bindings,
+                path,
+                visiting,
+            )
+        }
+        Pattern::Constructor(constructor_pattern) => {
+            let constructor_type = lookup_constructor_type(
+                env,
+                &constructor_pattern.module_path,
+                &constructor_pattern.name,
+            )?
+            .ok_or_else(|| {
+                TypeError::new(
+                    format!(
+                        "Unknown constructor '{}'",
+                        constructor_display_name(
+                            &constructor_pattern.module_path,
+                            &constructor_pattern.name
+                        )
+                    ),
+                    Some(constructor_pattern.location),
+                )
+            })?;
+            let InferenceType::Function(ctor_fn) = constructor_type else {
+                return Ok(MatchSpace::Empty);
+            };
+            let subst =
+                unify(&ctor_fn.return_type, &normalized_scrutinee_type).map_err(|message| {
+                    TypeError::new(
+                        format!(
+                            "Constructor '{}' does not match scrutinee type {} ({})",
+                            constructor_display_name(
+                                &constructor_pattern.module_path,
+                                &constructor_pattern.name
+                            ),
+                            format_type(&normalized_scrutinee_type),
+                            message
+                        ),
+                        Some(constructor_pattern.location),
+                    )
+                })?;
+            let owner = match &ctor_fn.return_type {
+                InferenceType::Constructor(return_ctor) => return_ctor.name.clone(),
+                _ => format_type(&normalized_scrutinee_type),
+            };
+            let recursion_key = format_type(&normalized_scrutinee_type);
+            let inserted = visiting.insert(recursion_key.clone());
+            let mut fields = Vec::new();
+            for (index, (pattern, field_type)) in constructor_pattern
+                .patterns
+                .iter()
+                .zip(ctor_fn.params.iter())
+                .enumerate()
+            {
+                let mut field_path = path.clone();
+                field_path.push(ValuePathStep::VariantField(index));
+                fields.push(pattern_to_space(
+                    env,
+                    &apply_subst(&subst, field_type),
+                    pattern,
+                    bindings,
+                    &field_path,
+                    visiting,
+                )?);
+            }
+            if inserted {
+                visiting.remove(&recursion_key);
+            }
+            Ok(MatchSpace::Variant(VariantSpace {
+                owner,
+                name: constructor_pattern.name.clone(),
+                fields,
+            }))
+        }
+        Pattern::Record(_) => Ok(MatchSpace::Empty),
+    }
+}
+
+fn list_pattern_to_space(
+    env: &TypeEnvironment,
+    element_type: &InferenceType,
+    patterns: &[sigil_ast::Pattern],
+    rest: Option<&String>,
+    bindings: &mut HashMap<String, ValuePath>,
+    path: &ValuePath,
+    visiting: &mut std::collections::BTreeSet<String>,
+) -> Result<MatchSpace, TypeError> {
+    if patterns.is_empty() {
+        if let Some(rest_name) = rest {
+            bindings.insert(rest_name.clone(), path.clone());
+            return Ok(MatchSpace::List(ListSpace::Any(Box::new(
+                total_space_for_type_inner(env, element_type, visiting)?,
+            ))));
+        }
+        return Ok(MatchSpace::List(ListSpace::Nil));
+    }
+
+    let mut head_path = path.clone();
+    head_path.push(ValuePathStep::ListHead);
+    let mut tail_path = path.clone();
+    tail_path.push(ValuePathStep::ListTail);
+
+    let head = pattern_to_space(
+        env,
+        element_type,
+        &patterns[0],
+        bindings,
+        &head_path,
+        visiting,
+    )?;
+    let tail = list_pattern_to_space(
+        env,
+        element_type,
+        &patterns[1..],
+        rest,
+        bindings,
+        &tail_path,
+        visiting,
+    )?;
+    Ok(MatchSpace::List(ListSpace::Cons {
+        head: Box::new(head),
+        tail: Box::new(tail),
+    }))
+}
+
+fn guard_to_space_subset(
+    base_space: &MatchSpace,
+    expr: &Expr,
+    bindings: &HashMap<String, ValuePath>,
+) -> Result<Option<(MatchSpace, Vec<String>)>, String> {
+    match expr {
+        Expr::Literal(literal) => match literal.value {
+            LiteralValue::Bool(true) => Ok(Some((base_space.clone(), vec!["true".to_string()]))),
+            LiteralValue::Bool(false) => Ok(Some((MatchSpace::Empty, vec!["false".to_string()]))),
+            _ => Ok(None),
+        },
+        Expr::Unary(unary) if unary.operator == UnaryOperator::Not => {
+            let Some((inner_space, mut facts)) =
+                guard_to_space_subset(base_space, &unary.operand, bindings)?
+            else {
+                return Ok(None);
+            };
+            facts = facts
+                .into_iter()
+                .map(|fact| format!("not ({})", fact))
+                .collect::<Vec<_>>();
+            Ok(Some((space_difference(base_space, &inner_space), facts)))
+        }
+        Expr::Binary(binary) if binary.operator == BinaryOperator::And => {
+            let Some((left_space, mut left_facts)) =
+                guard_to_space_subset(base_space, &binary.left, bindings)?
+            else {
+                return Ok(None);
+            };
+            let Some((right_space, right_facts)) =
+                guard_to_space_subset(base_space, &binary.right, bindings)?
+            else {
+                return Ok(None);
+            };
+            left_facts.extend(right_facts);
+            Ok(Some((
+                space_intersection(&left_space, &right_space),
+                left_facts,
+            )))
+        }
+        Expr::Binary(binary) if binary.operator == BinaryOperator::Or => {
+            let Some((left_space, mut left_facts)) =
+                guard_to_space_subset(base_space, &binary.left, bindings)?
+            else {
+                return Ok(None);
+            };
+            let Some((right_space, right_facts)) =
+                guard_to_space_subset(base_space, &binary.right, bindings)?
+            else {
+                return Ok(None);
+            };
+            left_facts.extend(right_facts);
+            Ok(Some((
+                normalize_space(MatchSpace::Union(vec![left_space, right_space])),
+                left_facts,
+            )))
+        }
+        Expr::Binary(binary) => guard_binary_to_space(base_space, binary, bindings),
+        _ => Ok(None),
+    }
+}
+
+fn guard_binary_to_space(
+    base_space: &MatchSpace,
+    binary: &sigil_ast::BinaryExpr,
+    bindings: &HashMap<String, ValuePath>,
+) -> Result<Option<(MatchSpace, Vec<String>)>, String> {
+    let left_path = expr_binding_path(&binary.left, bindings);
+    let right_path = expr_binding_path(&binary.right, bindings);
+    let empty_locals = HashMap::new();
+    let left_value = eval_static_expr(&binary.left, &StaticValue::Unit, &empty_locals);
+    let right_value = eval_static_expr(&binary.right, &StaticValue::Unit, &empty_locals);
+
+    let (path, static_value, flipped) = match (left_path, right_path, left_value, right_value) {
+        (Some(path), None, _, Some(value)) => (path, value, false),
+        (None, Some(path), Some(value), _) => (path, value, true),
+        _ => return Ok(None),
+    };
+
+    let operator = if flipped {
+        flip_comparison(binary.operator)
+            .ok_or_else(|| expr_summary(&Expr::Binary(Box::new(binary.clone()))))?
+    } else {
+        binary.operator
+    };
+
+    let constraint_space = constraint_space_for_value(operator, &static_value)
+        .ok_or_else(|| expr_summary(&Expr::Binary(Box::new(binary.clone()))))?;
+    let refined =
+        refine_space_at_path(base_space, &path, &constraint_space).unwrap_or(MatchSpace::Empty);
+    Ok(Some((
+        refined,
+        vec![expr_summary(&Expr::Binary(Box::new(binary.clone())))],
+    )))
+}
+
+fn expr_binding_path(expr: &Expr, bindings: &HashMap<String, ValuePath>) -> Option<ValuePath> {
+    let Expr::Identifier(identifier) = expr else {
+        return None;
+    };
+    bindings.get(&identifier.name).cloned()
+}
+
+fn flip_comparison(operator: BinaryOperator) -> Option<BinaryOperator> {
+    match operator {
+        BinaryOperator::Equal => Some(BinaryOperator::Equal),
+        BinaryOperator::NotEqual => Some(BinaryOperator::NotEqual),
+        BinaryOperator::Less => Some(BinaryOperator::Greater),
+        BinaryOperator::LessEq => Some(BinaryOperator::GreaterEq),
+        BinaryOperator::Greater => Some(BinaryOperator::Less),
+        BinaryOperator::GreaterEq => Some(BinaryOperator::LessEq),
+        _ => None,
+    }
+}
+
+fn constraint_space_for_value(operator: BinaryOperator, value: &StaticValue) -> Option<MatchSpace> {
+    match (operator, value) {
+        (BinaryOperator::Equal, StaticValue::Int(value)) => Some(MatchSpace::Primitive(
+            PrimitiveSpace::Int(IntRangeSet::singleton(*value)),
+        )),
+        (BinaryOperator::NotEqual, StaticValue::Int(value)) => Some(MatchSpace::Primitive(
+            PrimitiveSpace::Int(IntRangeSet::all().difference(&IntRangeSet::singleton(*value))),
+        )),
+        (BinaryOperator::Less, StaticValue::Int(value)) => Some(MatchSpace::Primitive(
+            PrimitiveSpace::Int(IntRangeSet::less_than(*value)),
+        )),
+        (BinaryOperator::LessEq, StaticValue::Int(value)) => Some(MatchSpace::Primitive(
+            PrimitiveSpace::Int(IntRangeSet::less_eq(*value)),
+        )),
+        (BinaryOperator::Greater, StaticValue::Int(value)) => Some(MatchSpace::Primitive(
+            PrimitiveSpace::Int(IntRangeSet::greater_than(*value)),
+        )),
+        (BinaryOperator::GreaterEq, StaticValue::Int(value)) => Some(MatchSpace::Primitive(
+            PrimitiveSpace::Int(IntRangeSet::greater_eq(*value)),
+        )),
+        (BinaryOperator::Equal, StaticValue::Bool(value)) => {
+            Some(MatchSpace::Primitive(PrimitiveSpace::Bool {
+                allow_true: *value,
+                allow_false: !*value,
+            }))
+        }
+        (BinaryOperator::NotEqual, StaticValue::Bool(value)) => {
+            Some(MatchSpace::Primitive(PrimitiveSpace::Bool {
+                allow_true: !*value,
+                allow_false: *value,
+            }))
+        }
+        (BinaryOperator::Equal, StaticValue::Unit) => {
+            Some(MatchSpace::Primitive(PrimitiveSpace::Unit {
+                present: true,
+            }))
+        }
+        (BinaryOperator::Equal, StaticValue::String(value)) => {
+            Some(MatchSpace::Primitive(PrimitiveSpace::EqFinite {
+                kind: PrimitiveEqKind::String,
+                values: std::collections::BTreeSet::from([LiteralAtom::String(value.clone())]),
+            }))
+        }
+        (BinaryOperator::Equal, StaticValue::Char(value)) => {
+            Some(MatchSpace::Primitive(PrimitiveSpace::EqFinite {
+                kind: PrimitiveEqKind::Char,
+                values: std::collections::BTreeSet::from([LiteralAtom::Char(*value)]),
+            }))
+        }
+        _ => None,
+    }
+}
+
+fn space_is_empty(space: &MatchSpace) -> bool {
+    match space {
+        MatchSpace::Empty => true,
+        MatchSpace::Primitive(primitive) => match primitive {
+            PrimitiveSpace::Bool {
+                allow_true,
+                allow_false,
+            } => !allow_true && !allow_false,
+            PrimitiveSpace::Unit { present } => !present,
+            PrimitiveSpace::Int(ranges) => ranges.is_empty(),
+            PrimitiveSpace::EqAny { .. } => false,
+            PrimitiveSpace::EqFinite { values, .. } => values.is_empty(),
+        },
+        MatchSpace::Variant(variant) => variant.fields.iter().any(space_is_empty),
+        MatchSpace::Tuple(items) => items.iter().any(space_is_empty),
+        MatchSpace::List(list) => match list {
+            ListSpace::Any(_) => false,
+            ListSpace::Nil => false,
+            ListSpace::Cons { head, tail } => space_is_empty(head) || space_is_empty(tail),
+        },
+        MatchSpace::Union(items) => items.iter().all(space_is_empty),
+        MatchSpace::Opaque(_) => false,
+    }
+}
+
+fn normalize_space(space: MatchSpace) -> MatchSpace {
+    match space {
+        MatchSpace::Empty => MatchSpace::Empty,
+        MatchSpace::Primitive(primitive) => normalize_primitive_space(primitive),
+        MatchSpace::Variant(variant) => {
+            let fields = variant
+                .fields
+                .into_iter()
+                .map(normalize_space)
+                .collect::<Vec<_>>();
+            if fields.iter().any(space_is_empty) {
+                MatchSpace::Empty
+            } else {
+                MatchSpace::Variant(VariantSpace {
+                    owner: variant.owner,
+                    name: variant.name,
+                    fields,
+                })
+            }
+        }
+        MatchSpace::Tuple(items) => {
+            let items = items.into_iter().map(normalize_space).collect::<Vec<_>>();
+            if items.iter().any(space_is_empty) {
+                MatchSpace::Empty
+            } else {
+                MatchSpace::Tuple(items)
+            }
+        }
+        MatchSpace::List(list) => normalize_list_space(list),
+        MatchSpace::Union(items) => normalize_union(items),
+        MatchSpace::Opaque(name) => MatchSpace::Opaque(name),
+    }
+}
+
+fn normalize_primitive_space(space: PrimitiveSpace) -> MatchSpace {
+    match space {
+        PrimitiveSpace::Bool {
+            allow_true,
+            allow_false,
+        } if !allow_true && !allow_false => MatchSpace::Empty,
+        PrimitiveSpace::Unit { present: false } => MatchSpace::Empty,
+        PrimitiveSpace::Int(ranges) if ranges.is_empty() => MatchSpace::Empty,
+        PrimitiveSpace::EqFinite { values, .. } if values.is_empty() => MatchSpace::Empty,
+        primitive => MatchSpace::Primitive(primitive),
+    }
+}
+
+fn normalize_list_space(list: ListSpace) -> MatchSpace {
+    match list {
+        ListSpace::Any(element) => {
+            let element = normalize_space(*element);
+            if space_is_empty(&element) {
+                MatchSpace::List(ListSpace::Nil)
+            } else {
+                MatchSpace::List(ListSpace::Any(Box::new(element)))
+            }
+        }
+        ListSpace::Nil => MatchSpace::List(ListSpace::Nil),
+        ListSpace::Cons { head, tail } => {
+            let head = normalize_space(*head);
+            let tail = normalize_space(*tail);
+            if space_is_empty(&head) || space_is_empty(&tail) {
+                MatchSpace::Empty
+            } else {
+                MatchSpace::List(ListSpace::Cons {
+                    head: Box::new(head),
+                    tail: Box::new(tail),
+                })
+            }
+        }
+    }
+}
+
+fn normalize_union(items: Vec<MatchSpace>) -> MatchSpace {
+    let mut flattened = Vec::new();
+    for item in items {
+        match normalize_space(item) {
+            MatchSpace::Empty => {}
+            MatchSpace::Union(nested) => flattened.extend(nested),
+            other => flattened.push(other),
+        }
+    }
+
+    if flattened.is_empty() {
+        return MatchSpace::Empty;
+    }
+
+    let mut merged: Vec<MatchSpace> = Vec::new();
+    for item in flattened {
+        if let Some(existing) = merged
+            .iter_mut()
+            .find(|existing| can_merge_union(existing, &item))
+        {
+            *existing = merge_union_item(existing.clone(), item);
+        } else if !merged.contains(&item) {
+            merged.push(item);
+        }
+    }
+
+    if merged.len() == 1 {
+        merged.into_iter().next().unwrap()
+    } else {
+        MatchSpace::Union(merged)
+    }
+}
+
+fn can_merge_union(left: &MatchSpace, right: &MatchSpace) -> bool {
+    match (left, right) {
+        (MatchSpace::Primitive(left), MatchSpace::Primitive(right)) => {
+            primitive_same_kind(left, right)
+        }
+        _ => false,
+    }
+}
+
+fn merge_union_item(left: MatchSpace, right: MatchSpace) -> MatchSpace {
+    match (left, right) {
+        (MatchSpace::Primitive(left), MatchSpace::Primitive(right)) => {
+            normalize_primitive_space(primitive_union(&left, &right))
+        }
+        (left, _) => left,
+    }
+}
+
+fn primitive_same_kind(left: &PrimitiveSpace, right: &PrimitiveSpace) -> bool {
+    match (left, right) {
+        (PrimitiveSpace::Bool { .. }, PrimitiveSpace::Bool { .. }) => true,
+        (PrimitiveSpace::Unit { .. }, PrimitiveSpace::Unit { .. }) => true,
+        (PrimitiveSpace::Int(_), PrimitiveSpace::Int(_)) => true,
+        (PrimitiveSpace::EqAny { kind: left, .. }, PrimitiveSpace::EqAny { kind: right, .. }) => {
+            left == right
+        }
+        (
+            PrimitiveSpace::EqAny { kind: left, .. },
+            PrimitiveSpace::EqFinite { kind: right, .. },
+        ) => left == right,
+        (
+            PrimitiveSpace::EqFinite { kind: left, .. },
+            PrimitiveSpace::EqAny { kind: right, .. },
+        ) => left == right,
+        (
+            PrimitiveSpace::EqFinite { kind: left, .. },
+            PrimitiveSpace::EqFinite { kind: right, .. },
+        ) => left == right,
+        _ => false,
+    }
+}
+
+fn primitive_union(left: &PrimitiveSpace, right: &PrimitiveSpace) -> PrimitiveSpace {
+    match (left, right) {
+        (
+            PrimitiveSpace::Bool {
+                allow_true: left_true,
+                allow_false: left_false,
+            },
+            PrimitiveSpace::Bool {
+                allow_true: right_true,
+                allow_false: right_false,
+            },
+        ) => PrimitiveSpace::Bool {
+            allow_true: *left_true || *right_true,
+            allow_false: *left_false || *right_false,
+        },
+        (PrimitiveSpace::Unit { present: left }, PrimitiveSpace::Unit { present: right }) => {
+            PrimitiveSpace::Unit {
+                present: *left || *right,
+            }
+        }
+        (PrimitiveSpace::Int(left), PrimitiveSpace::Int(right)) => {
+            PrimitiveSpace::Int(left.union(right))
+        }
+        (
+            PrimitiveSpace::EqFinite {
+                kind,
+                values: left_values,
+            },
+            PrimitiveSpace::EqFinite {
+                values: right_values,
+                ..
+            },
+        ) => {
+            let mut values = left_values.clone();
+            values.extend(right_values.iter().cloned());
+            PrimitiveSpace::EqFinite {
+                kind: kind.clone(),
+                values,
+            }
+        }
+        (
+            PrimitiveSpace::EqAny {
+                kind,
+                excluded: left_excluded,
+            },
+            PrimitiveSpace::EqAny {
+                excluded: right_excluded,
+                ..
+            },
+        ) => PrimitiveSpace::EqAny {
+            kind: kind.clone(),
+            excluded: left_excluded
+                .intersection(right_excluded)
+                .cloned()
+                .collect(),
+        },
+        (PrimitiveSpace::EqAny { kind, excluded }, PrimitiveSpace::EqFinite { values, .. })
+        | (PrimitiveSpace::EqFinite { values, .. }, PrimitiveSpace::EqAny { kind, excluded }) => {
+            let mut next_excluded = excluded.clone();
+            for value in values {
+                next_excluded.remove(value);
+            }
+            PrimitiveSpace::EqAny {
+                kind: kind.clone(),
+                excluded: next_excluded,
+            }
+        }
+        _ => left.clone(),
+    }
+}
+
+fn primitive_intersection(left: &PrimitiveSpace, right: &PrimitiveSpace) -> MatchSpace {
+    if !primitive_same_kind(left, right) {
+        return MatchSpace::Empty;
+    }
+
+    normalize_primitive_space(match (left, right) {
+        (
+            PrimitiveSpace::Bool {
+                allow_true: left_true,
+                allow_false: left_false,
+            },
+            PrimitiveSpace::Bool {
+                allow_true: right_true,
+                allow_false: right_false,
+            },
+        ) => PrimitiveSpace::Bool {
+            allow_true: *left_true && *right_true,
+            allow_false: *left_false && *right_false,
+        },
+        (PrimitiveSpace::Unit { present: left }, PrimitiveSpace::Unit { present: right }) => {
+            PrimitiveSpace::Unit {
+                present: *left && *right,
+            }
+        }
+        (PrimitiveSpace::Int(left), PrimitiveSpace::Int(right)) => {
+            PrimitiveSpace::Int(left.intersect(right))
+        }
+        (
+            PrimitiveSpace::EqFinite {
+                kind,
+                values: left_values,
+            },
+            PrimitiveSpace::EqFinite {
+                values: right_values,
+                ..
+            },
+        ) => PrimitiveSpace::EqFinite {
+            kind: kind.clone(),
+            values: left_values.intersection(right_values).cloned().collect(),
+        },
+        (PrimitiveSpace::EqAny { kind, excluded }, PrimitiveSpace::EqFinite { values, .. })
+        | (PrimitiveSpace::EqFinite { values, .. }, PrimitiveSpace::EqAny { kind, excluded }) => {
+            PrimitiveSpace::EqFinite {
+                kind: kind.clone(),
+                values: values
+                    .iter()
+                    .filter(|value| !excluded.contains(*value))
+                    .cloned()
+                    .collect(),
+            }
+        }
+        (
+            PrimitiveSpace::EqAny {
+                kind,
+                excluded: left_excluded,
+            },
+            PrimitiveSpace::EqAny {
+                excluded: right_excluded,
+                ..
+            },
+        ) => PrimitiveSpace::EqAny {
+            kind: kind.clone(),
+            excluded: left_excluded.union(right_excluded).cloned().collect(),
+        },
+        _ => return MatchSpace::Empty,
+    })
+}
+
+fn primitive_difference(left: &PrimitiveSpace, right: &PrimitiveSpace) -> MatchSpace {
+    if !primitive_same_kind(left, right) {
+        return MatchSpace::Primitive(left.clone());
+    }
+
+    normalize_primitive_space(match (left, right) {
+        (
+            PrimitiveSpace::Bool {
+                allow_true: left_true,
+                allow_false: left_false,
+            },
+            PrimitiveSpace::Bool {
+                allow_true: right_true,
+                allow_false: right_false,
+            },
+        ) => PrimitiveSpace::Bool {
+            allow_true: *left_true && !*right_true,
+            allow_false: *left_false && !*right_false,
+        },
+        (PrimitiveSpace::Unit { present: left }, PrimitiveSpace::Unit { present: right }) => {
+            PrimitiveSpace::Unit {
+                present: *left && !*right,
+            }
+        }
+        (PrimitiveSpace::Int(left), PrimitiveSpace::Int(right)) => {
+            PrimitiveSpace::Int(left.difference(right))
+        }
+        (
+            PrimitiveSpace::EqFinite {
+                kind,
+                values: left_values,
+            },
+            PrimitiveSpace::EqFinite {
+                values: right_values,
+                ..
+            },
+        ) => PrimitiveSpace::EqFinite {
+            kind: kind.clone(),
+            values: left_values.difference(right_values).cloned().collect(),
+        },
+        (
+            PrimitiveSpace::EqFinite {
+                kind,
+                values: left_values,
+            },
+            PrimitiveSpace::EqAny { excluded, .. },
+        ) => PrimitiveSpace::EqFinite {
+            kind: kind.clone(),
+            values: left_values.intersection(excluded).cloned().collect(),
+        },
+        (
+            PrimitiveSpace::EqAny {
+                kind,
+                excluded: left_excluded,
+            },
+            PrimitiveSpace::EqFinite { values, .. },
+        ) => {
+            let mut next = left_excluded.clone();
+            next.extend(values.iter().cloned());
+            PrimitiveSpace::EqAny {
+                kind: kind.clone(),
+                excluded: next,
+            }
+        }
+        (
+            PrimitiveSpace::EqAny {
+                kind,
+                excluded: left_excluded,
+            },
+            PrimitiveSpace::EqAny {
+                excluded: right_excluded,
+                ..
+            },
+        ) => PrimitiveSpace::EqFinite {
+            kind: kind.clone(),
+            values: right_excluded.difference(left_excluded).cloned().collect(),
+        },
+        _ => return MatchSpace::Primitive(left.clone()),
+    })
+}
+
+fn space_intersection(left: &MatchSpace, right: &MatchSpace) -> MatchSpace {
+    match (left, right) {
+        (MatchSpace::Empty, _) | (_, MatchSpace::Empty) => MatchSpace::Empty,
+        (MatchSpace::Union(items), other) | (other, MatchSpace::Union(items)) => {
+            normalize_space(MatchSpace::Union(
+                items
+                    .iter()
+                    .map(|item| space_intersection(item, other))
+                    .collect(),
+            ))
+        }
+        (MatchSpace::Primitive(left), MatchSpace::Primitive(right)) => {
+            primitive_intersection(left, right)
+        }
+        (MatchSpace::Variant(left), MatchSpace::Variant(right))
+            if left.owner == right.owner
+                && left.name == right.name
+                && left.fields.len() == right.fields.len() =>
+        {
+            normalize_space(MatchSpace::Variant(VariantSpace {
+                owner: left.owner.clone(),
+                name: left.name.clone(),
+                fields: left
+                    .fields
+                    .iter()
+                    .zip(right.fields.iter())
+                    .map(|(left, right)| space_intersection(left, right))
+                    .collect(),
+            }))
+        }
+        (MatchSpace::Tuple(left), MatchSpace::Tuple(right)) if left.len() == right.len() => {
+            normalize_space(MatchSpace::Tuple(
+                left.iter()
+                    .zip(right.iter())
+                    .map(|(left, right)| space_intersection(left, right))
+                    .collect(),
+            ))
+        }
+        (MatchSpace::List(left), MatchSpace::List(right)) => {
+            normalize_space(MatchSpace::List(list_intersection(left, right)))
+        }
+        (MatchSpace::Opaque(left), MatchSpace::Opaque(right)) if left == right => {
+            MatchSpace::Opaque(left.clone())
+        }
+        _ => MatchSpace::Empty,
+    }
+}
+
+fn list_intersection(left: &ListSpace, right: &ListSpace) -> ListSpace {
+    match (left, right) {
+        (ListSpace::Nil, ListSpace::Nil) => ListSpace::Nil,
+        (ListSpace::Nil, ListSpace::Any(_)) | (ListSpace::Any(_), ListSpace::Nil) => ListSpace::Nil,
+        (ListSpace::Nil, ListSpace::Cons { .. }) | (ListSpace::Cons { .. }, ListSpace::Nil) => {
+            ListSpace::Cons {
+                head: Box::new(MatchSpace::Empty),
+                tail: Box::new(MatchSpace::Empty),
+            }
+        }
+        (ListSpace::Any(left_element), ListSpace::Any(right_element)) => {
+            ListSpace::Any(Box::new(space_intersection(left_element, right_element)))
+        }
+        (ListSpace::Any(element), ListSpace::Cons { head, tail })
+        | (ListSpace::Cons { head, tail }, ListSpace::Any(element)) => ListSpace::Cons {
+            head: Box::new(space_intersection(element, head)),
+            tail: Box::new(space_intersection(
+                &MatchSpace::List(ListSpace::Any(element.clone())),
+                tail,
+            )),
+        },
+        (
+            ListSpace::Cons {
+                head: left_head,
+                tail: left_tail,
+            },
+            ListSpace::Cons {
+                head: right_head,
+                tail: right_tail,
+            },
+        ) => ListSpace::Cons {
+            head: Box::new(space_intersection(left_head, right_head)),
+            tail: Box::new(space_intersection(left_tail, right_tail)),
+        },
+    }
+}
+
+fn space_difference(base: &MatchSpace, remove: &MatchSpace) -> MatchSpace {
+    match (base, remove) {
+        (MatchSpace::Empty, _) => MatchSpace::Empty,
+        (_, MatchSpace::Empty) => base.clone(),
+        (MatchSpace::Union(items), other) => normalize_space(MatchSpace::Union(
+            items
+                .iter()
+                .map(|item| space_difference(item, other))
+                .collect(),
+        )),
+        (other, MatchSpace::Union(items)) => items.iter().fold(other.clone(), |current, item| {
+            space_difference(&current, item)
+        }),
+        _ if space_subset_of(base, remove) => MatchSpace::Empty,
+        (MatchSpace::Primitive(left), MatchSpace::Primitive(right)) => {
+            primitive_difference(left, right)
+        }
+        (MatchSpace::Variant(left), MatchSpace::Variant(right))
+            if left.owner == right.owner
+                && left.name == right.name
+                && left.fields.len() == right.fields.len() =>
+        {
+            difference_variant(left, right)
+        }
+        (MatchSpace::Variant(_), MatchSpace::Variant(_)) => base.clone(),
+        (MatchSpace::Tuple(left), MatchSpace::Tuple(right)) if left.len() == right.len() => {
+            difference_tuple(left, right)
+        }
+        (MatchSpace::Tuple(_), MatchSpace::Tuple(_)) => base.clone(),
+        (MatchSpace::List(left), MatchSpace::List(right)) => {
+            normalize_space(list_difference(left, right))
+        }
+        (MatchSpace::Opaque(left), MatchSpace::Opaque(right)) if left == right => MatchSpace::Empty,
+        (MatchSpace::Opaque(_), MatchSpace::Opaque(_)) => base.clone(),
+        _ => base.clone(),
+    }
+}
+
+fn space_subset_of(left: &MatchSpace, right: &MatchSpace) -> bool {
+    if left == right {
+        return true;
+    }
+
+    match (left, right) {
+        (MatchSpace::Empty, _) => true,
+        (MatchSpace::Union(items), other) => items.iter().all(|item| space_subset_of(item, other)),
+        (_, MatchSpace::Union(items)) => items.iter().any(|item| space_subset_of(left, item)),
+        (MatchSpace::Primitive(left), MatchSpace::Primitive(right)) => {
+            space_is_empty(&primitive_difference(left, right))
+        }
+        (MatchSpace::Variant(left), MatchSpace::Variant(right)) => {
+            left.owner == right.owner
+                && left.name == right.name
+                && left.fields.len() == right.fields.len()
+                && left
+                    .fields
+                    .iter()
+                    .zip(right.fields.iter())
+                    .all(|(left, right)| space_subset_of(left, right))
+        }
+        (MatchSpace::Tuple(left), MatchSpace::Tuple(right)) => {
+            left.len() == right.len()
+                && left
+                    .iter()
+                    .zip(right.iter())
+                    .all(|(left, right)| space_subset_of(left, right))
+        }
+        (MatchSpace::List(left), MatchSpace::List(right)) => list_subset_of(left, right),
+        (MatchSpace::Opaque(left), MatchSpace::Opaque(right)) => left == right,
+        _ => false,
+    }
+}
+
+fn list_subset_of(left: &ListSpace, right: &ListSpace) -> bool {
+    match (left, right) {
+        (ListSpace::Nil, ListSpace::Nil) => true,
+        (ListSpace::Nil, ListSpace::Any(_)) => true,
+        (ListSpace::Nil, ListSpace::Cons { .. }) => false,
+        (ListSpace::Cons { .. }, ListSpace::Nil) => false,
+        (ListSpace::Any(_), ListSpace::Nil) => false,
+        (ListSpace::Any(left_element), ListSpace::Any(right_element)) => {
+            space_subset_of(left_element, right_element)
+        }
+        (ListSpace::Cons { head, tail }, ListSpace::Any(element)) => {
+            space_subset_of(head, element)
+                && space_subset_of(tail, &MatchSpace::List(ListSpace::Any(element.clone())))
+        }
+        (ListSpace::Any(_), ListSpace::Cons { .. }) => false,
+        (
+            ListSpace::Cons {
+                head: left_head,
+                tail: left_tail,
+            },
+            ListSpace::Cons {
+                head: right_head,
+                tail: right_tail,
+            },
+        ) => space_subset_of(left_head, right_head) && space_subset_of(left_tail, right_tail),
+    }
+}
+
+fn difference_variant(left: &VariantSpace, right: &VariantSpace) -> MatchSpace {
+    let products = difference_product_fields(&left.fields, &right.fields);
+    normalize_space(MatchSpace::Union(
+        products
+            .into_iter()
+            .map(|fields| {
+                MatchSpace::Variant(VariantSpace {
+                    owner: left.owner.clone(),
+                    name: left.name.clone(),
+                    fields,
+                })
+            })
+            .collect(),
+    ))
+}
+
+fn difference_tuple(left: &[MatchSpace], right: &[MatchSpace]) -> MatchSpace {
+    let products = difference_product_fields(left, right);
+    normalize_space(MatchSpace::Union(
+        products.into_iter().map(MatchSpace::Tuple).collect(),
+    ))
+}
+
+fn difference_product_fields(base: &[MatchSpace], remove: &[MatchSpace]) -> Vec<Vec<MatchSpace>> {
+    let mut results = Vec::new();
+    let mut prefix = Vec::new();
+
+    for index in 0..base.len() {
+        let diff = space_difference(&base[index], &remove[index]);
+        if !space_is_empty(&diff) {
+            let mut fields = prefix.clone();
+            fields.push(diff);
+            fields.extend_from_slice(&base[index + 1..]);
+            results.push(fields);
+        }
+
+        let equal = space_intersection(&base[index], &remove[index]);
+        if space_is_empty(&equal) {
+            break;
+        }
+        prefix.push(equal);
+    }
+
+    results
+}
+
+fn list_difference(base: &ListSpace, remove: &ListSpace) -> MatchSpace {
+    match (base, remove) {
+        (ListSpace::Nil, ListSpace::Nil) => MatchSpace::Empty,
+        (ListSpace::Nil, ListSpace::Any(_)) => MatchSpace::Empty,
+        (ListSpace::Nil, ListSpace::Cons { .. }) => MatchSpace::List(ListSpace::Nil),
+        (ListSpace::Any(element), ListSpace::Nil) => cons_space(
+            (**element).clone(),
+            MatchSpace::List(ListSpace::Any(element.clone())),
+        ),
+        (ListSpace::Any(left_element), ListSpace::Any(right_element)) => difference_cons_like(
+            left_element,
+            &MatchSpace::List(ListSpace::Any(left_element.clone())),
+            right_element,
+            &MatchSpace::List(ListSpace::Any(right_element.clone())),
+        ),
+        (ListSpace::Any(element), ListSpace::Cons { head, tail }) => {
+            normalize_space(MatchSpace::Union(vec![
+                MatchSpace::List(ListSpace::Nil),
+                difference_cons_like(
+                    element,
+                    &MatchSpace::List(ListSpace::Any(element.clone())),
+                    head,
+                    tail,
+                ),
+            ]))
+        }
+        (
+            ListSpace::Cons {
+                head: _left_head,
+                tail: _left_tail,
+            },
+            ListSpace::Nil,
+        ) => MatchSpace::List(base.clone()),
+        (
+            ListSpace::Cons {
+                head: left_head,
+                tail: left_tail,
+            },
+            ListSpace::Any(right_element),
+        ) => difference_cons_like(
+            left_head,
+            left_tail,
+            right_element,
+            &MatchSpace::List(ListSpace::Any(right_element.clone())),
+        ),
+        (
+            ListSpace::Cons {
+                head: left_head,
+                tail: left_tail,
+            },
+            ListSpace::Cons {
+                head: right_head,
+                tail: right_tail,
+            },
+        ) => difference_cons_like(left_head, left_tail, right_head, right_tail),
+    }
+}
+
+fn difference_cons_like(
+    base_head: &MatchSpace,
+    base_tail: &MatchSpace,
+    remove_head: &MatchSpace,
+    remove_tail: &MatchSpace,
+) -> MatchSpace {
+    let products = difference_product_fields(
+        &[base_head.clone(), base_tail.clone()],
+        &[remove_head.clone(), remove_tail.clone()],
+    );
+    normalize_space(MatchSpace::Union(
+        products
+            .into_iter()
+            .map(|fields| cons_space(fields[0].clone(), fields[1].clone()))
+            .collect(),
+    ))
+}
+
+fn cons_space(head: MatchSpace, tail: MatchSpace) -> MatchSpace {
+    normalize_space(MatchSpace::List(ListSpace::Cons {
+        head: Box::new(head),
+        tail: Box::new(tail),
+    }))
+}
+
+fn refine_space_at_path(
+    base_space: &MatchSpace,
+    path: &[ValuePathStep],
+    constraint: &MatchSpace,
+) -> Option<MatchSpace> {
+    if path.is_empty() {
+        return Some(space_intersection(base_space, constraint));
+    }
+
+    let step = &path[0];
+    let rest = &path[1..];
+
+    match base_space {
+        MatchSpace::Union(items) => Some(normalize_space(MatchSpace::Union(
+            items
+                .iter()
+                .filter_map(|item| refine_space_at_path(item, path, constraint))
+                .collect(),
+        ))),
+        MatchSpace::Variant(variant) => {
+            let ValuePathStep::VariantField(index) = step else {
+                return None;
+            };
+            let field = variant.fields.get(*index)?;
+            let refined_field = refine_space_at_path(field, rest, constraint)?;
+            let mut fields = variant.fields.clone();
+            fields[*index] = refined_field;
+            Some(normalize_space(MatchSpace::Variant(VariantSpace {
+                owner: variant.owner.clone(),
+                name: variant.name.clone(),
+                fields,
+            })))
+        }
+        MatchSpace::Tuple(items) => {
+            let ValuePathStep::TupleIndex(index) = step else {
+                return None;
+            };
+            let item = items.get(*index)?;
+            let refined_item = refine_space_at_path(item, rest, constraint)?;
+            let mut items = items.clone();
+            items[*index] = refined_item;
+            Some(normalize_space(MatchSpace::Tuple(items)))
+        }
+        MatchSpace::List(ListSpace::Cons { head, tail }) => match step {
+            ValuePathStep::ListHead => Some(cons_space(
+                refine_space_at_path(head, rest, constraint)?,
+                (**tail).clone(),
+            )),
+            ValuePathStep::ListTail => Some(cons_space(
+                (**head).clone(),
+                refine_space_at_path(tail, rest, constraint)?,
+            )),
+            _ => None,
+        },
+        MatchSpace::List(ListSpace::Any(element)) => match step {
+            ValuePathStep::ListHead => Some(cons_space(
+                refine_space_at_path(element, rest, constraint)?,
+                MatchSpace::List(ListSpace::Any(element.clone())),
+            )),
+            ValuePathStep::ListTail => Some(cons_space(
+                (**element).clone(),
+                refine_space_at_path(
+                    &MatchSpace::List(ListSpace::Any(element.clone())),
+                    rest,
+                    constraint,
+                )?,
+            )),
+            _ => None,
+        },
+        MatchSpace::List(ListSpace::Nil) => None,
+        _ => None,
+    }
+}
+
+fn space_to_case_summaries(space: &MatchSpace, limit: usize) -> Vec<String> {
+    let mut summaries = Vec::new();
+    collect_case_summaries(&normalize_space(space.clone()), limit, &mut summaries);
+    if summaries.is_empty() {
+        vec!["_".to_string()]
+    } else {
+        summaries
+    }
+}
+
+fn collect_case_summaries(space: &MatchSpace, limit: usize, out: &mut Vec<String>) {
+    if out.len() >= limit || space_is_empty(space) {
+        return;
+    }
+
+    match space {
+        MatchSpace::Empty => {}
+        MatchSpace::Union(items) => {
+            for item in items {
+                collect_case_summaries(item, limit, out);
+                if out.len() >= limit {
+                    break;
+                }
+            }
+        }
+        MatchSpace::Primitive(primitive) => match primitive {
+            PrimitiveSpace::Bool {
+                allow_true,
+                allow_false,
+            } => {
+                if *allow_true && out.len() < limit {
+                    push_unique(out, "true".to_string());
+                }
+                if *allow_false && out.len() < limit {
+                    push_unique(out, "false".to_string());
+                }
+            }
+            PrimitiveSpace::Unit { present } => {
+                if *present {
+                    push_unique(out, "()".to_string());
+                }
+            }
+            PrimitiveSpace::Int(ranges) => {
+                if let Some(values) = int_range_singletons(ranges, limit.saturating_sub(out.len()))
+                {
+                    for value in values {
+                        push_unique(out, value.to_string());
+                        if out.len() >= limit {
+                            break;
+                        }
+                    }
+                } else {
+                    push_unique(out, "_".to_string());
+                }
+            }
+            PrimitiveSpace::EqFinite { values, .. } => {
+                for value in values.iter().take(limit.saturating_sub(out.len())) {
+                    push_unique(out, render_literal_atom(value));
+                    if out.len() >= limit {
+                        break;
+                    }
+                }
+            }
+            PrimitiveSpace::EqAny { .. } => push_unique(out, "_".to_string()),
+        },
+        MatchSpace::Variant(variant) => {
+            let fields = variant
+                .fields
+                .iter()
+                .map(case_summary_atom)
+                .collect::<Vec<_>>();
+            let summary = if fields.is_empty() {
+                format!("{}()", variant.name)
+            } else {
+                format!("{}({})", variant.name, fields.join(","))
+            };
+            push_unique(out, summary);
+        }
+        MatchSpace::Tuple(items) => {
+            let product = tuple_summary_product(items, limit.saturating_sub(out.len()));
+            if let Some(summaries) = product {
+                for summary in summaries {
+                    push_unique(out, summary);
+                    if out.len() >= limit {
+                        break;
+                    }
+                }
+            } else {
+                push_unique(out, "_".to_string());
+            }
+        }
+        MatchSpace::List(ListSpace::Nil) => push_unique(out, "[]".to_string()),
+        MatchSpace::List(ListSpace::Any(_)) => {
+            push_unique(out, "[]".to_string());
+            if out.len() < limit {
+                push_unique(out, "[_,.rest]".to_string());
+            }
+        }
+        MatchSpace::List(ListSpace::Cons { .. }) => {
+            push_unique(out, list_case_summary(space));
+        }
+        MatchSpace::Opaque(_) => push_unique(out, "_".to_string()),
+    }
+}
+
+fn push_unique(out: &mut Vec<String>, value: String) {
+    if !out.contains(&value) {
+        out.push(value);
+    }
+}
+
+fn int_range_singletons(ranges: &IntRangeSet, limit: usize) -> Option<Vec<i64>> {
+    let mut values = Vec::new();
+    for interval in &ranges.intervals {
+        let (Some(start), Some(end)) = (interval.start, interval.end) else {
+            return None;
+        };
+        if start > end {
+            continue;
+        }
+        let width = end.saturating_sub(start) as usize;
+        if width > limit.saturating_sub(values.len()) {
+            return None;
+        }
+        for value in start..=end {
+            values.push(value);
+            if values.len() > limit {
+                return None;
+            }
+        }
+    }
+    Some(values)
+}
+
+fn tuple_summary_product(items: &[MatchSpace], limit: usize) -> Option<Vec<String>> {
+    let mut parts = Vec::new();
+    for item in items {
+        let item_summaries = space_to_case_summaries(item, limit);
+        if item_summaries.len() == 1 && item_summaries[0] == "_" {
+            return None;
+        }
+        parts.push(item_summaries);
+    }
+
+    let mut results = vec![String::new()];
+    for item in parts {
+        let mut next = Vec::new();
+        for prefix in &results {
+            for summary in &item {
+                let combined = if prefix.is_empty() {
+                    summary.clone()
+                } else {
+                    format!("{},{}", prefix, summary)
+                };
+                next.push(combined);
+                if next.len() > limit {
+                    return None;
+                }
+            }
+        }
+        results = next;
+    }
+
+    Some(
+        results
+            .into_iter()
+            .map(|summary| format!("({})", summary))
+            .collect(),
+    )
+}
+
+fn list_case_summary(space: &MatchSpace) -> String {
+    let mut elements = Vec::new();
+    let mut current = space;
+    loop {
+        match current {
+            MatchSpace::List(ListSpace::Cons { head, tail }) => {
+                elements.push(case_summary_atom(head));
+                current = tail;
+            }
+            MatchSpace::List(ListSpace::Nil) => return format!("[{}]", elements.join(",")),
+            MatchSpace::List(ListSpace::Any(_)) => {
+                if elements.is_empty() {
+                    return "[_,.rest]".to_string();
+                }
+                return format!("[{},.rest]", elements.join(","));
+            }
+            _ => return "_".to_string(),
+        }
+    }
+}
+
+fn case_summary_atom(space: &MatchSpace) -> String {
+    let summaries = space_to_case_summaries(space, 2);
+    if summaries.len() == 1 {
+        summaries[0].clone()
+    } else {
+        "_".to_string()
+    }
+}
+
+fn render_literal_atom(atom: &LiteralAtom) -> String {
+    match atom {
+        LiteralAtom::Float(bits) => format!("{}", f64::from_bits(*bits)),
+        LiteralAtom::String(value) => format!("{:?}", value),
+        LiteralAtom::Char(value) => format!("'{}'", value),
+    }
+}
+
+fn pattern_summary(pattern: &sigil_ast::Pattern) -> String {
+    use sigil_ast::{Pattern, PatternLiteralType, PatternLiteralValue};
+
+    match pattern {
+        Pattern::Wildcard(_) => "_".to_string(),
+        Pattern::Identifier(identifier) => identifier.name.clone(),
+        Pattern::Literal(literal) => match (&literal.literal_type, &literal.value) {
+            (PatternLiteralType::Bool, PatternLiteralValue::Bool(value)) => value.to_string(),
+            (PatternLiteralType::Unit, _) => "()".to_string(),
+            (PatternLiteralType::Int, PatternLiteralValue::Int(value)) => value.to_string(),
+            (PatternLiteralType::Float, PatternLiteralValue::Float(value)) => format!("{}", value),
+            (PatternLiteralType::String, PatternLiteralValue::String(value)) => {
+                format!("{:?}", value)
+            }
+            (PatternLiteralType::Char, PatternLiteralValue::Char(value)) => format!("'{}'", value),
+            _ => "_".to_string(),
+        },
+        Pattern::Tuple(tuple) => format!(
+            "({})",
+            tuple
+                .patterns
+                .iter()
+                .map(pattern_summary)
+                .collect::<Vec<_>>()
+                .join(",")
+        ),
+        Pattern::List(list) => {
+            let mut parts = list
+                .patterns
+                .iter()
+                .map(pattern_summary)
+                .collect::<Vec<_>>();
+            if list.rest.is_some() {
+                parts.push(".rest".to_string());
+            }
+            format!("[{}]", parts.join(","))
+        }
+        Pattern::Constructor(constructor) => {
+            let name = constructor_display_name(&constructor.module_path, &constructor.name);
+            if constructor.patterns.is_empty() {
+                format!("{}()", name)
+            } else {
+                format!(
+                    "{}({})",
+                    name,
+                    constructor
+                        .patterns
+                        .iter()
+                        .map(pattern_summary)
+                        .collect::<Vec<_>>()
+                        .join(",")
+                )
+            }
+        }
+        Pattern::Record(_) => "{...}".to_string(),
+    }
+}
+
+fn expr_summary(expr: &Expr) -> String {
+    match expr {
+        Expr::Literal(literal) => match &literal.value {
+            LiteralValue::Int(value) => value.to_string(),
+            LiteralValue::Float(value) => format!("{}", value),
+            LiteralValue::String(value) => format!("{:?}", value),
+            LiteralValue::Char(value) => format!("'{}'", value),
+            LiteralValue::Bool(value) => value.to_string(),
+            LiteralValue::Unit => "()".to_string(),
+        },
+        Expr::Identifier(identifier) => identifier.name.clone(),
+        Expr::Unary(unary) => format!("{}{}", unary.operator, expr_summary(&unary.operand)),
+        Expr::Binary(binary) => format!(
+            "{} {} {}",
+            expr_summary(&binary.left),
+            binary.operator,
+            expr_summary(&binary.right)
+        ),
+        Expr::TypeAscription(type_asc) => expr_summary(&type_asc.expr),
+        Expr::FieldAccess(field_access) => {
+            format!(
+                "{}.{}",
+                expr_summary(&field_access.object),
+                field_access.field
+            )
+        }
+        Expr::Application(app) => format!("{}(...)", expr_summary(&app.func)),
+        Expr::MemberAccess(access) => {
+            format!("{}.{}", access.namespace.join("::"), access.member)
+        }
+        _ => "<expr>".to_string(),
+    }
+}
+
 fn synthesize_type_ascription(
     env: &TypeEnvironment,
     type_asc: &sigil_ast::TypeAscriptionExpr,
@@ -3859,7 +5997,8 @@ fn synthesize_type_ascription(
     // Convert ascribed type from AST to inference type
     let ascribed_type = ast_type_to_inference_type_resolved(env, None, &type_asc.ascribed_type)?;
 
-    if let Some((type_name, type_info, type_args)) = lookup_constrained_type_info(env, &ascribed_type)
+    if let Some((type_name, type_info, type_args)) =
+        lookup_constrained_type_info(env, &ascribed_type)
     {
         let actual_type = synthesize(env, &type_asc.expr)?;
 
@@ -3884,9 +6023,10 @@ fn synthesize_type_ascription(
             }
         }
 
-        if let (Some(constraint), Some(value)) =
-            (type_info.constraint.as_ref(), static_value_from_expr(&type_asc.expr))
-        {
+        if let (Some(constraint), Some(value)) = (
+            type_info.constraint.as_ref(),
+            static_value_from_expr(&type_asc.expr),
+        ) {
             if let Some(false) = static_bool_from_constraint(constraint, &value) {
                 return Err(TypeError::new(
                     format!(
@@ -4244,6 +6384,71 @@ mod tests {
         }
     }
 
+    fn option_test_env() -> TypeEnvironment {
+        let option_info = TypeInfo {
+            type_params: vec!["T".to_string()],
+            definition: TypeDef::Sum(sigil_ast::SumType {
+                variants: vec![
+                    sigil_ast::Variant {
+                        name: "Some".to_string(),
+                        types: vec![Type::Variable(sigil_ast::TypeVariable {
+                            name: "T".to_string(),
+                            location: synthetic_loc(),
+                        })],
+                        location: synthetic_loc(),
+                    },
+                    sigil_ast::Variant {
+                        name: "None".to_string(),
+                        types: vec![],
+                        location: synthetic_loc(),
+                    },
+                ],
+                location: synthetic_loc(),
+            }),
+            constraint: None,
+        };
+
+        let mut env = TypeEnvironment::create_initial();
+        env.register_type("Option".to_string(), option_info.clone());
+
+        let some_type = create_constructor_type_with_result_name(
+            &env,
+            match &option_info.definition {
+                TypeDef::Sum(sum) => &sum.variants[0],
+                _ => unreachable!(),
+            },
+            &option_info.type_params,
+            "Option",
+        )
+        .unwrap();
+        let none_type = create_constructor_type_with_result_name(
+            &env,
+            match &option_info.definition {
+                TypeDef::Sum(sum) => &sum.variants[1],
+                _ => unreachable!(),
+            },
+            &option_info.type_params,
+            "Option",
+        )
+        .unwrap();
+
+        let mut quantified_vars = HashSet::new();
+        collect_type_var_ids(&some_type, &mut quantified_vars);
+        env.bind_scheme(
+            "Some".to_string(),
+            explicit_scheme(&some_type, &quantified_vars),
+        );
+
+        let mut quantified_vars = HashSet::new();
+        collect_type_var_ids(&none_type, &mut quantified_vars);
+        env.bind_scheme(
+            "None".to_string(),
+            explicit_scheme(&none_type, &quantified_vars),
+        );
+
+        env
+    }
+
     #[test]
     fn test_simple_integer_function() {
         let source = "λadd(x:Int,y:Int)=>Int=x+y";
@@ -4571,8 +6776,7 @@ mod tests {
 
     #[test]
     fn test_type_constructor_with_qualified_type_args_resolves_nested_qualified_types() {
-        let source =
-            "λmain()=>Result[µPersistedState,String]=Ok({nextId:1})";
+        let source = "λmain()=>Result[µPersistedState,String]=Ok({nextId:1})";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
 
@@ -4665,6 +6869,62 @@ mod tests {
 
         let result = type_check(&program, source, core_prelude_type_options());
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_function_alias_preserves_qualified_error_type_in_match() {
+        let source = "t Decoder[T]=λ(String)=>Result[T,§decode.DecodeError]\nλmain(decoder:Decoder[String],value:String)=>Result[String,§decode.DecodeError] match decoder(value){\n  Ok(text)=>Ok(text)|\n  Err(error)=>Err(error)\n}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let mut options = core_prelude_type_options();
+        options.imported_type_registries = Some(
+            options
+                .imported_type_registries
+                .clone()
+                .unwrap_or_default()
+                .into_iter()
+                .chain(HashMap::from([(
+                    "stdlib::decode".to_string(),
+                    HashMap::from([(
+                        "DecodeError".to_string(),
+                        TypeInfo {
+                            type_params: vec![],
+                            definition: TypeDef::Product(sigil_ast::ProductType {
+                                fields: vec![
+                                    sigil_ast::Field {
+                                        name: "message".to_string(),
+                                        field_type: Type::Primitive(sigil_ast::PrimitiveType {
+                                            name: PrimitiveName::String,
+                                            location: synthetic_loc(),
+                                        }),
+                                        location: synthetic_loc(),
+                                    },
+                                    sigil_ast::Field {
+                                        name: "path".to_string(),
+                                        field_type: Type::List(Box::new(sigil_ast::ListType {
+                                            element_type: Type::Primitive(
+                                                sigil_ast::PrimitiveType {
+                                                    name: PrimitiveName::String,
+                                                    location: synthetic_loc(),
+                                                },
+                                            ),
+                                            location: synthetic_loc(),
+                                        })),
+                                        location: synthetic_loc(),
+                                    },
+                                ],
+                                location: synthetic_loc(),
+                            }),
+                            constraint: None,
+                        },
+                    )]),
+                )]))
+                .collect(),
+        );
+
+        let result = type_check(&program, source, options);
+        assert!(result.is_ok(), "{result:?}");
     }
 
     #[test]
@@ -5233,13 +7493,132 @@ mod tests {
             .contains("stopOn parameter type"));
     }
 
-    // TODO: Add list pattern test when parser fully supports match expression syntax
-    // The type checking logic is complete for list patterns [x,.xs]
+    #[test]
+    fn test_match_bool_non_exhaustive_reports_missing_false() {
+        let source = "λmain(x:Bool)=>String match x{\n  true=>\"yes\"\n}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
 
-    // TODO: Add If/Let expression tests when full parser support is confirmed
-    // The type checking logic is implemented for:
-    // - Match expressions with all pattern types (literal, identifier, wildcard, list, tuple, constructor)
-    // - If expressions with optional else branches
-    // - Let expressions with identifier patterns
-    // Waiting for complete lexer/parser syntax support to test end-to-end
+        let error = type_check(&program, source, TypeCheckOptions::default()).unwrap_err();
+        assert_eq!(error.code, codes::typecheck::MATCH_NON_EXHAUSTIVE);
+        let details = error.details.unwrap();
+        assert_eq!(
+            details.get("suggestedMissingArms").unwrap(),
+            &serde_json::json!(["false"])
+        );
+    }
+
+    #[test]
+    fn test_match_sum_non_exhaustive_reports_missing_variant() {
+        let source = "λmain(opt:Option[Int])=>Int match opt{\n  Some(value)=>value\n}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let error = type_check(&program, source, core_prelude_type_options()).unwrap_err();
+        assert_eq!(error.code, codes::typecheck::MATCH_NON_EXHAUSTIVE);
+        let details = error.details.unwrap();
+        assert_eq!(
+            details.get("suggestedMissingArms").unwrap(),
+            &serde_json::json!(["None()"])
+        );
+    }
+
+    #[test]
+    fn test_option_constructor_pattern_space_intersects_total_space() {
+        let env = option_test_env();
+        let scrutinee_type = InferenceType::Constructor(TConstructor {
+            name: "Option".to_string(),
+            type_args: vec![InferenceType::Primitive(TPrimitive {
+                name: PrimitiveName::Int,
+            })],
+        });
+
+        let total = total_space_for_type(&env, &scrutinee_type).unwrap();
+        let pattern = sigil_ast::Pattern::Constructor(sigil_ast::ConstructorPattern {
+            module_path: vec![],
+            name: "Some".to_string(),
+            patterns: vec![sigil_ast::Pattern::Identifier(
+                sigil_ast::IdentifierPattern {
+                    name: "value".to_string(),
+                    location: synthetic_loc(),
+                },
+            )],
+            location: synthetic_loc(),
+        });
+        let mut bindings = HashMap::new();
+        let arm_space = pattern_to_space(
+            &env,
+            &scrutinee_type,
+            &pattern,
+            &mut bindings,
+            &vec![],
+            &mut std::collections::BTreeSet::new(),
+        )
+        .unwrap();
+        let useful = space_intersection(&total, &arm_space);
+
+        assert!(
+            !space_is_empty(&total) && !space_is_empty(&arm_space) && !space_is_empty(&useful),
+            "total={total:?} arm={arm_space:?} useful={useful:?}"
+        );
+    }
+
+    #[test]
+    fn test_match_guard_redundancy_is_rejected() {
+        let source = "λmain(x:Int)=>String match x{\n  n when n>0=>\"p\"|\n  n when n>1=>\"pp\"|\n  _=>\"rest\"\n}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let error = type_check(&program, source, TypeCheckOptions::default()).unwrap_err();
+        assert_eq!(error.code, codes::typecheck::MATCH_REDUNDANT_PATTERN);
+    }
+
+    #[test]
+    fn test_match_list_nil_cons_is_exhaustive() {
+        let source = "λmain(xs:[Int])=>Int match xs{\n  []=>0|\n  [head,.tail]=>head\n}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_match_list_of_sum_values_is_exhaustive() {
+        let source = "t Outcome=Success(Int)|Failure(String)|Aborted()\n\nλmain(outcomes:[Outcome])=>Int match outcomes{\n  []=>0|\n  [head,.tail]=>match head{\n    Success(value)=>value|\n    Failure(_)=>0|\n    Aborted()=>0\n  }\n}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_match_recursive_sum_is_exhaustive() {
+        let source = "t JsonValue=JsonArray([JsonValue])|JsonBool(Bool)|JsonNull()|JsonString(String)\n\nλmain(value:JsonValue)=>Int match value{\n  JsonArray(_)=>0|\n  JsonBool(_)=>1|\n  JsonNull()=>2|\n  JsonString(_)=>3\n}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_match_tuple_reports_missing_combination() {
+        let source =
+            "λmain()=>String match (true,false){\n  (true,true)=>\"a\"|\n  (true,false)=>\"b\"\n}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let error = type_check(&program, source, TypeCheckOptions::default()).unwrap_err();
+        assert_eq!(error.code, codes::typecheck::MATCH_NON_EXHAUSTIVE);
+        let details = error.details.unwrap();
+        assert_eq!(
+            details.get("suggestedMissingArms").unwrap(),
+            &serde_json::json!(["(false,true)", "(false,false)"])
+        );
+    }
+
+    // Match coverage now has explicit tests for Bool, tuples, lists, sums, and
+    // supported guard reasoning. Record patterns remain intentionally unsupported.
 }

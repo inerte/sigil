@@ -540,6 +540,23 @@ pub fn ast_type_to_inference_type_with_params(
                 .collect(),
         }),
 
+        AstType::Qualified(qualified) => InferenceType::Constructor(TConstructor {
+            name: if qualified.module_path.is_empty() {
+                qualified.type_name.clone()
+            } else {
+                format!(
+                    "{}.{}",
+                    qualified.module_path.join("::"),
+                    qualified.type_name
+                )
+            },
+            type_args: qualified
+                .type_args
+                .iter()
+                .map(|item| ast_type_to_inference_type_with_params(item, type_params))
+                .collect(),
+        }),
+
         AstType::Variable(var_type) => {
             if let Some(type_param_env) = type_params {
                 if let Some(bound_type) = type_param_env.get(&var_type.name) {
@@ -552,9 +569,6 @@ pub fn ast_type_to_inference_type_with_params(
                 type_args: vec![],
             })
         }
-
-        // Other AST type variants can be added as needed
-        _ => InferenceType::Any, // Fallback for unsupported types
     }
 }
 

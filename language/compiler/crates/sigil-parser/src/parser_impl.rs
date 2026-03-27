@@ -625,7 +625,10 @@ impl Parser {
         let mut bindings = Vec::new();
 
         while !self.check(TokenType::RBRACE) {
-            self.consume(TokenType::CONST, "Expected world binding declaration starting with \"c\"")?;
+            self.consume(
+                TokenType::CONST,
+                "Expected world binding declaration starting with \"c\"",
+            )?;
             let decl = self.const_declaration()?;
             match decl {
                 Declaration::Const(const_decl) => bindings.push(const_decl),
@@ -1878,7 +1881,10 @@ impl Parser {
             let start = root;
             let module_path = self.rooted_module_path(&start)?;
 
-            self.consume(TokenType::DOT, "Expected \".\" after qualified constructor path")?;
+            self.consume(
+                TokenType::DOT,
+                "Expected \".\" after qualified constructor path",
+            )?;
 
             let constructor_name = self
                 .consume(
@@ -2380,7 +2386,10 @@ impl Parser {
 }
 
 fn is_sigil_root_name(name: &str) -> bool {
-    matches!(name, "stdlib" | "src" | "core" | "config" | "world" | "test")
+    matches!(
+        name,
+        "stdlib" | "src" | "core" | "config" | "world" | "test"
+    )
 }
 
 fn project_types_module_path() -> Vec<String> {

@@ -787,7 +787,11 @@ impl Printer {
                 } else if is_project_types_module(&constructor.module_path) {
                     format!("µ{}", constructor.name)
                 } else {
-                    format!("{}.{}", module_path_text(&constructor.module_path), constructor.name)
+                    format!(
+                        "{}.{}",
+                        module_path_text(&constructor.module_path),
+                        constructor.name
+                    )
                 };
                 if constructor.patterns.is_empty() {
                     format!("{}()", prefix)
@@ -862,11 +866,7 @@ fn flatten_lets<'a>(let_expr: &'a LetExpr) -> (Vec<LetBindingRef<'a>>, &'a Expr)
 
 fn precedence(expr: &Expr) -> u8 {
     match expr {
-        Expr::Let(_)
-        | Expr::Match(_)
-        | Expr::If(_)
-        | Expr::Lambda(_)
-        | Expr::Concurrent(_) => 1,
+        Expr::Let(_) | Expr::Match(_) | Expr::If(_) | Expr::Lambda(_) | Expr::Concurrent(_) => 1,
         Expr::Pipeline(_) | Expr::Map(_) | Expr::Filter(_) | Expr::Fold(_) => 2,
         Expr::Binary(binary) => match binary.operator {
             BinaryOperator::Pipe | BinaryOperator::ComposeFwd | BinaryOperator::ComposeBwd => 2,

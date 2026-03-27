@@ -7,6 +7,11 @@ slug: why-sigil-uses-match
 
 # Why Sigil Uses match
 
+> Update (2026-03-26): `match` is now Sigil's one branching surface,
+> including boolean and tuple branching. The compiler also rejects
+> non-exhaustive matches and dead arms. See
+> [033-exhaustive-match-and-proof-rich-compile-errors](./033-exhaustive-match-and-proof-rich-compile-errors.md).
+
 Sigil previously used a symbolic form for pattern matching. It now uses the
 keyword `match`.
 

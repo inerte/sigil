@@ -124,7 +124,6 @@ Record fields are canonical alphabetical order in:
 - product type declarations
 - record literals
 - typed record constructors
-- record patterns
 
 ## Local Binding Rules
 

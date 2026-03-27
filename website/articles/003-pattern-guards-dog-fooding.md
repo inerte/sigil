@@ -7,6 +7,11 @@ slug: 003-patternGuards-dog-fooding
 
 # Pattern Guards and Sigil's Website Parser
 
+> Update (2026-03-26): guards now participate in exhaustiveness and dead-arm
+> checking only through a small explicit proof fragment. Unsupported guard
+> facts remain valid source, but they are opaque to coverage proofs. See
+> [033-exhaustive-match-and-proof-rich-compile-errors](./033-exhaustive-match-and-proof-rich-compile-errors.md).
+
 Pattern guards came out of a concrete implementation problem rather than an
 abstract feature wishlist. While building Sigil's website tooling in Sigil, we
 ran into parser code that was structurally a good fit for pattern matching but

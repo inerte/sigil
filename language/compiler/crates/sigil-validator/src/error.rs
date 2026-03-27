@@ -99,12 +99,6 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
-    #[error("SIGIL-CANON-PATTERN-REDUNDANT: Redundant pattern in match expression.\n\nPattern already covered by previous patterns.")]
-    RedundantPattern { location: SourceLocation },
-
-    #[error("SIGIL-CANON-PATTERN-UNREACHABLE: Unreachable pattern in match expression.\n\nThis pattern will never match.")]
-    UnreachablePattern { location: SourceLocation },
-
     #[error("SIGIL-SURFACE-MISSING-RETURN-TYPE: Missing return type annotation.\n\nAll functions must have explicit return type annotations (canonical form).")]
     MissingReturnType {
         function_name: String,
@@ -379,12 +373,6 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
-    #[error("SIGIL-CANON-MATCH-BOOLEAN: Cannot pattern match on boolean expression\n\nUse if-expression instead: (condition)=>thenBranch|elseBranch")]
-    MatchBoolean { location: SourceLocation },
-
-    #[error("SIGIL-CANON-MATCH-TUPLE-BOOLEAN: Cannot pattern match on tuple containing booleans\n\nPattern match discriminates on structure, not boolean values.")]
-    MatchTupleBoolean { location: SourceLocation },
-
     #[error("SIGIL-CANON-DECL-CATEGORY-ORDER: Declarations out of category order\n\nExpected: types => externs => consts => functions => tests\nFound: {found_category} after {prev_category}")]
     DeclCategoryOrder {
         found_category: String,
@@ -419,8 +407,6 @@ impl ValidationError {
             ValidationError::BranchingSelfRecursion { location, .. } => *location,
             ValidationError::FilterThenCount { location } => *location,
             ValidationError::NonStructuralRecursion { location, .. } => *location,
-            ValidationError::RedundantPattern { location } => *location,
-            ValidationError::UnreachablePattern { location } => *location,
             ValidationError::MissingReturnType { location, .. } => *location,
             ValidationError::MissingParamType { location, .. } => *location,
             ValidationError::FilePurposeNone { .. } => SourceLocation {
@@ -555,8 +541,6 @@ impl ValidationError {
             ValidationError::UnusedExtern { location, .. } => *location,
             ValidationError::UnusedBinding { location, .. } => *location,
             ValidationError::UnusedDeclaration { location, .. } => *location,
-            ValidationError::MatchBoolean { location } => *location,
-            ValidationError::MatchTupleBoolean { location } => *location,
             ValidationError::DeclCategoryOrder { location, .. } => *location,
             ValidationError::DeclAlphabetical { location, .. } => *location,
         }
@@ -872,15 +856,6 @@ impl From<ValidationError> for Diagnostic {
                 .with_location(source_location_to_span(get_file(), location))
             }
 
-            ValidationError::MatchBoolean { location } => {
-                Diagnostic::new(
-                    codes::canonical::MATCH_BOOLEAN,
-                    SigilPhase::Canonical,
-                    "Cannot pattern match on boolean expression",
-                )
-                .with_location(source_location_to_span(get_file(), location))
-            }
-
             ValidationError::SourceForm { canonical_source, location } => {
                 Diagnostic::new(
                     codes::canonical::SOURCE_FORM,
@@ -951,15 +926,6 @@ impl From<ValidationError> for Diagnostic {
             .with_location(source_location_to_span(get_file(), location))
             .with_found_expected(&found, "lowerCamelCase")
             .with_details("suggestion", suggestion),
-
-            ValidationError::MatchTupleBoolean { location } => {
-                Diagnostic::new(
-                    codes::canonical::MATCH_TUPLE_BOOLEAN,
-                    SigilPhase::Canonical,
-                    "Cannot pattern match on tuple containing booleans",
-                )
-                .with_location(source_location_to_span(get_file(), location))
-            }
 
             ValidationError::DelimiterSpacing { location } => {
                 Diagnostic::new(

@@ -2805,9 +2805,15 @@ fn accumulate_extern_usage(aggregate: &mut UsageSummary, externs: &HashMap<Strin
 
     while let Some(path) = pending.pop() {
         if let Some(usage) = externs.get(&path) {
-            aggregate.imports.extend(usage.summary.imports.iter().cloned());
-            aggregate.type_refs.extend(usage.summary.type_refs.iter().cloned());
-            aggregate.effect_refs.extend(usage.summary.effect_refs.iter().cloned());
+            aggregate
+                .imports
+                .extend(usage.summary.imports.iter().cloned());
+            aggregate
+                .type_refs
+                .extend(usage.summary.type_refs.iter().cloned());
+            aggregate
+                .effect_refs
+                .extend(usage.summary.effect_refs.iter().cloned());
             for dependency in &usage.summary.externs {
                 if seen.insert(dependency.clone()) {
                     aggregate.externs.insert(dependency.clone());
@@ -2830,11 +2836,21 @@ fn collect_function_usage_summary(
     let mut summary = UsageSummary::default();
     for param in &function_decl.params {
         if let Some(type_annotation) = &param.type_annotation {
-            collect_type_usage(type_annotation, &mut summary, top_level_types, top_level_effects);
+            collect_type_usage(
+                type_annotation,
+                &mut summary,
+                top_level_types,
+                top_level_effects,
+            );
         }
     }
     if let Some(return_type) = &function_decl.return_type {
-        collect_type_usage(return_type, &mut summary, top_level_types, top_level_effects);
+        collect_type_usage(
+            return_type,
+            &mut summary,
+            top_level_types,
+            top_level_effects,
+        );
     }
     collect_effect_usage(&function_decl.effects, &mut summary, top_level_effects);
     let mut scopes = vec![function_decl
@@ -2868,7 +2884,12 @@ fn collect_const_usage_summary(
 ) -> UsageSummary {
     let mut summary = UsageSummary::default();
     if let Some(type_annotation) = &const_decl.type_annotation {
-        collect_type_usage(type_annotation, &mut summary, top_level_types, top_level_effects);
+        collect_type_usage(
+            type_annotation,
+            &mut summary,
+            top_level_types,
+            top_level_effects,
+        );
     }
     let mut scopes = initial_scopes.to_vec();
     collect_expr_usage(
@@ -2945,11 +2966,21 @@ fn collect_type_decl_usage_summary(
         }
         TypeDef::Product(product_type) => {
             for field in &product_type.fields {
-                collect_type_usage(&field.field_type, &mut summary, top_level_types, top_level_effects);
+                collect_type_usage(
+                    &field.field_type,
+                    &mut summary,
+                    top_level_types,
+                    top_level_effects,
+                );
             }
         }
         TypeDef::Alias(alias) => {
-            collect_type_usage(&alias.aliased_type, &mut summary, top_level_types, top_level_effects);
+            collect_type_usage(
+                &alias.aliased_type,
+                &mut summary,
+                top_level_types,
+                top_level_effects,
+            );
         }
     }
     summary.imports.retain(|path| import_paths.contains(path));
@@ -2973,7 +3004,12 @@ fn collect_extern_usage_summary(
     let mut summary = UsageSummary::default();
     if let Some(members) = &extern_decl.members {
         for member in members {
-            collect_type_usage(&member.member_type, &mut summary, top_level_types, top_level_effects);
+            collect_type_usage(
+                &member.member_type,
+                &mut summary,
+                top_level_types,
+                top_level_effects,
+            );
         }
     }
     summary
@@ -3005,10 +3041,20 @@ fn collect_type_usage(
             }
         }
         Type::List(list_type) => {
-            collect_type_usage(&list_type.element_type, summary, top_level_types, top_level_effects);
+            collect_type_usage(
+                &list_type.element_type,
+                summary,
+                top_level_types,
+                top_level_effects,
+            );
         }
         Type::Map(map_type) => {
-            collect_type_usage(&map_type.key_type, summary, top_level_types, top_level_effects);
+            collect_type_usage(
+                &map_type.key_type,
+                summary,
+                top_level_types,
+                top_level_effects,
+            );
             collect_type_usage(
                 &map_type.value_type,
                 summary,
@@ -3076,11 +3122,21 @@ fn collect_expr_usage(
         Expr::Lambda(lambda) => {
             for param in &lambda.params {
                 if let Some(type_annotation) = &param.type_annotation {
-                    collect_type_usage(type_annotation, summary, top_level_types, top_level_effects);
+                    collect_type_usage(
+                        type_annotation,
+                        summary,
+                        top_level_types,
+                        top_level_effects,
+                    );
                 }
             }
             collect_effect_usage(&lambda.effects, summary, top_level_effects);
-            collect_type_usage(&lambda.return_type, summary, top_level_types, top_level_effects);
+            collect_type_usage(
+                &lambda.return_type,
+                summary,
+                top_level_types,
+                top_level_effects,
+            );
             let mut child_scopes = scopes.clone();
             child_scopes.push(
                 lambda
@@ -3622,24 +3678,48 @@ fn collect_pattern_usage(
                 summary.type_refs.insert(type_name.clone());
             }
             for nested in &constructor_pattern.patterns {
-                collect_pattern_usage(nested, summary, constructor_to_type, import_paths, extern_paths);
+                collect_pattern_usage(
+                    nested,
+                    summary,
+                    constructor_to_type,
+                    import_paths,
+                    extern_paths,
+                );
             }
         }
         Pattern::List(list_pattern) => {
             for nested in &list_pattern.patterns {
-                collect_pattern_usage(nested, summary, constructor_to_type, import_paths, extern_paths);
+                collect_pattern_usage(
+                    nested,
+                    summary,
+                    constructor_to_type,
+                    import_paths,
+                    extern_paths,
+                );
             }
         }
         Pattern::Record(record_pattern) => {
             for field in &record_pattern.fields {
                 if let Some(nested) = &field.pattern {
-                    collect_pattern_usage(nested, summary, constructor_to_type, import_paths, extern_paths);
+                    collect_pattern_usage(
+                        nested,
+                        summary,
+                        constructor_to_type,
+                        import_paths,
+                        extern_paths,
+                    );
                 }
             }
         }
         Pattern::Tuple(tuple_pattern) => {
             for nested in &tuple_pattern.patterns {
-                collect_pattern_usage(nested, summary, constructor_to_type, import_paths, extern_paths);
+                collect_pattern_usage(
+                    nested,
+                    summary,
+                    constructor_to_type,
+                    import_paths,
+                    extern_paths,
+                );
             }
         }
     }
@@ -4364,7 +4444,6 @@ fn validate_test_location(program: &Program, file_path: &str) -> Result<(), Vec<
 
     Ok(())
 }
-
 
 /// Validate recursive functions don't use accumulator parameters
 fn validate_recursive_functions(program: &Program) -> Result<(), Vec<ValidationError>> {

@@ -1,8 +1,7 @@
 //! Command implementations for CLI
 
 use crate::module_graph::{
-    entry_module_key, load_project_effect_catalog_for, LoadedModule, ModuleGraph,
-    ModuleGraphError,
+    entry_module_key, load_project_effect_catalog_for, LoadedModule, ModuleGraph, ModuleGraphError,
 };
 use crate::project::{get_project_config, ProjectConfigError};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
@@ -17,8 +16,7 @@ use sigil_typechecker::types::{
     InferenceType, TConstructor, TFunction, TList, TMap, TRecord, TTuple,
 };
 use sigil_typechecker::{
-    type_check, TypeCheckOptions, TypeError, TypeInfo, TypeScheme, TypedDeclaration,
-    TypedProgram,
+    type_check, TypeCheckOptions, TypeError, TypeInfo, TypeScheme, TypedDeclaration, TypedProgram,
 };
 use sigil_validator::{
     validate_canonical_form_with_options, validate_typed_canonical_form, ValidationError,
@@ -48,7 +46,7 @@ pub enum CliError {
     Validation(String),
 
     #[error("Type error: {0}")]
-    Type(String),
+    Type(#[from] TypeError),
 
     #[error("Codegen error: {0}")]
     Codegen(String),
@@ -105,6 +103,54 @@ fn output_json_error(
         }
     });
     println!("{}", serde_json::to_string(&output).unwrap());
+}
+
+fn type_error_json_details(error: &TypeError) -> serde_json::Value {
+    let mut details = serde_json::Map::new();
+
+    if let Some(source_file) = &error.source_file {
+        details.insert("file".to_string(), json!(source_file));
+    }
+
+    if let Some(location) = error.location {
+        details.insert(
+            "location".to_string(),
+            json!({
+                "start": {
+                    "line": location.start.line,
+                    "column": location.start.column,
+                    "offset": location.start.offset
+                },
+                "end": {
+                    "line": location.end.line,
+                    "column": location.end.column,
+                    "offset": location.end.offset
+                }
+            }),
+        );
+    }
+
+    if let Some(expected) = &error.expected {
+        details.insert(
+            "expected".to_string(),
+            json!(sigil_typechecker::format_type(expected)),
+        );
+    }
+
+    if let Some(actual) = &error.actual {
+        details.insert(
+            "found".to_string(),
+            json!(sigil_typechecker::format_type(actual)),
+        );
+    }
+
+    if let Some(extra) = &error.details {
+        for (key, value) in extra {
+            details.insert(key.clone(), value.clone());
+        }
+    }
+
+    serde_json::Value::Object(details)
 }
 
 struct CompileDirectoryIgnore {
@@ -171,13 +217,19 @@ impl CompileDirectoryIgnore {
             return true;
         }
 
-        if self.explicit_paths.iter().any(|ignore| path.starts_with(ignore)) {
+        if self
+            .explicit_paths
+            .iter()
+            .any(|ignore| path.starts_with(ignore))
+        {
             return true;
         }
 
-        self.gitignore
-            .as_ref()
-            .is_some_and(|gitignore| gitignore.matched_path_or_any_parents(path, is_dir).is_ignore())
+        self.gitignore.as_ref().is_some_and(|gitignore| {
+            gitignore
+                .matched_path_or_any_parents(path, is_dir)
+                .is_ignore()
+        })
     }
 }
 
@@ -447,12 +499,16 @@ fn compile_group(group: &CompileBatchGroup) -> Result<CompileBatchOutputs, CliEr
     let entries = entry_modules
         .into_iter()
         .map(|(input, module_id, project_root)| {
-            let output = compiled.module_outputs.get(&module_id).cloned().ok_or_else(|| {
-                CliError::Codegen(format!(
-                    "batch compile did not produce output for '{}'",
-                    input.display()
-                ))
-            })?;
+            let output = compiled
+                .module_outputs
+                .get(&module_id)
+                .cloned()
+                .ok_or_else(|| {
+                    CliError::Codegen(format!(
+                        "batch compile did not produce output for '{}'",
+                        input.display()
+                    ))
+                })?;
             Ok(CompileEntryOutput {
                 input,
                 output,
@@ -503,7 +559,10 @@ fn compile_single_file_command(
         .map(|module_id| {
             (
                 module_id.clone(),
-                graph.modules[module_id].file_path.to_string_lossy().to_string(),
+                graph.modules[module_id]
+                    .file_path
+                    .to_string_lossy()
+                    .to_string(),
             )
         })
         .collect::<Vec<_>>();
@@ -514,7 +573,20 @@ fn compile_single_file_command(
         })
     });
 
-    let compiled = compile_module_graph(graph, output)?;
+    let compiled = match compile_module_graph(graph, output) {
+        Ok(compiled) => compiled,
+        Err(CliError::Type(type_error)) => {
+            output_json_error(
+                "sigilc compile",
+                "typecheck",
+                &type_error.code,
+                &type_error.message,
+                type_error_json_details(&type_error),
+            );
+            return Err(CliError::Type(type_error));
+        }
+        Err(error) => return Err(error),
+    };
     let entry_output = compiled.entry_output_path.clone();
 
     let all_modules: Vec<serde_json::Value> = all_module_sources
@@ -581,21 +653,54 @@ fn compile_directory_command(
         let batch = match compile_group(&group) {
             Ok(batch) => batch,
             Err(error) => {
-                let message = error.to_string();
-                let error_code = extract_error_code(&message);
-                output_json_error(
-                    "sigilc compile",
-                    "codegen",
-                    &error_code,
-                    &message,
-                    json!({
-                        "input": path.to_string_lossy(),
-                        "file": first_file.map(|file| file.to_string_lossy().to_string()),
-                        "discovered": files.len(),
-                        "compiled": compiled_file_count,
-                        "durationMs": start_time.elapsed().as_millis()
-                    }),
-                );
+                match &error {
+                    CliError::Type(type_error) => {
+                        let mut details = match type_error_json_details(type_error) {
+                            serde_json::Value::Object(map) => map,
+                            _ => serde_json::Map::new(),
+                        };
+                        details.insert(
+                            "input".to_string(),
+                            json!(path.to_string_lossy().to_string()),
+                        );
+                        details.insert(
+                            "file".to_string(),
+                            json!(type_error.source_file.clone().or_else(|| first_file
+                                .as_ref()
+                                .map(|file| file.to_string_lossy().to_string()))),
+                        );
+                        details.insert("discovered".to_string(), json!(files.len()));
+                        details.insert("compiled".to_string(), json!(compiled_file_count));
+                        details.insert(
+                            "durationMs".to_string(),
+                            json!(start_time.elapsed().as_millis()),
+                        );
+                        output_json_error(
+                            "sigilc compile",
+                            "typecheck",
+                            &type_error.code,
+                            &type_error.message,
+                            serde_json::Value::Object(details),
+                        );
+                    }
+                    _ => {
+                        let message = error.to_string();
+                        let error_code = extract_error_code(&message);
+                        output_json_error(
+                            "sigilc compile",
+                            "codegen",
+                            &error_code,
+                            &message,
+                            json!({
+                                "input": path.to_string_lossy(),
+                                "file": first_file.map(|file| file.to_string_lossy().to_string()),
+                                "discovered": files.len(),
+                                "compiled": compiled_file_count,
+                                "durationMs": start_time.elapsed().as_millis()
+                            }),
+                        );
+                    }
+                }
                 return Err(error);
             }
         };
@@ -605,12 +710,8 @@ fn compile_directory_command(
         compiled_entries.extend(batch.entries);
     }
 
-    compiled_entries.sort_by_key(|entry| {
-        file_order
-            .get(&entry.input)
-            .copied()
-            .unwrap_or(usize::MAX)
-    });
+    compiled_entries
+        .sort_by_key(|entry| file_order.get(&entry.input).copied().unwrap_or(usize::MAX));
     let file_results = compiled_entries
         .into_iter()
         .map(|entry| {
@@ -885,8 +986,7 @@ pub fn test_command(
                     .expected_variants
                     .iter()
                     .filter(|variant| {
-                        observed
-                            .is_none_or(|tags| !tags.contains((*variant).as_str()))
+                        observed.is_none_or(|tags| !tags.contains((*variant).as_str()))
                     })
                     .cloned()
                     .collect::<Vec<_>>();
@@ -1109,13 +1209,13 @@ fn compile_module_graph(
                 source_file: Some(module.file_path.to_string_lossy().to_string()),
             }),
         )
-        .map_err(|error: TypeError| CliError::Type(format!("{}", error)))?;
+        .map_err(CliError::Type)?;
 
         validate_typed_canonical_form(
             &typecheck_result.typed_program,
             Some(module.file_path.to_string_lossy().as_ref()),
         )
-            .map_err(|errors| CliError::Validation(format_validation_errors(&errors)))?;
+        .map_err(|errors| CliError::Validation(format_validation_errors(&errors)))?;
 
         coverage_targets.extend(collect_module_coverage_targets(
             module,
@@ -1378,7 +1478,10 @@ fn project_root_and_runtime(
         return Ok(None);
     };
     let topology_present = topology_source_path(&project.root).exists();
-    let config_imported = graph.modules.keys().any(|module_id| module_id.starts_with("config::"));
+    let config_imported = graph
+        .modules
+        .keys()
+        .any(|module_id| module_id.starts_with("config::"));
     Ok(Some((project.root, topology_present, config_imported)))
 }
 
@@ -1482,10 +1585,12 @@ fn run_test_module(
         Some(m) => format!("\"{}\"", m.replace('"', "\\\"")),
         None => "null".to_string(),
     };
-    let coverage_targets_json = serde_json::to_string(&coverage_targets
-        .iter()
-        .map(|target| &target.id)
-        .collect::<Vec<_>>())
+    let coverage_targets_json = serde_json::to_string(
+        &coverage_targets
+            .iter()
+            .map(|target| &target.id)
+            .collect::<Vec<_>>(),
+    )
     .unwrap();
 
     let runner_code = format!(
@@ -2075,7 +2180,11 @@ fn extract_type_registry(
 
 fn coverage_variant_names_for_type_def(type_def: &TypeDef) -> Vec<String> {
     match type_def {
-        TypeDef::Sum(sum) => sum.variants.iter().map(|variant| variant.name.clone()).collect(),
+        TypeDef::Sum(sum) => sum
+            .variants
+            .iter()
+            .map(|variant| variant.name.clone())
+            .collect(),
         _ => Vec::new(),
     }
 }

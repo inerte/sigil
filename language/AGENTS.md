@@ -74,7 +74,6 @@ Record fields are alphabetical everywhere:
 - product type declarations
 - record literals
 - typed record constructors
-- record patterns
 
 Do not land syntax changes that only update the parser.
 
@@ -101,6 +100,11 @@ Current high-signal printer choices:
 - multi-arm `match` is always multiline
 - each arm starts as `pattern=>`
 - no discretionary alternative layout for the same AST shape
+- `match` is the branching surface; do not reintroduce a separate public `if` story
+- exhaustiveness and dead-arm checking currently cover `Bool`, `Unit`, tuples, list shapes, and nominal sum constructors
+- guard-based coverage is intentionally narrow: literal equality/order on bound variables plus boolean `and` / `or` / `not`
+- unsupported guards remain valid syntax but do not count toward coverage proofs
+- record patterns are not part of the current supported checker surface
 
 Current constructor and list invariants:
 - project-defined sum-type constructors from `src/types.lib.sigil` use `µ...` in both expressions and patterns

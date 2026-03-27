@@ -25,13 +25,13 @@ fi
 
 sigil_bin="language/compiler/target/debug/sigil"
 
-"$sigil_bin" test projects/homebrewPackaging/tests
+"$sigil_bin" test projects/homebrewPackaging/tests --env release
 
 sigilHomebrewVersion="$version" \
 sigilHomebrewRepo="inerte/sigil" \
 sigilHomebrewSha256SumsPath="$checksums_path" \
 sigilHomebrewOutputPath="$tmp_dir/sigil.rb" \
-  "$sigil_bin" run projects/homebrewPackaging/src/main.sigil
+  "$sigil_bin" run projects/homebrewPackaging/src/main.sigil --env release
 
 diff -u "$expected_path" "$tmp_dir/sigil.rb"
 

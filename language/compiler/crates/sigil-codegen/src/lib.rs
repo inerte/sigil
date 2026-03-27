@@ -3465,25 +3465,59 @@ impl TypeScriptGenerator {
             Pattern::Identifier(_) => Ok("true".to_string()),
             Pattern::Wildcard(_) => Ok("true".to_string()),
             Pattern::Constructor(ctor) => {
-                // Check constructor tag
-                Ok(format!("{}?.__tag === \"{}\"", scrutinee, ctor.name))
+                let mut conditions = vec![format!("{}?.__tag === \"{}\"", scrutinee, ctor.name)];
+                if ctor.patterns.is_empty() {
+                    return Ok(conditions.join(" && "));
+                }
+
+                conditions.push(format!("Array.isArray({}?.__fields)", scrutinee));
+                conditions.push(format!(
+                    "{}.__fields.length === {}",
+                    scrutinee,
+                    ctor.patterns.len()
+                ));
+
+                for (i, pattern) in ctor.patterns.iter().enumerate() {
+                    conditions.push(self.generate_pattern_condition(
+                        pattern,
+                        &format!("{}.__fields[{}]", scrutinee, i),
+                    )?);
+                }
+
+                Ok(conditions.join(" && "))
             }
             Pattern::List(list) => {
-                if list.patterns.is_empty() {
-                    Ok(format!("{}.length === 0", scrutinee))
+                let mut conditions = vec![format!("Array.isArray({})", scrutinee)];
+                let length_check = if list.rest.is_some() {
+                    format!("{}.length >= {}", scrutinee, list.patterns.len())
                 } else {
-                    Ok(format!("{}.length >= {}", scrutinee, list.patterns.len()))
+                    format!("{}.length === {}", scrutinee, list.patterns.len())
+                };
+                conditions.push(length_check);
+
+                for (i, pattern) in list.patterns.iter().enumerate() {
+                    conditions.push(
+                        self.generate_pattern_condition(pattern, &format!("{}[{}]", scrutinee, i))?,
+                    );
                 }
+
+                Ok(conditions.join(" && "))
             }
             Pattern::Tuple(tuple) => {
-                let length_check = format!(
+                let mut conditions = vec![format!(
                     "Array.isArray({}) && {}.length === {}",
                     scrutinee,
                     scrutinee,
                     tuple.patterns.len()
-                );
-                // For now, just check length - could add element checks
-                Ok(length_check)
+                )];
+
+                for (i, pattern) in tuple.patterns.iter().enumerate() {
+                    conditions.push(
+                        self.generate_pattern_condition(pattern, &format!("{}[{}]", scrutinee, i))?,
+                    );
+                }
+
+                Ok(conditions.join(" && "))
             }
             Pattern::Record(_) => Ok("true".to_string()),
         }
@@ -3680,9 +3714,7 @@ impl TypeScriptGenerator {
             ),
         }
     }
-
 }
-
 fn sanitize_js_identifier(raw: &str) -> String {
     let mut sanitized = String::with_capacity(raw.len());
 

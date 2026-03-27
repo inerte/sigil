@@ -179,7 +179,7 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     parser::NS_SEP,
     parser::LOCAL_BINDING,
     parser::UNEXPECTED_TOKEN,
-    // Canonical (28 codes)
+    // Canonical codes
     canonical::DUPLICATE_TYPE,
     canonical::DUPLICATE_EXTERN,
     canonical::DUPLICATE_IMPORT,
@@ -197,6 +197,7 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     canonical::MATCH_ARM_LAYOUT,
     canonical::REDUNDANT_PARENS,
     canonical::MATCH_BODY_BLOCK,
+    canonical::RECORD_EXACTNESS,
     canonical::LIB_NO_MAIN,
     canonical::EXEC_NEEDS_MAIN,
     canonical::TEST_NEEDS_MAIN,
@@ -241,7 +242,7 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     canonical::DECL_EXPORT_ORDER,
     canonical::DECL_ALPHABETICAL,
     canonical::EXTERN_MEMBER_ORDER,
-    // Typecheck (2 codes)
+    // Typecheck codes
     typecheck::ERROR,
     typecheck::MODULE_NOT_EXPORTED,
     typecheck::MATCH_NON_EXHAUSTIVE,
@@ -309,8 +310,8 @@ mod tests {
         // Keep this in sync when adding or removing diagnostic codes.
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            106,
-            "Expected 106 error codes, found {}",
+            107,
+            "Expected 107 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

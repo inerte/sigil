@@ -7574,6 +7574,18 @@ mod tests {
     }
 
     #[test]
+    fn test_match_unreachable_arm_is_rejected() {
+        let source = "λmain(x:Bool)=>String match x{\n  _=>\"all\"|\n  true=>\"yes\"\n}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let error = type_check(&program, source, TypeCheckOptions::default()).unwrap_err();
+        assert_eq!(error.code, codes::typecheck::MATCH_UNREACHABLE_ARM);
+        let details = error.details.unwrap();
+        assert_eq!(details.get("coveredByArm").unwrap(), &serde_json::json!(0));
+    }
+
+    #[test]
     fn test_match_list_nil_cons_is_exhaustive() {
         let source = "λmain(xs:[Int])=>Int match xs{\n  []=>0|\n  [head,.tail]=>head\n}";
         let tokens = tokenize(source).unwrap();

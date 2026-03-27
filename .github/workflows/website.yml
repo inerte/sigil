@@ -57,7 +57,7 @@ jobs:
         env:
           sigilSiteBasePath: /${{ github.event.repository.name }}/
           sigilSiteRepoUrl: https://github.com/${{ github.repository }}
-        run: language/compiler/target/debug/sigil run projects/ssg/src/main.sigil
+        run: language/compiler/target/debug/sigil run projects/ssg/src/main.sigil --env site
 
       - name: Verify site output
         run: |

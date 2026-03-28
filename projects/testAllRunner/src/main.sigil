@@ -1,0 +1,103 @@
+λcanonicalStdlibRoot(root:String)=>String=§path.join(§path.join(root,"projects"),"canonicalStdlibAudit")
+
+λcargo(args:[String],root:String)=>§process.Command=§process.withCwd(§process.command(["cargo"]⧺args),root)
+
+λcompilerBin(root:String)=>String=§path.join(§path.join(§path.join(§path.join(root,"language"),"compiler"),"target"),"debug/sigil")
+
+λdocsDriftRoot(root:String)=>String=§path.join(§path.join(root,"projects"),"docsDriftAudit")
+
+λfailedCommandMessage(command:§process.Command,result:§process.ProcessResult)=>String="command failed: "++(§string.join(" ",command.argv):String)++(match command.cwd{
+  Some(value)=>" (cwd "++value++")"|
+  None()=>""
+}:String)++" (exit "++(§string.intToString(result.code):String)++")"
+
+λfinish(result:Result[Unit,String])=>!CliIo Unit match result{
+  Ok(_)=>{
+    l _=(§io.println("All Sigil suites passed"):Unit);
+    §process.exit(0)
+  }|
+  Err(message)=>{
+    l _=(§io.eprintln(message):Unit);
+    §process.exit(1)
+  }
+}
+
+λhomebrewCommand(root:String)=>§process.Command=§process.withCwd(§process.command(["bash","tools/checkHomebrewFormula.sh"]),root)
+
+λhttpTestCommand(root:String)=>§process.Command=sigilCommand(["test","language/integrationTests/tests/httpClientServer.sigil"],root)
+
+λlanguageTestCommand(root:String)=>§process.Command=sigilCommand(["test","language/tests"],root)
+
+λmain()=>!CliIo Unit match repoRoot(){
+  Ok(root)=>finish(runSteps(steps(root)))|
+  Err(message)=>finish(Err(message))
+}
+
+λmultimoduleTestCommand(root:String)=>§process.Command=sigilCommand(["test","language/integrationTests/tests/multimodule.sigil"],root)
+
+λprintResultOutput(result:§process.ProcessResult)=>!CliIo Unit={
+  l _=(match #result.stdout>0{
+    true=>(§io.print(result.stdout):Unit)|
+    false=>()
+  }:Unit);
+  match #result.stderr>0{
+    true=>(§io.eprintln(result.stderr):Unit)|
+    false=>()
+  }
+}
+
+λrepoRoot()=>!Process Result[String,String]={
+  l result=(§process.run(§process.command(["git","rev-parse","--show-toplevel"])):§process.ProcessResult);
+  match result.code=0{
+    true=>Ok(§string.trim(result.stdout))|
+    false=>Err(match #result.stderr>0{
+      true=>§string.trim(result.stderr)|
+      false=>"failed to resolve repo root"
+    })
+  }
+}
+
+λroguelikeRoot(root:String)=>String=§path.join(§path.join(root,"projects"),"roguelike-autoplay")
+
+λroguelikeTestCommand(root:String)=>§process.Command=sigilCommandIn(["test","tests"],roguelikeRoot(root),root)
+
+λrunCommand(command:§process.Command)=>!CliIo Result[Unit,String]={
+  l result=(§process.run(command):§process.ProcessResult);
+  l _=(printResultOutput(result):Unit);
+  match result.code=0{
+    true=>Ok(())|
+    false=>Err(failedCommandMessage(command,result))
+  }
+}
+
+λrunCommands(commands:[§process.Command])=>!CliIo Result[Unit,String] match commands{
+  []=>Ok(())|
+  [command,.rest]=>match runCommand(command){
+    Ok(_)=>runCommands(rest)|
+    Err(message)=>Err(message)
+  }
+}
+
+λrunStep(step:µStep)=>!CliIo Result[Unit,String]={
+  l _=(§io.println(""):Unit);
+  l _=(§io.println("==> "++step.label):Unit);
+  runCommands(step.commands)
+}
+
+λrunSteps(all:[µStep])=>!CliIo Result[Unit,String] match all{
+  []=>Ok(())|
+  [step,.rest]=>match runStep(step){
+    Ok(_)=>runSteps(rest)|
+    Err(message)=>Err(message)
+  }
+}
+
+λsigilCommand(args:[String],root:String)=>§process.Command=§process.withCwd(§process.command([compilerBin(root)]⧺args),root)
+
+λsigilCommandIn(args:[String],cwd:String,root:String)=>§process.Command=§process.withCwd(§process.command([compilerBin(root)]⧺args),cwd)
+
+λssgTestCommand(root:String)=>§process.Command=sigilCommand(["test","projects/ssg/tests"],root)
+
+λsteps(root:String)=>[µStep]=[{commands:[cargo(["test","--manifest-path","language/compiler/Cargo.toml"],root)],label:"compiler tests"},{commands:[sigilCommandIn(["test","tests"],canonicalStdlibRoot(root),root),sigilCommandIn(["run","src/main.sigil"],canonicalStdlibRoot(root),root)],label:"canonical stdlib audit"},{commands:[sigilCommandIn(["test","tests"],docsDriftRoot(root),root),sigilCommandIn(["run","src/main.sigil"],docsDriftRoot(root),root)],label:"docs drift audit"},{commands:[languageTestCommand(root)],label:"language suite"},{commands:[sigilCommand(["test","language/stdlib-tests/tests"],root)],label:"stdlib suite"},{commands:[homebrewCommand(root)],label:"homebrew packaging"},{commands:[httpTestCommand(root)],label:"http integration"},{commands:[tcpTestCommand(root)],label:"tcp integration"},{commands:[sigilCommand(["test","projects/algorithms/tests"],root)],label:"algorithms suite"},{commands:[roguelikeTestCommand(root)],label:"roguelike suite"},{commands:[ssgTestCommand(root)],label:"ssg suite"},{commands:[sigilCommand(["test","projects/todo-app/tests"],root)],label:"todo app suite"},{commands:[multimoduleTestCommand(root)],label:"multimodule integration"},{commands:[sigilCommand(["test","language/integrationTests/tests/canonical.sigil"],root)],label:"canonical integration"}]
+
+λtcpTestCommand(root:String)=>§process.Command=sigilCommand(["test","language/integrationTests/tests/tcpClientServer.sigil"],root)

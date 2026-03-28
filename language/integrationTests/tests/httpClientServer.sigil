@@ -47,7 +47,7 @@ test "http post client reaches roundtrip server" =>!Process!Timer {
 }
 
 test "http json client reaches roundtrip server" =>!Process!Timer {
-  §string.indexOf(runClientOutput("src/jsonClient.sigil"),"{\\\"ok\\\":true}")≥0=true
+  §string.indexOf(runClientOutput("src/jsonClient.sigil"),"{\"ok\":true}")≥0=true
 }
 
 test "http headers client reaches roundtrip server" =>!Process!Timer {

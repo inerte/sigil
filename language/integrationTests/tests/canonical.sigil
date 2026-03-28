@@ -1,3 +1,9 @@
+λbadDirectWrapperSource()=>String="λsum1(xs:[Int])=>Int=§list.sum(xs)
+"
+
+λbadMapWrapperSource()=>String="λproject[T,U](fn:λ(T)=>U,xs:[T])=>[U]=xs map fn
+"
+
 λbadMatchSource()=>String="λfib(n:Int)=>Int match n{0=>0|1=>1|value=>fib(value-1)+fib(value-2)}
 λmain()=>Int=fib(5)
 "
@@ -21,6 +27,9 @@ match n{0=>0}
 
 λmain()=>Unit=()
 
+λwrapperPlusLogicSource()=>String="λsumPlusOne(xs:[Int])=>Int=§list.sum(xs)+1
+"
+
 test "canonical rejects single-line multi-arm match" =>!Clock!Fs!Process {
   l root=(•support.uniqueRepoTempDir("canonicalMatch"):String);
   l file=(§path.join(root,"badMatch.sigil"):String);
@@ -43,6 +52,33 @@ test "canonical fib fixture compiles" =>!Clock!Fs!Process {
   l root=(•support.uniqueRepoTempDir("canonicalGood"):String);
   l file=(§path.join(root,"goodFib.sigil"):String);
   l _=(§file.writeText(goodFibSource(),file):Unit);
+  l result=(compile(file):§process.ProcessResult);
+  l _=(§file.removeTree(root):Unit);
+  result.code=0
+}
+
+test "canonical rejects exact stdlib helper wrappers" =>!Clock!Fs!Process {
+  l root=(•support.uniqueRepoTempDir("canonicalDirectWrapper"):String);
+  l file=(§path.join(root,"badWrapper.lib.sigil"):String);
+  l _=(§file.writeText(badDirectWrapperSource(),file):Unit);
+  l result=(compile(file):§process.ProcessResult);
+  l _=(§file.removeTree(root):Unit);
+  result.code≠0 and §string.indexOf(•support.combinedOutput(result),"SIGIL-CANON-HELPER-DIRECT-WRAPPER")≥0
+}
+
+test "canonical rejects exact operator wrappers" =>!Clock!Fs!Process {
+  l root=(•support.uniqueRepoTempDir("canonicalOperatorWrapper"):String);
+  l file=(§path.join(root,"badMapWrapper.lib.sigil"):String);
+  l _=(§file.writeText(badMapWrapperSource(),file):Unit);
+  l result=(compile(file):§process.ProcessResult);
+  l _=(§file.removeTree(root):Unit);
+  result.code≠0 and §string.indexOf(•support.combinedOutput(result),"SIGIL-CANON-HELPER-DIRECT-WRAPPER")≥0
+}
+
+test "wrapper with extra logic still compiles" =>!Clock!Fs!Process {
+  l root=(•support.uniqueRepoTempDir("canonicalWrapperLike"):String);
+  l file=(§path.join(root,"goodWrapper.lib.sigil"):String);
+  l _=(§file.writeText(wrapperPlusLogicSource(),file):Unit);
   l result=(compile(file):§process.ProcessResult);
   l _=(§file.removeTree(root):Unit);
   result.code=0

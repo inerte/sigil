@@ -215,6 +215,39 @@ Canonical replacements:
 These are exact-shape validator rules, not general algorithm analysis.
 Recursive algorithms that do not match these narrow patterns remain valid.
 
+## Canonical Helper Wrappers
+
+Outside `language/stdlib/`, Sigil also rejects exact top-level helper wrappers
+when the body is already one canonical helper surface over that function's own
+parameters.
+
+Current exact-wrapper bans:
+
+- direct `§...` helper calls whose arguments are exactly the function parameters
+- direct `map` wrappers like `xs map fn`
+- direct `filter` wrappers like `xs filter pred`
+- direct `reduce ... from ...` wrappers like `xs reduce fn from init`
+
+Examples of rejected shapes:
+
+```sigil invalid-module
+λsum1(xs:[Int])=>Int=§list.sum(xs)
+
+λproject[T,U](fn:λ(T)=>U,xs:[T])=>[U]=xs map fn
+```
+
+Required canonical forms:
+
+```sigil module
+λdouble(xs:[Int])=>[Int]=xs map (λ(x:Int)=>Int=x*2)
+
+λreportedSum(xs:[Int])=>String=§string.intToString(§list.sum(xs))
+```
+
+This is still a narrow exact-shape rule.
+Sigil does not try to prove that arbitrary helper code is semantically
+equivalent to a canonical stdlib/helper surface.
+
 ## Topology / Config Boundaries
 
 For topology-aware projects:

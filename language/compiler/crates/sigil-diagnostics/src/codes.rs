@@ -84,6 +84,7 @@ pub mod canonical {
     pub const RECURSION_REVERSE_CLONE: &str = "SIGIL-CANON-RECURSION-REVERSE-CLONE";
     pub const BRANCHING_SELF_RECURSION: &str = "SIGIL-CANON-BRANCHING-SELF-RECURSION";
     pub const TRAVERSAL_FILTER_COUNT: &str = "SIGIL-CANON-TRAVERSAL-FILTER-COUNT";
+    pub const HELPER_DIRECT_WRAPPER: &str = "SIGIL-CANON-HELPER-DIRECT-WRAPPER";
 
     // Parameter and effect ordering
     pub const PARAM_ORDER: &str = "SIGIL-CANON-PARAM-ORDER";
@@ -226,6 +227,7 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     canonical::RECURSION_REVERSE_CLONE,
     canonical::BRANCHING_SELF_RECURSION,
     canonical::TRAVERSAL_FILTER_COUNT,
+    canonical::HELPER_DIRECT_WRAPPER,
     canonical::PARAM_ORDER,
     canonical::EFFECT_ORDER,
     canonical::RECORD_TYPE_FIELD_ORDER,
@@ -310,8 +312,8 @@ mod tests {
         // Keep this in sync when adding or removing diagnostic codes.
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            107,
-            "Expected 107 error codes, found {}",
+            108,
+            "Expected 108 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

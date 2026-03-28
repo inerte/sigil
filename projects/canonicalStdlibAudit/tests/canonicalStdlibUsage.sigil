@@ -85,6 +85,11 @@ test "same name with different shape is allowed" {
 ")=[]
 }
 
+test "direct canonical helper wrapper is compiler-owned and skipped by audit" {
+  •canonicalStdlibUsage.analyzeFile("language/examples/example.sigil",compiledRules(),"λsum(xs:[Int])=>Int=§list.sum(xs)
+")=[]
+}
+
 test "stdlib path is ignored" {
   •canonicalStdlibUsage.ignorePath("language/stdlib/list.lib.sigil")
 }

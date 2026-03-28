@@ -40,6 +40,11 @@ The required replacements are:
 This is not a general optimizer and not a semantic equivalence engine. The
 rules are narrow AST-shape checks.
 
+A later compiler change extended the same idea to exact top-level wrappers
+around canonical `§...` helper surfaces and direct `map` / `filter` /
+`reduce ... from ...` wrappers. This article stays focused on recursive list
+processing and exact traversal-shape bans.
+
 ## Why Sigil Is Doing This
 
 These recursive shapes are common in human-written tutorial code and in
@@ -301,7 +306,7 @@ Rejected:
 Required:
 
 ```sigil module
-λreverse(xs:[Int])=>[Int]=§list.reverse(xs)
+λisPalindrome(xs:[Int])=>Bool=xs=§list.reverse(xs)
 ```
 
 ### Fold

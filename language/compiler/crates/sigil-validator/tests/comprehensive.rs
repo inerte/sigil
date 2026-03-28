@@ -300,7 +300,7 @@ fn test_type_declaration_valid() {
 
 #[test]
 fn test_root_qualified_reference_valid() {
-    let source = "λsize(xs:[Int])=>Int=§list.length(xs)";
+    let source = "λsizePlusOne(xs:[Int])=>Int=§list.sum(xs)+1";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.lib.sigil").unwrap();
 

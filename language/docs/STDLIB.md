@@ -693,6 +693,12 @@ Sigil now rejects exact recursive clones of `all`, `any`, `map`, `filter`,
 `§list.countIf`, and rejects recursive result-building of the form
 `self(rest)⧺rhs`.
 
+Outside `language/stdlib/`, Sigil also rejects exact top-level wrappers whose
+body is already a canonical helper surface such as `§list.sum(xs)`,
+`§numeric.max(a,b)`, `§string.trim(s)`, `xs map fn`, `xs filter pred`, or
+`xs reduce fn from init`.
+Call the canonical helper directly instead of renaming it.
+
 ## String Operations
 
 **Module:** `stdlib/string`

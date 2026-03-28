@@ -527,6 +527,8 @@ plumbing:
 - do not hand-write recursive `fold` clones when `reduce ... from ...` fits
 - do not hand-write recursive `reverse` clones; use `§list.reverse`
 - do not build recursive list results with `self(rest)⧺rhs`
+- do not wrap canonical helpers just to rename them; exact wrappers like `λsum1(xs)=>Int=§list.sum(xs)` are rejected
+- do not wrap `map`, `filter`, or `reduce ... from ...` in trivial top-level aliases; use the operator surface directly
 
 ## Tests
 

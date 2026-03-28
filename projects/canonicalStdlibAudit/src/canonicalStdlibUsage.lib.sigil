@@ -19,8 +19,13 @@
 
 λissueMessage(issue:µIssue)=>String=issue.path++":"++§string.intToString(issue.line)++": local '"++issue.name++"' duplicates canonical helper '"++issue.replacement++"'; use the qualified stdlib path instead."
 
+λlineAlreadyUsesCanonicalHelper(replacement:String,sourceLine:String)=>Bool=§string.indexOf(sourceLine,replacement++"(")≥0
+
 λlineIssues(lineNumber:Int,path:String,rules:[µRule],sourceLine:String)=>[µIssue]=§list.fold([],λ(acc:[µIssue],rule:µRule)=>[µIssue] match §regex.isMatch(sourceLine,rule.pattern){
-  true=>([{line:lineNumber,name:rule.name,path:path,replacement:rule.replacement}]:[µIssue])⧺acc|
+  true=>match lineAlreadyUsesCanonicalHelper(rule.replacement,sourceLine){
+    true=>acc|
+    false=>([{line:lineNumber,name:rule.name,path:path,replacement:rule.replacement}]:[µIssue])⧺acc
+  }|
   false=>acc
 },rules)
 

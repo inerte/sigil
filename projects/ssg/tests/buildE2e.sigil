@@ -10,7 +10,7 @@ test "build site removes stale output files" =>!SiteBuild {
   l _=(§file.makeDirs(outputDir):Unit);
   l _=(§file.writeText("stale",§path.join(outputDir,"stale.txt")):Unit);
   l _=(•build.buildSite(baseConfig(outputDir)):Unit);
-  l rootEntries=(•build.listDir(outputDir):[String]);
+  l rootEntries=(§file.listDir(outputDir):[String]);
   §list.contains("stale.txt",rootEntries)=false
 }
 

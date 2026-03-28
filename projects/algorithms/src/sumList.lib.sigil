@@ -1,1 +1,0 @@
-λsumList(xs:[Int])=>Int=§list.sum(xs)

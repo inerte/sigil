@@ -92,6 +92,14 @@ pub enum ValidationError {
     #[error("SIGIL-CANON-TRAVERSAL-FILTER-COUNT: Expression uses filter then length for counting.\n\nSigil rejects the exact shape #(xs filter pred) when a canonical one-pass counting path exists.\n\nUse stdlib::list.countIf(pred,xs) instead.")]
     FilterThenCount { location: SourceLocation },
 
+    #[error("SIGIL-CANON-HELPER-DIRECT-WRAPPER: Function '{function_name}' is an exact wrapper around canonical helper '{canonical_helper}'.\n\nSigil rejects exact top-level helper aliases when a canonical helper surface already exists.\n\nUse {canonical_surface} directly instead.")]
+    HelperDirectWrapper {
+        function_name: String,
+        canonical_helper: String,
+        canonical_surface: String,
+        location: SourceLocation,
+    },
+
     #[error("SIGIL-CANON-RECURSION-COLLECTION-NONSTRUCTURAL: Recursive function '{function_name}' has collection parameter but doesn't use structural recursion.\n\nSigil enforces ONE way: structural recursion for collections.")]
     NonStructuralRecursion {
         function_name: String,
@@ -406,6 +414,7 @@ impl ValidationError {
             ValidationError::RecursiveFoldClone { location, .. } => *location,
             ValidationError::BranchingSelfRecursion { location, .. } => *location,
             ValidationError::FilterThenCount { location } => *location,
+            ValidationError::HelperDirectWrapper { location, .. } => *location,
             ValidationError::NonStructuralRecursion { location, .. } => *location,
             ValidationError::MissingReturnType { location, .. } => *location,
             ValidationError::MissingParamType { location, .. } => *location,
@@ -759,6 +768,23 @@ impl From<ValidationError> for Diagnostic {
                 .with_location(source_location_to_span(get_file(), location))
                 .with_details("guidance", "Use stdlib::list.countIf(pred,xs) instead of #(xs filter pred).")
             }
+
+            ValidationError::HelperDirectWrapper {
+                function_name,
+                canonical_helper,
+                canonical_surface,
+                location,
+            } => Diagnostic::new(
+                codes::canonical::HELPER_DIRECT_WRAPPER,
+                SigilPhase::Canonical,
+                format!(
+                    "Function '{}' duplicates canonical helper '{}'",
+                    function_name, canonical_helper
+                ),
+            )
+            .with_location(source_location_to_span(get_file(), location))
+            .with_details("kind", "direct_wrapper")
+            .with_details("guidance", format!("Use {} directly instead.", canonical_surface)),
 
             ValidationError::RecordTypeFieldOrder { type_name, field_name, prev_field, position: _, expected_order, location } => {
                 Diagnostic::new(

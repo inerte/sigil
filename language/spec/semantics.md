@@ -253,6 +253,9 @@ The validator rejects exact recursive clones of:
 
 It also rejects:
 
+- exact top-level wrappers around canonical `§...` helper calls when the body
+  is already that helper over the function's own parameters
+- exact top-level wrappers around `map`, `filter`, and `reduce ... from ...`
 - recursive result-building of the form `self(rest)⧺rhs`
 - filter then length of the form `#(xs filter pred)`
 
@@ -269,4 +272,6 @@ The required replacements are:
 - `§list.reverse`
 
 These are exact-shape canonicality rules, not general semantic equivalence or
-complexity proofs.
+complexity proofs. `language/stdlib/` remains the place where canonical helper
+definitions themselves live, so the direct-wrapper ban applies to ordinary
+project/example/test code rather than to stdlib implementation files.

@@ -113,6 +113,7 @@ Current constructor and list invariants:
 - use `⧺` only for explicit concatenation; never rely on list literals to flatten values
 - if a canonical helper exists in `stdlib`, prefer it over project-local reimplementation
 - in first-party Sigil code outside `language/stdlib/`, do not locally redefine canonical stdlib helpers; use qualified calls like `§list.sum` and `§numeric.max`
+- outside `language/stdlib/`, exact top-level wrappers around canonical `§...` helpers or direct `map` / `filter` / `reduce ... from ...` surfaces are rejected; call the canonical helper directly instead of renaming it
 - for safe integer list lookup/end access, prefer `§list.nth` and `§list.last`
 - Sigil keeps one promise-shaped runtime model, and explicit widening uses named `concurrent` regions
 - the canonical concurrent-region surface is `concurrent name@width{...}` or `concurrent name@width:{jitterMs:...,stopOn:...,windowMs:...}{...}`

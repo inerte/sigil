@@ -65,6 +65,7 @@ alone, such as:
 - no dead top-level declarations in executable `.sigil` files
 - no-shadowing
 - record field ordering
+- exact top-level wrappers around canonical `§...` helpers and direct `map` / `filter` / `reduce ... from ...` surfaces
 - exact recursive list-plumbing bans where Sigil already has a canonical surface
 - typed canonical restrictions like dead-binding rejection and single-use pure binding inlining
 
@@ -85,6 +86,8 @@ Executable note:
 
 Current list-processing examples:
 
+- exact wrappers like `λsum1(xs)=>Int=§list.sum(xs)` are rejected in favor of `§list.sum(xs)` directly
+- exact wrappers like `λproject(fn,xs)=>[U]=xs map fn` are rejected in favor of `xs map fn` directly
 - recursive `all` clones are rejected in favor of `§list.all`
 - recursive `any` clones are rejected in favor of `§list.any`
 - `#(xs filter pred)` is rejected in favor of `§list.countIf`

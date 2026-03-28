@@ -133,6 +133,12 @@ The validator rejects exact recursive clones of `all`, `any`, `map`, `filter`,
 `self(rest)⧺rhs`. These are narrow AST-shape rules, not a general complexity
 prover.
 
+Outside `language/stdlib/`, the validator also rejects exact top-level wrappers
+whose body is already a canonical helper surface, such as `§list.sum(xs)`,
+`§numeric.max(a,b)`, `§string.trim(s)`, `xs map fn`, `xs filter pred`, or
+`xs reduce fn from init`. Sigil keeps one canonical helper surface instead of
+supporting thin local aliases for the same operation.
+
 ### Implemented `§numeric` Helpers
 
 ```sigil decl §numeric

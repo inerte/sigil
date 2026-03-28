@@ -55,8 +55,6 @@ e fs::promises
 
 λfilterMarkdownFiles(files:[String])=>[String]=files filter (λ(file:String)=>Bool=§string.endsWith(file,".md"))
 
-λlistDir(path:String)=>!Fs [String]=§file.listDir(path)
-
 λloadArticles(config:µSiteBuildConfig)=>!Fs [µSitePage]={
   l files=(filterMarkdownFiles(§file.listDir("website/articles")):[String]);
   l pages=(loadPagesFromFiles(config,"website/articles",files,µArticle()):[µSitePage]);

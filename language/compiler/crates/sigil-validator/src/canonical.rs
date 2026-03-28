@@ -23,6 +23,12 @@ pub struct ValidationOptions {
     pub effect_catalog: Option<EffectCatalog>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct CanonicalHelperWrapper {
+    canonical_helper: String,
+    canonical_surface: String,
+}
+
 fn is_lower_camel_case(name: &str) -> bool {
     let mut chars = name.chars();
     match chars.next() {
@@ -770,11 +776,16 @@ pub fn validate_canonical_form_with_options(
     }
 
     // Rule 6: Recursive functions must not use accumulators
+    if let Err(e) = validate_direct_canonical_helper_wrappers(program, file_path) {
+        errors.extend(e);
+    }
+
+    // Rule 6b: Recursive functions must not use accumulators
     if let Err(e) = validate_recursive_functions(program) {
         errors.extend(e);
     }
 
-    // Rule 6b: No non-canonical branching self-recursion
+    // Rule 6c: No non-canonical branching self-recursion
     if let Err(e) = crate::branching_recursion::validate_branching_recursion(program) {
         errors.extend(e);
     }
@@ -4445,6 +4456,169 @@ fn validate_test_location(program: &Program, file_path: &str) -> Result<(), Vec<
     Ok(())
 }
 
+fn validate_direct_canonical_helper_wrappers(
+    program: &Program,
+    file_path: Option<&str>,
+) -> Result<(), Vec<ValidationError>> {
+    if file_path.is_some_and(is_stdlib_file_path) {
+        return Ok(());
+    }
+
+    let mut errors = Vec::new();
+
+    for declaration in &program.declarations {
+        let Declaration::Function(function) = declaration else {
+            continue;
+        };
+        let Some(wrapper) = detect_direct_canonical_helper_wrapper(function) else {
+            continue;
+        };
+        errors.push(ValidationError::HelperDirectWrapper {
+            function_name: function.name.clone(),
+            canonical_helper: wrapper.canonical_helper,
+            canonical_surface: wrapper.canonical_surface,
+            location: function.location,
+        });
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+fn is_stdlib_file_path(file_path: &str) -> bool {
+    let normalized = file_path.replace('\\', "/");
+    normalized.starts_with("language/stdlib/")
+        || normalized.starts_with("stdlib/")
+        || normalized.contains("/language/stdlib/")
+}
+
+fn detect_direct_canonical_helper_wrapper(func: &FunctionDecl) -> Option<CanonicalHelperWrapper> {
+    detect_direct_stdlib_wrapper(func).or_else(|| detect_direct_operator_wrapper(func))
+}
+
+fn detect_direct_stdlib_wrapper(func: &FunctionDecl) -> Option<CanonicalHelperWrapper> {
+    if func.params.is_empty() {
+        return None;
+    }
+
+    let Expr::Application(application) = strip_type_ascriptions(&func.body) else {
+        return None;
+    };
+    let Expr::MemberAccess(member) = strip_type_ascriptions(&application.func) else {
+        return None;
+    };
+    let canonical_helper = stdlib_helper_name(member)?;
+    if application.args.len() != func.params.len() {
+        return None;
+    }
+
+    let param_names: Vec<&str> = func.params.iter().map(|param| param.name.as_str()).collect();
+    if !application
+        .args
+        .iter()
+        .zip(param_names.iter())
+        .all(|(arg, param_name)| identifier_name(strip_type_ascriptions(arg)) == Some(*param_name))
+    {
+        return None;
+    }
+
+    Some(CanonicalHelperWrapper {
+        canonical_surface: format!("{}({})", canonical_helper, param_names.join(",")),
+        canonical_helper,
+    })
+}
+
+fn detect_direct_operator_wrapper(func: &FunctionDecl) -> Option<CanonicalHelperWrapper> {
+    match strip_type_ascriptions(&func.body) {
+        Expr::Map(map_expr) => {
+            let list_name = identifier_name(strip_type_ascriptions(&map_expr.list))?;
+            let func_name = identifier_name(strip_type_ascriptions(&map_expr.func))?;
+            operator_wrapper(
+                func,
+                &[list_name, func_name],
+                "map",
+                format!("{} map {}", list_name, func_name),
+            )
+        }
+        Expr::Filter(filter_expr) => {
+            let list_name = identifier_name(strip_type_ascriptions(&filter_expr.list))?;
+            let predicate_name = identifier_name(strip_type_ascriptions(&filter_expr.predicate))?;
+            operator_wrapper(
+                func,
+                &[list_name, predicate_name],
+                "filter",
+                format!("{} filter {}", list_name, predicate_name),
+            )
+        }
+        Expr::Fold(fold_expr) => {
+            let list_name = identifier_name(strip_type_ascriptions(&fold_expr.list))?;
+            let func_name = identifier_name(strip_type_ascriptions(&fold_expr.func))?;
+            let init_name = identifier_name(strip_type_ascriptions(&fold_expr.init))?;
+            operator_wrapper(
+                func,
+                &[list_name, func_name, init_name],
+                "reduce ... from ...",
+                format!("{} reduce {} from {}", list_name, func_name, init_name),
+            )
+        }
+        _ => None,
+    }
+}
+
+fn operator_wrapper(
+    func: &FunctionDecl,
+    names: &[&str],
+    canonical_helper: &str,
+    canonical_surface: String,
+) -> Option<CanonicalHelperWrapper> {
+    if func.params.is_empty() || names.len() != func.params.len() {
+        return None;
+    }
+
+    let param_names: HashSet<&str> = func.params.iter().map(|param| param.name.as_str()).collect();
+    let wrapper_names: HashSet<&str> = names.iter().copied().collect();
+    if param_names.len() != func.params.len()
+        || wrapper_names.len() != names.len()
+        || param_names != wrapper_names
+    {
+        return None;
+    }
+
+    Some(CanonicalHelperWrapper {
+        canonical_helper: canonical_helper.to_string(),
+        canonical_surface,
+    })
+}
+
+fn strip_type_ascriptions(expr: &Expr) -> &Expr {
+    match expr {
+        Expr::TypeAscription(type_ascription) => strip_type_ascriptions(&type_ascription.expr),
+        other => other,
+    }
+}
+
+fn identifier_name(expr: &Expr) -> Option<&str> {
+    match expr {
+        Expr::Identifier(identifier) => Some(identifier.name.as_str()),
+        _ => None,
+    }
+}
+
+fn stdlib_helper_name(member: &MemberAccessExpr) -> Option<String> {
+    if member.namespace.first().map(String::as_str) != Some("stdlib") || member.namespace.len() < 2
+    {
+        return None;
+    }
+    Some(format!(
+        "§{}.{}",
+        member.namespace[1..].join("."),
+        member.member
+    ))
+}
+
 /// Validate recursive functions don't use accumulator parameters
 fn validate_recursive_functions(program: &Program) -> Result<(), Vec<ValidationError>> {
     let mut errors = Vec::new();
@@ -6008,6 +6182,71 @@ mod tests {
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
         assert!(validate_canonical_form(&program, Some("test.sigil"), Some(source)).is_ok());
+    }
+
+    #[test]
+    fn test_direct_stdlib_wrapper_rejected() {
+        let source = "λsum1(xs:[Int])=>Int=§list.sum(xs)\n";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+        let result = validate_canonical_form(&program, Some("test.lib.sigil"), Some(source));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().iter().any(
+            |error| matches!(
+                error,
+                ValidationError::HelperDirectWrapper {
+                    canonical_helper,
+                    canonical_surface,
+                    function_name,
+                    ..
+                } if canonical_helper == "§list.sum"
+                    && canonical_surface == "§list.sum(xs)"
+                    && function_name == "sum1"
+            )
+        ));
+    }
+
+    #[test]
+    fn test_direct_map_wrapper_rejected() {
+        let source = "λproject[T,U](fn:λ(T)=>U,xs:[T])=>[U]=xs map fn\n";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+        let result = validate_canonical_form(&program, Some("test.lib.sigil"), Some(source));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().iter().any(
+            |error| matches!(
+                error,
+                ValidationError::HelperDirectWrapper {
+                    canonical_helper,
+                    canonical_surface,
+                    function_name,
+                    ..
+                } if canonical_helper == "map"
+                    && canonical_surface == "xs map fn"
+                    && function_name == "project"
+            )
+        ));
+    }
+
+    #[test]
+    fn test_wrapper_with_extra_logic_allowed() {
+        let source = "λsum1(xs:[Int])=>Int=§list.sum(§list.reverse(xs))\n";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+        assert!(validate_canonical_form(&program, Some("test.lib.sigil"), Some(source)).is_ok());
+    }
+
+    #[test]
+    fn test_stdlib_file_direct_wrapper_allowed() {
+        let source = "λsum(xs:[Int])=>Int=§list.sum(xs)\n";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "language/stdlib/list.lib.sigil").unwrap();
+        assert!(validate_canonical_form(
+            &program,
+            Some("language/stdlib/list.lib.sigil"),
+            Some(source)
+        )
+        .is_ok());
     }
 }
 

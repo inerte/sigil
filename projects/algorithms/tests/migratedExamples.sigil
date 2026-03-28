@@ -13,5 +13,5 @@ test "map double doubles every value" {
 }
 
 test "sum list uses canonical stdlib sum" {
-  •sumList.sumList([1,2,3,4,5])=15
+  §list.sum([1,2,3,4,5])=15
 }

@@ -24,7 +24,7 @@ use sigil_validator::{
 };
 use std::collections::{HashMap, HashSet};
 use std::fs;
-use std::io::{self, Read, Write};
+use std::io::{self, IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::thread;
@@ -932,6 +932,24 @@ fn execute_runner(
     let abs_runner_path = std::fs::canonicalize(runner_path)?;
     let start_time = Instant::now();
     if stream_output {
+        if io::stdout().is_terminal() || io::stderr().is_terminal() {
+            let status = Command::new("pnpm")
+                .args(["exec", "node", "--import", "tsx"])
+                .arg(&abs_runner_path)
+                .args(args)
+                .stdout(Stdio::inherit())
+                .stderr(Stdio::inherit())
+                .status()
+                .map_err(map_runner_launch_error)?;
+
+            return Ok(RuntimeOutput {
+                exit_code: status.code().unwrap_or(-1),
+                duration_ms: start_time.elapsed().as_millis(),
+                stdout: String::new(),
+                stderr: String::new(),
+            });
+        }
+
         let mut child = Command::new("pnpm")
             .args(["exec", "node", "--import", "tsx"])
             .arg(&abs_runner_path)

@@ -23,12 +23,16 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
+
+      - name: Enable corepack pnpm
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.0.0 --activate
 
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
@@ -44,12 +48,16 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v6
         with:
           node-version: 24
           cache: pnpm
+
+      - name: Enable corepack pnpm
+        shell: bash
+        run: |
+          corepack enable
+          corepack prepare pnpm@10.0.0 --activate
 
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile

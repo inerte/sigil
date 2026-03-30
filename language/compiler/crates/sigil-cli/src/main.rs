@@ -12,7 +12,8 @@ mod module_graph;
 mod project;
 
 use commands::{
-    compile_command, lex_command, parse_command, run_command, test_command, validate_command,
+    compile_command, inspect_command, lex_command, parse_command, run_command, test_command,
+    validate_command,
 };
 
 const SIGIL_VERSION: &str = match option_env!("SIGIL_VERSION") {
@@ -63,6 +64,12 @@ enum Command {
         ignore_from: Option<PathBuf>,
     },
 
+    /// Inspect compiler state for a Sigil file or directory
+    Inspect {
+        #[command(subcommand)]
+        command: InspectCommand,
+    },
+
     /// Compile and run a Sigil file
     Run {
         /// Input .sigil file
@@ -108,6 +115,37 @@ enum Command {
     },
 }
 
+#[derive(Subcommand)]
+enum InspectCommand {
+    /// Inspect top-level solved types
+    Types {
+        /// Input .sigil file or directory
+        path: PathBuf,
+
+        /// Ignore an additional path while inspecting a directory
+        #[arg(long)]
+        ignore: Vec<PathBuf>,
+
+        /// Load gitignore-style ignore rules from a file while inspecting a directory
+        #[arg(long = "ignore-from")]
+        ignore_from: Option<PathBuf>,
+    },
+
+    /// Inspect canonical validation and printer output
+    Validate {
+        /// Input .sigil file or directory
+        path: PathBuf,
+
+        /// Ignore an additional path while inspecting a directory
+        #[arg(long)]
+        ignore: Vec<PathBuf>,
+
+        /// Load gitignore-style ignore rules from a file while inspecting a directory
+        #[arg(long = "ignore-from")]
+        ignore_from: Option<PathBuf>,
+    },
+}
+
 fn main() {
     let cli = Cli::parse();
 
@@ -127,6 +165,28 @@ fn main() {
             &ignore,
             ignore_from.as_deref(),
         ),
+        Command::Inspect { command } => match command {
+            InspectCommand::Types {
+                path,
+                ignore,
+                ignore_from,
+            } => inspect_command(
+                commands::InspectMode::Types,
+                &path,
+                &ignore,
+                ignore_from.as_deref(),
+            ),
+            InspectCommand::Validate {
+                path,
+                ignore,
+                ignore_from,
+            } => inspect_command(
+                commands::InspectMode::Validate,
+                &path,
+                &ignore,
+                ignore_from.as_deref(),
+            ),
+        },
         Command::Run {
             file,
             json,

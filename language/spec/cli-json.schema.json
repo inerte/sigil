@@ -8,6 +8,8 @@
     { "$ref": "#/$defs/lexEnvelope" },
     { "$ref": "#/$defs/parseEnvelope" },
     { "$ref": "#/$defs/compileEnvelope" },
+    { "$ref": "#/$defs/inspectTypesEnvelope" },
+    { "$ref": "#/$defs/inspectValidateEnvelope" },
     { "$ref": "#/$defs/runEnvelope" },
     { "$ref": "#/$defs/testEnvelope" }
   ],
@@ -253,6 +255,29 @@
       },
       "additionalProperties": false
     },
+    "projectInfo": {
+      "oneOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "required": ["root", "layout"],
+          "properties": {
+            "root": { "type": "string" },
+            "layout": {
+              "type": "object",
+              "required": ["src", "tests", "out"],
+              "properties": {
+                "src": { "type": "string" },
+                "tests": { "type": "string" },
+                "out": { "type": "string" }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
     "compileSingleFileData": {
       "type": "object",
       "required": ["input", "outputs", "typecheck"],
@@ -271,29 +296,7 @@
           },
           "additionalProperties": false
         },
-        "project": {
-          "oneOf": [
-            { "type": "null" },
-            {
-              "type": "object",
-              "required": ["root", "layout"],
-              "properties": {
-                "root": { "type": "string" },
-                "layout": {
-                  "type": "object",
-                  "required": ["src", "tests", "out"],
-                  "properties": {
-                    "src": { "type": "string" },
-                    "tests": { "type": "string" },
-                    "out": { "type": "string" }
-                  },
-                  "additionalProperties": false
-                }
-              },
-              "additionalProperties": false
-            }
-          ]
-        },
+        "project": { "$ref": "#/$defs/projectInfo" },
         "typecheck": {
           "type": "object",
           "required": ["ok", "inferred"],
@@ -347,6 +350,143 @@
         { "$ref": "#/$defs/compileDirectoryData" }
       ]
     },
+    "inspectTypeDeclaration": {
+      "type": "object",
+      "required": ["name", "kind", "type", "spanId", "location"],
+      "properties": {
+        "name": { "type": "string" },
+        "kind": { "type": "string", "enum": ["function", "const", "test"] },
+        "type": { "type": "string" },
+        "spanId": { "type": "string" },
+        "location": { "$ref": "#/$defs/sourceSpan" }
+      },
+      "additionalProperties": false
+    },
+    "inspectTypesSummary": {
+      "type": "object",
+      "required": ["declarations", "functions", "consts", "tests"],
+      "properties": {
+        "declarations": { "type": "integer", "minimum": 0 },
+        "functions": { "type": "integer", "minimum": 0 },
+        "consts": { "type": "integer", "minimum": 0 },
+        "tests": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "inspectTypesFileData": {
+      "type": "object",
+      "required": ["input", "moduleId", "sourceFile", "project", "summary", "declarations"],
+      "properties": {
+        "input": { "type": "string" },
+        "moduleId": { "type": "string" },
+        "sourceFile": { "type": "string" },
+        "project": { "$ref": "#/$defs/projectInfo" },
+        "summary": { "$ref": "#/$defs/inspectTypesSummary" },
+        "declarations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/inspectTypeDeclaration" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "inspectTypesDirectoryData": {
+      "type": "object",
+      "required": ["input", "summary", "files"],
+      "properties": {
+        "input": { "type": "string" },
+        "summary": {
+          "type": "object",
+          "required": ["discovered", "inspected", "groups", "modules", "durationMs"],
+          "properties": {
+            "discovered": { "type": "integer", "minimum": 0 },
+            "inspected": { "type": "integer", "minimum": 0 },
+            "groups": { "type": "integer", "minimum": 0 },
+            "modules": { "type": "integer", "minimum": 0 },
+            "durationMs": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "files": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/inspectTypesFileData" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "inspectTypesData": {
+      "oneOf": [
+        { "$ref": "#/$defs/inspectTypesFileData" },
+        { "$ref": "#/$defs/inspectTypesDirectoryData" }
+      ]
+    },
+    "inspectValidateSummary": {
+      "type": "object",
+      "required": ["declarations", "functions", "types", "effects", "consts", "tests", "externs"],
+      "properties": {
+        "declarations": { "type": "integer", "minimum": 0 },
+        "functions": { "type": "integer", "minimum": 0 },
+        "types": { "type": "integer", "minimum": 0 },
+        "effects": { "type": "integer", "minimum": 0 },
+        "consts": { "type": "integer", "minimum": 0 },
+        "tests": { "type": "integer", "minimum": 0 },
+        "externs": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "inspectValidateStatus": {
+      "type": "object",
+      "required": ["ok", "errors"],
+      "properties": {
+        "ok": { "type": "boolean" },
+        "errors": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "inspectValidateFileData": {
+      "type": "object",
+      "required": ["input", "sourceFile", "project", "alreadyCanonical", "canonicalSource", "summary", "validation"],
+      "properties": {
+        "input": { "type": "string" },
+        "sourceFile": { "type": "string" },
+        "project": { "$ref": "#/$defs/projectInfo" },
+        "alreadyCanonical": { "type": "boolean" },
+        "canonicalSource": { "type": "string" },
+        "summary": { "$ref": "#/$defs/inspectValidateSummary" },
+        "validation": { "$ref": "#/$defs/inspectValidateStatus" }
+      },
+      "additionalProperties": false
+    },
+    "inspectValidateDirectoryData": {
+      "type": "object",
+      "required": ["input", "summary", "files"],
+      "properties": {
+        "input": { "type": "string" },
+        "summary": {
+          "type": "object",
+          "required": ["discovered", "inspected", "durationMs"],
+          "properties": {
+            "discovered": { "type": "integer", "minimum": 0 },
+            "inspected": { "type": "integer", "minimum": 0 },
+            "durationMs": { "type": "integer", "minimum": 0 }
+          },
+          "additionalProperties": false
+        },
+        "files": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/inspectValidateFileData" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "inspectValidateData": {
+      "oneOf": [
+        { "$ref": "#/$defs/inspectValidateFileData" },
+        { "$ref": "#/$defs/inspectValidateDirectoryData" }
+      ]
+    },
     "compileEnvelope": {
       "allOf": [
         { "$ref": "#/$defs/baseEnvelope" },
@@ -355,6 +495,38 @@
           "properties": {
             "command": { "const": "sigilc compile" },
             "data": { "$ref": "#/$defs/compileData" }
+          },
+          "allOf": [
+            { "if": { "properties": { "ok": { "const": true } } }, "then": { "required": ["data"] } },
+            { "if": { "properties": { "ok": { "const": false } } }, "then": { "required": ["error"] } }
+          ]
+        }
+      ]
+    },
+    "inspectTypesEnvelope": {
+      "allOf": [
+        { "$ref": "#/$defs/baseEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "command": { "const": "sigilc inspect types" },
+            "data": { "$ref": "#/$defs/inspectTypesData" }
+          },
+          "allOf": [
+            { "if": { "properties": { "ok": { "const": true } } }, "then": { "required": ["data"] } },
+            { "if": { "properties": { "ok": { "const": false } } }, "then": { "required": ["error"] } }
+          ]
+        }
+      ]
+    },
+    "inspectValidateEnvelope": {
+      "allOf": [
+        { "$ref": "#/$defs/baseEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "command": { "const": "sigilc inspect validate" },
+            "data": { "$ref": "#/$defs/inspectValidateData" }
           },
           "allOf": [
             { "if": { "properties": { "ok": { "const": true } } }, "then": { "required": ["data"] } },

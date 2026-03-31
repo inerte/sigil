@@ -156,9 +156,21 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test p
 # Filter by test name substring
 cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --match "cache"
 
+# Trace one test file
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --trace projects/algorithms/tests/basicTesting.sigil
+
+# Stop the current test when a function is reached
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --break-fn helper projects/algorithms/tests/basicTesting.sigil
+
+# Record and replay a test run
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --record .local/tests.replay.json projects/algorithms/tests/basicTesting.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --replay .local/tests.replay.json projects/algorithms/tests/basicTesting.sigil
+
 ```
 
 For runtime-world projects, `--env <name>` is required.
+`sigil test --replay` cannot be combined with `--env`; the replay artifact owns
+the resolved per-test world.
 
 For process-heavy harness code, prefer:
 - `§process` for child processes
@@ -183,9 +195,24 @@ Each result currently includes:
 - `file`
 - `name`
 - `status`
+  - `pass | fail | error | stopped`
 - `durationMs`
 - `location`
-- `failure` when the test fails or errors
+- optional `failure`
+- optional `trace`
+- optional `breakpoints`
+- optional `replay`
+- optional `exception`
+
+`summary` now also includes:
+
+- `stopped`
+
+Stop-mode breakpoint hits are not runtime errors:
+
+- the current test result becomes `status: "stopped"`
+- the suite keeps running later selected tests
+- top-level `ok` is still `false`
 
 Current aggregated test output does not include:
 

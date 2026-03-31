@@ -160,12 +160,27 @@ Per-test results currently include:
 - `file`
 - `name`
 - `status`
+  - `pass | fail | error | stopped`
 - `durationMs`
 - `location`
 - optional `failure`
+- optional `trace`
+- optional `breakpoints`
+- optional `replay`
+- optional `exception`
+
+`summary` also includes:
+
+- `stopped`
 
 When a test description contains newlines, current JSON output preserves those
 newline characters in `id`, `name`, and `description`.
+
+Debugger notes:
+
+- `sigil test` supports `--trace`, `--trace-expr`, breakpoints, `--record`, and `--replay`
+- stop-mode breakpoints stop only the current test and report `status: "stopped"`
+- `sigil test --replay` is artifact-owned and cannot be combined with `--env`
 
 Current output does not include:
 

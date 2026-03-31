@@ -26,7 +26,7 @@ use sigil_validator::{
     print_canonical_program_with_effects, validate_canonical_form_with_options,
     validate_typed_canonical_form, ValidationError, ValidationOptions,
 };
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
 use std::io::{self, IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
@@ -3778,6 +3778,177 @@ fn prepare_replay_mode(
     Ok(None)
 }
 
+fn build_test_replay_binding(
+    path: &Path,
+    test_files: &[PathBuf],
+    match_filter: Option<&str>,
+) -> Result<(TestReplayArtifactRequest, ReplayArtifactBinding), CliError> {
+    let requested_path = if path.exists() {
+        canonicalize_existing_path(path)
+    } else if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()?.join(path)
+    };
+    let project_root = get_project_config(path)?.map(|project| {
+        canonicalize_existing_path(&project.root)
+            .to_string_lossy()
+            .to_string()
+    });
+    let mut modules_by_id = BTreeMap::<String, ReplayArtifactModule>::new();
+
+    for test_file in test_files {
+        let graph = ModuleGraph::build(test_file)?;
+        for module in graph.modules.values() {
+            let replay_module = ReplayArtifactModule {
+                module_id: module.id.clone(),
+                source_file: canonicalize_existing_path(&module.file_path)
+                    .to_string_lossy()
+                    .to_string(),
+                source_hash: sha256_hex(module.source.as_bytes()),
+            };
+            modules_by_id
+                .entry(replay_module.module_id.clone())
+                .or_insert(replay_module);
+        }
+    }
+
+    let modules = modules_by_id.into_values().collect::<Vec<_>>();
+    let mut fingerprint_hasher = Sha256::new();
+    for module in &modules {
+        fingerprint_hasher.update(module.module_id.as_bytes());
+        fingerprint_hasher.update([0]);
+        fingerprint_hasher.update(module.source_file.as_bytes());
+        fingerprint_hasher.update([0]);
+        fingerprint_hasher.update(module.source_hash.as_bytes());
+        fingerprint_hasher.update([0]);
+    }
+
+    Ok((
+        TestReplayArtifactRequest {
+            path: requested_path.to_string_lossy().to_string(),
+            match_filter: match_filter.map(str::to_string),
+            project_root,
+        },
+        ReplayArtifactBinding {
+            algorithm: "sha256".to_string(),
+            fingerprint: format!("{:x}", fingerprint_hasher.finalize()),
+            modules,
+        },
+    ))
+}
+
+fn read_test_replay_artifact(path: &Path) -> Result<TestReplayArtifact, CliError> {
+    let contents = fs::read_to_string(path).map_err(|error| {
+        CliError::Runtime(format!(
+            "{}: failed to read test replay artifact '{}': {}",
+            codes::runtime::REPLAY_INVALID_ARTIFACT,
+            path.display(),
+            error
+        ))
+    })?;
+    let artifact: TestReplayArtifact = serde_json::from_str(&contents).map_err(|error| {
+        CliError::Runtime(format!(
+            "{}: failed to parse test replay artifact '{}': {}",
+            codes::runtime::REPLAY_INVALID_ARTIFACT,
+            path.display(),
+            error
+        ))
+    })?;
+    if artifact.kind != "sigilTestReplay" || artifact.format_version != 1 {
+        return Err(CliError::Runtime(format!(
+            "{}: '{}' is not a supported Sigil test replay artifact",
+            codes::runtime::REPLAY_INVALID_ARTIFACT,
+            path.display()
+        )));
+    }
+    if artifact.binding.algorithm != "sha256" {
+        return Err(CliError::Runtime(format!(
+            "{}: test replay artifact '{}' uses unsupported fingerprint algorithm '{}'",
+            codes::runtime::REPLAY_INVALID_ARTIFACT,
+            path.display(),
+            artifact.binding.algorithm
+        )));
+    }
+    Ok(artifact)
+}
+
+fn validate_test_replay_binding(
+    path: &Path,
+    expected_request: &TestReplayArtifactRequest,
+    expected_binding: &ReplayArtifactBinding,
+    artifact: &TestReplayArtifact,
+    artifact_path: &Path,
+) -> Result<(), CliError> {
+    let requested_path = if path.exists() {
+        canonicalize_existing_path(path).to_string_lossy().to_string()
+    } else if path.is_absolute() {
+        path.to_string_lossy().to_string()
+    } else {
+        std::env::current_dir()?
+            .join(path)
+            .to_string_lossy()
+            .to_string()
+    };
+    if artifact.request.path != requested_path {
+        return Err(CliError::Runtime(format!(
+            "{}: test replay artifact '{}' targets '{}' instead of '{}'",
+            codes::runtime::REPLAY_BINDING_MISMATCH,
+            artifact_path.display(),
+            artifact.request.path,
+            requested_path
+        )));
+    }
+    if artifact.request.match_filter != expected_request.match_filter {
+        return Err(CliError::Runtime(format!(
+            "{}: test replay artifact '{}' does not match the requested test filter",
+            codes::runtime::REPLAY_BINDING_MISMATCH,
+            artifact_path.display()
+        )));
+    }
+    if artifact.binding.fingerprint != expected_binding.fingerprint
+        || artifact.binding.modules != expected_binding.modules
+    {
+        return Err(CliError::Runtime(format!(
+            "{}: test replay artifact '{}' does not match the current source graph",
+            codes::runtime::REPLAY_BINDING_MISMATCH,
+            artifact_path.display()
+        )));
+    }
+    Ok(())
+}
+
+fn prepare_test_replay_mode(
+    path: &Path,
+    test_files: &[PathBuf],
+    match_filter: Option<&str>,
+    record_path: Option<&Path>,
+    replay_path: Option<&Path>,
+) -> Result<Option<PreparedTestReplayMode>, CliError> {
+    let (request, binding) = build_test_replay_binding(path, test_files, match_filter)?;
+
+    if let Some(record_path) = record_path {
+        let artifact_file = resolve_run_artifact_path(record_path, true)?;
+        return Ok(Some(PreparedTestReplayMode::Record {
+            artifact_file,
+            request,
+            binding,
+        }));
+    }
+
+    if let Some(replay_path) = replay_path {
+        let artifact_file = resolve_run_artifact_path(replay_path, false)?;
+        let artifact = read_test_replay_artifact(&artifact_file)?;
+        validate_test_replay_binding(path, &request, &binding, &artifact, &artifact_file)?;
+        return Ok(Some(PreparedTestReplayMode::Replay {
+            artifact_file,
+            artifact,
+        }));
+    }
+
+    Ok(None)
+}
+
 fn read_runtime_exception_capture(path: &Path) -> Option<RuntimeExceptionCapture> {
     let contents = fs::read_to_string(path).ok();
     let _ = fs::remove_file(path);
@@ -4628,6 +4799,142 @@ fn output_run_message_error(file: &Path, message: &str, to_stderr: bool) {
     );
 }
 
+fn output_test_error(path: &Path, error: &CliError) {
+    match error {
+        CliError::Type(type_error) => {
+            let message = type_error.to_string();
+            let error_code = extract_error_code(&message);
+            output_json_error_to(
+                "sigilc test",
+                "typecheck",
+                &error_code,
+                &message,
+                json!({
+                    "path": path.to_string_lossy()
+                }),
+                false,
+            );
+        }
+        CliError::Validation(message) => output_test_message_error(path, message),
+        CliError::Lexer(message) | CliError::Parser(message) | CliError::Runtime(message) => {
+            output_test_message_error(path, message);
+        }
+        CliError::Breakpoint {
+            code,
+            message,
+            details,
+        } => output_json_error_to(
+            "sigilc test",
+            phase_for_code(code),
+            code,
+            message,
+            details.clone(),
+            false,
+        ),
+        CliError::ModuleGraph(ModuleGraphError::ImportNotFound {
+            module_id,
+            expected_path,
+        }) => output_json_error_to(
+            "sigilc test",
+            "cli",
+            codes::cli::IMPORT_NOT_FOUND,
+            &format!("module not found: {}", module_id),
+            json!({
+                "path": path.to_string_lossy(),
+                "moduleId": module_id,
+                "expectedPath": expected_path
+            }),
+            false,
+        ),
+        CliError::ModuleGraph(ModuleGraphError::ImportCycle(cycle)) => output_json_error_to(
+            "sigilc test",
+            "cli",
+            codes::cli::IMPORT_CYCLE,
+            "module import cycle detected",
+            json!({
+                "path": path.to_string_lossy(),
+                "cycle": cycle
+            }),
+            false,
+        ),
+        CliError::ModuleGraph(ModuleGraphError::Io(io_error)) => output_json_error_to(
+            "sigilc test",
+            "io",
+            codes::cli::UNEXPECTED,
+            &io_error.to_string(),
+            json!({
+                "path": path.to_string_lossy()
+            }),
+            false,
+        ),
+        CliError::ModuleGraph(ModuleGraphError::Validation(errors)) => {
+            let message = errors
+                .iter()
+                .map(|error| error.to_string())
+                .collect::<Vec<_>>()
+                .join("\n");
+            output_test_message_error(path, &message);
+        }
+        CliError::ModuleGraph(ModuleGraphError::Lexer(message))
+        | CliError::ModuleGraph(ModuleGraphError::Parser(message)) => {
+            output_test_message_error(path, message);
+        }
+        CliError::ModuleGraph(ModuleGraphError::ProjectConfig(project_error))
+        | CliError::ProjectConfig(project_error) => output_json_error_to(
+            "sigilc test",
+            "cli",
+            codes::cli::UNEXPECTED,
+            &project_error.to_string(),
+            json!({
+                "path": path.to_string_lossy()
+            }),
+            false,
+        ),
+        CliError::Io(io_error) => output_json_error_to(
+            "sigilc test",
+            "io",
+            codes::cli::UNEXPECTED,
+            &io_error.to_string(),
+            json!({
+                "path": path.to_string_lossy()
+            }),
+            false,
+        ),
+        CliError::Codegen(message) => output_json_error_to(
+            "sigilc test",
+            "codegen",
+            codes::cli::UNEXPECTED,
+            message,
+            json!({
+                "path": path.to_string_lossy()
+            }),
+            false,
+        ),
+        CliError::Reported(_) => {}
+    }
+}
+
+fn output_test_message_error(path: &Path, message: &str) {
+    let error_code = extract_error_code(message);
+    let (code, phase) = if error_code.starts_with("SIGIL-") {
+        let phase = phase_for_code(&error_code);
+        (error_code, phase)
+    } else {
+        (codes::cli::UNEXPECTED.to_string(), "cli")
+    };
+
+    output_json_error_to(
+        "sigilc test",
+        phase,
+        &code,
+        message,
+        json!({
+            "path": path.to_string_lossy()
+        }),
+        false,
+    );
+}
+
 fn phase_for_code(code: &str) -> &'static str {
     if code.starts_with("SIGIL-LEX-") {
         "lexer"
@@ -4653,7 +4960,79 @@ pub fn test_command(
     path: &Path,
     selected_env: Option<&str>,
     match_filter: Option<&str>,
+    trace_enabled: bool,
+    trace_expr_enabled: bool,
+    breakpoint_lines: &[String],
+    breakpoint_functions: &[String],
+    breakpoint_spans: &[String],
+    breakpoint_collect: bool,
+    breakpoint_max_hits: usize,
+    record_path: Option<&Path>,
+    replay_path: Option<&Path>,
 ) -> Result<(), CliError> {
+    let breakpoint_mode = if breakpoint_collect {
+        BreakpointMode::Collect
+    } else {
+        BreakpointMode::Stop
+    };
+    let debug_options = TestDebugOptions {
+        trace_enabled,
+        trace_expr_enabled,
+        breakpoint_lines: breakpoint_lines.to_vec(),
+        breakpoint_functions: breakpoint_functions.to_vec(),
+        breakpoint_spans: breakpoint_spans.to_vec(),
+        breakpoint_mode,
+        breakpoint_max_hits,
+    };
+
+    if trace_expr_enabled && !trace_enabled {
+        output_json_error_to(
+            "sigilc test",
+            "cli",
+            codes::cli::USAGE,
+            "`--trace-expr` requires `--trace`",
+            json!({
+                "path": path.to_string_lossy(),
+                "option": "--trace-expr",
+                "requires": ["--trace"]
+            }),
+            false,
+        );
+        return Err(CliError::Reported(1));
+    }
+
+    if debug_options.breakpoints_requested() && breakpoint_max_hits == 0 {
+        output_json_error_to(
+            "sigilc test",
+            "cli",
+            codes::cli::USAGE,
+            "`--break-max-hits` must be at least 1",
+            json!({
+                "path": path.to_string_lossy(),
+                "option": "--break-max-hits",
+                "minimum": 1
+            }),
+            false,
+        );
+        return Err(CliError::Reported(1));
+    }
+
+    if replay_path.is_some() && selected_env.is_some() {
+        output_json_error_to(
+            "sigilc test",
+            "cli",
+            codes::cli::USAGE,
+            "`--replay` cannot be combined with `--env`",
+            json!({
+                "path": path.to_string_lossy(),
+                "option": "--replay",
+                "conflictsWith": "--env"
+            }),
+            false,
+        );
+        return Err(CliError::Reported(1));
+    }
+
     // Check if tests directory exists
     if !path.exists() {
         let output_json = serde_json::json!({
@@ -4667,6 +5046,7 @@ pub fn test_command(
                 "passed": 0,
                 "failed": 0,
                 "errored": 0,
+                "stopped": 0,
                 "skipped": 0,
                 "durationMs": 0
             },
@@ -4677,16 +5057,29 @@ pub fn test_command(
     }
 
     let start_time = Instant::now();
-    let enforce_project_coverage = match_filter.is_none() && !path.is_file();
 
     // Collect all .sigil files in test directory
     let test_files = collect_sigil_files(path)?;
+    let suite_replay_mode =
+        match prepare_test_replay_mode(path, &test_files, match_filter, record_path, replay_path) {
+            Ok(mode) => mode,
+            Err(error) => {
+                output_test_error(path, &error);
+                return Err(CliError::Reported(1));
+            }
+        };
+    let enforce_project_coverage = match_filter.is_none()
+        && !path.is_file()
+        && !(debug_options.breakpoints_requested() && breakpoint_mode == BreakpointMode::Stop);
 
     let run_test_file = |test_file: &PathBuf| {
-        compile_and_run_tests(test_file, selected_env, match_filter).map_err(|e| {
-            eprintln!("Error running tests in {}: {}", test_file.display(), e);
-            e
-        })
+        compile_and_run_tests(
+            test_file,
+            selected_env,
+            match_filter,
+            &debug_options,
+            suite_replay_mode.as_ref(),
+        )
     };
 
     let results: Vec<_> = if test_files.len() <= 1 {
@@ -4705,6 +5098,11 @@ pub fn test_command(
         thread_pool.install(|| test_files.par_iter().map(run_test_file).collect())
     };
 
+    if let Some(error) = results.iter().find_map(|result| result.as_ref().err()) {
+        output_test_error(path, error);
+        return Err(CliError::Reported(1));
+    }
+
     // Aggregate results from all files
     let mut all_results = Vec::new();
     let mut observed_calls = HashSet::new();
@@ -4712,11 +5110,14 @@ pub fn test_command(
     let mut coverage_targets = HashMap::new();
     let mut discovered = 0;
     let mut selected = 0;
+    let mut selected_ids = Vec::new();
+    let mut recorded_tests = Vec::new();
 
     for result in results {
         if let Ok(test_result) = result {
             discovered += test_result.discovered;
             selected += test_result.selected;
+            selected_ids.extend(test_result.selected_ids);
             observed_calls.extend(test_result.coverage_observation.calls);
             for (key, tags) in test_result.coverage_observation.variants {
                 observed_variants.entry(key).or_default().extend(tags);
@@ -4724,7 +5125,26 @@ pub fn test_command(
             for target in test_result.coverage_targets {
                 coverage_targets.entry(target.id.clone()).or_insert(target);
             }
+            recorded_tests.extend(test_result.recorded_tests);
             all_results.extend(test_result.results);
+        }
+    }
+
+    if let Some(PreparedTestReplayMode::Replay { artifact, .. }) = suite_replay_mode.as_ref() {
+        if artifact.selected_test_ids != selected_ids {
+            output_json_error_to(
+                "sigilc test",
+                "runtime",
+                codes::runtime::REPLAY_BINDING_MISMATCH,
+                "replay artifact selected tests do not match this run",
+                json!({
+                    "path": path.to_string_lossy(),
+                    "expectedSelectedTestIds": artifact.selected_test_ids,
+                    "actualSelectedTestIds": selected_ids
+                }),
+                false,
+            );
+            return Err(CliError::Reported(1));
         }
     }
 
@@ -4742,6 +5162,10 @@ pub fn test_command(
                         "sigil test requires '{}' to be executed by the test suite",
                         target.id
                     )),
+                    trace: None,
+                    breakpoints: None,
+                    replay: None,
+                    exception: None,
                 });
                 continue;
             }
@@ -4771,6 +5195,10 @@ pub fn test_command(
                             target.id,
                             missing.join(", ")
                         )),
+                        trace: None,
+                        breakpoints: None,
+                        replay: None,
+                        exception: None,
                     });
                 }
             }
@@ -4788,9 +5216,52 @@ pub fn test_command(
     let passed = all_results.iter().filter(|r| r.status == "pass").count();
     let failed = all_results.iter().filter(|r| r.status == "fail").count();
     let errored = all_results.iter().filter(|r| r.status == "error").count();
+    let stopped = all_results.iter().filter(|r| r.status == "stopped").count();
     let duration_ms = start_time.elapsed().as_millis();
 
-    let ok = failed == 0 && errored == 0;
+    let ok = failed == 0 && errored == 0 && stopped == 0;
+
+    if let Some(PreparedTestReplayMode::Record {
+        artifact_file,
+        request,
+        binding,
+    }) = suite_replay_mode.as_ref()
+    {
+        let artifact = TestReplayArtifact {
+            format_version: 1,
+            kind: "sigilTestReplay".to_string(),
+            request: request.clone(),
+            binding: binding.clone(),
+            selected_test_ids: selected_ids.clone(),
+            summary: TestReplayArtifactSummary {
+                failed: failed > 0 || errored > 0,
+                stopped: stopped > 0,
+                selected,
+                recorded_events: recorded_tests
+                    .iter()
+                    .filter_map(|test| test.replay_artifact.as_ref())
+                    .map(|artifact| artifact.summary.recorded_events)
+                    .sum(),
+            },
+            tests: recorded_tests.clone(),
+        };
+        let serialized = serde_json::to_string(&artifact).map_err(|error| {
+            CliError::Runtime(format!(
+                "{}: failed to serialize test replay artifact '{}': {}",
+                codes::runtime::REPLAY_INVALID_ARTIFACT,
+                artifact_file.display(),
+                error
+            ))
+        })?;
+        fs::write(artifact_file, serialized).map_err(|error| {
+            CliError::Runtime(format!(
+                "{}: failed to write test replay artifact '{}': {}",
+                codes::runtime::REPLAY_INVALID_ARTIFACT,
+                artifact_file.display(),
+                error
+            ))
+        })?;
+    }
 
     let output_json = serde_json::json!({
         "formatVersion": 1,
@@ -4803,6 +5274,7 @@ pub fn test_command(
             "passed": passed,
             "failed": failed,
             "errored": errored,
+            "stopped": stopped,
             "skipped": 0,
             "durationMs": duration_ms
         },
@@ -4811,7 +5283,7 @@ pub fn test_command(
     println!("{}", serde_json::to_string(&output_json).unwrap());
 
     if !ok {
-        return Err(CliError::Runtime("Tests failed".to_string()));
+        return Err(CliError::Reported(1));
     }
 
     Ok(())
@@ -4898,6 +5370,7 @@ console.log(JSON.stringify({{
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 struct TestResult {
     id: String,
     file: String,
@@ -4908,9 +5381,17 @@ struct TestResult {
     location: TestLocation,
     #[serde(skip_serializing_if = "Option::is_none")]
     failure: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    trace: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    breakpoints: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    replay: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    exception: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, serde::Serialize)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 struct TestLocation {
     line: usize,
     column: usize,
@@ -4919,9 +5400,149 @@ struct TestLocation {
 struct TestRunResult {
     discovered: usize,
     selected: usize,
+    selected_ids: Vec<String>,
     results: Vec<TestResult>,
     coverage_observation: CoverageObservation,
     coverage_targets: Vec<CoverageTarget>,
+    recorded_tests: Vec<TestReplayRecordedTest>,
+}
+
+#[derive(Debug, Clone)]
+struct TestDebugOptions {
+    trace_enabled: bool,
+    trace_expr_enabled: bool,
+    breakpoint_lines: Vec<String>,
+    breakpoint_functions: Vec<String>,
+    breakpoint_spans: Vec<String>,
+    breakpoint_mode: BreakpointMode,
+    breakpoint_max_hits: usize,
+}
+
+impl TestDebugOptions {
+    fn breakpoints_requested(&self) -> bool {
+        !self.breakpoint_lines.is_empty()
+            || !self.breakpoint_functions.is_empty()
+            || !self.breakpoint_spans.is_empty()
+    }
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawTestRunOutput {
+    discovered: usize,
+    selected: usize,
+    #[serde(default)]
+    selected_ids: Vec<String>,
+    #[serde(default)]
+    coverage_targets: Vec<String>,
+    #[serde(default)]
+    results: Vec<RawTestResult>,
+    #[serde(default)]
+    recorded_tests: Vec<TestReplayRecordedTest>,
+    #[serde(default)]
+    runner_error: Option<RawTestRunnerError>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawTestResult {
+    id: String,
+    file: String,
+    name: String,
+    status: String,
+    #[serde(rename = "durationMs")]
+    duration_ms: u128,
+    location: TestLocation,
+    #[serde(default)]
+    failure: Option<String>,
+    #[serde(default)]
+    coverage: RawCoverageObservation,
+    #[serde(default)]
+    trace: Option<RuntimeTraceCapture>,
+    #[serde(default)]
+    breakpoints: Option<RuntimeBreakpointCapture>,
+    #[serde(default)]
+    replay: Option<RuntimeReplayCapture>,
+    #[serde(default)]
+    exception: Option<RuntimeExceptionCapture>,
+}
+
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawCoverageObservation {
+    #[serde(default)]
+    calls: Vec<String>,
+    #[serde(default)]
+    variants: HashMap<String, Vec<String>>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RawTestRunnerError {
+    code: String,
+    message: String,
+    #[serde(default)]
+    details: serde_json::Value,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TestReplayArtifact {
+    format_version: u32,
+    kind: String,
+    request: TestReplayArtifactRequest,
+    binding: ReplayArtifactBinding,
+    #[serde(default)]
+    selected_test_ids: Vec<String>,
+    summary: TestReplayArtifactSummary,
+    #[serde(default)]
+    tests: Vec<TestReplayRecordedTest>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TestReplayArtifactRequest {
+    path: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    match_filter: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    project_root: Option<String>,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TestReplayArtifactSummary {
+    failed: bool,
+    stopped: bool,
+    selected: usize,
+    recorded_events: usize,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TestReplayRecordedTest {
+    id: String,
+    file: String,
+    name: String,
+    status: String,
+    location: TestLocation,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    failure: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    replay_artifact: Option<ReplayArtifact>,
+}
+
+#[derive(Debug, Clone)]
+enum PreparedTestReplayMode {
+    Record {
+        artifact_file: PathBuf,
+        request: TestReplayArtifactRequest,
+        binding: ReplayArtifactBinding,
+    },
+    Replay {
+        artifact_file: PathBuf,
+        artifact: TestReplayArtifact,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -5429,16 +6050,43 @@ fn compile_and_run_tests(
     file: &Path,
     selected_env: Option<&str>,
     match_filter: Option<&str>,
+    debug_options: &TestDebugOptions,
+    suite_replay_mode: Option<&PreparedTestReplayMode>,
 ) -> Result<TestRunResult, CliError> {
     let graph = ModuleGraph::build(file)?;
-    let topology_prelude = runner_prelude(file, &graph, selected_env)?;
-    let compiled = compile_module_graph(graph, None, false, false, false)?;
+    let topology_prelude = if matches!(suite_replay_mode, Some(PreparedTestReplayMode::Replay { .. }))
+    {
+        None
+    } else {
+        runner_prelude(file, &graph, selected_env)?
+    };
+    let compiled = compile_module_graph(
+        graph,
+        None,
+        debug_options.trace_enabled,
+        debug_options.breakpoints_requested(),
+        true,
+    )?;
+    let module_debug_outputs = build_runtime_module_debug_outputs(&compiled)?;
+    let breakpoint_config = resolve_breakpoint_config(
+        file,
+        &module_debug_outputs,
+        &debug_options.breakpoint_lines,
+        &debug_options.breakpoint_functions,
+        &debug_options.breakpoint_spans,
+        debug_options.breakpoint_mode,
+        debug_options.breakpoint_max_hits,
+    )?;
     run_test_module(
         &compiled.entry_output_path,
         &compiled.coverage_targets,
         match_filter,
         &file.to_string_lossy(),
         topology_prelude.as_deref(),
+        &module_debug_outputs,
+        breakpoint_config.as_ref(),
+        debug_options,
+        suite_replay_mode,
     )
 }
 
@@ -5446,8 +6094,12 @@ fn run_test_module(
     ts_file: &Path,
     coverage_targets: &[CoverageTarget],
     match_filter: Option<&str>,
-    source_file: &str,
+    _source_file: &str,
     topology_prelude: Option<&str>,
+    module_debug_outputs: &[RuntimeModuleDebugOutput],
+    breakpoint_config: Option<&ResolvedBreakpointConfig>,
+    debug_options: &TestDebugOptions,
+    suite_replay_mode: Option<&PreparedTestReplayMode>,
 ) -> Result<TestRunResult, CliError> {
     // Create test runner directory
     let test_dir = ts_file.parent().unwrap().join("__sigil_test");
@@ -5484,6 +6136,44 @@ fn run_test_module(
             .collect::<Vec<_>>(),
     )
     .unwrap();
+    let trace_runtime_enabled = debug_options.trace_enabled || debug_options.breakpoints_requested();
+    let trace_config_json = if trace_runtime_enabled {
+        serde_json::to_string(&json!({
+            "enabled": true,
+            "maxEvents": 256,
+            "expressions": debug_options.trace_expr_enabled
+        }))
+        .unwrap()
+    } else {
+        "null".to_string()
+    };
+    let breakpoint_config_json = breakpoint_config
+        .map(resolved_breakpoint_config_json)
+        .map(|value| serde_json::to_string(&value).unwrap())
+        .unwrap_or_else(|| "null".to_string());
+    let suite_replay_json = match suite_replay_mode {
+        Some(PreparedTestReplayMode::Record {
+            artifact_file,
+            request,
+            binding,
+        }) => serde_json::to_string(&json!({
+            "mode": "record",
+            "file": artifact_file.to_string_lossy(),
+            "request": request,
+            "binding": binding
+        }))
+        .unwrap(),
+        Some(PreparedTestReplayMode::Replay {
+            artifact_file,
+            artifact,
+        }) => serde_json::to_string(&json!({
+            "mode": "replay",
+            "file": artifact_file.to_string_lossy(),
+            "artifact": artifact
+        }))
+        .unwrap(),
+        None => "null".to_string(),
+    };
 
     let runner_code = format!(
         r#"{topology_prelude}
@@ -5492,12 +6182,190 @@ const discoverMod = await import(moduleUrl);
 const tests = Array.isArray(discoverMod.__sigil_tests) ? discoverMod.__sigil_tests : [];
 const matchText = {match_text_json};
 const selected = matchText ? tests.filter((t) => String(t.name).includes(matchText)) : tests;
+const selectedIds = selected.map((t) => String(t.id));
 const results = [];
+const recordedTests = [];
 const startSuite = Date.now();
+const __sigil_trace_config_template = {trace_config_json};
+const __sigil_breakpoint_config_template = {breakpoint_config_json};
+const __sigil_suite_replay = {suite_replay_json};
+
+function __sigil_json_clone(value) {{
+  if (value == null) return value;
+  return JSON.parse(JSON.stringify(value));
+}}
+
+function __sigil_test_exception_name(error) {{
+  if (error instanceof Error && error.name) {{
+    return String(error.name);
+  }}
+  if (error && typeof error === 'object' && 'name' in error && error.name != null) {{
+    return String(error.name);
+  }}
+  return 'Error';
+}}
+
+function __sigil_test_exception_message(error) {{
+  if (error instanceof Error) {{
+    return String(error.message ?? '');
+  }}
+  return String(error);
+}}
+
+function __sigil_test_exception_stack(error) {{
+  if (error instanceof Error && typeof error.stack === 'string') {{
+    return error.stack;
+  }}
+  return '';
+}}
+
+function __sigil_test_exception_payload(error) {{
+  return {{
+    name: __sigil_test_exception_name(error),
+    message: __sigil_test_exception_message(error),
+    stack: __sigil_test_exception_stack(error),
+    sigilCode:
+      error && typeof error === 'object' && 'sigilCode' in error && error.sigilCode != null
+        ? String(error.sigilCode)
+        : null,
+    expression:
+      typeof globalThis.__sigil_expression_exception_payload === 'function'
+        ? globalThis.__sigil_expression_exception_payload()
+        : null
+  }};
+}}
+
+function __sigil_test_trace_payload() {{
+  if (typeof globalThis.__sigil_trace_snapshot === 'function') {{
+    try {{
+      return globalThis.__sigil_trace_snapshot();
+    }} catch (_traceError) {{}}
+  }}
+  return {{ enabled: true, truncated: false, totalEvents: 0, returnedEvents: 0, droppedEvents: 0, events: [] }};
+}}
+
+function __sigil_test_breakpoint_payload() {{
+  if (typeof globalThis.__sigil_breakpoint_snapshot === 'function') {{
+    try {{
+      return globalThis.__sigil_breakpoint_snapshot();
+    }} catch (_breakpointError) {{}}
+  }}
+  return {{
+    enabled: true,
+    mode: String(globalThis.__sigil_breakpoint_config?.mode ?? 'stop'),
+    stopped: false,
+    truncated: false,
+    totalHits: 0,
+    returnedHits: 0,
+    droppedHits: 0,
+    maxHits: Math.max(1, Number(globalThis.__sigil_breakpoint_config?.maxHits ?? 32)),
+    hits: []
+  }};
+}}
+
+function __sigil_test_replay_payload() {{
+  if (typeof globalThis.__sigil_replay_snapshot === 'function') {{
+    try {{
+      return globalThis.__sigil_replay_snapshot();
+    }} catch (_replayError) {{}}
+  }}
+  return {{
+    mode: String(globalThis.__sigil_replay_config?.mode ?? ''),
+    file: String(globalThis.__sigil_replay_config?.file ?? ''),
+    recordedEvents: 0,
+    consumedEvents: 0,
+    remainingEvents: 0,
+    partial: false
+  }};
+}}
+
+function __sigil_test_is_breakpoint_stop(error) {{
+  return typeof globalThis.__sigil_breakpoint_is_stop_signal === 'function'
+    ? !!globalThis.__sigil_breakpoint_is_stop_signal(error)
+    : false;
+}}
+
+function __sigil_test_reset_runtime_globals() {{
+  globalThis.__sigil_coverage_current = {{ calls: Object.create(null), variants: Object.create(null) }};
+  globalThis.__sigil_trace_config = __sigil_trace_config_template ? __sigil_json_clone(__sigil_trace_config_template) : undefined;
+  globalThis.__sigil_trace_current = undefined;
+  globalThis.__sigil_breakpoint_config = __sigil_breakpoint_config_template ? __sigil_json_clone(__sigil_breakpoint_config_template) : undefined;
+  globalThis.__sigil_breakpoint_current = undefined;
+  globalThis.__sigil_expression_current = undefined;
+  globalThis.__sigil_world_current = undefined;
+  globalThis.__sigil_world_template_cache = undefined;
+  globalThis.__sigil_last_test_world = undefined;
+  globalThis.__sigil_replay_current = undefined;
+  globalThis.__sigil_replay_config = null;
+}}
+
+function __sigil_test_record_config(testMeta) {{
+  return {{
+    mode: 'record',
+    file: String(__sigil_suite_replay?.file ?? ''),
+    entry: {{
+      sourceFile: String(String(testMeta?.id ?? '').split('::')[0] ?? ''),
+      argv: [],
+      projectRoot: __sigil_suite_replay?.request?.projectRoot ?? null
+    }},
+    binding: __sigil_json_clone(__sigil_suite_replay?.binding ?? {{ algorithm: 'sha256', fingerprint: '', modules: [] }})
+  }};
+}}
+
+function __sigil_test_replay_entry(testId) {{
+  const tests = Array.isArray(__sigil_suite_replay?.artifact?.tests) ? __sigil_suite_replay.artifact.tests : [];
+  return tests.find((entry) => String(entry.id) === String(testId)) ?? null;
+}}
+
+function __sigil_test_replay_config_for(testMeta) {{
+  if (!__sigil_suite_replay || !__sigil_suite_replay.mode) {{
+    return null;
+  }}
+  if (__sigil_suite_replay.mode === 'record') {{
+    return __sigil_test_record_config(testMeta);
+  }}
+  const entry = __sigil_test_replay_entry(testMeta?.id);
+  if (!entry || !entry.replayArtifact) {{
+    const error = new Error(`replay artifact does not contain test '${{String(testMeta?.id ?? '')}}'`);
+    error.sigilCode = 'SIGIL-RUNTIME-REPLAY-BINDING-MISMATCH';
+    throw error;
+  }}
+  return {{
+    mode: 'replay',
+    file: String(__sigil_suite_replay.file ?? ''),
+    artifact: __sigil_json_clone(entry.replayArtifact)
+  }};
+}}
+
+if (__sigil_suite_replay?.mode === 'replay') {{
+  const recordedIds = Array.isArray(__sigil_suite_replay?.artifact?.selectedTestIds)
+    ? __sigil_suite_replay.artifact.selectedTestIds.map((id) => String(id))
+    : [];
+  for (const id of selectedIds) {{
+    if (!recordedIds.includes(id)) {{
+      console.log(JSON.stringify({{
+        discovered: tests.length,
+        selected: selected.length,
+        selectedIds,
+        coverageTargets: {coverage_targets_json},
+        results: [],
+        recordedTests: [],
+        runnerError: {{
+          code: 'SIGIL-RUNTIME-REPLAY-BINDING-MISMATCH',
+          message: `replay artifact does not contain selected test '${{id}}'`,
+          details: {{ testId: id }}
+        }}
+      }}));
+      process.exit(0);
+    }}
+  }}
+}}
+
 for (const t of selected) {{
   const start = Date.now();
+  __sigil_test_reset_runtime_globals();
   try {{
-    globalThis.__sigil_coverage_current = {{ calls: Object.create(null), variants: Object.create(null) }};
+    globalThis.__sigil_replay_config = __sigil_test_replay_config_for(t);
     const freshMod = await import(moduleUrl + '?sigil_test=' + encodeURIComponent(String(t.id)) + '&ts=' + Date.now() + '_' + Math.random());
     const freshTests = Array.isArray(freshMod.__sigil_tests) ? freshMod.__sigil_tests : [];
     const freshTest = freshTests.find((x) => x.id === t.id);
@@ -5513,28 +6381,196 @@ for (const t of selected) {{
       )
     }};
     delete globalThis.__sigil_coverage_current;
+    const replay = __sigil_suite_replay ? __sigil_test_replay_payload() : undefined;
+    if (__sigil_suite_replay?.mode === 'record') {{
+      const replayArtifact =
+        typeof globalThis.__sigil_replay_artifact === 'function'
+          ? globalThis.__sigil_replay_artifact()
+          : null;
+      if (replayArtifact && globalThis.__sigil_last_test_world != null) {{
+        replayArtifact.world = replayArtifact.world ?? {{}};
+        replayArtifact.world.normalizedWorld = __sigil_json_clone(globalThis.__sigil_last_test_world);
+      }}
+      recordedTests.push({{
+        id: t.id,
+        file: String(t.id).split('::')[0],
+        name: t.name,
+        status: value === true || (value && typeof value === 'object' && 'ok' in value && value.ok === true) ? 'pass' : 'fail',
+        location: {{ line: Number(t.location?.start?.line ?? 1), column: Number(t.location?.start?.column ?? 1) }},
+        failure:
+          value === true || (value && typeof value === 'object' && 'ok' in value && value.ok === true)
+            ? null
+            : String(value?.failure?.message ?? value?.failure ?? 'Test body evaluated to false'),
+        replayArtifact
+      }});
+    }}
     if (value === true) {{
-      results.push({{ coverage, id: t.id, file: String(t.id).split('::')[0], name: t.name, status: 'pass', durationMs: Date.now()-start, location: t.location }});
+      results.push({{
+        coverage,
+        id: t.id,
+        file: String(t.id).split('::')[0],
+        name: t.name,
+        status: 'pass',
+        durationMs: Date.now()-start,
+        location: {{ line: Number(t.location?.start?.line ?? 1), column: Number(t.location?.start?.column ?? 1) }},
+        trace: {trace_enabled_result},
+        breakpoints: {breakpoints_enabled_result},
+        replay
+      }});
     }} else if (value && typeof value === 'object' && 'ok' in value) {{
       if (value.ok === true) {{
-        results.push({{ coverage, id: t.id, file: String(t.id).split('::')[0], name: t.name, status: 'pass', durationMs: Date.now()-start, location: t.location }});
+        results.push({{
+          coverage,
+          id: t.id,
+          file: String(t.id).split('::')[0],
+          name: t.name,
+          status: 'pass',
+          durationMs: Date.now()-start,
+          location: {{ line: Number(t.location?.start?.line ?? 1), column: Number(t.location?.start?.column ?? 1) }},
+          trace: {trace_enabled_result},
+          breakpoints: {breakpoints_enabled_result},
+          replay
+        }});
       }} else {{
-        results.push({{ coverage, id: t.id, file: String(t.id).split('::')[0], name: t.name, status: 'fail', durationMs: Date.now()-start, location: t.location, failure: value.failure ?? {{ kind: 'assert_false', message: 'Test body evaluated to false' }} }});
+        results.push({{
+          coverage,
+          id: t.id,
+          file: String(t.id).split('::')[0],
+          name: t.name,
+          status: 'fail',
+          durationMs: Date.now()-start,
+          location: {{ line: Number(t.location?.start?.line ?? 1), column: Number(t.location?.start?.column ?? 1) }},
+          failure: String(value.failure?.message ?? value.failure ?? 'Test body evaluated to false'),
+          trace: {trace_enabled_result},
+          breakpoints: {breakpoints_enabled_result},
+          replay
+        }});
       }}
     }} else {{
-      results.push({{ coverage, id: t.id, file: String(t.id).split('::')[0], name: t.name, status: 'fail', durationMs: Date.now()-start, location: t.location, failure: {{ kind: 'assert_false', message: 'Test body evaluated to false' }} }});
+      results.push({{
+        coverage,
+        id: t.id,
+        file: String(t.id).split('::')[0],
+        name: t.name,
+        status: 'fail',
+        durationMs: Date.now()-start,
+        location: {{ line: Number(t.location?.start?.line ?? 1), column: Number(t.location?.start?.column ?? 1) }},
+        failure: 'Test body evaluated to false',
+        trace: {trace_enabled_result},
+        breakpoints: {breakpoints_enabled_result},
+        replay
+      }});
     }}
   }} catch (e) {{
+    const coverageState = globalThis.__sigil_coverage_current ?? {{ calls: {{}}, variants: {{}} }};
+    const coverage = {{
+      calls: Object.entries(coverageState.calls ?? {{}})
+        .filter(([, count]) => Number(count ?? 0) > 0)
+        .map(([key]) => key),
+      variants: Object.fromEntries(
+        Object.entries(coverageState.variants ?? {{}}).map(([key, tags]) => [key, Array.isArray(tags) ? tags : []])
+      )
+    }};
     delete globalThis.__sigil_coverage_current;
-    results.push({{ id: t.id, file: String(t.id).split('::')[0], name: t.name, status: 'error', durationMs: Date.now()-start, location: t.location, failure: {{ kind: 'exception', message: e instanceof Error ? e.message : String(e) }} }});
+    const replay = __sigil_suite_replay ? __sigil_test_replay_payload() : undefined;
+    const location = {{ line: Number(t.location?.start?.line ?? 1), column: Number(t.location?.start?.column ?? 1) }};
+    if (__sigil_test_is_breakpoint_stop(e)) {{
+      if (__sigil_suite_replay?.mode === 'record') {{
+        const replayArtifact =
+          typeof globalThis.__sigil_replay_artifact === 'function'
+            ? globalThis.__sigil_replay_artifact()
+            : null;
+        if (replayArtifact && globalThis.__sigil_last_test_world != null) {{
+          replayArtifact.world = replayArtifact.world ?? {{}};
+          replayArtifact.world.normalizedWorld = __sigil_json_clone(globalThis.__sigil_last_test_world);
+        }}
+        recordedTests.push({{
+          id: t.id,
+          file: String(t.id).split('::')[0],
+          name: t.name,
+          status: 'stopped',
+          location,
+          failure: null,
+          replayArtifact
+        }});
+      }}
+      results.push({{
+        coverage,
+        id: t.id,
+        file: String(t.id).split('::')[0],
+        name: t.name,
+        status: 'stopped',
+        durationMs: Date.now()-start,
+        location,
+        trace: {trace_enabled_result},
+        breakpoints: {breakpoints_enabled_result},
+        replay
+      }});
+    }} else {{
+      const exception = __sigil_test_exception_payload(e);
+      if (__sigil_suite_replay?.mode === 'record') {{
+        const replayArtifact =
+          typeof globalThis.__sigil_replay_artifact === 'function'
+            ? globalThis.__sigil_replay_artifact()
+            : null;
+        if (replayArtifact && globalThis.__sigil_last_test_world != null) {{
+          replayArtifact.world = replayArtifact.world ?? {{}};
+          replayArtifact.world.normalizedWorld = __sigil_json_clone(globalThis.__sigil_last_test_world);
+        }}
+        recordedTests.push({{
+          id: t.id,
+          file: String(t.id).split('::')[0],
+          name: t.name,
+          status: 'error',
+          location,
+          failure: exception.message,
+          replayArtifact
+        }});
+      }}
+      results.push({{
+        coverage,
+        id: t.id,
+        file: String(t.id).split('::')[0],
+        name: t.name,
+        status: 'error',
+        durationMs: Date.now()-start,
+        location,
+        failure: exception.message,
+        trace: {trace_enabled_result},
+        breakpoints: {breakpoints_enabled_result},
+        replay,
+        exception
+      }});
+    }}
   }}
 }}
-console.log(JSON.stringify({{ coverageTargets: {coverage_targets_json}, results, discovered: tests.length, selected: selected.length, durationMs: Date.now()-startSuite }}));
+console.log(JSON.stringify({{
+  coverageTargets: {coverage_targets_json},
+  results,
+  discovered: tests.length,
+  selected: selected.length,
+  selectedIds,
+  recordedTests,
+  durationMs: Date.now()-startSuite
+}}));
 "#,
         topology_prelude = topology_prelude.unwrap_or(""),
         coverage_targets_json = coverage_targets_json,
         module_url = module_url,
-        match_text_json = match_text_json
+        match_text_json = match_text_json,
+        trace_config_json = trace_config_json,
+        breakpoint_config_json = breakpoint_config_json,
+        suite_replay_json = suite_replay_json,
+        trace_enabled_result = if debug_options.trace_enabled {
+            "__sigil_test_trace_payload()"
+        } else {
+            "undefined"
+        },
+        breakpoints_enabled_result = if breakpoint_config.is_some() {
+            "__sigil_test_breakpoint_payload()"
+        } else {
+            "undefined"
+        }
     );
 
     fs::write(&runner_file, runner_code)?;
@@ -5562,65 +6598,96 @@ console.log(JSON.stringify({{ coverageTargets: {coverage_targets_json}, results,
 
     // Parse test results
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let json: serde_json::Value = serde_json::from_str(stdout.trim())
+    let raw: RawTestRunOutput = serde_json::from_str(stdout.trim())
         .map_err(|e| CliError::Runtime(format!("Failed to parse test output: {}", e)))?;
 
-    let discovered = json["discovered"].as_u64().unwrap_or(0) as usize;
-    let selected = json["selected"].as_u64().unwrap_or(0) as usize;
+    if let Some(runner_error) = raw.runner_error {
+        return Err(CliError::Breakpoint {
+            code: runner_error.code,
+            message: runner_error.message,
+            details: runner_error.details,
+        });
+    }
+
+    let discovered = raw.discovered;
+    let selected = raw.selected;
 
     let mut coverage_observation = CoverageObservation::default();
     let mut runner_coverage_targets = coverage_targets.to_vec();
-    if let Some(targets) = json["coverageTargets"].as_array() {
-        let selected_ids = targets
+    if !raw.coverage_targets.is_empty() {
+        let selected_target_ids = raw
+            .coverage_targets
             .iter()
-            .filter_map(|value| value.as_str())
+            .map(String::as_str)
             .collect::<HashSet<_>>();
-        runner_coverage_targets.retain(|target| selected_ids.contains(target.id.as_str()));
+        runner_coverage_targets.retain(|target| selected_target_ids.contains(target.id.as_str()));
     }
 
     let mut results = Vec::new();
-    if let Some(test_results) = json["results"].as_array() {
-        for result in test_results {
-            if let Some(call_keys) = result["coverage"]["calls"].as_array() {
-                for key in call_keys.iter().filter_map(|value| value.as_str()) {
-                    coverage_observation.calls.insert(key.to_string());
-                }
-            }
-            if let Some(variant_map) = result["coverage"]["variants"].as_object() {
-                for (key, tags) in variant_map {
-                    let observed = coverage_observation
-                        .variants
-                        .entry(key.clone())
-                        .or_default();
-                    if let Some(tag_values) = tags.as_array() {
-                        for tag in tag_values.iter().filter_map(|value| value.as_str()) {
-                            observed.insert(tag.to_string());
-                        }
-                    }
-                }
-            }
-            let test_result = TestResult {
-                id: result["id"].as_str().unwrap_or("").to_string(),
-                file: source_file.to_string(),
-                name: result["name"].as_str().unwrap_or("").to_string(),
-                status: result["status"].as_str().unwrap_or("unknown").to_string(),
-                duration_ms: result["durationMs"].as_u64().unwrap_or(0) as u128,
-                location: TestLocation {
-                    line: result["location"]["start"]["line"].as_u64().unwrap_or(0) as usize,
-                    column: result["location"]["start"]["column"].as_u64().unwrap_or(0) as usize,
-                },
-                failure: result["failure"]["message"].as_str().map(|s| s.to_string()),
-            };
-            results.push(test_result);
+    for result in raw.results {
+        for key in result.coverage.calls {
+            coverage_observation.calls.insert(key);
         }
+        for (key, tags) in result.coverage.variants {
+            let observed = coverage_observation.variants.entry(key).or_default();
+            for tag in tags {
+                observed.insert(tag);
+            }
+        }
+
+        let exception = result.exception.as_ref().map(|capture| {
+            let code = capture
+                .sigil_code
+                .as_deref()
+                .filter(|code| !code.is_empty())
+                .unwrap_or(codes::runtime::UNCAUGHT_EXCEPTION);
+            let normalized_message = normalize_runtime_exception_message(capture, code);
+            let analysis = analyze_runtime_exception(capture, module_debug_outputs);
+            runtime_exception_json(capture, &normalized_message, &analysis, module_debug_outputs)
+        });
+        let trace = debug_options
+            .trace_enabled
+            .then(|| runtime_trace_json(result.trace.as_ref()));
+        let breakpoints = breakpoint_config.map(|config| {
+            runtime_breakpoints_json(Some(config), result.breakpoints.as_ref(), module_debug_outputs)
+        });
+        let replay = suite_replay_mode.map(|mode| {
+            runtime_replay_json(
+                Some(match mode {
+                    PreparedTestReplayMode::Record { .. } => "record",
+                    PreparedTestReplayMode::Replay { .. } => "replay",
+                }),
+                Some(match mode {
+                    PreparedTestReplayMode::Record { artifact_file, .. } => artifact_file.as_path(),
+                    PreparedTestReplayMode::Replay { artifact_file, .. } => artifact_file.as_path(),
+                }),
+                result.replay.as_ref(),
+            )
+        });
+
+        results.push(TestResult {
+            id: result.id,
+            file: result.file,
+            name: result.name,
+            status: result.status,
+            duration_ms: result.duration_ms,
+            location: result.location,
+            failure: result.failure,
+            trace,
+            breakpoints,
+            replay,
+            exception,
+        });
     }
 
     Ok(TestRunResult {
         discovered,
         selected,
+        selected_ids: raw.selected_ids,
         results,
         coverage_observation,
         coverage_targets: runner_coverage_targets,
+        recorded_tests: raw.recorded_tests,
     })
 }
 

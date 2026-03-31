@@ -34,6 +34,7 @@ This page focuses on the current `test`-specific envelope shape.
     "passed": 13,
     "failed": 0,
     "errored": 0,
+    "stopped": 0,
     "skipped": 0,
     "durationMs": 619
   },
@@ -96,6 +97,7 @@ Field meanings:
 - `passed`: tests that returned `true`
 - `failed`: tests that returned `false`
 - `errored`: tests that threw at runtime
+- `stopped`: tests intentionally halted by stop-mode breakpoints
 - `skipped`: reserved, currently `0`
 - `durationMs`: total wall-clock duration
 
@@ -124,9 +126,27 @@ Fields:
 - `name`: test description string
 - `name` may contain newline characters when the source test description is multiline
 - `status`: `"pass" | "fail" | "error"`
+- `status`: `"pass" | "fail" | "error" | "stopped"`
 - `durationMs`: per-test execution duration
 - `location`: current aggregated location object with `line` and `column`
 - `failure` (optional): present for `fail` and `error`
+- `trace` (optional): bounded inline trace data for that test
+- `breakpoints` (optional): bounded inline breakpoint hit data for that test
+- `replay` (optional): record/replay summary data for that test
+- `exception` (optional): exact runtime exception context for errored tests
+
+Stop-mode breakpoint hits are represented as ordinary test results:
+
+```json
+{
+  "status": "stopped",
+  "breakpoints": {
+    "enabled": true,
+    "mode": "stop",
+    "stopped": true
+  }
+}
+```
 
 Current output does not include:
 
@@ -150,9 +170,13 @@ Current output does not include:
 
 ```json
 {
-  "failure": {
-    "kind": "exception",
-    "message": "Fs is denied by the current world"
+  "failure": "Fs is denied by the current world",
+  "exception": {
+    "name": "Error",
+    "message": "Fs is denied by the current world",
+    "sigilExpression": {
+      "kind": "expr_extern_call"
+    }
   }
 }
 ```
@@ -169,3 +193,4 @@ Current output does not include:
 - `language/docs/TESTING.md`
 - `language/spec/cli-json.md`
 - `language/spec/cli-json.schema.json`
+- `language/spec/test-replay.schema.json`

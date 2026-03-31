@@ -1001,7 +1001,7 @@
     },
     "testSummary": {
       "type": "object",
-      "required": ["files", "discovered", "selected", "passed", "failed", "errored", "skipped", "durationMs"],
+      "required": ["files", "discovered", "selected", "passed", "failed", "errored", "stopped", "skipped", "durationMs"],
       "properties": {
         "files": { "type": "integer", "minimum": 0 },
         "discovered": { "type": "integer", "minimum": 0 },
@@ -1009,6 +1009,7 @@
         "passed": { "type": "integer", "minimum": 0 },
         "failed": { "type": "integer", "minimum": 0 },
         "errored": { "type": "integer", "minimum": 0 },
+        "stopped": { "type": "integer", "minimum": 0 },
         "skipped": { "type": "integer", "minimum": 0 },
         "durationMs": { "type": "integer", "minimum": 0 }
       },
@@ -1021,7 +1022,7 @@
         "id": { "type": "string" },
         "file": { "type": "string" },
         "name": { "type": "string" },
-        "status": { "type": "string", "enum": ["pass", "fail", "error"] },
+        "status": { "type": "string", "enum": ["pass", "fail", "error", "stopped"] },
         "durationMs": { "type": "integer", "minimum": 0 },
         "location": {
           "type": "object",
@@ -1032,9 +1033,13 @@
           },
           "additionalProperties": false
         },
-        "failure": true
+        "failure": { "type": "string" },
+        "trace": { "$ref": "#/$defs/runTrace" },
+        "breakpoints": { "$ref": "#/$defs/runBreakpoints" },
+        "replay": { "$ref": "#/$defs/runReplay" },
+        "exception": { "$ref": "#/$defs/runExceptionDetails" }
       },
-      "additionalProperties": true
+      "additionalProperties": false
     },
     "testEnvelope": {
       "type": "object",

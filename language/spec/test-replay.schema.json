@@ -1,0 +1,112 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sigil-lang.org/spec/test-replay.schema.json",
+  "title": "Sigil Test Replay Artifact",
+  "type": "object",
+  "required": [
+    "formatVersion",
+    "kind",
+    "request",
+    "binding",
+    "selectedTestIds",
+    "summary",
+    "tests"
+  ],
+  "properties": {
+    "formatVersion": { "type": "integer", "const": 1 },
+    "kind": { "const": "sigilTestReplay" },
+    "request": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string" },
+        "matchFilter": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string" }
+          ]
+        },
+        "projectRoot": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "binding": {
+      "type": "object",
+      "required": ["algorithm", "fingerprint", "modules"],
+      "properties": {
+        "algorithm": { "const": "sha256" },
+        "fingerprint": { "type": "string" },
+        "modules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["moduleId", "sourceFile", "sourceHash"],
+            "properties": {
+              "moduleId": { "type": "string" },
+              "sourceFile": { "type": "string" },
+              "sourceHash": { "type": "string" }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "selectedTestIds": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["failed", "stopped", "selected", "recordedEvents"],
+      "properties": {
+        "failed": { "type": "boolean" },
+        "stopped": { "type": "boolean" },
+        "selected": { "type": "integer", "minimum": 0 },
+        "recordedEvents": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "file", "name", "status", "location"],
+        "properties": {
+          "id": { "type": "string" },
+          "file": { "type": "string" },
+          "name": { "type": "string" },
+          "status": { "type": "string", "enum": ["pass", "fail", "error", "stopped"] },
+          "location": {
+            "type": "object",
+            "required": ["line", "column"],
+            "properties": {
+              "line": { "type": "integer", "minimum": 1 },
+              "column": { "type": "integer", "minimum": 0 }
+            },
+            "additionalProperties": false
+          },
+          "failure": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "string" }
+            ]
+          },
+          "replayArtifact": {
+            "oneOf": [
+              { "type": "null" },
+              { "type": "object" }
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

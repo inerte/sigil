@@ -283,6 +283,49 @@ Standalone replay artifact schema:
 
 - `language/spec/run-replay.schema.json`
 
+## Test Debug Details
+
+`sigil test` remains JSON-first and now supports the same debugging surface as
+`sigil run`:
+
+- `--trace`
+- `--trace-expr` requiring `--trace`
+- `--break`, `--break-fn`, `--break-span`
+- `--break-mode stop|collect`
+- `--break-max-hits <n>`
+- `--record <artifact>`
+- `--replay <artifact>`
+
+Per-test results may now include:
+
+- `trace`
+- `breakpoints`
+- `replay`
+- `exception`
+
+`status` may now be:
+
+- `pass`
+- `fail`
+- `error`
+- `stopped`
+
+Stop-mode breakpoints are test-scoped:
+
+- the current test becomes `status: "stopped"`
+- the suite continues with later selected tests
+- top-level `ok` becomes `false`
+- `summary.stopped` counts stopped tests
+
+`sigil test --replay` is artifact-owned like `sigil run --replay`:
+
+- it cannot be combined with `--env`
+- per-test replay uses the recorded resolved test world after local `world { ... }` overlays
+
+Standalone test replay artifact schema:
+
+- `language/spec/test-replay.schema.json`
+
 ## Inspect World Details
 
 `sigil inspect world <path> --env <name>` is project-env scoped.
@@ -368,7 +411,7 @@ The current implementation uses:
 - `inspect validate` returns canonical printer output even when `validation.ok` is `false`, as long as lexing and parsing succeeded
 - `inspect codegen` returns generated TypeScript inline for the requested file and only inventories imported modules
 - `inspect world` is project-level in v1; it does not batch over directories or include test-local `world { ... }` overlays
-- a specialized `test` result shape with `location: {line,column}`
+- `sigil test` now has a specialized result shape with `location: {line,column}`, optional per-test debug blocks, and a `stopped` status for stop-mode breakpoint hits
 
 If prose and runtime output disagree, the implementation and
 `cli-json.schema.json` are the current source of truth.

@@ -143,6 +143,42 @@ enum Command {
         /// Filter tests by substring match
         #[arg(long)]
         r#match: Option<String>,
+
+        /// Capture a bounded structured execution trace for each selected test
+        #[arg(long)]
+        trace: bool,
+
+        /// Include fine-grained expression enter/return/throw events in the trace (requires --trace)
+        #[arg(long = "trace-expr")]
+        trace_expr: bool,
+
+        /// Break when execution reaches a specific source line
+        #[arg(long = "break", value_name = "FILE:LINE")]
+        breakpoint: Vec<String>,
+
+        /// Break when a specific top-level function is entered
+        #[arg(long = "break-fn", value_name = "NAME")]
+        break_fn: Vec<String>,
+
+        /// Break when a specific span id is reached
+        #[arg(long = "break-span", value_name = "SPAN")]
+        break_span: Vec<String>,
+
+        /// How breakpoint hits should affect the current test
+        #[arg(long = "break-mode", default_value = "stop")]
+        break_mode: BreakModeArg,
+
+        /// Maximum breakpoint hits returned inline per test
+        #[arg(long = "break-max-hits", default_value_t = 32)]
+        break_max_hits: usize,
+
+        /// Record replayable external effect activity for the test run
+        #[arg(long, conflicts_with = "replay")]
+        record: Option<PathBuf>,
+
+        /// Replay a prior recorded test run
+        #[arg(long, conflicts_with = "record")]
+        replay: Option<PathBuf>,
     },
 
     /// Validate project topology for one environment
@@ -299,9 +335,33 @@ fn main() {
             env.as_deref(),
             &args,
         ),
-        Command::Test { path, env, r#match } => {
-            test_command(&path, env.as_deref(), r#match.as_deref())
-        }
+        Command::Test {
+            path,
+            env,
+            r#match,
+            trace,
+            trace_expr,
+            breakpoint,
+            break_fn,
+            break_span,
+            break_mode,
+            break_max_hits,
+            record,
+            replay,
+        } => test_command(
+            &path,
+            env.as_deref(),
+            r#match.as_deref(),
+            trace,
+            trace_expr,
+            &breakpoint,
+            &break_fn,
+            &break_span,
+            matches!(break_mode, BreakModeArg::Collect),
+            break_max_hits,
+            record.as_deref(),
+            replay.as_deref(),
+        ),
         Command::Validate { path, env } => validate_command(&path, &env),
     };
 

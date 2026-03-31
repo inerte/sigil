@@ -686,6 +686,7 @@ async function __sigil_with_world(world, body) {
 async function __sigil_run_test_world(overrides, body) {
   const world = __sigil_world_fresh(__sigil_world_base_template());
   __sigil_world_apply_overrides(world, overrides);
+  globalThis.__sigil_last_test_world = __sigil_world_clone(world);
   return await __sigil_with_world(world, body);
 }
 function __sigil_record_coverage_call(moduleId, functionName) {

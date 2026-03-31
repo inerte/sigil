@@ -3953,7 +3953,16 @@ fn read_runtime_exception_capture(path: &Path) -> Option<RuntimeExceptionCapture
     let contents = fs::read_to_string(path).ok();
     let _ = fs::remove_file(path);
     let contents = contents?;
-    serde_json::from_str(&contents).ok()
+    let mut capture: RuntimeExceptionCapture = serde_json::from_str(&contents).ok()?;
+    if capture
+        .sigil_code
+        .as_deref()
+        .is_none_or(|code| code.is_empty())
+    {
+        capture.sigil_code =
+            recover_runtime_exception_code(&capture.message, &capture.stack);
+    }
+    Some(capture)
 }
 
 fn read_runtime_trace_capture(path: Option<&Path>) -> Option<RuntimeTraceCapture> {
@@ -4219,10 +4228,12 @@ fn build_runtime_exception_output(
     module_debug_outputs: &[RuntimeModuleDebugOutput],
     capture: &RuntimeExceptionCapture,
 ) -> serde_json::Value {
+    let recovered_code = recover_runtime_exception_code(&capture.message, &capture.stack);
     let code = capture
         .sigil_code
         .as_deref()
         .filter(|code| !code.is_empty())
+        .or(recovered_code.as_deref())
         .unwrap_or(codes::runtime::UNCAUGHT_EXCEPTION);
     let phase = phase_for_code(code);
     let normalized_message = normalize_runtime_exception_message(capture, code);
@@ -4295,9 +4306,7 @@ fn runtime_exception_capture_from_stderr(stderr: &str) -> Option<RuntimeExceptio
         _ => ("Error".to_string(), headline.to_string()),
     };
 
-    let sigil_code = stack
-        .contains("SIGIL-")
-        .then(|| extract_error_code(headline));
+    let sigil_code = recover_runtime_exception_code(&message, stack);
 
     Some(RuntimeExceptionCapture {
         name,
@@ -4306,6 +4315,25 @@ fn runtime_exception_capture_from_stderr(stderr: &str) -> Option<RuntimeExceptio
         sigil_code,
         expression: None,
     })
+}
+
+fn recover_runtime_exception_code(message: &str, stack: &str) -> Option<String> {
+    if message.contains("SIGIL-") {
+        return Some(extract_error_code(message));
+    }
+
+    if stack.contains("SIGIL-") {
+        let headline = stack
+            .lines()
+            .map(str::trim)
+            .find(|line| line.contains("SIGIL-") && !line.is_empty())
+            .unwrap_or(stack.trim());
+        if !headline.is_empty() {
+            return Some(extract_error_code(headline));
+        }
+    }
+
+    None
 }
 
 fn normalize_runtime_exception_message(capture: &RuntimeExceptionCapture, code: &str) -> String {
@@ -4533,6 +4561,30 @@ mod tests {
             "SIGIL-TOPO-ENV-NOT-FOUND: environment 'staging' not declared in src/topology.lib.sigil"
         );
         assert!(capture.stack.contains("ExperimentalWarning"));
+    }
+
+    #[test]
+    fn recover_runtime_exception_code_uses_message_when_sidecar_code_is_missing() {
+        assert_eq!(
+            recover_runtime_exception_code(
+                "SIGIL-TOPO-ENV-NOT-FOUND: environment 'staging' not declared in src/topology.lib.sigil",
+                "Error: SIGIL-TOPO-ENV-NOT-FOUND: environment 'staging' not declared in src/topology.lib.sigil"
+            )
+            .as_deref(),
+            Some(codes::topology::ENV_NOT_FOUND)
+        );
+    }
+
+    #[test]
+    fn recover_runtime_exception_code_falls_back_to_stack() {
+        assert_eq!(
+            recover_runtime_exception_code(
+                "environment 'staging' not declared in src/topology.lib.sigil",
+                "Error: SIGIL-TOPO-ENV-NOT-FOUND: environment 'staging' not declared in src/topology.lib.sigil\n    at main (/tmp/example.run.ts:12:3)"
+            )
+            .as_deref(),
+            Some(codes::topology::ENV_NOT_FOUND)
+        );
     }
 }
 

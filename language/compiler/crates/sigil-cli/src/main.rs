@@ -148,6 +148,17 @@ enum InspectCommand {
         #[arg(long = "ignore-from")]
         ignore_from: Option<PathBuf>,
     },
+
+    /// Inspect the resolved runtime world for one environment
+    World {
+        /// Project path or file within the project (default: current directory)
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Runtime topology environment name
+        #[arg(long)]
+        env: String,
+    },
 }
 
 fn main() {
@@ -177,6 +188,7 @@ fn main() {
             } => inspect_command(
                 commands::InspectMode::Types,
                 &path,
+                None,
                 &ignore,
                 ignore_from.as_deref(),
             ),
@@ -187,8 +199,16 @@ fn main() {
             } => inspect_command(
                 commands::InspectMode::Validate,
                 &path,
+                None,
                 &ignore,
                 ignore_from.as_deref(),
+            ),
+            InspectCommand::World { path, env } => inspect_command(
+                commands::InspectMode::World,
+                &path,
+                Some(&env),
+                &[],
+                None,
             ),
         },
         Command::Run {

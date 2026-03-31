@@ -10,7 +10,7 @@ use serde_json::json;
 use sigil_ast::{Declaration, Program, SourceLocation, Type, TypeDef};
 use sigil_codegen::{
     collect_module_span_map, CodegenOptions, DebugSpanKind, DebugSpanRecord, ModuleSpanMap,
-    TypeScriptGenerator,
+    TypeScriptGenerator, world_runtime_helpers_source,
 };
 use sigil_diagnostics::codes;
 use sigil_lexer::Lexer;
@@ -80,6 +80,17 @@ impl CliError {
 
 /// Extract error code from error message (format: "SIGIL-CANON-XXX: message")
 fn extract_error_code(message: &str) -> String {
+    if let Some(index) = message.find("SIGIL-") {
+        let suffix = &message[index..];
+        if let Some(colon_pos) = suffix.find(':') {
+            return suffix[..colon_pos].to_string();
+        }
+        return suffix
+            .split_whitespace()
+            .next()
+            .unwrap_or("SIGIL-ERROR")
+            .to_string();
+    }
     if let Some(colon_pos) = message.find(':') {
         message[..colon_pos].to_string()
     } else {
@@ -450,6 +461,7 @@ struct CompileBatchOutputs {
 pub enum InspectMode {
     Types,
     Validate,
+    World,
 }
 
 impl InspectMode {
@@ -457,6 +469,7 @@ impl InspectMode {
         match self {
             InspectMode::Types => "sigilc inspect types",
             InspectMode::Validate => "sigilc inspect validate",
+            InspectMode::World => "sigilc inspect world",
         }
     }
 
@@ -464,6 +477,7 @@ impl InspectMode {
         match self {
             InspectMode::Types => "typecheck",
             InspectMode::Validate => "canonical",
+            InspectMode::World => "topology",
         }
     }
 
@@ -471,6 +485,7 @@ impl InspectMode {
         match self {
             InspectMode::Types => "inspect types",
             InspectMode::Validate => "inspect validate",
+            InspectMode::World => "inspect world",
         }
     }
 }
@@ -1003,12 +1018,17 @@ fn inspect_validate_file_result(file: &Path) -> Result<serde_json::Value, CliErr
 pub fn inspect_command(
     mode: InspectMode,
     path: &Path,
+    selected_env: Option<&str>,
     ignore_paths: &[PathBuf],
     ignore_from: Option<&Path>,
 ) -> Result<(), CliError> {
     match mode {
         InspectMode::Types => inspect_types_command(path, ignore_paths, ignore_from),
         InspectMode::Validate => inspect_validate_command(path, ignore_paths, ignore_from),
+        InspectMode::World => inspect_world_command(
+            path,
+            selected_env.expect("inspect world requires an environment"),
+        ),
     }
 }
 
@@ -1343,6 +1363,129 @@ fn inspect_validate_directory_command(
     });
     println!("{}", serde_json::to_string(&output).unwrap());
     Ok(())
+}
+
+pub fn inspect_world_command(path: &Path, env: &str) -> Result<(), CliError> {
+    let data = match inspect_world_result(path, env) {
+        Ok(data) => data,
+        Err(error) => {
+            output_inspect_error(
+                InspectMode::World.command_name(),
+                path,
+                &error,
+                serde_json::Map::new(),
+            );
+            return Err(CliError::Reported(1));
+        }
+    };
+
+    let output = serde_json::json!({
+        "formatVersion": 1,
+        "command": InspectMode::World.command_name(),
+        "ok": true,
+        "phase": InspectMode::World.phase(),
+        "data": data
+    });
+    println!("{}", serde_json::to_string(&output).unwrap());
+    Ok(())
+}
+
+fn inspect_world_result(path: &Path, env: &str) -> Result<serde_json::Value, CliError> {
+    let project = get_project_config(path)?.ok_or_else(|| {
+        CliError::Validation(format!(
+            "{}: no Sigil project found while inspecting runtime world",
+            codes::topology::MISSING_MODULE
+        ))
+    })?;
+    let topology_file = topology_source_path(&project.root);
+    let topology_present = topology_file.exists();
+
+    let prelude = build_world_runtime_prelude(&project.root, env, topology_present)?;
+    let runner_path = unique_world_inspect_runner_path(&project.root);
+    if let Some(parent) = runner_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    fs::write(
+        &runner_path,
+        format!(
+            r#"{world_helpers}
+{prelude}
+const __sigil_inspect_topology = __sigil_world_collect_topology(globalThis.__sigil_topology_exports ?? null);
+const __sigil_inspect_world = __sigil_world_prepare_template(
+  globalThis.__sigil_world_value,
+  globalThis.__sigil_topology_exports ?? null,
+  globalThis.__sigil_world_env_name ?? null
+);
+console.log(JSON.stringify({{
+  "topology": {{
+    "present": Boolean(globalThis.__sigil_topology_exports),
+    "declaredEnvs": Array.from(__sigil_inspect_topology.envs).sort(),
+    "httpDependencies": Array.from(__sigil_inspect_topology.http).sort(),
+    "tcpDependencies": Array.from(__sigil_inspect_topology.tcp).sort()
+  }},
+  "summary": {{
+    "clockKind": String(__sigil_inspect_world.clock?.kind ?? ""),
+    "fsKind": String(__sigil_inspect_world.fs?.kind ?? ""),
+    "logKind": String(__sigil_inspect_world.log?.kind ?? ""),
+    "processKind": String(__sigil_inspect_world.process?.kind ?? ""),
+    "randomKind": String(__sigil_inspect_world.random?.kind ?? ""),
+    "timerKind": String(__sigil_inspect_world.timer?.kind ?? ""),
+    "httpBindings": Object.keys(__sigil_inspect_world.http ?? {{}}).length,
+    "tcpBindings": Object.keys(__sigil_inspect_world.tcp ?? {{}}).length
+  }},
+  "normalizedWorld": __sigil_inspect_world
+}}));
+"#,
+            world_helpers = world_runtime_helpers_source(),
+            prelude = prelude
+        ),
+    )?;
+
+    let abs_runner = fs::canonicalize(&runner_path)?;
+    let output = Command::new("pnpm")
+        .args(["exec", "node", "--import", "tsx"])
+        .arg(&abs_runner)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|error| {
+            if error.kind() == std::io::ErrorKind::NotFound {
+                CliError::Runtime(
+                    "pnpm not found. Please install pnpm to inspect Sigil runtime worlds."
+                        .to_string(),
+                )
+            } else {
+                CliError::Runtime(format!("Failed to execute world inspection: {}", error))
+            }
+        })?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let message = stderr.trim();
+        return Err(CliError::Validation(if message.is_empty() {
+            "runtime world inspection failed".to_string()
+        } else {
+            message.to_string()
+        }));
+    }
+
+    let runner_json = serde_json::from_slice::<serde_json::Value>(&output.stdout).map_err(|error| {
+        CliError::Runtime(format!(
+            "inspect world runner emitted invalid JSON: {}",
+            error
+        ))
+    })?;
+
+    Ok(serde_json::json!({
+        "input": path.to_string_lossy(),
+        "project": project_json(Some(&project)),
+        "projectRoot": project.root.to_string_lossy(),
+        "environment": env,
+        "topology": runner_json["topology"].clone(),
+        "summary": runner_json["summary"].clone(),
+        "normalizedWorld": runner_json["normalizedWorld"].clone()
+    }))
 }
 
 fn compile_group(group: &CompileBatchGroup) -> Result<CompileBatchOutputs, CliError> {
@@ -2111,6 +2254,20 @@ fn unique_runtime_error_path(entry_output_path: &Path) -> PathBuf {
         .parent()
         .unwrap_or_else(|| Path::new("."))
         .join(format!("{stem}.{unique}.runtime-error.json"))
+}
+
+fn unique_world_inspect_runner_path(project_root: &Path) -> PathBuf {
+    let unique = format!(
+        "{}-{}",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    );
+    project_root
+        .join(".local")
+        .join(format!("inspect-world.{unique}.run.ts"))
 }
 
 fn unique_runtime_trace_path(entry_output_path: &Path) -> PathBuf {

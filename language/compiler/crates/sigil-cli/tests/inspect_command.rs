@@ -220,3 +220,170 @@ fn inspect_validate_directory_reports_per_file_status() {
     assert_eq!(noncanonical_result["validation"]["ok"], false);
     assert_eq!(noncanonical_result["canonicalSource"], "λmain()=>Int=2\n");
 }
+
+#[test]
+fn inspect_world_reports_normalized_runtime_world_for_topology_project() {
+    let dir = temp_dir("world-topology");
+    write_program(
+        &dir,
+        "sigil.json",
+        "{\"name\":\"inspect-world\",\"version\":\"0.1.0\"}\n",
+    );
+    write_program(
+        &dir,
+        "src/topology.lib.sigil",
+        "c local=(§topology.environment(\"local\"):§topology.Environment)\n\nc mailerApi=(§topology.httpService(\"mailerApi\"):§topology.HttpServiceDependency)\n",
+    );
+    write_program(
+        &dir,
+        "config/local.lib.sigil",
+        "c world=(†runtime.world(†clock.systemClock(),†fs.real(),[†http.proxy(\"http://127.0.0.1:45110\",•topology.mailerApi)],†log.capture(),†process.real(),†random.seeded(1337),[],†timer.virtual()):†runtime.World)\n",
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("inspect")
+        .arg("world")
+        .arg(&dir)
+        .arg("--env")
+        .arg("local")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["command"], "sigilc inspect world");
+    assert_eq!(json["ok"], true);
+    assert_eq!(json["phase"], "topology");
+    assert_eq!(json["data"]["environment"], "local");
+    assert!(json["data"].get("sources").is_none());
+    assert_eq!(json["data"]["topology"]["present"], true);
+    assert_eq!(json["data"]["topology"]["declaredEnvs"][0], "local");
+    assert_eq!(json["data"]["topology"]["httpDependencies"][0], "mailerApi");
+    assert_eq!(json["data"]["summary"]["logKind"], "capture");
+    assert_eq!(json["data"]["summary"]["randomKind"], "seeded");
+    assert_eq!(json["data"]["summary"]["timerKind"], "virtual");
+    assert_eq!(json["data"]["summary"]["httpBindings"], 1);
+    assert_eq!(
+        json["data"]["normalizedWorld"]["http"]["mailerApi"]["kind"],
+        "proxy"
+    );
+    assert_eq!(
+        json["data"]["normalizedWorld"]["http"]["mailerApi"]["baseUrl"],
+        "http://127.0.0.1:45110"
+    );
+}
+
+#[test]
+fn inspect_world_supports_config_only_projects_without_topology() {
+    let dir = temp_dir("world-config-only");
+    write_program(
+        &dir,
+        "sigil.json",
+        "{\"name\":\"inspect-world\",\"version\":\"0.1.0\"}\n",
+    );
+    write_program(
+        &dir,
+        "config/local.lib.sigil",
+        "c world=(†runtime.world(†clock.systemClock(),†fs.real(),[],†log.stdout(),†process.real(),†random.seeded(7),[],†timer.real()):†runtime.World)\n",
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("inspect")
+        .arg("world")
+        .arg(&dir)
+        .arg("--env")
+        .arg("local")
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["command"], "sigilc inspect world");
+    assert_eq!(json["ok"], true);
+    assert!(json["data"].get("sources").is_none());
+    assert_eq!(json["data"]["topology"]["present"], false);
+    assert_eq!(json["data"]["topology"]["declaredEnvs"], serde_json::json!([]));
+    assert_eq!(json["data"]["summary"]["httpBindings"], 0);
+    assert_eq!(json["data"]["summary"]["tcpBindings"], 0);
+    assert_eq!(json["data"]["normalizedWorld"]["random"]["kind"], "seeded");
+    assert_eq!(json["data"]["normalizedWorld"]["timer"]["kind"], "real");
+}
+
+#[test]
+fn inspect_world_emits_json_error_when_env_is_undeclared() {
+    let dir = temp_dir("world-env-error");
+    write_program(
+        &dir,
+        "sigil.json",
+        "{\"name\":\"inspect-world\",\"version\":\"0.1.0\"}\n",
+    );
+    write_program(
+        &dir,
+        "src/topology.lib.sigil",
+        "c local=(§topology.environment(\"local\"):§topology.Environment)\n",
+    );
+    write_program(
+        &dir,
+        "config/prod.lib.sigil",
+        "c world=(†runtime.world(†clock.systemClock(),†fs.real(),[],†log.stdout(),†process.real(),†random.real(),[],†timer.real()):†runtime.World)\n",
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("inspect")
+        .arg("world")
+        .arg(&dir)
+        .arg("--env")
+        .arg("prod")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["command"], "sigilc inspect world");
+    assert_eq!(json["ok"], false);
+    assert_eq!(json["phase"], "topology");
+    assert_eq!(json["error"]["code"], "SIGIL-TOPO-ENV-NOT-FOUND");
+}
+
+#[test]
+fn inspect_world_emits_json_error_when_config_module_is_missing() {
+    let dir = temp_dir("world-missing-config");
+    write_program(
+        &dir,
+        "sigil.json",
+        "{\"name\":\"inspect-world\",\"version\":\"0.1.0\"}\n",
+    );
+    write_program(
+        &dir,
+        "src/topology.lib.sigil",
+        "c local=(§topology.environment(\"local\"):§topology.Environment)\n",
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("inspect")
+        .arg("world")
+        .arg(&dir)
+        .arg("--env")
+        .arg("local")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["command"], "sigilc inspect world");
+    assert_eq!(json["ok"], false);
+    assert_eq!(json["phase"], "topology");
+    assert_eq!(json["error"]["code"], "SIGIL-TOPO-MISSING-CONFIG-MODULE");
+}

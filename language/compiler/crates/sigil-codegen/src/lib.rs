@@ -908,6 +908,10 @@ function __sigil_test_timer_last_sleep_ms() {
   return sleeps.length === 0 ? { __tag: 'None', __fields: [] } : { __tag: 'Some', __fields: [sleeps[sleeps.length - 1]] };
 }"#;
 
+pub fn world_runtime_helpers_source() -> &'static str {
+    WORLD_RUNTIME_HELPERS
+}
+
 #[derive(Debug, Error)]
 pub enum CodegenError {
     #[error("Codegen error: {0}")]

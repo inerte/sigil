@@ -7,6 +7,7 @@ Sigil CLI commands are machine-first. JSON is the default output mode for:
 - `sigilc compile`
 - `sigilc inspect types`
 - `sigilc inspect validate`
+- `sigilc inspect world`
 - `sigilc test`
 - `sigilc` usage/unknown-command failures
 
@@ -62,7 +63,7 @@ Failures emit:
 ```
 
 `sigilc test` keeps a specialized top-level `summary` / `results` envelope.
-`sigilc inspect types` and `sigilc inspect validate` use inspect-specific envelopes.
+`sigilc inspect types`, `sigilc inspect validate`, and `sigilc inspect world` use inspect-specific envelopes.
 `sigilc run` uses the `runEnvelope` schema in `--json` mode and for failure payloads.
 
 ## Diagnostics
@@ -154,6 +155,28 @@ Events may also include:
 - it may include a tiny declaration-header excerpt
 - it does not yet promise exact nested-expression blame inside the declaration body
 
+## Inspect World Details
+
+`sigil inspect world <path> --env <name>` is project-env scoped.
+
+Successful output reports:
+
+- `input`
+- `project`
+- `projectRoot`
+- `environment`
+- `topology`
+  - `present`
+  - `declaredEnvs`
+  - `httpDependencies`
+  - `tcpDependencies`
+- `summary`
+  - singleton entry kinds plus HTTP/TCP binding counts
+- `normalizedWorld`
+
+`normalizedWorld` is the runtime-normalized template Sigil will use for that
+environment, not the raw exported Sigil `world` value.
+
 ## Current Notes
 
 The current implementation uses:
@@ -166,6 +189,7 @@ The current implementation uses:
 - traced `run` failures may include bounded inline trace events via `error.details.trace`
 - `inspect types` is top-level declaration-focused in v1; it does not report nested expression types yet
 - `inspect validate` returns canonical printer output even when `validation.ok` is `false`, as long as lexing and parsing succeeded
+- `inspect world` is project-level in v1; it does not batch over directories or include test-local `world { ... }` overlays
 - a specialized `test` result shape with `location: {line,column}`
 
 If prose and runtime output disagree, the implementation and

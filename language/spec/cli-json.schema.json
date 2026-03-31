@@ -490,6 +490,75 @@
         { "$ref": "#/$defs/inspectValidateDirectoryData" }
       ]
     },
+    "inspectWorldKindedEntry": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "inspectWorldTopology": {
+      "type": "object",
+      "required": ["present", "declaredEnvs", "httpDependencies", "tcpDependencies"],
+      "properties": {
+        "present": { "type": "boolean" },
+        "declaredEnvs": { "type": "array", "items": { "type": "string" } },
+        "httpDependencies": { "type": "array", "items": { "type": "string" } },
+        "tcpDependencies": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "inspectWorldSummary": {
+      "type": "object",
+      "required": ["clockKind", "fsKind", "logKind", "processKind", "randomKind", "timerKind", "httpBindings", "tcpBindings"],
+      "properties": {
+        "clockKind": { "type": "string" },
+        "fsKind": { "type": "string" },
+        "logKind": { "type": "string" },
+        "processKind": { "type": "string" },
+        "randomKind": { "type": "string" },
+        "timerKind": { "type": "string" },
+        "httpBindings": { "type": "integer", "minimum": 0 },
+        "tcpBindings": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "inspectWorldNormalizedWorld": {
+      "type": "object",
+      "required": ["clock", "fs", "http", "log", "process", "random", "tcp", "timer"],
+      "properties": {
+        "clock": { "$ref": "#/$defs/inspectWorldKindedEntry" },
+        "fs": { "$ref": "#/$defs/inspectWorldKindedEntry" },
+        "http": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/inspectWorldKindedEntry" }
+        },
+        "log": { "$ref": "#/$defs/inspectWorldKindedEntry" },
+        "process": { "$ref": "#/$defs/inspectWorldKindedEntry" },
+        "random": { "$ref": "#/$defs/inspectWorldKindedEntry" },
+        "tcp": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/inspectWorldKindedEntry" }
+        },
+        "timer": { "$ref": "#/$defs/inspectWorldKindedEntry" }
+      },
+      "additionalProperties": false
+    },
+    "inspectWorldData": {
+      "type": "object",
+      "required": ["input", "project", "projectRoot", "environment", "topology", "summary", "normalizedWorld"],
+      "properties": {
+        "input": { "type": "string" },
+        "project": { "$ref": "#/$defs/projectInfo" },
+        "projectRoot": { "type": "string" },
+        "environment": { "type": "string" },
+        "topology": { "$ref": "#/$defs/inspectWorldTopology" },
+        "summary": { "$ref": "#/$defs/inspectWorldSummary" },
+        "normalizedWorld": { "$ref": "#/$defs/inspectWorldNormalizedWorld" }
+      },
+      "additionalProperties": false
+    },
     "compileEnvelope": {
       "allOf": [
         { "$ref": "#/$defs/baseEnvelope" },
@@ -530,6 +599,22 @@
           "properties": {
             "command": { "const": "sigilc inspect validate" },
             "data": { "$ref": "#/$defs/inspectValidateData" }
+          },
+          "allOf": [
+            { "if": { "properties": { "ok": { "const": true } } }, "then": { "required": ["data"] } },
+            { "if": { "properties": { "ok": { "const": false } } }, "then": { "required": ["error"] } }
+          ]
+        }
+      ]
+    },
+    "inspectWorldEnvelope": {
+      "allOf": [
+        { "$ref": "#/$defs/baseEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "command": { "const": "sigilc inspect world" },
+            "data": { "$ref": "#/$defs/inspectWorldData" }
           },
           "allOf": [
             { "if": { "properties": { "ok": { "const": true } } }, "then": { "required": ["data"] } },

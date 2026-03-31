@@ -4112,16 +4112,21 @@ fn runtime_exception_capture_from_stderr(stderr: &str) -> Option<RuntimeExceptio
     }
 
     let first_line = stack.lines().next().unwrap_or(stack).trim();
-    let (name, message) = match first_line.split_once(':') {
+    let headline = stack
+        .lines()
+        .map(str::trim)
+        .find(|line| line.contains("SIGIL-") && !line.is_empty())
+        .unwrap_or(first_line);
+    let (name, message) = match headline.split_once(':') {
         Some((name, message)) if !name.trim().is_empty() => {
             (name.trim().to_string(), message.trim().to_string())
         }
-        _ => ("Error".to_string(), first_line.to_string()),
+        _ => ("Error".to_string(), headline.to_string()),
     };
 
-    let sigil_code = message
-        .starts_with("SIGIL-")
-        .then(|| extract_error_code(&message));
+    let sigil_code = stack
+        .contains("SIGIL-")
+        .then(|| extract_error_code(headline));
 
     Some(RuntimeExceptionCapture {
         name,
@@ -4338,6 +4343,25 @@ mod tests {
             "SIGIL-TOPO-ENV-NOT-FOUND: environment 'staging' not declared in src/topology.lib.sigil"
         );
         assert!(capture.stack.contains(".run.ts"));
+    }
+
+    #[test]
+    fn runtime_exception_capture_from_stderr_prefers_sigil_line_after_warning() {
+        let capture = runtime_exception_capture_from_stderr(
+            "(node:2468) ExperimentalWarning: import assertions are deprecated\nError: SIGIL-TOPO-ENV-NOT-FOUND: environment 'staging' not declared in src/topology.lib.sigil\n    at main (/tmp/example.run.ts:12:3)",
+        )
+        .expect("expected stderr capture");
+
+        assert_eq!(capture.name, "Error");
+        assert_eq!(
+            capture.sigil_code.as_deref(),
+            Some(codes::topology::ENV_NOT_FOUND)
+        );
+        assert_eq!(
+            capture.message,
+            "SIGIL-TOPO-ENV-NOT-FOUND: environment 'staging' not declared in src/topology.lib.sigil"
+        );
+        assert!(capture.stack.contains("ExperimentalWarning"));
     }
 }
 

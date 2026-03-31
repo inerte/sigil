@@ -43,6 +43,10 @@ fn parse_replay_artifact(path: &Path) -> Value {
     serde_json::from_slice(&fs::read(path).unwrap()).unwrap()
 }
 
+fn line_break_selector(file: &Path, line: usize) -> String {
+    format!("{}:{}", file.to_string_lossy(), line)
+}
+
 #[test]
 fn run_streams_raw_stdout_by_default() {
     let dir = temp_dir("raw-success");
@@ -122,6 +126,214 @@ fn run_trace_requires_json() {
         .as_str()
         .unwrap()
         .contains("--json"));
+}
+
+#[test]
+fn run_breakpoints_require_json() {
+    let dir = temp_dir("break-requires-json");
+    let file = write_program(&dir, "main.sigil", "λmain()=>Int=1\n");
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg("--break-fn")
+        .arg("main")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(output.stdout.is_empty());
+
+    let json = parse_json(output.stderr.trim_ascii());
+    assert_eq!(json["error"]["code"], "SIGIL-CLI-USAGE");
+    assert!(json["error"]["message"]
+        .as_str()
+        .unwrap()
+        .contains("--json"));
+}
+
+#[test]
+fn run_json_breakpoint_not_found_reports_cli_error() {
+    let dir = temp_dir("break-not-found");
+    let file = write_program(&dir, "main.sigil", "λmain()=>Int=1\n");
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg("--json")
+        .arg("--break")
+        .arg(line_break_selector(&file, 99))
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["error"]["code"], "SIGIL-CLI-BREAKPOINT-NOT-FOUND");
+}
+
+#[test]
+fn run_json_breakpoint_ambiguous_function_reports_cli_error() {
+    let dir = temp_dir("break-ambiguous");
+    fs::write(
+        dir.join("sigil.json"),
+        "{\n  \"name\": \"break-ambiguous\",\n  \"version\": \"0.1.0\"\n}\n",
+    )
+    .unwrap();
+    let src_dir = dir.join("src");
+    fs::create_dir_all(&src_dir).unwrap();
+    write_program(&src_dir, "helper2.lib.sigil", "λtarget()=>Int=1\n");
+    write_program(
+        &src_dir,
+        "helper.lib.sigil",
+        "λtarget()=>Int=•helper2.target()\n",
+    );
+    let file = write_program(&src_dir, "main.sigil", "λmain()=>Int=•helper.target()\n");
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg("--json")
+        .arg("--break-fn")
+        .arg("target")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["error"]["code"], "SIGIL-CLI-BREAKPOINT-AMBIGUOUS");
+}
+
+#[test]
+fn run_json_breakpoint_stop_mode_returns_successful_early_stop() {
+    let dir = temp_dir("break-stop");
+    let file = write_program(&dir, "main.sigil", "λmain()=>Int=1+1\n");
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg("--json")
+        .arg("--break-fn")
+        .arg("main")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["ok"], true);
+    assert_eq!(json["data"]["breakpoints"]["enabled"], true);
+    assert_eq!(json["data"]["breakpoints"]["stopped"], true);
+    assert_eq!(json["data"]["breakpoints"]["totalHits"], 1);
+    assert_eq!(
+        json["data"]["breakpoints"]["hits"][0]["declarationLabel"],
+        "main"
+    );
+}
+
+#[test]
+fn run_json_breakpoint_hits_include_live_let_locals() {
+    let dir = temp_dir("break-let-locals");
+    let file = write_program(
+        &dir,
+        "main.sigil",
+        "λhelper(x:Int)=>Int={\n  l y=(x+1:Int);\n  y+y\n}\n\nλmain()=>Int=helper(1)\n",
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg("--json")
+        .arg("--break")
+        .arg(line_break_selector(&file, 3))
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json = parse_json(&output.stdout);
+    let locals = json["data"]["breakpoints"]["hits"][0]["locals"]
+        .as_array()
+        .expect("locals array");
+    assert!(locals
+        .iter()
+        .any(|local| local["name"] == "x" && local["origin"] == "param"));
+    assert!(locals
+        .iter()
+        .any(|local| local["name"] == "y" && local["origin"] == "let"));
+}
+
+#[test]
+fn run_json_breakpoint_collect_mode_truncates_hit_window() {
+    let dir = temp_dir("break-collect");
+    let file = write_program(
+        &dir,
+        "main.sigil",
+        "λloop(n:Int)=>Int match n=0{\n  true=>0|\n  false=>loop(n-1)\n}\n\nλmain()=>Int=loop(5)\n",
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg("--json")
+        .arg("--break-fn")
+        .arg("loop")
+        .arg("--break-mode")
+        .arg("collect")
+        .arg("--break-max-hits")
+        .arg("2")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["data"]["breakpoints"]["stopped"], false);
+    assert_eq!(json["data"]["breakpoints"]["returnedHits"], 2);
+    assert!(json["data"]["breakpoints"]["totalHits"].as_u64().unwrap() > 2);
+    assert!(json["data"]["breakpoints"]["droppedHits"].as_u64().unwrap() > 0);
+}
+
+#[test]
+fn run_json_breakpoint_failure_preserves_hits_in_error_details() {
+    let dir = temp_dir("break-failure-details");
+    let file = write_program(
+        &dir,
+        "main.sigil",
+        "e boom:{explode:λ()=>Int}\n\nλhelper()=>Int=1\n\nλmain()=>Int=helper()+boom.explode()\n",
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg("--json")
+        .arg("--break-fn")
+        .arg("helper")
+        .arg("--break-mode")
+        .arg("collect")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["error"]["code"], "SIGIL-RUNTIME-UNCAUGHT-EXCEPTION");
+    assert!(
+        json["error"]["details"]["breakpoints"]["totalHits"]
+            .as_u64()
+            .unwrap()
+            >= 1
+    );
 }
 
 #[test]
@@ -564,7 +776,10 @@ fn run_json_record_writes_replay_artifact_on_success() {
 
     let artifact_json = parse_replay_artifact(&artifact);
     assert_eq!(artifact_json["kind"], "sigilRunReplay");
-    assert_eq!(artifact_json["entry"]["sourceFile"], file.to_string_lossy().to_string());
+    assert_eq!(
+        artifact_json["entry"]["sourceFile"],
+        file.to_string_lossy().to_string()
+    );
     assert_eq!(artifact_json["summary"]["failed"], false);
     assert!(artifact_json["events"].as_array().unwrap().len() >= 3);
     assert!(
@@ -661,16 +876,70 @@ fn run_json_replay_reproduces_recorded_success() {
         recorded_json["data"]["runtime"]["stdout"]
     );
     assert_eq!(replayed_json["data"]["replay"]["mode"], "replay");
-    assert!(replayed_json["data"]["replay"]["consumedEvents"]
-        .as_u64()
-        .unwrap()
-        > 0);
+    assert!(
+        replayed_json["data"]["replay"]["consumedEvents"]
+            .as_u64()
+            .unwrap()
+            > 0
+    );
     assert_eq!(replayed_json["data"]["replay"]["remainingEvents"], 0);
     assert!(replayed_json["data"]["trace"]["events"]
         .as_array()
         .unwrap()
         .iter()
         .any(|event| event["kind"] == "effect_result"));
+}
+
+#[test]
+fn run_json_replay_breakpoints_preserve_hit_resolution() {
+    let dir = temp_dir("replay-breakpoints");
+    let file = write_program(
+        &dir,
+        "main.sigil",
+        "λhelper(flag:Bool)=>!Random Int match flag{\n  true=>§random.intBetween(1,1)|\n  false=>0\n}\n\nλmain()=>!Random Int=helper(true)\n",
+    );
+    let artifact = dir.join("breakpoints.replay.json");
+
+    let recorded = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg("--json")
+        .arg("--record")
+        .arg(&artifact)
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(recorded.status.success());
+
+    let replayed = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg("--json")
+        .arg("--replay")
+        .arg(&artifact)
+        .arg("--break-fn")
+        .arg("helper")
+        .arg("--break-mode")
+        .arg("collect")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(replayed.status.success());
+    assert!(replayed.stderr.is_empty());
+
+    let json = parse_json(&replayed.stdout);
+    assert_eq!(json["data"]["replay"]["mode"], "replay");
+    assert_eq!(json["data"]["breakpoints"]["totalHits"], 1);
+    assert_eq!(
+        json["data"]["breakpoints"]["hits"][0]["declarationLabel"],
+        "helper"
+    );
+    assert!(json["data"]["breakpoints"]["hits"][0]["spanId"]
+        .as_str()
+        .unwrap()
+        .starts_with('s'));
 }
 
 #[test]
@@ -824,5 +1093,8 @@ fn run_json_replay_reproduces_recorded_child_exit_failure() {
 
     let replayed_json = parse_json(&replayed.stdout);
     assert_eq!(replayed_json["error"]["code"], "SIGIL-RUNTIME-CHILD-EXIT");
-    assert_eq!(replayed_json["error"]["details"]["replay"]["mode"], "replay");
+    assert_eq!(
+        replayed_json["error"]["details"]["replay"]["mode"],
+        "replay"
+    );
 }

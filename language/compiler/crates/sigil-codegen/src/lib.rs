@@ -1255,6 +1255,7 @@ pub struct CodegenOptions {
     pub source_file: Option<String>,
     pub output_file: Option<String>,
     pub trace: bool,
+    pub breakpoints: bool,
 }
 
 impl Default for CodegenOptions {
@@ -1264,6 +1265,7 @@ impl Default for CodegenOptions {
             source_file: None,
             output_file: None,
             trace: false,
+            breakpoints: false,
         }
     }
 }
@@ -1285,10 +1287,12 @@ pub struct TypeScriptGenerator {
     output_file: Option<String>,
     test_meta_entries: Vec<String>,
     trace_enabled: bool,
+    breakpoints_enabled: bool,
 }
 
 impl TypeScriptGenerator {
     pub fn new(options: CodegenOptions) -> Self {
+        let debug_enabled = options.trace || options.breakpoints;
         Self {
             current_trace_owner: None,
             indent: 0,
@@ -1299,7 +1303,8 @@ impl TypeScriptGenerator {
             source_file: options.source_file,
             output_file: options.output_file,
             test_meta_entries: Vec::new(),
-            trace_enabled: options.trace,
+            trace_enabled: debug_enabled,
+            breakpoints_enabled: options.breakpoints,
         }
     }
 
@@ -1529,6 +1534,7 @@ impl TypeScriptGenerator {
         &self,
         func_name: &str,
         span_id: Option<&str>,
+        param_names_expr: &str,
         args_expr: &str,
         body_expr: &str,
     ) -> Result<String, CodegenError> {
@@ -1537,11 +1543,18 @@ impl TypeScriptGenerator {
         }
         let meta = self.trace_meta_literal(
             span_id,
-            &[("functionName", self.json_string_literal(func_name)?)],
+            &[
+                ("functionName", self.json_string_literal(func_name)?),
+                (
+                    "declarationKind",
+                    self.json_string_literal("function_decl")?,
+                ),
+                ("declarationLabel", self.json_string_literal(func_name)?),
+            ],
         )?;
         Ok(format!(
-            "__sigil_trace_wrap_call({}, {}, () => {})",
-            meta, args_expr, body_expr
+            "__sigil_debug_wrap_call({}, {}, {}, () => {})",
+            meta, param_names_expr, args_expr, body_expr
         ))
     }
 
@@ -1574,12 +1587,107 @@ impl TypeScriptGenerator {
     fn trace_declared_return(
         &self,
         func_name: &str,
+        param_names_expr: &str,
         args_expr: &str,
         span_id: Option<&str>,
         body_expr: &str,
     ) -> Result<String, CodegenError> {
-        let traced = self.wrap_declared_function_trace(func_name, span_id, args_expr, body_expr)?;
+        let traced = self.wrap_declared_function_trace(
+            func_name,
+            span_id,
+            param_names_expr,
+            args_expr,
+            body_expr,
+        )?;
         Ok(traced)
+    }
+
+    fn wrap_breakpoint_probe(
+        &self,
+        span_id: Option<&str>,
+        body_expr: &str,
+    ) -> Result<String, CodegenError> {
+        if !self.breakpoints_enabled {
+            return Ok(body_expr.to_string());
+        }
+        let Some(span_id) = span_id else {
+            return Ok(body_expr.to_string());
+        };
+        let meta = self.trace_meta_literal(Some(span_id), &[])?;
+        Ok(format!(
+            "__sigil_breakpoint_probe({}, () => {})",
+            meta, body_expr
+        ))
+    }
+
+    fn wrap_expression_breakpoint(
+        &self,
+        expr: &TypedExpr,
+        kind: DebugSpanKind,
+        body_expr: String,
+    ) -> Result<String, CodegenError> {
+        let span_id = self.span_id_for_expr(kind, expr.location);
+        self.wrap_breakpoint_probe(span_id, &body_expr)
+    }
+
+    fn pattern_binding_names(&self, pattern: &Pattern) -> Vec<String> {
+        let mut names = Vec::new();
+        self.collect_pattern_binding_names(pattern, &mut names);
+        names
+    }
+
+    fn collect_pattern_binding_names(&self, pattern: &Pattern, names: &mut Vec<String>) {
+        match pattern {
+            Pattern::Identifier(id) => names.push(id.name.clone()),
+            Pattern::Constructor(ctor) => {
+                for pattern in &ctor.patterns {
+                    self.collect_pattern_binding_names(pattern, names);
+                }
+            }
+            Pattern::List(list) => {
+                for pattern in &list.patterns {
+                    self.collect_pattern_binding_names(pattern, names);
+                }
+                if let Some(rest) = &list.rest {
+                    names.push(rest.clone());
+                }
+            }
+            Pattern::Record(record) => {
+                for field in &record.fields {
+                    if let Some(pattern) = &field.pattern {
+                        self.collect_pattern_binding_names(pattern, names);
+                    } else {
+                        names.push(field.name.clone());
+                    }
+                }
+            }
+            Pattern::Tuple(tuple) => {
+                for pattern in &tuple.patterns {
+                    self.collect_pattern_binding_names(pattern, names);
+                }
+            }
+            Pattern::Literal(_) | Pattern::Wildcard(_) => {}
+        }
+    }
+
+    fn pattern_scope_locals_expr(
+        &self,
+        pattern: &Pattern,
+        origin: &str,
+    ) -> Result<String, CodegenError> {
+        let locals = self
+            .pattern_binding_names(pattern)
+            .into_iter()
+            .map(|name| {
+                Ok(format!(
+                    "{{ name: {}, origin: {}, value: {} }}",
+                    self.json_string_literal(&name)?,
+                    self.json_string_literal(origin)?,
+                    sanitize_js_identifier(&name)
+                ))
+            })
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+        Ok(format!("[{}]", locals.join(", ")))
     }
 
     fn emit_block(&mut self, block: &str) {
@@ -2234,6 +2342,9 @@ impl TypeScriptGenerator {
         if self.trace_enabled {
             self.emit_trace_helpers();
         }
+        if self.breakpoints_enabled {
+            self.emit_breakpoint_helpers();
+        }
     }
 
     fn emit_trace_helpers(&mut self) {
@@ -2292,25 +2403,44 @@ impl TypeScriptGenerator {
         self.emit("  }");
         self.emit("  return { enabled: true, truncated: !!state.truncated, totalEvents: state.totalEvents, returnedEvents: state.events.length, droppedEvents: state.droppedEvents, events: state.events.slice() };");
         self.emit("}");
-        self.emit("function __sigil_trace_wrap_call(meta, args, thunk) {");
-        self.emit("  if (!__sigil_trace_enabled()) return thunk();");
+        self.emit("function __sigil_debug_wrap_call(meta, paramNames, args, thunk) {");
+        self.emit("  const traceEnabled = __sigil_trace_enabled();");
+        self.emit("  const breakpointEnabled = typeof __sigil_breakpoint_enabled === 'function' && __sigil_breakpoint_enabled();");
+        self.emit("  if (!traceEnabled && !breakpointEnabled) return thunk();");
         self.emit("  const state = __sigil_trace_state();");
         self.emit("  const depth = state ? state.depth : 0;");
-        self.emit("  __sigil_trace_push({ kind: 'call', depth, ...meta, functionName: String(meta.functionName ?? ''), args: Array.isArray(args) ? args.map((value) => __sigil_trace_summary(value, 1)) : [] });");
+        self.emit("  const functionName = String(meta.functionName ?? '');");
+        self.emit("  if (traceEnabled) {");
+        self.emit("    __sigil_trace_push({ kind: 'call', depth, ...meta, functionName, args: Array.isArray(args) ? args.map((value) => __sigil_trace_summary(value, 1)) : [] });");
+        self.emit("  }");
+        self.emit("  if (breakpointEnabled) {");
+        self.emit("    __sigil_breakpoint_push_frame(meta, functionName, paramNames, args);");
+        self.emit("  }");
         self.emit("  if (state) state.depth = depth + 1;");
+        self.emit("  if (breakpointEnabled) {");
+        self.emit("    __sigil_breakpoint_maybe_hit(meta);");
+        self.emit("  }");
         self.emit("  const finish = (value) => {");
         self.emit("    if (state) state.depth = depth;");
-        self.emit("    __sigil_trace_push({ kind: 'return', depth, ...meta, functionName: String(meta.functionName ?? ''), result: __sigil_trace_summary(value, 1) });");
+        self.emit("    if (breakpointEnabled) {");
+        self.emit("      __sigil_breakpoint_pop_frame();");
+        self.emit("    }");
+        self.emit("    if (traceEnabled) {");
+        self.emit("      __sigil_trace_push({ kind: 'return', depth, ...meta, functionName, result: __sigil_trace_summary(value, 1) });");
+        self.emit("    }");
         self.emit("    return value;");
         self.emit("  };");
         self.emit("  try {");
         self.emit("    const result = thunk();");
         self.emit("    if (result && typeof result.then === 'function') {");
-        self.emit("      return result.then((value) => finish(value), (error) => { if (state) state.depth = depth; throw error; });");
+        self.emit("      return result.then((value) => finish(value), (error) => { if (state) state.depth = depth; if (breakpointEnabled) { __sigil_breakpoint_pop_frame(); } throw error; });");
         self.emit("    }");
         self.emit("    return finish(result);");
         self.emit("  } catch (error) {");
         self.emit("    if (state) state.depth = depth;");
+        self.emit("    if (breakpointEnabled) {");
+        self.emit("      __sigil_breakpoint_pop_frame();");
+        self.emit("    }");
         self.emit("    throw error;");
         self.emit("  }");
         self.emit("}");
@@ -2340,6 +2470,121 @@ impl TypeScriptGenerator {
         self.emit("  return finish(result);");
         self.emit("}");
         self.emit("globalThis.__sigil_trace_snapshot = __sigil_trace_snapshot;");
+    }
+
+    fn emit_breakpoint_helpers(&mut self) {
+        self.emit("function __sigil_breakpoint_enabled() {");
+        self.emit("  return !!globalThis.__sigil_breakpoint_config?.enabled;");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_init_state() {");
+        self.emit("  const maxHits = Math.max(1, Number(globalThis.__sigil_breakpoint_config?.maxHits ?? 32));");
+        self.emit("  return { enabled: true, mode: String(globalThis.__sigil_breakpoint_config?.mode ?? 'stop'), stopped: false, truncated: false, totalHits: 0, droppedHits: 0, maxHits, hits: [], stack: [] };");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_state() {");
+        self.emit("  if (!__sigil_breakpoint_enabled()) return null;");
+        self.emit("  if (!globalThis.__sigil_breakpoint_current || typeof globalThis.__sigil_breakpoint_current !== 'object') {");
+        self.emit("    globalThis.__sigil_breakpoint_current = __sigil_breakpoint_init_state();");
+        self.emit("  }");
+        self.emit("  return globalThis.__sigil_breakpoint_current;");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_stop_signal() {");
+        self.emit("  return { __sigilBreakpointStop: true };");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_is_stop_signal(error) {");
+        self.emit("  return !!(error && typeof error === 'object' && error.__sigilBreakpointStop === true);");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_selectors(spanId) {");
+        self.emit("  const selectors = globalThis.__sigil_breakpoint_config?.spans?.[String(spanId ?? '')];");
+        self.emit("  return Array.isArray(selectors) ? selectors.slice() : [];");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_matches(spanId) {");
+        self.emit("  return __sigil_breakpoint_selectors(spanId).length > 0;");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_push_frame(meta, functionName, paramNames, args) {");
+        self.emit("  const state = __sigil_breakpoint_state();");
+        self.emit("  if (!state) return;");
+        self.emit("  const names = Array.isArray(paramNames) ? paramNames : [];");
+        self.emit("  const values = Array.isArray(args) ? args : [];");
+        self.emit("  const params = names.map((name, index) => ({ name: String(name), origin: 'param', value: __sigil_trace_summary(values[index], 1) }));");
+        self.emit("  state.stack.push({ moduleId: String(meta.moduleId ?? ''), sourceFile: String(meta.sourceFile ?? ''), spanId: String(meta.spanId ?? ''), declarationKind: meta.declarationKind ?? null, declarationLabel: meta.declarationLabel ?? null, functionName: functionName ? String(functionName) : null, params, scopes: [] });");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_pop_frame() {");
+        self.emit("  const state = __sigil_breakpoint_state();");
+        self.emit("  if (!state || state.stack.length === 0) return;");
+        self.emit("  state.stack.pop();");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_push_scope(locals) {");
+        self.emit("  const state = __sigil_breakpoint_state();");
+        self.emit("  if (!state || state.stack.length === 0) return;");
+        self.emit("  const frame = state.stack[state.stack.length - 1];");
+        self.emit("  frame.scopes.push(Array.isArray(locals) ? locals.map((local) => ({ name: String(local.name ?? ''), origin: String(local.origin ?? 'let'), value: __sigil_trace_summary(local.value, 1) })) : []);");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_pop_scope() {");
+        self.emit("  const state = __sigil_breakpoint_state();");
+        self.emit("  if (!state || state.stack.length === 0) return;");
+        self.emit("  const frame = state.stack[state.stack.length - 1];");
+        self.emit("  if (frame.scopes.length > 0) frame.scopes.pop();");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_current_locals(state) {");
+        self.emit("  if (!state || state.stack.length === 0) return [];");
+        self.emit("  const frame = state.stack[state.stack.length - 1];");
+        self.emit("  const locals = frame.params.slice();");
+        self.emit("  for (const scope of frame.scopes) { locals.push(...scope); }");
+        self.emit("  return locals;");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_stack_snapshot(state) {");
+        self.emit("  if (!state) return [];");
+        self.emit("  return state.stack.slice().reverse().map((frame) => ({ moduleId: frame.moduleId, sourceFile: frame.sourceFile, spanId: frame.spanId, declarationKind: frame.declarationKind, declarationLabel: frame.declarationLabel, functionName: frame.functionName }));");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_recent_trace() {");
+        self.emit("  if (typeof globalThis.__sigil_trace_snapshot !== 'function') return [];");
+        self.emit("  try {");
+        self.emit("    const limit = Math.max(1, Number(globalThis.__sigil_breakpoint_config?.recentTraceLimit ?? 32));");
+        self.emit("    const snapshot = globalThis.__sigil_trace_snapshot();");
+        self.emit("    const events = Array.isArray(snapshot?.events) ? snapshot.events : [];");
+        self.emit("    return events.slice(-limit);");
+        self.emit("  } catch (_breakpointTraceError) {");
+        self.emit("    return [];");
+        self.emit("  }");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_record_hit(meta) {");
+        self.emit("  const state = __sigil_breakpoint_state();");
+        self.emit("  if (!state) return;");
+        self.emit("  const selectors = __sigil_breakpoint_selectors(meta.spanId);");
+        self.emit("  if (selectors.length === 0) return;");
+        self.emit("  state.totalHits += 1;");
+        self.emit("  const hit = { matched: selectors, moduleId: String(meta.moduleId ?? ''), sourceFile: String(meta.sourceFile ?? ''), spanId: String(meta.spanId ?? ''), declarationKind: meta.declarationKind ?? null, declarationLabel: meta.declarationLabel ?? null, locals: __sigil_breakpoint_current_locals(state), stack: __sigil_breakpoint_stack_snapshot(state), recentTrace: __sigil_breakpoint_recent_trace() };");
+        self.emit("  if (state.hits.length >= state.maxHits) {");
+        self.emit("    state.hits.shift();");
+        self.emit("    state.droppedHits += 1;");
+        self.emit("    state.truncated = true;");
+        self.emit("  }");
+        self.emit("  state.hits.push(hit);");
+        self.emit("  if (state.mode === 'stop') {");
+        self.emit("    state.stopped = true;");
+        self.emit("    throw __sigil_breakpoint_stop_signal();");
+        self.emit("  }");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_maybe_hit(meta) {");
+        self.emit("  if (!__sigil_breakpoint_matches(meta.spanId)) return;");
+        self.emit("  __sigil_breakpoint_record_hit(meta);");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_probe(meta, thunk) {");
+        self.emit("  if (!__sigil_breakpoint_enabled()) return thunk();");
+        self.emit("  __sigil_breakpoint_maybe_hit(meta);");
+        self.emit("  return thunk();");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_snapshot() {");
+        self.emit("  const state = __sigil_breakpoint_state();");
+        self.emit("  if (!state) {");
+        self.emit("    return { enabled: false, mode: String(globalThis.__sigil_breakpoint_config?.mode ?? 'stop'), stopped: false, truncated: false, totalHits: 0, returnedHits: 0, droppedHits: 0, maxHits: Math.max(1, Number(globalThis.__sigil_breakpoint_config?.maxHits ?? 32)), hits: [] };");
+        self.emit("  }");
+        self.emit("  return { enabled: true, mode: String(state.mode), stopped: !!state.stopped, truncated: !!state.truncated, totalHits: Number(state.totalHits), returnedHits: state.hits.length, droppedHits: Number(state.droppedHits), maxHits: Number(state.maxHits), hits: state.hits.slice() };");
+        self.emit("}");
+        self.emit("globalThis.__sigil_breakpoint_snapshot = __sigil_breakpoint_snapshot;");
+        self.emit(
+            "globalThis.__sigil_breakpoint_is_stop_signal = __sigil_breakpoint_is_stop_signal;",
+        );
     }
 
     fn generate_declaration(&mut self, decl: &TypedDeclaration) -> Result<(), CodegenError> {
@@ -2452,6 +2697,14 @@ impl TypeScriptGenerator {
         })?;
         let traced_body = self.trace_declared_return(
             &func.name,
+            &format!(
+                "[{}]",
+                func.params
+                    .iter()
+                    .map(|param| self.json_string_literal(&param.name))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .join(", ")
+            ),
             &format!("[{}]", params_str),
             function_span_id.as_deref(),
             &format!(
@@ -2660,6 +2913,14 @@ impl TypeScriptGenerator {
         ));
         let traced_body = self.trace_declared_return(
             &func.name,
+            &format!(
+                "[{}]",
+                func.params
+                    .iter()
+                    .map(|param| self.json_string_literal(&param.name))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .join(", ")
+            ),
             &format!("[{}]", params_str),
             function_span_id.as_deref(),
             &format!(
@@ -3010,7 +3271,7 @@ impl TypeScriptGenerator {
     }
 
     fn generate_expression(&mut self, expr: &TypedExpr) -> Result<String, CodegenError> {
-        match &expr.kind {
+        let generated = match &expr.kind {
             TypedExprKind::Literal(lit) => self.generate_literal(lit),
             TypedExprKind::Identifier(id) => Ok(self.js_ready(&sanitize_js_identifier(&id.name))),
             TypedExprKind::NamespaceMember { namespace, member } => Ok(self.js_ready(&format!(
@@ -3026,7 +3287,7 @@ impl TypeScriptGenerator {
             TypedExprKind::Binary(bin) => self.generate_binary(bin),
             TypedExprKind::Unary(un) => self.generate_unary(un),
             TypedExprKind::Match(match_expr) => self.generate_match(expr, match_expr),
-            TypedExprKind::Let(let_expr) => self.generate_let(let_expr),
+            TypedExprKind::Let(let_expr) => self.generate_let(expr, let_expr),
             TypedExprKind::If(if_expr) => self.generate_if(expr, if_expr),
             TypedExprKind::List(list) => self.generate_list(list),
             TypedExprKind::Tuple(tuple) => self.generate_tuple(tuple),
@@ -3039,7 +3300,85 @@ impl TypeScriptGenerator {
             TypedExprKind::Fold(fold) => self.generate_fold(fold),
             TypedExprKind::Concurrent(concurrent) => self.generate_concurrent(concurrent),
             TypedExprKind::Pipeline(pipeline) => self.generate_pipeline(pipeline),
+        }?;
+
+        if !self.breakpoints_enabled {
+            return Ok(generated);
         }
+
+        let wrapped = match &expr.kind {
+            TypedExprKind::Literal(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprLiteral, generated)
+            }
+            TypedExprKind::Identifier(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprIdentifier, generated)
+            }
+            TypedExprKind::NamespaceMember { .. } => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprNamespaceMember, generated)
+            }
+            TypedExprKind::Lambda(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprLambda, generated)
+            }
+            TypedExprKind::Call(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprCall, generated)
+            }
+            TypedExprKind::ConstructorCall(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprConstructorCall, generated)
+            }
+            TypedExprKind::ExternCall(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprExternCall, generated)
+            }
+            TypedExprKind::MethodCall(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprMethodCall, generated)
+            }
+            TypedExprKind::Binary(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprBinary, generated)
+            }
+            TypedExprKind::Unary(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprUnary, generated)
+            }
+            TypedExprKind::Match(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprMatch, generated)
+            }
+            TypedExprKind::Let(_) => Ok(generated),
+            TypedExprKind::If(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprIf, generated)
+            }
+            TypedExprKind::List(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprList, generated)
+            }
+            TypedExprKind::Tuple(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprTuple, generated)
+            }
+            TypedExprKind::Record(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprRecord, generated)
+            }
+            TypedExprKind::MapLiteral(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprMapLiteral, generated)
+            }
+            TypedExprKind::FieldAccess(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprFieldAccess, generated)
+            }
+            TypedExprKind::Index(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprIndex, generated)
+            }
+            TypedExprKind::Map(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprMap, generated)
+            }
+            TypedExprKind::Filter(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprFilter, generated)
+            }
+            TypedExprKind::Fold(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprFold, generated)
+            }
+            TypedExprKind::Concurrent(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprConcurrent, generated)
+            }
+            TypedExprKind::Pipeline(_) => {
+                self.wrap_expression_breakpoint(expr, DebugSpanKind::ExprPipeline, generated)
+            }
+        }?;
+        Ok(wrapped)
     }
 
     fn generate_literal(&mut self, lit: &LiteralExpr) -> Result<String, CodegenError> {
@@ -4643,11 +4982,24 @@ impl TypeScriptGenerator {
         ))
     }
 
-    fn generate_let(&mut self, let_expr: &TypedLetExpr) -> Result<String, CodegenError> {
+    fn generate_let(
+        &mut self,
+        expr: &TypedExpr,
+        let_expr: &TypedLetExpr,
+    ) -> Result<String, CodegenError> {
         // Generate async IIFE for let binding
         let value = self.generate_expression(&let_expr.value)?;
         let body = self.generate_expression(&let_expr.body)?;
         let bindings = self.generate_pattern_bindings(&let_expr.pattern, "__let_value")?;
+        let scope_locals = self.pattern_scope_locals_expr(&let_expr.pattern, "let")?;
+        let breakpoint_meta = if self.breakpoints_enabled {
+            Some(self.trace_meta_literal(
+                self.span_id_for_expr(DebugSpanKind::ExprLet, expr.location),
+                &[],
+            )?)
+        } else {
+            None
+        };
 
         let mut lines = Vec::new();
         lines.push("(async () => {".to_string());
@@ -4655,7 +5007,23 @@ impl TypeScriptGenerator {
         if let Some(binding) = bindings {
             lines.push(format!("  {}", binding));
         }
-        lines.push(format!("  return {};", body));
+        if breakpoint_meta.is_some() {
+            lines.push(format!(
+                "  __sigil_breakpoint_push_scope({});",
+                scope_locals
+            ));
+            lines.push("  try {".to_string());
+            lines.push(format!(
+                "    __sigil_breakpoint_maybe_hit({});",
+                breakpoint_meta.unwrap()
+            ));
+            lines.push(format!("    return await {};", body));
+            lines.push("  } finally {".to_string());
+            lines.push("    __sigil_breakpoint_pop_scope();".to_string());
+            lines.push("  }".to_string());
+        } else {
+            lines.push(format!("  return {};", body));
+        }
         lines.push("})()".to_string());
 
         Ok(lines.join("\n"))
@@ -4683,12 +5051,15 @@ impl TypeScriptGenerator {
             let condition = self.generate_pattern_condition(&arm.pattern, "__match")?;
             let body = self.generate_expression(&arm.body)?;
             let bindings = self.generate_pattern_bindings(&arm.pattern, "__match")?;
-            let arm_span_id = self.span_id_for_match_arm(arm.location).unwrap_or("");
+            let arm_span_id = self
+                .span_id_for_match_arm(arm.location)
+                .unwrap_or("")
+                .to_string();
             let trace_line = trace_meta.as_ref().map(|meta| {
                 format!(
                     "      __sigil_trace_branch_match({}, {}, {}, {});",
                     meta,
-                    serde_json::to_string(arm_span_id).unwrap(),
+                    serde_json::to_string(&arm_span_id).unwrap(),
                     arm_index,
                     arm.guard.is_some()
                 )
@@ -4704,12 +5075,54 @@ impl TypeScriptGenerator {
             if let Some(ref guard) = arm.guard {
                 let guard_expr = self.generate_expression(guard)?;
                 lines.push(format!("    if (await {}) {{", guard_expr));
+                if self.breakpoints_enabled {
+                    let scope_locals = self.pattern_scope_locals_expr(&arm.pattern, "pattern")?;
+                    let arm_meta = self.trace_meta_literal(Some(arm_span_id.as_str()), &[])?;
+                    lines.push(format!(
+                        "      __sigil_breakpoint_push_scope({});",
+                        scope_locals
+                    ));
+                    lines.push("      try {".to_string());
+                    lines.push(format!(
+                        "        __sigil_breakpoint_maybe_hit({});",
+                        arm_meta
+                    ));
+                    if let Some(trace_line) = &trace_line {
+                        lines.push(trace_line.clone());
+                    }
+                    lines.push(format!("        return await {};", body));
+                    lines.push("      } finally {".to_string());
+                    lines.push("        __sigil_breakpoint_pop_scope();".to_string());
+                    lines.push("      }".to_string());
+                    lines.push("    }".to_string());
+                    lines.push("  }".to_string());
+                    continue;
+                }
                 if let Some(trace_line) = &trace_line {
                     lines.push(trace_line.clone());
                 }
                 lines.push(format!("      return {};", body));
                 lines.push("    }".to_string());
             } else {
+                if self.breakpoints_enabled {
+                    let scope_locals = self.pattern_scope_locals_expr(&arm.pattern, "pattern")?;
+                    let arm_meta = self.trace_meta_literal(Some(arm_span_id.as_str()), &[])?;
+                    lines.push(format!(
+                        "    __sigil_breakpoint_push_scope({});",
+                        scope_locals
+                    ));
+                    lines.push("    try {".to_string());
+                    lines.push(format!("      __sigil_breakpoint_maybe_hit({});", arm_meta));
+                    if let Some(trace_line) = &trace_line {
+                        lines.push(trace_line.clone());
+                    }
+                    lines.push(format!("      return await {};", body));
+                    lines.push("    } finally {".to_string());
+                    lines.push("      __sigil_breakpoint_pop_scope();".to_string());
+                    lines.push("    }".to_string());
+                    lines.push("  }".to_string());
+                    continue;
+                }
                 if let Some(trace_line) = &trace_line {
                     lines.push(trace_line.clone());
                 }
@@ -5388,6 +5801,7 @@ mod tests {
             source_file: Some("projects/algorithms/tests/rot13Encoder.sigil".to_string()),
             output_file: Some("/tmp/projects/algorithms/.local/tests/rot13Encoder.ts".to_string()),
             trace: false,
+            breakpoints: false,
         });
         gen.emit_module_import("src::rot13Encoder").unwrap();
         let result = gen.output.join("");
@@ -5404,6 +5818,7 @@ mod tests {
                 "/tmp/language/stdlib-tests/.local/tests/numericPredicates.ts".to_string(),
             ),
             trace: false,
+            breakpoints: false,
         });
         gen.emit_module_import("stdlib::numeric").unwrap();
         let result = gen.output.join("");
@@ -5498,6 +5913,7 @@ mod tests {
             source_file: Some("projects/algorithms/src/topologicalSort.sigil".to_string()),
             output_file: Some("/tmp/projects/algorithms/.local/src/topologicalSort.ts".to_string()),
             trace: false,
+            breakpoints: false,
         });
         let result = gen.generate(&program).unwrap();
 
@@ -5515,6 +5931,7 @@ mod tests {
             source_file: Some("tests/smoke.sigil".to_string()),
             output_file: Some("/tmp/tests/smoke.ts".to_string()),
             trace: false,
+            breakpoints: false,
         });
         let result = gen.generate(&program).unwrap();
 
@@ -5534,6 +5951,7 @@ mod tests {
             source_file: Some("test.sigil".to_string()),
             output_file: Some("/tmp/test.js".to_string()),
             trace: false,
+            breakpoints: false,
         });
         gen.generate(&program).unwrap();
 
@@ -5562,6 +5980,7 @@ mod tests {
             source_file: Some("test.sigil".to_string()),
             output_file: Some("/tmp/test.js".to_string()),
             trace: false,
+            breakpoints: false,
         });
         gen.generate(&program).unwrap();
 
@@ -5594,12 +6013,13 @@ mod tests {
             source_file: Some("test.sigil".to_string()),
             output_file: Some("/tmp/test.js".to_string()),
             trace: true,
+            breakpoints: false,
         });
         let result = gen.generate(&program).unwrap();
 
-        assert!(result.contains("function __sigil_trace_wrap_call("));
+        assert!(result.contains("function __sigil_debug_wrap_call("));
         assert!(result.contains("__sigil_trace_branch_match("));
-        assert!(result.contains("__sigil_trace_wrap_call({ moduleId: \"src::main\""));
+        assert!(result.contains("__sigil_debug_wrap_call({ moduleId: \"src::main\""));
     }
 
     #[test]
@@ -5613,11 +6033,53 @@ mod tests {
             source_file: Some("test.sigil".to_string()),
             output_file: Some("/tmp/test.js".to_string()),
             trace: true,
+            breakpoints: false,
         });
         let result = gen.generate(&program).unwrap();
 
         assert!(result.contains("__sigil_trace_wrap_effect("));
         assert!(result.contains("__sigil_call("));
+    }
+
+    #[test]
+    fn test_generate_breakpoints_emit_function_and_let_scope_helpers() {
+        let source = "λmain(x:Int)=>Int={l y=(x+1:Int);y}";
+        let program = typed_program_for(source, "test.sigil");
+
+        let mut gen = TypeScriptGenerator::new(CodegenOptions {
+            module_id: Some("src::main".to_string()),
+            source_file: Some("test.sigil".to_string()),
+            output_file: Some("/tmp/test.js".to_string()),
+            trace: false,
+            breakpoints: true,
+        });
+        let result = gen.generate(&program).unwrap();
+
+        assert!(result.contains("function __sigil_breakpoint_snapshot()"));
+        assert!(result.contains("__sigil_breakpoint_push_frame("));
+        assert!(result.contains(
+            "__sigil_breakpoint_push_scope([{ name: \"y\", origin: \"let\", value: y }]"
+        ));
+        assert!(result.contains("__sigil_breakpoint_maybe_hit("));
+    }
+
+    #[test]
+    fn test_generate_breakpoints_emit_pattern_scope_for_match_arms() {
+        let source = "λmain(value:Bool)=>Int match value{true=>{l n=(1:Int);n}|false=>0}";
+        let program = typed_program_for(source, "test.sigil");
+
+        let mut gen = TypeScriptGenerator::new(CodegenOptions {
+            module_id: Some("src::main".to_string()),
+            source_file: Some("test.sigil".to_string()),
+            output_file: Some("/tmp/test.js".to_string()),
+            trace: false,
+            breakpoints: true,
+        });
+        let result = gen.generate(&program).unwrap();
+
+        assert!(result.contains("__sigil_breakpoint_push_scope([]);"));
+        assert!(result.contains("__sigil_breakpoint_maybe_hit("));
+        assert!(result.contains("return await (async () => {"));
     }
 
     #[test]

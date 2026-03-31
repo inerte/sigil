@@ -18,6 +18,7 @@ Sigil CLI commands are machine-first. JSON is the default output mode for:
 - plain `sigil run <file>` emits structured JSON on failure
 - `sigil run --json <file>` emits the structured JSON envelope on both success and failure
 - `sigil run --json --trace <file>` adds a bounded inline execution trace to that envelope
+- `sigil run --json --break-fn <name> <file>` adds machine-readable breakpoint snapshots
 - `sigil run --json --record <artifact> <file>` adds replay recording metadata and writes a replay artifact
 - `sigil run --json --replay <artifact> <file>` replays a prior artifact and reports replay consumption metadata
 
@@ -105,6 +106,16 @@ usual top-level diagnostic shape and may enrich `error.details` with:
   - `returnedEvents`
   - `droppedEvents`
   - `events`
+- optional `breakpoints`
+  - `enabled`
+  - `mode`
+  - `stopped`
+  - `truncated`
+  - `totalHits`
+  - `returnedHits`
+  - `droppedHits`
+  - `maxHits`
+  - `hits`
 - optional `replay`
   - `mode`
   - `file`
@@ -164,6 +175,57 @@ Events may also include:
 - it identifies the owning top-level Sigil declaration using the generated `.span.json` sidecar
 - it may include a tiny declaration-header excerpt
 - it does not yet promise exact nested-expression blame inside the declaration body
+
+## Run Breakpoint Details
+
+Breakpoint selectors currently require `--json`.
+
+Supported selectors:
+
+- `--break <file:line>`
+- `--break-fn <name>`
+- `--break-span <id>`
+
+Supported controls:
+
+- `--break-mode stop|collect`
+- `--break-max-hits <n>`
+
+The inline `breakpoints` block reports:
+
+- `enabled`
+- `mode`
+- `stopped`
+- `truncated`
+- `totalHits`
+- `returnedHits`
+- `droppedHits`
+- `maxHits`
+- `hits`
+
+Each hit currently includes:
+
+- matched selector summaries
+- `moduleId`
+- `sourceFile`
+- `spanId`
+- optional declaration context such as `declarationKind` / `declarationLabel`
+- resolved Sigil `location` when the span map can provide it
+- current-frame `locals`
+- stack-frame summaries
+- a bounded `recentTrace` window using the same event schema as `data.trace`
+
+Stop mode is a successful early stop:
+
+- the top-level envelope still uses `ok: true`
+- `data.breakpoints.stopped` is `true`
+- `runtime.stdout` / `runtime.stderr` contain only output produced before the stop
+
+Collect mode keeps running:
+
+- `stopped` remains `false`
+- only the most recent `maxHits` snapshots are returned
+- older hits are reflected through `truncated`, `totalHits`, `returnedHits`, and `droppedHits`
 
 ## Run Replay Details
 
@@ -277,9 +339,11 @@ The current implementation uses:
 - successful `compile` output reports `.span.json` sidecars via `rootSpanMap` and per-module `spanMapFile`
 - successful `run --json` output reports the entry module `.span.json` sidecar via `data.compile.spanMapFile`
 - successful `run --json --trace` output reports inline bounded trace events via `data.trace`
+- breakpoint-enabled `run --json` output may report inline snapshots via `data.breakpoints`
 - successful `run --json --record` and `run --json --replay` output may report inline replay summary data via `data.replay`
 - runtime `run` failures may include declaration-level `sigilFrame` and generated TypeScript `generatedFrame` context when an uncaught exception stack is available
 - traced `run` failures may include bounded inline trace events via `error.details.trace`
+- breakpoint-enabled `run` failures may include bounded snapshot data via `error.details.breakpoints`
 - recorded or replayed `run` failures may include replay summary data via `error.details.replay`
 - `inspect types` is top-level declaration-focused in v1; it does not report nested expression types yet
 - `inspect validate` returns canonical printer output even when `validation.ok` is `false`, as long as lexing and parsing succeeded

@@ -131,6 +131,8 @@ pub mod cli {
     pub const UNKNOWN_COMMAND: &str = "SIGIL-CLI-UNKNOWN-COMMAND";
     pub const UNSUPPORTED_OPTION: &str = "SIGIL-CLI-UNSUPPORTED-OPTION";
     pub const UNEXPECTED: &str = "SIGIL-CLI-UNEXPECTED";
+    pub const BREAKPOINT_NOT_FOUND: &str = "SIGIL-CLI-BREAKPOINT-NOT-FOUND";
+    pub const BREAKPOINT_AMBIGUOUS: &str = "SIGIL-CLI-BREAKPOINT-AMBIGUOUS";
     pub const IMPORT_NOT_FOUND: &str = "SIGIL-CLI-IMPORT-NOT-FOUND";
     pub const IMPORT_CYCLE: &str = "SIGIL-CLI-IMPORT-CYCLE";
     pub const INVALID_IMPORT: &str = "SIGIL-CLI-INVALID-IMPORT";
@@ -256,7 +258,9 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     typecheck::MATCH_UNREACHABLE_ARM,
     // Mutability (1 code)
     mutability::INVALID,
-    // CLI (8 codes)
+    // CLI (10 codes)
+    cli::BREAKPOINT_NOT_FOUND,
+    cli::BREAKPOINT_AMBIGUOUS,
     cli::USAGE,
     cli::UNKNOWN_COMMAND,
     cli::UNSUPPORTED_OPTION,
@@ -320,8 +324,8 @@ mod tests {
         // Keep this in sync when adding or removing diagnostic codes.
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            112,
-            "Expected 112 error codes, found {}",
+            114,
+            "Expected 114 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

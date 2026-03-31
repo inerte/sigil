@@ -835,6 +835,82 @@
       },
       "additionalProperties": false
     },
+    "runBreakpointSelector": {
+      "type": "object",
+      "required": ["kind", "value"],
+      "properties": {
+        "kind": { "type": "string", "enum": ["fileLine", "function", "span"] },
+        "value": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "runBreakpointLocal": {
+      "type": "object",
+      "required": ["name", "origin", "value"],
+      "properties": {
+        "name": { "type": "string" },
+        "origin": { "type": "string", "enum": ["param", "let", "pattern"] },
+        "value": { "$ref": "#/$defs/runTraceValueSummary" }
+      },
+      "additionalProperties": false
+    },
+    "runBreakpointFrame": {
+      "type": "object",
+      "required": ["moduleId", "sourceFile", "spanId", "location"],
+      "properties": {
+        "moduleId": { "type": "string" },
+        "sourceFile": { "type": "string" },
+        "spanId": { "type": "string" },
+        "declarationKind": { "type": ["string", "null"] },
+        "declarationLabel": { "type": ["string", "null"] },
+        "functionName": { "type": ["string", "null"] },
+        "location": {
+          "oneOf": [
+            { "$ref": "#/$defs/sourceSpan" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "runBreakpointHit": {
+      "type": "object",
+      "required": ["matched", "moduleId", "sourceFile", "spanId", "location", "locals", "stack", "recentTrace"],
+      "properties": {
+        "matched": { "type": "array", "items": { "$ref": "#/$defs/runBreakpointSelector" } },
+        "moduleId": { "type": "string" },
+        "sourceFile": { "type": "string" },
+        "spanId": { "type": "string" },
+        "declarationKind": { "type": ["string", "null"] },
+        "declarationLabel": { "type": ["string", "null"] },
+        "location": {
+          "oneOf": [
+            { "$ref": "#/$defs/sourceSpan" },
+            { "type": "null" }
+          ]
+        },
+        "locals": { "type": "array", "items": { "$ref": "#/$defs/runBreakpointLocal" } },
+        "stack": { "type": "array", "items": { "$ref": "#/$defs/runBreakpointFrame" } },
+        "recentTrace": { "type": "array", "items": { "$ref": "#/$defs/runTraceEvent" } }
+      },
+      "additionalProperties": false
+    },
+    "runBreakpoints": {
+      "type": "object",
+      "required": ["enabled", "mode", "stopped", "truncated", "totalHits", "returnedHits", "droppedHits", "maxHits", "hits"],
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "mode": { "type": "string", "enum": ["stop", "collect"] },
+        "stopped": { "type": "boolean" },
+        "truncated": { "type": "boolean" },
+        "totalHits": { "type": "integer", "minimum": 0 },
+        "returnedHits": { "type": "integer", "minimum": 0 },
+        "droppedHits": { "type": "integer", "minimum": 0 },
+        "maxHits": { "type": "integer", "minimum": 1 },
+        "hits": { "type": "array", "items": { "$ref": "#/$defs/runBreakpointHit" } }
+      },
+      "additionalProperties": false
+    },
     "runSigilFrame": {
       "type": "object",
       "required": ["spanId", "kind", "file", "location"],
@@ -867,6 +943,7 @@
         "compile": { "$ref": "#/$defs/runCompileInfo" },
         "runtime": { "$ref": "#/$defs/runRuntimeInfo" },
         "trace": { "$ref": "#/$defs/runTrace" },
+        "breakpoints": { "$ref": "#/$defs/runBreakpoints" },
         "replay": { "$ref": "#/$defs/runReplay" },
         "exception": { "$ref": "#/$defs/runExceptionDetails" }
       },
@@ -879,6 +956,7 @@
         "compile": { "$ref": "#/$defs/runCompileInfo" },
         "runtime": { "$ref": "#/$defs/runRuntimeInfo" },
         "trace": { "$ref": "#/$defs/runTrace" },
+        "breakpoints": { "$ref": "#/$defs/runBreakpoints" },
         "replay": { "$ref": "#/$defs/runReplay" }
       },
       "additionalProperties": false

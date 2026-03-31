@@ -3,7 +3,7 @@
 //! Command-line interface for the Sigil compiler.
 //! Provides commands: compile, run, test, parse, lex
 
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 use std::process;
 
@@ -26,6 +26,12 @@ const SIGIL_VERSION: &str = match option_env!("SIGIL_VERSION") {
 struct Cli {
     #[command(subcommand)]
     command: Command,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq, ValueEnum)]
+enum BreakModeArg {
+    Stop,
+    Collect,
 }
 
 #[derive(Subcommand)]
@@ -82,6 +88,26 @@ enum Command {
         /// Capture a bounded structured execution trace (requires --json)
         #[arg(long)]
         trace: bool,
+
+        /// Break when execution reaches a specific source line
+        #[arg(long = "break", value_name = "FILE:LINE")]
+        breakpoint: Vec<String>,
+
+        /// Break when a specific top-level function is entered
+        #[arg(long = "break-fn", value_name = "NAME")]
+        break_fn: Vec<String>,
+
+        /// Break when a specific span id is reached
+        #[arg(long = "break-span", value_name = "SPAN")]
+        break_span: Vec<String>,
+
+        /// How breakpoint hits should affect the run
+        #[arg(long = "break-mode", default_value = "stop")]
+        break_mode: BreakModeArg,
+
+        /// Maximum breakpoint hits returned inline
+        #[arg(long = "break-max-hits", default_value_t = 32)]
+        break_max_hits: usize,
 
         /// Record replayable external effect activity to a file
         #[arg(long, conflicts_with = "replay")]
@@ -244,6 +270,11 @@ fn main() {
             file,
             json,
             trace,
+            breakpoint,
+            break_fn,
+            break_span,
+            break_mode,
+            break_max_hits,
             record,
             replay,
             env,
@@ -252,6 +283,11 @@ fn main() {
             &file,
             json,
             trace,
+            &breakpoint,
+            &break_fn,
+            &break_span,
+            matches!(break_mode, BreakModeArg::Collect),
+            break_max_hits,
             record.as_deref(),
             replay.as_deref(),
             env.as_deref(),

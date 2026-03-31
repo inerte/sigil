@@ -60,6 +60,13 @@ pub enum CliError {
     #[error("Runtime error: {0}")]
     Runtime(String),
 
+    #[error("Breakpoint error: {code}: {message}")]
+    Breakpoint {
+        code: String,
+        message: String,
+        details: serde_json::Value,
+    },
+
     #[error("Module graph error: {0}")]
     ModuleGraph(#[from] ModuleGraphError),
 
@@ -355,6 +362,17 @@ fn output_inspect_error(
                 }),
                 extra_details,
             ),
+        ),
+        CliError::Breakpoint {
+            code,
+            message,
+            details,
+        } => output_json_error(
+            command,
+            phase_for_code(code),
+            code,
+            message,
+            merge_json_details(details.clone(), extra_details),
         ),
         CliError::Reported(_) => {}
     }
@@ -1179,7 +1197,7 @@ fn inspect_codegen_single_file_command(file: &Path) -> Result<(), CliError> {
             return Err(CliError::Reported(1));
         }
     };
-    let generated = match generate_module_graph_outputs(&graph, None, false) {
+    let generated = match generate_module_graph_outputs(&graph, None, false, false) {
         Ok(generated) => generated,
         Err(error) => {
             output_inspect_error(
@@ -1286,7 +1304,7 @@ fn inspect_codegen_directory_command(
                 return Err(CliError::Reported(1));
             }
         };
-        let generated = match generate_module_graph_outputs(&graph, None, false) {
+        let generated = match generate_module_graph_outputs(&graph, None, false, false) {
             Ok(generated) => generated,
             Err(error) => {
                 let mut extra = serde_json::Map::new();
@@ -1865,7 +1883,7 @@ fn compile_group(group: &CompileBatchGroup) -> Result<CompileBatchOutputs, CliEr
         })
         .collect::<Result<Vec<_>, CliError>>()?;
 
-    let compiled = compile_module_graph(graph, None, false)?;
+    let compiled = compile_module_graph(graph, None, false, false)?;
     let entries = entry_modules
         .into_iter()
         .map(|(input, module_id, project_root)| {
@@ -1949,7 +1967,7 @@ fn compile_single_file_command(
         .collect::<Vec<_>>();
     let project_json = project_json(entry_module.project.as_ref());
 
-    let compiled = match compile_module_graph(graph, output, false) {
+    let compiled = match compile_module_graph(graph, output, false, false) {
         Ok(compiled) => compiled,
         Err(CliError::Type(type_error)) => {
             output_json_error(
@@ -2154,11 +2172,20 @@ pub fn run_command(
     file: &Path,
     json_output: bool,
     trace_output: bool,
+    breakpoint_lines: &[String],
+    breakpoint_functions: &[String],
+    breakpoint_spans: &[String],
+    breakpoint_collect: bool,
+    breakpoint_max_hits: usize,
     record_path: Option<&Path>,
     replay_path: Option<&Path>,
     selected_env: Option<&str>,
     args: &[String],
 ) -> Result<(), CliError> {
+    let breakpoints_requested = !breakpoint_lines.is_empty()
+        || !breakpoint_functions.is_empty()
+        || !breakpoint_spans.is_empty();
+
     if trace_output && !json_output {
         output_json_error_to(
             "sigilc run",
@@ -2171,6 +2198,38 @@ pub fn run_command(
                 "requires": "--json"
             }),
             true,
+        );
+        return Err(CliError::Reported(1));
+    }
+
+    if breakpoints_requested && !json_output {
+        output_json_error_to(
+            "sigilc run",
+            "cli",
+            codes::cli::USAGE,
+            "breakpoints require `--json`",
+            json!({
+                "file": file.to_string_lossy(),
+                "option": "--break",
+                "requires": "--json"
+            }),
+            true,
+        );
+        return Err(CliError::Reported(1));
+    }
+
+    if breakpoints_requested && breakpoint_max_hits == 0 {
+        output_json_error_to(
+            "sigilc run",
+            "cli",
+            codes::cli::USAGE,
+            "`--break-max-hits` must be at least 1",
+            json!({
+                "file": file.to_string_lossy(),
+                "option": "--break-max-hits",
+                "minimum": 1
+            }),
+            !json_output,
         );
         return Err(CliError::Reported(1));
     }
@@ -2195,11 +2254,29 @@ pub fn run_command(
         file,
         selected_env,
         trace_output,
+        breakpoints_requested,
+        breakpoint_lines,
+        breakpoint_functions,
+        breakpoint_spans,
+        if breakpoint_collect {
+            BreakpointMode::Collect
+        } else {
+            BreakpointMode::Stop
+        },
+        breakpoint_max_hits,
         record_path,
         replay_path,
         args,
     ) {
         Ok(run_target) => run_target,
+        Err(CliError::Breakpoint {
+            code,
+            message,
+            details,
+        }) => {
+            output_json_error_to("sigilc run", "cli", &code, &message, details, !json_output);
+            return Err(CliError::Reported(1));
+        }
         Err(error) => {
             output_run_error(file, &error, !json_output);
             return Err(CliError::Reported(1));
@@ -2210,6 +2287,7 @@ pub fn run_command(
         &run_target.runner_path,
         &run_target.runtime_error_path,
         run_target.runtime_trace_path.as_deref(),
+        run_target.runtime_breakpoint_path.as_deref(),
         run_target.runtime_replay_path.as_deref(),
         args,
         !json_output,
@@ -2248,6 +2326,11 @@ pub fn run_command(
                     "stderr": runtime_output.stderr
                 },
                 "trace": runtime_trace_json(runtime_output.trace_capture.as_ref()),
+                "breakpoints": runtime_breakpoints_json(
+                    run_target.breakpoint_config.as_ref(),
+                    runtime_output.breakpoint_capture.as_ref(),
+                    &run_target.module_debug_outputs
+                ),
                 "replay": runtime_replay_json(
                     run_target.replay_mode.as_deref(),
                     run_target.replay_file.as_deref(),
@@ -2271,6 +2354,14 @@ pub fn run_command(
                 data.remove("replay");
             }
         }
+        if run_target.breakpoint_config.is_none() {
+            if let Some(data) = output_json
+                .get_mut("data")
+                .and_then(|value| value.as_object_mut())
+            {
+                data.remove("breakpoints");
+            }
+        }
         output_json_value(&output_json, false);
     }
 
@@ -2283,17 +2374,49 @@ struct RunTarget {
     runner_path: PathBuf,
     runtime_error_path: PathBuf,
     runtime_trace_path: Option<PathBuf>,
+    runtime_breakpoint_path: Option<PathBuf>,
     runtime_replay_path: Option<PathBuf>,
     trace_enabled: bool,
+    breakpoint_config: Option<ResolvedBreakpointConfig>,
     replay_mode: Option<String>,
     replay_file: Option<PathBuf>,
     module_debug_outputs: Vec<RuntimeModuleDebugOutput>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum BreakpointMode {
+    Stop,
+    Collect,
+}
+
+impl BreakpointMode {
+    fn as_str(self) -> &'static str {
+        match self {
+            BreakpointMode::Stop => "stop",
+            BreakpointMode::Collect => "collect",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 struct RuntimeModuleDebugOutput {
+    module_id: String,
     output_file: PathBuf,
-    span_map_file: PathBuf,
+    span_map: ModuleSpanMap,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct ResolvedBreakpointSelector {
+    kind: String,
+    value: String,
+}
+
+#[derive(Debug, Clone)]
+struct ResolvedBreakpointConfig {
+    mode: BreakpointMode,
+    max_hits: usize,
+    spans: HashMap<String, Vec<ResolvedBreakpointSelector>>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -2313,6 +2436,7 @@ struct RuntimeOutput {
     stderr: String,
     exception_capture: Option<RuntimeExceptionCapture>,
     trace_capture: Option<RuntimeTraceCapture>,
+    breakpoint_capture: Option<RuntimeBreakpointCapture>,
     replay_capture: Option<RuntimeReplayCapture>,
 }
 
@@ -2337,6 +2461,296 @@ struct RuntimeReplayCapture {
     consumed_events: usize,
     remaining_events: usize,
     partial: bool,
+}
+
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeBreakpointCapture {
+    enabled: bool,
+    mode: String,
+    stopped: bool,
+    truncated: bool,
+    total_hits: usize,
+    returned_hits: usize,
+    dropped_hits: usize,
+    max_hits: usize,
+    #[serde(default)]
+    hits: Vec<RuntimeBreakpointHitCapture>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeBreakpointHitCapture {
+    #[serde(default)]
+    matched: Vec<ResolvedBreakpointSelector>,
+    module_id: String,
+    source_file: String,
+    span_id: String,
+    #[serde(default)]
+    declaration_kind: Option<String>,
+    #[serde(default)]
+    declaration_label: Option<String>,
+    #[serde(default)]
+    locals: Vec<RuntimeBreakpointLocalCapture>,
+    #[serde(default)]
+    stack: Vec<RuntimeBreakpointFrameCapture>,
+    #[serde(default)]
+    recent_trace: Vec<serde_json::Value>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeBreakpointLocalCapture {
+    name: String,
+    origin: String,
+    value: serde_json::Value,
+}
+
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeBreakpointFrameCapture {
+    module_id: String,
+    source_file: String,
+    span_id: String,
+    #[serde(default)]
+    declaration_kind: Option<String>,
+    #[serde(default)]
+    declaration_label: Option<String>,
+    #[serde(default)]
+    function_name: Option<String>,
+}
+
+fn parse_breakpoint_line_selector(selector: &str) -> Result<(PathBuf, usize), CliError> {
+    let (raw_path, raw_line) = selector
+        .rsplit_once(':')
+        .ok_or_else(|| CliError::Breakpoint {
+            code: codes::cli::USAGE.to_string(),
+            message: format!("invalid breakpoint selector '{}'", selector),
+            details: json!({
+                "selector": selector,
+                "expectedFormat": "FILE:LINE"
+            }),
+        })?;
+    let line = raw_line
+        .parse::<usize>()
+        .map_err(|_| CliError::Breakpoint {
+            code: codes::cli::USAGE.to_string(),
+            message: format!("invalid breakpoint line '{}'", selector),
+            details: json!({
+                "selector": selector,
+                "expectedFormat": "FILE:LINE"
+            }),
+        })?;
+    if line == 0 {
+        return Err(CliError::Breakpoint {
+            code: codes::cli::USAGE.to_string(),
+            message: format!("invalid breakpoint line '{}'", selector),
+            details: json!({
+                "selector": selector,
+                "minimumLine": 1
+            }),
+        });
+    }
+
+    let path = Path::new(raw_path);
+    let absolute = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        std::env::current_dir()?.join(path)
+    };
+    Ok((canonicalize_existing_path(&absolute), line))
+}
+
+fn breakpoint_selector_value(kind: &str, value: &str) -> ResolvedBreakpointSelector {
+    ResolvedBreakpointSelector {
+        kind: kind.to_string(),
+        value: value.to_string(),
+    }
+}
+
+fn breakpoint_span_matches_line(span: &DebugSpanRecord, source_file: &Path, line: usize) -> bool {
+    canonicalize_existing_path(Path::new(&span.source_file)) == source_file
+        && span.location.start.line <= line
+        && span.location.end.line >= line
+}
+
+fn is_breakpoint_executable_span(span: &DebugSpanRecord) -> bool {
+    matches!(
+        span.kind,
+        DebugSpanKind::FunctionDecl
+            | DebugSpanKind::MatchArm
+            | DebugSpanKind::ExprLiteral
+            | DebugSpanKind::ExprIdentifier
+            | DebugSpanKind::ExprNamespaceMember
+            | DebugSpanKind::ExprLambda
+            | DebugSpanKind::ExprCall
+            | DebugSpanKind::ExprConstructorCall
+            | DebugSpanKind::ExprExternCall
+            | DebugSpanKind::ExprMethodCall
+            | DebugSpanKind::ExprBinary
+            | DebugSpanKind::ExprUnary
+            | DebugSpanKind::ExprMatch
+            | DebugSpanKind::ExprLet
+            | DebugSpanKind::ExprIf
+            | DebugSpanKind::ExprList
+            | DebugSpanKind::ExprTuple
+            | DebugSpanKind::ExprRecord
+            | DebugSpanKind::ExprMapLiteral
+            | DebugSpanKind::ExprFieldAccess
+            | DebugSpanKind::ExprIndex
+            | DebugSpanKind::ExprMap
+            | DebugSpanKind::ExprFilter
+            | DebugSpanKind::ExprFold
+            | DebugSpanKind::ExprConcurrent
+            | DebugSpanKind::ExprPipeline
+    )
+}
+
+fn breakpoint_span_sort_key(span: &DebugSpanRecord) -> (usize, usize, usize, usize) {
+    (
+        span.location
+            .end
+            .line
+            .saturating_sub(span.location.start.line),
+        span.location
+            .end
+            .offset
+            .saturating_sub(span.location.start.offset),
+        span.location.start.line,
+        span.location.start.column,
+    )
+}
+
+fn resolved_breakpoint_config_json(config: &ResolvedBreakpointConfig) -> serde_json::Value {
+    let spans = config
+        .spans
+        .iter()
+        .map(|(span_id, selectors)| {
+            (
+                span_id.clone(),
+                serde_json::to_value(selectors).unwrap_or_else(|_| json!([])),
+            )
+        })
+        .collect::<serde_json::Map<_, _>>();
+    json!({
+        "enabled": true,
+        "mode": config.mode.as_str(),
+        "maxHits": config.max_hits,
+        "recentTraceLimit": 32,
+        "spans": serde_json::Value::Object(spans)
+    })
+}
+
+fn resolve_breakpoint_config(
+    file: &Path,
+    module_debug_outputs: &[RuntimeModuleDebugOutput],
+    breakpoint_lines: &[String],
+    breakpoint_functions: &[String],
+    breakpoint_spans: &[String],
+    mode: BreakpointMode,
+    max_hits: usize,
+) -> Result<Option<ResolvedBreakpointConfig>, CliError> {
+    if breakpoint_lines.is_empty() && breakpoint_functions.is_empty() && breakpoint_spans.is_empty()
+    {
+        return Ok(None);
+    }
+
+    let mut spans = HashMap::<String, Vec<ResolvedBreakpointSelector>>::new();
+
+    for selector in breakpoint_lines {
+        let (source_file, line) = parse_breakpoint_line_selector(selector)?;
+        let span = module_debug_outputs
+            .iter()
+            .flat_map(|module| module.span_map.spans.iter())
+            .filter(|span| is_breakpoint_executable_span(span))
+            .filter(|span| breakpoint_span_matches_line(span, &source_file, line))
+            .min_by_key(|span| breakpoint_span_sort_key(span))
+            .cloned()
+            .ok_or_else(|| CliError::Breakpoint {
+                code: codes::cli::BREAKPOINT_NOT_FOUND.to_string(),
+                message: format!("no executable breakpoint found for '{}'", selector),
+                details: json!({
+                    "file": file.to_string_lossy(),
+                    "selector": selector
+                }),
+            })?;
+        spans
+            .entry(span.span_id)
+            .or_default()
+            .push(breakpoint_selector_value("fileLine", selector));
+    }
+
+    for selector in breakpoint_functions {
+        let matches = module_debug_outputs
+            .iter()
+            .flat_map(|module| module.span_map.spans.iter())
+            .filter(|span| span.kind == DebugSpanKind::FunctionDecl)
+            .filter(|span| span.label.as_deref() == Some(selector.as_str()))
+            .cloned()
+            .collect::<Vec<_>>();
+        match matches.as_slice() {
+            [] => {
+                return Err(CliError::Breakpoint {
+                    code: codes::cli::BREAKPOINT_NOT_FOUND.to_string(),
+                    message: format!("function breakpoint '{}' not found", selector),
+                    details: json!({
+                        "file": file.to_string_lossy(),
+                        "selector": selector
+                    }),
+                });
+            }
+            [span] => {
+                spans
+                    .entry(span.span_id.clone())
+                    .or_default()
+                    .push(breakpoint_selector_value("function", selector));
+            }
+            _ => {
+                return Err(CliError::Breakpoint {
+                    code: codes::cli::BREAKPOINT_AMBIGUOUS.to_string(),
+                    message: format!("function breakpoint '{}' is ambiguous", selector),
+                    details: json!({
+                        "file": file.to_string_lossy(),
+                        "selector": selector,
+                        "matches": matches
+                            .iter()
+                            .map(|span| json!({
+                                "sourceFile": span.source_file,
+                                "spanId": span.span_id,
+                                "line": span.location.start.line
+                            }))
+                            .collect::<Vec<_>>()
+                    }),
+                });
+            }
+        }
+    }
+
+    for selector in breakpoint_spans {
+        let span = module_debug_outputs
+            .iter()
+            .flat_map(|module| module.span_map.spans.iter())
+            .find(|span| span.span_id == *selector && is_breakpoint_executable_span(span))
+            .cloned()
+            .ok_or_else(|| CliError::Breakpoint {
+                code: codes::cli::BREAKPOINT_NOT_FOUND.to_string(),
+                message: format!("breakpoint span '{}' not found", selector),
+                details: json!({
+                    "file": file.to_string_lossy(),
+                    "selector": selector
+                }),
+            })?;
+        spans
+            .entry(span.span_id)
+            .or_default()
+            .push(breakpoint_selector_value("span", selector));
+    }
+
+    Ok(Some(ResolvedBreakpointConfig {
+        mode,
+        max_hits,
+        spans,
+    }))
 }
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
@@ -2422,6 +2836,12 @@ fn build_run_target(
     file: &Path,
     selected_env: Option<&str>,
     trace_enabled: bool,
+    breakpoints_requested: bool,
+    breakpoint_lines: &[String],
+    breakpoint_functions: &[String],
+    breakpoint_spans: &[String],
+    breakpoint_mode: BreakpointMode,
+    breakpoint_max_hits: usize,
     record_path: Option<&Path>,
     replay_path: Option<&Path>,
     args: &[String],
@@ -2436,14 +2856,27 @@ fn build_run_target(
     } else {
         runner_prelude(file, &graph, selected_env)?.unwrap_or_default()
     };
-    let compiled = compile_module_graph(graph, None, trace_enabled)?;
+    let debug_enabled = trace_enabled || breakpoints_requested;
+    let compiled = compile_module_graph(graph, None, trace_enabled, breakpoints_requested)?;
     let module_debug_outputs = build_runtime_module_debug_outputs(&compiled)?;
+    let breakpoint_config = resolve_breakpoint_config(
+        file,
+        &module_debug_outputs,
+        breakpoint_lines,
+        breakpoint_functions,
+        breakpoint_spans,
+        breakpoint_mode,
+        breakpoint_max_hits,
+    )?;
     let entry_output_path = compiled.entry_output_path;
     let entry_span_map_path = compiled.entry_span_map_path;
 
     let runner_path = entry_output_path.with_extension("run.ts");
     let runtime_error_path = unique_runtime_error_path(&entry_output_path);
     let runtime_trace_path = trace_enabled.then(|| unique_runtime_trace_path(&entry_output_path));
+    let runtime_breakpoint_path = breakpoint_config
+        .as_ref()
+        .map(|_| unique_runtime_breakpoint_path(&entry_output_path));
     let runtime_replay_path = replay_mode
         .as_ref()
         .map(|_| unique_runtime_replay_path(&entry_output_path));
@@ -2457,16 +2890,26 @@ fn build_run_target(
     let runtime_error_path_json =
         serde_json::to_string(&runtime_error_path.to_string_lossy().to_string()).unwrap();
     let replay_enabled = replay_mode.is_some();
-    let trace_import = if trace_enabled || replay_enabled {
+    let sync_capture_enabled =
+        runtime_trace_path.is_some() || runtime_breakpoint_path.is_some() || replay_enabled;
+    let sync_fs_import = if sync_capture_enabled {
         "import { writeFileSync } from 'node:fs';".to_string()
     } else {
         String::new()
     };
-    let trace_config = if trace_enabled {
+    let trace_config = if debug_enabled {
         "globalThis.__sigil_trace_config = { enabled: true, maxEvents: 256 };\nglobalThis.__sigil_trace_current = undefined;".to_string()
     } else {
         String::new()
     };
+    let breakpoint_config_json = breakpoint_config
+        .as_ref()
+        .map(resolved_breakpoint_config_json)
+        .map(|value| serde_json::to_string(&value).unwrap())
+        .unwrap_or_else(|| "null".to_string());
+    let breakpoint_config_setup = format!(
+        "globalThis.__sigil_breakpoint_config = {breakpoint_config_json};\nglobalThis.__sigil_breakpoint_current = undefined;"
+    );
     let trace_capture = if let Some(runtime_trace_path) = &runtime_trace_path {
         let runtime_trace_path_json =
             serde_json::to_string(&runtime_trace_path.to_string_lossy().to_string()).unwrap();
@@ -2495,6 +2938,60 @@ function __sigil_runtime_capture_trace_sync() {{
 
 process.on('exit', () => {{
   __sigil_runtime_capture_trace_sync();
+}});
+"#
+        )
+    } else {
+        String::new()
+    };
+    let breakpoint_capture = if let Some(runtime_breakpoint_path) = &runtime_breakpoint_path {
+        let runtime_breakpoint_path_json =
+            serde_json::to_string(&runtime_breakpoint_path.to_string_lossy().to_string()).unwrap();
+        format!(
+            r#"
+const __sigil_runtime_breakpoint_file = {runtime_breakpoint_path_json};
+
+function __sigil_runtime_breakpoint_payload() {{
+  if (typeof globalThis.__sigil_breakpoint_snapshot === 'function') {{
+    try {{
+      return globalThis.__sigil_breakpoint_snapshot();
+    }} catch (_breakpointError) {{
+      return {{
+        enabled: true,
+        mode: String(globalThis.__sigil_breakpoint_config?.mode ?? 'stop'),
+        stopped: false,
+        truncated: false,
+        totalHits: 0,
+        returnedHits: 0,
+        droppedHits: 0,
+        maxHits: Math.max(1, Number(globalThis.__sigil_breakpoint_config?.maxHits ?? 32)),
+        hits: []
+      }};
+    }}
+  }}
+  return {{
+    enabled: true,
+    mode: String(globalThis.__sigil_breakpoint_config?.mode ?? 'stop'),
+    stopped: false,
+    truncated: false,
+    totalHits: 0,
+    returnedHits: 0,
+    droppedHits: 0,
+    maxHits: Math.max(1, Number(globalThis.__sigil_breakpoint_config?.maxHits ?? 32)),
+    hits: []
+  }};
+}}
+
+function __sigil_runtime_capture_breakpoints_sync() {{
+  try {{
+    writeFileSync(__sigil_runtime_breakpoint_file, JSON.stringify(__sigil_runtime_breakpoint_payload()));
+  }} catch (_captureBreakpointError) {{
+    // Best-effort debug plumbing only.
+  }}
+}}
+
+process.on('exit', () => {{
+  __sigil_runtime_capture_breakpoints_sync();
 }});
 "#
         )
@@ -2620,11 +3117,13 @@ if (
 
     let runner_code = format!(
         r#"import {{ writeFile }} from 'node:fs/promises';
-{trace_import}
+{sync_fs_import}
 
 const __sigil_runtime_error_file = {runtime_error_path_json};
 {trace_capture}
 {trace_config}
+{breakpoint_capture}
+{breakpoint_config_setup}
 {replay_capture}
 {replay_bootstrap_failure}
 
@@ -2671,6 +3170,12 @@ async function __sigil_runtime_capture_error(error) {{
   return payload;
 }}
 
+function __sigil_runtime_is_breakpoint_stop(error) {{
+  return typeof globalThis.__sigil_breakpoint_is_stop_signal === 'function'
+    ? !!globalThis.__sigil_breakpoint_is_stop_signal(error)
+    : false;
+}}
+
 try {{
 {topology_prelude}
 {replay_bootstrap_import}
@@ -2688,6 +3193,9 @@ try {{
     console.log(result);
   }}
 }} catch (error) {{
+  if (__sigil_runtime_is_breakpoint_stop(error)) {{
+    // Intentional early stop for machine-first breakpoint debugging.
+  }} else {{
   const captured = await __sigil_runtime_capture_error(error);
   {catch_replay_mark}
   const renderedStack = captured.stack;
@@ -2697,6 +3205,7 @@ try {{
     console.error(`${{captured.name}}: ${{captured.message}}`);
   }}
   process.exit(1);
+  }}
 }}
 "#,
         topology_prelude = topology_prelude,
@@ -2705,7 +3214,9 @@ try {{
         runtime_error_path_json = runtime_error_path_json,
         trace_capture = trace_capture,
         trace_config = trace_config,
-        trace_import = trace_import,
+        sync_fs_import = sync_fs_import,
+        breakpoint_capture = breakpoint_capture,
+        breakpoint_config_setup = breakpoint_config_setup,
         replay_capture = replay_capture,
         replay_bootstrap_failure = replay_bootstrap_failure,
         replay_bootstrap_import = replay_bootstrap_import,
@@ -2732,8 +3243,10 @@ try {{
         runner_path,
         runtime_error_path,
         runtime_trace_path,
+        runtime_breakpoint_path,
         runtime_replay_path,
         trace_enabled,
+        breakpoint_config,
         replay_mode: replay_mode.as_ref().map(|mode| match mode {
             PreparedReplayMode::Record { .. } => "record".to_string(),
             PreparedReplayMode::Replay { .. } => "replay".to_string(),
@@ -2750,6 +3263,7 @@ fn execute_runner(
     runner_path: &Path,
     runtime_error_path: &Path,
     runtime_trace_path: Option<&Path>,
+    runtime_breakpoint_path: Option<&Path>,
     runtime_replay_path: Option<&Path>,
     args: &[String],
     stream_output: bool,
@@ -2758,6 +3272,9 @@ fn execute_runner(
     let _ = fs::remove_file(runtime_error_path);
     if let Some(runtime_trace_path) = runtime_trace_path {
         let _ = fs::remove_file(runtime_trace_path);
+    }
+    if let Some(runtime_breakpoint_path) = runtime_breakpoint_path {
+        let _ = fs::remove_file(runtime_breakpoint_path);
     }
     if let Some(runtime_replay_path) = runtime_replay_path {
         let _ = fs::remove_file(runtime_replay_path);
@@ -2781,6 +3298,7 @@ fn execute_runner(
                 stderr: String::new(),
                 exception_capture: read_runtime_exception_capture(runtime_error_path),
                 trace_capture: read_runtime_trace_capture(runtime_trace_path),
+                breakpoint_capture: read_runtime_breakpoint_capture(runtime_breakpoint_path),
                 replay_capture: read_runtime_replay_capture(runtime_replay_path),
             });
         }
@@ -2821,6 +3339,7 @@ fn execute_runner(
             stderr: String::from_utf8_lossy(&stderr_bytes).to_string(),
             exception_capture: read_runtime_exception_capture(runtime_error_path),
             trace_capture: read_runtime_trace_capture(runtime_trace_path),
+            breakpoint_capture: read_runtime_breakpoint_capture(runtime_breakpoint_path),
             replay_capture: read_runtime_replay_capture(runtime_replay_path),
         });
     }
@@ -2841,6 +3360,7 @@ fn execute_runner(
         stderr: String::from_utf8_lossy(&output.stderr).to_string(),
         exception_capture: read_runtime_exception_capture(runtime_error_path),
         trace_capture: read_runtime_trace_capture(runtime_trace_path),
+        breakpoint_capture: read_runtime_breakpoint_capture(runtime_breakpoint_path),
         replay_capture: read_runtime_replay_capture(runtime_replay_path),
     })
 }
@@ -2882,9 +3402,25 @@ fn build_runtime_module_debug_outputs(
                 module_id
             ))
         })?;
+        let span_map_contents = fs::read_to_string(span_map_file).map_err(|error| {
+            CliError::Codegen(format!(
+                "failed to read span map '{}': {}",
+                span_map_file.display(),
+                error
+            ))
+        })?;
+        let span_map: ModuleSpanMap =
+            serde_json::from_str(&span_map_contents).map_err(|error| {
+                CliError::Codegen(format!(
+                    "failed to parse span map '{}': {}",
+                    span_map_file.display(),
+                    error
+                ))
+            })?;
         outputs.push(RuntimeModuleDebugOutput {
+            module_id: module_id.clone(),
             output_file: canonicalize_existing_path(output_file),
-            span_map_file: canonicalize_existing_path(span_map_file),
+            span_map,
         });
     }
     Ok(outputs)
@@ -2944,6 +3480,25 @@ fn unique_runtime_trace_path(entry_output_path: &Path) -> PathBuf {
         .parent()
         .unwrap_or_else(|| Path::new("."))
         .join(format!("{stem}.{unique}.runtime-trace.json"))
+}
+
+fn unique_runtime_breakpoint_path(entry_output_path: &Path) -> PathBuf {
+    let unique = format!(
+        "{}-{}",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    );
+    let stem = entry_output_path
+        .file_stem()
+        .unwrap_or_default()
+        .to_string_lossy();
+    entry_output_path
+        .parent()
+        .unwrap_or_else(|| Path::new("."))
+        .join(format!("{stem}.{unique}.runtime-breakpoints.json"))
 }
 
 fn unique_runtime_replay_path(entry_output_path: &Path) -> PathBuf {
@@ -3171,6 +3726,14 @@ fn read_runtime_trace_capture(path: Option<&Path>) -> Option<RuntimeTraceCapture
     serde_json::from_str(&contents).ok()
 }
 
+fn read_runtime_breakpoint_capture(path: Option<&Path>) -> Option<RuntimeBreakpointCapture> {
+    let path = path?;
+    let contents = fs::read_to_string(path).ok();
+    let _ = fs::remove_file(path);
+    let contents = contents?;
+    serde_json::from_str(&contents).ok()
+}
+
 fn read_runtime_replay_capture(path: Option<&Path>) -> Option<RuntimeReplayCapture> {
     let path = path?;
     let contents = fs::read_to_string(path).ok();
@@ -3228,6 +3791,103 @@ fn runtime_replay_json(
     }
 }
 
+fn find_debug_span<'a>(
+    module_debug_outputs: &'a [RuntimeModuleDebugOutput],
+    module_id: &str,
+    span_id: &str,
+) -> Option<&'a DebugSpanRecord> {
+    module_debug_outputs
+        .iter()
+        .find(|module| module.module_id == module_id)?
+        .span_map
+        .spans
+        .iter()
+        .find(|span| span.span_id == span_id)
+}
+
+fn runtime_breakpoint_frame_json(
+    frame: &RuntimeBreakpointFrameCapture,
+    module_debug_outputs: &[RuntimeModuleDebugOutput],
+) -> serde_json::Value {
+    let location = find_debug_span(module_debug_outputs, &frame.module_id, &frame.span_id)
+        .map(|span| serde_json::to_value(&span.location).unwrap());
+    let mut value = serde_json::Map::new();
+    value.insert("moduleId".to_string(), json!(frame.module_id));
+    value.insert("sourceFile".to_string(), json!(frame.source_file));
+    value.insert("spanId".to_string(), json!(frame.span_id));
+    value.insert("declarationKind".to_string(), json!(frame.declaration_kind));
+    value.insert(
+        "declarationLabel".to_string(),
+        json!(frame.declaration_label),
+    );
+    value.insert("functionName".to_string(), json!(frame.function_name));
+    value.insert(
+        "location".to_string(),
+        location.unwrap_or(serde_json::Value::Null),
+    );
+    serde_json::Value::Object(value)
+}
+
+fn runtime_breakpoint_hit_json(
+    hit: &RuntimeBreakpointHitCapture,
+    module_debug_outputs: &[RuntimeModuleDebugOutput],
+) -> serde_json::Value {
+    let location = find_debug_span(module_debug_outputs, &hit.module_id, &hit.span_id)
+        .map(|span| serde_json::to_value(&span.location).unwrap());
+    json!({
+        "matched": hit.matched,
+        "moduleId": hit.module_id,
+        "sourceFile": hit.source_file,
+        "spanId": hit.span_id,
+        "declarationKind": hit.declaration_kind,
+        "declarationLabel": hit.declaration_label,
+        "location": location,
+        "locals": hit.locals,
+        "stack": hit
+            .stack
+            .iter()
+            .map(|frame| runtime_breakpoint_frame_json(frame, module_debug_outputs))
+            .collect::<Vec<_>>(),
+        "recentTrace": hit.recent_trace
+    })
+}
+
+fn runtime_breakpoints_json(
+    config: Option<&ResolvedBreakpointConfig>,
+    breakpoint_capture: Option<&RuntimeBreakpointCapture>,
+    module_debug_outputs: &[RuntimeModuleDebugOutput],
+) -> serde_json::Value {
+    match (config, breakpoint_capture) {
+        (Some(_config), Some(capture)) => json!({
+            "enabled": capture.enabled,
+            "mode": capture.mode,
+            "stopped": capture.stopped,
+            "truncated": capture.truncated,
+            "totalHits": capture.total_hits,
+            "returnedHits": capture.returned_hits,
+            "droppedHits": capture.dropped_hits,
+            "maxHits": capture.max_hits,
+            "hits": capture
+                .hits
+                .iter()
+                .map(|hit| runtime_breakpoint_hit_json(hit, module_debug_outputs))
+                .collect::<Vec<_>>()
+        }),
+        (Some(config), None) => json!({
+            "enabled": true,
+            "mode": config.mode.as_str(),
+            "stopped": false,
+            "truncated": false,
+            "totalHits": 0,
+            "returnedHits": 0,
+            "droppedHits": 0,
+            "maxHits": config.max_hits,
+            "hits": []
+        }),
+        _ => serde_json::Value::Null,
+    }
+}
+
 fn build_runtime_failure_output(
     file: &Path,
     run_target: &RunTarget,
@@ -3249,6 +3909,13 @@ fn build_runtime_failure_output(
     let trace = run_target
         .trace_enabled
         .then(|| runtime_trace_json(runtime_output.trace_capture.as_ref()));
+    let breakpoints = run_target.breakpoint_config.as_ref().map(|config| {
+        runtime_breakpoints_json(
+            Some(config),
+            runtime_output.breakpoint_capture.as_ref(),
+            &run_target.module_debug_outputs,
+        )
+    });
     let replay = run_target.replay_mode.as_ref().map(|mode| {
         runtime_replay_json(
             Some(mode.as_str()),
@@ -3257,11 +3924,17 @@ fn build_runtime_failure_output(
         )
     });
 
-    if let Some(capture) = &runtime_output.exception_capture {
+    let exception_capture = runtime_output
+        .exception_capture
+        .clone()
+        .or_else(|| runtime_exception_capture_from_stderr(&runtime_output.stderr));
+
+    if let Some(capture) = &exception_capture {
         return build_runtime_exception_output(
             compile,
             runtime,
             trace,
+            breakpoints,
             replay,
             &run_target.module_debug_outputs,
             capture,
@@ -3273,6 +3946,9 @@ fn build_runtime_failure_output(
     details.insert("runtime".to_string(), runtime);
     if let Some(trace) = trace {
         details.insert("trace".to_string(), trace);
+    }
+    if let Some(breakpoints) = breakpoints {
+        details.insert("breakpoints".to_string(), breakpoints);
     }
     if let Some(replay) = replay {
         details.insert("replay".to_string(), replay);
@@ -3299,6 +3975,7 @@ fn build_runtime_exception_output(
     compile: serde_json::Value,
     runtime: serde_json::Value,
     trace: Option<serde_json::Value>,
+    breakpoints: Option<serde_json::Value>,
     replay: Option<serde_json::Value>,
     module_debug_outputs: &[RuntimeModuleDebugOutput],
     capture: &RuntimeExceptionCapture,
@@ -3317,6 +3994,9 @@ fn build_runtime_exception_output(
     details.insert("runtime".to_string(), runtime);
     if let Some(trace) = trace {
         details.insert("trace".to_string(), trace);
+    }
+    if let Some(breakpoints) = breakpoints {
+        details.insert("breakpoints".to_string(), breakpoints);
     }
     if let Some(replay) = replay {
         details.insert("replay".to_string(), replay);
@@ -3344,6 +4024,32 @@ fn build_runtime_exception_output(
         "ok": false,
         "phase": phase,
         "error": error
+    })
+}
+
+fn runtime_exception_capture_from_stderr(stderr: &str) -> Option<RuntimeExceptionCapture> {
+    let stack = stderr.trim();
+    if stack.is_empty() {
+        return None;
+    }
+
+    let first_line = stack.lines().next().unwrap_or(stack).trim();
+    let (name, message) = match first_line.split_once(':') {
+        Some((name, message)) if !name.trim().is_empty() => {
+            (name.trim().to_string(), message.trim().to_string())
+        }
+        _ => ("Error".to_string(), first_line.to_string()),
+    };
+
+    let sigil_code = message
+        .starts_with("SIGIL-")
+        .then(|| extract_error_code(&message));
+
+    Some(RuntimeExceptionCapture {
+        name,
+        message,
+        stack: stack.to_string(),
+        sigil_code,
     })
 }
 
@@ -3478,6 +4184,30 @@ fn normalize_generated_frame_path(raw: &str) -> PathBuf {
     canonicalize_existing_path(Path::new(without_file_scheme))
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn runtime_exception_capture_from_stderr_extracts_sigil_code() {
+        let capture = runtime_exception_capture_from_stderr(
+            "Error: SIGIL-TOPO-ENV-NOT-FOUND: environment 'staging' not declared in src/topology.lib.sigil\n    at main (/tmp/example.run.ts:12:3)",
+        )
+        .expect("expected stderr capture");
+
+        assert_eq!(capture.name, "Error");
+        assert_eq!(
+            capture.sigil_code.as_deref(),
+            Some(codes::topology::ENV_NOT_FOUND)
+        );
+        assert_eq!(
+            capture.message,
+            "SIGIL-TOPO-ENV-NOT-FOUND: environment 'staging' not declared in src/topology.lib.sigil"
+        );
+        assert!(capture.stack.contains(".run.ts"));
+    }
+}
+
 fn map_generated_frame_to_sigil(
     frame: &ParsedGeneratedFrame,
     module_debug_outputs: &[RuntimeModuleDebugOutput],
@@ -3486,17 +4216,11 @@ fn map_generated_frame_to_sigil(
     let module = module_debug_outputs
         .iter()
         .find(|module| module.output_file == frame_path)?;
-    let span_map = load_module_span_map(&module.span_map_file)?;
-    let span = span_for_generated_line(&span_map, frame.line)?;
+    let span = span_for_generated_line(&module.span_map, frame.line)?;
     Some(MappedSigilFrame {
         excerpt: declaration_excerpt(&span),
         span,
     })
-}
-
-fn load_module_span_map(path: &Path) -> Option<ModuleSpanMap> {
-    let contents = fs::read_to_string(path).ok()?;
-    serde_json::from_str(&contents).ok()
 }
 
 fn span_for_generated_line(span_map: &ModuleSpanMap, line: usize) -> Option<DebugSpanRecord> {
@@ -3668,6 +4392,18 @@ fn output_run_error(file: &Path, error: &CliError, to_stderr: bool) {
         | CliError::Runtime(message) => {
             output_run_message_error(file, message, to_stderr);
         }
+        CliError::Breakpoint {
+            code,
+            message,
+            details,
+        } => output_json_error_to(
+            "sigilc run",
+            phase_for_code(code),
+            code,
+            message,
+            details.clone(),
+            to_stderr,
+        ),
         CliError::ModuleGraph(ModuleGraphError::ProjectConfig(project_error))
         | CliError::ProjectConfig(project_error) => output_json_error_to(
             "sigilc run",
@@ -4158,6 +4894,7 @@ fn generate_module_graph_outputs(
     graph: &ModuleGraph,
     output_override: Option<&Path>,
     trace: bool,
+    breakpoints: bool,
 ) -> Result<GeneratedGraphOutputs, CliError> {
     let analyzed = analyze_module_graph(graph)?;
     let entry_module_id = graph
@@ -4186,6 +4923,7 @@ fn generate_module_graph_outputs(
             source_file: Some(module.file_path.to_string_lossy().to_string()),
             output_file: Some(output_path.to_string_lossy().to_string()),
             trace,
+            breakpoints,
         };
         let mut codegen = TypeScriptGenerator::new(codegen_options);
         let ts_code = codegen
@@ -4227,8 +4965,9 @@ fn compile_module_graph(
     graph: ModuleGraph,
     output_override: Option<&Path>,
     trace: bool,
+    breakpoints: bool,
 ) -> Result<CompiledGraphOutputs, CliError> {
-    let generated = generate_module_graph_outputs(&graph, output_override, trace)?;
+    let generated = generate_module_graph_outputs(&graph, output_override, trace, breakpoints)?;
     let mut module_outputs = HashMap::new();
     let mut span_map_outputs = HashMap::new();
     for (module_id, generated_output) in generated.module_outputs {
@@ -4281,7 +5020,7 @@ fn compile_topology_module(project_root: &Path) -> Result<CompiledGraphOutputs, 
     }
 
     let graph = ModuleGraph::build(&topology_source)?;
-    compile_module_graph(graph, None, false)
+    compile_module_graph(graph, None, false, false)
 }
 
 fn compile_config_module(
@@ -4299,7 +5038,7 @@ fn compile_config_module(
     }
 
     let graph = ModuleGraph::build(&config_source)?;
-    compile_module_graph(graph, None, false)
+    compile_module_graph(graph, None, false, false)
 }
 
 fn build_world_runtime_prelude(
@@ -4516,7 +5255,7 @@ fn compile_and_run_tests(
 ) -> Result<TestRunResult, CliError> {
     let graph = ModuleGraph::build(file)?;
     let topology_prelude = runner_prelude(file, &graph, selected_env)?;
-    let compiled = compile_module_graph(graph, None, false)?;
+    let compiled = compile_module_graph(graph, None, false, false)?;
     run_test_module(
         &compiled.entry_output_path,
         &compiled.coverage_targets,

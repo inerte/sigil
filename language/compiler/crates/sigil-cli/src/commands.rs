@@ -4776,13 +4776,8 @@ fn build_runtime_exception_output(
     module_debug_outputs: &[RuntimeModuleDebugOutput],
     capture: &RuntimeExceptionCapture,
 ) -> serde_json::Value {
-    let recovered_code = recover_runtime_exception_code(&capture.message, &capture.stack);
-    let code = capture
-        .sigil_code
-        .as_deref()
-        .filter(|code| !code.is_empty())
-        .or(recovered_code.as_deref())
-        .unwrap_or(codes::runtime::UNCAUGHT_EXCEPTION);
+    let resolved_code = resolved_runtime_exception_code(capture);
+    let code = resolved_code.as_str();
     let phase = phase_for_code(code);
     let normalized_message = normalize_runtime_exception_message(capture, code);
     let analysis = analyze_runtime_exception(capture, module_debug_outputs);
@@ -4882,6 +4877,26 @@ fn recover_runtime_exception_code(message: &str, stack: &str) -> Option<String> 
     }
 
     None
+}
+
+fn resolved_runtime_exception_code(capture: &RuntimeExceptionCapture) -> String {
+    let recovered_code = recover_runtime_exception_code(&capture.message, &capture.stack);
+    let explicit_code = capture
+        .sigil_code
+        .as_deref()
+        .filter(|code| !code.is_empty());
+
+    match (explicit_code, recovered_code.as_deref()) {
+        (Some(explicit), Some(recovered))
+            if explicit == codes::runtime::UNCAUGHT_EXCEPTION
+                && recovered != codes::runtime::UNCAUGHT_EXCEPTION =>
+        {
+            recovered.to_string()
+        }
+        (Some(explicit), _) => explicit.to_string(),
+        (None, Some(recovered)) => recovered.to_string(),
+        (None, None) => codes::runtime::UNCAUGHT_EXCEPTION.to_string(),
+    }
 }
 
 fn normalize_runtime_exception_message(capture: &RuntimeExceptionCapture, code: &str) -> String {
@@ -5148,14 +5163,8 @@ fn debug_snapshot_json(
         .as_ref()
         .or(stderr_capture.as_ref())
     {
-        let recovered_code =
-            recover_runtime_exception_code(&exception_capture.message, &exception_capture.stack);
-        let code = exception_capture
-            .sigil_code
-            .as_deref()
-            .filter(|code| !code.is_empty())
-            .or(recovered_code.as_deref())
-            .unwrap_or(codes::runtime::UNCAUGHT_EXCEPTION);
+        let resolved_code = resolved_runtime_exception_code(exception_capture);
+        let code = resolved_code.as_str();
         let normalized_message = normalize_runtime_exception_message(exception_capture, code);
         let analysis = analyze_runtime_exception(exception_capture, module_debug_outputs);
         let exception_json = runtime_exception_json(
@@ -5927,6 +5936,22 @@ mod tests {
             )
             .as_deref(),
             Some(codes::topology::ENV_NOT_FOUND)
+        );
+    }
+
+    #[test]
+    fn resolved_runtime_exception_code_prefers_recovered_specific_code() {
+        let capture = RuntimeExceptionCapture {
+            name: "Error".to_string(),
+            message: "SIGIL-TOPO-ENV-NOT-FOUND: environment 'staging' not declared in src/topology.lib.sigil".to_string(),
+            stack: "Error: SIGIL-TOPO-ENV-NOT-FOUND: environment 'staging' not declared in src/topology.lib.sigil\n    at main (/tmp/example.run.ts:12:3)".to_string(),
+            sigil_code: Some(codes::runtime::UNCAUGHT_EXCEPTION.to_string()),
+            expression: None,
+        };
+
+        assert_eq!(
+            resolved_runtime_exception_code(&capture),
+            codes::topology::ENV_NOT_FOUND
         );
     }
 }
@@ -8749,11 +8774,8 @@ console.log(JSON.stringify({{
         }
 
         let exception = result.exception.as_ref().map(|capture| {
-            let code = capture
-                .sigil_code
-                .as_deref()
-                .filter(|code| !code.is_empty())
-                .unwrap_or(codes::runtime::UNCAUGHT_EXCEPTION);
+            let resolved_code = resolved_runtime_exception_code(capture);
+            let code = resolved_code.as_str();
             let normalized_message = normalize_runtime_exception_message(capture, code);
             let analysis = analyze_runtime_exception(capture, module_debug_outputs);
             runtime_exception_json(

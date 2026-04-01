@@ -200,7 +200,7 @@ Current output does not include:
 
 `sigil test` replay artifacts can now drive `sigil debug test` sessions:
 
-- `sigil debug test start --replay <artifact> --test <results[].id> <path>`
+- `sigil debug test start --replay <artifact> --test <results[].id> [--watch <selector> ...] <path>`
 - `sigil debug test snapshot <session>`
 - `sigil debug test step-into <session>`
 - `sigil debug test step-over <session>`
@@ -209,3 +209,5 @@ Current output does not include:
 - `sigil debug test close <session>`
 
 Those commands use the shared debug envelope documented in `cli-json.md`.
+Each debug snapshot also includes ordered `watches` results for any configured
+`--watch local(.field)*` selectors.

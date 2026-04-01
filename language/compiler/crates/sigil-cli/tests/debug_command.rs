@@ -42,6 +42,15 @@ fn parse_json(text: &[u8]) -> Value {
     serde_json::from_slice(text).unwrap()
 }
 
+fn watch_entry<'a>(json: &'a Value, selector: &str) -> &'a Value {
+    json["data"]["snapshot"]["watches"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|entry| entry["selector"] == selector)
+        .unwrap()
+}
+
 #[test]
 fn debug_run_start_pauses_at_main_entry() {
     let dir = temp_dir("run-start");
@@ -336,4 +345,171 @@ fn debug_test_continue_completes_one_test_session() {
     assert_eq!(json["data"]["snapshot"]["eventKind"], "test_exit");
     assert_eq!(json["data"]["snapshot"]["testId"], test_id);
     assert_eq!(json["data"]["snapshot"]["testStatus"], "pass");
+}
+
+#[test]
+fn debug_run_watches_follow_scope_and_record_fields() {
+    let dir = temp_dir("run-watch");
+    let file = write_program(
+        &dir,
+        "main.sigil",
+        "t User={name:String,score:Int}\n\nλhelper(user:User)=>Int=user.score\n\nλmain()=>Int=helper({name:\"Ada\",score:1})\n",
+    );
+    let artifact = dir.join("run.replay.json");
+
+    let recorded = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg("--json")
+        .arg("--record")
+        .arg(&artifact)
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(recorded.status.success());
+
+    let started = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("debug")
+        .arg("run")
+        .arg("start")
+        .arg("--replay")
+        .arg(&artifact)
+        .arg("--watch")
+        .arg("user.score")
+        .arg("--watch")
+        .arg("user.name.first")
+        .arg("--break-fn")
+        .arg("helper")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(started.status.success());
+    let started_json = parse_json(&started.stdout);
+    assert_eq!(started_json["data"]["session"]["watches"][0], "user.score");
+    assert_eq!(watch_entry(&started_json, "user.score")["status"], "not_in_scope");
+    assert_eq!(
+        watch_entry(&started_json, "user.name.first")["status"],
+        "not_in_scope"
+    );
+    let session = started_json["data"]["session"]["file"].as_str().unwrap();
+
+    let continued = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("debug")
+        .arg("run")
+        .arg("continue")
+        .arg(session)
+        .output()
+        .unwrap();
+
+    assert!(continued.status.success());
+    let continued_json = parse_json(&continued.stdout);
+    assert_eq!(continued_json["data"]["snapshot"]["pauseReason"], "breakpoint");
+    assert_eq!(watch_entry(&continued_json, "user.score")["status"], "ok");
+    assert_eq!(watch_entry(&continued_json, "user.score")["value"]["kind"], "int");
+    assert_eq!(watch_entry(&continued_json, "user.score")["value"]["value"], 1);
+    assert_eq!(
+        watch_entry(&continued_json, "user.name.first")["status"],
+        "path_missing"
+    );
+}
+
+#[test]
+fn debug_run_rejects_invalid_watch_selector() {
+    let dir = temp_dir("run-watch-invalid");
+    let file = write_program(&dir, "main.sigil", "λmain()=>Int=1\n");
+    let artifact = dir.join("run.replay.json");
+
+    let recorded = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg("--json")
+        .arg("--record")
+        .arg(&artifact)
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(recorded.status.success());
+
+    let started = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("debug")
+        .arg("run")
+        .arg("start")
+        .arg("--replay")
+        .arg(&artifact)
+        .arg("--watch")
+        .arg("user..score")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(!started.status.success());
+    assert!(started.stderr.is_empty());
+    let json = parse_json(&started.stdout);
+    assert_eq!(json["ok"], false);
+    assert_eq!(json["error"]["code"], "SIGIL-CLI-USAGE");
+}
+
+#[test]
+fn debug_test_watches_resolve_at_breakpoint_scope() {
+    let dir = temp_dir("test-watch");
+    let file = write_program(
+        &dir,
+        "tests/basic.sigil",
+        "t User={name:String,score:Int}\n\nλhelper(user:User)=>Int=user.score\n\nλmain()=>Unit=()\n\ntest \"demo\" {\n  helper({name:\"Ada\",score:2})=2\n}\n",
+    );
+    let artifact = dir.join("tests.replay.json");
+
+    let recorded = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("test")
+        .arg("--record")
+        .arg(&artifact)
+        .arg(&file)
+        .output()
+        .unwrap();
+    assert!(recorded.status.success());
+    let recorded_json = parse_json(&recorded.stdout);
+    let test_id = recorded_json["results"][0]["id"].as_str().unwrap().to_string();
+
+    let started = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("debug")
+        .arg("test")
+        .arg("start")
+        .arg("--replay")
+        .arg(&artifact)
+        .arg("--test")
+        .arg(&test_id)
+        .arg("--watch")
+        .arg("user.score")
+        .arg("--break-fn")
+        .arg("helper")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(started.status.success());
+    let started_json = parse_json(&started.stdout);
+    assert_eq!(watch_entry(&started_json, "user.score")["status"], "not_in_scope");
+    let session = started_json["data"]["session"]["file"].as_str().unwrap();
+
+    let continued = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("debug")
+        .arg("test")
+        .arg("continue")
+        .arg(session)
+        .output()
+        .unwrap();
+
+    assert!(continued.status.success());
+    let continued_json = parse_json(&continued.stdout);
+    assert_eq!(continued_json["data"]["snapshot"]["pauseReason"], "breakpoint");
+    assert_eq!(watch_entry(&continued_json, "user.score")["status"], "ok");
+    assert_eq!(watch_entry(&continued_json, "user.score")["value"]["kind"], "int");
+    assert_eq!(watch_entry(&continued_json, "user.score")["value"]["value"], 2);
 }

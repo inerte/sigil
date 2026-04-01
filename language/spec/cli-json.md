@@ -334,14 +334,14 @@ Standalone test replay artifact schema:
 
 `sigil debug` is JSON-only in v1 and replay-backed:
 
-- `sigil debug run start --replay <artifact> <file>`
+- `sigil debug run start --replay <artifact> [--watch <selector> ...] <file>`
 - `sigil debug run snapshot <session>`
 - `sigil debug run step-into <session>`
 - `sigil debug run step-over <session>`
 - `sigil debug run step-out <session>`
 - `sigil debug run continue <session>`
 - `sigil debug run close <session>`
-- `sigil debug test start --replay <artifact> --test <id> <path>`
+- `sigil debug test start --replay <artifact> --test <id> [--watch <selector> ...] <path>`
 - `sigil debug test ... <session>` for the same control verbs
 
 Successful debug commands return:
@@ -354,6 +354,7 @@ Successful debug commands return:
   - `replayFile`
   - `programPath` or `testPath`
   - optional `testId`
+  - `watches`
 - `data.snapshot`
   - `state`
   - `pauseReason`
@@ -361,6 +362,7 @@ Successful debug commands return:
   - `seq`
   - current source/span/declaration context when available
   - current-frame `locals`
+  - `watches`
   - stack summaries
   - bounded `recentTrace`
   - `stdoutSoFar`
@@ -386,6 +388,18 @@ Current step events are source-shaped:
 Standalone debug-session schema:
 
 - `language/spec/debug-session.schema.json`
+
+Current watch selector shape:
+
+- `local`
+- `local.field.subfield`
+
+Watch roots must match current-frame locals, params, or pattern-bound names.
+Nested segments only traverse record/object fields. Each watch result reports:
+
+- `status: "ok"` with a compact summarized `value`
+- `status: "not_in_scope"` when the root binding is absent
+- `status: "path_missing"` when a nested field is missing or traversal leaves a record value
 
 ## Inspect World Details
 

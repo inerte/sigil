@@ -282,6 +282,10 @@ enum DebugRunCommand {
         /// Input .sigil file
         file: PathBuf,
 
+        /// Add a watched local or record path to every snapshot
+        #[arg(long = "watch", value_name = "SELECTOR")]
+        watch: Vec<String>,
+
         /// Stop when execution reaches a specific source line
         #[arg(long = "break", value_name = "FILE:LINE")]
         breakpoint: Vec<String>,
@@ -346,6 +350,10 @@ enum DebugTestCommand {
 
         /// Test file or directory
         path: PathBuf,
+
+        /// Add a watched local or record path to every snapshot
+        #[arg(long = "watch", value_name = "SELECTOR")]
+        watch: Vec<String>,
 
         /// Stop when execution reaches a specific source line
         #[arg(long = "break", value_name = "FILE:LINE")]
@@ -516,12 +524,14 @@ fn main() {
                 DebugRunCommand::Start {
                     replay,
                     file,
+                    watch,
                     breakpoint,
                     break_fn,
                     break_span,
                 } => debug_run_start_command(
                     &file,
                     &replay,
+                    &watch,
                     &breakpoint,
                     &break_fn,
                     &break_span,
@@ -550,6 +560,7 @@ fn main() {
                     replay,
                     test_id,
                     path,
+                    watch,
                     breakpoint,
                     break_fn,
                     break_span,
@@ -557,6 +568,7 @@ fn main() {
                     &path,
                     &replay,
                     Some(&test_id),
+                    &watch,
                     &breakpoint,
                     &break_fn,
                     &break_span,

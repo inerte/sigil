@@ -2782,7 +2782,7 @@ impl TypeScriptGenerator {
         self.emit("  if (!state) return;");
         self.emit("  const names = Array.isArray(paramNames) ? paramNames : [];");
         self.emit("  const values = Array.isArray(args) ? args : [];");
-        self.emit("  const params = names.map((name, index) => ({ name: String(name), origin: 'param', value: __sigil_trace_summary(values[index], 1) }));");
+        self.emit("  const params = names.map((name, index) => ({ name: String(name), origin: 'param', raw: values[index], value: __sigil_trace_summary(values[index], 1) }));");
         self.emit("  state.stack.push({ moduleId: String(meta.moduleId ?? ''), sourceFile: String(meta.sourceFile ?? ''), spanId: String(meta.spanId ?? ''), declarationKind: meta.declarationKind ?? null, declarationLabel: meta.declarationLabel ?? null, functionName: functionName ? String(functionName) : null, params, scopes: [] });");
         self.emit("}");
         self.emit("function __sigil_breakpoint_pop_frame() {");
@@ -2794,7 +2794,7 @@ impl TypeScriptGenerator {
         self.emit("  const state = __sigil_breakpoint_state();");
         self.emit("  if (!state || state.stack.length === 0) return;");
         self.emit("  const frame = state.stack[state.stack.length - 1];");
-        self.emit("  frame.scopes.push(Array.isArray(locals) ? locals.map((local) => ({ name: String(local.name ?? ''), origin: String(local.origin ?? 'let'), value: __sigil_trace_summary(local.value, 1) })) : []);");
+        self.emit("  frame.scopes.push(Array.isArray(locals) ? locals.map((local) => ({ name: String(local.name ?? ''), origin: String(local.origin ?? 'let'), raw: local.value, value: __sigil_trace_summary(local.value, 1) })) : []);");
         self.emit("}");
         self.emit("function __sigil_breakpoint_pop_scope() {");
         self.emit("  const state = __sigil_breakpoint_state();");
@@ -2805,9 +2805,24 @@ impl TypeScriptGenerator {
         self.emit("function __sigil_breakpoint_current_locals(state) {");
         self.emit("  if (!state || state.stack.length === 0) return [];");
         self.emit("  const frame = state.stack[state.stack.length - 1];");
-        self.emit("  const locals = frame.params.slice();");
-        self.emit("  for (const scope of frame.scopes) { locals.push(...scope); }");
+        self.emit("  const locals = frame.params.map((local) => ({ name: local.name, origin: local.origin, value: local.value }));");
+        self.emit("  for (const scope of frame.scopes) {");
+        self.emit("    locals.push(...scope.map((local) => ({ name: local.name, origin: local.origin, value: local.value })));");
+        self.emit("  }");
         self.emit("  return locals;");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_current_locals_raw(state) {");
+        self.emit("  if (!state || state.stack.length === 0) return [];");
+        self.emit("  const frame = state.stack[state.stack.length - 1];");
+        self.emit("  const locals = frame.params.map((local) => ({ name: local.name, origin: local.origin, raw: local.raw }));");
+        self.emit("  for (const scope of frame.scopes) {");
+        self.emit("    locals.push(...scope.map((local) => ({ name: local.name, origin: local.origin, raw: local.raw })));");
+        self.emit("  }");
+        self.emit("  return locals;");
+        self.emit("}");
+        self.emit("function __sigil_breakpoint_current_locals_raw_snapshot() {");
+        self.emit("  const state = __sigil_breakpoint_state();");
+        self.emit("  return state ? __sigil_breakpoint_current_locals_raw(state) : [];");
         self.emit("}");
         self.emit("function __sigil_breakpoint_stack_snapshot(state) {");
         self.emit("  if (!state) return [];");
@@ -2876,6 +2891,7 @@ impl TypeScriptGenerator {
         self.emit("}");
         self.emit("globalThis.__sigil_breakpoint_snapshot = __sigil_breakpoint_snapshot;");
         self.emit("globalThis.__sigil_breakpoint_recent_trace = __sigil_breakpoint_recent_trace;");
+        self.emit("globalThis.__sigil_breakpoint_current_locals_raw = __sigil_breakpoint_current_locals_raw_snapshot;");
         self.emit(
             "globalThis.__sigil_breakpoint_is_stop_signal = __sigil_breakpoint_is_stop_signal;",
         );

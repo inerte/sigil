@@ -11,6 +11,7 @@
     "replayFile",
     "path",
     "breakpoints",
+    "watches",
     "state",
     "snapshot"
   ],
@@ -31,6 +32,10 @@
         "breakpointSpans": { "type": "array", "items": { "type": "string" } }
       },
       "additionalProperties": false
+    },
+    "watches": {
+      "type": "array",
+      "items": { "type": "string" }
     },
     "state": { "type": "string", "enum": ["paused", "completed", "failed", "closed"] },
     "snapshot": { "type": "object" }

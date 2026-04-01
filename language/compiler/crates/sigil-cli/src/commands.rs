@@ -2526,6 +2526,17 @@ struct RuntimeStepCapture {
     expression_depth: usize,
     #[serde(default)]
     last_completed: Option<serde_json::Value>,
+    #[serde(default)]
+    watches: Vec<RuntimeDebugWatchCapture>,
+}
+
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct RuntimeDebugWatchCapture {
+    selector: String,
+    status: String,
+    #[serde(default)]
+    value: Option<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
@@ -4640,7 +4651,8 @@ fn debug_snapshot_json(
                 "recentTrace": capture.recent_trace,
                 "frameDepth": capture.frame_depth,
                 "expressionDepth": capture.expression_depth,
-                "lastCompleted": capture.last_completed
+                "lastCompleted": capture.last_completed,
+                "watches": capture.watches
             })
         }
         None => json!({
@@ -4665,7 +4677,8 @@ fn debug_snapshot_json(
             "recentTrace": [],
             "frameDepth": 0,
             "expressionDepth": 0,
-            "lastCompleted": null
+            "lastCompleted": null,
+            "watches": []
         }),
     };
 
@@ -4757,6 +4770,7 @@ fn prepare_debug_run_execution(
     file: &Path,
     replay_path: &Path,
     breakpoints: &DebugBreakpointSelectors,
+    watches: &[String],
     action: &str,
     cursor: Option<&DebugStepCursor>,
 ) -> Result<DebugExecution, CliError> {
@@ -4791,7 +4805,8 @@ fn prepare_debug_run_execution(
         "artifact": artifact
     }))
     .map_err(|error| CliError::Codegen(format!("failed to encode debug replay config: {error}")))?;
-    let step_config_json = debug_step_config_json(DebugSessionTargetKind::Run, action, cursor)?;
+    let step_config_json =
+        debug_step_config_json(DebugSessionTargetKind::Run, action, cursor, watches)?;
 
     let entry_output_path = compiled.entry_output_path;
     let runner_path = entry_output_path.with_extension("debug.run.ts");
@@ -4896,6 +4911,7 @@ fn prepare_debug_test_execution(
     replay_path: &Path,
     test_id: &str,
     breakpoints: &DebugBreakpointSelectors,
+    watches: &[String],
     action: &str,
     cursor: Option<&DebugStepCursor>,
 ) -> Result<DebugExecution, CliError> {
@@ -4964,7 +4980,8 @@ fn prepare_debug_test_execution(
         "artifact": replay_artifact
     }))
     .map_err(|error| CliError::Codegen(format!("failed to encode debug replay config: {error}")))?;
-    let step_config_json = debug_step_config_json(DebugSessionTargetKind::Test, action, cursor)?;
+    let step_config_json =
+        debug_step_config_json(DebugSessionTargetKind::Test, action, cursor, watches)?;
 
     let entry_output_path = compiled.entry_output_path;
     let test_dir = entry_output_path.parent().unwrap().join("__sigil_test");
@@ -5150,10 +5167,12 @@ fn execute_debug_execution(execution: &DebugExecution) -> Result<serde_json::Val
 pub fn debug_run_start_command(
     file: &Path,
     replay_path: &Path,
+    watch_selectors: &[String],
     breakpoint_lines: &[String],
     breakpoint_functions: &[String],
     breakpoint_spans: &[String],
 ) -> Result<(), CliError> {
+    let watches = validate_debug_watch_selectors(DebugSessionTargetKind::Run, watch_selectors)?;
     let breakpoints = DebugBreakpointSelectors {
         breakpoint_lines: breakpoint_lines.to_vec(),
         breakpoint_functions: breakpoint_functions.to_vec(),
@@ -5163,6 +5182,7 @@ pub fn debug_run_start_command(
         file,
         replay_path,
         &breakpoints,
+        &watches,
         "start",
         None,
     )?)?;
@@ -5182,6 +5202,7 @@ pub fn debug_run_start_command(
         path: canonicalize_existing_path(file).to_string_lossy().to_string(),
         test_id: None,
         breakpoints,
+        watches,
         state: debug_session_state_from_snapshot(&snapshot),
         snapshot,
     };
@@ -5233,6 +5254,7 @@ pub fn debug_run_session_command(
                 Path::new(&session.path),
                 Path::new(&session.replay_file),
                 &session.breakpoints,
+                &session.watches,
                 action.as_step_action().unwrap(),
                 Some(&cursor),
             )?)?;
@@ -5249,6 +5271,7 @@ pub fn debug_test_start_command(
     path: &Path,
     replay_path: &Path,
     test_id: Option<&str>,
+    watch_selectors: &[String],
     breakpoint_lines: &[String],
     breakpoint_functions: &[String],
     breakpoint_spans: &[String],
@@ -5267,6 +5290,7 @@ pub fn debug_test_start_command(
         );
         return Err(CliError::Reported(1));
     };
+    let watches = validate_debug_watch_selectors(DebugSessionTargetKind::Test, watch_selectors)?;
     let breakpoints = DebugBreakpointSelectors {
         breakpoint_lines: breakpoint_lines.to_vec(),
         breakpoint_functions: breakpoint_functions.to_vec(),
@@ -5277,6 +5301,7 @@ pub fn debug_test_start_command(
         replay_path,
         test_id,
         &breakpoints,
+        &watches,
         "start",
         None,
     )?)?;
@@ -5296,6 +5321,7 @@ pub fn debug_test_start_command(
         path: resolve_debug_session_path(path)?.to_string_lossy().to_string(),
         test_id: Some(test_id.to_string()),
         breakpoints,
+        watches,
         state: debug_session_state_from_snapshot(&snapshot),
         snapshot,
     };
@@ -5348,6 +5374,7 @@ pub fn debug_test_session_command(
                 Path::new(&session.replay_file),
                 session.test_id.as_deref().unwrap_or_default(),
                 &session.breakpoints,
+                &session.watches,
                 action.as_step_action().unwrap(),
                 Some(&cursor),
             )?)?;
@@ -6510,6 +6537,8 @@ struct DebugSessionFile {
     #[serde(skip_serializing_if = "Option::is_none")]
     test_id: Option<String>,
     breakpoints: DebugBreakpointSelectors,
+    #[serde(default)]
+    watches: Vec<String>,
     state: DebugSessionState,
     snapshot: serde_json::Value,
 }
@@ -6594,6 +6623,8 @@ fn read_debug_session(path: &Path) -> Result<DebugSessionFile, CliError> {
             }),
         });
     }
+    let mut session = session;
+    normalize_debug_snapshot(&mut session.snapshot);
     Ok(session)
 }
 
@@ -6631,10 +6662,13 @@ fn debug_session_json(path: &Path, session: &DebugSessionFile) -> serde_json::Va
     if let Some(test_id) = &session.test_id {
         session_json.insert("testId".to_string(), json!(test_id));
     }
+    session_json.insert("watches".to_string(), json!(session.watches));
     serde_json::Value::Object(session_json)
 }
 
 fn output_debug_success(path: &Path, session: &DebugSessionFile) {
+    let mut snapshot = session.snapshot.clone();
+    normalize_debug_snapshot(&mut snapshot);
     let output = json!({
         "formatVersion": 1,
         "command": session.target_kind.command_name(),
@@ -6642,10 +6676,18 @@ fn output_debug_success(path: &Path, session: &DebugSessionFile) {
         "phase": "runtime",
         "data": {
             "session": debug_session_json(path, session),
-            "snapshot": session.snapshot
+            "snapshot": snapshot
         }
     });
     output_json_value(&output, false);
+}
+
+fn normalize_debug_snapshot(snapshot: &mut serde_json::Value) {
+    if let Some(snapshot_object) = snapshot.as_object_mut() {
+        snapshot_object
+            .entry("watches".to_string())
+            .or_insert_with(|| json!([]));
+    }
 }
 
 fn debug_session_state_from_snapshot(snapshot: &serde_json::Value) -> DebugSessionState {
@@ -6684,15 +6726,55 @@ fn debug_runtime_breakpoint_config_json(
     .map_err(|error| CliError::Codegen(format!("failed to encode debug breakpoint config: {error}")))
 }
 
+fn is_lower_camel_case_identifier(name: &str) -> bool {
+    let mut chars = name.chars();
+    match chars.next() {
+        Some(first) if first.is_ascii_lowercase() => {}
+        _ => return false,
+    }
+    chars.all(|ch| ch.is_ascii_alphanumeric())
+}
+
+fn validate_debug_watch_selectors(
+    target_kind: DebugSessionTargetKind,
+    selectors: &[String],
+) -> Result<Vec<String>, CliError> {
+    for selector in selectors {
+        let segments = selector.split('.').collect::<Vec<_>>();
+        let invalid = selector.is_empty()
+            || segments.is_empty()
+            || segments.iter().any(|segment| {
+                segment.is_empty() || !is_lower_camel_case_identifier(segment)
+            });
+        if invalid {
+            output_json_error_to(
+                target_kind.command_name(),
+                "cli",
+                codes::cli::USAGE,
+                &format!("invalid watch selector '{}'", selector),
+                json!({
+                    "selector": selector,
+                    "expected": "lowerCamelCase or lowerCamelCase.field.subfield"
+                }),
+                false,
+            );
+            return Err(CliError::Reported(1));
+        }
+    }
+    Ok(selectors.to_vec())
+}
+
 fn debug_step_config_json(
     target_kind: DebugSessionTargetKind,
     action: &str,
     cursor: Option<&DebugStepCursor>,
+    watches: &[String],
 ) -> Result<String, CliError> {
     serde_json::to_string(&json!({
         "targetKind": target_kind.as_str(),
         "action": action,
         "startEventKind": if target_kind == DebugSessionTargetKind::Run { "function_enter" } else { "test_enter" },
+        "watches": watches,
         "current": cursor.map(|cursor| json!({
             "seq": cursor.seq,
             "eventKind": cursor.event_kind,
@@ -6748,6 +6830,46 @@ function __sigil_debug_last_completed_from_event(event) {{
   return null;
 }}
 
+function __sigil_debug_watch_is_record_like(value) {{
+  return !!value &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    !(typeof value.__tag === 'string') &&
+    !Array.isArray(value.__fields) &&
+    !Array.isArray(value.__sigil_map);
+}}
+
+function __sigil_debug_watch_results() {{
+  const config = globalThis.__sigil_debug_step_config ?? {{}};
+  const selectors = Array.isArray(config.watches) ? config.watches : [];
+  if (selectors.length === 0) return [];
+  const locals = typeof globalThis.__sigil_breakpoint_current_locals_raw === 'function'
+    ? globalThis.__sigil_breakpoint_current_locals_raw()
+    : [];
+  return selectors.map((selector) => {{
+    const segments = String(selector).split('.');
+    const root = locals.find((local) => String(local?.name ?? '') === segments[0]);
+    if (!root) {{
+      return {{ selector: String(selector), status: 'not_in_scope' }};
+    }}
+    let current = root.raw;
+    for (const segment of segments.slice(1)) {{
+      if (!__sigil_debug_watch_is_record_like(current) ||
+          !Object.prototype.hasOwnProperty.call(current, segment)) {{
+        return {{ selector: String(selector), status: 'path_missing' }};
+      }}
+      current = current[segment];
+    }}
+    return {{
+      selector: String(selector),
+      status: 'ok',
+      value: typeof globalThis.__sigil_trace_summary === 'function'
+        ? globalThis.__sigil_trace_summary(current, 1)
+        : {{ kind: typeof current }}
+    }};
+  }});
+}}
+
 function __sigil_debug_snapshot_from_event(stateValue, reason, event, extras = {{}}) {{
   return {{
     state: stateValue,
@@ -6771,7 +6893,8 @@ function __sigil_debug_snapshot_from_event(stateValue, reason, event, extras = {
     frameDepth: Number(event?.frameDepth ?? 0),
     expressionDepth: Number(event?.expressionDepth ?? 0),
     lastCompleted: extras.lastCompleted ?? event?.lastCompleted ?? __sigil_debug_last_completed_from_event(event),
-    exception: extras.exception ?? null
+    exception: extras.exception ?? null,
+    watches: __sigil_debug_watch_results()
   }};
 }}
 
@@ -6909,7 +7032,8 @@ function __sigil_debug_snapshot() {{
     frameDepth: 0,
     expressionDepth: 0,
     lastCompleted: null,
-    exception: null
+    exception: null,
+    watches: []
   }};
 }}
 

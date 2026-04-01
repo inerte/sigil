@@ -1002,7 +1002,7 @@
     },
     "debugSessionInfo": {
       "type": "object",
-      "required": ["id", "file", "targetKind", "state", "replayFile"],
+      "required": ["id", "file", "targetKind", "state", "replayFile", "watches"],
       "properties": {
         "id": { "type": "string" },
         "file": { "type": "string" },
@@ -1011,7 +1011,8 @@
         "replayFile": { "type": "string" },
         "programPath": { "type": "string" },
         "testPath": { "type": "string" },
-        "testId": { "type": "string" }
+        "testId": { "type": "string" },
+        "watches": { "type": "array", "items": { "type": "string" } }
       },
       "additionalProperties": false
     },
@@ -1029,9 +1030,19 @@
       },
       "additionalProperties": false
     },
+    "debugWatchResult": {
+      "type": "object",
+      "required": ["selector", "status"],
+      "properties": {
+        "selector": { "type": "string" },
+        "status": { "type": "string", "enum": ["ok", "not_in_scope", "path_missing"] },
+        "value": { "$ref": "#/$defs/runTraceValueSummary" }
+      },
+      "additionalProperties": false
+    },
     "debugSnapshot": {
       "type": "object",
-      "required": ["state", "pauseReason", "eventKind", "seq", "matched", "locals", "stack", "recentTrace", "frameDepth", "expressionDepth", "stdoutSoFar", "stderrSoFar", "replay"],
+      "required": ["state", "pauseReason", "eventKind", "seq", "matched", "locals", "stack", "recentTrace", "frameDepth", "expressionDepth", "watches", "stdoutSoFar", "stderrSoFar", "replay"],
       "properties": {
         "state": { "type": "string", "enum": ["paused", "completed", "failed", "closed"] },
         "pauseReason": { "type": "string", "enum": ["start", "step", "breakpoint", "exception", "exit"] },
@@ -1059,6 +1070,7 @@
         "recentTrace": { "type": "array", "items": { "$ref": "#/$defs/runTraceEvent" } },
         "frameDepth": { "type": "integer", "minimum": 0 },
         "expressionDepth": { "type": "integer", "minimum": 0 },
+        "watches": { "type": "array", "items": { "$ref": "#/$defs/debugWatchResult" } },
         "lastCompleted": {
           "oneOf": [
             { "$ref": "#/$defs/debugLastCompleted" },

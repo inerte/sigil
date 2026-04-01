@@ -183,6 +183,7 @@ Debugger notes:
 - `sigil test --replay` is artifact-owned and cannot be combined with `--env`
 - `sigil debug test` replays one exact `results[].id` through a file-backed stepping session
 - debug sessions are JSON-only and currently support `snapshot`, `step-into`, `step-over`, `step-out`, `continue`, and `close`
+- `sigil debug test start` also accepts repeatable `--watch local(.field)*` selectors and reports compact watch results on every snapshot
 
 Current output does not include:
 

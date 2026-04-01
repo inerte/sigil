@@ -167,7 +167,7 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test -
 cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --replay .local/tests.replay.json projects/algorithms/tests/basicTesting.sigil
 
 # Start a replay-backed stepping session for one exact test id
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- debug test start --replay .local/tests.replay.json --test "projects/algorithms/tests/basicTesting.sigil::cache hit returns cached value" projects/algorithms/tests/basicTesting.sigil
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- debug test start --replay .local/tests.replay.json --test "projects/algorithms/tests/basicTesting.sigil::cache hit returns cached value" --watch result.value projects/algorithms/tests/basicTesting.sigil
 cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- debug test step-into .local/debug/<session>.json
 
 ```
@@ -217,6 +217,11 @@ Stop-mode breakpoint hits are not runtime errors:
 - the current test result becomes `status: "stopped"`
 - the suite keeps running later selected tests
 - top-level `ok` is still `false`
+
+Replay-backed debug snapshots may also include:
+
+- `watches`
+  - ordered results for any configured `--watch local(.field)*` selectors
 
 Current aggregated test output does not include:
 

@@ -26,6 +26,8 @@ claude "Write a Hello World in Sigil and run it"
 
 **<a href="/docs/testing/#first-class-tests">Testing Built In</a>** - Sigil treats tests as first-class code, with language-level test declarations, JSON-readable results, and runtime-aware validation for things like topology-backed environments.
 
+**<a href="/docs/debugging/">Machine-First Debugging</a>** - Sigil exposes inspect, trace, replay, breakpoints, stepping, and watches as compiler-owned debugging surfaces, so humans and LLMs can reproduce and inspect the same execution instead of relying on ad hoc logs.
+
 **<a href="/docs/topology/#topology-is-runtime-truth">Topology as Runtime Truth</a>** - External dependencies (such as HTTP and database calls) are declared once, bound per environment, and used through typed handles instead of raw endpoints. Runtime wiring becomes compiler-validated project structure.
 
 ## Quick Example

@@ -51,6 +51,10 @@ fn watch_entry<'a>(json: &'a Value, selector: &str) -> &'a Value {
         .unwrap()
 }
 
+fn line_break_selector(file: &Path, line: usize) -> String {
+    format!("{}:{}", file.to_string_lossy(), line)
+}
+
 #[test]
 fn debug_run_start_pauses_at_main_entry() {
     let dir = temp_dir("run-start");
@@ -139,7 +143,10 @@ fn debug_run_step_over_and_continue_complete_the_session() {
         .unwrap();
     assert!(step_into.status.success());
     let step_into_json = parse_json(&step_into.stdout);
-    assert_eq!(step_into_json["data"]["snapshot"]["eventKind"], "expr_enter");
+    assert_eq!(
+        step_into_json["data"]["snapshot"]["eventKind"],
+        "expr_enter"
+    );
 
     let step_over = Command::new(sigil_bin())
         .current_dir(repo_root())
@@ -151,7 +158,10 @@ fn debug_run_step_over_and_continue_complete_the_session() {
         .unwrap();
     assert!(step_over.status.success());
     let step_over_json = parse_json(&step_over.stdout);
-    assert_eq!(step_over_json["data"]["snapshot"]["eventKind"], "expr_return");
+    assert_eq!(
+        step_over_json["data"]["snapshot"]["eventKind"],
+        "expr_return"
+    );
     assert_eq!(
         step_over_json["data"]["snapshot"]["lastCompleted"]["kind"],
         "expr_return"
@@ -168,7 +178,10 @@ fn debug_run_step_over_and_continue_complete_the_session() {
     assert!(continued.status.success());
     let continued_json = parse_json(&continued.stdout);
     assert_eq!(continued_json["data"]["session"]["state"], "completed");
-    assert_eq!(continued_json["data"]["snapshot"]["eventKind"], "program_exit");
+    assert_eq!(
+        continued_json["data"]["snapshot"]["eventKind"],
+        "program_exit"
+    );
     assert_eq!(continued_json["data"]["snapshot"]["stdoutSoFar"], "2\n");
 }
 
@@ -250,7 +263,10 @@ fn debug_test_start_and_step_over_use_exact_test_ids() {
         .unwrap();
     assert!(recorded.status.success());
     let recorded_json = parse_json(&recorded.stdout);
-    let test_id = recorded_json["results"][0]["id"].as_str().unwrap().to_string();
+    let test_id = recorded_json["results"][0]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let started = Command::new(sigil_bin())
         .current_dir(repo_root())
@@ -283,7 +299,10 @@ fn debug_test_start_and_step_over_use_exact_test_ids() {
 
     assert!(step_over.status.success());
     let step_over_json = parse_json(&step_over.stdout);
-    assert_eq!(step_over_json["data"]["snapshot"]["eventKind"], "test_return");
+    assert_eq!(
+        step_over_json["data"]["snapshot"]["eventKind"],
+        "test_return"
+    );
     assert_eq!(step_over_json["data"]["snapshot"]["testStatus"], "pass");
     assert_eq!(
         step_over_json["data"]["snapshot"]["lastCompleted"]["kind"],
@@ -311,7 +330,10 @@ fn debug_test_continue_completes_one_test_session() {
         .unwrap();
     assert!(recorded.status.success());
     let recorded_json = parse_json(&recorded.stdout);
-    let test_id = recorded_json["results"][0]["id"].as_str().unwrap().to_string();
+    let test_id = recorded_json["results"][0]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let started = Command::new(sigil_bin())
         .current_dir(repo_root())
@@ -353,7 +375,7 @@ fn debug_run_watches_follow_scope_and_record_fields() {
     let file = write_program(
         &dir,
         "main.sigil",
-        "t User={name:String,score:Int}\n\nλhelper(user:User)=>Int=user.score\n\nλmain()=>Int=helper({name:\"Ada\",score:1})\n",
+        "t User={name:String,score:Int}\n\nt UserId=Int where value≥0\n\nλhelper(user:User,userId:UserId)=>Int={\n  l current=(userId:UserId);\n  user.score+(match current=current{\n    true=>0|\n    false=>0\n  })\n}\n\nλmain()=>Int=helper({name:\"Ada\",score:1},(1:UserId))\n",
     );
     let artifact = dir.join("run.replay.json");
 
@@ -376,19 +398,34 @@ fn debug_run_watches_follow_scope_and_record_fields() {
         .arg("--replay")
         .arg(&artifact)
         .arg("--watch")
+        .arg("userId")
+        .arg("--watch")
+        .arg("current")
+        .arg("--watch")
         .arg("user.score")
         .arg("--watch")
         .arg("user.name.first")
-        .arg("--break-fn")
-        .arg("helper")
+        .arg("--break")
+        .arg(line_break_selector(&file, 7))
         .arg(&file)
         .output()
         .unwrap();
 
     assert!(started.status.success());
     let started_json = parse_json(&started.stdout);
-    assert_eq!(started_json["data"]["session"]["watches"][0], "user.score");
-    assert_eq!(watch_entry(&started_json, "user.score")["status"], "not_in_scope");
+    assert_eq!(started_json["data"]["session"]["watches"][0], "userId");
+    assert_eq!(
+        watch_entry(&started_json, "userId")["status"],
+        "not_in_scope"
+    );
+    assert_eq!(
+        watch_entry(&started_json, "current")["status"],
+        "not_in_scope"
+    );
+    assert_eq!(
+        watch_entry(&started_json, "user.score")["status"],
+        "not_in_scope"
+    );
     assert_eq!(
         watch_entry(&started_json, "user.name.first")["status"],
         "not_in_scope"
@@ -406,10 +443,29 @@ fn debug_run_watches_follow_scope_and_record_fields() {
 
     assert!(continued.status.success());
     let continued_json = parse_json(&continued.stdout);
-    assert_eq!(continued_json["data"]["snapshot"]["pauseReason"], "breakpoint");
+    assert_eq!(
+        continued_json["data"]["snapshot"]["pauseReason"],
+        "breakpoint"
+    );
+    assert_eq!(watch_entry(&continued_json, "userId")["status"], "ok");
+    assert!(watch_entry(&continued_json, "userId")["value"]["typeId"]
+        .as_str()
+        .unwrap()
+        .ends_with(".UserId"));
+    assert_eq!(watch_entry(&continued_json, "current")["status"], "ok");
+    assert!(watch_entry(&continued_json, "current")["value"]["typeId"]
+        .as_str()
+        .unwrap()
+        .ends_with(".UserId"));
     assert_eq!(watch_entry(&continued_json, "user.score")["status"], "ok");
-    assert_eq!(watch_entry(&continued_json, "user.score")["value"]["kind"], "int");
-    assert_eq!(watch_entry(&continued_json, "user.score")["value"]["value"], 1);
+    assert_eq!(
+        watch_entry(&continued_json, "user.score")["value"]["kind"],
+        "int"
+    );
+    assert_eq!(
+        watch_entry(&continued_json, "user.score")["value"]["value"],
+        1
+    );
     assert_eq!(
         watch_entry(&continued_json, "user.name.first")["status"],
         "path_missing"
@@ -459,7 +515,7 @@ fn debug_test_watches_resolve_at_breakpoint_scope() {
     let file = write_program(
         &dir,
         "tests/basic.sigil",
-        "t User={name:String,score:Int}\n\nλhelper(user:User)=>Int=user.score\n\nλmain()=>Unit=()\n\ntest \"demo\" {\n  helper({name:\"Ada\",score:2})=2\n}\n",
+        "t User={name:String,score:Int}\n\nt UserId=Int where value≥0\n\nλhelper(user:User,userId:UserId)=>Int={\n  l current=(userId:UserId);\n  user.score+(match current=current{\n    true=>0|\n    false=>0\n  })\n}\n\nλmain()=>Unit=()\n\ntest \"demo\" {\n  helper({name:\"Ada\",score:2},(2:UserId))=2\n}\n",
     );
     let artifact = dir.join("tests.replay.json");
 
@@ -473,7 +529,10 @@ fn debug_test_watches_resolve_at_breakpoint_scope() {
         .unwrap();
     assert!(recorded.status.success());
     let recorded_json = parse_json(&recorded.stdout);
-    let test_id = recorded_json["results"][0]["id"].as_str().unwrap().to_string();
+    let test_id = recorded_json["results"][0]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
 
     let started = Command::new(sigil_bin())
         .current_dir(repo_root())
@@ -485,16 +544,31 @@ fn debug_test_watches_resolve_at_breakpoint_scope() {
         .arg("--test")
         .arg(&test_id)
         .arg("--watch")
+        .arg("userId")
+        .arg("--watch")
+        .arg("current")
+        .arg("--watch")
         .arg("user.score")
-        .arg("--break-fn")
-        .arg("helper")
+        .arg("--break")
+        .arg(line_break_selector(&file, 7))
         .arg(&file)
         .output()
         .unwrap();
 
     assert!(started.status.success());
     let started_json = parse_json(&started.stdout);
-    assert_eq!(watch_entry(&started_json, "user.score")["status"], "not_in_scope");
+    assert_eq!(
+        watch_entry(&started_json, "userId")["status"],
+        "not_in_scope"
+    );
+    assert_eq!(
+        watch_entry(&started_json, "current")["status"],
+        "not_in_scope"
+    );
+    assert_eq!(
+        watch_entry(&started_json, "user.score")["status"],
+        "not_in_scope"
+    );
     let session = started_json["data"]["session"]["file"].as_str().unwrap();
 
     let continued = Command::new(sigil_bin())
@@ -508,8 +582,27 @@ fn debug_test_watches_resolve_at_breakpoint_scope() {
 
     assert!(continued.status.success());
     let continued_json = parse_json(&continued.stdout);
-    assert_eq!(continued_json["data"]["snapshot"]["pauseReason"], "breakpoint");
+    assert_eq!(
+        continued_json["data"]["snapshot"]["pauseReason"],
+        "breakpoint"
+    );
+    assert_eq!(watch_entry(&continued_json, "userId")["status"], "ok");
+    assert!(watch_entry(&continued_json, "userId")["value"]["typeId"]
+        .as_str()
+        .unwrap()
+        .ends_with(".UserId"));
+    assert_eq!(watch_entry(&continued_json, "current")["status"], "ok");
+    assert!(watch_entry(&continued_json, "current")["value"]["typeId"]
+        .as_str()
+        .unwrap()
+        .ends_with(".UserId"));
     assert_eq!(watch_entry(&continued_json, "user.score")["status"], "ok");
-    assert_eq!(watch_entry(&continued_json, "user.score")["value"]["kind"], "int");
-    assert_eq!(watch_entry(&continued_json, "user.score")["value"]["value"], 2);
+    assert_eq!(
+        watch_entry(&continued_json, "user.score")["value"]["kind"],
+        "int"
+    );
+    assert_eq!(
+        watch_entry(&continued_json, "user.score")["value"]["value"],
+        2
+    );
 }

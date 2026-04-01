@@ -279,7 +279,7 @@ fn run_json_breakpoint_hits_include_live_let_locals() {
     let file = write_program(
         &dir,
         "main.sigil",
-        "λhelper(x:Int)=>Int={\n  l y=(x+1:Int);\n  y+y\n}\n\nλmain()=>Int=helper(1)\n",
+        "t UserId=Int where value≥0\n\nλhelper(userId:UserId)=>Int={\n  l current=(userId:UserId);\n  match current=current{\n    true=>1|\n    false=>0\n  }\n}\n\nλmain()=>Int=helper((1:UserId))\n",
     );
 
     let output = Command::new(sigil_bin())
@@ -287,7 +287,7 @@ fn run_json_breakpoint_hits_include_live_let_locals() {
         .arg("run")
         .arg("--json")
         .arg("--break")
-        .arg(line_break_selector(&file, 3))
+        .arg(line_break_selector(&file, 5))
         .arg(&file)
         .output()
         .unwrap();
@@ -301,12 +301,24 @@ fn run_json_breakpoint_hits_include_live_let_locals() {
         json["data"]["breakpoints"]["hits"][0]["spanKind"],
         "expr_identifier"
     );
-    assert!(locals
-        .iter()
-        .any(|local| local["name"] == "x" && local["origin"] == "param"));
-    assert!(locals
-        .iter()
-        .any(|local| local["name"] == "y" && local["origin"] == "let"));
+    assert!(locals.iter().any(|local| {
+        local["name"] == "userId"
+            && local["origin"] == "param"
+            && local["typeId"].as_str().unwrap().ends_with(".UserId")
+            && local["value"]["typeId"]
+                .as_str()
+                .unwrap()
+                .ends_with(".UserId")
+    }));
+    assert!(locals.iter().any(|local| {
+        local["name"] == "current"
+            && local["origin"] == "let"
+            && local["typeId"].as_str().unwrap().ends_with(".UserId")
+            && local["value"]["typeId"]
+                .as_str()
+                .unwrap()
+                .ends_with(".UserId")
+    }));
 }
 
 #[test]
@@ -699,7 +711,7 @@ fn run_json_enriches_import_time_runtime_exceptions() {
     let file = write_program(
         &dir,
         "main.sigil",
-        "e boom:{explode:λ()=>Int}\n\nc bad=(boom.explode():Int)\n\nλmain()=>Int=bad\n",
+        "t BirthYear=Int where value>1800 and value<10000\n\ne process:{chdir:λ(String)=>BirthYear}\n\nc bad=(process.chdir(\"\"):BirthYear)\n\nλmain()=>BirthYear=bad\n",
     );
 
     let output = Command::new(sigil_bin())
@@ -731,6 +743,12 @@ fn run_json_enriches_import_time_runtime_exceptions() {
         json["error"]["details"]["exception"]["sigilExpression"]["kind"],
         "const_decl"
     );
+    assert!(
+        json["error"]["details"]["exception"]["sigilExpression"]["error"]["typeId"]
+            .as_str()
+            .unwrap()
+            .ends_with(".BirthYear")
+    );
     assert_eq!(
         json["error"]["details"]["exception"]["sigilFrame"]["kind"],
         "const_decl"
@@ -739,7 +757,7 @@ fn run_json_enriches_import_time_runtime_exceptions() {
         json["error"]["details"]["exception"]["sigilFrame"]["excerpt"]["text"]
             .as_str()
             .unwrap()
-            .contains("c bad=(boom.explode():Int)")
+            .contains("c bad=(process.chdir(\"\"):BirthYear)")
     );
 }
 
@@ -749,7 +767,7 @@ fn run_json_runtime_expression_includes_live_locals_when_breakpoints_are_enabled
     let file = write_program(
         &dir,
         "main.sigil",
-        "e boom:{explode:λ()=>Int}\n\nλhelper(x:Int)=>Int={\n  l y=(x+1:Int);\n  boom.explode()+y+y\n}\n\nλmain()=>Int=helper(1)\n",
+        "t UserId=Int where value≥0\n\ne boom:{explode:λ()=>Int}\n\nλhelper(userId:UserId)=>Int={\n  l current=(userId:UserId);\n  boom.explode()+(match current=current{\n    true=>1|\n    false=>0\n  })\n}\n\nλmain()=>Int=helper((1:UserId))\n",
     );
 
     let output = Command::new(sigil_bin())
@@ -771,12 +789,24 @@ fn run_json_runtime_expression_includes_live_locals_when_breakpoints_are_enabled
     let locals = json["error"]["details"]["exception"]["sigilExpression"]["locals"]
         .as_array()
         .expect("expression locals");
-    assert!(locals
-        .iter()
-        .any(|local| local["name"] == "x" && local["origin"] == "param"));
-    assert!(locals
-        .iter()
-        .any(|local| local["name"] == "y" && local["origin"] == "let"));
+    assert!(locals.iter().any(|local| {
+        local["name"] == "userId"
+            && local["origin"] == "param"
+            && local["typeId"].as_str().unwrap().ends_with(".UserId")
+            && local["value"]["typeId"]
+                .as_str()
+                .unwrap()
+                .ends_with(".UserId")
+    }));
+    assert!(locals.iter().any(|local| {
+        local["name"] == "current"
+            && local["origin"] == "let"
+            && local["typeId"].as_str().unwrap().ends_with(".UserId")
+            && local["value"]["typeId"]
+                .as_str()
+                .unwrap()
+                .ends_with(".UserId")
+    }));
 }
 
 #[test]

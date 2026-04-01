@@ -6,9 +6,9 @@ use crate::module_graph::{
 use crate::project::{get_project_config, ProjectConfig, ProjectConfigError};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use rayon::{prelude::*, ThreadPoolBuilder};
-use serde_json::json;
+use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-use sigil_ast::{Declaration, Program, SourceLocation, Type, TypeDef};
+use sigil_ast::{Declaration, Expr, Pattern, Program, SourceLocation, Type, TypeDef};
 use sigil_codegen::{
     collect_module_span_map, world_runtime_helpers_source, CodegenOptions, DebugSpanKind,
     DebugSpanRecord, ModuleSpanMap, TypeScriptGenerator,
@@ -23,8 +23,9 @@ use sigil_typechecker::{
     type_check, TypeCheckOptions, TypeError, TypeInfo, TypeScheme, TypedDeclaration, TypedProgram,
 };
 use sigil_validator::{
-    print_canonical_program_with_effects, validate_canonical_form_with_options,
-    validate_typed_canonical_form, ValidationError, ValidationOptions,
+    print_canonical_expr, print_canonical_program_with_effects, print_canonical_type_definition,
+    validate_canonical_form_with_options, validate_typed_canonical_form, ValidationError,
+    ValidationOptions,
 };
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fs;
@@ -785,6 +786,437 @@ fn format_test_signature(test_decl: &sigil_typechecker::typed_ir::TypedTestDecl)
     signature
 }
 
+fn inspect_named_type_id(module: &AnalyzedModule, name: &str) -> String {
+    format!("{}.{}", module.module_id, name)
+}
+
+fn inspect_type_equality_mode(definition: &TypeDef, constrained: bool) -> &'static str {
+    match definition {
+        TypeDef::Sum(_) => "nominal",
+        TypeDef::Alias(_) | TypeDef::Product(_) => {
+            if constrained {
+                "nominal"
+            } else {
+                "structural"
+            }
+        }
+    }
+}
+
+fn inspect_literal_type_name(literal_type: sigil_ast::LiteralType) -> &'static str {
+    match literal_type {
+        sigil_ast::LiteralType::Int => "Int",
+        sigil_ast::LiteralType::Float => "Float",
+        sigil_ast::LiteralType::String => "String",
+        sigil_ast::LiteralType::Char => "Char",
+        sigil_ast::LiteralType::Bool => "Bool",
+        sigil_ast::LiteralType::Unit => "Unit",
+    }
+}
+
+fn inspect_pattern_literal_type_name(literal_type: sigil_ast::PatternLiteralType) -> &'static str {
+    match literal_type {
+        sigil_ast::PatternLiteralType::Int => "Int",
+        sigil_ast::PatternLiteralType::Float => "Float",
+        sigil_ast::PatternLiteralType::String => "String",
+        sigil_ast::PatternLiteralType::Char => "Char",
+        sigil_ast::PatternLiteralType::Bool => "Bool",
+        sigil_ast::PatternLiteralType::Unit => "Unit",
+    }
+}
+
+fn inspect_pipeline_operator_name(operator: sigil_ast::PipelineOperator) -> &'static str {
+    match operator {
+        sigil_ast::PipelineOperator::Pipe => "|>",
+        sigil_ast::PipelineOperator::ComposeFwd => ">>",
+        sigil_ast::PipelineOperator::ComposeBwd => "<<",
+    }
+}
+
+fn inspect_literal_value_json(value: &sigil_ast::LiteralValue) -> Value {
+    match value {
+        sigil_ast::LiteralValue::Int(value) => json!(value),
+        sigil_ast::LiteralValue::Float(value) => json!(value),
+        sigil_ast::LiteralValue::String(value) => json!(value),
+        sigil_ast::LiteralValue::Char(value) => json!(value.to_string()),
+        sigil_ast::LiteralValue::Bool(value) => json!(value),
+        sigil_ast::LiteralValue::Unit => Value::Null,
+    }
+}
+
+fn inspect_pattern_literal_value_json(value: &sigil_ast::PatternLiteralValue) -> Value {
+    match value {
+        sigil_ast::PatternLiteralValue::Int(value) => json!(value),
+        sigil_ast::PatternLiteralValue::Float(value) => json!(value),
+        sigil_ast::PatternLiteralValue::String(value) => json!(value),
+        sigil_ast::PatternLiteralValue::Char(value) => json!(value.to_string()),
+        sigil_ast::PatternLiteralValue::Bool(value) => json!(value),
+        sigil_ast::PatternLiteralValue::Unit => Value::Null,
+    }
+}
+
+fn inspect_type_ast(typ: &Type) -> Value {
+    match typ {
+        Type::Primitive(primitive) => json!({
+            "kind": "primitive",
+            "name": primitive.name.to_string()
+        }),
+        Type::List(list) => json!({
+            "kind": "list",
+            "element": inspect_type_ast(&list.element_type)
+        }),
+        Type::Map(map) => json!({
+            "kind": "map",
+            "key": inspect_type_ast(&map.key_type),
+            "value": inspect_type_ast(&map.value_type)
+        }),
+        Type::Function(function) => json!({
+            "kind": "function",
+            "params": function
+                .param_types
+                .iter()
+                .map(inspect_type_ast)
+                .collect::<Vec<_>>(),
+            "effects": function.effects,
+            "returns": inspect_type_ast(&function.return_type)
+        }),
+        Type::Constructor(constructor) => json!({
+            "kind": "constructor",
+            "name": constructor.name,
+            "typeArgs": constructor
+                .type_args
+                .iter()
+                .map(inspect_type_ast)
+                .collect::<Vec<_>>()
+        }),
+        Type::Variable(variable) => json!({
+            "kind": "variable",
+            "name": variable.name
+        }),
+        Type::Tuple(tuple) => json!({
+            "kind": "tuple",
+            "items": tuple.types.iter().map(inspect_type_ast).collect::<Vec<_>>()
+        }),
+        Type::Qualified(qualified) => json!({
+            "kind": "qualified",
+            "modulePath": qualified.module_path,
+            "name": qualified.type_name,
+            "typeArgs": qualified
+                .type_args
+                .iter()
+                .map(inspect_type_ast)
+                .collect::<Vec<_>>()
+        }),
+    }
+}
+
+fn inspect_type_definition_ast(definition: &TypeDef) -> Value {
+    match definition {
+        TypeDef::Alias(alias) => json!({
+            "kind": "alias",
+            "target": inspect_type_ast(&alias.aliased_type)
+        }),
+        TypeDef::Product(product) => json!({
+            "kind": "product",
+            "fields": product
+                .fields
+                .iter()
+                .map(|field| {
+                    json!({
+                        "name": field.name,
+                        "type": inspect_type_ast(&field.field_type)
+                    })
+                })
+                .collect::<Vec<_>>()
+        }),
+        TypeDef::Sum(sum) => json!({
+            "kind": "sum",
+            "variants": sum
+                .variants
+                .iter()
+                .map(|variant| {
+                    json!({
+                        "name": variant.name,
+                        "types": variant.types.iter().map(inspect_type_ast).collect::<Vec<_>>()
+                    })
+                })
+                .collect::<Vec<_>>()
+        }),
+    }
+}
+
+fn inspect_pattern_ast(pattern: &Pattern) -> Value {
+    match pattern {
+        Pattern::Literal(literal) => json!({
+            "kind": "literal",
+            "literalType": inspect_pattern_literal_type_name(literal.literal_type),
+            "value": inspect_pattern_literal_value_json(&literal.value)
+        }),
+        Pattern::Identifier(identifier) => json!({
+            "kind": "identifier",
+            "name": identifier.name
+        }),
+        Pattern::Wildcard(_) => json!({
+            "kind": "wildcard"
+        }),
+        Pattern::Constructor(constructor) => json!({
+            "kind": "constructor",
+            "modulePath": constructor.module_path,
+            "name": constructor.name,
+            "patterns": constructor
+                .patterns
+                .iter()
+                .map(inspect_pattern_ast)
+                .collect::<Vec<_>>()
+        }),
+        Pattern::List(list) => json!({
+            "kind": "list",
+            "items": list.patterns.iter().map(inspect_pattern_ast).collect::<Vec<_>>(),
+            "rest": list.rest
+        }),
+        Pattern::Record(record) => json!({
+            "kind": "record",
+            "fields": record
+                .fields
+                .iter()
+                .map(|field| {
+                    json!({
+                        "name": field.name,
+                        "pattern": field.pattern.as_ref().map(inspect_pattern_ast)
+                    })
+                })
+                .collect::<Vec<_>>()
+        }),
+        Pattern::Tuple(tuple) => json!({
+            "kind": "tuple",
+            "items": tuple.patterns.iter().map(inspect_pattern_ast).collect::<Vec<_>>()
+        }),
+    }
+}
+
+fn inspect_expr_ast(expr: &Expr) -> Value {
+    match expr {
+        Expr::Literal(literal) => json!({
+            "kind": "literal",
+            "literalType": inspect_literal_type_name(literal.literal_type),
+            "value": inspect_literal_value_json(&literal.value)
+        }),
+        Expr::Identifier(identifier) => {
+            if identifier.name == "value" {
+                json!({
+                    "kind": "value"
+                })
+            } else {
+                json!({
+                    "kind": "name",
+                    "name": identifier.name
+                })
+            }
+        }
+        Expr::Lambda(lambda) => json!({
+            "kind": "lambda",
+            "params": lambda
+                .params
+                .iter()
+                .map(|param| {
+                    json!({
+                        "name": param.name,
+                        "type": param.type_annotation.as_ref().map(inspect_type_ast),
+                        "isMutable": param.is_mutable
+                    })
+                })
+                .collect::<Vec<_>>(),
+            "effects": lambda.effects,
+            "returnType": inspect_type_ast(&lambda.return_type),
+            "body": inspect_expr_ast(&lambda.body)
+        }),
+        Expr::Application(application) => json!({
+            "kind": "call",
+            "func": inspect_expr_ast(&application.func),
+            "args": application.args.iter().map(inspect_expr_ast).collect::<Vec<_>>()
+        }),
+        Expr::Binary(binary) => json!({
+            "kind": "binary",
+            "operator": binary.operator.to_string(),
+            "left": inspect_expr_ast(&binary.left),
+            "right": inspect_expr_ast(&binary.right)
+        }),
+        Expr::Unary(unary) => json!({
+            "kind": "unary",
+            "operator": unary.operator.to_string(),
+            "operand": inspect_expr_ast(&unary.operand)
+        }),
+        Expr::Match(match_expr) => json!({
+            "kind": "match",
+            "scrutinee": inspect_expr_ast(&match_expr.scrutinee),
+            "arms": match_expr
+                .arms
+                .iter()
+                .map(|arm| {
+                    json!({
+                        "pattern": inspect_pattern_ast(&arm.pattern),
+                        "guard": arm.guard.as_ref().map(inspect_expr_ast),
+                        "body": inspect_expr_ast(&arm.body)
+                    })
+                })
+                .collect::<Vec<_>>()
+        }),
+        Expr::Let(let_expr) => json!({
+            "kind": "let",
+            "pattern": inspect_pattern_ast(&let_expr.pattern),
+            "value": inspect_expr_ast(&let_expr.value),
+            "body": inspect_expr_ast(&let_expr.body)
+        }),
+        Expr::If(if_expr) => json!({
+            "kind": "if",
+            "condition": inspect_expr_ast(&if_expr.condition),
+            "then": inspect_expr_ast(&if_expr.then_branch),
+            "else": if_expr.else_branch.as_ref().map(inspect_expr_ast)
+        }),
+        Expr::List(list) => json!({
+            "kind": "list",
+            "items": list.elements.iter().map(inspect_expr_ast).collect::<Vec<_>>()
+        }),
+        Expr::Record(record) => json!({
+            "kind": "record",
+            "fields": record
+                .fields
+                .iter()
+                .map(|field| {
+                    json!({
+                        "name": field.name,
+                        "value": inspect_expr_ast(&field.value)
+                    })
+                })
+                .collect::<Vec<_>>()
+        }),
+        Expr::MapLiteral(map_literal) => json!({
+            "kind": "map",
+            "entries": map_literal
+                .entries
+                .iter()
+                .map(|entry| {
+                    json!({
+                        "key": inspect_expr_ast(&entry.key),
+                        "value": inspect_expr_ast(&entry.value)
+                    })
+                })
+                .collect::<Vec<_>>()
+        }),
+        Expr::Tuple(tuple) => json!({
+            "kind": "tuple",
+            "items": tuple.elements.iter().map(inspect_expr_ast).collect::<Vec<_>>()
+        }),
+        Expr::FieldAccess(field_access) => json!({
+            "kind": "field",
+            "object": inspect_expr_ast(&field_access.object),
+            "field": field_access.field
+        }),
+        Expr::Index(index) => json!({
+            "kind": "index",
+            "object": inspect_expr_ast(&index.object),
+            "index": inspect_expr_ast(&index.index)
+        }),
+        Expr::Pipeline(pipeline) => json!({
+            "kind": "pipeline",
+            "operator": inspect_pipeline_operator_name(pipeline.operator),
+            "left": inspect_expr_ast(&pipeline.left),
+            "right": inspect_expr_ast(&pipeline.right)
+        }),
+        Expr::Map(map_expr) => json!({
+            "kind": "mapExpr",
+            "list": inspect_expr_ast(&map_expr.list),
+            "func": inspect_expr_ast(&map_expr.func)
+        }),
+        Expr::Filter(filter) => json!({
+            "kind": "filter",
+            "list": inspect_expr_ast(&filter.list),
+            "predicate": inspect_expr_ast(&filter.predicate)
+        }),
+        Expr::Fold(fold) => json!({
+            "kind": "fold",
+            "list": inspect_expr_ast(&fold.list),
+            "func": inspect_expr_ast(&fold.func),
+            "init": inspect_expr_ast(&fold.init)
+        }),
+        Expr::Concurrent(concurrent) => json!({
+            "kind": "concurrent",
+            "name": concurrent.name,
+            "width": inspect_expr_ast(&concurrent.width),
+            "policy": concurrent.policy.as_ref().map(|policy| inspect_expr_ast(&Expr::Record(policy.clone()))),
+            "steps": concurrent
+                .steps
+                .iter()
+                .map(|step| match step {
+                    sigil_ast::ConcurrentStep::Spawn(spawn) => json!({
+                        "kind": "spawn",
+                        "expr": inspect_expr_ast(&spawn.expr)
+                    }),
+                    sigil_ast::ConcurrentStep::SpawnEach(spawn_each) => json!({
+                        "kind": "spawnEach",
+                        "func": inspect_expr_ast(&spawn_each.func),
+                        "list": inspect_expr_ast(&spawn_each.list)
+                    }),
+                })
+                .collect::<Vec<_>>()
+        }),
+        Expr::MemberAccess(member_access) => json!({
+            "kind": "memberAccess",
+            "namespace": member_access.namespace,
+            "member": member_access.member
+        }),
+        Expr::TypeAscription(ascription) => json!({
+            "kind": "ascribe",
+            "expr": inspect_expr_ast(&ascription.expr),
+            "type": inspect_type_ast(&ascription.ascribed_type)
+        }),
+    }
+}
+
+fn inspect_named_types(module: &AnalyzedModule) -> Vec<Value> {
+    let source_file = module.file_path.to_string_lossy().to_string();
+
+    module
+        .typed_program
+        .declarations
+        .iter()
+        .enumerate()
+        .filter_map(|(index, declaration)| match declaration {
+            TypedDeclaration::Type(type_decl) => {
+                let constrained = type_decl.ast.constraint.is_some();
+                let kind = match &type_decl.ast.definition {
+                    TypeDef::Alias(_) => "alias",
+                    TypeDef::Product(_) => "product",
+                    TypeDef::Sum(_) => "sum",
+                };
+                Some(json!({
+                    "typeId": inspect_named_type_id(module, &type_decl.ast.name),
+                    "name": type_decl.ast.name,
+                    "moduleId": module.module_id,
+                    "kind": kind,
+                    "typeParams": type_decl.ast.type_params,
+                    "definitionSource": print_canonical_type_definition(&type_decl.ast.definition),
+                    "definitionAst": inspect_type_definition_ast(&type_decl.ast.definition),
+                    "constrained": constrained,
+                    "constraintSource": type_decl.ast.constraint.as_ref().map(print_canonical_expr),
+                    "constraintAst": type_decl.ast.constraint.as_ref().map(inspect_expr_ast),
+                    "equalityMode": inspect_type_equality_mode(&type_decl.ast.definition, constrained),
+                    "spanId": module
+                        .declaration_span_ids
+                        .get(index)
+                        .and_then(|span_id| span_id.clone())
+                        .unwrap_or_default(),
+                    "location": source_location_json(&source_file, type_decl.ast.location)
+                }))
+            }
+            TypedDeclaration::Function(_)
+            | TypedDeclaration::Const(_)
+            | TypedDeclaration::Test(_)
+            | TypedDeclaration::Extern(_) => None,
+        })
+        .collect()
+}
+
 fn is_sigil_source_file(path: &Path) -> bool {
     path.is_file() && path.extension().and_then(|value| value.to_str()) == Some("sigil")
 }
@@ -910,7 +1342,7 @@ fn group_compile_targets(files: &[PathBuf]) -> Result<Vec<CompileBatchGroup>, Cl
     Ok(groups)
 }
 
-fn inspect_type_declarations(module: &AnalyzedModule) -> Vec<serde_json::Value> {
+fn inspect_type_declarations(module: &AnalyzedModule) -> Vec<Value> {
     let source_file = module.file_path.to_string_lossy().to_string();
 
     module
@@ -959,10 +1391,14 @@ fn inspect_type_declarations(module: &AnalyzedModule) -> Vec<serde_json::Value> 
         .collect()
 }
 
-fn inspect_type_summary(declarations: &[serde_json::Value]) -> serde_json::Value {
+fn inspect_type_summary(declarations: &[Value], types: &[Value]) -> Value {
     let mut functions = 0usize;
     let mut consts = 0usize;
     let mut tests = 0usize;
+    let mut aliases = 0usize;
+    let mut products = 0usize;
+    let mut sums = 0usize;
+    let mut constrained_types = 0usize;
 
     for declaration in declarations {
         match declaration["kind"].as_str() {
@@ -973,23 +1409,42 @@ fn inspect_type_summary(declarations: &[serde_json::Value]) -> serde_json::Value
         }
     }
 
-    serde_json::json!({
+    for type_entry in types {
+        match type_entry["kind"].as_str() {
+            Some("alias") => aliases += 1,
+            Some("product") => products += 1,
+            Some("sum") => sums += 1,
+            _ => {}
+        }
+        if type_entry["constrained"].as_bool().unwrap_or(false) {
+            constrained_types += 1;
+        }
+    }
+
+    json!({
         "declarations": declarations.len(),
         "functions": functions,
         "consts": consts,
-        "tests": tests
+        "tests": tests,
+        "types": types.len(),
+        "aliases": aliases,
+        "products": products,
+        "sums": sums,
+        "constrainedTypes": constrained_types
     })
 }
 
-fn inspect_types_file_result(input: &Path, module: &AnalyzedModule) -> serde_json::Value {
+fn inspect_types_file_result(input: &Path, module: &AnalyzedModule) -> Value {
     let declarations = inspect_type_declarations(module);
-    serde_json::json!({
+    let types = inspect_named_types(module);
+    json!({
         "input": input.to_string_lossy(),
         "moduleId": module.module_id,
         "sourceFile": module.file_path.to_string_lossy(),
         "project": project_json(module.project.as_ref()),
-        "summary": inspect_type_summary(&declarations),
-        "declarations": declarations
+        "summary": inspect_type_summary(&declarations, &types),
+        "declarations": declarations,
+        "types": types
     })
 }
 
@@ -2603,6 +3058,8 @@ struct RuntimeExpressionCapture {
 struct RuntimeBreakpointLocalCapture {
     name: String,
     origin: String,
+    #[serde(default)]
+    type_id: Option<String>,
     value: serde_json::Value,
 }
 
@@ -3963,7 +4420,9 @@ fn validate_test_replay_binding(
     artifact_path: &Path,
 ) -> Result<(), CliError> {
     let requested_path = if path.exists() {
-        canonicalize_existing_path(path).to_string_lossy().to_string()
+        canonicalize_existing_path(path)
+            .to_string_lossy()
+            .to_string()
     } else if path.is_absolute() {
         path.to_string_lossy().to_string()
     } else {
@@ -4041,8 +4500,7 @@ fn read_runtime_exception_capture(path: &Path) -> Option<RuntimeExceptionCapture
         .as_deref()
         .is_none_or(|code| code.is_empty())
     {
-        capture.sigil_code =
-            recover_runtime_exception_code(&capture.message, &capture.stack);
+        capture.sigil_code = recover_runtime_exception_code(&capture.message, &capture.stack);
     }
     Some(capture)
 }
@@ -4623,7 +5081,9 @@ fn debug_snapshot_json(
                 .module_id
                 .as_deref()
                 .zip(capture.span_id.as_deref())
-                .and_then(|(module_id, span_id)| find_debug_span(module_debug_outputs, module_id, span_id))
+                .and_then(|(module_id, span_id)| {
+                    find_debug_span(module_debug_outputs, module_id, span_id)
+                })
                 .map(|span| serde_json::to_value(&span.location).unwrap());
             json!({
                 "state": capture.state,
@@ -4730,7 +5190,11 @@ fn debug_snapshot_json(
         snapshot_object.insert("stderrSoFar".to_string(), json!(runtime_output.stderr));
         snapshot_object.insert(
             "replay".to_string(),
-            runtime_replay_json(Some("replay"), Some(replay_file), runtime_output.replay_capture.as_ref()),
+            runtime_replay_json(
+                Some("replay"),
+                Some(replay_file),
+                runtime_output.replay_capture.as_ref(),
+            ),
         );
     }
 
@@ -4943,17 +5407,18 @@ fn prepare_debug_test_execution(
                 "testId": test_id
             }),
         })?;
-    let replay_artifact = recorded_test
-        .replay_artifact
-        .clone()
-        .ok_or_else(|| CliError::Breakpoint {
-            code: codes::runtime::REPLAY_BINDING_MISMATCH.to_string(),
-            message: format!("test replay artifact '{}' is missing replay data", test_id),
-            details: json!({
-                "path": path.to_string_lossy(),
-                "testId": test_id
-            }),
-        })?;
+    let replay_artifact =
+        recorded_test
+            .replay_artifact
+            .clone()
+            .ok_or_else(|| CliError::Breakpoint {
+                code: codes::runtime::REPLAY_BINDING_MISMATCH.to_string(),
+                message: format!("test replay artifact '{}' is missing replay data", test_id),
+                details: json!({
+                    "path": path.to_string_lossy(),
+                    "testId": test_id
+                }),
+            })?;
     let test_file = canonicalize_existing_path(Path::new(&recorded_test.file));
     let graph = ModuleGraph::build(&test_file)?;
     let compiled = compile_module_graph(graph, None, true, true, true)?;
@@ -5199,7 +5664,9 @@ pub fn debug_run_start_command(
         replay_file: resolve_run_artifact_path(replay_path, false)?
             .to_string_lossy()
             .to_string(),
-        path: canonicalize_existing_path(file).to_string_lossy().to_string(),
+        path: canonicalize_existing_path(file)
+            .to_string_lossy()
+            .to_string(),
         test_id: None,
         breakpoints,
         watches,
@@ -5247,7 +5714,11 @@ pub fn debug_run_session_command(
         }
         _ => {
             if session.state != DebugSessionState::Paused {
-                return debug_session_state_error(DebugSessionTargetKind::Run, &resolved_session, &session);
+                return debug_session_state_error(
+                    DebugSessionTargetKind::Run,
+                    &resolved_session,
+                    &session,
+                );
             }
             let cursor = debug_snapshot_cursor(&session.snapshot);
             let snapshot = execute_debug_execution(&prepare_debug_run_execution(
@@ -5318,7 +5789,9 @@ pub fn debug_test_start_command(
         replay_file: resolve_run_artifact_path(replay_path, false)?
             .to_string_lossy()
             .to_string(),
-        path: resolve_debug_session_path(path)?.to_string_lossy().to_string(),
+        path: resolve_debug_session_path(path)?
+            .to_string_lossy()
+            .to_string(),
         test_id: Some(test_id.to_string()),
         breakpoints,
         watches,
@@ -5366,7 +5839,11 @@ pub fn debug_test_session_command(
         }
         _ => {
             if session.state != DebugSessionState::Paused {
-                return debug_session_state_error(DebugSessionTargetKind::Test, &resolved_session, &session);
+                return debug_session_state_error(
+                    DebugSessionTargetKind::Test,
+                    &resolved_session,
+                    &session,
+                );
             }
             let cursor = debug_snapshot_cursor(&session.snapshot);
             let snapshot = execute_debug_execution(&prepare_debug_test_execution(
@@ -6594,30 +7071,30 @@ fn resolve_debug_session_path(path: &Path) -> Result<PathBuf, CliError> {
 
 fn read_debug_session(path: &Path) -> Result<DebugSessionFile, CliError> {
     let resolved = resolve_debug_session_path(path)?;
-    let contents = fs::read_to_string(&resolved).map_err(|error| {
-        CliError::Breakpoint {
-            code: codes::cli::UNEXPECTED.to_string(),
-            message: format!("debug session '{}' could not be read", resolved.display()),
-            details: json!({
-                "session": resolved.to_string_lossy(),
-                "error": error.to_string()
-            }),
-        }
+    let contents = fs::read_to_string(&resolved).map_err(|error| CliError::Breakpoint {
+        code: codes::cli::UNEXPECTED.to_string(),
+        message: format!("debug session '{}' could not be read", resolved.display()),
+        details: json!({
+            "session": resolved.to_string_lossy(),
+            "error": error.to_string()
+        }),
     })?;
-    let session: DebugSessionFile = serde_json::from_str(&contents).map_err(|error| {
-        CliError::Breakpoint {
+    let session: DebugSessionFile =
+        serde_json::from_str(&contents).map_err(|error| CliError::Breakpoint {
             code: codes::cli::UNEXPECTED.to_string(),
             message: format!("debug session '{}' is invalid", resolved.display()),
             details: json!({
                 "session": resolved.to_string_lossy(),
                 "error": error.to_string()
             }),
-        }
-    })?;
+        })?;
     if session.kind != "sigilDebugSession" || session.format_version != 1 {
         return Err(CliError::Breakpoint {
             code: codes::cli::UNEXPECTED.to_string(),
-            message: format!("'{}' is not a supported Sigil debug session", resolved.display()),
+            message: format!(
+                "'{}' is not a supported Sigil debug session",
+                resolved.display()
+            ),
             details: json!({
                 "session": resolved.to_string_lossy()
             }),
@@ -6648,7 +7125,10 @@ fn debug_session_json(path: &Path, session: &DebugSessionFile) -> serde_json::Va
         "file".to_string(),
         json!(canonicalize_existing_path(path).to_string_lossy()),
     );
-    session_json.insert("targetKind".to_string(), json!(session.target_kind.as_str()));
+    session_json.insert(
+        "targetKind".to_string(),
+        json!(session.target_kind.as_str()),
+    );
     session_json.insert("state".to_string(), json!(session.state));
     session_json.insert("replayFile".to_string(), json!(session.replay_file));
     match session.target_kind {
@@ -6723,7 +7203,9 @@ fn debug_runtime_breakpoint_config_json(
         "recentTraceLimit": 32,
         "spans": spans
     }))
-    .map_err(|error| CliError::Codegen(format!("failed to encode debug breakpoint config: {error}")))
+    .map_err(|error| {
+        CliError::Codegen(format!("failed to encode debug breakpoint config: {error}"))
+    })
 }
 
 fn is_lower_camel_case_identifier(name: &str) -> bool {
@@ -6743,9 +7225,9 @@ fn validate_debug_watch_selectors(
         let segments = selector.split('.').collect::<Vec<_>>();
         let invalid = selector.is_empty()
             || segments.is_empty()
-            || segments.iter().any(|segment| {
-                segment.is_empty() || !is_lower_camel_case_identifier(segment)
-            });
+            || segments
+                .iter()
+                .any(|segment| segment.is_empty() || !is_lower_camel_case_identifier(segment));
         if invalid {
             output_json_error_to(
                 target_kind.command_name(),
@@ -6860,11 +7342,13 @@ function __sigil_debug_watch_results() {{
       }}
       current = current[segment];
     }}
+    const typeId =
+      segments.length === 1 && root?.typeId != null ? String(root.typeId) : null;
     return {{
       selector: String(selector),
       status: 'ok',
-      value: typeof globalThis.__sigil_trace_summary === 'function'
-        ? globalThis.__sigil_trace_summary(current, 1)
+      value: typeof globalThis.__sigil_trace_summary_typed === 'function'
+        ? globalThis.__sigil_trace_summary_typed(current, 1, typeId)
         : {{ kind: typeof current }}
     }};
   }});
@@ -7680,8 +8164,10 @@ fn compile_and_run_tests(
     suite_replay_mode: Option<&PreparedTestReplayMode>,
 ) -> Result<TestRunResult, CliError> {
     let graph = ModuleGraph::build(file)?;
-    let topology_prelude = if matches!(suite_replay_mode, Some(PreparedTestReplayMode::Replay { .. }))
-    {
+    let topology_prelude = if matches!(
+        suite_replay_mode,
+        Some(PreparedTestReplayMode::Replay { .. })
+    ) {
         None
     } else {
         runner_prelude(file, &graph, selected_env)?
@@ -7762,7 +8248,8 @@ fn run_test_module(
             .collect::<Vec<_>>(),
     )
     .unwrap();
-    let trace_runtime_enabled = debug_options.trace_enabled || debug_options.breakpoints_requested();
+    let trace_runtime_enabled =
+        debug_options.trace_enabled || debug_options.breakpoints_requested();
     let trace_config_json = if trace_runtime_enabled {
         serde_json::to_string(&json!({
             "enabled": true,
@@ -8269,13 +8756,22 @@ console.log(JSON.stringify({{
                 .unwrap_or(codes::runtime::UNCAUGHT_EXCEPTION);
             let normalized_message = normalize_runtime_exception_message(capture, code);
             let analysis = analyze_runtime_exception(capture, module_debug_outputs);
-            runtime_exception_json(capture, &normalized_message, &analysis, module_debug_outputs)
+            runtime_exception_json(
+                capture,
+                &normalized_message,
+                &analysis,
+                module_debug_outputs,
+            )
         });
         let trace = debug_options
             .trace_enabled
             .then(|| runtime_trace_json(result.trace.as_ref()));
         let breakpoints = breakpoint_config.map(|config| {
-            runtime_breakpoints_json(Some(config), result.breakpoints.as_ref(), module_debug_outputs)
+            runtime_breakpoints_json(
+                Some(config),
+                result.breakpoints.as_ref(),
+                module_debug_outputs,
+            )
         });
         let replay = suite_replay_mode.map(|mode| {
             runtime_replay_json(

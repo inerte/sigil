@@ -11,7 +11,7 @@
 
 use sigil_ast::{
     BinaryOperator, ExternDecl, LiteralExpr, LiteralValue, Pattern, PatternLiteralValue,
-    PipelineOperator, SourceLocation, TypeDecl, TypeDef, UnaryOperator,
+    PipelineOperator, SourceLocation, Type, TypeDecl, TypeDef, UnaryOperator,
 };
 use sigil_typechecker::typed_ir::{
     MethodSelector, TypedBinaryExpr, TypedCallExpr, TypedConcurrentExpr, TypedConcurrentStep,
@@ -21,6 +21,7 @@ use sigil_typechecker::typed_ir::{
     TypedMapLiteralExpr, TypedMatchExpr, TypedMethodCallExpr, TypedPipelineExpr, TypedProgram,
     TypedRecordExpr, TypedTestDecl, TypedTupleExpr, TypedUnaryExpr,
 };
+use sigil_typechecker::types::InferenceType;
 use std::collections::BTreeSet;
 use std::path::{Component, Path, PathBuf};
 use thiserror::Error;
@@ -1519,6 +1520,7 @@ pub struct TypeScriptGenerator {
     current_trace_owner: Option<TraceOwner>,
     indent: usize,
     declaration_span_ids: Vec<Option<String>>,
+    local_type_names: BTreeSet<String>,
     module_id: Option<String>,
     output: Vec<String>,
     span_map: Option<ModuleSpanMap>,
@@ -1537,6 +1539,7 @@ impl TypeScriptGenerator {
             current_trace_owner: None,
             indent: 0,
             declaration_span_ids: Vec::new(),
+            local_type_names: BTreeSet::new(),
             module_id: options.module_id,
             output: Vec::new(),
             span_map: None,
@@ -1565,6 +1568,14 @@ impl TypeScriptGenerator {
         self.indent = 0;
         self.current_trace_owner = None;
         self.declaration_span_ids.clear();
+        self.local_type_names = program
+            .declarations
+            .iter()
+            .filter_map(|declaration| match declaration {
+                TypedDeclaration::Type(type_decl) => Some(type_decl.ast.name.clone()),
+                _ => None,
+            })
+            .collect();
         self.span_map = self.build_span_map(program);
         self.test_meta_entries.clear();
         // Emit runtime helpers first
@@ -1716,6 +1727,48 @@ impl TypeScriptGenerator {
         })
     }
 
+    fn json_string_or_null(&self, value: Option<&str>) -> Result<String, CodegenError> {
+        match value {
+            Some(value) => self.json_string_literal(value),
+            None => Ok("null".to_string()),
+        }
+    }
+
+    fn qualify_named_type_id(&self, name: &str) -> Option<String> {
+        if name.contains('.') {
+            return Some(name.to_string());
+        }
+        if self.local_type_names.contains(name) {
+            return self
+                .module_id
+                .as_ref()
+                .map(|module_id| format!("{}.{}", module_id, name));
+        }
+        None
+    }
+
+    fn named_type_id_for_inference_type(&self, typ: &InferenceType) -> Option<String> {
+        match typ {
+            InferenceType::Constructor(constructor) => {
+                self.qualify_named_type_id(&constructor.name)
+            }
+            _ => None,
+        }
+    }
+
+    fn named_type_id_for_surface_type(&self, typ: &Type) -> Option<String> {
+        match typ {
+            Type::Constructor(constructor) => self.qualify_named_type_id(&constructor.name),
+            Type::Variable(variable) => self.qualify_named_type_id(&variable.name),
+            Type::Qualified(qualified) => Some(format!(
+                "{}.{}",
+                qualified.module_path.join("::"),
+                qualified.type_name
+            )),
+            _ => None,
+        }
+    }
+
     fn span_id_for_expr(&self, kind: DebugSpanKind, location: SourceLocation) -> Option<&str> {
         self.span_map
             .as_ref()?
@@ -1782,6 +1835,7 @@ impl TypeScriptGenerator {
         func_name: &str,
         span_id: Option<&str>,
         param_names_expr: &str,
+        param_type_ids_expr: &str,
         args_expr: &str,
         body_expr: &str,
     ) -> Result<String, CodegenError> {
@@ -1804,8 +1858,8 @@ impl TypeScriptGenerator {
             ],
         )?;
         Ok(format!(
-            "__sigil_debug_wrap_call({}, {}, {}, () => {})",
-            meta, param_names_expr, args_expr, body_expr
+            "__sigil_debug_wrap_call({}, {}, {}, {}, () => {})",
+            meta, param_names_expr, param_type_ids_expr, args_expr, body_expr
         ))
     }
 
@@ -1839,6 +1893,7 @@ impl TypeScriptGenerator {
         &self,
         func_name: &str,
         param_names_expr: &str,
+        param_type_ids_expr: &str,
         args_expr: &str,
         span_id: Option<&str>,
         body_expr: &str,
@@ -1847,6 +1902,7 @@ impl TypeScriptGenerator {
             func_name,
             span_id,
             param_names_expr,
+            param_type_ids_expr,
             args_expr,
             body_expr,
         )?;
@@ -1871,14 +1927,16 @@ impl TypeScriptGenerator {
             Some(span_id),
             &[("spanKind", self.span_kind_literal(kind)?)],
         )?;
+        let type_id = self.named_type_id_for_inference_type(&expr.typ);
+        let type_id_literal = self.json_string_or_null(type_id.as_deref())?;
         let options = if breakpoint_at_entry {
             "null".to_string()
         } else {
             "{ breakpointAtEntry: false }".to_string()
         };
         Ok(format!(
-            "__sigil_debug_wrap_expression({}, () => {}, {})",
-            meta, body_expr, options
+            "__sigil_debug_wrap_expression({}, {}, () => {}, {})",
+            meta, type_id_literal, body_expr, options
         ))
     }
 
@@ -1926,17 +1984,22 @@ impl TypeScriptGenerator {
         &self,
         pattern: &Pattern,
         origin: &str,
+        type_id: Option<&str>,
     ) -> Result<String, CodegenError> {
         let locals = self
             .pattern_binding_names(pattern)
             .into_iter()
             .map(|name| {
-                Ok(format!(
-                    "{{ name: {}, origin: {}, value: {} }}",
-                    self.json_string_literal(&name)?,
-                    self.json_string_literal(origin)?,
-                    sanitize_js_identifier(&name)
-                ))
+                let mut fields = vec![
+                    format!("name: {}", self.json_string_literal(&name)?),
+                    format!("origin: {}", self.json_string_literal(origin)?),
+                    format!("value: {}", sanitize_js_identifier(&name)),
+                ];
+                if matches!(pattern, Pattern::Identifier(_)) {
+                    let type_id_literal = self.json_string_or_null(type_id)?;
+                    fields.push(format!("typeId: {}", type_id_literal));
+                }
+                Ok(format!("{{ {} }}", fields.join(", ")))
             })
             .collect::<Result<Vec<_>, CodegenError>>()?;
         Ok(format!("[{}]", locals.join(", ")))
@@ -2641,6 +2704,13 @@ impl TypeScriptGenerator {
         self.emit("  }");
         self.emit("  return { kind: valueType };");
         self.emit("}");
+        self.emit("function __sigil_trace_summary_typed(value, depth = 0, typeId = null) {");
+        self.emit("  const summary = __sigil_trace_summary(value, depth);");
+        self.emit(
+            "  if (typeId != null && String(typeId) !== '') summary.typeId = String(typeId);",
+        );
+        self.emit("  return summary;");
+        self.emit("}");
         self.emit("function __sigil_trace_error_summary(error) {");
         self.emit(
             "  const name = error instanceof Error && error.name ? String(error.name) : 'Error';",
@@ -2650,6 +2720,13 @@ impl TypeScriptGenerator {
         self.emit("  if (error && typeof error === 'object' && 'sigilCode' in error && error.sigilCode != null) {");
         self.emit("    summary.sigilCode = String(error.sigilCode);");
         self.emit("  }");
+        self.emit("  return summary;");
+        self.emit("}");
+        self.emit("function __sigil_trace_error_summary_typed(error, typeId = null) {");
+        self.emit("  const summary = __sigil_trace_error_summary(error);");
+        self.emit(
+            "  if (typeId != null && String(typeId) !== '') summary.typeId = String(typeId);",
+        );
         self.emit("  return summary;");
         self.emit("}");
         self.emit("function __sigil_trace_push(event) {");
@@ -2673,8 +2750,14 @@ impl TypeScriptGenerator {
         self.emit("  return { enabled: true, truncated: !!state.truncated, totalEvents: state.totalEvents, returnedEvents: state.events.length, droppedEvents: state.droppedEvents, events: state.events.slice() };");
         self.emit("}");
         self.emit("globalThis.__sigil_trace_summary = __sigil_trace_summary;");
+        self.emit("globalThis.__sigil_trace_summary_typed = __sigil_trace_summary_typed;");
         self.emit("globalThis.__sigil_trace_error_summary = __sigil_trace_error_summary;");
-        self.emit("function __sigil_debug_wrap_call(meta, paramNames, args, thunk) {");
+        self.emit(
+            "globalThis.__sigil_trace_error_summary_typed = __sigil_trace_error_summary_typed;",
+        );
+        self.emit(
+            "function __sigil_debug_wrap_call(meta, paramNames, paramTypeIds, args, thunk) {",
+        );
         self.emit("  const traceEnabled = __sigil_trace_enabled();");
         self.emit("  const breakpointEnabled = typeof __sigil_breakpoint_enabled === 'function' && __sigil_breakpoint_enabled();");
         self.emit("  if (!traceEnabled && !breakpointEnabled) return thunk();");
@@ -2685,7 +2768,7 @@ impl TypeScriptGenerator {
         self.emit("    __sigil_trace_push({ kind: 'call', depth, ...meta, functionName, args: Array.isArray(args) ? args.map((value) => __sigil_trace_summary(value, 1)) : [] });");
         self.emit("  }");
         self.emit("  if (breakpointEnabled) {");
-        self.emit("    __sigil_breakpoint_push_frame(meta, functionName, paramNames, args);");
+        self.emit("    __sigil_breakpoint_push_frame(meta, functionName, paramNames, paramTypeIds, args);");
         self.emit("  }");
         self.emit("  if (state) state.depth = depth + 1;");
         self.emit("  if (typeof __sigil_debug_step_emit === 'function') {");
@@ -2777,12 +2860,16 @@ impl TypeScriptGenerator {
         self.emit("function __sigil_breakpoint_matches(spanId) {");
         self.emit("  return __sigil_breakpoint_selectors(spanId).length > 0;");
         self.emit("}");
-        self.emit("function __sigil_breakpoint_push_frame(meta, functionName, paramNames, args) {");
+        self.emit("function __sigil_breakpoint_push_frame(meta, functionName, paramNames, paramTypeIds, args) {");
         self.emit("  const state = __sigil_breakpoint_state();");
         self.emit("  if (!state) return;");
         self.emit("  const names = Array.isArray(paramNames) ? paramNames : [];");
+        self.emit("  const typeIds = Array.isArray(paramTypeIds) ? paramTypeIds : [];");
         self.emit("  const values = Array.isArray(args) ? args : [];");
-        self.emit("  const params = names.map((name, index) => ({ name: String(name), origin: 'param', raw: values[index], value: __sigil_trace_summary(values[index], 1) }));");
+        self.emit("  const params = names.map((name, index) => {");
+        self.emit("    const typeId = typeIds[index] == null ? null : String(typeIds[index]);");
+        self.emit("    return { name: String(name), origin: 'param', raw: values[index], typeId, value: __sigil_trace_summary_typed(values[index], 1, typeId) };");
+        self.emit("  });");
         self.emit("  state.stack.push({ moduleId: String(meta.moduleId ?? ''), sourceFile: String(meta.sourceFile ?? ''), spanId: String(meta.spanId ?? ''), declarationKind: meta.declarationKind ?? null, declarationLabel: meta.declarationLabel ?? null, functionName: functionName ? String(functionName) : null, params, scopes: [] });");
         self.emit("}");
         self.emit("function __sigil_breakpoint_pop_frame() {");
@@ -2794,7 +2881,10 @@ impl TypeScriptGenerator {
         self.emit("  const state = __sigil_breakpoint_state();");
         self.emit("  if (!state || state.stack.length === 0) return;");
         self.emit("  const frame = state.stack[state.stack.length - 1];");
-        self.emit("  frame.scopes.push(Array.isArray(locals) ? locals.map((local) => ({ name: String(local.name ?? ''), origin: String(local.origin ?? 'let'), raw: local.value, value: __sigil_trace_summary(local.value, 1) })) : []);");
+        self.emit("  frame.scopes.push(Array.isArray(locals) ? locals.map((local) => {");
+        self.emit("    const typeId = local?.typeId == null ? null : String(local.typeId);");
+        self.emit("    return { name: String(local.name ?? ''), origin: String(local.origin ?? 'let'), raw: local.value, typeId, value: __sigil_trace_summary_typed(local.value, 1, typeId) };");
+        self.emit("  }) : []);");
         self.emit("}");
         self.emit("function __sigil_breakpoint_pop_scope() {");
         self.emit("  const state = __sigil_breakpoint_state();");
@@ -2805,18 +2895,18 @@ impl TypeScriptGenerator {
         self.emit("function __sigil_breakpoint_current_locals(state) {");
         self.emit("  if (!state || state.stack.length === 0) return [];");
         self.emit("  const frame = state.stack[state.stack.length - 1];");
-        self.emit("  const locals = frame.params.map((local) => ({ name: local.name, origin: local.origin, value: local.value }));");
+        self.emit("  const locals = frame.params.map((local) => ({ name: local.name, origin: local.origin, typeId: local.typeId ?? null, value: local.value }));");
         self.emit("  for (const scope of frame.scopes) {");
-        self.emit("    locals.push(...scope.map((local) => ({ name: local.name, origin: local.origin, value: local.value })));");
+        self.emit("    locals.push(...scope.map((local) => ({ name: local.name, origin: local.origin, typeId: local.typeId ?? null, value: local.value })));");
         self.emit("  }");
         self.emit("  return locals;");
         self.emit("}");
         self.emit("function __sigil_breakpoint_current_locals_raw(state) {");
         self.emit("  if (!state || state.stack.length === 0) return [];");
         self.emit("  const frame = state.stack[state.stack.length - 1];");
-        self.emit("  const locals = frame.params.map((local) => ({ name: local.name, origin: local.origin, raw: local.raw }));");
+        self.emit("  const locals = frame.params.map((local) => ({ name: local.name, origin: local.origin, raw: local.raw, typeId: local.typeId ?? null }));");
         self.emit("  for (const scope of frame.scopes) {");
-        self.emit("    locals.push(...scope.map((local) => ({ name: local.name, origin: local.origin, raw: local.raw })));");
+        self.emit("    locals.push(...scope.map((local) => ({ name: local.name, origin: local.origin, raw: local.raw, typeId: local.typeId ?? null })));");
         self.emit("  }");
         self.emit("  return locals;");
         self.emit("}");
@@ -2928,7 +3018,7 @@ impl TypeScriptGenerator {
         self.emit("    return [];");
         self.emit("  }");
         self.emit("}");
-        self.emit("function __sigil_expression_snapshot_from_meta(meta, extras = {}) {");
+        self.emit("function __sigil_expression_snapshot_from_meta(meta, typeId, extras = {}) {");
         self.emit("  const snapshot = { moduleId: String(meta.moduleId ?? ''), sourceFile: String(meta.sourceFile ?? ''), spanId: String(meta.spanId ?? ''), spanKind: meta.spanKind ?? null, declarationKind: meta.declarationKind ?? null, declarationLabel: meta.declarationLabel ?? null, locals: __sigil_expression_locals_snapshot(), stack: __sigil_expression_stack_snapshot() };");
         self.emit("  if (extras && typeof extras === 'object') {");
         self.emit("    if ('value' in extras) snapshot.value = extras.value;");
@@ -2936,9 +3026,9 @@ impl TypeScriptGenerator {
         self.emit("  }");
         self.emit("  return snapshot;");
         self.emit("}");
-        self.emit("function __sigil_expression_record_throw(meta, error, depth) {");
+        self.emit("function __sigil_expression_record_throw(meta, typeId, error, depth) {");
         self.emit("  const state = __sigil_expression_state();");
-        self.emit("  const errorSummary = __sigil_trace_error_summary(error);");
+        self.emit("  const errorSummary = __sigil_trace_error_summary_typed(error, typeId);");
         self.emit("  if (__sigil_trace_expression_enabled()) {");
         self.emit("    const traceState = __sigil_trace_state();");
         self.emit("    __sigil_trace_push({ kind: 'expr_throw', depth: traceState ? traceState.depth : 0, ...meta, spanKind: String(meta.spanKind ?? ''), error: errorSummary });");
@@ -2947,19 +3037,19 @@ impl TypeScriptGenerator {
         self.emit("    __sigil_debug_step_emit({ kind: 'expr_throw', ...meta, spanKind: String(meta.spanKind ?? ''), error: errorSummary, expressionDepth: depth });");
         self.emit("  }");
         self.emit("  if (!state.failure || Number(depth) >= Number(state.failure.depth ?? 0)) {");
-        self.emit("    state.failure = { depth: Number(depth), snapshot: __sigil_expression_snapshot_from_meta(meta, { error: errorSummary }) };");
+        self.emit("    state.failure = { depth: Number(depth), snapshot: __sigil_expression_snapshot_from_meta(meta, typeId, { error: errorSummary }) };");
         self.emit("  }");
         self.emit("}");
         self.emit("function __sigil_expression_exception_payload() {");
         self.emit("  const state = __sigil_expression_state();");
         self.emit("  if (state.failure && state.failure.snapshot) return state.failure.snapshot;");
         self.emit("  const current = state.stack[state.stack.length - 1];");
-        self.emit("  return current ? __sigil_expression_snapshot_from_meta(current) : null;");
+        self.emit("  return current ? __sigil_expression_snapshot_from_meta(current.meta, current.typeId) : null;");
         self.emit("}");
-        self.emit("function __sigil_debug_wrap_expression(meta, thunk, options) {");
+        self.emit("function __sigil_debug_wrap_expression(meta, typeId, thunk, options) {");
         self.emit("  const state = __sigil_expression_state();");
         self.emit("  const breakpointAtEntry = !options || options.breakpointAtEntry !== false;");
-        self.emit("  state.stack.push(meta);");
+        self.emit("  state.stack.push({ meta, typeId });");
         self.emit("  if (__sigil_trace_expression_enabled()) {");
         self.emit("    const traceState = __sigil_trace_state();");
         self.emit("    __sigil_trace_push({ kind: 'expr_enter', depth: traceState ? traceState.depth : 0, ...meta, spanKind: String(meta.spanKind ?? '') });");
@@ -2970,7 +3060,7 @@ impl TypeScriptGenerator {
         self.emit("  const fail = (error) => {");
         self.emit("    const depth = state.stack.length;");
         self.emit("    if (!__sigil_expression_should_ignore_error(error)) {");
-        self.emit("      __sigil_expression_record_throw(meta, error, depth);");
+        self.emit("      __sigil_expression_record_throw(meta, typeId, error, depth);");
         self.emit("    }");
         self.emit("    if (state.stack.length > 0) state.stack.pop();");
         self.emit("    throw error;");
@@ -2988,7 +3078,7 @@ impl TypeScriptGenerator {
         self.emit("        __sigil_trace_push({ kind: 'expr_return', depth: traceState ? traceState.depth : 0, ...meta, spanKind: String(meta.spanKind ?? ''), value: __sigil_trace_summary(value, 1) });");
         self.emit("      }");
         self.emit("      if (typeof __sigil_debug_step_emit === 'function') {");
-        self.emit("        __sigil_debug_step_emit({ kind: 'expr_return', ...meta, spanKind: String(meta.spanKind ?? ''), value: __sigil_trace_summary(value, 1), expressionDepth: state.stack.length });");
+        self.emit("        __sigil_debug_step_emit({ kind: 'expr_return', ...meta, spanKind: String(meta.spanKind ?? ''), value: __sigil_trace_summary_typed(value, 1, typeId), expressionDepth: state.stack.length });");
         self.emit("      }");
         self.emit("      if (state.stack.length > 0) state.stack.pop();");
         self.emit("      return value;");
@@ -3119,6 +3209,20 @@ impl TypeScriptGenerator {
                 func.params
                     .iter()
                     .map(|param| self.json_string_literal(&param.name))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .join(", ")
+            ),
+            &format!(
+                "[{}]",
+                func.params
+                    .iter()
+                    .map(|param| {
+                        let type_id = param
+                            .type_annotation
+                            .as_ref()
+                            .and_then(|typ| self.named_type_id_for_surface_type(typ));
+                        self.json_string_or_null(type_id.as_deref())
+                    })
                     .collect::<Result<Vec<_>, _>>()?
                     .join(", ")
             ),
@@ -3335,6 +3439,20 @@ impl TypeScriptGenerator {
                 func.params
                     .iter()
                     .map(|param| self.json_string_literal(&param.name))
+                    .collect::<Result<Vec<_>, _>>()?
+                    .join(", ")
+            ),
+            &format!(
+                "[{}]",
+                func.params
+                    .iter()
+                    .map(|param| {
+                        let type_id = param
+                            .type_annotation
+                            .as_ref()
+                            .and_then(|typ| self.named_type_id_for_surface_type(typ));
+                        self.json_string_or_null(type_id.as_deref())
+                    })
                     .collect::<Result<Vec<_>, _>>()?
                     .join(", ")
             ),
@@ -5434,7 +5552,9 @@ impl TypeScriptGenerator {
         let value = self.generate_expression(&let_expr.value)?;
         let body = self.generate_expression(&let_expr.body)?;
         let bindings = self.generate_pattern_bindings(&let_expr.pattern, "__let_value")?;
-        let scope_locals = self.pattern_scope_locals_expr(&let_expr.pattern, "let")?;
+        let let_type_id = self.named_type_id_for_inference_type(&let_expr.value.typ);
+        let scope_locals =
+            self.pattern_scope_locals_expr(&let_expr.pattern, "let", let_type_id.as_deref())?;
         let breakpoint_meta = if self.breakpoints_enabled {
             Some(self.trace_meta_literal(
                 self.span_id_for_expr(DebugSpanKind::ExprLet, expr.location),
@@ -5519,7 +5639,8 @@ impl TypeScriptGenerator {
                 let guard_expr = self.generate_expression(guard)?;
                 lines.push(format!("    if (await {}) {{", guard_expr));
                 if self.breakpoints_enabled {
-                    let scope_locals = self.pattern_scope_locals_expr(&arm.pattern, "pattern")?;
+                    let scope_locals =
+                        self.pattern_scope_locals_expr(&arm.pattern, "pattern", None)?;
                     let arm_meta = self.trace_meta_literal(Some(arm_span_id.as_str()), &[])?;
                     lines.push(format!(
                         "      __sigil_breakpoint_push_scope({});",
@@ -5548,7 +5669,8 @@ impl TypeScriptGenerator {
                 lines.push("    }".to_string());
             } else {
                 if self.breakpoints_enabled {
-                    let scope_locals = self.pattern_scope_locals_expr(&arm.pattern, "pattern")?;
+                    let scope_locals =
+                        self.pattern_scope_locals_expr(&arm.pattern, "pattern", None)?;
                     let arm_meta = self.trace_meta_literal(Some(arm_span_id.as_str()), &[])?;
                     lines.push(format!(
                         "    __sigil_breakpoint_push_scope({});",
@@ -6534,6 +6656,28 @@ mod tests {
             "__sigil_breakpoint_push_scope([{ name: \"y\", origin: \"let\", value: y }]"
         ));
         assert!(result.contains("__sigil_breakpoint_maybe_hit("));
+    }
+
+    #[test]
+    fn test_generate_breakpoints_emit_named_type_ids_for_param_and_let_locals() {
+        let source =
+            "t UserId=Int where value≥0\nλmain(userId:UserId)=>UserId={l current=(userId:UserId);current}";
+        let program = typed_program_for(source, "test.sigil");
+
+        let mut gen = TypeScriptGenerator::new(CodegenOptions {
+            module_id: Some("src::main".to_string()),
+            source_file: Some("test.sigil".to_string()),
+            output_file: Some("/tmp/test.js".to_string()),
+            trace: false,
+            breakpoints: true,
+            expression_debug: false,
+        });
+        let result = gen.generate(&program).unwrap();
+
+        assert!(result.contains("[\"src::main.UserId\"]"));
+        assert!(result.contains(
+            "__sigil_breakpoint_push_scope([{ name: \"current\", origin: \"let\", value: current, typeId: \"src::main.UserId\" }])"
+        ));
     }
 
     #[test]

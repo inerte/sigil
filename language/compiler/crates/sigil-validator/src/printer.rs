@@ -17,6 +17,45 @@ pub fn print_canonical_program_with_effects(
     printer.finish()
 }
 
+pub fn print_canonical_type(ty: &Type) -> String {
+    print_canonical_type_with_effects(ty, None)
+}
+
+pub fn print_canonical_type_with_effects(
+    ty: &Type,
+    effect_catalog: Option<&EffectCatalog>,
+) -> String {
+    let mut printer = Printer::new();
+    printer.effect_catalog = effect_catalog.cloned();
+    printer.type_text(ty)
+}
+
+pub fn print_canonical_type_definition(type_def: &TypeDef) -> String {
+    print_canonical_type_definition_with_effects(type_def, None)
+}
+
+pub fn print_canonical_type_definition_with_effects(
+    type_def: &TypeDef,
+    effect_catalog: Option<&EffectCatalog>,
+) -> String {
+    let mut printer = Printer::new();
+    printer.effect_catalog = effect_catalog.cloned();
+    printer.type_def_text(type_def)
+}
+
+pub fn print_canonical_expr(expr: &Expr) -> String {
+    print_canonical_expr_with_effects(expr, None)
+}
+
+pub fn print_canonical_expr_with_effects(
+    expr: &Expr,
+    effect_catalog: Option<&EffectCatalog>,
+) -> String {
+    let mut printer = Printer::new();
+    printer.effect_catalog = effect_catalog.cloned();
+    printer.expr(expr, 0, 0)
+}
+
 struct Printer {
     out: String,
     effect_catalog: Option<EffectCatalog>,
@@ -174,41 +213,7 @@ impl Printer {
         self.push(&type_decl.name);
         self.type_params(&type_decl.type_params);
         self.push("=");
-        match &type_decl.definition {
-            TypeDef::Sum(sum) => {
-                for (index, variant) in sum.variants.iter().enumerate() {
-                    if index > 0 {
-                        self.push("|");
-                    }
-                    self.push(&variant.name);
-                    if variant.types.is_empty() {
-                        self.push("()");
-                    } else {
-                        self.push("(");
-                        for (arg_index, ty) in variant.types.iter().enumerate() {
-                            if arg_index > 0 {
-                                self.push(",");
-                            }
-                            self.push(&self.type_text(ty));
-                        }
-                        self.push(")");
-                    }
-                }
-            }
-            TypeDef::Product(product) => {
-                self.push("{");
-                for (index, field) in product.fields.iter().enumerate() {
-                    if index > 0 {
-                        self.push(",");
-                    }
-                    self.push(&field.name);
-                    self.push(":");
-                    self.push(&self.type_text(&field.field_type));
-                }
-                self.push("}");
-            }
-            TypeDef::Alias(alias) => self.push(&self.type_text(&alias.aliased_type)),
-        }
+        self.push(&self.type_def_text(&type_decl.definition));
         if let Some(constraint) = &type_decl.constraint {
             self.push(" where ");
             self.push(&self.expr(constraint, 0, 0));
@@ -345,6 +350,42 @@ impl Printer {
                     )
                 }
             }
+        }
+    }
+
+    fn type_def_text(&self, type_def: &TypeDef) -> String {
+        match type_def {
+            TypeDef::Sum(sum) => sum
+                .variants
+                .iter()
+                .map(|variant| {
+                    if variant.types.is_empty() {
+                        format!("{}()", variant.name)
+                    } else {
+                        format!(
+                            "{}({})",
+                            variant.name,
+                            variant
+                                .types
+                                .iter()
+                                .map(|ty| self.type_text(ty))
+                                .collect::<Vec<_>>()
+                                .join(",")
+                        )
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("|"),
+            TypeDef::Product(product) => format!(
+                "{{{}}}",
+                product
+                    .fields
+                    .iter()
+                    .map(|field| format!("{}:{}", field.name, self.type_text(&field.field_type)))
+                    .collect::<Vec<_>>()
+                    .join(",")
+            ),
+            TypeDef::Alias(alias) => self.type_text(&alias.aliased_type),
         }
     }
 

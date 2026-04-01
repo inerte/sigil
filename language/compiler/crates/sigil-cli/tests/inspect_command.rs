@@ -86,6 +86,90 @@ fn inspect_types_reports_top_level_types_and_spans() {
 }
 
 #[test]
+fn inspect_types_reports_named_type_inventory_and_constraints() {
+    let dir = temp_dir("types-named");
+    let file = write_program(
+        &dir,
+        "types.lib.sigil",
+        concat!(
+            "t Age=Int\n\n",
+            "t BirthYear=Int where value>1800 and value<10000\n\n",
+            "t User={birthYear:BirthYear,name:String}\n\n",
+            "t DateRange={end:Int,start:Int} where value.end≥value.start\n\n",
+            "t Result=Ok(Int)|Err(String)\n",
+        ),
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("inspect")
+        .arg("types")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    let module_id = json["data"]["moduleId"].as_str().unwrap();
+    assert_eq!(json["data"]["summary"]["types"], 5);
+    assert_eq!(json["data"]["summary"]["aliases"], 2);
+    assert_eq!(json["data"]["summary"]["products"], 2);
+    assert_eq!(json["data"]["summary"]["sums"], 1);
+    assert_eq!(json["data"]["summary"]["constrainedTypes"], 2);
+
+    let types = json["data"]["types"].as_array().unwrap();
+    assert_eq!(types.len(), 5);
+
+    let age = types.iter().find(|entry| entry["name"] == "Age").unwrap();
+    assert_eq!(age["typeId"], format!("{module_id}.Age"));
+    assert_eq!(age["kind"], "alias");
+    assert_eq!(age["constrained"], false);
+    assert_eq!(age["equalityMode"], "structural");
+    assert_eq!(age["definitionAst"]["kind"], "alias");
+
+    let birth_year = types
+        .iter()
+        .find(|entry| entry["name"] == "BirthYear")
+        .unwrap();
+    assert_eq!(birth_year["typeId"], format!("{module_id}.BirthYear"));
+    assert_eq!(birth_year["kind"], "alias");
+    assert_eq!(birth_year["constrained"], true);
+    assert_eq!(birth_year["equalityMode"], "nominal");
+    assert_eq!(birth_year["definitionSource"], "Int");
+    assert_eq!(birth_year["constraintSource"], "value>1800 and value<10000");
+    assert_eq!(birth_year["constraintAst"]["kind"], "binary");
+    assert_eq!(birth_year["constraintAst"]["operator"], "and");
+    assert_eq!(birth_year["location"]["start"]["line"], 3);
+
+    let user = types.iter().find(|entry| entry["name"] == "User").unwrap();
+    assert_eq!(user["kind"], "product");
+    assert_eq!(user["constrained"], false);
+    assert_eq!(user["equalityMode"], "structural");
+    assert_eq!(user["definitionAst"]["kind"], "product");
+
+    let date_range = types
+        .iter()
+        .find(|entry| entry["name"] == "DateRange")
+        .unwrap();
+    assert_eq!(date_range["kind"], "product");
+    assert_eq!(date_range["constrained"], true);
+    assert_eq!(date_range["equalityMode"], "nominal");
+    assert_eq!(date_range["constraintAst"]["kind"], "binary");
+    assert_eq!(date_range["constraintAst"]["operator"], "≥");
+
+    let result = types
+        .iter()
+        .find(|entry| entry["name"] == "Result")
+        .unwrap();
+    assert_eq!(result["kind"], "sum");
+    assert_eq!(result["constrained"], false);
+    assert_eq!(result["equalityMode"], "nominal");
+    assert_eq!(result["definitionAst"]["kind"], "sum");
+}
+
+#[test]
 fn inspect_types_directory_reports_requested_modules_only() {
     let dir = temp_dir("types-directory");
     write_program(

@@ -82,7 +82,7 @@ Failures emit:
 Use the current surfaces like this:
 
 - `sigil inspect validate`: canonical source and validation result
-- `sigil inspect types`: solved top-level declaration types
+- `sigil inspect types`: solved top-level declaration types plus named type inventory
 - `sigil inspect world`: normalized runtime world for one project env
 - `sigil inspect codegen`: generated TypeScript plus span-map summary
 - `sigil run --json`: one structured run success/failure envelope
@@ -104,6 +104,38 @@ Diagnostics are structured and machine-oriented:
 - `details`
 - `fixits`
 - `suggestions`
+
+## Inspect Types
+
+`sigil inspect types` now reports two complementary views per analyzed file:
+
+- `declarations`: solved top-level `function | const | test` signatures
+- `types`: named source-declared types in that module
+
+Each `types[]` entry includes:
+
+- `typeId`
+- `name`
+- `moduleId`
+- `kind`
+- `typeParams`
+- `definitionSource`
+- `definitionAst`
+- `constrained`
+- `constraintSource`
+- `constraintAst`
+- `equalityMode`
+- `spanId`
+- `location`
+
+`definitionAst` and `constraintAst` are normalized semantic nodes with a required
+`kind` field and command-specific properties.
+
+Focused debug value payloads may also include `typeId` when the value has a
+statically known named Sigil type. In v1 this is surfaced on breakpoint locals,
+watch results, and expression value/error payloads rather than every generic
+trace value summary. Breakpoint and debug locals also expose an optional root
+`typeId` when the local itself is statically known to be a named Sigil type.
 
 ## Run Failure Details
 
@@ -500,6 +532,7 @@ The current implementation uses:
 - breakpoint-enabled `run` failures may include bounded snapshot data via `error.details.breakpoints`
 - recorded or replayed `run` failures may include replay summary data via `error.details.replay`
 - `inspect types` is top-level declaration-focused in v1; it does not report nested expression types yet
+- `inspect types` now includes named type metadata, constraints, and equality mode for source-declared types; it still does not report nested expression types in v1
 - `inspect validate` returns canonical printer output even when `validation.ok` is `false`, as long as lexing and parsing succeeded
 - `inspect codegen` returns generated TypeScript inline for the requested file and only inventories imported modules
 - `inspect world` is project-level in v1; it does not batch over directories or include test-local `world { ... }` overlays

@@ -368,20 +368,87 @@
       },
       "additionalProperties": false
     },
+    "inspectSemanticNode": {
+      "type": "object",
+      "required": ["kind"],
+      "properties": {
+        "kind": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "inspectNamedType": {
+      "type": "object",
+      "required": [
+        "typeId",
+        "name",
+        "moduleId",
+        "kind",
+        "typeParams",
+        "definitionSource",
+        "definitionAst",
+        "constrained",
+        "constraintSource",
+        "constraintAst",
+        "equalityMode",
+        "spanId",
+        "location"
+      ],
+      "properties": {
+        "typeId": { "type": "string" },
+        "name": { "type": "string" },
+        "moduleId": { "type": "string" },
+        "kind": { "type": "string", "enum": ["alias", "product", "sum"] },
+        "typeParams": { "type": "array", "items": { "type": "string" } },
+        "definitionSource": { "type": "string" },
+        "definitionAst": { "$ref": "#/$defs/inspectSemanticNode" },
+        "constrained": { "type": "boolean" },
+        "constraintSource": {
+          "oneOf": [
+            { "type": "null" },
+            { "type": "string" }
+          ]
+        },
+        "constraintAst": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/inspectSemanticNode" }
+          ]
+        },
+        "equalityMode": { "type": "string", "enum": ["structural", "nominal"] },
+        "spanId": { "type": "string" },
+        "location": { "$ref": "#/$defs/sourceSpan" }
+      },
+      "additionalProperties": false
+    },
     "inspectTypesSummary": {
       "type": "object",
-      "required": ["declarations", "functions", "consts", "tests"],
+      "required": [
+        "declarations",
+        "functions",
+        "consts",
+        "tests",
+        "types",
+        "aliases",
+        "products",
+        "sums",
+        "constrainedTypes"
+      ],
       "properties": {
         "declarations": { "type": "integer", "minimum": 0 },
         "functions": { "type": "integer", "minimum": 0 },
         "consts": { "type": "integer", "minimum": 0 },
-        "tests": { "type": "integer", "minimum": 0 }
+        "tests": { "type": "integer", "minimum": 0 },
+        "types": { "type": "integer", "minimum": 0 },
+        "aliases": { "type": "integer", "minimum": 0 },
+        "products": { "type": "integer", "minimum": 0 },
+        "sums": { "type": "integer", "minimum": 0 },
+        "constrainedTypes": { "type": "integer", "minimum": 0 }
       },
       "additionalProperties": false
     },
     "inspectTypesFileData": {
       "type": "object",
-      "required": ["input", "moduleId", "sourceFile", "project", "summary", "declarations"],
+      "required": ["input", "moduleId", "sourceFile", "project", "summary", "declarations", "types"],
       "properties": {
         "input": { "type": "string" },
         "moduleId": { "type": "string" },
@@ -391,6 +458,10 @@
         "declarations": {
           "type": "array",
           "items": { "$ref": "#/$defs/inspectTypeDeclaration" }
+        },
+        "types": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/inspectNamedType" }
         }
       },
       "additionalProperties": false
@@ -777,7 +848,8 @@
         "arity": { "type": "integer", "minimum": 0 },
         "size": { "type": "integer", "minimum": 0 },
         "fields": { "type": "array", "items": { "type": "string" } },
-        "truncated": { "type": "boolean" }
+        "truncated": { "type": "boolean" },
+        "typeId": { "type": "string" }
       },
       "additionalProperties": true
     },
@@ -854,6 +926,7 @@
       "properties": {
         "name": { "type": "string" },
         "origin": { "type": "string", "enum": ["param", "let", "pattern"] },
+        "typeId": { "type": ["string", "null"] },
         "value": { "$ref": "#/$defs/runTraceValueSummary" }
       },
       "additionalProperties": false

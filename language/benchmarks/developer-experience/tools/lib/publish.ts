@@ -7,6 +7,7 @@ import type { CompareSummary, PublishedSummary } from './types.js';
 export async function publishCompareRun(resultsDir: string, runDir: string, label: string): Promise<PublishedSummary> {
   const comparePath = path.join(runDir, 'compare.json');
   const compare = await readJsonFile<CompareSummary>(comparePath);
+  const totalPossible = compare.base.taskResults.reduce((sum, result) => sum + result.sampleCount, 0);
 
   await ensureDir(resultsDir);
 
@@ -19,9 +20,15 @@ export async function publishCompareRun(resultsDir: string, runDir: string, labe
     baseRef: compare.base.resolvedRef,
     candidateRequestedRef: compare.candidate.requestedRef,
     candidateRef: compare.candidate.resolvedRef,
-    passed: {
-      base: compare.base.passed,
-      candidate: compare.candidate.passed
+    rawPassTotals: {
+      base: compare.base.rawPassTotal,
+      candidate: compare.candidate.rawPassTotal,
+      totalPossible
+    },
+    budgetPassTotals: {
+      base: compare.base.budgetPassTotal,
+      candidate: compare.candidate.budgetPassTotal,
+      totalPossible
     }
   };
 
@@ -39,8 +46,10 @@ export async function publishCompareRun(resultsDir: string, runDir: string, labe
     '',
     `- Label: \`${label}\``,
     `- Status: \`${compare.status}\``,
-    `- Base passed: \`${compare.base.passed}/${compare.base.taskResults.length}\``,
-    `- Candidate passed: \`${compare.candidate.passed}/${compare.candidate.taskResults.length}\``,
+    `- Base raw passes: \`${compare.base.rawPassTotal}/${totalPossible}\``,
+    `- Candidate raw passes: \`${compare.candidate.rawPassTotal}/${totalPossible}\``,
+    `- Base budget passes: \`${compare.base.budgetPassTotal}/${totalPossible}\``,
+    `- Candidate budget passes: \`${compare.candidate.budgetPassTotal}/${totalPossible}\``,
     `- Base ref: \`${compare.base.requestedRef}\` -> \`${compare.base.resolvedRef}\``,
     `- Candidate ref: \`${compare.candidate.requestedRef}\` -> \`${compare.candidate.resolvedRef}\``
   ].join('\n');

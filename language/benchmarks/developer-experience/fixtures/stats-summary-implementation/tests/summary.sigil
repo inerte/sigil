@@ -1,0 +1,13 @@
+λmain()=>Unit=()
+
+test "summary handles empty list" {
+  •stats.summary([])="count=0 sum=0"
+}
+
+test "summary reports count and sum" {
+  •stats.summary([3,4,5])="count=3 sum=12"
+}
+
+test "summary keeps negative totals" {
+  •stats.summary([2,-1,4])="count=3 sum=5"
+}

@@ -1,0 +1,37 @@
+{
+  "id": "todo-domain-test-repair",
+  "title": "Repair a broken Todo domain test suite without editing the tests",
+  "goal": "Restore the Todo domain implementation so its Sigil tests pass again.",
+  "initialPrompt": "A cut-down Todo domain library now fails its Sigil tests. Fix the implementation so the tests pass again. The tests are part of the oracle and must not be edited.",
+  "fixture": "todo-domain-test-repair",
+  "setupCommands": [],
+  "oracleCommands": [
+    {
+      "command": "\"$SIGIL_BIN\" test tests/todoDomain.sigil >/dev/null",
+      "timeoutMs": 300000
+    }
+  ],
+  "successCriteria": [
+    "The Todo domain tests pass again.",
+    "The patch stays inside src/todoDomain.lib.sigil."
+  ],
+  "allowedEditPaths": [
+    "src/todoDomain.lib.sigil"
+  ],
+  "forbiddenEditPaths": [
+    "tests",
+    ".local",
+    "sigil.json",
+    "src/types.lib.sigil"
+  ],
+  "budgets": {
+    "maxCommandExecutions": 30,
+    "maxEffectiveTokens": 33000,
+    "maxWallClockMs": 420000
+  },
+  "rootCauseTags": [
+    "todo_domain_logic",
+    "test_failure",
+    "wrong_list_transform"
+  ]
+}

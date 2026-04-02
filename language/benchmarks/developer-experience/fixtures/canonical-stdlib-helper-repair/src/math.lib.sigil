@@ -1,0 +1,3 @@
+λtotal(xs:[Int])=>Int=§list.sum(xs)
+
+λtotalWithSeed(seed:Int,xs:[Int])=>Int=§list.sum(xs)+seed

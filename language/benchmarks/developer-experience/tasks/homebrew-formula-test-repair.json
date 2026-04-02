@@ -1,0 +1,37 @@
+{
+  "id": "homebrew-formula-test-repair",
+  "title": "Repair Homebrew formula generation without editing the tests",
+  "goal": "Restore the Homebrew packaging implementation so its Sigil tests pass again.",
+  "initialPrompt": "A cut-down Homebrew packaging library now fails its Sigil tests. Fix the implementation so the tests pass again. The tests are part of the oracle and must not be edited.",
+  "fixture": "homebrew-formula-test-repair",
+  "setupCommands": [],
+  "oracleCommands": [
+    {
+      "command": "\"$SIGIL_BIN\" test tests/formula.sigil >/dev/null",
+      "timeoutMs": 300000
+    }
+  ],
+  "successCriteria": [
+    "The Homebrew formula tests pass again.",
+    "The patch stays inside src/formula.lib.sigil."
+  ],
+  "allowedEditPaths": [
+    "src/formula.lib.sigil"
+  ],
+  "forbiddenEditPaths": [
+    "tests",
+    ".local",
+    "sigil.json",
+    "src/types.lib.sigil"
+  ],
+  "budgets": {
+    "maxCommandExecutions": 30,
+    "maxEffectiveTokens": 33000,
+    "maxWallClockMs": 480000
+  },
+  "rootCauseTags": [
+    "archive_name_bug",
+    "formula_render_bug",
+    "test_failure"
+  ]
+}

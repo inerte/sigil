@@ -1,0 +1,37 @@
+{
+  "id": "todo-json-roundtrip-repair",
+  "title": "Repair a broken Todo JSON roundtrip without editing the tests",
+  "goal": "Restore the Todo JSON implementation so its Sigil tests pass again.",
+  "initialPrompt": "A cut-down Todo JSON library now fails its Sigil tests. Fix the implementation so the tests pass again. The tests are part of the oracle and must not be edited.",
+  "fixture": "todo-json-roundtrip-repair",
+  "setupCommands": [],
+  "oracleCommands": [
+    {
+      "command": "\"$SIGIL_BIN\" test tests/todoJson.sigil >/dev/null",
+      "timeoutMs": 300000
+    }
+  ],
+  "successCriteria": [
+    "The Todo JSON tests pass again.",
+    "The patch stays inside src/todoJson.lib.sigil."
+  ],
+  "allowedEditPaths": [
+    "src/todoJson.lib.sigil"
+  ],
+  "forbiddenEditPaths": [
+    "tests",
+    ".local",
+    "sigil.json",
+    "src/types.lib.sigil"
+  ],
+  "budgets": {
+    "maxCommandExecutions": 30,
+    "maxEffectiveTokens": 50000,
+    "maxWallClockMs": 420000
+  },
+  "rootCauseTags": [
+    "json_roundtrip_failure",
+    "wrong_encode_field",
+    "test_failure"
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "id": "stats-summary-implementation",
+  "title": "Implement a missing summary feature in an existing Sigil library",
+  "goal": "Implement the missing summary behavior so the Sigil tests pass.",
+  "initialPrompt": "An existing Sigil library has a stubbed summary feature. Implement the missing behavior so the tests pass. The tests are part of the oracle and must not be edited.",
+  "fixture": "stats-summary-implementation",
+  "setupCommands": [],
+  "oracleCommands": [
+    {
+      "command": "\"$SIGIL_BIN\" test tests/summary.sigil >/dev/null",
+      "timeoutMs": 300000
+    }
+  ],
+  "successCriteria": [
+    "The summary tests pass.",
+    "The patch stays inside src/stats.lib.sigil."
+  ],
+  "allowedEditPaths": [
+    "src/stats.lib.sigil"
+  ],
+  "forbiddenEditPaths": [
+    "tests",
+    ".local",
+    "sigil.json"
+  ],
+  "budgets": {
+    "maxCommandExecutions": 66,
+    "maxEffectiveTokens": 49000,
+    "maxWallClockMs": 420000
+  },
+  "rootCauseTags": [
+    "missing_feature",
+    "stub_implementation",
+    "test_failure"
+  ]
+}

@@ -23,7 +23,8 @@
     ".local"
   ],
   "budgets": {
-    "maxTurns": 40,
+    "maxCommandExecutions": 21,
+    "maxEffectiveTokens": 17000,
     "maxWallClockMs": 480000
   },
   "rootCauseTags": [

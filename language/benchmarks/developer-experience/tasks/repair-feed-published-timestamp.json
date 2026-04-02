@@ -26,7 +26,8 @@
     "src/types.lib.sigil"
   ],
   "budgets": {
-    "maxTurns": 30,
+    "maxCommandExecutions": 39,
+    "maxEffectiveTokens": 28000,
     "maxWallClockMs": 420000
   },
   "rootCauseTags": [

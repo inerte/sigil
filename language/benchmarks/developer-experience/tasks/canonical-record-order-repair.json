@@ -1,0 +1,35 @@
+{
+  "id": "canonical-record-order-repair",
+  "title": "Repair a canonical record field-order violation so the project compiles again",
+  "goal": "Restore canonical record field ordering so the fixture compiles again.",
+  "initialPrompt": "A small Sigil project no longer compiles because its canonical record field ordering was broken. Make the smallest coherent fix so the fixture compiles again, and keep the patch inside the allowed path.",
+  "fixture": "canonical-record-order-repair",
+  "setupCommands": [],
+  "oracleCommands": [
+    {
+      "command": "\"$SIGIL_BIN\" compile src/main.sigil >/dev/null",
+      "timeoutMs": 300000
+    }
+  ],
+  "successCriteria": [
+    "The fixture compiles successfully again.",
+    "The patch stays inside src/types.lib.sigil."
+  ],
+  "allowedEditPaths": [
+    "src/types.lib.sigil"
+  ],
+  "forbiddenEditPaths": [
+    ".local",
+    "sigil.json",
+    "src/main.sigil"
+  ],
+  "budgets": {
+    "maxCommandExecutions": 33,
+    "maxEffectiveTokens": 10000,
+    "maxWallClockMs": 420000
+  },
+  "rootCauseTags": [
+    "canonical_source_violation",
+    "record_field_order"
+  ]
+}

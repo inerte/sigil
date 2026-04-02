@@ -1,0 +1,3 @@
+λmain()=>String=§string.intToString(total({a:4,b:8}))
+
+λtotal(pair:µPair)=>Int=pair.a+pair.b

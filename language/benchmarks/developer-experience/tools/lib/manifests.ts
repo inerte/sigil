@@ -65,8 +65,14 @@ function validateTaskManifestShape(value: unknown): ValidationIssue[] {
     issues.push({ path: 'budgets', message: 'must be an object' });
   } else {
     const budgets = record.budgets as Record<string, unknown>;
-    if (!Number.isInteger(budgets.maxTurns) || Number(budgets.maxTurns) <= 0) {
-      issues.push({ path: 'budgets.maxTurns', message: 'must be a positive integer' });
+    if (budgets.maxTurns !== undefined) {
+      issues.push({ path: 'budgets.maxTurns', message: 'is no longer supported; use maxCommandExecutions and maxEffectiveTokens' });
+    }
+    if (!Number.isInteger(budgets.maxCommandExecutions) || Number(budgets.maxCommandExecutions) <= 0) {
+      issues.push({ path: 'budgets.maxCommandExecutions', message: 'must be a positive integer' });
+    }
+    if (!Number.isInteger(budgets.maxEffectiveTokens) || Number(budgets.maxEffectiveTokens) <= 0) {
+      issues.push({ path: 'budgets.maxEffectiveTokens', message: 'must be a positive integer' });
     }
     if (!Number.isInteger(budgets.maxWallClockMs) || Number(budgets.maxWallClockMs) <= 0) {
       issues.push({ path: 'budgets.maxWallClockMs', message: 'must be a positive integer' });

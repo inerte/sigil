@@ -1,10 +1,10 @@
-import { promises as fs } from 'node:fs';
+import { promises as fs, createWriteStream } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 import { ensureDir, humanJson } from './util.js';
-import type { AgentFinalResponse, Executor, ExecutorResult, ExecutorRunContext } from './types.js';
+import type { AgentFinalResponse, Executor, ExecutorResult, ExecutorRunContext, ExecutorUsage } from './types.js';
 
 type CodexExecutorOptions = {
   codexBin?: string;
@@ -12,6 +12,8 @@ type CodexExecutorOptions = {
   sandbox?: 'read-only' | 'workspace-write' | 'danger-full-access';
   extraArgs?: string[];
 };
+
+const LOG_TAIL_LIMIT = 16_384;
 
 function finalResponseSchema(): Record<string, unknown> {
   return {
@@ -56,26 +58,58 @@ function buildPrompt(context: ExecutorRunContext): string {
   ].join('\n');
 }
 
-function countToolEvents(lines: string[]): Record<string, number> {
-  const counts: Record<string, number> = {};
+function appendTail(current: string, chunk: string, limit = LOG_TAIL_LIMIT): string {
+  const combined = `${current}${chunk}`;
+  return combined.length <= limit ? combined : combined.slice(-limit);
+}
 
-  for (const line of lines) {
-    try {
-      const parsed = JSON.parse(line) as Record<string, unknown>;
-      const eventType = typeof parsed.type === 'string' ? parsed.type : 'unknown';
-      counts[`event:${eventType}`] = (counts[`event:${eventType}`] ?? 0) + 1;
+function countToolEventLine(line: string, counts: Record<string, number>): void {
+  try {
+    const parsed = JSON.parse(line) as Record<string, unknown>;
+    const eventType = typeof parsed.type === 'string' ? parsed.type : 'unknown';
+    counts[`event:${eventType}`] = (counts[`event:${eventType}`] ?? 0) + 1;
 
-      const item = parsed.item;
-      if (item && typeof item === 'object' && typeof (item as Record<string, unknown>).type === 'string') {
-        const itemType = String((item as Record<string, unknown>).type);
-        counts[`item:${itemType}`] = (counts[`item:${itemType}`] ?? 0) + 1;
-      }
-    } catch {
-      counts['event:unparsed'] = (counts['event:unparsed'] ?? 0) + 1;
+    const item = parsed.item;
+    if (item && typeof item === 'object' && typeof (item as Record<string, unknown>).type === 'string') {
+      const itemType = String((item as Record<string, unknown>).type);
+      counts[`item:${itemType}`] = (counts[`item:${itemType}`] ?? 0) + 1;
     }
+  } catch {
+    counts['event:unparsed'] = (counts['event:unparsed'] ?? 0) + 1;
   }
+}
 
-  return counts;
+function maybeExtractUsage(line: string, current: ExecutorUsage | null): ExecutorUsage | null {
+  try {
+    const parsed = JSON.parse(line) as Record<string, unknown>;
+    if (parsed.type !== 'turn.completed' || !parsed.usage || typeof parsed.usage !== 'object') {
+      return current;
+    }
+
+    const rawUsage = parsed.usage as Record<string, unknown>;
+    return {
+      inputTokens: Number(rawUsage.input_tokens) || undefined,
+      cachedInputTokens: Number(rawUsage.cached_input_tokens) || undefined,
+      outputTokens: Number(rawUsage.output_tokens) || undefined
+    };
+  } catch {
+    return current;
+  }
+}
+
+function finishStream(stream: ReturnType<typeof createWriteStream>): Promise<void> {
+  return new Promise((resolve, reject) => {
+    stream.on('finish', resolve);
+    stream.on('error', reject);
+    stream.end();
+  });
+}
+
+function buildExitErrorMessage(exitCode: number, stdoutTail: string, stderrTail: string): string {
+  const tail = stderrTail.trim() || stdoutTail.trim();
+  return tail.length > 0
+    ? `Codex exited with code ${exitCode}: ${tail}`
+    : `Codex exited with code ${exitCode}`;
 }
 
 export class CodexExecutor implements Executor {
@@ -87,10 +121,12 @@ export class CodexExecutor implements Executor {
   }
 
   async run(context: ExecutorRunContext): Promise<ExecutorResult> {
-    const schemaDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sigil-devex-codex-'));
-    const schemaPath = path.join(schemaDir, 'final-response.schema.json');
-    const outputPath = path.join(schemaDir, 'final-response.json');
-    await ensureDir(schemaDir);
+    const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'sigil-devex-codex-'));
+    const schemaPath = path.join(tempDir, 'final-response.schema.json');
+    const outputPath = path.join(tempDir, 'final-response.json');
+    const stdoutPath = path.join(tempDir, 'executor.stdout.log');
+    const stderrPath = path.join(tempDir, 'executor.stderr.log');
+    await ensureDir(tempDir);
     await fs.writeFile(schemaPath, humanJson(finalResponseSchema()), 'utf8');
 
     const prompt = buildPrompt(context);
@@ -132,8 +168,13 @@ export class CodexExecutor implements Executor {
         }
       });
 
-      let stdout = '';
-      let stderr = '';
+      const stdoutStream = createWriteStream(stdoutPath, { encoding: 'utf8' });
+      const stderrStream = createWriteStream(stderrPath, { encoding: 'utf8' });
+      const toolCounts: Record<string, number> = {};
+      let usage: ExecutorUsage | null = null;
+      let stdoutTail = '';
+      let stderrTail = '';
+      let stdoutBuffer = '';
       let settled = false;
 
       const timer = setTimeout(() => {
@@ -142,12 +183,43 @@ export class CodexExecutor implements Executor {
         }
       }, context.timeoutMs);
 
+      const handleStdoutChunk = (chunk: string): void => {
+        stdoutStream.write(chunk);
+        stdoutTail = appendTail(stdoutTail, chunk);
+        stdoutBuffer += chunk;
+
+        while (true) {
+          const newlineIndex = stdoutBuffer.indexOf('\n');
+          if (newlineIndex === -1) {
+            break;
+          }
+
+          const line = stdoutBuffer.slice(0, newlineIndex).trim();
+          stdoutBuffer = stdoutBuffer.slice(newlineIndex + 1);
+
+          if (line.length === 0) {
+            continue;
+          }
+
+          countToolEventLine(line, toolCounts);
+          usage = maybeExtractUsage(line, usage);
+        }
+      };
+
       child.stdout.on('data', (chunk) => {
-        stdout += chunk.toString();
+        handleStdoutChunk(chunk.toString());
       });
 
       child.stderr.on('data', (chunk) => {
-        stderr += chunk.toString();
+        const text = chunk.toString();
+        stderrStream.write(text);
+        stderrTail = appendTail(stderrTail, text);
+      });
+
+      child.on('error', (error) => {
+        const rendered = `${String(error.message)}\n`;
+        stderrStream.write(rendered);
+        stderrTail = appendTail(stderrTail, rendered);
       });
 
       child.stdin.write(prompt);
@@ -157,6 +229,17 @@ export class CodexExecutor implements Executor {
         settled = true;
         clearTimeout(timer);
 
+        if (stdoutBuffer.trim().length > 0) {
+          const trailingLine = stdoutBuffer.trim();
+          countToolEventLine(trailingLine, toolCounts);
+          usage = maybeExtractUsage(trailingLine, usage);
+        }
+
+        await Promise.allSettled([
+          finishStream(stdoutStream),
+          finishStream(stderrStream)
+        ]);
+
         let finalResponse: AgentFinalResponse | null = null;
         try {
           finalResponse = JSON.parse(await fs.readFile(outputPath, 'utf8')) as AgentFinalResponse;
@@ -164,42 +247,21 @@ export class CodexExecutor implements Executor {
           finalResponse = null;
         }
 
-        const events = stdout
-          .split('\n')
-          .map((line) => line.trim())
-          .filter(Boolean);
-
-        let usage = null;
-        for (const line of events) {
-          try {
-            const parsed = JSON.parse(line) as Record<string, unknown>;
-            if (parsed.type === 'turn.completed' && parsed.usage && typeof parsed.usage === 'object') {
-              const rawUsage = parsed.usage as Record<string, unknown>;
-              usage = {
-                inputTokens: Number(rawUsage.input_tokens) || undefined,
-                cachedInputTokens: Number(rawUsage.cached_input_tokens) || undefined,
-                outputTokens: Number(rawUsage.output_tokens) || undefined
-              };
-            }
-          } catch {
-            // Ignore malformed event lines and leave them in the transcript.
-          }
-        }
-
+        const exitCode = code ?? 1;
         resolve({
-          exitCode: code ?? 1,
+          exitCode,
           finalResponse,
           usage,
-          toolCounts: countToolEvents(events),
+          toolCounts,
           artifact: {
-            events,
-            rawStdout: stdout,
-            rawStderr: stderr
+            tempDir,
+            stdoutPath,
+            stderrPath,
+            stdoutTail,
+            stderrTail
           },
-          errorMessage: code === 0 ? undefined : `Codex exited with code ${code ?? 1}`
+          errorMessage: exitCode === 0 ? undefined : buildExitErrorMessage(exitCode, stdoutTail, stderrTail)
         });
-
-        await fs.rm(schemaDir, { recursive: true, force: true });
       });
     });
   }

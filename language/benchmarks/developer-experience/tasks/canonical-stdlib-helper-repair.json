@@ -1,0 +1,36 @@
+{
+  "id": "canonical-stdlib-helper-repair",
+  "title": "Repair a non-canonical local helper module so the program runs again",
+  "goal": "Remove the non-canonical helper wrapper so the program runs and prints 12 again.",
+  "initialPrompt": "A small Sigil project now fails because a local helper module violates the canonical helper rules. Make the smallest coherent implementation fix so running the program prints 12 again. Keep the patch inside the allowed path.",
+  "fixture": "canonical-stdlib-helper-repair",
+  "setupCommands": [],
+  "oracleCommands": [
+    {
+      "command": "output=\"$(\"$SIGIL_BIN\" run src/main.sigil)\"; [ \"$output\" = \"12\" ]",
+      "timeoutMs": 300000
+    }
+  ],
+  "successCriteria": [
+    "Running src/main.sigil prints 12.",
+    "The patch stays inside src/math.lib.sigil."
+  ],
+  "allowedEditPaths": [
+    "src/math.lib.sigil"
+  ],
+  "forbiddenEditPaths": [
+    ".local",
+    "sigil.json",
+    "src/main.sigil"
+  ],
+  "budgets": {
+    "maxCommandExecutions": 24,
+    "maxEffectiveTokens": 25000,
+    "maxWallClockMs": 420000
+  },
+  "rootCauseTags": [
+    "canonical_helper_violation",
+    "direct_wrapper",
+    "logic_bug"
+  ]
+}

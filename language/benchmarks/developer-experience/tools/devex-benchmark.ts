@@ -16,6 +16,7 @@ type ParsedOptions = {
   label?: string;
   model?: string;
   ref?: string;
+  repeats?: number;
   runPath?: string;
   sigilBin?: string;
   tasks?: string[];
@@ -61,6 +62,14 @@ function parseArgs(args: string[]): { command: string; options: ParsedOptions } 
       case 'ref':
         options.ref = next;
         break;
+      case 'repeats': {
+        const parsed = Number.parseInt(next, 10);
+        if (!Number.isInteger(parsed) || parsed <= 0) {
+          throw new Error(`--repeats must be a positive integer, got '${next}'`);
+        }
+        options.repeats = parsed;
+        break;
+      }
       case 'run':
         options.runPath = next;
         break;
@@ -110,6 +119,7 @@ async function cmdRun(options: ParsedOptions): Promise<void> {
   const ref = options.ref;
   const sourceKind = ref ? 'ref' : 'worktree';
   const tasks = await selectTasks(options.tasks);
+  const repeats = options.repeats ?? 3;
   const executor = new CodexExecutor({
     model: options.model
   });
@@ -121,6 +131,7 @@ async function cmdRun(options: ParsedOptions): Promise<void> {
     ref: ref ?? 'WORKTREE',
     sourceKind,
     taskIds: tasks.map((task) => task.id),
+    repeats,
     executor: executor.kind
   });
 
@@ -131,7 +142,7 @@ async function cmdRun(options: ParsedOptions): Promise<void> {
     ref,
     sourceKind,
     sigilBinOverride: options.sigilBin
-  });
+  }, repeats);
 
   await writeJsonFile(path.join(runDirectory, 'run.json'), summary);
   console.log(humanJson({
@@ -145,6 +156,7 @@ async function cmdCompare(options: ParsedOptions): Promise<void> {
   const baseRef = options.baseRef ?? 'HEAD';
   const candidateRef = options.candidateRef;
   const candidateSourceKind = candidateRef ? 'ref' : 'worktree';
+  const repeats = options.repeats ?? 3;
   const runDirectory = path.join(localRunsDir, runId());
   await ensureDir(runDirectory);
   await writeJsonFile(path.join(runDirectory, 'meta.json'), {
@@ -155,6 +167,7 @@ async function cmdCompare(options: ParsedOptions): Promise<void> {
     candidateRef: candidateRef ?? 'WORKTREE',
     baseSourceKind: 'ref',
     candidateSourceKind,
+    repeats,
     executor: options.executor ?? 'codex'
   });
 
@@ -174,7 +187,7 @@ async function cmdCompare(options: ParsedOptions): Promise<void> {
     refLabel: 'candidate',
     ref: candidateRef,
     sourceKind: candidateSourceKind
-  });
+  }, repeats);
   await writeJsonFile(path.join(runDirectory, 'compare.json'), compare);
   console.log(humanJson({
     runDir: runDirectory,
@@ -199,8 +212,8 @@ async function cmdPublish(options: ParsedOptions): Promise<void> {
 function printHelp(): void {
   console.log(`Usage:
   pnpm exec tsx language/benchmarks/developer-experience/tools/devex-benchmark.ts validate
-  pnpm exec tsx language/benchmarks/developer-experience/tools/devex-benchmark.ts compare [--base <ref>] [--candidate <ref>] [--tasks <id,id>]
-  pnpm exec tsx language/benchmarks/developer-experience/tools/devex-benchmark.ts run [--ref <ref>] [--tasks <id,id>]
+  pnpm exec tsx language/benchmarks/developer-experience/tools/devex-benchmark.ts compare [--base <ref>] [--candidate <ref>] [--tasks <id,id>] [--repeats <n>]
+  pnpm exec tsx language/benchmarks/developer-experience/tools/devex-benchmark.ts run [--ref <ref>] [--tasks <id,id>] [--repeats <n>]
   pnpm exec tsx language/benchmarks/developer-experience/tools/devex-benchmark.ts publish --run <run-dir> [--label name]
   `);
 }

@@ -1,0 +1,44 @@
+λmain()=>Unit=()
+
+test "todo json decode rejects invalid payload" {
+  match •todoJson.decodeState("{bad"){
+    Ok(_)=>false|
+    Err(_)=>true
+  }
+}
+
+test "todo json decode rejects missing fields" {
+  match •todoJson.decodeState("{\"todos\":[]}"){
+    Ok(_)=>false|
+    Err(_)=>true
+  }
+}
+
+test "todo json decode next todo id rejects non numeric string" {
+  match •todoJson.decodeNextTodoId((§json.JsonString("oops"):§json.JsonValue)){
+    Ok(_)=>false|
+    Err(_)=>true
+  }
+}
+
+test "todo json decode todo rejects missing text field" {
+  match •todoJson.decodeTodo((§json.JsonObject({"done"↦§json.JsonBool(false),"id"↦§json.JsonString("1")}):§json.JsonValue)){
+    Ok(_)=>false|
+    Err(_)=>true
+  }
+}
+
+test "todo json roundtrip preserves state" {
+  l state=({nextId:µNextTodoId(9),todos:[{done:false,id:1,text:"Ship JSON stdlib"},{done:true,id:2,text:"Write tests"}]}:µPersistedState);
+  match •todoJson.decodeState((•todoJson.encodeState(state):String)){
+    Ok(decoded)=>decoded=state|
+    Err(_)=>false
+  }
+}
+
+test "todo json decode accepts numeric ids from older payloads" {
+  match •todoJson.decodeState("{\"nextId\":9,\"todos\":[{\"done\":false,\"id\":1,\"text\":\"Ship JSON stdlib\"}]}"){
+    Ok(state)=>•todoJson.nextTodoIdValue(state.nextId)=9 and #state.todos=1 and state.todos[0].id=1|
+    Err(_)=>false
+  }
+}

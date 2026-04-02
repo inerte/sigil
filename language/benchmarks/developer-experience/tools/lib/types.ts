@@ -4,7 +4,8 @@ export type BenchmarkCommand = {
 };
 
 export type TaskBudgets = {
-  maxTurns: number;
+  maxCommandExecutions: number;
+  maxEffectiveTokens: number;
   maxWallClockMs: number;
 };
 
@@ -37,9 +38,11 @@ export type ExecutorUsage = {
 };
 
 export type ExecutionArtifact = {
-  events: string[];
-  rawStdout: string;
-  rawStderr: string;
+  tempDir: string;
+  stdoutPath: string;
+  stderrPath: string;
+  stdoutTail: string;
+  stderrTail: string;
 };
 
 export type ExecutorResult = {
@@ -86,12 +89,24 @@ export type PatchStats = {
   filesChanged: number;
 };
 
-export type TaskRunResult = {
+export type PhaseTimings = {
+  workspacePrepMs: number;
+  setupMs: number;
+  executorMs: number;
+  stateCollectionMs: number;
+  oracleMs: number;
+  artifactWriteMs: number;
+  overheadMs: number;
+};
+
+export type TaskSampleResult = {
   taskId: string;
   refLabel: string;
   ref: string;
+  sampleIndex: number;
   status: 'passed' | 'failed' | 'error';
   elapsedMs: number;
+  phaseTimings: PhaseTimings;
   oracleResults: ShellCommandResult[];
   setupResults: ShellCommandResult[];
   modifiedPaths: string[];
@@ -99,12 +114,40 @@ export type TaskRunResult = {
   pathPolicy: PathPolicyResult;
   usage: ExecutorUsage | null;
   toolCounts: Record<string, number>;
+  commandExecutionCount: number | null;
+  effectiveTokens: number | null;
+  withinCommandBudget: boolean | null;
+  withinTokenBudget: boolean | null;
+  withinAllBudgets: boolean;
   finalResponse: AgentFinalResponse | null;
   diagnosisTagsMatched: string[];
   transcriptPath: string;
   diffPath: string;
+  resultPath: string;
   workspaceNote?: string;
   errorMessage?: string;
+};
+
+export type TaskRunResult = {
+  taskId: string;
+  refLabel: string;
+  ref: string;
+  status: 'passed' | 'failed' | 'error';
+  sampleCount: number;
+  statusCounts: Record<TaskSampleResult['status'], number>;
+  rawPassCount: number;
+  rawPassRate: number;
+  commandBudgetPassCount: number;
+  commandBudgetPassRate: number;
+  tokenBudgetPassCount: number;
+  tokenBudgetPassRate: number;
+  budgetPassCount: number;
+  budgetPassRate: number;
+  medianElapsedMs: number;
+  medianEffectiveTokens: number | null;
+  medianCommandExecutionCount: number | null;
+  medianPhaseTimings: PhaseTimings;
+  sampleResultPaths: string[];
 };
 
 export type ReferenceSourceKind = 'ref' | 'worktree' | 'binary';
@@ -127,18 +170,44 @@ export type RefRunSummary = {
   passed: number;
   failed: number;
   errors: number;
+  rawPassTotal: number;
+  budgetPassTotal: number;
   medianElapsedMs: number;
+  medianEffectiveTokens: number | null;
+  medianCommandExecutionCount: number | null;
 };
 
 export type TaskComparison = {
   taskId: string;
   baseStatus: TaskRunResult['status'];
   candidateStatus: TaskRunResult['status'];
-  direction: 'improved' | 'regressed' | 'neutral' | 'mixed';
+  direction: 'improved' | 'regressed' | 'neutral';
+  decisionBasis: 'budget' | 'neutral';
+  baseRawPassCount: number;
+  candidateRawPassCount: number;
+  baseRawPassRate: number;
+  candidateRawPassRate: number;
+  baseCommandBudgetPassCount: number;
+  candidateCommandBudgetPassCount: number;
+  baseCommandBudgetPassRate: number;
+  candidateCommandBudgetPassRate: number;
+  baseTokenBudgetPassCount: number;
+  candidateTokenBudgetPassCount: number;
+  baseTokenBudgetPassRate: number;
+  candidateTokenBudgetPassRate: number;
+  baseBudgetPassCount: number;
+  candidateBudgetPassCount: number;
+  baseBudgetPassRate: number;
+  candidateBudgetPassRate: number;
+  baseMedianEffectiveTokens: number | null;
+  candidateMedianEffectiveTokens: number | null;
+  baseMedianCommandExecutionCount: number | null;
+  candidateMedianCommandExecutionCount: number | null;
 };
 
 export type CompareSummary = {
   status: 'improved' | 'neutral' | 'regressed' | 'mixed';
+  repeats: number;
   taskIds: string[];
   base: RefRunSummary;
   candidate: RefRunSummary;
@@ -155,8 +224,14 @@ export type PublishedSummary = {
   baseRef?: string;
   candidateRequestedRef?: string;
   candidateRef?: string;
-  passed?: {
+  rawPassTotals?: {
     base: number;
     candidate: number;
+    totalPossible: number;
+  };
+  budgetPassTotals?: {
+    base: number;
+    candidate: number;
+    totalPossible: number;
   };
 };

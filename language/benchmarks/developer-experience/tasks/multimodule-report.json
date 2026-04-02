@@ -22,7 +22,8 @@
     "sigil.json"
   ],
   "budgets": {
-    "maxTurns": 30,
+    "maxCommandExecutions": 21,
+    "maxEffectiveTokens": 24000,
     "maxWallClockMs": 420000
   },
   "rootCauseTags": [

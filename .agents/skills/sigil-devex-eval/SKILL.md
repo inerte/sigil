@@ -12,14 +12,19 @@ progress or against explicit refs when the user asks.
 
 1. Validate the harness.
 2. Run `compare` across the benchmark task suite.
-3. Summarize per-task outcomes first, then the overall comparison.
-4. Narrow to `--tasks` or explicit refs only when the user asks for a focused run.
+3. Summarize per-task budgeted outcomes first, then the overall comparison.
+4. Narrow to `--tasks`, explicit refs, or `--repeats 1` only when the user asks for a focused or faster run.
 
 Default comparison mode:
 
 - base: clean `HEAD`
 - candidate: current working tree snapshot
 - tasks: all task manifests
+- repeats: `3`
+- task scheduling: up to `2` tasks in flight at a time
+- repeat scheduling: up to `3` base/candidate repeat pairs in flight per task
+- benchmark truth: successful task completion within each task's command and effective-token budgets
+- diagnostics: raw pass counts and command/token medians explain the comparison; elapsed time is informational only
 
 ## Commands
 
@@ -33,6 +38,12 @@ Compare current work in progress across all tasks:
 
 ```bash
 pnpm exec tsx language/benchmarks/developer-experience/tools/devex-benchmark.ts compare
+```
+
+Run a faster single-sample smoke compare:
+
+```bash
+pnpm exec tsx language/benchmarks/developer-experience/tools/devex-benchmark.ts compare --repeats 1
 ```
 
 Focus on selected tasks only:
@@ -59,3 +70,5 @@ pnpm exec tsx language/benchmarks/developer-experience/tools/devex-benchmark.ts 
 - Read tracked summaries from `language/benchmarks/developer-experience/results/`.
 - Treat the suite as outcome-first: the benchmark measures whether Codex gets
   better at real Sigil work, not whether a specific internal feature is used.
+- Treat per-task budget pass counts as the primary signal. Raw pass counts and
+  command/token medians are diagnostics.

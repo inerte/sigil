@@ -1,0 +1,41 @@
+{
+  "id": "multimodule-report",
+  "title": "Fix a wrong result in a multi-file Sigil project",
+  "goal": "Repair the project so the main program prints the correct total again.",
+  "initialPrompt": "This project now prints the wrong result. Find the smallest coherent fix so running the program prints 12 again. The project is intentionally multi-file; use the available Sigil tooling as needed, but keep edits inside the allowed source path.",
+  "fixture": "multimodule-report",
+  "capabilityTags": [
+    "basic_repair",
+    "repo_navigation",
+    "multifile_edit"
+  ],
+  "surfaceTags": [
+    "run"
+  ],
+  "setupCommands": [],
+  "oracleCommands": [
+    {
+      "command": "output=\"$(\"$SIGIL_BIN\" run src/main.sigil)\"; [ \"$output\" = \"12\" ]"
+    }
+  ],
+  "successCriteria": [
+    "Running src/main.sigil prints 12.",
+    "The patch stays inside the reporting library."
+  ],
+  "allowedEditPaths": [
+    "src/report.lib.sigil"
+  ],
+  "forbiddenEditPaths": [
+    ".local",
+    "sigil.json"
+  ],
+  "budgets": {
+    "maxTurns": 30,
+    "maxWallClockMs": 420000
+  },
+  "rootCauseTags": [
+    "off_by_one",
+    "logic_bug"
+  ]
+}
+

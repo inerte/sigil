@@ -1,0 +1,4 @@
+λhello(name:String)=>String="Hello, "++name++"!"
+
+λmain()=>String=hello("Sigil"
+

@@ -10,6 +10,8 @@
   "scripts": {
     "build": "cargo build --manifest-path language/compiler/Cargo.toml -p sigil-cli",
     "test": "pnpm -r --if-present test",
+    "sigil:bench:devex:validate": "pnpm exec tsx language/benchmarks/developer-experience/tools/devex-benchmark.ts validate",
+    "sigil:bench:devex:test": "node --import tsx --test language/benchmarks/developer-experience/tools/*.test.ts",
     "sigil": "cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml --",
     "lex": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil lex",
     "sigil:test:canonical-stdlib": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && (cd projects/canonicalStdlibAudit && ../../language/compiler/target/debug/sigil test tests && ../../language/compiler/target/debug/sigil run src/main.sigil)",

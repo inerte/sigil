@@ -1,0 +1,5 @@
+λplus(total:Int,value:Int)=>Int=total+value
+
+λsum(xs:[Int])=>Int=xs reduce plus from 0
+
+λtotal(xs:[Int])=>Int=sum(xs)+1

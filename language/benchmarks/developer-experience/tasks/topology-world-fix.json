@@ -1,0 +1,42 @@
+{
+  "id": "topology-world-fix",
+  "title": "Repair a topology-aware project so its local world resolves",
+  "goal": "Fix the topology/config setup so local world inspection succeeds again.",
+  "initialPrompt": "A topology-aware project no longer resolves its local runtime world. Fix the project so `sigil inspect world --env local .` succeeds again. Keep the change focused on the topology/config definitions.",
+  "fixture": "topology-world-fix",
+  "capabilityTags": [
+    "basic_repair",
+    "topology_world"
+  ],
+  "surfaceTags": [
+    "inspect_world"
+  ],
+  "setupCommands": [],
+  "oracleCommands": [
+    {
+      "command": "\"$SIGIL_BIN\" inspect world --env local . >/dev/null",
+      "timeoutMs": 300000
+    }
+  ],
+  "successCriteria": [
+    "World inspection for env local succeeds.",
+    "The patch stays within topology/config files."
+  ],
+  "allowedEditPaths": [
+    "src/topology.lib.sigil",
+    "config/local.lib.sigil"
+  ],
+  "forbiddenEditPaths": [
+    ".local",
+    "sigil.json"
+  ],
+  "budgets": {
+    "maxTurns": 30,
+    "maxWallClockMs": 420000
+  },
+  "rootCauseTags": [
+    "topology_env_mismatch",
+    "world_resolution_failure"
+  ]
+}
+

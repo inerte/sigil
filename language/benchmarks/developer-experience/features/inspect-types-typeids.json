@@ -1,0 +1,21 @@
+{
+  "featureId": "inspect-types-typeids",
+  "title": "Inspect types and focused type-id surfaces",
+  "summary": "Measure whether richer named-type inspection data and focused type ids improve agent understanding of Sigil type semantics.",
+  "primaryCapabilityTags": [
+    "type_semantics",
+    "context_retrieval"
+  ],
+  "secondaryCapabilityTags": [
+    "repo_navigation"
+  ],
+  "expectedSurfaceTags": [
+    "inspect_types",
+    "debug_typeid"
+  ],
+  "claims": [
+    "Agents should need fewer search/inference steps to understand named constrained types.",
+    "Agents should diagnose type-meaning issues more reliably when inspect output carries stable type ids."
+  ]
+}
+

@@ -1,0 +1,3 @@
+λadd(total:Int,value:Int)=>Int=total+value
+
+λtotal(xs:[Int])=>Int=xs reduce add from 1

@@ -1,0 +1,24 @@
+{
+  "featureId": "debug-session-watches",
+  "title": "Replay-backed session watches across debug steps",
+  "summary": "Measure whether persistent watches across replay-backed stepping improve an agent's ability to debug Sigil runs and tests.",
+  "primaryCapabilityTags": [
+    "debug_replay",
+    "watch_persistence"
+  ],
+  "secondaryCapabilityTags": [
+    "test_repair",
+    "runtime_debugging"
+  ],
+  "expectedSurfaceTags": [
+    "debug_run",
+    "debug_test",
+    "watches",
+    "step_over"
+  ],
+  "claims": [
+    "Agents should keep the important values pinned across steps instead of rescanning raw locals.",
+    "Agents should diagnose replay-backed bugs more efficiently when watch state survives stepping."
+  ]
+}
+

@@ -1,0 +1,9 @@
+λmain()=>Unit=()
+
+test "total handles empty list" {
+  •math.total([])=0
+}
+
+test "total sums a list" {
+  •math.total([1,2,3])=6
+}

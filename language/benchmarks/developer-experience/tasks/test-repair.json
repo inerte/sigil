@@ -1,0 +1,44 @@
+{
+  "id": "test-repair",
+  "title": "Repair a failing Sigil test suite without editing the tests",
+  "goal": "Restore the implementation so the Sigil tests pass again.",
+  "initialPrompt": "A small Sigil project has a failing test suite. Fix the implementation so the tests pass again. The tests are part of the oracle and should not be edited. Replay-backed debugging is available if you want it.",
+  "fixture": "test-repair",
+  "capabilityTags": [
+    "basic_repair",
+    "test_repair",
+    "debug_replay"
+  ],
+  "surfaceTags": [
+    "test",
+    "replay",
+    "debug_test"
+  ],
+  "setupCommands": [],
+  "oracleCommands": [
+    {
+      "command": "\"$SIGIL_BIN\" test tests >/dev/null",
+      "timeoutMs": 300000
+    }
+  ],
+  "successCriteria": [
+    "The Sigil tests pass again.",
+    "Only the implementation changes."
+  ],
+  "allowedEditPaths": [
+    "src/math.lib.sigil"
+  ],
+  "forbiddenEditPaths": [
+    "tests",
+    ".local"
+  ],
+  "budgets": {
+    "maxTurns": 40,
+    "maxWallClockMs": 480000
+  },
+  "rootCauseTags": [
+    "bad_accumulator",
+    "test_failure"
+  ]
+}
+

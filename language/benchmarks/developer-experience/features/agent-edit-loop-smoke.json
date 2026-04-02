@@ -1,0 +1,25 @@
+{
+  "featureId": "agent-edit-loop-smoke",
+  "title": "General Sigil agent edit loop smoke benchmark",
+  "summary": "A broad smoke benchmark for before/after comparisons when a feature should improve general Sigil maintenance rather than one narrow surface.",
+  "primaryCapabilityTags": [
+    "basic_repair"
+  ],
+  "secondaryCapabilityTags": [
+    "compile_repair",
+    "repo_navigation",
+    "test_repair",
+    "topology_world"
+  ],
+  "expectedSurfaceTags": [
+    "compile",
+    "test",
+    "run",
+    "inspect_world"
+  ],
+  "claims": [
+    "The feature should improve the agent's overall Sigil repair loop.",
+    "The feature should not regress basic maintenance tasks."
+  ]
+}
+

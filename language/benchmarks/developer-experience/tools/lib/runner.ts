@@ -43,6 +43,10 @@ type CompareRefRunsOptions = {
 const MAX_CONCURRENT_REPEAT_PAIRS = 3;
 const MAX_CONCURRENT_TASKS = 2;
 
+function minimumDecisiveBudgetPassDelta(repeats: number): number {
+  return repeats <= 2 ? 1 : 2;
+}
+
 function emptyPhaseTimings(): PhaseTimings {
   return {
     workspacePrepMs: 0,
@@ -593,10 +597,15 @@ export async function compareReferences(
   }
 }
 
-function compareTask(baseResult: TaskRunResult, candidateResult: TaskRunResult): TaskComparison {
-  const direction = candidateResult.budgetPassCount > baseResult.budgetPassCount
+function compareTask(
+  baseResult: TaskRunResult,
+  candidateResult: TaskRunResult,
+  minDecisiveDelta: number
+): TaskComparison {
+  const budgetPassDelta = candidateResult.budgetPassCount - baseResult.budgetPassCount;
+  const direction = budgetPassDelta >= minDecisiveDelta
     ? 'improved'
-    : candidateResult.budgetPassCount < baseResult.budgetPassCount
+    : budgetPassDelta <= -minDecisiveDelta
       ? 'regressed'
       : 'neutral';
 
@@ -605,7 +614,9 @@ function compareTask(baseResult: TaskRunResult, candidateResult: TaskRunResult):
     baseStatus: baseResult.status,
     candidateStatus: candidateResult.status,
     direction,
-    decisionBasis: direction === 'neutral' ? 'neutral' : 'budget',
+    decisionBasis: direction === 'neutral' ? 'neutral' : 'budget_margin',
+    budgetPassDelta,
+    minDecisiveBudgetPassDelta: minDecisiveDelta,
     baseRawPassCount: baseResult.rawPassCount,
     candidateRawPassCount: candidateResult.rawPassCount,
     baseRawPassRate: baseResult.rawPassRate,
@@ -630,12 +641,14 @@ function compareTask(baseResult: TaskRunResult, candidateResult: TaskRunResult):
 }
 
 export function compareRefRuns(base: RefRunSummary, candidate: RefRunSummary, options: CompareRefRunsOptions = {}): CompareSummary {
+  const repeats = options.repeats ?? 3;
+  const minDecisiveDelta = minimumDecisiveBudgetPassDelta(repeats);
   const taskComparisons = base.taskResults.map((baseResult) => {
     const candidateResult = candidate.taskResults.find((result) => result.taskId === baseResult.taskId);
     if (!candidateResult) {
       throw new Error(`candidate results are missing task '${baseResult.taskId}'`);
     }
-    return compareTask(baseResult, candidateResult);
+    return compareTask(baseResult, candidateResult, minDecisiveDelta);
   });
 
   const directions = new Set(taskComparisons.map((comparison) => comparison.direction));
@@ -651,7 +664,8 @@ export function compareRefRuns(base: RefRunSummary, candidate: RefRunSummary, op
 
   return {
     status,
-    repeats: options.repeats ?? 3,
+    repeats,
+    minDecisiveBudgetPassDelta: minDecisiveDelta,
     taskIds: base.taskResults.map((result) => result.taskId),
     base,
     candidate,

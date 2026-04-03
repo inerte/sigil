@@ -17,6 +17,10 @@ The benchmark truth is:
 Elapsed time is still recorded in raw sample artifacts for diagnostics, but it
 does not decide the benchmark outcome.
 
+At the default `3` repeats, a task needs a **budget-pass margin of at least 2**
+before the harness will call it `improved` or `regressed`. A one-sample budget
+swing stays `neutral` and is treated as diagnostic noise.
+
 Each task manifest now carries:
 
 - `maxCommandExecutions`
@@ -115,9 +119,12 @@ Each task aggregate reports:
 
 Per-task compare direction is driven only by **all-budget pass count**:
 
-- higher candidate count => `improved`
-- lower candidate count => `regressed`
+- candidate ahead by at least 2 budget passes => `improved`
+- candidate behind by at least 2 budget passes => `regressed`
 - equal counts => `neutral`
+
+For `--repeats 1` smoke runs, the decisive margin drops to `1` so a single
+sample can still produce a directional result.
 
 Raw pass counts remain visible as diagnostics, but they do not change the
 benchmark verdict.

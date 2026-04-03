@@ -24,6 +24,7 @@ Default comparison mode:
 - task scheduling: up to `2` tasks in flight at a time
 - repeat scheduling: up to `3` base/candidate repeat pairs in flight per task
 - benchmark truth: successful task completion within each task's command and effective-token budgets
+- default decision rule: with `3` repeats, a task needs a budget-pass margin of at least `2` to count as improved or regressed
 - diagnostics: raw pass counts and command/token medians explain the comparison; elapsed time is informational only
 
 ## Commands
@@ -72,3 +73,5 @@ pnpm exec tsx language/benchmarks/developer-experience/tools/devex-benchmark.ts 
   better at real Sigil work, not whether a specific internal feature is used.
 - Treat per-task budget pass counts as the primary signal. Raw pass counts and
   command/token medians are diagnostics.
+- At the default `3` repeats, a one-sample budget swing stays `neutral` instead
+  of deciding the task direction.

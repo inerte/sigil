@@ -335,7 +335,7 @@ test('working tree snapshots preserve uncommitted changes without copying ignore
   await assert.rejects(fs.readFile(path.join(snapshot.snapshotPath, '.local', 'ignored.txt'), 'utf8'));
 });
 
-test('compare summary uses budget pass counts as the primary signal', () => {
+test('compare summary keeps a one-sample budget swing neutral at the default three repeats', () => {
   const compare = compareRefRuns(
     {
       refLabel: 'base',
@@ -374,10 +374,13 @@ test('compare summary uses budget pass counts as the primary signal', () => {
     { repeats: 3 }
   );
 
-  assert.equal(compare.status, 'improved');
+  assert.equal(compare.status, 'neutral');
   assert.deepEqual(compare.taskIds, ['demo']);
-  assert.equal(compare.taskComparisons[0].direction, 'improved');
-  assert.equal(compare.taskComparisons[0].decisionBasis, 'budget');
+  assert.equal(compare.minDecisiveBudgetPassDelta, 2);
+  assert.equal(compare.taskComparisons[0].direction, 'neutral');
+  assert.equal(compare.taskComparisons[0].decisionBasis, 'neutral');
+  assert.equal(compare.taskComparisons[0].budgetPassDelta, 1);
+  assert.equal(compare.taskComparisons[0].minDecisiveBudgetPassDelta, 2);
   assert.equal(compare.taskComparisons[0].baseRawPassCount, 3);
   assert.equal(compare.taskComparisons[0].candidateBudgetPassCount, 2);
 });
@@ -424,6 +427,129 @@ test('raw pass differences stay diagnostic when budget pass counts are tied', ()
   assert.equal(compare.status, 'neutral');
   assert.equal(compare.taskComparisons[0].direction, 'neutral');
   assert.equal(compare.taskComparisons[0].decisionBasis, 'neutral');
+  assert.equal(compare.taskComparisons[0].budgetPassDelta, 0);
+});
+
+test('compare summary uses a larger budget-pass margin as the decisive signal at three repeats', () => {
+  const compare = compareRefRuns(
+    {
+      refLabel: 'base',
+      sourceKind: 'ref',
+      requestedRef: 'HEAD',
+      resolvedRef: 'aaa111',
+      taskResults: [
+        makeTaskRunResult({ taskId: 'demo', refLabel: 'base', ref: 'aaa111', rawPassCount: 3, budgetPassCount: 1, budgetPassRate: 0.3333 })
+      ],
+      passed: 1,
+      failed: 0,
+      errors: 0,
+      rawPassTotal: 3,
+      budgetPassTotal: 1,
+      medianElapsedMs: 100,
+      medianEffectiveTokens: 1000,
+      medianCommandExecutionCount: 10
+    },
+    {
+      refLabel: 'candidate',
+      sourceKind: 'worktree',
+      requestedRef: 'WORKTREE',
+      resolvedRef: 'bbb222+worktree',
+      taskResults: [
+        makeTaskRunResult({ taskId: 'demo', refLabel: 'candidate', ref: 'bbb222+worktree', rawPassCount: 3, budgetPassCount: 3, budgetPassRate: 1 })
+      ],
+      passed: 1,
+      failed: 0,
+      errors: 0,
+      rawPassTotal: 3,
+      budgetPassTotal: 3,
+      medianElapsedMs: 120,
+      medianEffectiveTokens: 1200,
+      medianCommandExecutionCount: 12
+    },
+    { repeats: 3 }
+  );
+
+  assert.equal(compare.status, 'improved');
+  assert.equal(compare.minDecisiveBudgetPassDelta, 2);
+  assert.equal(compare.taskComparisons[0].direction, 'improved');
+  assert.equal(compare.taskComparisons[0].decisionBasis, 'budget_margin');
+  assert.equal(compare.taskComparisons[0].budgetPassDelta, 2);
+});
+
+test('single-sample smoke compares still allow a one-sample budget delta to decide direction', () => {
+  const compare = compareRefRuns(
+    {
+      refLabel: 'base',
+      sourceKind: 'ref',
+      requestedRef: 'HEAD',
+      resolvedRef: 'aaa111',
+      taskResults: [
+        makeTaskRunResult({
+          taskId: 'demo',
+          refLabel: 'base',
+          ref: 'aaa111',
+          sampleCount: 1,
+          statusCounts: { passed: 1, failed: 0, error: 0 },
+          rawPassCount: 1,
+          rawPassRate: 1,
+          commandBudgetPassCount: 0,
+          commandBudgetPassRate: 0,
+          tokenBudgetPassCount: 0,
+          tokenBudgetPassRate: 0,
+          budgetPassCount: 0,
+          budgetPassRate: 0,
+          sampleResultPaths: ['/tmp/sample-1.json']
+        })
+      ],
+      passed: 1,
+      failed: 0,
+      errors: 0,
+      rawPassTotal: 1,
+      budgetPassTotal: 0,
+      medianElapsedMs: 100,
+      medianEffectiveTokens: 1000,
+      medianCommandExecutionCount: 10
+    },
+    {
+      refLabel: 'candidate',
+      sourceKind: 'worktree',
+      requestedRef: 'WORKTREE',
+      resolvedRef: 'bbb222+worktree',
+      taskResults: [
+        makeTaskRunResult({
+          taskId: 'demo',
+          refLabel: 'candidate',
+          ref: 'bbb222+worktree',
+          sampleCount: 1,
+          statusCounts: { passed: 1, failed: 0, error: 0 },
+          rawPassCount: 1,
+          rawPassRate: 1,
+          commandBudgetPassCount: 1,
+          commandBudgetPassRate: 1,
+          tokenBudgetPassCount: 1,
+          tokenBudgetPassRate: 1,
+          budgetPassCount: 1,
+          budgetPassRate: 1,
+          sampleResultPaths: ['/tmp/sample-1.json']
+        })
+      ],
+      passed: 1,
+      failed: 0,
+      errors: 0,
+      rawPassTotal: 1,
+      budgetPassTotal: 1,
+      medianElapsedMs: 80,
+      medianEffectiveTokens: 900,
+      medianCommandExecutionCount: 8
+    },
+    { repeats: 1 }
+  );
+
+  assert.equal(compare.status, 'improved');
+  assert.equal(compare.minDecisiveBudgetPassDelta, 1);
+  assert.equal(compare.taskComparisons[0].direction, 'improved');
+  assert.equal(compare.taskComparisons[0].decisionBasis, 'budget_margin');
+  assert.equal(compare.taskComparisons[0].budgetPassDelta, 1);
 });
 
 test('publish writes history and latest summary files with raw and budget pass totals', async () => {

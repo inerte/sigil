@@ -182,7 +182,9 @@ export type TaskComparison = {
   baseStatus: TaskRunResult['status'];
   candidateStatus: TaskRunResult['status'];
   direction: 'improved' | 'regressed' | 'neutral';
-  decisionBasis: 'budget' | 'neutral';
+  decisionBasis: 'budget_margin' | 'neutral';
+  budgetPassDelta: number;
+  minDecisiveBudgetPassDelta: number;
   baseRawPassCount: number;
   candidateRawPassCount: number;
   baseRawPassRate: number;
@@ -208,6 +210,7 @@ export type TaskComparison = {
 export type CompareSummary = {
   status: 'improved' | 'neutral' | 'regressed' | 'mixed';
   repeats: number;
+  minDecisiveBudgetPassDelta: number;
   taskIds: string[];
   base: RefRunSummary;
   candidate: RefRunSummary;

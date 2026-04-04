@@ -6717,7 +6717,7 @@ mod tests {
         assert!(result.contains("function __sigil_breakpoint_snapshot()"));
         assert!(result.contains("__sigil_breakpoint_push_frame("));
         assert!(result.contains(
-            "__sigil_breakpoint_push_scope([{ name: \"y\", origin: \"let\", value: y }]"
+            "__sigil_breakpoint_push_scope([{ name: \"y\", origin: \"let\", value: y, typeId: null }])"
         ));
         assert!(result.contains("__sigil_breakpoint_maybe_hit("));
     }

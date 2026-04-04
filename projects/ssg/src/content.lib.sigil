@@ -12,6 +12,10 @@
     "philosophy"=>routes⧺[{alias:"/about/philosophy",route:canonicalRoute(page)}]|
     _=>routes
   }|
+  µProject()=>match page.sourcePath{
+    "website/projects/README.md"=>routes⧺[{alias:"website/projects",route:canonicalRoute(page)}]⧺[{alias:"website/projects/",route:canonicalRoute(page)}]|
+    _=>routes
+  }|
   _=>routes
 }
 
@@ -20,23 +24,24 @@
   l baseRoutes=([{alias:page.sourcePath,route:route},{alias:"/"++page.sourcePath,route:route},{alias:route,route:route}]:[µAliasRoute]);
   l withSourceDir=(match page.sourcePath{
     "website/articles/README.md"=>baseRoutes⧺[{alias:"website/articles",route:route}]⧺[{alias:"website/articles/",route:route}]|
+    "website/projects/README.md"=>baseRoutes⧺[{alias:"website/projects",route:route}]⧺[{alias:"website/projects/",route:route}]|
     _=>baseRoutes
   }:[µAliasRoute]);
   addKnownAliases(page,match route{
     "/"=>withSourceDir|
-    _=>withSourceDir⧺[{alias:trimTrailingSlash(route),route:route}]
+    _=>withSourceDir⧺[{alias:§string.trimEndChars("/",route),route:route}]
   })
 }
 
 λbasePathPrefix(basePath:String,route:String)=>String match basePath{
   "/"=>route|
   ""=>route|
-  _=>trimTrailingSlash(basePath)++route
+  _=>§string.trimEndChars("/",basePath)++route
 }
 
-λblankPage(markdown:String,meta:µPageMeta,outputDir:String,section:µSection,sourcePath:String)=>µSitePage={bodyHtml:"",bodyMarkdown:markdown,meta:meta,outputDir:outputDir,section:section,sourcePath:sourcePath}
+λblankPage(markdown:String,meta:µPageMeta,outputDir:String,section:µSection,sourcePath:String)=>µSitePage={bodyHtml:"",bodyMarkdown:markdown,meta:meta,outputDir:outputDir,project:None(),section:section,sourcePath:sourcePath}
 
-λbuildAliasRoutes(data:µSiteData)=>[µAliasRoute]=aliasRoutesForPage(data.home)⧺aliasRoutesForPage(data.articlesIntro)⧺pagesAliasRoutes(data.articles)⧺pagesAliasRoutes(data.docs)⧺pagesAliasRoutes(data.spec)⧺pagesAliasRoutes(data.standalone)
+λbuildAliasRoutes(data:µSiteData)=>[µAliasRoute]=aliasRoutesForPage(data.home)⧺aliasRoutesForPage(data.articlesIntro)⧺aliasRoutesForPage(data.projectsIntro)⧺pagesAliasRoutes(data.articles)⧺pagesAliasRoutes(data.docs)⧺pagesAliasRoutes(data.projects)⧺pagesAliasRoutes(data.spec)⧺pagesAliasRoutes(data.standalone)
 
 λcanonicalRoute(page:µSitePage)=>String match page.outputDir{
   ""=>"/"|
@@ -117,7 +122,7 @@
 
 λpagesSortedByTitle(pages:[µSitePage])=>[µSitePage]=sortPagesInner(compareTitlePages,pages)
 
-λrenderPage(aliasRoutes:[µAliasRoute],basePath:String,page:µSitePage)=>µSitePage={bodyHtml:§markdown.parse(rewriteInternalLinks(aliasRoutes,basePath,page.bodyMarkdown,page.sourcePath)),bodyMarkdown:page.bodyMarkdown,meta:page.meta,outputDir:page.outputDir,section:page.section,sourcePath:page.sourcePath}
+λrenderPage(aliasRoutes:[µAliasRoute],basePath:String,page:µSitePage)=>µSitePage={bodyHtml:§markdown.parse(rewriteInternalLinks(aliasRoutes,basePath,page.bodyMarkdown,page.sourcePath)),bodyMarkdown:page.bodyMarkdown,meta:page.meta,outputDir:page.outputDir,project:page.project,section:page.section,sourcePath:page.sourcePath}
 
 λresolveRepoPath(sourcePath:String,targetPath:String)=>String match §string.startsWith("/",targetPath){
   true=>normalizeRepoPath(§string.substring(#targetPath,targetPath,1))|
@@ -162,6 +167,7 @@
   µArticle()=>"Articles"|
   µDoc()=>"Docs"|
   µHome()=>"Home"|
+  µProject()=>"Projects"|
   µSpec()=>"Spec"
 }
 
@@ -169,6 +175,7 @@
   µArticle()=>"article"|
   µDoc()=>"doc"|
   µHome()=>"home"|
+  µProject()=>"project"|
   µSpec()=>"spec"
 }
 
@@ -236,9 +243,4 @@
     []=>[]|
     [page,.rest]=>[page]⧺takeFirst(count-1,rest)
   }
-}
-
-λtrimTrailingSlash(path:String)=>String match #path>1 and §string.endsWith(path,"/"){
-  true=>trimTrailingSlash(§string.substring(#path-1,path,0))|
-  false=>path
 }

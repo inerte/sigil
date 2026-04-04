@@ -1,4 +1,4 @@
-λallPages(data:µSiteData)=>[µSitePage]=[data.home,data.articlesIntro]⧺data.articles⧺data.docs⧺data.spec⧺data.standalone
+λallPages(data:µSiteData)=>[µSitePage]=[data.home,data.articlesIntro,data.projectsIntro]⧺data.articles⧺data.docs⧺data.projects⧺data.spec⧺data.standalone
 
 λpageText(page:µSitePage)=>String=§string.trim(page.bodyMarkdown)
 

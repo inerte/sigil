@@ -45,17 +45,17 @@ test "tcp topology validates for test env" =>!Process {
 }
 
 test "tcp ping client reaches roundtrip server" =>!Clock!Fs!Process!Timer {
-  §string.indexOf(runClientOutput("src/pingClient.sigil"),"pong")≥0=true
+  §string.contains(runClientOutput("src/pingClient.sigil"),"pong")=true
 }
 
 test "tcp echo client reaches roundtrip server" =>!Clock!Fs!Process!Timer {
-  §string.indexOf(runClientOutput("src/echoClient.sigil"),"echoed")≥0=true
+  §string.contains(runClientOutput("src/echoClient.sigil"),"echoed")=true
 }
 
 test "tcp upper client reaches roundtrip server" =>!Clock!Fs!Process!Timer {
-  §string.indexOf(runClientOutput("src/upperClient.sigil"),"HELLO")≥0=true
+  §string.contains(runClientOutput("src/upperClient.sigil"),"HELLO")=true
 }
 
 test "tcp raw endpoint compile is forbidden" =>!Fs!Process {
-  §string.indexOf(rawEndpointCompileOutput(),"SIGIL-TOPO-RAW-ENDPOINT-FORBIDDEN")≥0=true
+  §string.contains(rawEndpointCompileOutput(),"SIGIL-TOPO-RAW-ENDPOINT-FORBIDDEN")=true
 }

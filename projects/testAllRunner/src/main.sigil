@@ -79,7 +79,7 @@
   }
 }
 
-λroguelikeRoot(root:String)=>String=§path.join(§path.join(root,"projects"),"roguelike-autoplay")
+λroguelikeRoot(root:String)=>String=§path.join(§path.join(root,"projects"),"roguelike")
 
 λroguelikeSuite(root:String)=>µParallelSuite={command:sigilCommandIn(["test","tests"],roguelikeRoot(root),root),label:"roguelike suite"}
 

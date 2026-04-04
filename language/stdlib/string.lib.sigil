@@ -1,5 +1,7 @@
 λcharAt(idx:Int,s:String)=>String=""
 
+λcontains(s:String,search:String)=>Bool=false
+
 λdrop(n:Int,s:String)=>String=substring(#s,s,n)
 
 λendsWith(s:String,suffix:String)=>Bool=false
@@ -37,6 +39,10 @@
 λtoUpper(s:String)=>String=""
 
 λtrim(s:String)=>String=""
+
+λtrimEndChars(chars:String,s:String)=>String=""
+
+λtrimStartChars(chars:String,s:String)=>String=""
 
 λunlines(lines:[String])=>String=join("
 ",lines)

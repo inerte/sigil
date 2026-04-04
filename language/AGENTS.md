@@ -121,7 +121,7 @@ Current constructor and list invariants:
 - ordinary `map` and `filter` are pure list transforms, not concurrency controls
 - `map` and `filter` require pure callbacks; `reduce ... from ...` is the ordered reduction form
 - `!Async` is not a valid effect annotation
-- primitive effects are `Clock`, `Fs`, `Http`, `Log`, `Process`, `Random`, `Tcp`, and `Timer`
+- primitive effects are `Clock`, `Fs`, `Http`, `Log`, `Process`, `Random`, `Tcp`, `Terminal`, and `Timer`
 - project-defined named effects are allowed only in `src/effects.lib.sigil`
 - named effects must expand to at least two primitive effects and should be used consistently instead of rewriting their primitive members across project code
 - Sigil supports explicit parametric polymorphism on top-level declarations

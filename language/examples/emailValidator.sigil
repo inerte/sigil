@@ -64,7 +64,7 @@ Invalid examples:"):Unit);
         true=>Invalid("Domain cannot start with dot")|
         false=>match §string.endsWith(domain,"."){
           true=>Invalid("Domain cannot end with dot")|
-          false=>match §string.indexOf(domain,"..")≥0{
+          false=>match §string.contains(domain,".."){
             true=>Invalid("Domain cannot contain consecutive dots")|
             false=>Valid()
           }
@@ -105,7 +105,7 @@ Invalid examples:"):Unit);
       true=>Invalid("Local part cannot start with dot")|
       false=>match §string.endsWith(local,"."){
         true=>Invalid("Local part cannot end with dot")|
-        false=>match §string.indexOf(local,"..")≥0{
+        false=>match §string.contains(local,".."){
           true=>Invalid("Local part cannot contain consecutive dots")|
           false=>Valid()
         }

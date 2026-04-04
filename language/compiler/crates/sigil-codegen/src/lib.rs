@@ -690,38 +690,6 @@ async function __sigil_run_test_world(overrides, body) {
   globalThis.__sigil_last_test_world = __sigil_world_clone(world);
   return await __sigil_with_world(world, body);
 }
-function __sigil_record_coverage_call(moduleId, functionName) {
-  const state = globalThis.__sigil_coverage_current;
-  if (!state) {
-    return;
-  }
-  const key = `${String(moduleId)}::${String(functionName)}`;
-  state.calls[key] = Number(state.calls[key] ?? 0) + 1;
-}
-function __sigil_record_coverage_variant(moduleId, functionName, value) {
-  const state = globalThis.__sigil_coverage_current;
-  if (!state || !value || typeof value !== 'object' || typeof value.__tag !== 'string') {
-    return;
-  }
-  const key = `${String(moduleId)}::${String(functionName)}`;
-  if (!Array.isArray(state.variants[key])) {
-    state.variants[key] = [];
-  }
-  const tag = String(value.__tag);
-  if (!state.variants[key].includes(tag)) {
-    state.variants[key].push(tag);
-  }
-}
-function __sigil_record_coverage_result(moduleId, functionName, result) {
-  if (result && typeof result.then === 'function') {
-    return result.then((value) => {
-      __sigil_record_coverage_variant(moduleId, functionName, value);
-      return value;
-    });
-  }
-  __sigil_record_coverage_variant(moduleId, functionName, result);
-  return result;
-}
 function __sigil_world_now_ms(world) {
   if (world.clock.kind === 'fixed') {
     return Number(world.clock.millis);
@@ -1104,6 +1072,146 @@ function __sigil_world_log_warn(message) {
   }
   return null;
 }
+let __sigil_terminal_cleanup_installed = false;
+let __sigil_terminal_raw_enabled = false;
+let __sigil_terminal_cursor_hidden = false;
+function __sigil_terminal_is_interactive() {
+  return !!(process.stdin && process.stdout && process.stdin.isTTY && process.stdout.isTTY);
+}
+function __sigil_terminal_install_cleanup() {
+  if (__sigil_terminal_cleanup_installed) {
+    return;
+  }
+  __sigil_terminal_cleanup_installed = true;
+  const restore = () => {
+    if (__sigil_terminal_cursor_hidden) {
+      try {
+        process.stdout.write('\u001b[?25h');
+      } catch (_) {}
+      __sigil_terminal_cursor_hidden = false;
+    }
+    if (__sigil_terminal_raw_enabled && __sigil_terminal_is_interactive()) {
+      try {
+        process.stdin.setRawMode(false);
+      } catch (_) {}
+      try {
+        process.stdin.pause();
+      } catch (_) {}
+      __sigil_terminal_raw_enabled = false;
+    }
+  };
+  process.once('exit', restore);
+  process.once('SIGINT', () => {
+    restore();
+    process.exit(130);
+  });
+}
+async function __sigil_world_terminal_enable_raw_mode() {
+  __sigil_terminal_install_cleanup();
+  if (!__sigil_terminal_is_interactive()) {
+    return null;
+  }
+  process.stdin.setEncoding('utf8');
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+  __sigil_terminal_raw_enabled = true;
+  return null;
+}
+async function __sigil_world_terminal_clear_screen() {
+  __sigil_terminal_install_cleanup();
+  if (!process.stdout) {
+    return null;
+  }
+  process.stdout.write('\u001b[2J\u001b[H');
+  return null;
+}
+async function __sigil_world_terminal_disable_raw_mode() {
+  if (!__sigil_terminal_is_interactive() || !__sigil_terminal_raw_enabled) {
+    return null;
+  }
+  process.stdin.setRawMode(false);
+  process.stdin.pause();
+  __sigil_terminal_raw_enabled = false;
+  return null;
+}
+async function __sigil_world_terminal_hide_cursor() {
+  __sigil_terminal_install_cleanup();
+  if (!process.stdout || __sigil_terminal_cursor_hidden) {
+    return null;
+  }
+  process.stdout.write('\u001b[?25l');
+  __sigil_terminal_cursor_hidden = true;
+  return null;
+}
+async function __sigil_world_terminal_show_cursor() {
+  if (!process.stdout || !__sigil_terminal_cursor_hidden) {
+    return null;
+  }
+  process.stdout.write('\u001b[?25h');
+  __sigil_terminal_cursor_hidden = false;
+  return null;
+}
+async function __sigil_world_terminal_write(text) {
+  __sigil_terminal_install_cleanup();
+  if (!process.stdout) {
+    return null;
+  }
+  process.stdout.write(String(text));
+  return null;
+}
+function __sigil_terminal_key_escape() {
+  return { __tag: 'Escape', __fields: [] };
+}
+function __sigil_terminal_key_text(value) {
+  return { __tag: 'Text', __fields: [String(value)] };
+}
+function __sigil_terminal_decode_key(chunk) {
+  const text = String(chunk ?? '');
+  if (!text) {
+    return __sigil_terminal_key_escape();
+  }
+  if (text === '\u0003') {
+    throw Object.assign(new Error('SIGINT'), { __sigil_terminal_sigint: true });
+  }
+  if (text.startsWith('\u001b')) {
+    return __sigil_terminal_key_escape();
+  }
+  return __sigil_terminal_key_text(text[0].toLowerCase());
+}
+async function __sigil_world_terminal_read_key() {
+  __sigil_terminal_install_cleanup();
+  if (!process.stdin) {
+    return __sigil_terminal_key_escape();
+  }
+  process.stdin.setEncoding('utf8');
+  process.stdin.resume();
+  return await new Promise((resolve) => {
+    const cleanup = () => {
+      process.stdin.off('data', onData);
+      process.stdin.off('error', onError);
+    };
+    const onData = (chunk) => {
+      cleanup();
+      try {
+        resolve(__sigil_terminal_decode_key(chunk));
+      } catch (error) {
+        if (error && error.__sigil_terminal_sigint) {
+          __sigil_world_terminal_show_cursor();
+          __sigil_world_terminal_disable_raw_mode();
+          process.exit(130);
+          return;
+        }
+        resolve(__sigil_terminal_key_escape());
+      }
+    };
+    const onError = () => {
+      cleanup();
+      resolve(__sigil_terminal_key_escape());
+    };
+    process.stdin.once('data', onData);
+    process.stdin.once('error', onError);
+  });
+}
 function __sigil_world_time_now_instant() {
   const replay = __sigil_replay_take_event('timer', 'nowInstant');
   if (replay.active) {
@@ -1478,6 +1586,39 @@ function __sigil_test_timer_last_sleep_ms() {
   return sleeps.length === 0 ? { __tag: 'None', __fields: [] } : { __tag: 'Some', __fields: [sleeps[sleeps.length - 1]] };
 }"#;
 
+const COVERAGE_RUNTIME_HELPERS: &str = r#"function __sigil_record_coverage_call(moduleId, functionName) {
+  const state = globalThis.__sigil_coverage_current;
+  if (!state) {
+    return;
+  }
+  const key = `${String(moduleId)}::${String(functionName)}`;
+  state.calls[key] = Number(state.calls[key] ?? 0) + 1;
+}
+function __sigil_record_coverage_variant(moduleId, functionName, value) {
+  const state = globalThis.__sigil_coverage_current;
+  if (!state || !value || typeof value !== 'object' || typeof value.__tag !== 'string') {
+    return;
+  }
+  const key = `${String(moduleId)}::${String(functionName)}`;
+  if (!Array.isArray(state.variants[key])) {
+    state.variants[key] = [];
+  }
+  const tag = String(value.__tag);
+  if (!state.variants[key].includes(tag)) {
+    state.variants[key].push(tag);
+  }
+}
+function __sigil_record_coverage_result(moduleId, functionName, result) {
+  if (result && typeof result.then === 'function') {
+    return result.then((value) => {
+      __sigil_record_coverage_variant(moduleId, functionName, value);
+      return value;
+    });
+  }
+  __sigil_record_coverage_variant(moduleId, functionName, result);
+  return result;
+}"#;
+
 pub fn world_runtime_helpers_source() -> &'static str {
     WORLD_RUNTIME_HELPERS
 }
@@ -1578,14 +1719,17 @@ impl TypeScriptGenerator {
             .collect();
         self.span_map = self.build_span_map(program);
         self.test_meta_entries.clear();
+        let runtime_modules = collect_runtime_module_ids(program);
         // Emit runtime helpers first
-        self.emit_runtime_helpers();
+        let include_world_runtime =
+            requires_world_runtime(program, &runtime_modules) || self.requires_world_runtime_for_source();
+        self.emit_runtime_helpers(&runtime_modules, include_world_runtime);
 
         // Implicit core prelude constructors are available unqualified in every
         // module except the prelude module itself, so runtime code needs the same
         // bindings even though the typechecker injected them implicitly.
         self.emit_core_prelude_runtime_import()?;
-        self.emit_runtime_module_imports(program)?;
+        self.emit_runtime_module_imports(&runtime_modules)?;
 
         // Generate code for all declarations
         for (index, decl) in program.declarations.iter().enumerate() {
@@ -1648,14 +1792,17 @@ impl TypeScriptGenerator {
         Ok(())
     }
 
-    fn emit_runtime_module_imports(&mut self, program: &TypedProgram) -> Result<(), CodegenError> {
-        for module_id in collect_runtime_module_ids(program) {
+    fn emit_runtime_module_imports(
+        &mut self,
+        runtime_modules: &BTreeSet<String>,
+    ) -> Result<(), CodegenError> {
+        for module_id in runtime_modules {
             if module_id == "core::prelude" {
                 continue;
             }
             self.emit_module_import(&module_id)?;
         }
-        if !program.declarations.is_empty() {
+        if !runtime_modules.is_empty() {
             self.output.push("\n".to_string());
         }
         Ok(())
@@ -1719,6 +1866,47 @@ impl TypeScriptGenerator {
         let result = f(self);
         self.current_trace_owner = previous;
         result
+    }
+
+    fn source_file_is(&self, suffix: &str) -> bool {
+        self.source_file
+            .as_deref()
+            .is_some_and(|path| path.ends_with(suffix))
+    }
+
+    fn source_file_is_test_observe_module(&self) -> bool {
+        self.source_file
+            .as_deref()
+            .is_some_and(|path| path.contains("/language/test/observe/"))
+    }
+
+    fn requires_process_runtime(&self, runtime_modules: &BTreeSet<String>) -> bool {
+        runtime_modules.contains("stdlib::process")
+            || self.source_file_is("language/stdlib/process.lib.sigil")
+    }
+
+    fn requires_http_server_runtime(&self, runtime_modules: &BTreeSet<String>) -> bool {
+        runtime_modules.contains("stdlib::httpServer")
+            || self.source_file_is("language/stdlib/httpServer.lib.sigil")
+    }
+
+    fn requires_tcp_server_runtime(&self, runtime_modules: &BTreeSet<String>) -> bool {
+        runtime_modules.contains("stdlib::tcpServer")
+            || self.source_file_is("language/stdlib/tcpServer.lib.sigil")
+    }
+
+    fn requires_world_runtime_for_source(&self) -> bool {
+        self.source_file_is("language/stdlib/file.lib.sigil")
+            || self.source_file_is("language/stdlib/httpClient.lib.sigil")
+            || self.source_file_is("language/stdlib/httpServer.lib.sigil")
+            || self.source_file_is("language/stdlib/io.lib.sigil")
+            || self.source_file_is("language/stdlib/process.lib.sigil")
+            || self.source_file_is("language/stdlib/random.lib.sigil")
+            || self.source_file_is("language/stdlib/tcpClient.lib.sigil")
+            || self.source_file_is("language/stdlib/tcpServer.lib.sigil")
+            || self.source_file_is("language/stdlib/terminal.lib.sigil")
+            || self.source_file_is("language/stdlib/time.lib.sigil")
+            || self.source_file_is_test_observe_module()
     }
 
     fn json_string_literal(&self, value: &str) -> Result<String, CodegenError> {
@@ -2026,7 +2214,14 @@ impl TypeScriptGenerator {
         )
     }
 
-    fn emit_runtime_helpers(&mut self) {
+    fn emit_runtime_helpers(
+        &mut self,
+        runtime_modules: &BTreeSet<String>,
+        include_world_runtime: bool,
+    ) {
+        let include_process_runtime = self.requires_process_runtime(runtime_modules);
+        let include_http_server_runtime = self.requires_http_server_runtime(runtime_modules);
+        let include_tcp_server_runtime = self.requires_tcp_server_runtime(runtime_modules);
         self.emit("function __sigil_ready(value) {");
         self.emit("  return Promise.resolve(value);");
         self.emit("}");
@@ -2043,7 +2238,10 @@ impl TypeScriptGenerator {
         self.emit("function __sigil_option_value(option) {");
         self.emit("  return option && option.__tag === 'Some' ? option.__fields[0] : null;");
         self.emit("}");
-        self.emit_block(WORLD_RUNTIME_HELPERS);
+        self.emit_block(COVERAGE_RUNTIME_HELPERS);
+        if include_world_runtime {
+            self.emit_block(WORLD_RUNTIME_HELPERS);
+        }
         self.emit("async function __sigil_map_list(items, fn) {");
         self.emit("  const results = [];");
         self.emit("  for (const item of items) {");
@@ -2227,76 +2425,78 @@ impl TypeScriptGenerator {
         self.emit("function __sigil_time_now_instant() {");
         self.emit("  return { epochMillis: Date.now() };");
         self.emit("}");
-        self.emit("const __sigil_processes = new Map();");
-        self.emit("function __sigil_process_env_to_object(envMap) {");
-        self.emit("  const out = {};");
-        self.emit(
-            "  for (const [key, value] of __sigil_map_entries(envMap ?? __sigil_map_empty())) {",
-        );
-        self.emit("    out[String(key)] = String(value);");
-        self.emit("  }");
-        self.emit("  return out;");
-        self.emit("}");
-        self.emit("function __sigil_process_command_cwd(command) {");
-        self.emit("  const cwd = command?.cwd;");
-        self.emit("  return cwd && cwd.__tag === 'Some' ? cwd.__fields[0] : undefined;");
-        self.emit("}");
-        self.emit("function __sigil_process_result(code, stderr, stdout) {");
-        self.emit("  return { code, stderr, stdout };");
-        self.emit("}");
-        self.emit("async function __sigil_process_spawn(command) {");
-        self.emit("  const { spawn } = await import('child_process');");
-        self.emit("  const argv = Array.isArray(command?.argv) ? command.argv : [];");
-        self.emit("  if (argv.length === 0) { return { pid: -1 }; }");
-        self.emit("  const child = spawn(argv[0], argv.slice(1), {");
-        self.emit("    cwd: __sigil_process_command_cwd(command),");
-        self.emit("    env: { ...process.env, ...__sigil_process_env_to_object(command?.env) },");
-        self.emit("    stdio: ['ignore', 'pipe', 'pipe'],");
-        self.emit("  });");
-        self.emit("  const pid = typeof child.pid === 'number' ? child.pid : Math.floor(Math.random() * 2147483647);");
-        self.emit("  const state = { child, stdout: '', stderr: '', done: null };");
-        self.emit("  if (child.stdout) { child.stdout.on('data', (chunk) => { state.stdout += String(chunk); }); }");
-        self.emit("  if (child.stderr) { child.stderr.on('data', (chunk) => { state.stderr += String(chunk); }); }");
-        self.emit("  state.done = new Promise((resolve) => {");
-        self.emit("    child.once('error', (error) => {");
-        self.emit("      resolve(__sigil_process_result(-1, state.stderr + String(error?.message ?? error), state.stdout));");
-        self.emit("    });");
-        self.emit("    child.once('close', (code) => {");
-        self.emit("      resolve(__sigil_process_result(typeof code === 'number' ? code : -1, state.stderr, state.stdout));");
-        self.emit("    });");
-        self.emit("  });");
-        self.emit("  __sigil_processes.set(pid, state);");
-        self.emit("  return { pid };");
-        self.emit("}");
-        self.emit("async function __sigil_process_wait(processHandle) {");
-        self.emit("  const pid = Number(processHandle?.pid ?? -1);");
-        self.emit("  const state = __sigil_processes.get(pid);");
-        self.emit("  if (!state) {");
-        self.emit("    return __sigil_process_result(-1, 'unknown process', '');");
-        self.emit("  }");
-        self.emit("  const result = await state.done;");
-        self.emit("  __sigil_processes.delete(pid);");
-        self.emit("  return result;");
-        self.emit("}");
-        self.emit("async function __sigil_process_kill(processHandle) {");
-        self.emit("  const pid = Number(processHandle?.pid ?? -1);");
-        self.emit("  const state = __sigil_processes.get(pid);");
-        self.emit("  if (state) {");
-        self.emit("    try { state.child.kill(); } catch (_) {}");
-        self.emit("  }");
-        self.emit("  return null;");
-        self.emit("}");
-        self.emit("async function __sigil_process_run(command) {");
-        self.emit("  const handle = await __sigil_process_spawn(command);");
-        self.emit("  return __sigil_process_wait(handle);");
-        self.emit("}");
-        self.emit("async function __sigil_process_argv() {");
-        self.emit("  return process.argv.slice(2);");
-        self.emit("}");
-        self.emit("async function __sigil_process_exit(code) {");
-        self.emit("  process.exit(Number(code));");
-        self.emit("  return null;");
-        self.emit("}");
+        if include_process_runtime {
+            self.emit("const __sigil_processes = new Map();");
+            self.emit("function __sigil_process_env_to_object(envMap) {");
+            self.emit("  const out = {};");
+            self.emit(
+                "  for (const [key, value] of __sigil_map_entries(envMap ?? __sigil_map_empty())) {",
+            );
+            self.emit("    out[String(key)] = String(value);");
+            self.emit("  }");
+            self.emit("  return out;");
+            self.emit("}");
+            self.emit("function __sigil_process_command_cwd(command) {");
+            self.emit("  const cwd = command?.cwd;");
+            self.emit("  return cwd && cwd.__tag === 'Some' ? cwd.__fields[0] : undefined;");
+            self.emit("}");
+            self.emit("function __sigil_process_result(code, stderr, stdout) {");
+            self.emit("  return { code, stderr, stdout };");
+            self.emit("}");
+            self.emit("async function __sigil_process_spawn(command) {");
+            self.emit("  const { spawn } = await import('child_process');");
+            self.emit("  const argv = Array.isArray(command?.argv) ? command.argv : [];");
+            self.emit("  if (argv.length === 0) { return { pid: -1 }; }");
+            self.emit("  const child = spawn(argv[0], argv.slice(1), {");
+            self.emit("    cwd: __sigil_process_command_cwd(command),");
+            self.emit("    env: { ...process.env, ...__sigil_process_env_to_object(command?.env) },");
+            self.emit("    stdio: ['ignore', 'pipe', 'pipe'],");
+            self.emit("  });");
+            self.emit("  const pid = typeof child.pid === 'number' ? child.pid : Math.floor(Math.random() * 2147483647);");
+            self.emit("  const state = { child, stdout: '', stderr: '', done: null };");
+            self.emit("  if (child.stdout) { child.stdout.on('data', (chunk) => { state.stdout += String(chunk); }); }");
+            self.emit("  if (child.stderr) { child.stderr.on('data', (chunk) => { state.stderr += String(chunk); }); }");
+            self.emit("  state.done = new Promise((resolve) => {");
+            self.emit("    child.once('error', (error) => {");
+            self.emit("      resolve(__sigil_process_result(-1, state.stderr + String(error?.message ?? error), state.stdout));");
+            self.emit("    });");
+            self.emit("    child.once('close', (code) => {");
+            self.emit("      resolve(__sigil_process_result(typeof code === 'number' ? code : -1, state.stderr, state.stdout));");
+            self.emit("    });");
+            self.emit("  });");
+            self.emit("  __sigil_processes.set(pid, state);");
+            self.emit("  return { pid };");
+            self.emit("}");
+            self.emit("async function __sigil_process_wait(processHandle) {");
+            self.emit("  const pid = Number(processHandle?.pid ?? -1);");
+            self.emit("  const state = __sigil_processes.get(pid);");
+            self.emit("  if (!state) {");
+            self.emit("    return __sigil_process_result(-1, 'unknown process', '');");
+            self.emit("  }");
+            self.emit("  const result = await state.done;");
+            self.emit("  __sigil_processes.delete(pid);");
+            self.emit("  return result;");
+            self.emit("}");
+            self.emit("async function __sigil_process_kill(processHandle) {");
+            self.emit("  const pid = Number(processHandle?.pid ?? -1);");
+            self.emit("  const state = __sigil_processes.get(pid);");
+            self.emit("  if (state) {");
+            self.emit("    try { state.child.kill(); } catch (_) {}");
+            self.emit("  }");
+            self.emit("  return null;");
+            self.emit("}");
+            self.emit("async function __sigil_process_run(command) {");
+            self.emit("  const handle = await __sigil_process_spawn(command);");
+            self.emit("  return __sigil_process_wait(handle);");
+            self.emit("}");
+            self.emit("async function __sigil_process_argv() {");
+            self.emit("  return process.argv.slice(2);");
+            self.emit("}");
+            self.emit("async function __sigil_process_exit(code) {");
+            self.emit("  process.exit(Number(code));");
+            self.emit("  return null;");
+            self.emit("}");
+        }
         self.emit("function __sigil_regex_compile_result(flags, pattern) {");
         self.emit("  try {");
         self.emit("    const normalizedFlags = String(flags ?? '');");
@@ -2419,55 +2619,57 @@ impl TypeScriptGenerator {
         self.emit("    return '/';");
         self.emit("  }");
         self.emit("}");
-        self.emit("function __sigil_http_listen_result(server, port, done) {");
-        self.emit("  return { __sigil_server: server, __sigil_done: done, port: Number(port) };");
-        self.emit("}");
-        self.emit("async function __sigil_http_listen(handler, port) {");
-        self.emit("  const { createServer } = await import('node:http');");
-        self.emit("  const { text } = await import('stream/consumers');");
-        self.emit("  let assignedPort = Number(port ?? 0);");
-        self.emit("  const server = createServer(async (req, res) => {");
-        self.emit("    try {");
-        self.emit("      const request = {");
-        self.emit("        body: await text(req),");
-        self.emit("        headers: __sigil_http_headers_from_node(req.headers),");
-        self.emit("        method: String(req.method ?? 'GET'),");
-        self.emit("        path: __sigil_http_request_path(req.url)");
-        self.emit("      };");
-        self.emit("      const response = await Promise.resolve(handler(request));");
-        self.emit(
-            "      res.writeHead(response.status, __sigil_http_headers_to_js(response.headers));",
-        );
-        self.emit("      res.end(String(response.body));");
-        self.emit("    } catch (error) {");
-        self.emit("      const message = error instanceof Error ? error.message : String(error);");
-        self.emit("      res.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' });");
-        self.emit("      res.end(message);");
-        self.emit("    }");
-        self.emit("  });");
-        self.emit("  const done = new Promise((resolve, reject) => {");
-        self.emit("    server.once('close', () => resolve(undefined));");
-        self.emit("    server.once('error', reject);");
-        self.emit("  });");
-        self.emit("  await new Promise((resolve, reject) => {");
-        self.emit("    server.once('error', reject);");
-        self.emit("    server.listen(port, () => resolve(undefined));");
-        self.emit("  });");
-        self.emit("  const address = server.address();");
-        self.emit("  if (address && typeof address === 'object' && 'port' in address) {");
-        self.emit("    assignedPort = Number(address.port ?? assignedPort);");
-        self.emit("  }");
-        self.emit("  console.log(`Server running at http://localhost:${String(assignedPort)}`);");
-        self.emit("  return __sigil_http_listen_result(server, assignedPort, done);");
-        self.emit("}");
-        self.emit("async function __sigil_http_wait(serverHandle) {");
-        self.emit("  await Promise.resolve(serverHandle?.__sigil_done);");
-        self.emit("  return null;");
-        self.emit("}");
-        self.emit("async function __sigil_http_serve(handler, port) {");
-        self.emit("  const server = await __sigil_http_listen(handler, port);");
-        self.emit("  return __sigil_http_wait(server);");
-        self.emit("}");
+        if include_http_server_runtime {
+            self.emit("function __sigil_http_listen_result(server, port, done) {");
+            self.emit("  return { __sigil_server: server, __sigil_done: done, port: Number(port) };");
+            self.emit("}");
+            self.emit("async function __sigil_http_listen(handler, port) {");
+            self.emit("  const { createServer } = await import('node:http');");
+            self.emit("  const { text } = await import('stream/consumers');");
+            self.emit("  let assignedPort = Number(port ?? 0);");
+            self.emit("  const server = createServer(async (req, res) => {");
+            self.emit("    try {");
+            self.emit("      const request = {");
+            self.emit("        body: await text(req),");
+            self.emit("        headers: __sigil_http_headers_from_node(req.headers),");
+            self.emit("        method: String(req.method ?? 'GET'),");
+            self.emit("        path: __sigil_http_request_path(req.url)");
+            self.emit("      };");
+            self.emit("      const response = await Promise.resolve(handler(request));");
+            self.emit(
+                "      res.writeHead(response.status, __sigil_http_headers_to_js(response.headers));",
+            );
+            self.emit("      res.end(String(response.body));");
+            self.emit("    } catch (error) {");
+            self.emit("      const message = error instanceof Error ? error.message : String(error);");
+            self.emit("      res.writeHead(500, { 'content-type': 'text/plain; charset=utf-8' });");
+            self.emit("      res.end(message);");
+            self.emit("    }");
+            self.emit("  });");
+            self.emit("  const done = new Promise((resolve, reject) => {");
+            self.emit("    server.once('close', () => resolve(undefined));");
+            self.emit("    server.once('error', reject);");
+            self.emit("  });");
+            self.emit("  await new Promise((resolve, reject) => {");
+            self.emit("    server.once('error', reject);");
+            self.emit("    server.listen(port, () => resolve(undefined));");
+            self.emit("  });");
+            self.emit("  const address = server.address();");
+            self.emit("  if (address && typeof address === 'object' && 'port' in address) {");
+            self.emit("    assignedPort = Number(address.port ?? assignedPort);");
+            self.emit("  }");
+            self.emit("  console.log(`Server running at http://localhost:${String(assignedPort)}`);");
+            self.emit("  return __sigil_http_listen_result(server, assignedPort, done);");
+            self.emit("}");
+            self.emit("async function __sigil_http_wait(serverHandle) {");
+            self.emit("  await Promise.resolve(serverHandle?.__sigil_done);");
+            self.emit("  return null;");
+            self.emit("}");
+            self.emit("async function __sigil_http_serve(handler, port) {");
+            self.emit("  const server = await __sigil_http_listen(handler, port);");
+            self.emit("  return __sigil_http_wait(server);");
+            self.emit("}");
+        }
         self.emit("function __sigil_tcp_error(kind, message) {");
         self.emit("  return { kind: { __tag: kind, __fields: [] }, message: String(message) };");
         self.emit("}");
@@ -2481,71 +2683,73 @@ impl TypeScriptGenerator {
         self.emit("  const index = buffer.indexOf('\\n');");
         self.emit("  return index === -1 ? null : buffer.slice(0, index).replace(/\\r$/, '');");
         self.emit("}");
-        self.emit("function __sigil_tcp_listen_result(server, port, done) {");
-        self.emit("  return { __sigil_done: done, __sigil_server: server, port: Number(port) };");
-        self.emit("}");
-        self.emit("async function __sigil_tcp_listen(handler, port) {");
-        self.emit("  const { createServer } = await import('node:net');");
-        self.emit("  let assignedPort = Number(port ?? 0);");
-        self.emit("  const server = createServer((socket) => {");
-        self.emit("    socket.setEncoding('utf8');");
-        self.emit("    let received = '';");
-        self.emit("    let handled = false;");
-        self.emit("    socket.on('data', async (chunk) => {");
-        self.emit("      if (handled) return;");
-        self.emit("      received += String(chunk);");
-        self.emit("      const line = __sigil_tcp_first_line(received);");
-        self.emit("      if (line === null) return;");
-        self.emit("      handled = true;");
-        self.emit("      try {");
-        self.emit("        const request = {");
-        self.emit("          host: String(socket.remoteAddress ?? ''),");
-        self.emit("          message: line,");
-        self.emit("          port: assignedPort");
-        self.emit("        };");
-        self.emit("        const response = await Promise.resolve(handler(request));");
-        self.emit("        socket.write(`${String(response.message)}\\n`, () => socket.end());");
-        self.emit("      } catch (error) {");
-        self.emit(
-            "        const message = error instanceof Error ? error.message : String(error);",
-        );
-        self.emit("        socket.write(`${message}\\n`, () => socket.end());");
-        self.emit("      }");
-        self.emit("    });");
-        self.emit("    socket.once('end', () => {");
-        self.emit("      if (!handled) {");
-        self.emit("        socket.write('protocol error: missing newline-delimited request\\n', () => socket.end());");
-        self.emit("      }");
-        self.emit("    });");
-        self.emit("    socket.once('error', () => {");
-        self.emit("      socket.destroy();");
-        self.emit("    });");
-        self.emit("  });");
-        self.emit("  const done = new Promise((resolve, reject) => {");
-        self.emit("    server.once('close', () => resolve(undefined));");
-        self.emit("    server.once('error', reject);");
-        self.emit("  });");
-        self.emit("  await new Promise((resolve, reject) => {");
-        self.emit("    server.once('error', reject);");
-        self.emit("    server.listen(port, () => resolve(undefined));");
-        self.emit("  });");
-        self.emit("  const address = server.address();");
-        self.emit("  if (address && typeof address === 'object' && 'port' in address) {");
-        self.emit("    assignedPort = Number(address.port ?? assignedPort);");
-        self.emit("  }");
-        self.emit(
-            "  console.log(`TCP server running at tcp://127.0.0.1:${String(assignedPort)}`);",
-        );
-        self.emit("  return __sigil_tcp_listen_result(server, assignedPort, done);");
-        self.emit("}");
-        self.emit("async function __sigil_tcp_wait(serverHandle) {");
-        self.emit("  await Promise.resolve(serverHandle?.__sigil_done);");
-        self.emit("  return null;");
-        self.emit("}");
-        self.emit("async function __sigil_tcp_serve(handler, port) {");
-        self.emit("  const server = await __sigil_tcp_listen(handler, port);");
-        self.emit("  return __sigil_tcp_wait(server);");
-        self.emit("}");
+        if include_tcp_server_runtime {
+            self.emit("function __sigil_tcp_listen_result(server, port, done) {");
+            self.emit("  return { __sigil_done: done, __sigil_server: server, port: Number(port) };");
+            self.emit("}");
+            self.emit("async function __sigil_tcp_listen(handler, port) {");
+            self.emit("  const { createServer } = await import('node:net');");
+            self.emit("  let assignedPort = Number(port ?? 0);");
+            self.emit("  const server = createServer((socket) => {");
+            self.emit("    socket.setEncoding('utf8');");
+            self.emit("    let received = '';");
+            self.emit("    let handled = false;");
+            self.emit("    socket.on('data', async (chunk) => {");
+            self.emit("      if (handled) return;");
+            self.emit("      received += String(chunk);");
+            self.emit("      const line = __sigil_tcp_first_line(received);");
+            self.emit("      if (line === null) return;");
+            self.emit("      handled = true;");
+            self.emit("      try {");
+            self.emit("        const request = {");
+            self.emit("          host: String(socket.remoteAddress ?? ''),");
+            self.emit("          message: line,");
+            self.emit("          port: assignedPort");
+            self.emit("        };");
+            self.emit("        const response = await Promise.resolve(handler(request));");
+            self.emit("        socket.write(`${String(response.message)}\\n`, () => socket.end());");
+            self.emit("      } catch (error) {");
+            self.emit(
+                "        const message = error instanceof Error ? error.message : String(error);",
+            );
+            self.emit("        socket.write(`${message}\\n`, () => socket.end());");
+            self.emit("      }");
+            self.emit("    });");
+            self.emit("    socket.once('end', () => {");
+            self.emit("      if (!handled) {");
+            self.emit("        socket.write('protocol error: missing newline-delimited request\\n', () => socket.end());");
+            self.emit("      }");
+            self.emit("    });");
+            self.emit("    socket.once('error', () => {");
+            self.emit("      socket.destroy();");
+            self.emit("    });");
+            self.emit("  });");
+            self.emit("  const done = new Promise((resolve, reject) => {");
+            self.emit("    server.once('close', () => resolve(undefined));");
+            self.emit("    server.once('error', reject);");
+            self.emit("  });");
+            self.emit("  await new Promise((resolve, reject) => {");
+            self.emit("    server.once('error', reject);");
+            self.emit("    server.listen(port, () => resolve(undefined));");
+            self.emit("  });");
+            self.emit("  const address = server.address();");
+            self.emit("  if (address && typeof address === 'object' && 'port' in address) {");
+            self.emit("    assignedPort = Number(address.port ?? assignedPort);");
+            self.emit("  }");
+            self.emit(
+                "  console.log(`TCP server running at tcp://127.0.0.1:${String(assignedPort)}`);",
+            );
+            self.emit("  return __sigil_tcp_listen_result(server, assignedPort, done);");
+            self.emit("}");
+            self.emit("async function __sigil_tcp_wait(serverHandle) {");
+            self.emit("  await Promise.resolve(serverHandle?.__sigil_done);");
+            self.emit("  return null;");
+            self.emit("}");
+            self.emit("async function __sigil_tcp_serve(handler, port) {");
+            self.emit("  const server = await __sigil_tcp_listen(handler, port);");
+            self.emit("  return __sigil_tcp_wait(server);");
+            self.emit("}");
+        }
         self.emit("function __sigil_is_map(value) {");
         self.emit(
             "  return !!value && typeof value === 'object' && Array.isArray(value.__sigil_map);",
@@ -2632,22 +2836,26 @@ impl TypeScriptGenerator {
         self.emit("function __sigil_call(_key, actualFn, args = []) {");
         self.emit("  const __sigil_run = () => Promise.resolve().then(() => {");
         self.emit("    switch (_key) {");
-        self.emit("      case 'extern:stdlib/httpServer.listen':");
-        self.emit("        return __sigil_http_listen(args[0], args[1]);");
-        self.emit("      case 'extern:stdlib/httpServer.port':");
-        self.emit("        return Number(args[0]?.port ?? 0);");
-        self.emit("      case 'extern:stdlib/httpServer.serve':");
-        self.emit("        return __sigil_http_serve(args[0], args[1]);");
-        self.emit("      case 'extern:stdlib/httpServer.wait':");
-        self.emit("        return __sigil_http_wait(args[0]);");
-        self.emit("      case 'extern:stdlib/tcpServer.listen':");
-        self.emit("        return __sigil_tcp_listen(args[0], args[1]);");
-        self.emit("      case 'extern:stdlib/tcpServer.port':");
-        self.emit("        return Number(args[0]?.port ?? 0);");
-        self.emit("      case 'extern:stdlib/tcpServer.serve':");
-        self.emit("        return __sigil_tcp_serve(args[0], args[1]);");
-        self.emit("      case 'extern:stdlib/tcpServer.wait':");
-        self.emit("        return __sigil_tcp_wait(args[0]);");
+        if include_http_server_runtime {
+            self.emit("      case 'extern:stdlib/httpServer.listen':");
+            self.emit("        return __sigil_http_listen(args[0], args[1]);");
+            self.emit("      case 'extern:stdlib/httpServer.port':");
+            self.emit("        return Number(args[0]?.port ?? 0);");
+            self.emit("      case 'extern:stdlib/httpServer.serve':");
+            self.emit("        return __sigil_http_serve(args[0], args[1]);");
+            self.emit("      case 'extern:stdlib/httpServer.wait':");
+            self.emit("        return __sigil_http_wait(args[0]);");
+        }
+        if include_tcp_server_runtime {
+            self.emit("      case 'extern:stdlib/tcpServer.listen':");
+            self.emit("        return __sigil_tcp_listen(args[0], args[1]);");
+            self.emit("      case 'extern:stdlib/tcpServer.port':");
+            self.emit("        return Number(args[0]?.port ?? 0);");
+            self.emit("      case 'extern:stdlib/tcpServer.serve':");
+            self.emit("        return __sigil_tcp_serve(args[0], args[1]);");
+            self.emit("      case 'extern:stdlib/tcpServer.wait':");
+            self.emit("        return __sigil_tcp_wait(args[0]);");
+        }
         self.emit("      default:");
         self.emit("        return actualFn(...args);");
         self.emit("    }");
@@ -3360,6 +3568,10 @@ impl TypeScriptGenerator {
                 "{}.then(([__index, __string]) => __sigil_ready(__string.charAt(__index)))",
                 self.js_all(&[self.js_ready(idx), self.js_ready(s)])
             )),
+            ("contains", [s, search]) => Some(format!(
+                "{}.then(([__string, __needle]) => __string.includes(__needle))",
+                self.js_all(&[self.js_ready(s), self.js_ready(search)])
+            )),
             ("endsWith", [s, suffix]) => Some(format!(
                 "{}.then(([__string, __suffix]) => __string.endsWith(__suffix))",
                 self.js_all(&[self.js_ready(s), self.js_ready(suffix)])
@@ -3403,6 +3615,12 @@ impl TypeScriptGenerator {
             )),
             ("toLower", [s]) => Some(format!("{}.then((__value) => __value.toLowerCase())", self.js_ready(s))),
             ("toUpper", [s]) => Some(format!("{}.then((__value) => __value.toUpperCase())", self.js_ready(s))),
+            ("trimEndChars", [chars, s]) => Some(
+                self.generate_string_trim_chars_js(&self.js_ready(chars), &self.js_ready(s), false),
+            ),
+            ("trimStartChars", [chars, s]) => Some(
+                self.generate_string_trim_chars_js(&self.js_ready(chars), &self.js_ready(s), true),
+            ),
             ("trim", [s]) => Some(format!("{}.then((__value) => __value.trim())", self.js_ready(s))),
             _ => None,
         };
@@ -3467,6 +3685,37 @@ impl TypeScriptGenerator {
         self.indent -= 1;
         self.emit("}");
         Ok(true)
+    }
+
+    fn generate_string_trim_chars_js(
+        &self,
+        chars_expr: &str,
+        string_expr: &str,
+        trim_start: bool,
+    ) -> String {
+        let loop_body = if trim_start {
+            "while (__start < __end && __chars.includes(__string.charAt(__start))) {
+        __start += 1;
+      }"
+        } else {
+            "while (__end > __start && __chars.includes(__string.charAt(__end - 1))) {
+        __end -= 1;
+      }"
+        };
+
+        format!(
+            "{}.then(([__chars, __string]) => {{
+      if (__chars.length === 0 || __string.length === 0) {{
+        return __sigil_ready(__string);
+      }}
+      let __start = 0;
+      let __end = __string.length;
+      {}
+      return __sigil_ready(__string.substring(__start, __end));
+    }})",
+            self.js_all(&[chars_expr.to_string(), string_expr.to_string()]),
+            loop_body
+        )
     }
 
     fn generate_stdlib_http_client_function(
@@ -4067,6 +4316,9 @@ impl TypeScriptGenerator {
                 if module == "stdlib/io" {
                     return self.generate_io_intrinsic(call_expr, member, args);
                 }
+                if module == "stdlib/terminal" {
+                    return self.generate_terminal_intrinsic(call_expr, member, args);
+                }
                 if module == "stdlib/process" {
                     return self.generate_process_intrinsic(call_expr, member, args);
                 }
@@ -4148,6 +4400,13 @@ impl TypeScriptGenerator {
                 if self
                     .source_file
                     .as_deref()
+                    .is_some_and(|path| path.ends_with("language/stdlib/terminal.lib.sigil"))
+                {
+                    return self.generate_terminal_intrinsic(call_expr, &name.name, args);
+                }
+                if self
+                    .source_file
+                    .as_deref()
                     .is_some_and(|path| path.ends_with("language/stdlib/process.lib.sigil"))
                 {
                     return self.generate_process_intrinsic(call_expr, &name.name, args);
@@ -4217,6 +4476,9 @@ impl TypeScriptGenerator {
             "charAt" if generated_args.len() == 2 => {
                 Ok(Some(format!("{}.then(([__index, __string]) => __sigil_ready(__string.charAt(__index)))", self.js_all(&generated_args))))
             }
+            "contains" if generated_args.len() == 2 => {
+                Ok(Some(format!("{}.then(([__string, __needle]) => __string.includes(__needle))", self.js_all(&generated_args))))
+            }
             "substring" if generated_args.len() == 3 => {
                 Ok(Some(format!("{}.then(([__end, __string, __start]) => __sigil_ready(__string.substring(__start, __end)))", self.js_all(&generated_args))))
             }
@@ -4226,6 +4488,12 @@ impl TypeScriptGenerator {
             "toLower" if generated_args.len() == 1 => {
                 Ok(Some(format!("{}.then((__value) => __value.toLowerCase())", generated_args[0])))
             }
+            "trimStartChars" if generated_args.len() == 2 => Ok(Some(
+                self.generate_string_trim_chars_js(&generated_args[0], &generated_args[1], true),
+            )),
+            "trimEndChars" if generated_args.len() == 2 => Ok(Some(
+                self.generate_string_trim_chars_js(&generated_args[0], &generated_args[1], false),
+            )),
             "trim" if generated_args.len() == 1 => {
                 Ok(Some(format!("{}.then((__value) => __value.trim())", generated_args[0])))
             }
@@ -4772,6 +5040,83 @@ impl TypeScriptGenerator {
         }
     }
 
+    fn generate_terminal_intrinsic(
+        &mut self,
+        call_expr: &TypedExpr,
+        member: &str,
+        args: &[TypedExpr],
+    ) -> Result<Option<String>, CodegenError> {
+        let generated_args = args
+            .iter()
+            .map(|arg| self.generate_expression(arg))
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+        let span_id = self.span_id_for_expr(DebugSpanKind::ExprCall, call_expr.location);
+
+        match member {
+            "clearScreen" if generated_args.is_empty() => Ok(Some(self.wrap_effect_trace(
+                span_id,
+                "terminal",
+                "clearScreen",
+                "[]",
+                "__sigil_world_terminal_clear_screen()",
+                None,
+            )?)),
+            "disableRawMode" if generated_args.is_empty() => Ok(Some(self.wrap_effect_trace(
+                span_id,
+                "terminal",
+                "disableRawMode",
+                "[]",
+                "__sigil_world_terminal_disable_raw_mode()",
+                None,
+            )?)),
+            "enableRawMode" if generated_args.is_empty() => Ok(Some(self.wrap_effect_trace(
+                span_id,
+                "terminal",
+                "enableRawMode",
+                "[]",
+                "__sigil_world_terminal_enable_raw_mode()",
+                None,
+            )?)),
+            "hideCursor" if generated_args.is_empty() => Ok(Some(self.wrap_effect_trace(
+                span_id,
+                "terminal",
+                "hideCursor",
+                "[]",
+                "__sigil_world_terminal_hide_cursor()",
+                None,
+            )?)),
+            "readKey" if generated_args.is_empty() => Ok(Some(self.wrap_effect_trace(
+                span_id,
+                "terminal",
+                "readKey",
+                "[]",
+                "__sigil_world_terminal_read_key()",
+                None,
+            )?)),
+            "showCursor" if generated_args.is_empty() => Ok(Some(self.wrap_effect_trace(
+                span_id,
+                "terminal",
+                "showCursor",
+                "[]",
+                "__sigil_world_terminal_show_cursor()",
+                None,
+            )?)),
+            "write" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__text) => {})",
+                generated_args[0],
+                self.wrap_effect_trace(
+                    span_id,
+                    "terminal",
+                    "write",
+                    "[__text]",
+                    "__sigil_world_terminal_write(__text)",
+                    None,
+                )?
+            ))),
+            _ => Ok(None),
+        }
+    }
+
     fn generate_process_intrinsic(
         &mut self,
         call_expr: &TypedExpr,
@@ -5225,6 +5570,13 @@ impl TypeScriptGenerator {
         }
         if call.namespace.join("/") == "stdlib/time" {
             if let Some(intrinsic) = self.generate_time_intrinsic(expr, &call.member, &call.args)? {
+                return Ok(intrinsic);
+            }
+        }
+        if call.namespace.join("/") == "stdlib/terminal" {
+            if let Some(intrinsic) =
+                self.generate_terminal_intrinsic(expr, &call.member, &call.args)?
+            {
                 return Ok(intrinsic);
             }
         }
@@ -6061,15 +6413,16 @@ fn is_reserved_js_identifier(name: &str) -> bool {
 
 fn find_output_root(output_path: &Path) -> Option<PathBuf> {
     let mut root = PathBuf::new();
+    let mut last_local_root = None;
 
     for component in output_path.components() {
         root.push(component.as_os_str());
         if matches!(component, Component::Normal(name) if name == ".local") {
-            return Some(root);
+            last_local_root = Some(root.clone());
         }
     }
 
-    None
+    last_local_root
 }
 
 fn relative_import_path(from_dir: &Path, target_file: &Path) -> String {
@@ -6270,6 +6623,35 @@ fn is_sigil_runtime_module(module_id: &str) -> bool {
         || module_id.starts_with("config::")
 }
 
+fn requires_world_runtime(program: &TypedProgram, runtime_modules: &BTreeSet<String>) -> bool {
+    program
+        .declarations
+        .iter()
+        .any(|declaration| matches!(declaration, TypedDeclaration::Test(_)))
+        || runtime_modules
+            .iter()
+            .any(|module_id| requires_world_runtime_module(module_id))
+}
+
+fn requires_world_runtime_module(module_id: &str) -> bool {
+    module_id.starts_with("config::")
+        || module_id.starts_with("world::")
+        || module_id.starts_with("test::")
+        || matches!(
+            module_id,
+            "stdlib::file"
+                | "stdlib::httpClient"
+                | "stdlib::httpServer"
+                | "stdlib::io"
+                | "stdlib::process"
+                | "stdlib::random"
+                | "stdlib::tcpClient"
+                | "stdlib::tcpServer"
+                | "stdlib::terminal"
+                | "stdlib::time"
+        )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -6391,6 +6773,26 @@ mod tests {
         let result = gen.output.join("");
 
         assert!(result.contains("import * as stdlib_numeric from '../stdlib/numeric.js';"));
+    }
+
+    #[test]
+    fn test_generate_import_prefers_deepest_local_root() {
+        let mut gen = TypeScriptGenerator::new(CodegenOptions {
+            module_id: None,
+            source_file: Some(
+                "/repo/.local/temp-project/src/topology.lib.sigil".to_string(),
+            ),
+            output_file: Some(
+                "/repo/.local/temp-project/.local/src/topology.ts".to_string(),
+            ),
+            trace: false,
+            breakpoints: false,
+            expression_debug: false,
+        });
+        gen.emit_module_import("stdlib::topology").unwrap();
+        let result = gen.output.join("");
+
+        assert!(result.contains("import * as stdlib_topology from '../stdlib/topology.js';"));
     }
 
     #[test]
@@ -6653,7 +7055,7 @@ mod tests {
         assert!(result.contains("function __sigil_breakpoint_snapshot()"));
         assert!(result.contains("__sigil_breakpoint_push_frame("));
         assert!(result.contains(
-            "__sigil_breakpoint_push_scope([{ name: \"y\", origin: \"let\", value: y }]"
+            "__sigil_breakpoint_push_scope([{ name: \"y\", origin: \"let\", value: y, typeId: null }])"
         ));
         assert!(result.contains("__sigil_breakpoint_maybe_hit("));
     }
@@ -6710,6 +7112,75 @@ mod tests {
 
         assert!(result.contains("__sigil_map_list"));
         assert!(!result.contains("Promise.all(__items.map"));
+    }
+
+    #[test]
+    fn test_pure_lib_codegen_omits_world_runtime_helpers() {
+        let source = "λdouble(xs:[Int])=>[Int]=xs map (λ(x:Int)=>Int=x*2)";
+        let program = typed_program_for(source, "test.lib.sigil");
+
+        let mut gen = TypeScriptGenerator::new(CodegenOptions {
+            module_id: Some("src::double".to_string()),
+            source_file: Some("test.lib.sigil".to_string()),
+            output_file: Some("/tmp/test.js".to_string()),
+            trace: false,
+            breakpoints: false,
+            expression_debug: false,
+        });
+        let result = gen.generate(&program).unwrap();
+
+        assert!(result.contains("__sigil_map_list"));
+        assert!(result.contains("function __sigil_record_coverage_call(moduleId, functionName)"));
+        assert!(!result.contains("function __sigil_world_error(message)"));
+        assert!(!result.contains("node:fs/promises"));
+    }
+
+    #[test]
+    fn test_world_backed_stdlib_codegen_keeps_world_runtime_helpers() {
+        let program = TypedProgram {
+            declarations: vec![TypedDeclaration::Function(TypedFunctionDecl {
+                name: "main".to_string(),
+                type_params: vec![],
+                params: vec![],
+                return_type: InferenceType::Any,
+                effects: None,
+                body: TypedExpr {
+                    kind: TypedExprKind::Call(TypedCallExpr {
+                        func: Box::new(TypedExpr {
+                            kind: TypedExprKind::NamespaceMember {
+                                namespace: vec!["stdlib".to_string(), "process".to_string()],
+                                member: "argv".to_string(),
+                            },
+                            typ: InferenceType::Any,
+                            effects: HashSet::new(),
+                            purity: PurityClass::Effectful,
+                            strictness: StrictnessClass::Deferred,
+                            location: test_location(),
+                        }),
+                        args: vec![],
+                    }),
+                    typ: InferenceType::Any,
+                    effects: HashSet::new(),
+                    purity: PurityClass::Effectful,
+                    strictness: StrictnessClass::Deferred,
+                    location: test_location(),
+                },
+                location: test_location(),
+            })],
+        };
+
+        let mut gen = TypeScriptGenerator::new(CodegenOptions {
+            module_id: Some("src::main".to_string()),
+            source_file: Some("test.sigil".to_string()),
+            output_file: Some("/tmp/test.js".to_string()),
+            trace: false,
+            breakpoints: false,
+            expression_debug: false,
+        });
+        let result = gen.generate(&program).unwrap();
+
+        assert!(result.contains("function __sigil_world_error(message)"));
+        assert!(result.contains("__sigil_world_process_argv()"));
     }
 
     #[test]

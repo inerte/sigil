@@ -4,9 +4,17 @@ t ActorKind=Archer()|Brute()|Goblin()|Player()|Shaman()
 
 t Advance={frame:Frame,outcome:Option[Outcome],state:GameState}
 
+t Direction=East()|North()|South()|West()
+
 t Frame={map:String,status:String,turn:Int}
 
-t GameState={actors:[Actor],collectedTreasure:Int,exit:Point,floors:[Point],lastAction:String,loadout:PlayerLoadout,pickups:[Pickup],rooms:[Room],turn:Int}
+t GameState={actorIndex:{String↦Actor},actors:[Actor],collectedTreasure:Int,exit:Point,floorIndex:{String↦Bool},floors:[Point],lastAction:String,loadout:PlayerLoadout,pickupIndex:{String↦Pickup},pickups:[Pickup],rooms:[Room],turn:Int}
+
+t InputMode=BlinkMode()|BombMode()|MoveMode()|ShootMode()
+
+t LoopAction=Commit(PlayerCommand,InputMode)|QuitGame()|Stay(InputMode)
+
+t LoopResult=Ended(Outcome)|Quit()
 
 t MeleeWeapon=Spear()|Sword()
 
@@ -20,12 +28,12 @@ t Pickup={kind:PickupKind,pos:Point}
 
 t PickupKind=BlinkPickup()|BombPickup()|PotionPickup()|SpearPickup()|TreasurePickup()
 
+t PlayerCommand=Blink(Direction)|Bomb(Direction)|DrinkPotion()|Move(Direction)|Shoot(Direction)|Wait()
+
 t PlayerLoadout={arrows:Int,blinks:Int,bombs:Int,melee:MeleeWeapon,potions:Int,ranged:Option[RangedWeapon]}
 
 t Point={x:Int,y:Int}
 
 t RangedWeapon=Bow()
-
-t Replay={frames:[Frame],outcome:Outcome}
 
 t Room={h:Int,w:Int,x:Int,y:Int}

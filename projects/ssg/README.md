@@ -6,8 +6,10 @@
 
 - `website/README.md` for the homepage
 - `website/articles/*.md` for articles
+- `website/projects/README.md` for the curated projects index
 - `language/docs/*.md` for docs
 - `language/spec/*.md` for spec pages
+- `projects/*/README.md` for curated project detail pages and showcase content
 
 ## Build
 

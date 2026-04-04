@@ -36,7 +36,7 @@ test "canonical rejects single-line multi-arm match" =>!Clock!Fs!Process {
   l _=(§file.writeText(badMatchSource(),file):Unit);
   l result=(compile(file):§process.ProcessResult);
   l _=(§file.removeTree(root):Unit);
-  §string.indexOf(•support.combinedOutput(result),"SIGIL-CANON-SOURCE-FORM")≥0=true
+  §string.contains(•support.combinedOutput(result),"SIGIL-CANON-SOURCE-FORM")=true
 }
 
 test "canonical rejects split signature before match" =>!Clock!Fs!Process {
@@ -45,7 +45,7 @@ test "canonical rejects split signature before match" =>!Clock!Fs!Process {
   l _=(§file.writeText(badSignatureSource(),file):Unit);
   l result=(compile(file):§process.ProcessResult);
   l _=(§file.removeTree(root):Unit);
-  §string.indexOf(•support.combinedOutput(result),"SIGIL-CANON-SOURCE-FORM")≥0=true
+  §string.contains(•support.combinedOutput(result),"SIGIL-CANON-SOURCE-FORM")=true
 }
 
 test "canonical fib fixture compiles" =>!Clock!Fs!Process {
@@ -63,7 +63,7 @@ test "canonical rejects exact stdlib helper wrappers" =>!Clock!Fs!Process {
   l _=(§file.writeText(badDirectWrapperSource(),file):Unit);
   l result=(compile(file):§process.ProcessResult);
   l _=(§file.removeTree(root):Unit);
-  result.code≠0 and §string.indexOf(•support.combinedOutput(result),"SIGIL-CANON-HELPER-DIRECT-WRAPPER")≥0
+  result.code≠0 and §string.contains(•support.combinedOutput(result),"SIGIL-CANON-HELPER-DIRECT-WRAPPER")
 }
 
 test "canonical rejects exact operator wrappers" =>!Clock!Fs!Process {
@@ -72,7 +72,7 @@ test "canonical rejects exact operator wrappers" =>!Clock!Fs!Process {
   l _=(§file.writeText(badMapWrapperSource(),file):Unit);
   l result=(compile(file):§process.ProcessResult);
   l _=(§file.removeTree(root):Unit);
-  result.code≠0 and §string.indexOf(•support.combinedOutput(result),"SIGIL-CANON-HELPER-DIRECT-WRAPPER")≥0
+  result.code≠0 and §string.contains(•support.combinedOutput(result),"SIGIL-CANON-HELPER-DIRECT-WRAPPER")
 }
 
 test "wrapper with extra logic still compiles" =>!Clock!Fs!Process {

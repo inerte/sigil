@@ -2724,6 +2724,7 @@ pub fn run_command(
 
     let run_target = match build_run_target(
         file,
+        json_output,
         selected_env,
         trace_output,
         trace_expr_output,
@@ -3391,6 +3392,7 @@ enum PreparedReplayMode {
 
 fn build_run_target(
     file: &Path,
+    json_output: bool,
     selected_env: Option<&str>,
     trace_enabled: bool,
     trace_expr_enabled: bool,
@@ -3415,7 +3417,13 @@ fn build_run_target(
         runner_prelude(file, &graph, selected_env)?.unwrap_or_default()
     };
     let trace_runtime_enabled = trace_enabled || breakpoints_requested;
-    let compiled = compile_module_graph(graph, None, trace_enabled, breakpoints_requested, true)?;
+    let compiled = compile_module_graph(
+        graph,
+        None,
+        trace_enabled,
+        breakpoints_requested,
+        json_output || trace_expr_enabled || breakpoints_requested,
+    )?;
     let module_debug_outputs = build_runtime_module_debug_outputs(&compiled)?;
     let breakpoint_config = resolve_breakpoint_config(
         file,
@@ -9425,6 +9433,9 @@ fn get_module_output_path(module: &LoadedModule) -> PathBuf {
 
     // Calculate relative path from repo root to source file
     let rel_source = abs_source.strip_prefix(&repo_root).unwrap_or(&abs_source);
+    let rel_source = rel_source
+        .strip_prefix(".local")
+        .unwrap_or(rel_source);
 
     // Build output path: <repo_root>/.local/<rel_path>.ts
     let mut output = repo_root.join(".local");

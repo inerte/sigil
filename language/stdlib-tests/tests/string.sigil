@@ -20,6 +20,22 @@ test "charAt at index 0" {
   §string.charAt(0,"hello")="h"
 }
 
+test "contains finds present substring" {
+  §string.contains("hello world","world")
+}
+
+test "contains reports missing substring" {
+  ¬§string.contains("hello","xyz")
+}
+
+test "contains treats empty search as present" {
+  §string.contains("hello","")
+}
+
+test "contains matches whole string" {
+  §string.contains("hello","hello")
+}
+
 test "charAt at middle index" {
   §string.charAt(2,"hello")="l"
 }
@@ -156,6 +172,38 @@ test "toUpper converts lowercase" {
 
 test "toUpper preserves uppercase" {
   §string.toUpper("HELLO")="HELLO"
+}
+
+test "trimEndChars trims repeated trailing slash characters" {
+  §string.trimEndChars("/","https://sigil.dev///")="https://sigil.dev"
+}
+
+test "trimEndChars uses chars as a set" {
+  §string.trimEndChars("/.","docs/...")="docs"
+}
+
+test "trimEndChars leaves non-matching suffix untouched" {
+  §string.trimEndChars("/","docs")="docs"
+}
+
+test "trimEndChars with empty chars is a no-op" {
+  §string.trimEndChars("","docs///")="docs///"
+}
+
+test "trimStartChars trims repeated leading slash characters" {
+  §string.trimStartChars("/","///docs")="docs"
+}
+
+test "trimStartChars uses chars as a set" {
+  §string.trimStartChars("/.","../docs")="docs"
+}
+
+test "trimStartChars leaves non-matching prefix untouched" {
+  §string.trimStartChars("/","docs")="docs"
+}
+
+test "trimStartChars with empty chars is a no-op" {
+  §string.trimStartChars("","///docs")="///docs"
 }
 
 test "trim both sides" {

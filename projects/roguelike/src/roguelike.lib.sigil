@@ -34,23 +34,31 @@ c treasureDetourLimit=(4:Int)
 
 c width=(48:Int)
 
-λactorAt(pos:µPoint,state:µGameState)=>Option[µActor]=actorAtInner(state.actors,pos)
+λactorAt(pos:µPoint,state:µGameState)=>Option[µActor]=¶map.get(pointKey(pos),state.actorIndex)
 
-λactorAtExcept(actorId:Int,pos:µPoint,state:µGameState)=>Option[µActor]=actorAtExceptInner(actorId,state.actors,pos)
-
-λactorAtExceptInner(actorId:Int,actors:[µActor],pos:µPoint)=>Option[µActor] match actors{
-  []=>None()|
-  [head,.tail]=>match alive(head) and head.id≠actorId and samePoint(head.pos,pos){
-    true=>Some(head)|
-    _=>actorAtExceptInner(actorId,tail,pos)
-  }
+λactorAtExcept(actorId:Int,pos:µPoint,state:µGameState)=>Option[µActor] match actorAt(pos,state){
+  Some(actor)=>match actor.id=actorId{
+    true=>None()|
+    _=>Some(actor)
+  }|
+  None()=>None()
 }
 
-λactorAtInner(actors:[µActor],pos:µPoint)=>Option[µActor] match actors{
-  []=>None()|
-  [head,.tail]=>match alive(head) and samePoint(head.pos,pos){
-    true=>Some(head)|
-    _=>actorAtInner(tail,pos)
+λactorGlyph(actor:µActor)=>String match actor.kind{
+  µPlayer()=>"@"|
+  µGoblin()=>"g"|
+  µArcher()=>"a"|
+  µBrute()=>"B"|
+  µShaman()=>"s"
+}
+
+λactorIndexFor(actors:[µActor])=>{String↦µActor}=actorIndexForInner(actors,(¶map.empty():{String↦µActor}))
+
+λactorIndexForInner(actors:[µActor],index:{String↦µActor})=>{String↦µActor} match actors{
+  []=>index|
+  [head,.tail]=>match alive(head){
+    true=>actorIndexForInner(tail,¶map.insert(pointKey(head.pos),index,head))|
+    _=>actorIndexForInner(tail,index)
   }
 }
 
@@ -67,21 +75,21 @@ c width=(48:Int)
   }
 }
 
-λadvance(state:µGameState)=>µAdvance={
-  l afterPlayer=(stepPlayer(state):µGameState);
-  match playerAtExit(afterPlayer){
+λadvance(command:µPlayerCommand,state:µGameState)=>Option[µAdvance] match applyPlayerCommand(command,state){
+  Some(afterPlayer)=>match playerAtExit(afterPlayer){
     true=>{
       l next=(withTurn(afterPlayer,state.turn+1):µGameState);
-      {frame:renderFrame(next),outcome:Some(µEscaped(next.turn)),state:next}
+      Some({frame:renderFrame(next),outcome:Some(µEscaped(next.turn)),state:next})
     }|
     _=>{
       l next=(withTurn(stepEnemies(afterPlayer),state.turn+1):µGameState);
       match player(next){
-        Some(_)=>{frame:renderFrame(next),outcome:None(),state:next}|
-        None()=>{frame:renderFrame(next),outcome:Some(µSlain(next.turn)),state:next}
+        Some(_)=>Some({frame:renderFrame(next),outcome:None(),state:next})|
+        None()=>Some({frame:renderFrame(next),outcome:Some(µSlain(next.turn)),state:next})
       }
     }
-  }
+  }|
+  None()=>None()
 }
 
 λalive(actor:µActor)=>Bool=actor.hp>0
@@ -103,6 +111,36 @@ c width=(48:Int)
 λammoLoadoutAfterShot(loadout:µPlayerLoadout)=>µPlayerLoadout=loadoutWithArrows(loadout.arrows-1,loadout)
 
 λappendNodes(acc:[µPathNode],head:µPathNode,tail:[µPathNode])=>[µPathNode]=acc⧺[head]⧺tail
+
+λapplyPlayerCommand(command:µPlayerCommand,state:µGameState)=>Option[µGameState] match player(state){
+  Some(actor)=>match command{
+    µBlink(direction)=>match targetBlinkInDirection(actor,direction,state){
+      Some(target)=>Some(performPlayerBlink(actor,target,state))|
+      None()=>None()
+    }|
+    µBomb(direction)=>match targetBombInDirection(actor,direction,state){
+      Some(target)=>Some(performPlayerBomb(state,target))|
+      None()=>None()
+    }|
+    µDrinkPotion()=>match playerCanDrinkPotion(actor,state){
+      true=>Some(withLastAction("drink potion",withLoadout(loadoutWithPotions(state.loadout,state.loadout.potions-1),healActor(actor.id,potionHeal,state))))|
+      _=>None()
+    }|
+    µMove(direction)=>match targetMeleeInDirection(actor,direction,state){
+      Some(target)=>Some(performPlayerMelee(state,target))|
+      None()=>match walkTarget(actor,direction,state){
+        Some(next)=>Some(performPlayerMove(actor,next,state))|
+        None()=>None()
+      }
+    }|
+    µShoot(direction)=>match targetRangedInDirection(actor,direction,state){
+      Some(target)=>Some(performPlayerRanged(state,target))|
+      None()=>None()
+    }|
+    µWait()=>Some(withLastAction("wait",state))
+  }|
+  None()=>None()
+}
 
 λarcherActor(hp:Int,id:Int,pos:µPoint)=>µActor={ammo:archerAmmoStart,hp:hp,id:id,kind:µArcher(),pos:pos}
 
@@ -164,8 +202,6 @@ c width=(48:Int)
 
 λconsumeBomb(state:µGameState)=>µGameState=withLoadout(loadoutWithBombs(state.loadout.bombs-1,state.loadout),state)
 
-λcorridorL(a:µRoom,b:µRoom,x:Int,y:Int)=>Bool=inH(centerY(a),x,centerX(a),centerX(b),y) or inV(centerX(b),x,y,centerY(a),centerY(b))
-
 λcorridorPoints(a:µRoom,b:µRoom)=>[µPoint]=horizontalPoints(min2(centerX(a),centerX(b)),max2(centerX(a),centerX(b)),centerY(a))⧺verticalPoints(centerX(b),min2(centerY(a),centerY(b)),max2(centerY(a),centerY(b)))
 
 λdamageActor(actorId:Int,amount:Int,state:µGameState)=>µGameState=withActors(removeDeadActors(damageActors(actorId,state.actors,amount)),state)
@@ -184,7 +220,8 @@ c width=(48:Int)
 
 λdemoStateWithInventory(actors:[µActor],carriedPotions:Int,collectedTreasure:Int,exit:µPoint,pickups:[µPickup],turn:Int)=>µGameState={
   l rooms=([{h:6,w:13,x:2,y:2},{h:7,w:14,x:18,y:2},{h:6,w:12,x:32,y:9}]:[µRoom]);
-  {actors:actors,collectedTreasure:collectedTreasure,exit:exit,floors:makeFloors(rooms),lastAction:"ready",loadout:loadoutWithPotions(defaultLoadout(),carriedPotions),pickups:pickups,rooms:rooms,turn:turn}
+  l floors=(makeFloors(rooms):[µPoint]);
+  {actorIndex:actorIndexFor(actors),actors:actors,collectedTreasure:collectedTreasure,exit:exit,floorIndex:floorIndexFor(floors),floors:floors,lastAction:"ready",loadout:loadoutWithPotions(defaultLoadout(),carriedPotions),pickupIndex:pickupIndexFor(pickups),pickups:pickups,rooms:rooms,turn:turn}
 }
 
 λexpandNodes(actorId:Int,allowTargetOccupied:Bool,current:µPathNode,queue:[µPathNode],state:µGameState,target:µPoint,visited:[µPoint])=>[µPathNode]=expandNodesInner(actorId,allowTargetOccupied,current.distance,current.first,neighbors(current.pos),queue,state,target,visited)
@@ -211,6 +248,13 @@ c width=(48:Int)
     true=>Some(head)|
     _=>findPlayer(tail)
   }
+}
+
+λfloorIndexFor(floors:[µPoint])=>{String↦Bool}=floorIndexForInner(floors,(¶map.empty():{String↦Bool}))
+
+λfloorIndexForInner(floors:[µPoint],index:{String↦Bool})=>{String↦Bool} match floors{
+  []=>index|
+  [head,.tail]=>floorIndexForInner(tail,¶map.insert(pointKey(head),index,true))
 }
 
 λframeText(frame:µFrame)=>String=frame.map++"
@@ -254,19 +298,6 @@ c width=(48:Int)
 
 λinBounds(pos:µPoint)=>Bool=pos.x≥0 and pos.x<width and (pos.y≥0 and pos.y<height)
 
-λinH(cy:Int,x:Int,x1:Int,x2:Int,y:Int)=>Bool=y=cy and x≥min2(x1,x2) and x≤max2(x1,x2)
-
-λinRect(rh:Int,rw:Int,rx:Int,ry:Int,x:Int,y:Int)=>Bool=x≥rx and x<rx+rw and (y≥ry and y<ry+rh)
-
-λinRoom(room:µRoom,x:Int,y:Int)=>Bool=inRect(room.h,room.w,room.x,room.y,x,y)
-
-λinRooms(rooms:[µRoom],x:Int,y:Int)=>Bool match rooms{
-  []=>false|
-  [head,.tail]=>inRoom(head,x,y) or inRooms(tail,x,y)
-}
-
-λinV(cx:Int,x:Int,y:Int,y1:Int,y2:Int)=>Bool=x=cx and y≥min2(y1,y2) and y≤max2(y1,y2)
-
 λinitialNodes(actorId:Int,allowTargetOccupied:Bool,points:[µPoint],start:µPoint,state:µGameState,target:µPoint)=>[µPathNode] match points{
   []=>[]|
   [head,.tail]=>match searchWalkable(actorId,allowTargetOccupied,head,state,target){
@@ -285,26 +316,9 @@ c width=(48:Int)
   _=>false
 }
 
-λisCorridor(rooms:[µRoom],x:Int,y:Int)=>Bool match §list.nth(0,rooms){
-  Some(room0)=>match §list.nth(1,rooms){
-    Some(room1)=>match §list.nth(2,rooms){
-      Some(room2)=>match §list.nth(3,rooms){
-        Some(room3)=>match §list.nth(4,rooms){
-          Some(room4)=>corridorL(room0,room1,x,y) or corridorL(room1,room2,x,y) or corridorL(room1,room3,x,y) or corridorL(room3,room4,x,y)|
-          None()=>corridorL(room0,room1,x,y) or corridorL(room1,room2,x,y)
-        }|
-        None()=>corridorL(room0,room1,x,y) or corridorL(room1,room2,x,y)
-      }|
-      None()=>corridorL(room0,room1,x,y)
-    }|
-    None()=>false
-  }|
-  None()=>false
-}
-
 λisEnemy(actor:µActor)=>Bool=alive(actor) and ¬isPlayer(actor)
 
-λisFloor(state:µGameState,x:Int,y:Int)=>Bool=inRooms(state.rooms,x,y) or isCorridor(state.rooms,x,y)
+λisFloor(state:µGameState,x:Int,y:Int)=>Bool=¶map.has(pointKey(point(x,y)),state.floorIndex)
 
 λisGoblin(actor:µActor)=>Bool match actor.kind{
   µGoblin()=>true|
@@ -416,7 +430,9 @@ c width=(48:Int)
       l blinkPos=(randomPointInRoom([exit]⧺occupiedPoints(actors,[potion,spear,bomb]),room4):µPoint);
       l blink=(blinkPickup(blinkPos):µPickup);
       l treasurePos=(randomPointInRoom([exit]⧺occupiedPoints(actors,[potion,spear,bomb,blink]),room4):µPoint);
-      {actors:actors,collectedTreasure:0,exit:exit,floors:makeFloors(rooms),lastAction:"ready",loadout:defaultLoadout(),pickups:[potion,spear,bomb,blink,treasurePickup(treasurePos)],rooms:rooms,turn:0}
+      l floors=(makeFloors(rooms):[µPoint]);
+      l pickups=([potion,spear,bomb,blink,treasurePickup(treasurePos)]:[µPickup]);
+      {actorIndex:actorIndexFor(actors),actors:actors,collectedTreasure:0,exit:exit,floorIndex:floorIndexFor(floors),floors:floors,lastAction:"ready",loadout:defaultLoadout(),pickupIndex:pickupIndexFor(pickups),pickups:pickups,rooms:rooms,turn:0}
     }|
     _=>match remaining≤0{
       true=>makeGameAttempt(roomAttempts)|
@@ -438,6 +454,11 @@ c width=(48:Int)
   µGoblin()=>2|
   µPlayer()=>playerMaxHp|
   µShaman()=>2
+}
+
+λmeleeDirectionDistanceLimit(melee:µMeleeWeapon)=>Int match melee{
+  µSpear()=>2|
+  µSword()=>1
 }
 
 λmeleeName(melee:µMeleeWeapon)=>String match melee{
@@ -557,15 +578,22 @@ c width=(48:Int)
 
 λperformPlayerRanged(state:µGameState,target:µActor)=>µGameState=withLastAction("shoot bow",withLoadout(ammoLoadoutAfterShot(state.loadout),damageActor(target.id,1,state)))
 
-λpickupAt(pos:µPoint,state:µGameState)=>Option[µPickup] match state.pickups{
-  []=>None()|
-  [head,.tail]=>match samePoint(head.pos,pos){
-    true=>Some(head)|
-    _=>pickupAt(pos,withPickups(tail,state))
-  }
+λpickupAt(pos:µPoint,state:µGameState)=>Option[µPickup]=¶map.get(pointKey(pos),state.pickupIndex)
+
+λpickupGlyph(pickup:µPickup)=>String match pickup.kind{
+  µBlinkPickup()=>"?"|
+  µBombPickup()=>"*"|
+  µPotionPickup()=>"!"|
+  µSpearPickup()=>"/"|
+  µTreasurePickup()=>"$"
 }
 
-λplay(maxTurns:Int)=>!Random µReplay=simulate(maxTurns,makeGame())
+λpickupIndexFor(pickups:[µPickup])=>{String↦µPickup}=pickupIndexForInner((¶map.empty():{String↦µPickup}),pickups)
+
+λpickupIndexForInner(index:{String↦µPickup},pickups:[µPickup])=>{String↦µPickup} match pickups{
+  []=>index|
+  [head,.tail]=>pickupIndexForInner(¶map.insert(pointKey(head.pos),index,head),tail)
+}
 
 λplayer(state:µGameState)=>Option[µActor]=findPlayer(state.actors)
 
@@ -576,7 +604,7 @@ c width=(48:Int)
   None()=>false
 }
 
-λplayerCanUsePotion(actor:µActor,state:µGameState)=>Bool=actor.hp≤potionUseThreshold and state.loadout.potions>0
+λplayerCanDrinkPotion(actor:µActor,state:µGameState)=>Bool=state.loadout.potions>0 and actor.hp<maxHp(actor)
 
 λplayerHp(state:µGameState)=>Int match player(state){
   Some(actor)=>actor.hp|
@@ -590,10 +618,19 @@ c width=(48:Int)
 
 λpoint(x:Int,y:Int)=>µPoint={x:x,y:y}
 
+λpointAlong(direction:µDirection,distance:Int,pos:µPoint)=>µPoint match direction{
+  µEast()=>point(pos.x+distance,pos.y)|
+  µNorth()=>point(pos.x,pos.y-distance)|
+  µSouth()=>point(pos.x,pos.y+distance)|
+  µWest()=>point(pos.x-distance,pos.y)
+}
+
 λpointIn(points:[µPoint],pos:µPoint)=>Bool match points{
   []=>false|
   [head,.tail]=>samePoint(head,pos) or pointIn(tail,pos)
 }
+
+λpointKey(pos:µPoint)=>String=§string.intToString(pos.x)++":"++§string.intToString(pos.y)
 
 λpotionPickup(pos:µPoint)=>µPickup={kind:µPotionPickup(),pos:pos}
 
@@ -738,19 +775,6 @@ c width=(48:Int)
 
 λshootable(actor:µActor,state:µGameState,target:µPoint)=>Bool=actor.ammo>0 and shootRange(actor.pos,target)≤bowRange and shootLineOfSight(actor.id,actor.pos,state,target)
 
-λsimulate(maxTurns:Int,state:µGameState)=>µReplay=simulateLoop([renderFrame(state)],maxTurns,state)
-
-λsimulateLoop(frames:[µFrame],maxTurns:Int,state:µGameState)=>µReplay match state.turn≥maxTurns{
-  true=>{frames:(§list.reverse(frames):[µFrame]),outcome:µStalled(state.turn)}|
-  _=>{
-    l step=(advance(state):µAdvance);
-    match step.outcome{
-      Some(outcome)=>{frames:(§list.reverse([step.frame]⧺frames):[µFrame]),outcome:outcome}|
-      None()=>simulateLoop([step.frame]⧺frames,maxTurns,step.state)
-    }
-  }
-}
-
 λspearPickup(pos:µPoint)=>µPickup={kind:µSpearPickup(),pos:pos}
 
 λstatusCombatText(state:µGameState)=>String=" Melee "++meleeName(state.loadout.melee)++(" Arrows "++§string.intToString(state.loadout.arrows))
@@ -849,110 +873,59 @@ c width=(48:Int)
   None()=>state
 }
 
-λstepPlayer(state:µGameState)=>µGameState match player(state){
-  Some(actor)=>match playerCanUsePotion(actor,state){
-    true=>withLastAction("drink potion",withLoadout(loadoutWithPotions(state.loadout,state.loadout.potions-1),healActor(actor.id,potionHeal,state)))|
-    _=>stepPlayerAfterPotion(actor,state)
-  }|
-  None()=>state
-}
+λtargetBlinkInDirection(actor:µActor,direction:µDirection,state:µGameState)=>Option[µPoint]=targetBlinkInDirectionAt(actor,direction,blinkRange,state)
 
-λstepPlayerAfterBomb(actor:µActor,state:µGameState)=>µGameState match targetPlayerRanged(actor,state){
-  Some(target)=>performPlayerRanged(state,target)|
-  None()=>stepPlayerAfterRanged(actor,state)
-}
-
-λstepPlayerAfterMelee(actor:µActor,state:µGameState)=>µGameState match targetPlayerBlink(actor,state){
-  Some(next)=>performPlayerBlink(actor,next,state)|
-  None()=>performPlayerMove(actor,targetPlayerMove(actor,state),state)
-}
-
-λstepPlayerAfterPotion(actor:µActor,state:µGameState)=>µGameState match targetPlayerBomb(actor,state){
-  Some(target)=>performPlayerBomb(state,target)|
-  None()=>stepPlayerAfterBomb(actor,state)
-}
-
-λstepPlayerAfterRanged(actor:µActor,state:µGameState)=>µGameState match targetPlayerMelee(actor,state){
-  Some(target)=>performPlayerMelee(state,target)|
-  None()=>stepPlayerAfterMelee(actor,state)
-}
-
-λtargetPlayerBlink(actor:µActor,state:µGameState)=>Option[µPoint] match actor.hp≤2 and state.loadout.blinks>0 and teleportThreatened(actor,state){
-  true=>teleportSafe(actor,state.floors,state)|
-  _=>None()
-}
-
-λtargetPlayerBomb(actor:µActor,state:µGameState)=>Option[µActor] match state.loadout.bombs>0{
-  true=>targetPlayerBombInner(actor,state,state.actors)|
-  _=>None()
-}
-
-λtargetPlayerBombInner(actor:µActor,state:µGameState,targets:[µActor])=>Option[µActor] match targets{
-  []=>None()|
-  [head,.tail]=>match bombTarget(actor,state,head){
-    true=>Some(head)|
-    _=>targetPlayerBombInner(actor,state,tail)
+λtargetBlinkInDirectionAt(actor:µActor,direction:µDirection,distance:Int,state:µGameState)=>Option[µPoint] match distance≤0{
+  true=>None()|
+  _=>{
+    l target=(pointAlong(direction,distance,actor.pos):µPoint);
+    match searchWalkable(actor.id,false,target,state,target){
+      true=>Some(target)|
+      _=>targetBlinkInDirectionAt(actor,direction,distance-1,state)
+    }
   }
 }
 
-λtargetPlayerMelee(actor:µActor,state:µGameState)=>Option[µActor]=targetPlayerMeleeInner(actor,state,state.actors)
+λtargetBombInDirection(actor:µActor,direction:µDirection,state:µGameState)=>Option[µActor]=targetBombInDirectionAt(actor,direction,1,state)
 
-λtargetPlayerMeleeInner(actor:µActor,state:µGameState,targets:[µActor])=>Option[µActor] match targets{
-  []=>None()|
-  [head,.tail]=>match isEnemy(head) and playerMeleeReach(actor,state.loadout.melee,head){
-    true=>Some(head)|
-    _=>targetPlayerMeleeInner(actor,state,tail)
+λtargetBombInDirectionAt(actor:µActor,direction:µDirection,distance:Int,state:µGameState)=>Option[µActor] match distance>bombRange{
+  true=>None()|
+  _=>match actorAt(pointAlong(direction,distance,actor.pos),state){
+    Some(target)=>match isEnemy(target) and shootRange(actor.pos,target.pos)≤bombRange and shootLineOfSight(actor.id,actor.pos,state,target.pos) and ¬throwBombHitsPoint(target.pos,actor.pos){
+      true=>Some(target)|
+      _=>targetBombInDirectionAt(actor,direction,distance+1,state)
+    }|
+    None()=>targetBombInDirectionAt(actor,direction,distance+1,state)
   }
 }
 
-λtargetPlayerMove(actor:µActor,state:µGameState)=>µPoint match actor.hp≤3{
-  true=>match nearestPotionPickup(actor,state){
-    Some(target)=>target|
-    None()=>targetPlayerMoveAfterPotion(actor,state)
-  }|
-  _=>targetPlayerMoveAfterPotion(actor,state)
+λtargetMeleeInDirection(actor:µActor,direction:µDirection,state:µGameState)=>Option[µActor]=targetMeleeInDirectionAt(actor,direction,1,state)
+
+λtargetMeleeInDirectionAt(actor:µActor,direction:µDirection,distance:Int,state:µGameState)=>Option[µActor] match meleeDirectionDistanceLimit(state.loadout.melee)<distance{
+  true=>None()|
+  _=>match actorAt(pointAlong(direction,distance,actor.pos),state){
+    Some(target)=>match isEnemy(target) and playerMeleeReach(actor,state.loadout.melee,target){
+      true=>Some(target)|
+      _=>targetMeleeInDirectionAt(actor,direction,distance+1,state)
+    }|
+    None()=>targetMeleeInDirectionAt(actor,direction,distance+1,state)
+  }
 }
 
-λtargetPlayerMoveAfterBlink(actor:µActor,state:µGameState)=>µPoint match state.loadout.melee{
-  µSword()=>match nearestSpearPickup(actor,state){
-    Some(target)=>target|
-    None()=>targetPlayerTreasureOrExit(actor,state)
-  }|
-  _=>targetPlayerTreasureOrExit(actor,state)
-}
-
-λtargetPlayerMoveAfterBomb(actor:µActor,state:µGameState)=>µPoint match state.loadout.blinks=0{
-  true=>match nearestBlinkPickup(actor,state){
-    Some(target)=>target|
-    None()=>targetPlayerMoveAfterBlink(actor,state)
-  }|
-  _=>targetPlayerMoveAfterBlink(actor,state)
-}
-
-λtargetPlayerMoveAfterPotion(actor:µActor,state:µGameState)=>µPoint match state.loadout.bombs=0{
-  true=>match nearestBombPickup(actor,state){
-    Some(target)=>target|
-    None()=>targetPlayerMoveAfterBomb(actor,state)
-  }|
-  _=>targetPlayerMoveAfterBomb(actor,state)
-}
-
-λtargetPlayerRanged(actor:µActor,state:µGameState)=>Option[µActor] match hasBow(state.loadout) and state.loadout.arrows>0{
-  true=>targetPlayerRangedInner(actor,state,state.actors)|
+λtargetRangedInDirection(actor:µActor,direction:µDirection,state:µGameState)=>Option[µActor] match hasBow(state.loadout) and state.loadout.arrows>0{
+  true=>targetRangedInDirectionAt(actor,direction,1,state)|
   _=>None()
 }
 
-λtargetPlayerRangedInner(actor:µActor,state:µGameState,targets:[µActor])=>Option[µActor] match targets{
-  []=>None()|
-  [head,.tail]=>match rangedTarget(actor,state,head){
-    true=>Some(head)|
-    _=>targetPlayerRangedInner(actor,state,tail)
+λtargetRangedInDirectionAt(actor:µActor,direction:µDirection,distance:Int,state:µGameState)=>Option[µActor] match distance>bowRange{
+  true=>None()|
+  _=>match actorAt(pointAlong(direction,distance,actor.pos),state){
+    Some(target)=>match rangedTarget(actor,state,target){
+      true=>Some(target)|
+      _=>targetRangedInDirectionAt(actor,direction,distance+1,state)
+    }|
+    None()=>targetRangedInDirectionAt(actor,direction,distance+1,state)
   }
-}
-
-λtargetPlayerTreasureOrExit(actor:µActor,state:µGameState)=>µPoint match nearestTreasureTarget(actor.id,actor.pos,state){
-  Some(target)=>target.pos|
-  None()=>state.exit
 }
 
 λteleportSafe(actor:µActor,floors:[µPoint],state:µGameState)=>Option[µPoint]=teleportSafeInner(actor,floors,state)
@@ -1006,24 +979,12 @@ c width=(48:Int)
 λthrowBombHitsPoint(center:µPoint,pos:µPoint)=>Bool=max2(center.x,pos.x)-min2(center.x,pos.x)≤1 and max2(center.y,pos.y)-min2(center.y,pos.y)≤1
 
 λtileAt(pos:µPoint,state:µGameState)=>String match actorAt(pos,state){
-  Some(actor)=>match actor.kind{
-    µPlayer()=>"@"|
-    µGoblin()=>"g"|
-    µArcher()=>"a"|
-    µBrute()=>"B"|
-    µShaman()=>"s"
-  }|
+  Some(actor)=>actorGlyph(actor)|
   None()=>match pickupAt(pos,state){
-    Some(pickup)=>match pickup.kind{
-      µBlinkPickup()=>"?"|
-      µBombPickup()=>"*"|
-      µPotionPickup()=>"!"|
-      µSpearPickup()=>"/"|
-      µTreasurePickup()=>"$"
-    }|
+    Some(pickup)=>pickupGlyph(pickup)|
     None()=>match samePoint(pos,state.exit){
       true=>">"|
-      _=>match isFloor(state,pos.x,pos.y){
+      _=>match ¶map.has(pointKey(pos),state.floorIndex){
         true=>"."|
         _=>"#"
       }
@@ -1033,17 +994,17 @@ c width=(48:Int)
 
 λtreasurePickup(pos:µPoint)=>µPickup={kind:µTreasurePickup(),pos:pos}
 
-λusePotionIfNeeded(state:µGameState)=>µGameState match player(state){
-  Some(actor)=>match actor.hp≤potionUseThreshold and state.loadout.potions>0{
-    true=>withLoadout(loadoutWithPotions(state.loadout,state.loadout.potions-1),healActor(actor.id,potionHeal,state))|
-    _=>state
-  }|
-  None()=>state
-}
-
 λverticalPoints(x:Int,y1:Int,y2:Int)=>[µPoint] match y1>y2{
   true=>[]|
   _=>[point(x,y1)]⧺verticalPoints(x,y1+1,y2)
+}
+
+λwalkTarget(actor:µActor,direction:µDirection,state:µGameState)=>Option[µPoint]={
+  l target=(pointAlong(direction,1,actor.pos):µPoint);
+  match searchWalkable(actor.id,false,target,state,target){
+    true=>Some(target)|
+    _=>None()
+  }
 }
 
 λwithActorAmmo(actorId:Int,ammo:Int,state:µGameState)=>µGameState=withActors(withActorAmmoInner(actorId,state.actors,ammo),state)
@@ -1056,14 +1017,14 @@ c width=(48:Int)
   }
 }
 
-λwithActors(actors:[µActor],state:µGameState)=>µGameState={actors:actors,collectedTreasure:state.collectedTreasure,exit:state.exit,floors:state.floors,lastAction:state.lastAction,loadout:state.loadout,pickups:state.pickups,rooms:state.rooms,turn:state.turn}
+λwithActors(actors:[µActor],state:µGameState)=>µGameState={actorIndex:actorIndexFor(actors),actors:actors,collectedTreasure:state.collectedTreasure,exit:state.exit,floorIndex:state.floorIndex,floors:state.floors,lastAction:state.lastAction,loadout:state.loadout,pickupIndex:state.pickupIndex,pickups:state.pickups,rooms:state.rooms,turn:state.turn}
 
-λwithCollectedTreasure(collectedTreasure:Int,state:µGameState)=>µGameState={actors:state.actors,collectedTreasure:collectedTreasure,exit:state.exit,floors:state.floors,lastAction:state.lastAction,loadout:state.loadout,pickups:state.pickups,rooms:state.rooms,turn:state.turn}
+λwithCollectedTreasure(collectedTreasure:Int,state:µGameState)=>µGameState={actorIndex:state.actorIndex,actors:state.actors,collectedTreasure:collectedTreasure,exit:state.exit,floorIndex:state.floorIndex,floors:state.floors,lastAction:state.lastAction,loadout:state.loadout,pickupIndex:state.pickupIndex,pickups:state.pickups,rooms:state.rooms,turn:state.turn}
 
-λwithLastAction(lastAction:String,state:µGameState)=>µGameState={actors:state.actors,collectedTreasure:state.collectedTreasure,exit:state.exit,floors:state.floors,lastAction:lastAction,loadout:state.loadout,pickups:state.pickups,rooms:state.rooms,turn:state.turn}
+λwithLastAction(lastAction:String,state:µGameState)=>µGameState={actorIndex:state.actorIndex,actors:state.actors,collectedTreasure:state.collectedTreasure,exit:state.exit,floorIndex:state.floorIndex,floors:state.floors,lastAction:lastAction,loadout:state.loadout,pickupIndex:state.pickupIndex,pickups:state.pickups,rooms:state.rooms,turn:state.turn}
 
-λwithLoadout(loadout:µPlayerLoadout,state:µGameState)=>µGameState={actors:state.actors,collectedTreasure:state.collectedTreasure,exit:state.exit,floors:state.floors,lastAction:state.lastAction,loadout:loadout,pickups:state.pickups,rooms:state.rooms,turn:state.turn}
+λwithLoadout(loadout:µPlayerLoadout,state:µGameState)=>µGameState={actorIndex:state.actorIndex,actors:state.actors,collectedTreasure:state.collectedTreasure,exit:state.exit,floorIndex:state.floorIndex,floors:state.floors,lastAction:state.lastAction,loadout:loadout,pickupIndex:state.pickupIndex,pickups:state.pickups,rooms:state.rooms,turn:state.turn}
 
-λwithPickups(pickups:[µPickup],state:µGameState)=>µGameState={actors:state.actors,collectedTreasure:state.collectedTreasure,exit:state.exit,floors:state.floors,lastAction:state.lastAction,loadout:state.loadout,pickups:pickups,rooms:state.rooms,turn:state.turn}
+λwithPickups(pickups:[µPickup],state:µGameState)=>µGameState={actorIndex:state.actorIndex,actors:state.actors,collectedTreasure:state.collectedTreasure,exit:state.exit,floorIndex:state.floorIndex,floors:state.floors,lastAction:state.lastAction,loadout:state.loadout,pickupIndex:pickupIndexFor(pickups),pickups:pickups,rooms:state.rooms,turn:state.turn}
 
-λwithTurn(state:µGameState,turn:Int)=>µGameState={actors:state.actors,collectedTreasure:state.collectedTreasure,exit:state.exit,floors:state.floors,lastAction:state.lastAction,loadout:state.loadout,pickups:state.pickups,rooms:state.rooms,turn:turn}
+λwithTurn(state:µGameState,turn:Int)=>µGameState={actorIndex:state.actorIndex,actors:state.actors,collectedTreasure:state.collectedTreasure,exit:state.exit,floorIndex:state.floorIndex,floors:state.floors,lastAction:state.lastAction,loadout:state.loadout,pickupIndex:state.pickupIndex,pickups:state.pickups,rooms:state.rooms,turn:turn}

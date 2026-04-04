@@ -1,6 +1,6 @@
-λabsoluteFeedUrl(config:µSiteBuildConfig)=>String=trimTrailingSlash(config.siteUrl)++"/feed.xml"
+λabsoluteFeedUrl(config:µSiteBuildConfig)=>String=§string.trimEndChars("/",config.siteUrl)++"/feed.xml"
 
-λabsolutePageUrl(config:µSiteBuildConfig,page:µSitePage)=>String=trimTrailingSlash(config.siteUrl)++•content.canonicalRoute(page)
+λabsolutePageUrl(config:µSiteBuildConfig,page:µSitePage)=>String=§string.trimEndChars("/",config.siteUrl)++•content.canonicalRoute(page)
 
 λarticleAuthor(page:µSitePage)=>String match #page.meta.author>0{
   true=>"<author><name>"++escapeXml(page.meta.author)++"</name></author>"|
@@ -18,7 +18,7 @@
 
 λarticleUpdated(page:µSitePage)=>String="<updated>"++isoDate(page.meta.date)++"</updated>"
 
-λatomFeedXml(config:µSiteBuildConfig,data:µSiteData)=>String="<?xml version=\"1.0\" encoding=\"UTF-8\"?>"++"<feed xmlns=\"http://www.w3.org/2005/Atom\"><id>"++escapeXml(trimTrailingSlash(config.siteUrl)++"/")++"</id><title>"++escapeXml(config.siteTitle)++"</title><subtitle>"++escapeXml(config.siteDescription)++"</subtitle><link href=\""++escapeXml(trimTrailingSlash(config.siteUrl)++"/")++"\"/><link href=\""++escapeXml(absoluteFeedUrl(config))++"\" rel=\"self\"/>"++feedUpdated(data.articles)++articleEntries(config,data.articles)++"</feed>"
+λatomFeedXml(config:µSiteBuildConfig,data:µSiteData)=>String="<?xml version=\"1.0\" encoding=\"UTF-8\"?>"++"<feed xmlns=\"http://www.w3.org/2005/Atom\"><id>"++escapeXml(§string.trimEndChars("/",config.siteUrl)++"/")++"</id><title>"++escapeXml(config.siteTitle)++"</title><subtitle>"++escapeXml(config.siteDescription)++"</subtitle><link href=\""++escapeXml(§string.trimEndChars("/",config.siteUrl)++"/")++"\"/><link href=\""++escapeXml(absoluteFeedUrl(config))++"\" rel=\"self\"/>"++feedUpdated(data.articles)++articleEntries(config,data.articles)++"</feed>"
 
 λescapeXml(text:String)=>String=§string.replaceAll(">","&gt;",§string.replaceAll("<","&lt;",§string.replaceAll("\"","&quot;",§string.replaceAll("'","&apos;",§string.replaceAll("&","&amp;",text)))))
 
@@ -30,9 +30,4 @@
 λisoDate(date:String)=>String match #date>0{
   true=>date++"T00:00:00Z"|
   false=>"1970-01-01T00:00:00Z"
-}
-
-λtrimTrailingSlash(path:String)=>String match #path>1 and §string.endsWith(path,"/"){
-  true=>trimTrailingSlash(§string.substring(#path-1,path,0))|
-  false=>path
 }

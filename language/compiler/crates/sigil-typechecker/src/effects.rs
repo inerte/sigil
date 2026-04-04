@@ -1,8 +1,16 @@
 use sigil_ast::{Declaration, EffectDecl, Program};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-pub const PRIMITIVE_EFFECTS: [&str; 8] = [
-    "Clock", "Fs", "Http", "Log", "Process", "Random", "Tcp", "Timer",
+pub const PRIMITIVE_EFFECTS: [&str; 9] = [
+    "Clock",
+    "Fs",
+    "Http",
+    "Log",
+    "Process",
+    "Random",
+    "Tcp",
+    "Terminal",
+    "Timer",
 ];
 
 #[derive(Debug, Clone, PartialEq, Eq)]

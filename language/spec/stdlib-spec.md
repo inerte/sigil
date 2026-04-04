@@ -182,6 +182,7 @@ Semantics:
 
 ```sigil decl §string
 λcharAt(idx:Int,s:String)=>String
+λcontains(s:String,search:String)=>Bool
 λdrop(n:Int,s:String)=>String
 λendsWith(s:String,suffix:String)=>Bool
 λindexOf(s:String,search:String)=>Int
@@ -198,6 +199,8 @@ Semantics:
 λtake(n:Int,s:String)=>String
 λtoLower(s:String)=>String
 λtoUpper(s:String)=>String
+λtrimEndChars(chars:String,s:String)=>String
+λtrimStartChars(chars:String,s:String)=>String
 λtrim(s:String)=>String
 λunlines(lines:[String])=>String
 ```
@@ -245,6 +248,27 @@ Process rules:
 - non-zero exit codes are reported in `ProcessResult.code`
 - `run` captures stdout and stderr in memory
 - `kill` is a normal termination request, not a timeout/escalation protocol
+
+### Implemented `§terminal` Types and Functions
+
+```sigil decl §terminal
+t Key=Escape()|Text(String)
+
+λclearScreen()=>!Terminal Unit
+λdisableRawMode()=>!Terminal Unit
+λenableRawMode()=>!Terminal Unit
+λhideCursor()=>!Terminal Unit
+λreadKey()=>!Terminal Key
+λshowCursor()=>!Terminal Unit
+λwrite(text:String)=>!Terminal Unit
+```
+
+Terminal rules:
+- terminal interaction is raw-key oriented rather than line-oriented
+- `readKey` returns canonical `Key` values
+- `Escape()` represents the escape key and escape sequences
+- `Text(String)` carries normalized plain-text key input
+- interactive programs should restore cursor visibility and raw-mode state before exit
 
 ### Implemented `§regex` Types and Functions
 

@@ -33,7 +33,7 @@ test "find checksum returns none for missing archive" {
 
 test "formula renders release version and platform checksums" {
   l text=•formula.formula({checksums:{darwinArm64:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",darwinX64:"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",linuxArm64:"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",linuxX64:"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"},repo:"inerte/sigil",version:"2026-03-11T14-58-24Z"});
-  §string.indexOf(text,"sha256 \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"")≥0 and §string.indexOf(text,"sigil 2026-03-11T14-58-24Z")≥0 and §string.indexOf(text,"https://github.com/inerte/sigil/releases/download/2026-03-11T14-58-24Z/sigil-2026-03-11T14-58-24Z-linux-x64.tar.gz")≥0
+  §string.contains(text,"sha256 \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"") and §string.contains(text,"sigil 2026-03-11T14-58-24Z") and §string.contains(text,"https://github.com/inerte/sigil/releases/download/2026-03-11T14-58-24Z/sigil-2026-03-11T14-58-24Z-linux-x64.tar.gz")
 }
 
 test "parse checksums extracts all release digests" {

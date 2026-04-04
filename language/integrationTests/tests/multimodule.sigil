@@ -21,7 +21,7 @@ test "multimodule simple import runs" =>!Clock!Fs!Process {
 ","src/main.sigil",root):Unit);
   l output=(runProject(root,"src/main.sigil"):String);
   l _=(§file.removeTree(root):Unit);
-  §string.indexOf(output,"42")≥0=true
+  §string.contains(output,"42")=true
 }
 
 test "multimodule multiple imports run" =>!Clock!Fs!Process {
@@ -40,7 +40,7 @@ test "multimodule multiple imports run" =>!Clock!Fs!Process {
 ","src/calc.sigil",root):Unit);
   l output=(runProject(root,"src/calc.sigil"):String);
   l _=(§file.removeTree(root):Unit);
-  §string.indexOf(output,"35")≥0=true
+  §string.contains(output,"35")=true
 }
 
 test "multimodule transitive dependency runs" =>!Clock!Fs!Process {
@@ -55,5 +55,5 @@ test "multimodule transitive dependency runs" =>!Clock!Fs!Process {
 ","src/app.sigil",root):Unit);
   l output=(runProject(root,"src/app.sigil"):String);
   l _=(§file.removeTree(root):Unit);
-  §string.indexOf(output,"7")≥0=true
+  §string.contains(output,"7")=true
 }

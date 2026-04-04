@@ -1,6 +1,6 @@
-λabsoluteUrl(config:µSiteBuildConfig,page:µSitePage)=>String=trimTrailingSlash(config.siteUrl)++•content.canonicalRoute(page)
+λabsoluteUrl(config:µSiteBuildConfig,page:µSitePage)=>String=§string.trimEndChars("/",config.siteUrl)++•content.canonicalRoute(page)
 
-λallPages(data:µSiteData)=>[µSitePage]=[data.home,data.articlesIntro]⧺data.articles⧺data.docs⧺data.spec⧺data.standalone
+λallPages(data:µSiteData)=>[µSitePage]=[data.home,data.articlesIntro,data.projectsIntro]⧺data.articles⧺data.docs⧺data.projects⧺data.spec⧺data.standalone
 
 λpageEntries(config:µSiteBuildConfig,pages:[µSitePage])=>String=§string.join("",pages map (λ(page:µSitePage)=>String=pageEntry(config,page)))
 
@@ -12,8 +12,3 @@
 }
 
 λsitemapXml(config:µSiteBuildConfig,data:µSiteData)=>String="<?xml version=\"1.0\" encoding=\"UTF-8\"?>"++"<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">"++pageEntries(config,allPages(data))++"</urlset>"
-
-λtrimTrailingSlash(path:String)=>String match #path>1 and §string.endsWith(path,"/"){
-  true=>trimTrailingSlash(§string.substring(#path-1,path,0))|
-  false=>path
-}

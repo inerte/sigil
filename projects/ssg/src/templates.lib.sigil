@@ -1,5 +1,7 @@
 λallDocsSection(config:µSiteBuildConfig,docs:[µSitePage])=>String="<section class=\"listing\"><h2>Docs</h2><ul class=\"page-list\">"++pageCards(config,docs)++"</ul></section>"
 
+λallProjectsSection(config:µSiteBuildConfig,projects:[µSitePage])=>String="<section class=\"listing\"><h2>Projects</h2><ul class=\"page-list\">"++pageCards(config,projects)++"</ul><p><a href=\""++siteUrl(config.basePath,"/projects/")++"\" class=\"view-all\">View all projects =></a></p></section>"
+
 λallSpecsSection(config:µSiteBuildConfig,spec:[µSitePage])=>String="<section class=\"listing\"><h2>Spec</h2><ul class=\"page-list\">"++pageCards(config,spec)++"</ul></section>"
 
 λarticleListing(config:µSiteBuildConfig,pages:[µSitePage])=>String="<section class=\"listing\"><h2>Latest Articles</h2><ul class=\"page-list\">"++pageCards(config,pages)++"</ul></section>"
@@ -39,11 +41,11 @@
   false=>""
 }
 
-λhomePage(articles:[µSitePage],config:µSiteBuildConfig,docs:[µSitePage],home:µSitePage,spec:[µSitePage])=>String=shell("",config,sectionIntro(config.siteDescription,config.siteTitle),home.bodyHtml++latestArticles(articles,config)++allDocsSection(config,docs)++allSpecsSection(config,spec),"",home.meta.title)
+λhomePage(articles:[µSitePage],config:µSiteBuildConfig,docs:[µSitePage],home:µSitePage,projects:[µSitePage],spec:[µSitePage])=>String=shell("",config,sectionIntro(config.siteDescription,config.siteTitle),home.bodyHtml++allProjectsSection(config,projects)++latestArticles(articles,config)++allDocsSection(config,docs)++allSpecsSection(config,spec),"",home.meta.title)
 
 λlatestArticles(articles:[µSitePage],config:µSiteBuildConfig)=>String="<section class=\"listing\"><h2>Latest Articles</h2><ul class=\"page-list\">"++pageCards(config,•content.takeFirst(5,articles))++"</ul><p><a href=\""++siteUrl(config.basePath,"/articles/")++"\" class=\"view-all\">View all articles =></a></p></section>"
 
-λnav(config:µSiteBuildConfig)=>String="<header class=\"site-header\"><div class=\"site-brand\"><a href=\""++siteUrl(config.basePath,"/")++"\">"++config.siteTitle++"</a></div>"++searchSection(config)++"<nav class=\"site-nav\"><a href=\""++siteUrl(config.basePath,"/articles/")++"\">Articles</a><a href=\""++siteUrl(config.basePath,"/docs/")++"\">Docs</a><a href=\""++siteUrl(config.basePath,"/spec/")++"\">Spec</a>"++githubNav(config)++"</nav></header>"
+λnav(config:µSiteBuildConfig)=>String="<header class=\"site-header\"><div class=\"site-brand\"><a href=\""++siteUrl(config.basePath,"/")++"\">"++config.siteTitle++"</a></div>"++searchSection(config)++"<nav class=\"site-nav\"><a href=\""++siteUrl(config.basePath,"/projects/")++"\">Projects</a><a href=\""++siteUrl(config.basePath,"/articles/")++"\">Articles</a><a href=\""++siteUrl(config.basePath,"/docs/")++"\">Docs</a><a href=\""++siteUrl(config.basePath,"/spec/")++"\">Spec</a>"++githubNav(config)++"</nav></header>"
 
 λnotFoundPage(config:µSiteBuildConfig)=>String=shell("",config,sectionIntro("The requested route does not exist.","Page not found"),"<p><a href=\""++siteUrl(config.basePath,"/")++"\">Return home</a></p>","","Not Found")
 
@@ -64,11 +66,43 @@
   [page,.rest]=>pageCard(config,page)++pageCards(config,rest)
 }
 
+λprojectActions(config:µSiteBuildConfig,page:µSitePage)=>String match page.project{
+  Some(project)=>"<div class=\"project-actions\">"++projectDemoLink(config,page,project)++projectRunCommand(project)++projectSourceLink(config,project)++"</div>"|
+  None()=>sourceLink(config,page)
+}
+
+λprojectDemoLink(config:µSiteBuildConfig,page:µSitePage,project:µProjectInfo)=>String match #project.demoSourceDir>0{
+  true=>"<a class=\"cta\" href=\""++siteUrl(config.basePath,"/projects/"++page.meta.slug++"/demo/")++"\">Run demo</a>"|
+  false=>""
+}
+
+λprojectPage(config:µSiteBuildConfig,page:µSitePage)=>String=shell(projectSourceSummary(config,page),config,breadcrumb(config,page),projectActions(config,page)++page.bodyHtml,detailMeta(page),page.meta.title)
+
+λprojectRunCommand(project:µProjectInfo)=>String match #project.localRun>0{
+  true=>"<p class=\"project-run\"><strong>Run locally:</strong> <code>"++project.localRun++"</code></p>"|
+  false=>""
+}
+
+λprojectSourceLink(config:µSiteBuildConfig,project:µProjectInfo)=>String match #config.repoUrl>0{
+  true=>"<a class=\"cta\" href=\""++config.repoUrl++"/tree/main/"++project.projectDir++"\">View source</a>"|
+  false=>""
+}
+
+λprojectSourceSummary(config:µSiteBuildConfig,page:µSitePage)=>String match page.project{
+  Some(_)=>match #config.repoUrl>0{
+    true=>"<p class=\"source-link\"><a href=\""++config.repoUrl++"/blob/main/"++page.sourcePath++"\">View README source on GitHub</a></p>"|
+    false=>""
+  }|
+  None()=>sourceLink(config,page)
+}
+
+λprojectsIndex(config:µSiteBuildConfig,introHtml:String,pages:[µSitePage])=>String=shell("",config,sectionIntro("Curated real programs built with Sigil, including runnable browser demos where the project supports the web.","Projects"),introHtml++"<section class=\"listing\"><ul class=\"page-list\">"++pageCards(config,pages)++"</ul></section>","","Projects")
+
 λreferenceList(config:µSiteBuildConfig,heading:String,pages:[µSitePage])=>String="<section class=\"listing compact\"><h2>"++heading++"</h2><ul class=\"page-list\">"++pageCards(config,•content.takeFirst(6,pages))++"</ul></section>"
 
 λreferenceLists(config:µSiteBuildConfig,docs:[µSitePage],spec:[µSitePage])=>String="<div class=\"home-grid secondary\">"++referenceList(config,"Docs",docs)++referenceList(config,"Spec",spec)++"</div>"
 
-λsearchSection(config:µSiteBuildConfig)=>String="<section class=\"search-panel\" data-search-root data-search-index-url=\""++siteUrl(config.basePath,"/search-index.json")++"\"><input class=\"search-input\" data-search-input id=\"site-search\" placeholder=\"Search docs, articles, and spec pages\" type=\"search\"/><div class=\"search-dropdown\" data-search-dropdown hidden><p class=\"search-status\" data-search-status>Loading search index...</p><p class=\"search-empty\" data-search-empty hidden></p><ul class=\"page-list search-results\" data-search-results></ul></div></section>"
+λsearchSection(config:µSiteBuildConfig)=>String="<section class=\"search-panel\" data-search-root data-search-index-url=\""++siteUrl(config.basePath,"/search-index.json")++"\"><input class=\"search-input\" data-search-input id=\"site-search\" placeholder=\"Search projects, docs, articles, and spec pages\" type=\"search\"/><div class=\"search-dropdown\" data-search-dropdown hidden><p class=\"search-status\" data-search-status>Loading search index...</p><p class=\"search-empty\" data-search-empty hidden></p><ul class=\"page-list search-results\" data-search-results></ul></div></section>"
 
 λsectionCard(body:String,config:µSiteBuildConfig,cta:String,heading:String,route:String)=>String="<section class=\"section-card\"><h2>"++heading++"</h2><p>"++body++"</p><a class=\"cta\" href=\""++siteUrl(config.basePath,route)++"\">"++cta++"</a></section>"
 
@@ -78,6 +112,7 @@
   µArticle()=>siteUrl(basePath,"/articles/")|
   µDoc()=>siteUrl(basePath,"/docs/")|
   µHome()=>siteUrl(basePath,"/")|
+  µProject()=>siteUrl(basePath,"/projects/")|
   µSpec()=>siteUrl(basePath,"/spec/")
 }
 

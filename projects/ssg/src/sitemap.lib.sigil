@@ -1,6 +1,6 @@
 λabsoluteUrl(config:µSiteBuildConfig,page:µSitePage)=>String=§string.trimEndChars("/",config.siteUrl)++•content.canonicalRoute(page)
 
-λallPages(data:µSiteData)=>[µSitePage]=[data.home,data.articlesIntro]⧺data.articles⧺data.docs⧺data.spec⧺data.standalone
+λallPages(data:µSiteData)=>[µSitePage]=[data.home,data.articlesIntro,data.projectsIntro]⧺data.articles⧺data.docs⧺data.projects⧺data.spec⧺data.standalone
 
 λpageEntries(config:µSiteBuildConfig,pages:[µSitePage])=>String=§string.join("",pages map (λ(page:µSitePage)=>String=pageEntry(config,page)))
 

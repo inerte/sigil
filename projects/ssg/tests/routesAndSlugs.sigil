@@ -4,6 +4,8 @@
 
 λmain()=>Unit=()
 
+λprojectPage(slug:String)=>µSitePage={bodyHtml:"",bodyMarkdown:"",meta:{author:"",category:"",date:"",description:"",slug:slug,title:slug},outputDir:"projects/"++slug,project:Some({demoSourceDir:"projects/todo-app/web/dist",localRun:"cd projects/todo-app && pnpm dev",projectDir:"projects/todo-app"}),section:µProject(),sourcePath:"projects/todo-app/README.md"}
+
 test "article route uses section slug" {
   •content.canonicalRoute((•content.blankPage("",{author:"",category:"",date:"",description:"",slug:"hello-world",title:"Hello World"},"articles/hello-world",µArticle(),"website/articles/hello-world.md"):µSitePage))="/articles/hello-world/"
 }
@@ -15,4 +17,8 @@ test "docs sort uses canonical slug order" {
 
 test "home route is canonical root" {
   •content.canonicalRoute(homePage())="/"
+}
+
+test "project route uses projects section slug" {
+  •content.canonicalRoute(projectPage("sigil-todo"))="/projects/sigil-todo/"
 }

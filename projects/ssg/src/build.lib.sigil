@@ -19,11 +19,14 @@ e fs::promises
   l rawData=(loadSiteData(config):µSiteData);
   l data=(renderSiteData((•content.buildAliasRoutes(rawData):[µAliasRoute]),config.basePath,rawData):µSiteData);
   l _=(copyStaticAssets(assetOutputDir(config)):Unit);
-  l _=(writePage(config,•templates.homePage(data.articles,config,data.docs,data.home,data.spec),data.home):Unit);
+  l _=(copyProjectDemos(config,data.projects):Unit);
+  l _=(writePage(config,•templates.homePage(data.articles,config,data.docs,data.home,data.projects,data.spec),data.home):Unit);
   l _=(writePage(config,•templates.articlesIndex(config,data.articlesIntro.bodyHtml,data.articles),data.articlesIntro):Unit);
   l _=(writeArticlePages(config,data.articles):Unit);
   l _=(writeIndexHtml(§path.join(config.outputDir,"docs"),•templates.docsIndex(config,data.docs)):Unit);
   l _=(writePages(config,data.docs):Unit);
+  l _=(writePage(config,•templates.projectsIndex(config,data.projectsIntro.bodyHtml,data.projects),data.projectsIntro):Unit);
+  l _=(writeProjectPages(config,data.projects):Unit);
   l _=(writeIndexHtml(§path.join(config.outputDir,"spec"),•templates.specIndex(config,data.spec)):Unit);
   l _=(writePages(config,data.spec):Unit);
   l _=(writePages(config,data.standalone):Unit);
@@ -34,7 +37,7 @@ e fs::promises
   writeNotFound(config)
 }
 
-λbuildSiteManifestJson(data:µSiteData,generatedAt:String,repoUrl:String)=>§json.JsonValue=§json.JsonObject({"articlesCount"↦§json.JsonString(§string.intToString(#data.articles)),"docsCount"↦§json.JsonString(§string.intToString(#data.docs)),"generatedAt"↦§json.JsonString(generatedAt),"repoUrl"↦§json.JsonString(repoUrl),"specCount"↦§json.JsonString(§string.intToString(#data.spec))})
+λbuildSiteManifestJson(data:µSiteData,generatedAt:String,repoUrl:String)=>§json.JsonValue=§json.JsonObject({"articlesCount"↦§json.JsonString(§string.intToString(#data.articles)),"docsCount"↦§json.JsonString(§string.intToString(#data.docs)),"generatedAt"↦§json.JsonString(generatedAt),"projectsCount"↦§json.JsonString(§string.intToString(#data.projects)),"repoUrl"↦§json.JsonString(repoUrl),"specCount"↦§json.JsonString(§string.intToString(#data.spec))})
 
 λcopyAssetFiles(assetNames:[String],assetSourceDir:String,assetTargetDir:String)=>!Fs Unit match assetNames{
   []=>()|
@@ -44,7 +47,28 @@ e fs::promises
   }
 }
 
+λcopyDemoTree(source:String,target:String)=>!Fs Unit=fs::promises.cp(source,target,{force:true,recursive:true})
+
 λcopyFile(source:String,target:String)=>!Fs Unit=fs::promises.copyFile(source,target)
+
+λcopyProjectDemo(config:µSiteBuildConfig,page:µSitePage,project:µProjectInfo)=>!Fs Unit match #project.demoSourceDir>0{
+  true=>match §file.exists(project.demoSourceDir){
+    true=>copyDemoTree(project.demoSourceDir,§path.join(§path.join(§path.join(config.outputDir,"projects"),page.meta.slug),"demo"))|
+    false=>()
+  }|
+  false=>()
+}
+
+λcopyProjectDemos(config:µSiteBuildConfig,pages:[µSitePage])=>!Fs Unit match pages{
+  []=>()|
+  [page,.rest]=>{
+    l _=(match page.project{
+      Some(project)=>copyProjectDemo(config,page,project)|
+      None()=>()
+    }:Unit);
+    copyProjectDemos(config,rest)
+  }
+}
 
 λcopyStaticAssets(assetTargetDir:String)=>!Fs Unit={
   l assetSourceDir=("website/static":String);
@@ -52,6 +76,8 @@ e fs::promises
   l assetNames=(§file.listDir(assetSourceDir):[String]);
   copyAssetFiles(assetNames,assetSourceDir,assetTargetDir)
 }
+
+λcuratedProjects()=>[µCuratedProject]=[{demoSourceDir:"projects/todo-app/web/dist",localRun:"cd projects/todo-app && pnpm install && pnpm sigil:compile && pnpm dev",projectDir:"projects/todo-app",readmePath:"projects/todo-app/README.md"}]
 
 λfilterMarkdownFiles(files:[String])=>[String]=files filter (λ(file:String)=>Bool=§string.endsWith(file,".md"))
 
@@ -78,14 +104,26 @@ e fs::promises
   [file,.rest]=>[loadPage(config,section,§path.join(dir,file))]⧺loadPagesFromFiles(config,dir,rest,section)
 }
 
+λloadProjectPage(config:µSiteBuildConfig,project:µCuratedProject)=>!Fs µSitePage={
+  l page=(loadPage(config,µProject(),project.readmePath):µSitePage);
+  {bodyHtml:page.bodyHtml,bodyMarkdown:page.bodyMarkdown,meta:page.meta,outputDir:"projects/"++page.meta.slug,project:Some({demoSourceDir:project.demoSourceDir,localRun:project.localRun,projectDir:project.projectDir}),section:µProject(),sourcePath:page.sourcePath}
+}
+
+λloadProjects(config:µSiteBuildConfig,projects:[µCuratedProject])=>!Fs [µSitePage] match projects{
+  []=>[]|
+  [project,.rest]=>[loadProjectPage(config,project)]⧺loadProjects(config,rest)
+}
+
 λloadSiteData(config:µSiteBuildConfig)=>!Fs µSiteData={
   l aboutSite=(loadStandalonePages(config):[µSitePage]);
   l home=(loadPage(config,µHome(),"website/README.md"):µSitePage);
   l articlesIntro=(loadPage(config,µArticle(),"website/articles/README.md"):µSitePage);
   l articles=(loadArticles(config):[µSitePage]);
   l docs=(loadDocs(config):[µSitePage]);
+  l projectsIntro=(loadPage(config,µProject(),"website/projects/README.md"):µSitePage);
+  l projects=(loadProjects(config,curatedProjects()):[µSitePage]);
   l spec=(loadSpec(config):[µSitePage]);
-  {articles:articles,articlesIntro:{bodyHtml:articlesIntro.bodyHtml,bodyMarkdown:articlesIntro.bodyMarkdown,meta:articlesIntro.meta,outputDir:"articles",section:articlesIntro.section,sourcePath:articlesIntro.sourcePath},docs:docs,home:{bodyHtml:home.bodyHtml,bodyMarkdown:home.bodyMarkdown,meta:home.meta,outputDir:"",section:home.section,sourcePath:home.sourcePath},spec:spec,standalone:aboutSite}
+  {articles:articles,articlesIntro:{bodyHtml:articlesIntro.bodyHtml,bodyMarkdown:articlesIntro.bodyMarkdown,meta:articlesIntro.meta,outputDir:"articles",project:articlesIntro.project,section:articlesIntro.section,sourcePath:articlesIntro.sourcePath},docs:docs,home:{bodyHtml:home.bodyHtml,bodyMarkdown:home.bodyMarkdown,meta:home.meta,outputDir:"",project:home.project,section:home.section,sourcePath:home.sourcePath},projects:projects,projectsIntro:{bodyHtml:projectsIntro.bodyHtml,bodyMarkdown:projectsIntro.bodyMarkdown,meta:projectsIntro.meta,outputDir:"projects",project:projectsIntro.project,section:projectsIntro.section,sourcePath:projectsIntro.sourcePath},spec:spec,standalone:aboutSite}
 }
 
 λloadSpec(config:µSiteBuildConfig)=>!Fs [µSitePage]={
@@ -96,7 +134,7 @@ e fs::promises
 
 λloadStandalonePages(config:µSiteBuildConfig)=>!Fs [µSitePage]={
   l page=(loadPage(config,µHome(),"website/about-site.md"):µSitePage);
-  [{bodyHtml:page.bodyHtml,bodyMarkdown:page.bodyMarkdown,meta:page.meta,outputDir:"about-site",section:page.section,sourcePath:page.sourcePath}]
+  [{bodyHtml:page.bodyHtml,bodyMarkdown:page.bodyMarkdown,meta:page.meta,outputDir:"about-site",project:page.project,section:page.section,sourcePath:page.sourcePath}]
 }
 
 λoutputDirPath(config:µSiteBuildConfig,page:µSitePage)=>String match page.outputDir{
@@ -111,6 +149,10 @@ e fs::promises
   }|
   µDoc()=>"docs/"++slug|
   µHome()=>""|
+  µProject()=>match sourcePath{
+    "website/projects/README.md"=>"projects"|
+    _=>"projects/"++slug
+  }|
   µSpec()=>"spec/"++slug
 }
 
@@ -126,7 +168,7 @@ e fs::promises
   [page,.rest]=>[•content.renderPage(aliasRoutes,basePath,page)]⧺renderPages(aliasRoutes,basePath,rest)
 }
 
-λrenderSiteData(aliasRoutes:[µAliasRoute],basePath:String,data:µSiteData)=>µSiteData={articles:renderPages(aliasRoutes,basePath,data.articles),articlesIntro:•content.renderPage(aliasRoutes,basePath,data.articlesIntro),docs:renderPages(aliasRoutes,basePath,data.docs),home:•content.renderPage(aliasRoutes,basePath,data.home),spec:renderPages(aliasRoutes,basePath,data.spec),standalone:renderPages(aliasRoutes,basePath,data.standalone)}
+λrenderSiteData(aliasRoutes:[µAliasRoute],basePath:String,data:µSiteData)=>µSiteData={articles:renderPages(aliasRoutes,basePath,data.articles),articlesIntro:•content.renderPage(aliasRoutes,basePath,data.articlesIntro),docs:renderPages(aliasRoutes,basePath,data.docs),home:•content.renderPage(aliasRoutes,basePath,data.home),projects:renderPages(aliasRoutes,basePath,data.projects),projectsIntro:•content.renderPage(aliasRoutes,basePath,data.projectsIntro),spec:renderPages(aliasRoutes,basePath,data.spec),standalone:renderPages(aliasRoutes,basePath,data.standalone)}
 
 λwriteArticlePages(config:µSiteBuildConfig,pages:[µSitePage])=>!Fs Unit=writeArticlePagesInner(config,pages,None())
 
@@ -158,6 +200,14 @@ e fs::promises
   [page,.rest]=>{
     l _=(writePage(config,•templates.articlePage(config,"",page),page):Unit);
     writePages(config,rest)
+  }
+}
+
+λwriteProjectPages(config:µSiteBuildConfig,pages:[µSitePage])=>!Fs Unit match pages{
+  []=>()|
+  [page,.rest]=>{
+    l _=(writePage(config,•templates.projectPage(config,page),page):Unit);
+    writeProjectPages(config,rest)
   }
 }
 

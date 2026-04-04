@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import * as sigilRaw from './generated/todo-domain';
 
@@ -6,15 +6,15 @@ type Todo = { id: number; text: string; done: boolean };
 type Filter = 'all' | 'active' | 'completed';
 
 type SigilDomain = {
-  canAdd: (text: string) => boolean;
-  addTodo: (todos: Todo[], id: number, text: string) => Todo[];
-  toggleTodo: (todos: Todo[], targetId: number) => Todo[];
-  deleteTodo: (todos: Todo[], targetId: number) => Todo[];
-  editTodo: (todos: Todo[], targetId: number, newText: string) => Todo[];
-  clearCompleted: (todos: Todo[]) => Todo[];
-  isVisible: (filter: string, done: boolean) => boolean;
-  completedCount: (todos: Todo[]) => number;
-  remainingCount: (total: number, completed: number) => number;
+  canAdd: (text: string) => Promise<boolean>;
+  addTodo: (id: number, text: string, todos: Todo[]) => Promise<Todo[]>;
+  toggleTodo: (targetId: number, todos: Todo[]) => Promise<Todo[]>;
+  deleteTodo: (targetId: number, todos: Todo[]) => Promise<Todo[]>;
+  editTodo: (newText: string, targetId: number, todos: Todo[]) => Promise<Todo[]>;
+  clearCompleted: (todos: Todo[]) => Promise<Todo[]>;
+  isVisible: (done: boolean, filter: string) => Promise<boolean>;
+  completedCount: (todos: Todo[]) => Promise<number>;
+  remainingCount: (completed: number, total: number) => Promise<number>;
 };
 
 const sigil = sigilRaw as unknown as SigilDomain;
@@ -40,6 +40,10 @@ function saveState(state: PersistedState): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
 function TodoApp(): JSX.Element {
   const initial = loadState();
   const [todos, setTodos] = useState<Todo[]>(initial.todos);
@@ -48,49 +52,91 @@ function TodoApp(): JSX.Element {
   const [filter, setFilter] = useState<Filter>('all');
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingDraft, setEditingDraft] = useState('');
+  const [visible, setVisible] = useState<Todo[]>(initial.todos);
+  const [completedCount, setCompletedCount] = useState(0);
+  const [activeCount, setActiveCount] = useState(initial.todos.length);
+  const [appError, setAppError] = useState<string | null>(null);
+  const todosRef = useRef(todos);
+  const nextIdRef = useRef(nextId);
 
   useEffect(() => {
+    todosRef.current = todos;
+    nextIdRef.current = nextId;
     saveState({ todos, nextId });
   }, [todos, nextId]);
 
-  const visible = useMemo(() => {
-    return todos.filter((todo) => sigil.isVisible(filter, todo.done));
+  useEffect(() => {
+    let cancelled = false;
+
+    async function deriveView(): Promise<void> {
+      try {
+        const visibility = await Promise.all(
+          todos.map((todo) => sigil.isVisible(todo.done, filter))
+        );
+        const doneCount = await sigil.completedCount(todos);
+        const remaining = await sigil.remainingCount(doneCount, todos.length);
+        if (cancelled) return;
+        setVisible(todos.filter((_, index) => visibility[index]));
+        setCompletedCount(doneCount);
+        setActiveCount(remaining);
+        setAppError(null);
+      } catch (error) {
+        if (cancelled) return;
+        setAppError(errorMessage(error));
+      }
+    }
+
+    void deriveView();
+    return () => {
+      cancelled = true;
+    };
   }, [filter, todos]);
 
-  function submitAdd(): void {
+  async function submitAdd(): Promise<void> {
     const text = draft.trim();
-    if (!sigil.canAdd(text)) return;
-    setTodos((prev) => sigil.addTodo(prev, nextId, text));
-    setNextId((n) => n + 1);
-    setDraft('');
+    if (!(await sigil.canAdd(text))) return;
+    try {
+      const id = nextIdRef.current;
+      const nextTodos = await sigil.addTodo(id, text, todosRef.current);
+      setTodos(nextTodos);
+      setNextId(id + 1);
+      setDraft('');
+      setAppError(null);
+    } catch (error) {
+      setAppError(errorMessage(error));
+    }
   }
 
-  function submitEdit(id: number): void {
+  async function submitEdit(id: number): Promise<void> {
     const text = editingDraft.trim();
-    if (!sigil.canAdd(text)) return;
-    setTodos((prev) => sigil.editTodo(prev, id, text));
-    setEditingId(null);
-    setEditingDraft('');
+    if (!(await sigil.canAdd(text))) return;
+    try {
+      const nextTodos = await sigil.editTodo(text, id, todosRef.current);
+      setTodos(nextTodos);
+      setEditingId(null);
+      setEditingDraft('');
+      setAppError(null);
+    } catch (error) {
+      setAppError(errorMessage(error));
+    }
   }
-
-  const completedCount = sigil.completedCount(todos);
-  const activeCount = sigil.remainingCount(todos.length, completedCount);
 
   return (
     <div className="todo-shell">
       <header className="todo-header">
         <h1>Sigil TODO (React + TS Bridge)</h1>
-        <p>Mint owns deterministic list transforms. React + TypeScript own UI, events, and localStorage.</p>
+        <p>Sigil owns deterministic list transforms. React + TypeScript own UI, events, and localStorage.</p>
       </header>
+      {appError ? <p className="empty-state">App error: {appError}</p> : null}
       <div className="todo-controls">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === 'Enter') submitAdd(); }}
+          onKeyDown={(e) => { if (e.key === 'Enter') void submitAdd(); }}
           placeholder="Write a task and press Enter"
           aria-label="New todo"
         />
-        <button className="primary" onClick={submitAdd}>Add Todo</button>
+        <button className="primary" onClick={() => void submitAdd()}>Add Todo</button>
       </div>
       <div className="todo-toolbar">
         <div className="filter-group" role="tablist" aria-label="Filters">
@@ -102,7 +148,19 @@ function TodoApp(): JSX.Element {
         </div>
         <div className="filter-group">
           <span aria-live="polite">{activeCount} active / {completedCount} done</span>
-          <button className="danger" onClick={() => setTodos((prev) => sigil.clearCompleted(prev))}>Clear Completed</button>
+          <button
+            className="danger"
+            onClick={() => {
+              void sigil.clearCompleted(todosRef.current)
+                .then((nextTodos) => {
+                  setTodos(nextTodos);
+                  setAppError(null);
+                })
+                .catch((error) => setAppError(errorMessage(error)));
+            }}
+          >
+            Clear Completed
+          </button>
         </div>
       </div>
       {visible.length === 0 ? (
@@ -113,14 +171,26 @@ function TodoApp(): JSX.Element {
             const isEditing = editingId === todo.id;
             return (
               <li key={todo.id} className={`todo-item${todo.done ? ' done' : ''}`}>
-                <input type="checkbox" checked={todo.done} onChange={() => setTodos((prev) => sigil.toggleTodo(prev, todo.id))} aria-label={`Toggle ${todo.text}`} />
+                <input
+                  type="checkbox"
+                  checked={todo.done}
+                  onChange={() => {
+                    void sigil.toggleTodo(todo.id, todosRef.current)
+                      .then((nextTodos) => {
+                        setTodos(nextTodos);
+                        setAppError(null);
+                      })
+                      .catch((error) => setAppError(errorMessage(error)));
+                  }}
+                  aria-label={`Toggle ${todo.text}`}
+                />
                 {isEditing ? (
                   <input
                     className="todo-text-input"
                     value={editingDraft}
                     onChange={(e) => setEditingDraft(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') submitEdit(todo.id);
+                      if (e.key === 'Enter') void submitEdit(todo.id);
                       if (e.key === 'Escape') { setEditingId(null); setEditingDraft(''); }
                     }}
                     autoFocus
@@ -132,13 +202,25 @@ function TodoApp(): JSX.Element {
                 <div className="todo-item-actions">
                   {isEditing ? (
                     <>
-                      <button onClick={() => submitEdit(todo.id)}>Save</button>
+                      <button onClick={() => void submitEdit(todo.id)}>Save</button>
                       <button onClick={() => { setEditingId(null); setEditingDraft(''); }}>Cancel</button>
                     </>
                   ) : (
                     <>
                       <button onClick={() => { setEditingId(todo.id); setEditingDraft(todo.text); }}>Edit</button>
-                      <button className="danger" onClick={() => setTodos((prev) => sigil.deleteTodo(prev, todo.id))}>Delete</button>
+                      <button
+                        className="danger"
+                        onClick={() => {
+                          void sigil.deleteTodo(todo.id, todosRef.current)
+                            .then((nextTodos) => {
+                              setTodos(nextTodos);
+                              setAppError(null);
+                            })
+                            .catch((error) => setAppError(errorMessage(error)));
+                        }}
+                      >
+                        Delete
+                      </button>
                     </>
                   )}
                 </div>

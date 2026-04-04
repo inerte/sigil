@@ -14,12 +14,17 @@ export async function publishCompareRun(resultsDir: string, runDir: string, labe
   const summary: PublishedSummary = {
     runId: path.basename(runDir),
     label,
-    status: compare.status,
     generatedAt: compare.generatedAt,
     baseRequestedRef: compare.base.requestedRef,
     baseRef: compare.base.resolvedRef,
     candidateRequestedRef: compare.candidate.requestedRef,
     candidateRef: compare.candidate.resolvedRef,
+    taskLeanTotals: {
+      baseline: compare.suiteJudgment.baselineTaskLeans,
+      compare: compare.suiteJudgment.compareTaskLeans,
+      ties: compare.suiteJudgment.taskTies,
+      totalTasks: compare.suiteJudgment.totalTasks
+    },
     rawPassTotals: {
       base: compare.base.rawPassTotal,
       candidate: compare.candidate.rawPassTotal,
@@ -45,7 +50,9 @@ export async function publishCompareRun(resultsDir: string, runDir: string, labe
     '# Latest Developer-Experience Benchmark',
     '',
     `- Label: \`${label}\``,
-    `- Status: \`${compare.status}\``,
+    `- Compare-leaning tasks: \`${compare.suiteJudgment.compareTaskLeans}/${compare.suiteJudgment.totalTasks}\``,
+    `- Baseline-leaning tasks: \`${compare.suiteJudgment.baselineTaskLeans}/${compare.suiteJudgment.totalTasks}\``,
+    `- Tied tasks: \`${compare.suiteJudgment.taskTies}/${compare.suiteJudgment.totalTasks}\``,
     `- Base raw passes: \`${compare.base.rawPassTotal}/${totalPossible}\``,
     `- Candidate raw passes: \`${compare.candidate.rawPassTotal}/${totalPossible}\``,
     `- Base budget passes: \`${compare.base.budgetPassTotal}/${totalPossible}\``,

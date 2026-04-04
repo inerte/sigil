@@ -1,0 +1,36 @@
+{
+  "id": "site-route-canonicalization-repair",
+  "title": "Repair canonical site-route generation in a compact app fixture",
+  "goal": "Restore canonical route generation so the routing tests pass again.",
+  "initialPrompt": "A compact site-routing fixture no longer generates canonical routes. Fix the implementation so the tests pass again. The tests are part of the oracle and must not be edited.",
+  "fixture": "site-route-canonicalization-repair",
+  "setupCommands": [],
+  "oracleCommands": [
+    {
+      "command": "\"$SIGIL_BIN\" test tests/routes.sigil >/dev/null",
+      "timeoutMs": 300000
+    }
+  ],
+  "successCriteria": [
+    "The routing tests pass again.",
+    "The patch stays inside the source directory."
+  ],
+  "allowedEditPaths": [
+    "src"
+  ],
+  "forbiddenEditPaths": [
+    "tests",
+    ".local",
+    "sigil.json"
+  ],
+  "budgets": {
+    "maxCommandExecutions": 42,
+    "maxEffectiveTokens": 42000,
+    "maxWallClockMs": 420000
+  },
+  "rootCauseTags": [
+    "route_generation_bug",
+    "canonical_url",
+    "app_routing"
+  ]
+}

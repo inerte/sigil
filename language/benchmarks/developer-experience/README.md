@@ -7,19 +7,17 @@ The benchmark is **outcome-first**. By default, `compare` uses a clean `HEAD`
 baseline and the **current working tree snapshot** as the candidate, and it
 runs the full task corpus unless you explicitly narrow it with `--tasks`.
 
-The benchmark truth is:
+The official compare result is now **judge-first**:
 
-- did the agent complete the task successfully
-- within that task's **command budget**
-- within that task's **effective-token budget**
-- across **3 repeated trials**
+- each task runs `3` repeated baseline-vs-candidate pairs
+- after each repeat pair finishes, a fresh blinded Codex judge reads the full
+  artifact bundle for both sides
+- the judge returns `A`, `B`, or `TIE`
+- task summaries count baseline repeat wins, compare repeat wins, and ties
+- suite summaries count how many tasks lean baseline, lean compare, or tie
 
-Elapsed time is still recorded in raw sample artifacts for diagnostics, but it
-does not decide the benchmark outcome.
-
-At the default `3` repeats, a task needs a **budget-pass margin of at least 2**
-before the harness will call it `improved` or `regressed`. A one-sample budget
-swing stays `neutral` and is treated as diagnostic noise.
+The old numeric metrics still exist in raw artifacts for diagnostics, but they
+no longer decide the benchmark outcome.
 
 Each task manifest now carries:
 
@@ -27,8 +25,8 @@ Each task manifest now carries:
 - `maxEffectiveTokens`
 - `maxWallClockMs`
 
-`maxWallClockMs` remains a safety timeout. Command and token budgets are scored
-post-hoc from the finished run.
+`maxWallClockMs` remains a safety timeout. Command and token budgets are still
+recorded in sample results, but they are now diagnostic rather than official.
 
 ## Layout
 
@@ -99,7 +97,7 @@ node --import tsx --test language/benchmarks/developer-experience/tools/*.test.t
 
 ## Result Model
 
-Every sample records:
+Every sample still records:
 
 - oracle status
 - command execution count
@@ -108,26 +106,22 @@ Every sample records:
 - whether it stayed within the task's token budget
 - whether it completed successfully within all budgets
 
-Each task aggregate reports:
+In `compare`, each baseline-vs-candidate repeat pair also records:
 
-- raw pass count and pass rate
-- command-budget pass count and pass rate
-- token-budget pass count and pass rate
-- all-budget pass count and pass rate
-- median command count
-- median effective tokens
+- a blinded `judge-input.json` that points to the full artifact bundle for both runs
+- a `judge-result.json` with the judge's `A` / `B` / `TIE` verdict
+- judge reasons and evidence citations
 
-Per-task compare direction is driven only by **all-budget pass count**:
+The official compare summary reports:
 
-- candidate ahead by at least 2 budget passes => `improved`
-- candidate behind by at least 2 budget passes => `regressed`
-- equal counts => `neutral`
+- per-task baseline repeat wins
+- per-task compare repeat wins
+- per-task ties
+- per-task task lean: `base`, `candidate`, or `tie`
+- suite totals for baseline-leaning tasks, compare-leaning tasks, and tied tasks
 
-For `--repeats 1` smoke runs, the decisive margin drops to `1` so a single
-sample can still produce a directional result.
-
-Raw pass counts remain visible as diagnostics, but they do not change the
-benchmark verdict.
+Raw pass counts, budget pass counts, command counts, token counts, and elapsed
+time remain visible as diagnostics only.
 
 ## History Model
 
@@ -143,6 +137,7 @@ Those local bundles keep:
 - `run.json` or `compare.json`
 - per-task aggregate result JSON
 - per-sample task result JSON under `samples/<n>/`
+- per-repeat judge artifacts under `judgments/<n>/`
 - transcripts
 - diffs
 - oracle logs
@@ -157,15 +152,18 @@ The initial deterministic task corpus includes:
 - `canonical-record-order-repair`
 - `canonical-stdlib-helper-repair`
 - `event-import-pipeline-repair`
+- `feed-description-propagation`
 - `homebrew-formula-test-repair`
 - `syntax-compile-fix`
 - `multimodule-report`
 - `repair-ingest-received-timestamp`
 - `repair-feed-published-timestamp`
+- `site-route-canonicalization-repair`
 - `stats-summary-implementation`
 - `test-repair`
 - `todo-domain-test-repair`
 - `todo-json-roundtrip-repair`
+- `topology-status-client-feature`
 - `topology-world-fix`
 
 These are enough to exercise the harness end to end, but the corpus should grow

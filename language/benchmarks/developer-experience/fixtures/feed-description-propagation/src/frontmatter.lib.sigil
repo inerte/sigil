@@ -1,0 +1,6 @@
+λfieldValue(key:String,lines:[String])=>String match §list.find(λ(line:String)=>Bool=§string.startsWith(key++": ",line),lines){
+  Some(line)=>§string.replaceAll(key++": ","",line)|
+  None()=>""
+}
+
+λparseArticleMeta(lines:[String])=>µArticleMeta={slug:fieldValue("slug",lines),title:fieldValue("title",lines)}

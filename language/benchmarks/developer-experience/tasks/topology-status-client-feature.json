@@ -1,0 +1,43 @@
+{
+  "id": "topology-status-client-feature",
+  "title": "Implement missing topology-aware status client wiring",
+  "goal": "Add the missing topology and client wiring so the status-client checks pass.",
+  "initialPrompt": "A compact topology-aware client library is missing status-endpoint wiring. Update the topology, test config, and client helper so the checks pass. The tests are part of the oracle and must not be edited.",
+  "fixture": "topology-status-client-feature",
+  "setupCommands": [],
+  "oracleCommands": [
+    {
+      "command": "\"$SIGIL_BIN\" test tests/statusClient.sigil --env test >/dev/null",
+      "timeoutMs": 300000
+    },
+    {
+      "command": "\"$SIGIL_BIN\" inspect world --env test . >/dev/null",
+      "timeoutMs": 300000
+    }
+  ],
+  "successCriteria": [
+    "The status-client tests pass under env test.",
+    "World inspection for env test succeeds.",
+    "The patch stays inside the allowed topology, config, and client files."
+  ],
+  "allowedEditPaths": [
+    "src/topology.lib.sigil",
+    "config/test.lib.sigil",
+    "src/statusClient.lib.sigil"
+  ],
+  "forbiddenEditPaths": [
+    "tests",
+    ".local",
+    "sigil.json"
+  ],
+  "budgets": {
+    "maxCommandExecutions": 117,
+    "maxEffectiveTokens": 60000,
+    "maxWallClockMs": 420000
+  },
+  "rootCauseTags": [
+    "missing_feature",
+    "topology_dependency",
+    "http_request_wiring"
+  ]
+}

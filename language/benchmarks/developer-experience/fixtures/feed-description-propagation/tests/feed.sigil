@@ -1,0 +1,15 @@
+λarticleLines()=>[String]=["title: Ship Notes","slug: ship-notes","description: Release notes and roadmap"]
+
+λmain()=>Unit=()
+
+test "frontmatter parses description metadata" {
+  (•frontmatter.parseArticleMeta(articleLines()):µArticleMeta).description="Release notes and roadmap"
+}
+
+test "feed entry keeps description text" {
+  (•feed.entry((•frontmatter.parseArticleMeta(articleLines()):µArticleMeta)):µFeedEntry).description="Release notes and roadmap"
+}
+
+test "feed render includes description element" {
+  §string.indexOf(•feed.render((•feed.entry((•frontmatter.parseArticleMeta(articleLines()):µArticleMeta)):µFeedEntry)),"<description>Release notes and roadmap</description>")≥0
+}

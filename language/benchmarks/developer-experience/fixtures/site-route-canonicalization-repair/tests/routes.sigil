@@ -1,0 +1,13 @@
+λmain()=>Unit=()
+
+test "article routes keep trailing slash" {
+  •routes.canonicalRoute((•content.articlePage("hello-world"):µSitePage))="/articles/hello-world/"
+}
+
+test "docs routes keep prefix and trailing slash" {
+  •routes.canonicalRoute((•content.docsPage("stdlib"):µSitePage))="/docs/stdlib/"
+}
+
+test "home route is canonical root" {
+  •routes.canonicalRoute((•content.homePage():µSitePage))="/"
+}

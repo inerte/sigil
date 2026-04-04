@@ -1,0 +1,3 @@
+t PageKind=Article()|Docs()|Home()
+
+t SitePage={kind:PageKind,slug:String}

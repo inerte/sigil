@@ -1,0 +1,3 @@
+c mailerApi=(§topology.httpService("mailerApi"):§topology.HttpServiceDependency)
+
+c test=(§topology.environment("test"):§topology.Environment)

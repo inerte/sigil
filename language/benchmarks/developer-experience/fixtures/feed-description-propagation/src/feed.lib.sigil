@@ -1,0 +1,3 @@
+λentry(meta:µArticleMeta)=>µFeedEntry={link:"/articles/"++meta.slug++"/",title:meta.title}
+
+λrender(entry:µFeedEntry)=>String="<item><title>"++entry.title++"</title><link>"++entry.link++"</link></item>"

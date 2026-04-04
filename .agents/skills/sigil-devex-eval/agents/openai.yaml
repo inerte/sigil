@@ -1,4 +1,4 @@
 interface:
   display_name: "Sigil Devex Eval"
   short_description: "Benchmark real Sigil task outcomes with Codex"
-  default_prompt: "Use $sigil-devex-eval to evaluate my current Sigil working tree against clean HEAD across the benchmark tasks, using the default budgeted compare."
+  default_prompt: "Use $sigil-devex-eval to evaluate my current Sigil working tree against clean HEAD across the benchmark tasks, using the default blinded per-repeat judge compare."

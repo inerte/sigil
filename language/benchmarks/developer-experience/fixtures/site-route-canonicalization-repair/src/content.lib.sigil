@@ -1,0 +1,5 @@
+λarticlePage(slug:String)=>µSitePage={kind:µArticle(),slug:slug}
+
+λdocsPage(slug:String)=>µSitePage={kind:µDocs(),slug:slug}
+
+λhomePage()=>µSitePage={kind:µHome(),slug:"home"}

@@ -1,0 +1,3 @@
+t ArticleMeta={slug:String,title:String}
+
+t FeedEntry={link:String,title:String}

@@ -1,0 +1,36 @@
+{
+  "id": "feed-description-propagation",
+  "title": "Implement feed description propagation in a compact publishing pipeline",
+  "goal": "Add description propagation so the publishing feed tests pass.",
+  "initialPrompt": "A cut-down publishing/feed library is missing description propagation. Update the implementation so the tests pass. The tests are part of the oracle and must not be edited.",
+  "fixture": "feed-description-propagation",
+  "setupCommands": [],
+  "oracleCommands": [
+    {
+      "command": "\"$SIGIL_BIN\" test tests/feed.sigil >/dev/null",
+      "timeoutMs": 300000
+    }
+  ],
+  "successCriteria": [
+    "The feed tests pass.",
+    "The patch stays inside the source directory."
+  ],
+  "allowedEditPaths": [
+    "src"
+  ],
+  "forbiddenEditPaths": [
+    "tests",
+    ".local",
+    "sigil.json"
+  ],
+  "budgets": {
+    "maxCommandExecutions": 39,
+    "maxEffectiveTokens": 31000,
+    "maxWallClockMs": 420000
+  },
+  "rootCauseTags": [
+    "missing_feature",
+    "field_propagation",
+    "feed_generation"
+  ]
+}

@@ -1,0 +1,9 @@
+λcanonicalRoute(page:µSitePage)=>String=joinRoute(canonicalSegments(page))
+
+λcanonicalSegments(page:µSitePage)=>[String] match page.kind{
+  µArticle()=>["articles",page.slug]|
+  µDocs()=>["docs",page.slug]|
+  µHome()=>["home"]
+}
+
+λjoinRoute(segments:[String])=>String="/"++§string.join("/",segments)

@@ -2,7 +2,7 @@
 
 import path from 'node:path';
 
-import { CodexExecutor } from './lib/executor.js';
+import { CodexExecutor, CodexJudgeExecutor } from './lib/executor.js';
 import { loadTaskManifests } from './lib/manifests.js';
 import { publishCompareRun } from './lib/publish.js';
 import { compareReferences, runTasksForReference } from './lib/runner.js';
@@ -168,14 +168,18 @@ async function cmdCompare(options: ParsedOptions): Promise<void> {
     baseSourceKind: 'ref',
     candidateSourceKind,
     repeats,
-    executor: options.executor ?? 'codex'
+    executor: options.executor ?? 'codex',
+    judgeExecutor: 'codex-judge'
   });
 
   const executor = new CodexExecutor({
     model: options.model
   });
+  const judgeExecutor = new CodexJudgeExecutor({
+    model: options.model
+  });
 
-  const compare = await compareReferences(repoRoot, fixturesDir, executor, tasks, runDirectory, {
+  const compare = await compareReferences(repoRoot, fixturesDir, executor, judgeExecutor, tasks, runDirectory, {
     repoRoot,
     runsLocalDir: localRunsDir,
     refLabel: 'base',

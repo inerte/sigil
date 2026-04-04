@@ -1,0 +1,20 @@
+λmain()=>Unit=()
+
+test "topology declares status api dependency" {
+  •topology.statusApi=§topology.HttpServiceDependency("statusApi")
+}
+
+test "status request uses status api dependency" {
+  (•statusClient.statusRequest("ready"):§httpClient.HttpRequest).dependency=•topology.statusApi
+}
+
+test "status request targets status path" {
+  (•statusClient.statusRequest("ready"):§httpClient.HttpRequest).path="/status/ready"
+}
+
+test "status request asks for json" {
+  match ¶map.get("accept",(•statusClient.statusRequest("ready"):§httpClient.HttpRequest).headers){
+    Some(value)=>value="application/json"|
+    None()=>false
+  }
+}

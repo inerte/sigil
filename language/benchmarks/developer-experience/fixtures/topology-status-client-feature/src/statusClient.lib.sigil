@@ -1,0 +1,3 @@
+λjsonHeaders()=>§httpClient.Headers=§httpClient.header("accept","application/json")
+
+λstatusRequest(status:String)=>§httpClient.HttpRequest={body:None(),dependency:•topology.mailerApi,headers:jsonHeaders(),method:§httpClient.Get(),path:"/health"}

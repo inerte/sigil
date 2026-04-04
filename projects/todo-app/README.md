@@ -12,7 +12,7 @@ This example demonstrates the recommended frontend integration pattern:
 - `src/todoJson.lib.sigil`: canonical Sigil JSON codec for persisted todo payloads
 - `tests/todoDomain.sigil`: Sigil tests for the domain logic
 - `tests/todoJson.sigil`: Sigil tests for codec roundtrip/error handling
-- `web/src/generated/todoDomain.ts`: generated Sigil TypeScript output
+- `web/src/generated/todo-domain.ts`: generated Sigil TypeScript output
 - `web/src/bridge.tsx`: React + localStorage adapter (lintable/prettifiable TypeScript)
 
 ## Why a bridge?

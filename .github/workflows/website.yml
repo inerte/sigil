@@ -4,20 +4,26 @@ on:
   pull_request:
     paths:
       - ".github/workflows/website.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
       - "language/compiler/**"
       - "language/docs/**"
       - "language/spec/**"
       - "projects/ssg/**"
+      - "projects/todo-app/**"
       - "website/**"
   push:
     branches:
       - main
     paths:
       - ".github/workflows/website.yml"
+      - "package.json"
+      - "pnpm-lock.yaml"
       - "language/compiler/**"
       - "language/docs/**"
       - "language/spec/**"
       - "projects/ssg/**"
+      - "projects/todo-app/**"
       - "website/**"
   workflow_dispatch:
 
@@ -51,9 +57,6 @@ jobs:
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build sigil-cli
-        run: cargo build --manifest-path language/compiler/Cargo.toml -p sigil-cli
-
       - name: Test SSG helpers
         run: language/compiler/target/debug/sigil test projects/ssg/tests
 
@@ -61,17 +64,20 @@ jobs:
         env:
           sigilSiteBasePath: /${{ github.event.repository.name }}/
           sigilSiteRepoUrl: https://github.com/${{ github.repository }}
-        run: language/compiler/target/debug/sigil run projects/ssg/src/main.sigil --env site
+        run: pnpm sigil:build:website
 
       - name: Verify site output
         run: |
           test -f website/.local/site/index.html
           test -f website/.local/site/articles/index.html
           test -f website/.local/site/docs/index.html
+          test -f website/.local/site/projects/index.html
+          test -f website/.local/site/projects/sigil-todo/index.html
+          test -f website/.local/site/projects/sigil-todo/demo/index.html
           test -f website/.local/site/spec/index.html
           test -f website/.local/site/assets/site.css
           test -f website/.local/site/site.json
-          grep -Eq "Articles|Docs|Spec" website/.local/site/index.html
+          grep -Eq "Projects|Articles|Docs|Spec" website/.local/site/index.html
 
       - name: Upload Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

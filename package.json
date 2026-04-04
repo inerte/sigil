@@ -25,7 +25,7 @@
     "sigil:test:roguelike": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test projects/roguelike/tests",
     "sigil:test:ssg": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test projects/ssg/tests",
     "sigil:test:todo": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test projects/todo-app/tests",
-    "sigil:build:todo": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && (cd projects/todo-app && pnpm install && pnpm sigil:compile && SIGIL_TODO_BASE=/projects/sigil-todo/demo/ pnpm build)",
+    "sigil:build:todo": "(cd projects/todo-app && pnpm install && SIGIL_TODO_BASE=/projects/sigil-todo/demo/ pnpm build)",
     "sigil:test:canonical": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test language/integrationTests/tests/canonical.sigil",
     "sigil:test:multimodule": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test language/integrationTests/tests/multimodule.sigil",
     "sigil:test:all": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil run projects/testAllRunner/src/main.sigil --env local",

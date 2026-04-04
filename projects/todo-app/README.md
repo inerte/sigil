@@ -12,7 +12,7 @@ This example demonstrates the recommended frontend integration pattern:
 - `src/todoJson.lib.sigil`: canonical Sigil JSON codec for persisted todo payloads
 - `tests/todoDomain.sigil`: Sigil tests for the domain logic
 - `tests/todoJson.sigil`: Sigil tests for codec roundtrip/error handling
-- `web/src/generated/todo-domain.ts`: generated Sigil TypeScript output
+- `web/src/generated/todo-domain.ts`: generated Sigil TypeScript output (regenerated locally, not tracked)
 - `web/src/bridge.tsx`: React + localStorage adapter (lintable/prettifiable TypeScript)
 
 ## Why a bridge?
@@ -25,10 +25,11 @@ React stays idiomatic in TypeScript/JSX for UI rendering, list updates, hooks, e
 ```bash
 cd projects/todo-app
 pnpm install
-pnpm sigil:compile
 pnpm dev
 cargo run -q -p sigil-cli --manifest-path ../../language/compiler/Cargo.toml -- test tests
 ```
+
+`pnpm dev` regenerates `web/src/generated/todo-domain.ts` before starting Vite.
 
 ## Recompile Sigil after changing the domain logic
 
@@ -44,6 +45,7 @@ To publish this app under the Sigil site as `/projects/sigil-todo/demo/`, build 
 ```bash
 cd projects/todo-app
 pnpm install
-pnpm sigil:compile
 SIGIL_TODO_BASE=/projects/sigil-todo/demo/ pnpm build
 ```
+
+`pnpm build` also regenerates the Sigil bridge before producing `web/dist/`.

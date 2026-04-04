@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "sigil:compile": "cargo build --quiet --manifest-path ../../language/compiler/Cargo.toml -p sigil-cli && ../../language/compiler/target/debug/sigil compile src/todoDomain.lib.sigil -o web/src/generated/todo-domain.ts",
+    "predev": "pnpm sigil:compile",
     "dev": "vite",
+    "prebuild": "pnpm sigil:compile",
     "build": "vite build",
     "preview": "vite preview"
   },

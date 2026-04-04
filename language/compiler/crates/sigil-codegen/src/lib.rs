@@ -1104,6 +1104,146 @@ function __sigil_world_log_warn(message) {
   }
   return null;
 }
+let __sigil_terminal_cleanup_installed = false;
+let __sigil_terminal_raw_enabled = false;
+let __sigil_terminal_cursor_hidden = false;
+function __sigil_terminal_is_interactive() {
+  return !!(process.stdin && process.stdout && process.stdin.isTTY && process.stdout.isTTY);
+}
+function __sigil_terminal_install_cleanup() {
+  if (__sigil_terminal_cleanup_installed) {
+    return;
+  }
+  __sigil_terminal_cleanup_installed = true;
+  const restore = () => {
+    if (__sigil_terminal_cursor_hidden) {
+      try {
+        process.stdout.write('\u001b[?25h');
+      } catch (_) {}
+      __sigil_terminal_cursor_hidden = false;
+    }
+    if (__sigil_terminal_raw_enabled && __sigil_terminal_is_interactive()) {
+      try {
+        process.stdin.setRawMode(false);
+      } catch (_) {}
+      try {
+        process.stdin.pause();
+      } catch (_) {}
+      __sigil_terminal_raw_enabled = false;
+    }
+  };
+  process.once('exit', restore);
+  process.once('SIGINT', () => {
+    restore();
+    process.exit(130);
+  });
+}
+async function __sigil_world_terminal_enable_raw_mode() {
+  __sigil_terminal_install_cleanup();
+  if (!__sigil_terminal_is_interactive()) {
+    return null;
+  }
+  process.stdin.setEncoding('utf8');
+  process.stdin.setRawMode(true);
+  process.stdin.resume();
+  __sigil_terminal_raw_enabled = true;
+  return null;
+}
+async function __sigil_world_terminal_clear_screen() {
+  __sigil_terminal_install_cleanup();
+  if (!process.stdout) {
+    return null;
+  }
+  process.stdout.write('\u001b[2J\u001b[H');
+  return null;
+}
+async function __sigil_world_terminal_disable_raw_mode() {
+  if (!__sigil_terminal_is_interactive() || !__sigil_terminal_raw_enabled) {
+    return null;
+  }
+  process.stdin.setRawMode(false);
+  process.stdin.pause();
+  __sigil_terminal_raw_enabled = false;
+  return null;
+}
+async function __sigil_world_terminal_hide_cursor() {
+  __sigil_terminal_install_cleanup();
+  if (!process.stdout || __sigil_terminal_cursor_hidden) {
+    return null;
+  }
+  process.stdout.write('\u001b[?25l');
+  __sigil_terminal_cursor_hidden = true;
+  return null;
+}
+async function __sigil_world_terminal_show_cursor() {
+  if (!process.stdout || !__sigil_terminal_cursor_hidden) {
+    return null;
+  }
+  process.stdout.write('\u001b[?25h');
+  __sigil_terminal_cursor_hidden = false;
+  return null;
+}
+async function __sigil_world_terminal_write(text) {
+  __sigil_terminal_install_cleanup();
+  if (!process.stdout) {
+    return null;
+  }
+  process.stdout.write(String(text));
+  return null;
+}
+function __sigil_terminal_key_escape() {
+  return { __tag: 'Escape', __fields: [] };
+}
+function __sigil_terminal_key_text(value) {
+  return { __tag: 'Text', __fields: [String(value)] };
+}
+function __sigil_terminal_decode_key(chunk) {
+  const text = String(chunk ?? '');
+  if (!text) {
+    return __sigil_terminal_key_escape();
+  }
+  if (text === '\u0003') {
+    throw Object.assign(new Error('SIGINT'), { __sigil_terminal_sigint: true });
+  }
+  if (text.startsWith('\u001b')) {
+    return __sigil_terminal_key_escape();
+  }
+  return __sigil_terminal_key_text(text[0].toLowerCase());
+}
+async function __sigil_world_terminal_read_key() {
+  __sigil_terminal_install_cleanup();
+  if (!process.stdin) {
+    return __sigil_terminal_key_escape();
+  }
+  process.stdin.setEncoding('utf8');
+  process.stdin.resume();
+  return await new Promise((resolve) => {
+    const cleanup = () => {
+      process.stdin.off('data', onData);
+      process.stdin.off('error', onError);
+    };
+    const onData = (chunk) => {
+      cleanup();
+      try {
+        resolve(__sigil_terminal_decode_key(chunk));
+      } catch (error) {
+        if (error && error.__sigil_terminal_sigint) {
+          __sigil_world_terminal_show_cursor();
+          __sigil_world_terminal_disable_raw_mode();
+          process.exit(130);
+          return;
+        }
+        resolve(__sigil_terminal_key_escape());
+      }
+    };
+    const onError = () => {
+      cleanup();
+      resolve(__sigil_terminal_key_escape());
+    };
+    process.stdin.once('data', onData);
+    process.stdin.once('error', onError);
+  });
+}
 function __sigil_world_time_now_instant() {
   const replay = __sigil_replay_take_event('timer', 'nowInstant');
   if (replay.active) {
@@ -4108,6 +4248,9 @@ impl TypeScriptGenerator {
                 if module == "stdlib/io" {
                     return self.generate_io_intrinsic(call_expr, member, args);
                 }
+                if module == "stdlib/terminal" {
+                    return self.generate_terminal_intrinsic(call_expr, member, args);
+                }
                 if module == "stdlib/process" {
                     return self.generate_process_intrinsic(call_expr, member, args);
                 }
@@ -4185,6 +4328,13 @@ impl TypeScriptGenerator {
                     .is_some_and(|path| path.ends_with("language/stdlib/io.lib.sigil"))
                 {
                     return self.generate_io_intrinsic(call_expr, &name.name, args);
+                }
+                if self
+                    .source_file
+                    .as_deref()
+                    .is_some_and(|path| path.ends_with("language/stdlib/terminal.lib.sigil"))
+                {
+                    return self.generate_terminal_intrinsic(call_expr, &name.name, args);
                 }
                 if self
                     .source_file
@@ -4822,6 +4972,83 @@ impl TypeScriptGenerator {
         }
     }
 
+    fn generate_terminal_intrinsic(
+        &mut self,
+        call_expr: &TypedExpr,
+        member: &str,
+        args: &[TypedExpr],
+    ) -> Result<Option<String>, CodegenError> {
+        let generated_args = args
+            .iter()
+            .map(|arg| self.generate_expression(arg))
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+        let span_id = self.span_id_for_expr(DebugSpanKind::ExprCall, call_expr.location);
+
+        match member {
+            "clearScreen" if generated_args.is_empty() => Ok(Some(self.wrap_effect_trace(
+                span_id,
+                "terminal",
+                "clearScreen",
+                "[]",
+                "__sigil_world_terminal_clear_screen()",
+                None,
+            )?)),
+            "disableRawMode" if generated_args.is_empty() => Ok(Some(self.wrap_effect_trace(
+                span_id,
+                "terminal",
+                "disableRawMode",
+                "[]",
+                "__sigil_world_terminal_disable_raw_mode()",
+                None,
+            )?)),
+            "enableRawMode" if generated_args.is_empty() => Ok(Some(self.wrap_effect_trace(
+                span_id,
+                "terminal",
+                "enableRawMode",
+                "[]",
+                "__sigil_world_terminal_enable_raw_mode()",
+                None,
+            )?)),
+            "hideCursor" if generated_args.is_empty() => Ok(Some(self.wrap_effect_trace(
+                span_id,
+                "terminal",
+                "hideCursor",
+                "[]",
+                "__sigil_world_terminal_hide_cursor()",
+                None,
+            )?)),
+            "readKey" if generated_args.is_empty() => Ok(Some(self.wrap_effect_trace(
+                span_id,
+                "terminal",
+                "readKey",
+                "[]",
+                "__sigil_world_terminal_read_key()",
+                None,
+            )?)),
+            "showCursor" if generated_args.is_empty() => Ok(Some(self.wrap_effect_trace(
+                span_id,
+                "terminal",
+                "showCursor",
+                "[]",
+                "__sigil_world_terminal_show_cursor()",
+                None,
+            )?)),
+            "write" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__text) => {})",
+                generated_args[0],
+                self.wrap_effect_trace(
+                    span_id,
+                    "terminal",
+                    "write",
+                    "[__text]",
+                    "__sigil_world_terminal_write(__text)",
+                    None,
+                )?
+            ))),
+            _ => Ok(None),
+        }
+    }
+
     fn generate_process_intrinsic(
         &mut self,
         call_expr: &TypedExpr,
@@ -5275,6 +5502,13 @@ impl TypeScriptGenerator {
         }
         if call.namespace.join("/") == "stdlib/time" {
             if let Some(intrinsic) = self.generate_time_intrinsic(expr, &call.member, &call.args)? {
+                return Ok(intrinsic);
+            }
+        }
+        if call.namespace.join("/") == "stdlib/terminal" {
+            if let Some(intrinsic) =
+                self.generate_terminal_intrinsic(expr, &call.member, &call.args)?
+            {
                 return Ok(intrinsic);
             }
         }

@@ -249,6 +249,27 @@ Process rules:
 - `run` captures stdout and stderr in memory
 - `kill` is a normal termination request, not a timeout/escalation protocol
 
+### Implemented `§terminal` Types and Functions
+
+```sigil decl §terminal
+t Key=Escape()|Text(String)
+
+λclearScreen()=>!Terminal Unit
+λdisableRawMode()=>!Terminal Unit
+λenableRawMode()=>!Terminal Unit
+λhideCursor()=>!Terminal Unit
+λreadKey()=>!Terminal Key
+λshowCursor()=>!Terminal Unit
+λwrite(text:String)=>!Terminal Unit
+```
+
+Terminal rules:
+- terminal interaction is raw-key oriented rather than line-oriented
+- `readKey` returns canonical `Key` values
+- `Escape()` represents the escape key and escape sequences
+- `Text(String)` carries normalized plain-text key input
+- interactive programs should restore cursor visibility and raw-mode state before exit
+
 ### Implemented `§regex` Types and Functions
 
 ```sigil decl §regex

@@ -23,6 +23,7 @@ The Sigil standard library provides core utility functions and predicates for co
 - ✅ JSON parsing/serialization - `stdlib/json`
 - ✅ Path manipulation - `stdlib/path`
 - ✅ Time parsing/comparison/clock - `stdlib/time`
+- ✅ Terminal raw-mode input and cursor control - `stdlib/terminal`
 - ✅ URL parsing/query helpers - `stdlib/url`
 - ✅ Core prelude vocabulary (Option, Result) - `core/prelude` (implicit)
 - ✅ Length operator (`#`) - works on strings and lists
@@ -241,6 +242,34 @@ field. Sigil does not use open or partial records for this.
 
 Effectful code may also use `§time.sleepMs(ms)` for retry loops and
 process orchestration.
+
+`§terminal` exposes a small raw-terminal surface for turn-based interactive
+programs:
+
+```sigil program
+λmain()=>!Terminal Unit={
+  l _=(§terminal.enableRawMode():Unit);
+  l key=(§terminal.readKey():§terminal.Key);
+  l _=(§terminal.disableRawMode():Unit);
+  match key{
+    §terminal.Text(text)=>()|
+    §terminal.Escape()=>()
+  }
+}
+```
+
+The canonical terminal surface is:
+- `clearScreen`
+- `enableRawMode`
+- `disableRawMode`
+- `hideCursor`
+- `showCursor`
+- `readKey`
+- `write`
+
+`readKey` normalizes terminal input into `§terminal.Key`, currently:
+- `Escape()`
+- `Text(String)`
 
 `§url` exposes strict parse results and typed URL fields for both absolute and relative targets:
 
@@ -996,6 +1025,8 @@ Reverse a string.
 - `toLower`
 - `toUpper`
 - `trim`
+- `trimEndChars`
+- `trimStartChars`
 - `unlines`
 
 Design notes:

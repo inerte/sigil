@@ -1,0 +1,15 @@
+t Key=Escape()|Text(String)
+
+λclearScreen()=>!Terminal Unit=()
+
+λdisableRawMode()=>!Terminal Unit=()
+
+λenableRawMode()=>!Terminal Unit=()
+
+λhideCursor()=>!Terminal Unit=()
+
+λreadKey()=>!Terminal Key=Escape()
+
+λshowCursor()=>!Terminal Unit=()
+
+λwrite(text:String)=>!Terminal Unit=()

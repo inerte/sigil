@@ -20,6 +20,22 @@ test "charAt at index 0" {
   §string.charAt(0,"hello")="h"
 }
 
+test "contains finds present substring" {
+  §string.contains("hello world","world")
+}
+
+test "contains reports missing substring" {
+  ¬§string.contains("hello","xyz")
+}
+
+test "contains treats empty search as present" {
+  §string.contains("hello","")
+}
+
+test "contains matches whole string" {
+  §string.contains("hello","hello")
+}
+
 test "charAt at middle index" {
   §string.charAt(2,"hello")="l"
 }

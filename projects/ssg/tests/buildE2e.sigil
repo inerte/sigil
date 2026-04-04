@@ -1,7 +1,5 @@
 λbaseConfig(outputDir:String)=>µSiteBuildConfig={basePath:"/",outputDir:outputDir,repoUrl:"https://github.com/inerte/sigil",siteDescription:"Machine-first programming language designed for canonical code generation.",siteTitle:"Sigil",siteUrl:"https://inerte.github.io/sigil"}
 
-λcontains(haystack:String,needle:String)=>Bool=§string.indexOf(haystack,needle)≥0
-
 λmain()=>Unit=()
 
 test "build site removes stale output files" =>!SiteBuild {
@@ -19,7 +17,7 @@ test "build site renders docs content page" =>!SiteBuild {
   l _=(§file.removeTree(outputDir):Unit);
   l _=(•build.buildSite(baseConfig(outputDir)):Unit);
   l stdlibDoc=(§file.readText(§path.join(outputDir,"docs/stdlib/index.html")):String);
-  contains(stdlibDoc,"Sigil Standard Library")
+  §string.contains(stdlibDoc,"Sigil Standard Library")
 }
 
 test "build site renders nav sections on homepage" =>!SiteBuild {
@@ -27,7 +25,7 @@ test "build site renders nav sections on homepage" =>!SiteBuild {
   l _=(§file.removeTree(outputDir):Unit);
   l _=(•build.buildSite(baseConfig(outputDir)):Unit);
   l home=(§file.readText(§path.join(outputDir,"index.html")):String);
-  contains(home,">Articles<") and contains(home,">Docs<") and contains(home,">Spec<") and contains(home,"placeholder=\"Search docs, articles, and spec pages\"") and contains(home,"/assets/search.js")
+  §string.contains(home,">Articles<") and §string.contains(home,">Docs<") and §string.contains(home,">Spec<") and §string.contains(home,"placeholder=\"Search docs, articles, and spec pages\"") and §string.contains(home,"/assets/search.js")
 }
 
 test "build site writes key output files" =>!SiteBuild {
@@ -41,7 +39,7 @@ test "build site writes key output files" =>!SiteBuild {
   l notFound=(§file.readText(§path.join(outputDir,"404.html")):String);
   l siteJson=(§file.readText(§path.join(outputDir,"site.json")):String);
   l spec=(§file.readText(§path.join(outputDir,"spec/index.html")):String);
-  contains(about,"About This Site") and contains(articles,"Latest Articles") and #css>0 and contains(docs,"Docs") and contains(notFound,"Page not found") and contains(siteJson,"\"generatedAt\":\"") and contains(spec,"Spec")
+  §string.contains(about,"About This Site") and §string.contains(articles,"Latest Articles") and #css>0 and §string.contains(docs,"Docs") and §string.contains(notFound,"Page not found") and §string.contains(siteJson,"\"generatedAt\":\"") and §string.contains(spec,"Spec")
 }
 
 test "build site writes manifest with repo url and counts" =>!SiteBuild {
@@ -49,7 +47,7 @@ test "build site writes manifest with repo url and counts" =>!SiteBuild {
   l _=(§file.removeTree(outputDir):Unit);
   l _=(•build.buildSite(baseConfig(outputDir)):Unit);
   l manifest=(§file.readText(§path.join(outputDir,"site.json")):String);
-  contains(manifest,"\"repoUrl\":\"https://github.com/inerte/sigil\"") and contains(manifest,"\"articlesCount\":\"") and contains(manifest,"\"docsCount\":\"") and contains(manifest,"\"specCount\":\"")
+  §string.contains(manifest,"\"repoUrl\":\"https://github.com/inerte/sigil\"") and §string.contains(manifest,"\"articlesCount\":\"") and §string.contains(manifest,"\"docsCount\":\"") and §string.contains(manifest,"\"specCount\":\"")
 }
 
 test "build site writes feed with article metadata" =>!SiteBuild {
@@ -57,7 +55,7 @@ test "build site writes feed with article metadata" =>!SiteBuild {
   l _=(§file.removeTree(outputDir):Unit);
   l _=(•build.buildSite(baseConfig(outputDir)):Unit);
   l feed=(§file.readText(§path.join(outputDir,"feed.xml")):String);
-  contains(feed,"<feed xmlns=\"http://www.w3.org/2005/Atom\">") and contains(feed,"https://inerte.github.io/sigil/feed.xml") and contains(feed,"https://inerte.github.io/sigil/articles/worlds-not-mocks/") and contains(feed,"<title>Worlds, Not Mocks</title>")
+  §string.contains(feed,"<feed xmlns=\"http://www.w3.org/2005/Atom\">") and §string.contains(feed,"https://inerte.github.io/sigil/feed.xml") and §string.contains(feed,"https://inerte.github.io/sigil/articles/worlds-not-mocks/") and §string.contains(feed,"<title>Worlds, Not Mocks</title>")
 }
 
 test "build site writes search index with core page fields" =>!SiteBuild {
@@ -65,7 +63,7 @@ test "build site writes search index with core page fields" =>!SiteBuild {
   l _=(§file.removeTree(outputDir):Unit);
   l _=(•build.buildSite(baseConfig(outputDir)):Unit);
   l searchIndex=(§file.readText(§path.join(outputDir,"search-index.json")):String);
-  contains(searchIndex,"\"section\":\"article\"") and contains(searchIndex,"\"title\":\"Worlds, Not Mocks\"") and contains(searchIndex,"\"url\":\"/articles/worlds-not-mocks/\"") and contains(searchIndex,"\"sourcePath\":\"website/articles/031-worlds-not-mocks.md\"")
+  §string.contains(searchIndex,"\"section\":\"article\"") and §string.contains(searchIndex,"\"title\":\"Worlds, Not Mocks\"") and §string.contains(searchIndex,"\"url\":\"/articles/worlds-not-mocks/\"") and §string.contains(searchIndex,"\"sourcePath\":\"website/articles/031-worlds-not-mocks.md\"")
 }
 
 test "build site writes sitemap with canonical urls" =>!SiteBuild {
@@ -73,5 +71,5 @@ test "build site writes sitemap with canonical urls" =>!SiteBuild {
   l _=(§file.removeTree(outputDir):Unit);
   l _=(•build.buildSite(baseConfig(outputDir)):Unit);
   l sitemap=(§file.readText(§path.join(outputDir,"sitemap.xml")):String);
-  contains(sitemap,"https://inerte.github.io/sigil/") and contains(sitemap,"https://inerte.github.io/sigil/articles/") and contains(sitemap,"https://inerte.github.io/sigil/about-site/") and contains(sitemap,"https://inerte.github.io/sigil/docs/stdlib/")
+  §string.contains(sitemap,"https://inerte.github.io/sigil/") and §string.contains(sitemap,"https://inerte.github.io/sigil/articles/") and §string.contains(sitemap,"https://inerte.github.io/sigil/about-site/") and §string.contains(sitemap,"https://inerte.github.io/sigil/docs/stdlib/")
 }

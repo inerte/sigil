@@ -26,7 +26,7 @@ e process
   }
 }
 
-λrunStdoutContains(expected:String,result:§process.ProcessResult)=>Bool=§string.indexOf(result.stdout,expected)≥0
+λrunStdoutContains(expected:String,result:§process.ProcessResult)=>Bool=§string.contains(result.stdout,expected)
 
 λsigil(args:[String])=>§process.Command=§process.command([repoPath("language/compiler/target/debug/sigil")]⧺args)
 

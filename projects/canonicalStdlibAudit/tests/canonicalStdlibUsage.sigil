@@ -5,7 +5,7 @@
 test "compile rule rejects invalid regex" {
   match •canonicalStdlibUsage.compileRule({name:"broken",pattern:"(",replacement:"§list.sum"}){
     Ok(_)=>false|
-    Err(message)=>§string.indexOf(message,"broken")≥0
+    Err(message)=>§string.contains(message,"broken")
   }
 }
 

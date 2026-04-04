@@ -46,30 +46,30 @@ test "http topology validates for test env" =>!Process {
 }
 
 test "http get client reaches roundtrip server" =>!Clock!Fs!Process!Timer {
-  §string.indexOf(runClientOutput("src/getClient.sigil"),"200:healthy")≥0=true
+  §string.contains(runClientOutput("src/getClient.sigil"),"200:healthy")=true
 }
 
 test "http post client reaches roundtrip server" =>!Clock!Fs!Process!Timer {
-  §string.indexOf(runClientOutput("src/postClient.sigil"),"201:echoed")≥0=true
+  §string.contains(runClientOutput("src/postClient.sigil"),"201:echoed")=true
 }
 
 test "http json client reaches roundtrip server" =>!Clock!Fs!Process!Timer {
-  §string.indexOf(runClientOutput("src/jsonClient.sigil"),"{\"ok\":true}")≥0=true
+  §string.contains(runClientOutput("src/jsonClient.sigil"),"{\"ok\":true}")=true
 }
 
 test "http headers client reaches roundtrip server" =>!Clock!Fs!Process!Timer {
-  §string.indexOf(runClientOutput("src/headersClient.sigil"),"202:abc-123")≥0=true
+  §string.contains(runClientOutput("src/headersClient.sigil"),"202:abc-123")=true
 }
 
 test "http missing client returns 404" =>!Clock!Fs!Process!Timer {
-  §string.indexOf(runClientOutput("src/missingClient.sigil"),"404:<h1>404 Not Found</h1>")≥0=true
+  §string.contains(runClientOutput("src/missingClient.sigil"),"404:<h1>404 Not Found</h1>")=true
 }
 
 test "http routes client returns canonical route summary" =>!Clock!Fs!Process!Timer {
   l output=(runClientOutput("src/routesClient.sigil"):String);
-  §string.indexOf(output,"200:/echo")≥0=true and §string.indexOf(output,"/routes")≥0=true
+  §string.contains(output,"200:/echo")=true and §string.contains(output,"/routes")=true
 }
 
 test "http raw endpoint compile is forbidden" =>!Fs!Process {
-  §string.indexOf(rawEndpointCompileOutput(),"SIGIL-TOPO-RAW-ENDPOINT-FORBIDDEN")≥0=true
+  §string.contains(rawEndpointCompileOutput(),"SIGIL-TOPO-RAW-ENDPOINT-FORBIDDEN")=true
 }

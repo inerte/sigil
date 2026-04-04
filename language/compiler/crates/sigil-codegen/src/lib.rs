@@ -3360,6 +3360,10 @@ impl TypeScriptGenerator {
                 "{}.then(([__index, __string]) => __sigil_ready(__string.charAt(__index)))",
                 self.js_all(&[self.js_ready(idx), self.js_ready(s)])
             )),
+            ("contains", [s, search]) => Some(format!(
+                "{}.then(([__string, __needle]) => __string.includes(__needle))",
+                self.js_all(&[self.js_ready(s), self.js_ready(search)])
+            )),
             ("endsWith", [s, suffix]) => Some(format!(
                 "{}.then(([__string, __suffix]) => __string.endsWith(__suffix))",
                 self.js_all(&[self.js_ready(s), self.js_ready(suffix)])
@@ -4253,6 +4257,9 @@ impl TypeScriptGenerator {
         match member {
             "charAt" if generated_args.len() == 2 => {
                 Ok(Some(format!("{}.then(([__index, __string]) => __sigil_ready(__string.charAt(__index)))", self.js_all(&generated_args))))
+            }
+            "contains" if generated_args.len() == 2 => {
+                Ok(Some(format!("{}.then(([__string, __needle]) => __string.includes(__needle))", self.js_all(&generated_args))))
             }
             "substring" if generated_args.len() == 3 => {
                 Ok(Some(format!("{}.then(([__end, __string, __start]) => __sigil_ready(__string.substring(__start, __end)))", self.js_all(&generated_args))))

@@ -12,10 +12,10 @@
 λsnippet(content:String,filePath:String,info:µFenceInfo,line:Int)=>µSnippet={content:content,filePath:filePath,info:info,line:line}
 
 test "coverage helpers parse refs exports and identifiers" {
-  l parseJson=("{\"type\":\"FunctionDecl\",\"name\":\"trim\",\"type\":\"FunctionDecl\",\"name\":\"split\",\"type\":\"FunctionDecl\",\"name\":\"trimEndChars\",\"type\":\"FunctionDecl\",\"name\":\"trimStartChars\"}":String);
+  l parseJson=("{\"type\":\"FunctionDecl\",\"name\":\"contains\",\"type\":\"FunctionDecl\",\"name\":\"trim\",\"type\":\"FunctionDecl\",\"name\":\"split\",\"type\":\"FunctionDecl\",\"name\":\"trimEndChars\",\"type\":\"FunctionDecl\",\"name\":\"trimStartChars\"}":String);
   match §regex.compile("","\"type\":\"FunctionDecl\"|\"name\":\"[A-Za-z_][A-Za-z0-9_]*\""){
     Ok(tokenPattern)=>match §regex.compile("","§[A-Za-z0-9]+\\.[a-z][A-Za-z0-9]*"){
-      Ok(refPattern)=>allOk([•coverage.collectQualifiedRefsLine(refPattern,[],"§list.sum(xs) and §list.sum(ys)")=["§list.sum"],•coverage.collectQualifiedRefsLines(["§string.trim(s)"],refPattern,[])=["§string.trim"],•coverage.documentedRefsForSnippetLines(["λtrim(s:String)=>String","c ignored=1"],"§string",[])=["§string.trim"],•coverage.collectStdlibExports("language/stdlib/string.lib.sigil",parseJson)=["§string.trim","§string.split","§string.trimEndChars","§string.trimStartChars"],•coverage.functionNamesFromParseJson(parseJson)=["trim","split","trimEndChars","trimStartChars"],•coverage.functionNamesFromTokens(false,[],tokenPattern,parseJson)=["trim","split","trimEndChars","trimStartChars"],•coverage.dropUntilBoundary("","trim):String")="trim",match •coverage.extractFunctionName("λtrim(s:String)=>String"){
+      Ok(refPattern)=>allOk([•coverage.collectQualifiedRefsLine(refPattern,[],"§list.sum(xs) and §list.sum(ys)")=["§list.sum"],•coverage.collectQualifiedRefsLines(["§string.trim(s)"],refPattern,[])=["§string.trim"],•coverage.documentedRefsForSnippetLines(["λtrim(s:String)=>String","c ignored=1"],"§string",[])=["§string.trim"],•coverage.collectStdlibExports("language/stdlib/string.lib.sigil",parseJson)=["§string.contains","§string.trim","§string.split","§string.trimEndChars","§string.trimStartChars"],•coverage.functionNamesFromParseJson(parseJson)=["contains","trim","split","trimEndChars","trimStartChars"],•coverage.functionNamesFromTokens(false,[],tokenPattern,parseJson)=["contains","trim","split","trimEndChars","trimStartChars"],•coverage.dropUntilBoundary("","trim):String")="trim",match •coverage.extractFunctionName("λtrim(s:String)=>String"){
         Some(name)=>name="trim"|
         None()=>false
       },match •coverage.extractFunctionName("c sample=1"){
@@ -23,7 +23,7 @@ test "coverage helpers parse refs exports and identifiers" {
         None()=>true
       },•coverage.extractFunctionNameInner("","split(text:String)=>[String]")="split",•coverage.insertUnique("beta",["alpha"])=["alpha","beta"],•coverage.isIdentifierChar("Z"),¬•coverage.isIdentifierChar("-"),•coverage.mergeUnique(["alpha"],["beta","alpha"])=["alpha","beta"],•coverage.moduleNameFromStdlibFile("language/stdlib/string.lib.sigil")="string",•coverage.modulePathFromStdlibFile("language/stdlib/string.lib.sigil")="§string",•coverage.qualifyExports(["trim"],"§string")=["§string.trim"],•coverage.tokenName("\"name\":\"trim\"")="trim",•docsDrift.collectQualifiedRefs("§list.sum(xs)
 §list.sum(ys)
-")=["§list.sum"],•docsDrift.collectStdlibExports("language/stdlib/string.lib.sigil",parseJson)=["§string.trim","§string.split","§string.trimEndChars","§string.trimStartChars"],•docsDrift.documentedRefsForSnippet("§string","λtrim(s:String)=>String
+")=["§list.sum"],•docsDrift.collectStdlibExports("language/stdlib/string.lib.sigil",parseJson)=["§string.contains","§string.trim","§string.split","§string.trimEndChars","§string.trimStartChars"],•docsDrift.documentedRefsForSnippet("§string","λtrim(s:String)=>String
 c ignored=1")=["§string.trim"]])|
       Err(_)=>false
     }|
@@ -48,7 +48,7 @@ test "docs drift helper surface normalizes snippets and issues" {
     Err(_)=>false
   },match •docsDrift.parseFenceInfo("sigil mystery"){
     Ok(_)=>false|
-    Err(message)=>§string.indexOf(message,"unknown Sigil fence kind")≥0
+    Err(message)=>§string.contains(message,"unknown Sigil fence kind")
   },match •docsDrift.parseTrackedFiles({code:0,stderr:"",stdout:"a.md
 b.md
 "}){
@@ -70,7 +70,7 @@ b.md
   },match •docsDrift.projectRootFromVirtualPathUsing(Some("fallback"),"/src/","snippet.sigil"){
     Some(path)=>path="fallback"|
     None()=>false
-  },•docsDrift.repoTempDir("/repo")=§path.join("/repo",".local/docsDriftAuditTmp"),•docsDrift.runCoverageChecks(["§string.trim"],["§string.trim"],[],["§string.trim"],[])=[],•docsDrift.runCoverageChecksInner(["§string.trim"],["§string.trim"],["§string.trim"],[])=[],•docsDrift.runReferenceIssues(["§string.trim"],[],["§string.trim","§string.split"])=[{line:1,message:"reference to missing stdlib symbol '§string.split'",path:"language/spec/stdlib-spec.md"}],•docsDrift.runUncoveredDocumentedIssues(["§string.trim"],["§string.trim","§string.split"],[])=[{line:1,message:"documented stdlib function lacks checked example or stdlib test coverage: §string.split",path:"language/spec/stdlib-spec.md"}],•docsDrift.snippetRefsForValidatedSnippet(snippet("§string.trim(\" hi \")","docs/test.md",fenceInfo(None(),"expr"),1))=["§string.trim"],•docsDrift.snippetSource(snippet("#xs","docs/test.md",fenceInfo(None(),"expr"),1))="λmain()=>Unit=#xs",•docsDrift.snippetSubcommand("module")="compile",•docsDrift.snippetSubcommandForSnippet(exprSnippet)="parse",•docsDrift.snippetVirtualPath(snippet("λsample()=>String=\"ok\"","docs/test.md",fenceInfo(Some("projects/docsDriftAudit/src/sample.lib.sigil"),"module"),1))="projects/docsDriftAudit/src/sample.lib.sigil",§string.indexOf(•docsDrift.wrapExprLines(1,["\"a\"","","\"b\""],"λmain()=>Unit={","}"),"sample2")≥0])
+  },•docsDrift.repoTempDir("/repo")=§path.join("/repo",".local/docsDriftAuditTmp"),•docsDrift.runCoverageChecks(["§string.trim"],["§string.trim"],[],["§string.trim"],[])=[],•docsDrift.runCoverageChecksInner(["§string.trim"],["§string.trim"],["§string.trim"],[])=[],•docsDrift.runReferenceIssues(["§string.trim"],[],["§string.trim","§string.split"])=[{line:1,message:"reference to missing stdlib symbol '§string.split'",path:"language/spec/stdlib-spec.md"}],•docsDrift.runUncoveredDocumentedIssues(["§string.trim"],["§string.trim","§string.split"],[])=[{line:1,message:"documented stdlib function lacks checked example or stdlib test coverage: §string.split",path:"language/spec/stdlib-spec.md"}],•docsDrift.snippetRefsForValidatedSnippet(snippet("§string.trim(\" hi \")","docs/test.md",fenceInfo(None(),"expr"),1))=["§string.trim"],•docsDrift.snippetSource(snippet("#xs","docs/test.md",fenceInfo(None(),"expr"),1))="λmain()=>Unit=#xs",•docsDrift.snippetSubcommand("module")="compile",•docsDrift.snippetSubcommandForSnippet(exprSnippet)="parse",•docsDrift.snippetVirtualPath(snippet("λsample()=>String=\"ok\"","docs/test.md",fenceInfo(Some("projects/docsDriftAudit/src/sample.lib.sigil"),"module"),1))="projects/docsDriftAudit/src/sample.lib.sigil",§string.contains(•docsDrift.wrapExprLines(1,["\"a\"","","\"b\""],"λmain()=>Unit={","}"),"sample2")])
 }
 
 test "fence helpers parse valid and invalid forms" {
@@ -86,7 +86,7 @@ test "fence helpers parse valid and invalid forms" {
     Err(_)=>false
   },match •fences.parseFenceInfo("sigil unknown"){
     Ok(_)=>false|
-    Err(message)=>§string.indexOf(message,"unknown Sigil fence kind")≥0
+    Err(message)=>§string.contains(message,"unknown Sigil fence kind")
   },match •fences.parseFenceKind("module src/sample.lib.sigil"){
     Ok(info)=>{
       l parsed=(info:µFenceInfo);
@@ -107,7 +107,7 @@ test "fence helpers parse valid and invalid forms" {
     Err(_)=>false
   },match •fences.parseFenceKindWithContext("expr","arg"){
     Ok(_)=>false|
-    Err(message)=>§string.indexOf(message,"does not accept an argument")≥0
+    Err(message)=>§string.contains(message,"does not accept an argument")
   },match •fences.parseFenceKindWithoutContext("expr"){
     Ok(info)=>{
       l parsed=(info:µFenceInfo);
@@ -119,7 +119,7 @@ test "fence helpers parse valid and invalid forms" {
     Err(_)=>false
   },match •fences.parseFenceKindWithoutContext("mystery"){
     Ok(_)=>false|
-    Err(message)=>§string.indexOf(message,"unknown Sigil fence kind")≥0
+    Err(message)=>§string.contains(message,"unknown Sigil fence kind")
   },match •fences.parseModulePath("module","src/sample.lib.sigil"){
     Ok(info)=>{
       l parsed=(info:µFenceInfo);
@@ -131,10 +131,10 @@ test "fence helpers parse valid and invalid forms" {
     Err(_)=>false
   },match •fences.parseModulePath("module","src/sample.sigil"){
     Ok(_)=>false|
-    Err(message)=>§string.indexOf(message,"must use a .lib.sigil virtual path")≥0
+    Err(message)=>§string.contains(message,"must use a .lib.sigil virtual path")
   },match •fences.parseProgramPath("program","src/sample.lib.sigil"){
     Ok(_)=>false|
-    Err(message)=>§string.indexOf(message,"must use a .sigil virtual path")≥0
+    Err(message)=>§string.contains(message,"must use a .sigil virtual path")
   },match •fences.parseProgramPath("program","src/sample.sigil"){
     Ok(info)=>{
       l parsed=(info:µFenceInfo);
@@ -224,7 +224,7 @@ test "stdlib export helpers parse repo stdlib files" =>!AuditIo {
     Err(_)=>false
   },match readMissing{
     Ok(_)=>false|
-    Err(message)=>§string.indexOf(message,"sigil parse failed")≥0
+    Err(message)=>§string.contains(message,"sigil parse failed")
   },match fileExports{
     Ok(exports)=>§list.contains("§string.trim",exports)|
     Err(_)=>false

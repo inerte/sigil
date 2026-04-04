@@ -182,6 +182,7 @@ Semantics:
 
 ```sigil decl §string
 λcharAt(idx:Int,s:String)=>String
+λcontains(s:String,search:String)=>Bool
 λdrop(n:Int,s:String)=>String
 λendsWith(s:String,suffix:String)=>Bool
 λindexOf(s:String,search:String)=>Int

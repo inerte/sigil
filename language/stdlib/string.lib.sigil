@@ -1,5 +1,7 @@
 λcharAt(idx:Int,s:String)=>String=""
 
+λcontains(s:String,search:String)=>Bool=false
+
 λdrop(n:Int,s:String)=>String=substring(#s,s,n)
 
 λendsWith(s:String,suffix:String)=>Bool=false

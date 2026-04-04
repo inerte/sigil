@@ -896,6 +896,21 @@ Find index of first occurrence (returns -1 if not found).
 
 **Codegen:** `s.indexOf(search)`
 
+### contains
+
+Check whether `search` appears anywhere within `s`.
+
+```sigil decl §string
+λcontains(s:String,search:String)=>Bool
+```
+
+**Examples:**
+```sigil program
+λmain()=>Bool=§string.contains("hello world","world") and ¬§string.contains("hello","xyz") and §string.contains("hello","")
+```
+
+**Codegen:** `s.includes(search)`
+
 ### split
 
 Split string by delimiter.
@@ -963,6 +978,7 @@ Reverse a string.
 `§string` currently exposes:
 
 - `charAt`
+- `contains`
 - `drop`
 - `endsWith`
 - `indexOf`
@@ -986,7 +1002,7 @@ Design notes:
 
 - use `#s=0` instead of a dedicated `isEmpty`
 - use `§string.trim(s)=""` instead of a dedicated whitespace predicate
-- use `§string.indexOf(s,search)≠-1` for containment checks
+- use `§string.contains(s,search)` for containment checks
 
 ## Current Numeric Surface
 

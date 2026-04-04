@@ -31,6 +31,40 @@ export type AgentFinalResponse = {
   filesChanged: string[];
 };
 
+export type JudgeSide = 'A' | 'B';
+export type JudgeWinner = JudgeSide | 'TIE';
+export type JudgeConfidence = 'low' | 'medium' | 'high';
+export type JudgeTaskCompletion = 'completed' | 'partial' | 'failed';
+export type CompareSide = 'base' | 'candidate';
+
+export type JudgeScoreCard = {
+  A: number;
+  B: number;
+};
+
+export type JudgeTaskCompletionCard = {
+  A: JudgeTaskCompletion;
+  B: JudgeTaskCompletion;
+};
+
+export type JudgeEvidenceCitation = {
+  run: JudgeSide;
+  artifact: string;
+  fact: string;
+};
+
+export type JudgeFinalResponse = {
+  winner: JudgeWinner;
+  confidence: JudgeConfidence;
+  summary: string;
+  task_completion: JudgeTaskCompletionCard;
+  diagnosis_quality: JudgeScoreCard;
+  edit_quality: JudgeScoreCard;
+  evidence_use: JudgeScoreCard;
+  key_reasons: string[];
+  evidence_citations: JudgeEvidenceCitation[];
+};
+
 export type ExecutorUsage = {
   inputTokens?: number;
   cachedInputTokens?: number;
@@ -45,14 +79,17 @@ export type ExecutionArtifact = {
   stderrTail: string;
 };
 
-export type ExecutorResult = {
+export type JsonExecutorResult<TFinalResponse> = {
   exitCode: number;
-  finalResponse: AgentFinalResponse | null;
+  finalResponse: TFinalResponse | null;
   usage: ExecutorUsage | null;
   toolCounts: Record<string, number>;
   artifact: ExecutionArtifact;
   errorMessage?: string;
 };
+
+export type ExecutorResult = JsonExecutorResult<AgentFinalResponse>;
+export type JudgeExecutorResult = JsonExecutorResult<JudgeFinalResponse>;
 
 export type ExecutorRunContext = {
   task: TaskManifest;
@@ -66,6 +103,19 @@ export type ExecutorRunContext = {
 export interface Executor {
   readonly kind: string;
   run(context: ExecutorRunContext): Promise<ExecutorResult>;
+}
+
+export type JudgeRunContext = {
+  cwd: string;
+  runLabel: string;
+  prompt: string;
+  env: Record<string, string>;
+  timeoutMs: number;
+};
+
+export interface JudgeExecutor {
+  readonly kind: string;
+  run(context: JudgeRunContext): Promise<JudgeExecutorResult>;
 }
 
 export type ShellCommandResult = {
@@ -122,7 +172,12 @@ export type TaskSampleResult = {
   finalResponse: AgentFinalResponse | null;
   diagnosisTagsMatched: string[];
   transcriptPath: string;
+  executorStdoutPath: string;
+  executorStderrPath: string;
   diffPath: string;
+  finalResponsePath: string;
+  setupResultsPath: string;
+  oracleResultsPath: string;
   resultPath: string;
   workspaceNote?: string;
   errorMessage?: string;
@@ -177,56 +232,100 @@ export type RefRunSummary = {
   medianCommandExecutionCount: number | null;
 };
 
-export type TaskComparison = {
+export type JudgeArtifactPaths = {
+  resultPath: string;
+  transcriptPath: string;
+  stdoutPath: string;
+  stderrPath: string;
+  finalResponsePath: string;
+  diffPath: string;
+  oracleResultsPath: string;
+  setupResultsPath: string;
+};
+
+export type TaskRepeatJudgeInput = {
+  taskId: string;
+  title: string;
+  goal: string;
+  successCriteria: string[];
+  allowedEditPaths: string[];
+  forbiddenEditPaths: string[];
+  repeatIndex: number;
+  runs: Record<JudgeSide, JudgeArtifactPaths>;
+};
+
+export type TaskRepeatJudgeResult = {
+  taskId: string;
+  repeatIndex: number;
+  aRealSide: CompareSide;
+  bRealSide: CompareSide;
+  resolvedWinner: CompareSide | 'TIE';
+  judgeStatus: 'completed' | 'error';
+  judgeResponse: JudgeFinalResponse;
+  judgeInputPath: string;
+  judgePromptPath: string;
+  judgeStdoutPath: string;
+  judgeStderrPath: string;
+  resultPath: string;
+  errorMessage?: string;
+};
+
+export type TaskRepeatJudgmentSummary = {
+  repeatIndex: number;
+  resolvedWinner: CompareSide | 'TIE';
+  judgeStatus: 'completed' | 'error';
+  confidence: JudgeConfidence;
+  summary: string;
+  resultPath: string;
+  errorMessage?: string;
+};
+
+export type TaskJudgmentSummary = {
   taskId: string;
   baseStatus: TaskRunResult['status'];
   candidateStatus: TaskRunResult['status'];
-  direction: 'improved' | 'regressed' | 'neutral';
-  decisionBasis: 'budget_margin' | 'neutral';
-  budgetPassDelta: number;
-  minDecisiveBudgetPassDelta: number;
   baseRawPassCount: number;
   candidateRawPassCount: number;
-  baseRawPassRate: number;
-  candidateRawPassRate: number;
-  baseCommandBudgetPassCount: number;
-  candidateCommandBudgetPassCount: number;
-  baseCommandBudgetPassRate: number;
-  candidateCommandBudgetPassRate: number;
-  baseTokenBudgetPassCount: number;
-  candidateTokenBudgetPassCount: number;
-  baseTokenBudgetPassRate: number;
-  candidateTokenBudgetPassRate: number;
   baseBudgetPassCount: number;
   candidateBudgetPassCount: number;
-  baseBudgetPassRate: number;
-  candidateBudgetPassRate: number;
-  baseMedianEffectiveTokens: number | null;
-  candidateMedianEffectiveTokens: number | null;
-  baseMedianCommandExecutionCount: number | null;
-  candidateMedianCommandExecutionCount: number | null;
+  baselineRepeatWins: number;
+  compareRepeatWins: number;
+  repeatTies: number;
+  taskLean: CompareSide | 'tie';
+  repeatJudgments: TaskRepeatJudgmentSummary[];
+};
+
+export type SuiteJudgmentSummary = {
+  baselineTaskLeans: number;
+  compareTaskLeans: number;
+  taskTies: number;
+  totalTasks: number;
 };
 
 export type CompareSummary = {
-  status: 'improved' | 'neutral' | 'regressed' | 'mixed';
   repeats: number;
-  minDecisiveBudgetPassDelta: number;
   taskIds: string[];
   base: RefRunSummary;
   candidate: RefRunSummary;
-  taskComparisons: TaskComparison[];
+  taskJudgments: TaskJudgmentSummary[];
+  suiteJudgment: SuiteJudgmentSummary;
   generatedAt: string;
 };
 
 export type PublishedSummary = {
   runId: string;
   label: string;
-  status: CompareSummary['status'];
   generatedAt: string;
   baseRequestedRef?: string;
   baseRef?: string;
   candidateRequestedRef?: string;
   candidateRef?: string;
+  taskLeanTotals?: {
+    baseline: number;
+    compare: number;
+    ties: number;
+    totalTasks: number;
+  };
   rawPassTotals?: {
     base: number;
     candidate: number;

@@ -1,6 +1,7 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
+import { buildJudgeInput, buildJudgePrompt, summarizeSuiteJudgment, summarizeTaskJudgment } from './judge.js';
 import {
   createWorkingTreeSnapshot,
   createWorktree,
@@ -16,13 +17,14 @@ import type {
   CompareSummary,
   Executor,
   ExecutorUsage,
+  JudgeExecutor,
   PhaseTimings,
   ReferenceSourceKind,
   RefPreparation,
   RefRunSummary,
   ShellCommandResult,
-  TaskComparison,
   TaskManifest,
+  TaskRepeatJudgeResult,
   TaskRunResult,
   TaskSampleResult
 } from './types.js';
@@ -42,10 +44,7 @@ type CompareRefRunsOptions = {
 
 const MAX_CONCURRENT_REPEAT_PAIRS = 3;
 const MAX_CONCURRENT_TASKS = 2;
-
-function minimumDecisiveBudgetPassDelta(repeats: number): number {
-  return repeats <= 2 ? 1 : 2;
-}
+const JUDGE_TIMEOUT_MS = 300_000;
 
 function emptyPhaseTimings(): PhaseTimings {
   return {
@@ -276,6 +275,10 @@ export async function runTaskSample(
   const transcriptPath = path.join(artifactDir, 'transcript.jsonl');
   const diffPath = path.join(artifactDir, 'changes.diff');
   const finalResponsePath = path.join(artifactDir, 'final-response.json');
+  const executorStdoutPath = path.join(artifactDir, 'executor.stdout.log');
+  const executorStderrPath = path.join(artifactDir, 'executor.stderr.log');
+  const setupResultsPath = path.join(artifactDir, 'setup-results.json');
+  const oracleResultsPath = path.join(artifactDir, 'oracle-results.json');
   const resultPath = path.join(artifactDir, 'result.json');
 
   const env = {
@@ -309,6 +312,7 @@ export async function runTaskSample(
     outOfBoundsMatches: [] as string[]
   };
   let executionTempDir: string | null = null;
+  let wroteExecutionArtifacts = false;
 
   try {
     const setupStartedAt = Date.now();
@@ -337,9 +341,10 @@ export async function runTaskSample(
       const transcriptWriteStartedAt = Date.now();
       await ensureDir(artifactDir);
       await fs.copyFile(execution.artifact.stdoutPath, transcriptPath);
-      await fs.copyFile(execution.artifact.stdoutPath, path.join(artifactDir, 'executor.stdout.log'));
-      await fs.copyFile(execution.artifact.stderrPath, path.join(artifactDir, 'executor.stderr.log'));
+      await fs.copyFile(execution.artifact.stdoutPath, executorStdoutPath);
+      await fs.copyFile(execution.artifact.stderrPath, executorStderrPath);
       await writeJsonFile(finalResponsePath, finalResponse ?? {});
+      wroteExecutionArtifacts = true;
       artifactWriteMs += Date.now() - transcriptWriteStartedAt;
 
       if (execution.exitCode === 0) {
@@ -367,6 +372,12 @@ export async function runTaskSample(
     await ensureDir(artifactDir);
     await writeTextFile(diffPath, patch.diff);
     await saveOracleLogs(artifactDir, setupResults, oracleResults);
+    if (!wroteExecutionArtifacts) {
+      await writeTextFile(transcriptPath, '');
+      await writeTextFile(executorStdoutPath, '');
+      await writeTextFile(executorStderrPath, '');
+      await writeJsonFile(finalResponsePath, finalResponse ?? {});
+    }
     artifactWriteMs += Date.now() - artifactWriteStartedAt;
 
     const oracleFailed = oracleResults.some((result) => result.exitCode !== 0);
@@ -432,7 +443,12 @@ export async function runTaskSample(
       finalResponse,
       diagnosisTagsMatched,
       transcriptPath,
+      executorStdoutPath,
+      executorStderrPath,
       diffPath,
+      finalResponsePath,
+      setupResultsPath,
+      oracleResultsPath,
       resultPath,
       workspaceNote: workspacePath,
       errorMessage
@@ -445,6 +461,115 @@ export async function runTaskSample(
       await fs.rm(executionTempDir, { recursive: true, force: true });
     }
     await cleanupWorkspace(workspacePath);
+  }
+}
+
+async function judgeTaskRepeat(
+  task: TaskManifest,
+  baseSample: TaskSampleResult,
+  candidateSample: TaskSampleResult,
+  judgeExecutor: JudgeExecutor,
+  runDir: string,
+  repoRoot: string
+): Promise<TaskRepeatJudgeResult> {
+  const artifactDir = path.join(runDir, 'tasks', task.id, 'judgments', String(baseSample.sampleIndex));
+  const judgeInputPath = path.join(artifactDir, 'judge-input.json');
+  const judgePromptPath = path.join(artifactDir, 'judge-prompt.txt');
+  const judgeResultPath = path.join(artifactDir, 'judge-result.json');
+  const judgeStdoutPath = path.join(artifactDir, 'judge.stdout.log');
+  const judgeStderrPath = path.join(artifactDir, 'judge.stderr.log');
+
+  const { input, aRealSide, bRealSide } = buildJudgeInput(task, baseSample, candidateSample);
+  const prompt = buildJudgePrompt(judgeInputPath);
+
+  await ensureDir(artifactDir);
+  await writeJsonFile(judgeInputPath, input);
+  await writeTextFile(judgePromptPath, prompt);
+
+  const execution = await judgeExecutor.run({
+    cwd: repoRoot,
+    runLabel: `${task.id}-judge-${baseSample.sampleIndex}`,
+    prompt,
+    env: {},
+    timeoutMs: JUDGE_TIMEOUT_MS
+  });
+
+  try {
+    await fs.copyFile(execution.artifact.stdoutPath, judgeStdoutPath);
+    await fs.copyFile(execution.artifact.stderrPath, judgeStderrPath);
+
+    if (execution.exitCode !== 0 || !execution.finalResponse) {
+      const errorMessage = execution.errorMessage ?? `judge exited with code ${execution.exitCode}`;
+      const judgment: TaskRepeatJudgeResult = {
+        taskId: task.id,
+        repeatIndex: baseSample.sampleIndex,
+        aRealSide,
+        bRealSide,
+        resolvedWinner: 'TIE',
+        judgeStatus: 'error',
+        judgeResponse: {
+          winner: 'TIE',
+          confidence: 'low',
+          summary: `Judge failed; recorded this repeat as a tie. ${errorMessage}`,
+          task_completion: {
+            A: 'partial',
+            B: 'partial'
+          },
+          diagnosis_quality: {
+            A: 1,
+            B: 1
+          },
+          edit_quality: {
+            A: 1,
+            B: 1
+          },
+          evidence_use: {
+            A: 1,
+            B: 1
+          },
+          key_reasons: [
+            'The judge session did not complete successfully.',
+            'This repeat was recorded as a tie to avoid aborting the full compare.'
+          ],
+          evidence_citations: []
+        },
+        judgeInputPath,
+        judgePromptPath,
+        judgeStdoutPath,
+        judgeStderrPath,
+        resultPath: judgeResultPath,
+        errorMessage
+      };
+
+      await writeJsonFile(judgeResultPath, judgment);
+      return judgment;
+    }
+
+    const resolvedWinner = execution.finalResponse.winner === 'A'
+      ? aRealSide
+      : execution.finalResponse.winner === 'B'
+        ? bRealSide
+        : 'TIE';
+
+    const judgment: TaskRepeatJudgeResult = {
+      taskId: task.id,
+      repeatIndex: baseSample.sampleIndex,
+      aRealSide,
+      bRealSide,
+      resolvedWinner,
+      judgeStatus: 'completed',
+      judgeResponse: execution.finalResponse,
+      judgeInputPath,
+      judgePromptPath,
+      judgeStdoutPath,
+      judgeStderrPath,
+      resultPath: judgeResultPath
+    };
+
+    await writeJsonFile(judgeResultPath, judgment);
+    return judgment;
+  } finally {
+    await fs.rm(execution.artifact.tempDir, { recursive: true, force: true });
   }
 }
 
@@ -511,6 +636,7 @@ export async function compareReferences(
   repoRoot: string,
   fixturesDir: string,
   executor: Executor,
+  judgeExecutor: JudgeExecutor,
   tasks: TaskManifest[],
   runDir: string,
   baseReferenceOptions: PrepareRefOptions,
@@ -521,12 +647,15 @@ export async function compareReferences(
   const candidateReference = await prepareReference(candidateReferenceOptions);
 
   try {
-    const pairedResults: Array<{ base: TaskRunResult; candidate: TaskRunResult } | undefined> = new Array(tasks.length);
+    const pairedResults: Array<{ base: TaskRunResult; candidate: TaskRunResult; judgment: CompareSummary['taskJudgments'][number] } | undefined> = new Array(tasks.length);
     let nextTaskIndex = 0;
 
-    const runTaskComparison = async (task: TaskManifest): Promise<{ base: TaskRunResult; candidate: TaskRunResult }> => {
+    const runTaskComparison = async (
+      task: TaskManifest
+    ): Promise<{ base: TaskRunResult; candidate: TaskRunResult; judgment: CompareSummary['taskJudgments'][number] }> => {
       const baseSamples: TaskSampleResult[] = [];
       const candidateSamples: TaskSampleResult[] = [];
+      const repeatJudgments: TaskRepeatJudgeResult[] = [];
 
       for (let sampleIndex = 1; sampleIndex <= repeats; sampleIndex += MAX_CONCURRENT_REPEAT_PAIRS) {
         const batchIndices = Array.from(
@@ -539,22 +668,36 @@ export async function compareReferences(
             runTaskSample(task, fixturesDir, executor, baseReference, runDir, currentSampleIndex),
             runTaskSample(task, fixturesDir, executor, candidateReference, runDir, currentSampleIndex)
           ]);
+          const repeatJudgment = await judgeTaskRepeat(
+            task,
+            baseSample,
+            candidateSample,
+            judgeExecutor,
+            runDir,
+            repoRoot
+          );
 
-          return { baseSample, candidateSample };
+          return { baseSample, candidateSample, repeatJudgment };
         }));
 
-        for (const { baseSample, candidateSample } of batchResults) {
+        for (const { baseSample, candidateSample, repeatJudgment } of batchResults) {
           baseSamples.push(baseSample);
           candidateSamples.push(candidateSample);
+          repeatJudgments.push(repeatJudgment);
         }
       }
 
       baseSamples.sort((left, right) => left.sampleIndex - right.sampleIndex);
       candidateSamples.sort((left, right) => left.sampleIndex - right.sampleIndex);
+      repeatJudgments.sort((left, right) => left.repeatIndex - right.repeatIndex);
+
+      const baseResult = await writeAggregateTaskResult(task.id, baseReference, baseSamples, runDir);
+      const candidateResult = await writeAggregateTaskResult(task.id, candidateReference, candidateSamples, runDir);
 
       return {
-        base: await writeAggregateTaskResult(task.id, baseReference, baseSamples, runDir),
-        candidate: await writeAggregateTaskResult(task.id, candidateReference, candidateSamples, runDir)
+        base: baseResult,
+        candidate: candidateResult,
+        judgment: summarizeTaskJudgment(baseResult, candidateResult, repeatJudgments)
       };
     };
 
@@ -583,10 +726,17 @@ export async function compareReferences(
       }
       return pair.candidate;
     });
+    const taskJudgments = pairedResults.map((pair, index) => {
+      if (!pair) {
+        throw new Error(`missing judge result for task '${tasks[index].id}'`);
+      }
+      return pair.judgment;
+    });
 
     return compareRefRuns(
       summarizeReference(baseReference, baseTaskResults),
       summarizeReference(candidateReference, candidateTaskResults),
+      taskJudgments,
       { repeats }
     );
   } finally {
@@ -597,79 +747,21 @@ export async function compareReferences(
   }
 }
 
-function compareTask(
-  baseResult: TaskRunResult,
-  candidateResult: TaskRunResult,
-  minDecisiveDelta: number
-): TaskComparison {
-  const budgetPassDelta = candidateResult.budgetPassCount - baseResult.budgetPassCount;
-  const direction = budgetPassDelta >= minDecisiveDelta
-    ? 'improved'
-    : budgetPassDelta <= -minDecisiveDelta
-      ? 'regressed'
-      : 'neutral';
-
-  return {
-    taskId: baseResult.taskId,
-    baseStatus: baseResult.status,
-    candidateStatus: candidateResult.status,
-    direction,
-    decisionBasis: direction === 'neutral' ? 'neutral' : 'budget_margin',
-    budgetPassDelta,
-    minDecisiveBudgetPassDelta: minDecisiveDelta,
-    baseRawPassCount: baseResult.rawPassCount,
-    candidateRawPassCount: candidateResult.rawPassCount,
-    baseRawPassRate: baseResult.rawPassRate,
-    candidateRawPassRate: candidateResult.rawPassRate,
-    baseCommandBudgetPassCount: baseResult.commandBudgetPassCount,
-    candidateCommandBudgetPassCount: candidateResult.commandBudgetPassCount,
-    baseCommandBudgetPassRate: baseResult.commandBudgetPassRate,
-    candidateCommandBudgetPassRate: candidateResult.commandBudgetPassRate,
-    baseTokenBudgetPassCount: baseResult.tokenBudgetPassCount,
-    candidateTokenBudgetPassCount: candidateResult.tokenBudgetPassCount,
-    baseTokenBudgetPassRate: baseResult.tokenBudgetPassRate,
-    candidateTokenBudgetPassRate: candidateResult.tokenBudgetPassRate,
-    baseBudgetPassCount: baseResult.budgetPassCount,
-    candidateBudgetPassCount: candidateResult.budgetPassCount,
-    baseBudgetPassRate: baseResult.budgetPassRate,
-    candidateBudgetPassRate: candidateResult.budgetPassRate,
-    baseMedianEffectiveTokens: baseResult.medianEffectiveTokens,
-    candidateMedianEffectiveTokens: candidateResult.medianEffectiveTokens,
-    baseMedianCommandExecutionCount: baseResult.medianCommandExecutionCount,
-    candidateMedianCommandExecutionCount: candidateResult.medianCommandExecutionCount
-  };
-}
-
-export function compareRefRuns(base: RefRunSummary, candidate: RefRunSummary, options: CompareRefRunsOptions = {}): CompareSummary {
+export function compareRefRuns(
+  base: RefRunSummary,
+  candidate: RefRunSummary,
+  taskJudgments: CompareSummary['taskJudgments'],
+  options: CompareRefRunsOptions = {}
+): CompareSummary {
   const repeats = options.repeats ?? 3;
-  const minDecisiveDelta = minimumDecisiveBudgetPassDelta(repeats);
-  const taskComparisons = base.taskResults.map((baseResult) => {
-    const candidateResult = candidate.taskResults.find((result) => result.taskId === baseResult.taskId);
-    if (!candidateResult) {
-      throw new Error(`candidate results are missing task '${baseResult.taskId}'`);
-    }
-    return compareTask(baseResult, candidateResult, minDecisiveDelta);
-  });
-
-  const directions = new Set(taskComparisons.map((comparison) => comparison.direction));
-  let status: CompareSummary['status'] = 'neutral';
-
-  if (directions.has('improved') && directions.has('regressed')) {
-    status = 'mixed';
-  } else if (directions.has('improved')) {
-    status = 'improved';
-  } else if (directions.has('regressed')) {
-    status = 'regressed';
-  }
 
   return {
-    status,
     repeats,
-    minDecisiveBudgetPassDelta: minDecisiveDelta,
     taskIds: base.taskResults.map((result) => result.taskId),
     base,
     candidate,
-    taskComparisons,
+    taskJudgments,
+    suiteJudgment: summarizeSuiteJudgment(taskJudgments),
     generatedAt: new Date().toISOString()
   };
 }

@@ -4,13 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { promises as fs } from 'node:fs';
 
-import { CodexExecutor, MockExecutor } from './lib/executor.js';
+import { CodexExecutor, MockExecutor, MockJudgeExecutor } from './lib/executor.js';
 import { loadTaskManifest, loadTaskManifests } from './lib/manifests.js';
 import { publishCompareRun } from './lib/publish.js';
 import { compareRefRuns, compareReferences, runTasksForReference } from './lib/runner.js';
 import { ensureDir, execShellCommand, writeJsonFile } from './lib/util.js';
 import { createWorkingTreeSnapshot } from './lib/workspace.js';
-import type { ExecutorResult, TaskManifest, TaskRunResult } from './lib/types.js';
+import type { ExecutorResult, JudgeExecutorResult, TaskManifest, TaskRunResult } from './lib/types.js';
 
 const benchmarkRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
 const tasksDir = path.join(benchmarkRoot, 'tasks');
@@ -29,6 +29,10 @@ async function makeExecutionArtifact(stdout = '', stderr = ''): Promise<Executor
     stdoutTail: stdout.slice(-2048),
     stderrTail: stderr.slice(-2048)
   };
+}
+
+async function makeJudgeExecutionArtifact(stdout = '', stderr = ''): Promise<JudgeExecutorResult['artifact']> {
+  return makeExecutionArtifact(stdout, stderr);
 }
 
 function makeTaskRunResult(overrides: Partial<TaskRunResult> & Pick<TaskRunResult, 'taskId' | 'refLabel' | 'ref'>): TaskRunResult {
@@ -84,19 +88,54 @@ function makeSimpleTask(overrides: Partial<TaskManifest> = {}): TaskManifest {
   };
 }
 
+function makeJudgeResponse(winner: 'A' | 'B' | 'TIE') {
+  return {
+    winner,
+    confidence: 'medium' as const,
+    summary: `Winner: ${winner}`,
+    task_completion: {
+      A: 'completed' as const,
+      B: 'completed' as const
+    },
+    diagnosis_quality: {
+      A: 4,
+      B: 3
+    },
+    edit_quality: {
+      A: 4,
+      B: 3
+    },
+    evidence_use: {
+      A: 4,
+      B: 3
+    },
+    key_reasons: ['kept edits focused'],
+    evidence_citations: [
+      {
+        run: winner === 'B' ? 'B' as const : 'A' as const,
+        artifact: 'changes.diff',
+        fact: 'The winning run made the correct focused edit.'
+      }
+    ]
+  };
+}
+
 test('current task manifests validate', async () => {
   const tasks = await loadTaskManifests(tasksDir);
 
-  assert.equal(tasks.length, 13);
+  assert.equal(tasks.length, 16);
   assert.ok(tasks.some((task) => task.id === 'canonical-record-order-repair'));
   assert.ok(tasks.some((task) => task.id === 'canonical-stdlib-helper-repair'));
+  assert.ok(tasks.some((task) => task.id === 'feed-description-propagation'));
   assert.ok(tasks.some((task) => task.id === 'event-import-pipeline-repair'));
   assert.ok(tasks.some((task) => task.id === 'homebrew-formula-test-repair'));
   assert.ok(tasks.some((task) => task.id === 'repair-ingest-received-timestamp'));
   assert.ok(tasks.some((task) => task.id === 'repair-feed-published-timestamp'));
+  assert.ok(tasks.some((task) => task.id === 'site-route-canonicalization-repair'));
   assert.ok(tasks.some((task) => task.id === 'stats-summary-implementation'));
   assert.ok(tasks.some((task) => task.id === 'todo-domain-test-repair'));
   assert.ok(tasks.some((task) => task.id === 'todo-json-roundtrip-repair'));
+  assert.ok(tasks.some((task) => task.id === 'topology-status-client-feature'));
 });
 
 test('manifest validation rejects legacy maxTurns-only budgets', async () => {
@@ -180,7 +219,7 @@ test('runner aggregates raw and budget pass counts for repeated samples', async 
   assert.equal(sampleResult.withinTokenBudget, true);
 });
 
-test('compare defaults to three repeats and runs repeat pairs in bounded parallel batches', async () => {
+test('compare defaults to three repeats, runs repeat pairs in bounded parallel batches, and stores one judge result per pair', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'sigil-devex-compare-batches-'));
   const fixturesDir = path.join(root, 'fixtures');
   const fixtureDir = path.join(fixturesDir, 'simple-pass');
@@ -190,6 +229,7 @@ test('compare defaults to three repeats and runs repeat pairs in bounded paralle
 
   let activeRuns = 0;
   let maxActiveRuns = 0;
+  let judgeInvocations = 0;
   const executor = new MockExecutor(async (context): Promise<ExecutorResult> => {
     activeRuns += 1;
     maxActiveRuns = Math.max(maxActiveRuns, activeRuns);
@@ -215,8 +255,18 @@ test('compare defaults to three repeats and runs repeat pairs in bounded paralle
       artifact: await makeExecutionArtifact('', '')
     };
   });
+  const judgeExecutor = new MockJudgeExecutor(async (): Promise<JudgeExecutorResult> => {
+    judgeInvocations += 1;
+    return {
+      exitCode: 0,
+      finalResponse: makeJudgeResponse('A'),
+      usage: null,
+      toolCounts: {},
+      artifact: await makeJudgeExecutionArtifact('', '')
+    };
+  });
 
-  const compare = await compareReferences(root, fixturesDir, executor, [makeSimpleTask()], runDir, {
+  const compare = await compareReferences(root, fixturesDir, executor, judgeExecutor, [makeSimpleTask()], runDir, {
     repoRoot: root,
     runsLocalDir: path.join(root, '.local', 'runs'),
     refLabel: 'base',
@@ -235,8 +285,72 @@ test('compare defaults to three repeats and runs repeat pairs in bounded paralle
   assert.equal(compare.repeats, 3);
   assert.equal(compare.base.taskResults[0].sampleCount, 3);
   assert.equal(compare.candidate.taskResults[0].sampleCount, 3);
+  assert.equal(compare.taskJudgments[0].repeatJudgments.length, 3);
+  assert.equal(judgeInvocations, 3);
   assert.ok(maxActiveRuns > 2);
   assert.ok(maxActiveRuns <= 6);
+  await fs.access(path.join(runDir, 'tasks', 'simple-pass', 'judgments', '1', 'judge-result.json'));
+  await fs.access(path.join(runDir, 'tasks', 'simple-pass', 'judgments', '1', 'judge-input.json'));
+});
+
+test('compare records a tied repeat when a judge run fails instead of aborting the compare', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'sigil-devex-judge-fallback-'));
+  const fixturesDir = path.join(root, 'fixtures');
+  const fixtureDir = path.join(fixturesDir, 'simple-pass');
+  const runDir = path.join(root, '.local', 'runs', 'judge-fallback');
+  await ensureDir(fixtureDir);
+  await fs.writeFile(path.join(fixtureDir, 'note.txt'), 'broken\n', 'utf8');
+
+  const executor = new MockExecutor(async (context): Promise<ExecutorResult> => {
+    await fs.writeFile(path.join(context.workspacePath, 'fixed.txt'), 'ok\n', 'utf8');
+    return {
+      exitCode: 0,
+      finalResponse: {
+        summary: 'Created fixed.txt.',
+        diagnosis: 'The fixture was missing fixed.txt.',
+        diagnosisTags: ['missing_output'],
+        filesChanged: ['fixed.txt']
+      },
+      usage: {
+        inputTokens: 10,
+        outputTokens: 5
+      },
+      toolCounts: {
+        'item:command_execution': 1
+      },
+      artifact: await makeExecutionArtifact('', '')
+    };
+  });
+  const judgeExecutor = new MockJudgeExecutor(async (): Promise<JudgeExecutorResult> => ({
+    exitCode: 1,
+    finalResponse: null,
+    usage: null,
+    toolCounts: {},
+    artifact: await makeJudgeExecutionArtifact('judge wandered\n', ''),
+    errorMessage: 'judge exited with code 1'
+  }));
+
+  const compare = await compareReferences(root, fixturesDir, executor, judgeExecutor, [makeSimpleTask()], runDir, {
+    repoRoot: root,
+    runsLocalDir: path.join(root, '.local', 'runs'),
+    refLabel: 'base',
+    ref: 'HEAD',
+    sourceKind: 'ref',
+    sigilBinOverride: '/usr/bin/true'
+  }, {
+    repoRoot: root,
+    runsLocalDir: path.join(root, '.local', 'runs'),
+    refLabel: 'candidate',
+    ref: 'HEAD',
+    sourceKind: 'ref',
+    sigilBinOverride: '/usr/bin/true'
+  });
+
+  assert.equal(compare.taskJudgments[0].repeatTies, 3);
+  assert.equal(compare.taskJudgments[0].taskLean, 'tie');
+  assert.equal(compare.taskJudgments[0].repeatJudgments[0].judgeStatus, 'error');
+  assert.match(compare.taskJudgments[0].repeatJudgments[0].summary, /Judge failed/);
+  await fs.access(path.join(runDir, 'tasks', 'simple-pass', 'judgments', '1', 'judge-result.json'));
 });
 
 test('compare keeps two tasks in flight by starting the next task when one finishes', async () => {
@@ -248,13 +362,17 @@ test('compare keeps two tasks in flight by starting the next task when one finis
   await fs.writeFile(path.join(fixtureDir, 'note.txt'), 'broken\n', 'utf8');
 
   const activeTaskCounts = new Map<string, number>();
-  let task3StartedWhileTask1Active = false;
+  let task3StartedWhileAnotherTaskActive = false;
   const executor = new MockExecutor(async (context): Promise<ExecutorResult> => {
     const currentCount = activeTaskCounts.get(context.task.id) ?? 0;
     activeTaskCounts.set(context.task.id, currentCount + 1);
 
-    if (context.task.id === 'task-3' && (activeTaskCounts.get('task-1') ?? 0) > 0) {
-      task3StartedWhileTask1Active = true;
+    const otherActiveCount = Array.from(activeTaskCounts.entries())
+      .filter(([taskId]) => taskId !== context.task.id)
+      .reduce((sum, [, count]) => sum + count, 0);
+
+    if (context.task.id === 'task-3' && otherActiveCount > 0) {
+      task3StartedWhileAnotherTaskActive = true;
     }
 
     const delayMs = context.task.id === 'task-1' ? 1000 : 40;
@@ -286,8 +404,15 @@ test('compare keeps two tasks in flight by starting the next task when one finis
       artifact: await makeExecutionArtifact('', '')
     };
   });
+  const judgeExecutor = new MockJudgeExecutor(async (): Promise<JudgeExecutorResult> => ({
+    exitCode: 0,
+    finalResponse: makeJudgeResponse('A'),
+    usage: null,
+    toolCounts: {},
+    artifact: await makeJudgeExecutionArtifact('', '')
+  }));
 
-  await compareReferences(root, fixturesDir, executor, [
+  await compareReferences(root, fixturesDir, executor, judgeExecutor, [
     makeSimpleTask({ id: 'task-1', title: 'Task 1' }),
     makeSimpleTask({ id: 'task-2', title: 'Task 2' }),
     makeSimpleTask({ id: 'task-3', title: 'Task 3' })
@@ -307,7 +432,7 @@ test('compare keeps two tasks in flight by starting the next task when one finis
     sigilBinOverride: '/usr/bin/true'
   }, 1);
 
-  assert.equal(task3StartedWhileTask1Active, true);
+  assert.equal(task3StartedWhileAnotherTaskActive, true);
 });
 
 test('working tree snapshots preserve uncommitted changes without copying ignored outputs', async () => {
@@ -336,7 +461,7 @@ test('working tree snapshots preserve uncommitted changes without copying ignore
   await assert.rejects(fs.readFile(path.join(snapshot.snapshotPath, '.local', 'ignored.txt'), 'utf8'));
 });
 
-test('compare summary keeps a one-sample budget swing neutral at the default three repeats', () => {
+test('compare summary is judge-first and rolls up task leans from repeat wins', () => {
   const compare = compareRefRuns(
     {
       refLabel: 'base',
@@ -372,21 +497,39 @@ test('compare summary keeps a one-sample budget swing neutral at the default thr
       medianEffectiveTokens: 1200,
       medianCommandExecutionCount: 12
     },
+    [
+      {
+        taskId: 'demo',
+        baseStatus: 'passed',
+        candidateStatus: 'passed',
+        baseRawPassCount: 3,
+        candidateRawPassCount: 2,
+        baseBudgetPassCount: 1,
+        candidateBudgetPassCount: 2,
+        baselineRepeatWins: 0,
+        compareRepeatWins: 2,
+        repeatTies: 1,
+        taskLean: 'candidate',
+        repeatJudgments: [
+          { repeatIndex: 1, resolvedWinner: 'candidate', judgeStatus: 'completed', confidence: 'medium', summary: 'candidate better', resultPath: '/tmp/j1.json' },
+          { repeatIndex: 2, resolvedWinner: 'candidate', judgeStatus: 'completed', confidence: 'medium', summary: 'candidate better', resultPath: '/tmp/j2.json' },
+          { repeatIndex: 3, resolvedWinner: 'TIE', judgeStatus: 'completed', confidence: 'low', summary: 'tie', resultPath: '/tmp/j3.json' }
+        ]
+      }
+    ],
     { repeats: 3 }
   );
 
-  assert.equal(compare.status, 'neutral');
   assert.deepEqual(compare.taskIds, ['demo']);
-  assert.equal(compare.minDecisiveBudgetPassDelta, 2);
-  assert.equal(compare.taskComparisons[0].direction, 'neutral');
-  assert.equal(compare.taskComparisons[0].decisionBasis, 'neutral');
-  assert.equal(compare.taskComparisons[0].budgetPassDelta, 1);
-  assert.equal(compare.taskComparisons[0].minDecisiveBudgetPassDelta, 2);
-  assert.equal(compare.taskComparisons[0].baseRawPassCount, 3);
-  assert.equal(compare.taskComparisons[0].candidateBudgetPassCount, 2);
+  assert.equal(compare.taskJudgments[0].taskLean, 'candidate');
+  assert.equal(compare.taskJudgments[0].compareRepeatWins, 2);
+  assert.equal(compare.taskJudgments[0].repeatTies, 1);
+  assert.equal(compare.suiteJudgment.compareTaskLeans, 1);
+  assert.equal(compare.suiteJudgment.baselineTaskLeans, 0);
+  assert.equal(compare.suiteJudgment.taskTies, 0);
 });
 
-test('raw pass differences stay diagnostic when budget pass counts are tied', () => {
+test('task lean stays tied when repeat wins split evenly', () => {
   const compare = compareRefRuns(
     {
       refLabel: 'base',
@@ -422,138 +565,34 @@ test('raw pass differences stay diagnostic when budget pass counts are tied', ()
       medianEffectiveTokens: 1500,
       medianCommandExecutionCount: 14
     },
+    [
+      {
+        taskId: 'demo',
+        baseStatus: 'passed',
+        candidateStatus: 'failed',
+        baseRawPassCount: 3,
+        candidateRawPassCount: 1,
+        baseBudgetPassCount: 1,
+        candidateBudgetPassCount: 1,
+        baselineRepeatWins: 1,
+        compareRepeatWins: 1,
+        repeatTies: 1,
+        taskLean: 'tie',
+        repeatJudgments: [
+          { repeatIndex: 1, resolvedWinner: 'base', judgeStatus: 'completed', confidence: 'medium', summary: 'base better', resultPath: '/tmp/j1.json' },
+          { repeatIndex: 2, resolvedWinner: 'candidate', judgeStatus: 'completed', confidence: 'medium', summary: 'candidate better', resultPath: '/tmp/j2.json' },
+          { repeatIndex: 3, resolvedWinner: 'TIE', judgeStatus: 'completed', confidence: 'low', summary: 'tie', resultPath: '/tmp/j3.json' }
+        ]
+      }
+    ],
     { repeats: 3 }
   );
 
-  assert.equal(compare.status, 'neutral');
-  assert.equal(compare.taskComparisons[0].direction, 'neutral');
-  assert.equal(compare.taskComparisons[0].decisionBasis, 'neutral');
-  assert.equal(compare.taskComparisons[0].budgetPassDelta, 0);
+  assert.equal(compare.taskJudgments[0].taskLean, 'tie');
+  assert.equal(compare.suiteJudgment.taskTies, 1);
 });
 
-test('compare summary uses a larger budget-pass margin as the decisive signal at three repeats', () => {
-  const compare = compareRefRuns(
-    {
-      refLabel: 'base',
-      sourceKind: 'ref',
-      requestedRef: 'HEAD',
-      resolvedRef: 'aaa111',
-      taskResults: [
-        makeTaskRunResult({ taskId: 'demo', refLabel: 'base', ref: 'aaa111', rawPassCount: 3, budgetPassCount: 1, budgetPassRate: 0.3333 })
-      ],
-      passed: 1,
-      failed: 0,
-      errors: 0,
-      rawPassTotal: 3,
-      budgetPassTotal: 1,
-      medianElapsedMs: 100,
-      medianEffectiveTokens: 1000,
-      medianCommandExecutionCount: 10
-    },
-    {
-      refLabel: 'candidate',
-      sourceKind: 'worktree',
-      requestedRef: 'WORKTREE',
-      resolvedRef: 'bbb222+worktree',
-      taskResults: [
-        makeTaskRunResult({ taskId: 'demo', refLabel: 'candidate', ref: 'bbb222+worktree', rawPassCount: 3, budgetPassCount: 3, budgetPassRate: 1 })
-      ],
-      passed: 1,
-      failed: 0,
-      errors: 0,
-      rawPassTotal: 3,
-      budgetPassTotal: 3,
-      medianElapsedMs: 120,
-      medianEffectiveTokens: 1200,
-      medianCommandExecutionCount: 12
-    },
-    { repeats: 3 }
-  );
-
-  assert.equal(compare.status, 'improved');
-  assert.equal(compare.minDecisiveBudgetPassDelta, 2);
-  assert.equal(compare.taskComparisons[0].direction, 'improved');
-  assert.equal(compare.taskComparisons[0].decisionBasis, 'budget_margin');
-  assert.equal(compare.taskComparisons[0].budgetPassDelta, 2);
-});
-
-test('single-sample smoke compares still allow a one-sample budget delta to decide direction', () => {
-  const compare = compareRefRuns(
-    {
-      refLabel: 'base',
-      sourceKind: 'ref',
-      requestedRef: 'HEAD',
-      resolvedRef: 'aaa111',
-      taskResults: [
-        makeTaskRunResult({
-          taskId: 'demo',
-          refLabel: 'base',
-          ref: 'aaa111',
-          sampleCount: 1,
-          statusCounts: { passed: 1, failed: 0, error: 0 },
-          rawPassCount: 1,
-          rawPassRate: 1,
-          commandBudgetPassCount: 0,
-          commandBudgetPassRate: 0,
-          tokenBudgetPassCount: 0,
-          tokenBudgetPassRate: 0,
-          budgetPassCount: 0,
-          budgetPassRate: 0,
-          sampleResultPaths: ['/tmp/sample-1.json']
-        })
-      ],
-      passed: 1,
-      failed: 0,
-      errors: 0,
-      rawPassTotal: 1,
-      budgetPassTotal: 0,
-      medianElapsedMs: 100,
-      medianEffectiveTokens: 1000,
-      medianCommandExecutionCount: 10
-    },
-    {
-      refLabel: 'candidate',
-      sourceKind: 'worktree',
-      requestedRef: 'WORKTREE',
-      resolvedRef: 'bbb222+worktree',
-      taskResults: [
-        makeTaskRunResult({
-          taskId: 'demo',
-          refLabel: 'candidate',
-          ref: 'bbb222+worktree',
-          sampleCount: 1,
-          statusCounts: { passed: 1, failed: 0, error: 0 },
-          rawPassCount: 1,
-          rawPassRate: 1,
-          commandBudgetPassCount: 1,
-          commandBudgetPassRate: 1,
-          tokenBudgetPassCount: 1,
-          tokenBudgetPassRate: 1,
-          budgetPassCount: 1,
-          budgetPassRate: 1,
-          sampleResultPaths: ['/tmp/sample-1.json']
-        })
-      ],
-      passed: 1,
-      failed: 0,
-      errors: 0,
-      rawPassTotal: 1,
-      budgetPassTotal: 1,
-      medianElapsedMs: 80,
-      medianEffectiveTokens: 900,
-      medianCommandExecutionCount: 8
-    },
-    { repeats: 1 }
-  );
-
-  assert.equal(compare.status, 'improved');
-  assert.equal(compare.minDecisiveBudgetPassDelta, 1);
-  assert.equal(compare.taskComparisons[0].direction, 'improved');
-  assert.equal(compare.taskComparisons[0].decisionBasis, 'budget_margin');
-  assert.equal(compare.taskComparisons[0].budgetPassDelta, 1);
-});
-
-test('publish writes history and latest summary files with raw and budget pass totals', async () => {
+test('publish writes history and latest summary files with task lean totals', async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'sigil-devex-publish-'));
   const resultsDir = path.join(root, 'results');
   const runDir = path.join(root, '.local', 'runs', 'publish-sample');
@@ -589,16 +628,36 @@ test('publish writes history and latest summary files with raw and budget pass t
     medianEffectiveTokens: 900,
     medianCommandExecutionCount: 8
   };
-  const compare = compareRefRuns(base, candidate, { repeats: 3 });
+  const compare = compareRefRuns(base, candidate, [
+    {
+      taskId: 'demo',
+      baseStatus: 'passed',
+      candidateStatus: 'passed',
+      baseRawPassCount: 3,
+      candidateRawPassCount: 3,
+      baseBudgetPassCount: 2,
+      candidateBudgetPassCount: 3,
+      baselineRepeatWins: 0,
+      compareRepeatWins: 2,
+      repeatTies: 1,
+      taskLean: 'candidate',
+      repeatJudgments: [
+        { repeatIndex: 1, resolvedWinner: 'candidate', judgeStatus: 'completed', confidence: 'medium', summary: 'candidate better', resultPath: '/tmp/j1.json' },
+        { repeatIndex: 2, resolvedWinner: 'candidate', judgeStatus: 'completed', confidence: 'medium', summary: 'candidate better', resultPath: '/tmp/j2.json' },
+        { repeatIndex: 3, resolvedWinner: 'TIE', judgeStatus: 'completed', confidence: 'low', summary: 'tie', resultPath: '/tmp/j3.json' }
+      ]
+    }
+  ], { repeats: 3 });
   await writeJsonFile(path.join(runDir, 'compare.json'), compare);
 
   const published = await publishCompareRun(resultsDir, runDir, 'smoke-sample');
 
   assert.equal(published.label, 'smoke-sample');
+  assert.equal(published.taskLeanTotals?.compare, 1);
   assert.equal(published.rawPassTotals?.base, 3);
   assert.equal(published.budgetPassTotals?.candidate, 3);
   assert.match(await fs.readFile(path.join(resultsDir, 'history.jsonl'), 'utf8'), /smoke-sample/);
-  assert.match(await fs.readFile(path.join(resultsDir, 'LATEST.md'), 'utf8'), /budget passes/);
+  assert.match(await fs.readFile(path.join(resultsDir, 'LATEST.md'), 'utf8'), /Compare-leaning tasks/);
 });
 
 test('codex executor streams large logs without buffering them into one giant string', async () => {

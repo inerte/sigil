@@ -1,0 +1,44 @@
+e console:{log:λ(String)=>!Log Unit}
+
+λcellLabel(cell:µCell)=>String match cell.revealed{
+  true=>match cell.bomb{
+    true=>"*"|
+    false=>match cell.adjacent=0{
+      true=>"·"|
+      false=>§string.intToString(cell.adjacent)
+    }
+  }|
+  false=>match cell.flagged{
+    true=>"!"|
+    false=>"□"
+  }
+}
+
+λjoinCells(cells:[µCell])=>String match cells{
+  []=>""|
+  [cell]=>cellLabel(cell)|
+  [cell,.rest]=>cellLabel(cell)++" "++joinCells(rest)
+}
+
+λmain()=>!Log Unit={
+  l game=(•minesweepDomain.initialGame():µGame);
+  console.log("Sigil Minesweep
+
+"++renderRows(game.board,game.height,game.width,0)++"
+
+Open the website demo to play the interactive version.")
+}
+
+λrenderRow(board:[µCell],width:Int,x:Int,y:Int)=>[µCell] match board{
+  []=>[]|
+  [cell,.rest]=>match cell.y=y and cell.x≥x and cell.x<width{
+    true=>[cell]⧺renderRow(rest,width,cell.x+1,y)|
+    false=>renderRow(rest,width,x,y)
+  }
+}
+
+λrenderRows(board:[µCell],height:Int,width:Int,y:Int)=>String match height-y{
+  0=>""|
+  _=>joinCells(renderRow(board,width,0,y))++"
+"++renderRows(board,height,width,y+1)
+}

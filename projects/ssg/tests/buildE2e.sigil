@@ -64,7 +64,15 @@ test "build site writes search index with core page fields" =>!SiteBuild {
   l _=(§file.removeTree(outputDir):Unit);
   l _=(•build.buildSite(baseConfig(outputDir)):Unit);
   l searchIndex=(§file.readText(§path.join(outputDir,"search-index.json")):String);
-  §string.contains(searchIndex,"\"section\":\"article\"") and §string.contains(searchIndex,"\"title\":\"Worlds, Not Mocks\"") and §string.contains(searchIndex,"\"section\":\"project\"") and §string.contains(searchIndex,"\"title\":\"Sigil TODO\"") and §string.contains(searchIndex,"\"url\":\"/projects/sigil-todo/\"") and §string.contains(searchIndex,"\"sourcePath\":\"projects/todo-app/README.md\"")
+  §string.contains(searchIndex,"\"section\":\"article\"") and §string.contains(searchIndex,"\"title\":\"Worlds, Not Mocks\"") and §string.contains(searchIndex,"\"section\":\"project\"") and §string.contains(searchIndex,"\"title\":\"Sigil TODO\"") and §string.contains(searchIndex,"\"url\":\"/projects/sigil-todo/\"") and §string.contains(searchIndex,"\"sourcePath\":\"projects/todo-app/README.md\"") and §string.contains(searchIndex,"\"title\":\"Sigil Minesweep\"") and §string.contains(searchIndex,"\"url\":\"/projects/sigil-minesweep/\"") and §string.contains(searchIndex,"\"sourcePath\":\"projects/minesweep/README.md\"")
+}
+
+test "build site renders minesweep project actions" =>!SiteBuild {
+  l outputDir=("/tmp/sigil-ssg-e2e-minesweep":String);
+  l _=(§file.removeTree(outputDir):Unit);
+  l _=(•build.buildSite(baseConfig(outputDir)):Unit);
+  l minesweep=(§file.readText(§path.join(outputDir,"projects/sigil-minesweep/index.html")):String);
+  §string.contains(minesweep,"Run demo") and §string.contains(minesweep,"pnpm dev") and §string.contains(minesweep,"/projects/sigil-minesweep/demo/")
 }
 
 test "build site writes sitemap with canonical urls" =>!SiteBuild {
@@ -72,5 +80,5 @@ test "build site writes sitemap with canonical urls" =>!SiteBuild {
   l _=(§file.removeTree(outputDir):Unit);
   l _=(•build.buildSite(baseConfig(outputDir)):Unit);
   l sitemap=(§file.readText(§path.join(outputDir,"sitemap.xml")):String);
-  §string.contains(sitemap,"https://inerte.github.io/sigil/") and §string.contains(sitemap,"https://inerte.github.io/sigil/articles/") and §string.contains(sitemap,"https://inerte.github.io/sigil/projects/") and §string.contains(sitemap,"https://inerte.github.io/sigil/projects/sigil-todo/") and §string.contains(sitemap,"https://inerte.github.io/sigil/about-site/") and §string.contains(sitemap,"https://inerte.github.io/sigil/docs/stdlib/")
+  §string.contains(sitemap,"https://inerte.github.io/sigil/") and §string.contains(sitemap,"https://inerte.github.io/sigil/articles/") and §string.contains(sitemap,"https://inerte.github.io/sigil/projects/") and §string.contains(sitemap,"https://inerte.github.io/sigil/projects/sigil-todo/") and §string.contains(sitemap,"https://inerte.github.io/sigil/projects/sigil-minesweep/") and §string.contains(sitemap,"https://inerte.github.io/sigil/about-site/") and §string.contains(sitemap,"https://inerte.github.io/sigil/docs/stdlib/")
 }

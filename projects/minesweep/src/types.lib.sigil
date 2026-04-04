@@ -1,0 +1,5 @@
+t Cell={adjacent:Int,bomb:Bool,flagged:Bool,revealed:Bool,x:Int,y:Int}
+
+t Game={board:[Cell],height:Int,status:String,width:Int}
+
+t Point={x:Int,y:Int}

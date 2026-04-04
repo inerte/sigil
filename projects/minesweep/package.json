@@ -1,0 +1,23 @@
+{
+  "name": "@sigil-lang/example-minesweep-react",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "sigil:compile": "cargo build --quiet --manifest-path ../../language/compiler/Cargo.toml -p sigil-cli && ../../language/compiler/target/debug/sigil compile src/minesweepDomain.lib.sigil -o web/src/generated/minesweep-domain.ts",
+    "predev": "pnpm sigil:compile",
+    "dev": "vite",
+    "prebuild": "pnpm sigil:compile",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^5.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^7.1.2"
+  }
+}

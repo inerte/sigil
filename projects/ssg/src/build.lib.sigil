@@ -77,7 +77,7 @@ e fs::promises
   copyAssetFiles(assetNames,assetSourceDir,assetTargetDir)
 }
 
-λcuratedProjects()=>[µCuratedProject]=[{demoSourceDir:"projects/todo-app/web/dist",localRun:"cd projects/todo-app && pnpm install && pnpm sigil:compile && pnpm dev",projectDir:"projects/todo-app",readmePath:"projects/todo-app/README.md"}]
+λcuratedProjects()=>[µCuratedProject]=[{demoSourceDir:"projects/todo-app/web/dist",localRun:"cd projects/todo-app && pnpm install && pnpm sigil:compile && pnpm dev",projectDir:"projects/todo-app",readmePath:"projects/todo-app/README.md"},{demoSourceDir:"projects/minesweep/web/dist",localRun:"cd projects/minesweep && pnpm install && pnpm sigil:compile && pnpm dev",projectDir:"projects/minesweep",readmePath:"projects/minesweep/README.md"}]
 
 λfilterMarkdownFiles(files:[String])=>[String]=files filter (λ(file:String)=>Bool=§string.endsWith(file,".md"))
 

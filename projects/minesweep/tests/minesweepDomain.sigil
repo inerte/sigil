@@ -1,0 +1,46 @@
+λboardLength(board:[µCell])=>Int match board{
+  []=>0|
+  [_,.rest]=>1+boardLength(rest)
+}
+
+λcellFlagged(board:[µCell],targetX:Int,targetY:Int)=>Bool match board{
+  []=>false|
+  [cell,.rest]=>match cell.x=targetX and cell.y=targetY{
+    true=>cell.flagged|
+    false=>cellFlagged(rest,targetX,targetY)
+  }
+}
+
+λcellRevealed(board:[µCell],targetX:Int,targetY:Int)=>Bool match board{
+  []=>false|
+  [cell,.rest]=>match cell.x=targetX and cell.y=targetY{
+    true=>cell.revealed|
+    false=>cellRevealed(rest,targetX,targetY)
+  }
+}
+
+λmain()=>Unit=()
+
+test "minesweep initial game builds a full board" {
+  boardLength(•minesweepDomain.initialGame().board)=25 and •minesweepDomain.initialGame().width=5 and •minesweepDomain.initialGame().height=5 and •minesweepDomain.initialGame().status="playing"
+}
+
+test "minesweep toggleFlag flips the target cell" {
+  cellFlagged(•minesweepDomain.toggleFlag(•minesweepDomain.initialGame(),2,2).board,2,2)
+}
+
+test "minesweep toggleFlag toggles back off" {
+  cellFlagged(•minesweepDomain.toggleFlag(•minesweepDomain.toggleFlag(•minesweepDomain.initialGame(),2,2),2,2).board,2,2)=false
+}
+
+test "minesweep revealCell reveals a safe cell" {
+  cellRevealed(•minesweepDomain.revealCell(•minesweepDomain.initialGame(),0,0).board,0,0) and •minesweepDomain.revealCell(•minesweepDomain.initialGame(),0,0).status="playing"
+}
+
+test "minesweep revealCell loses on bomb hit" {
+  cellRevealed(•minesweepDomain.revealCell(•minesweepDomain.initialGame(),1,0).board,1,0) and •minesweepDomain.revealCell(•minesweepDomain.initialGame(),1,0).status="lost"
+}
+
+test "minesweep revealCell ignores flagged targets" {
+  cellFlagged(•minesweepDomain.revealCell(•minesweepDomain.toggleFlag(•minesweepDomain.initialGame(),2,2),2,2).board,2,2) and cellRevealed(•minesweepDomain.revealCell(•minesweepDomain.toggleFlag(•minesweepDomain.initialGame(),2,2),2,2).board,2,2)=false
+}

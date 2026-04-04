@@ -10,6 +10,7 @@ on:
       - "language/docs/**"
       - "language/spec/**"
       - "projects/ssg/**"
+      - "projects/minesweep/**"
       - "projects/todo-app/**"
       - "website/**"
   push:
@@ -23,6 +24,7 @@ on:
       - "language/docs/**"
       - "language/spec/**"
       - "projects/ssg/**"
+      - "projects/minesweep/**"
       - "projects/todo-app/**"
       - "website/**"
   workflow_dispatch:
@@ -72,6 +74,8 @@ jobs:
           test -f website/.local/site/articles/index.html
           test -f website/.local/site/docs/index.html
           test -f website/.local/site/projects/index.html
+          test -f website/.local/site/projects/sigil-minesweep/index.html
+          test -f website/.local/site/projects/sigil-minesweep/demo/index.html
           test -f website/.local/site/projects/sigil-todo/index.html
           test -f website/.local/site/projects/sigil-todo/demo/index.html
           test -f website/.local/site/spec/index.html

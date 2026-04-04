@@ -1,0 +1,99 @@
+λabsDiff(a:Int,b:Int)=>Int match a>b{
+  true=>a-b|
+  false=>b-a
+}
+
+λadjacentBombs(points:[µPoint],x:Int,y:Int)=>Int match points{
+  []=>0|
+  [point,.rest]=>match isNeighbor(point,x,y){
+    true=>1+adjacentBombs(rest,x,y)|
+    false=>adjacentBombs(rest,x,y)
+  }
+}
+
+λallSafeCellsRevealed(board:[µCell])=>Bool=board reduce (λ(acc:Bool,cell:µCell)=>Bool=acc and (cell.bomb or cell.revealed)) from true
+
+λbombPositions()=>[µPoint]=[{x:1,y:0},{x:3,y:1},{x:0,y:3},{x:4,y:4}]
+
+λbuildBoard(height:Int,points:[µPoint],width:Int,y:Int)=>[µCell] match height-y{
+  0=>[]|
+  _=>buildRow(points,width,0,y)⧺buildBoard(height,points,width,y+1)
+}
+
+λbuildRow(points:[µPoint],width:Int,x:Int,y:Int)=>[µCell] match width-x{
+  0=>[]|
+  _=>[makeCell(points,x,y)]⧺buildRow(points,width,x+1,y)
+}
+
+λhasBomb(points:[µPoint],x:Int,y:Int)=>Bool match points{
+  []=>false|
+  [point,.rest]=>point.x=x and point.y=y or hasBomb(rest,x,y)
+}
+
+λinitialGame()=>µGame={board:(buildBoard(5,(bombPositions():[µPoint]),5,0):[µCell]),height:5,status:"playing",width:5}
+
+λisNeighbor(point:µPoint,x:Int,y:Int)=>Bool=¬(point.x=x and point.y=y) and absDiff(point.x,x)≤1 and absDiff(point.y,y)≤1
+
+λisTarget(cell:µCell,targetX:Int,targetY:Int)=>Bool=cell.x=targetX and cell.y=targetY
+
+λmakeCell(points:[µPoint],x:Int,y:Int)=>µCell={adjacent:(adjacentBombs(points,x,y):Int),bomb:(hasBomb(points,x,y):Bool),flagged:false,revealed:false,x:x,y:y}
+
+λnextStatus(board:[µCell])=>String match revealedBomb(board){
+  true=>"lost"|
+  false=>match allSafeCellsRevealed(board){
+    true=>"won"|
+    false=>"playing"
+  }
+}
+
+λrevealBombs(board:[µCell])=>[µCell]=board map (λ(cell:µCell)=>µCell match cell.bomb{
+  true=>withReveal(withFlag(cell,false),true)|
+  false=>cell
+})
+
+λrevealCell(game:µGame,targetX:Int,targetY:Int)=>µGame match game.status{
+  "playing"=>match targetBlocked(game.board,targetX,targetY){
+    true=>game|
+    false=>{
+      l board=(revealTarget(game.board,targetX,targetY):[µCell]);
+      l status=(nextStatus(board):String);
+      {board:(match status{
+        "lost"=>revealBombs(board)|
+        _=>board
+      }:[µCell]),height:game.height,status:status,width:game.width}
+    }
+  }|
+  _=>game
+}
+
+λrevealTarget(board:[µCell],targetX:Int,targetY:Int)=>[µCell]=board map (λ(cell:µCell)=>µCell match isTarget(cell,targetX,targetY) and ¬cell.flagged{
+  true=>withReveal(cell,true)|
+  false=>cell
+})
+
+λrevealedBomb(board:[µCell])=>Bool=board reduce (λ(acc:Bool,cell:µCell)=>Bool match cell.bomb and cell.revealed{
+  true=>true|
+  false=>acc
+}) from false
+
+λtargetBlocked(board:[µCell],targetX:Int,targetY:Int)=>Bool match board{
+  []=>false|
+  [cell,.rest]=>match isTarget(cell,targetX,targetY){
+    true=>cell.flagged or cell.revealed|
+    false=>targetBlocked(rest,targetX,targetY)
+  }
+}
+
+λtoggleFlag(game:µGame,targetX:Int,targetY:Int)=>µGame match game.status{
+  "playing"=>{board:(toggleFlagOnBoard(game.board,targetX,targetY):[µCell]),height:game.height,status:game.status,width:game.width}|
+  _=>game
+}
+
+λtoggleFlagOnBoard(board:[µCell],targetX:Int,targetY:Int)=>[µCell]=board map (λ(cell:µCell)=>µCell match isTarget(cell,targetX,targetY) and ¬cell.revealed{
+  true=>withFlag(cell,¬cell.flagged)|
+  false=>cell
+})
+
+λwithFlag(cell:µCell,flagged:Bool)=>µCell={adjacent:cell.adjacent,bomb:cell.bomb,flagged:flagged,revealed:cell.revealed,x:cell.x,y:cell.y}
+
+λwithReveal(cell:µCell,revealed:Bool)=>µCell={adjacent:cell.adjacent,bomb:cell.bomb,flagged:cell.flagged,revealed:revealed,x:cell.x,y:cell.y}

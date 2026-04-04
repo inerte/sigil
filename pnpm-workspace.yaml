@@ -2,3 +2,4 @@ packages:
   - 'language/tools/*'
   - 'language/benchmarks/tools'
   - 'projects/todo-app'
+  - 'projects/minesweep'

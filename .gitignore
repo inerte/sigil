@@ -13,7 +13,7 @@ dist/
 language/compiler/stdlib/
 language/runtime/
 
-# Compiled Mint programs and temporary files
+# Compiled Sigil programs and temporary files
 .local/
 **/.local/
 

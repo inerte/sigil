@@ -33,7 +33,7 @@
 
 λfooter(config:µSiteBuildConfig)=>String match #config.repoUrl>0{
   true=>"<footer class=\"site-footer\"><a href=\""++config.repoUrl++"\">GitHub</a></footer>"|
-  false=>"<footer class=\"site-footer\">Sigil</footer>"
+  false=>"<footer class=\"site-footer\">"++config.siteTitle++"</footer>"
 }
 
 λgithubNav(config:µSiteBuildConfig)=>String match #config.repoUrl>0{

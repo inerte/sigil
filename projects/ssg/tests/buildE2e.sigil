@@ -67,6 +67,21 @@ test "build site writes search index with core page fields" =>!SiteBuild {
   §string.contains(searchIndex,"\"section\":\"article\"") and §string.contains(searchIndex,"\"title\":\"Worlds, Not Mocks\"") and §string.contains(searchIndex,"\"section\":\"project\"") and §string.contains(searchIndex,"\"title\":\"Sigil TODO\"") and §string.contains(searchIndex,"\"url\":\"/projects/sigil-todo/\"") and §string.contains(searchIndex,"\"sourcePath\":\"projects/todo-app/README.md\"") and §string.contains(searchIndex,"\"title\":\"Sigil Minesweep\"") and §string.contains(searchIndex,"\"url\":\"/projects/sigil-minesweep/\"") and §string.contains(searchIndex,"\"sourcePath\":\"projects/minesweep/README.md\"") and §string.contains(searchIndex,"\"title\":\"Sigil 2048\"") and §string.contains(searchIndex,"\"url\":\"/projects/sigil-2048/\"") and §string.contains(searchIndex,"\"sourcePath\":\"projects/game-2048/README.md\"") and §string.contains(searchIndex,"\"title\":\"Sigil Flashcards\"") and §string.contains(searchIndex,"\"url\":\"/projects/sigil-flashcards/\"") and §string.contains(searchIndex,"\"sourcePath\":\"projects/flashcards/README.md\"")
 }
 
+test "build site copies demo trees when source exists" =>!SiteBuild {
+  l root=("/tmp/sigil-ssg-e2e-demo-copy":String);
+  l sourceDir=(§path.join(root,"source"):String);
+  l sourceAssetsDir=(§path.join(sourceDir,"assets"):String);
+  l targetDir=(§path.join(root,"target"):String);
+  l _=(§file.removeTree(root):Unit);
+  l _=(§file.makeDirs(sourceAssetsDir):Unit);
+  l _=(§file.writeText("<!doctype html>",§path.join(sourceDir,"index.html")):Unit);
+  l _=(§file.writeText("body{}",§path.join(sourceAssetsDir,"site.css")):Unit);
+  l _=(•build.copyDemoTree(sourceDir,targetDir):Unit);
+  l copiedIndex=(§file.readText(§path.join(targetDir,"index.html")):String);
+  l copiedCss=(§file.readText(§path.join(§path.join(targetDir,"assets"),"site.css")):String);
+  §string.contains(copiedIndex,"<!doctype html>") and §string.contains(copiedCss,"body{}")
+}
+
 test "build site renders minesweep project actions" =>!SiteBuild {
   l outputDir=("/tmp/sigil-ssg-e2e-minesweep":String);
   l _=(§file.removeTree(outputDir):Unit);

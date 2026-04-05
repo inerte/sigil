@@ -1,0 +1,9 @@
+t Cell={value:Int,x:Int,y:Int}
+
+t Game={board:[Cell],score:Int,size:Int,status:String}
+
+t LineOutcome={scoreGain:Int,values:[Int]}
+
+t MoveOutcome={board:[Cell],scoreGain:Int}
+
+t Spawn={value:Int,x:Int,y:Int}

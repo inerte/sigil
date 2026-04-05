@@ -1,0 +1,29 @@
+λmain()=>Unit=()
+
+test "flashcards sessionForTopic filters to matching cards" {
+  l session=(•flashcardsDomain.sessionForTopic("topology"):µStudySession);
+  #session.cards>0 and session.selectedTopic="topology" and session.cards[0].id="topology-vs-config"
+}
+
+test "flashcards sessionForTopic can produce an empty deck" {
+  l session=(•flashcardsDomain.sessionForTopic("unknown"):µStudySession);
+  #session.cards=0 and session.currentIndex=0
+}
+
+test "flashcards revealAnswer flips the current card" {
+  •flashcardsDomain.revealAnswer(•flashcardsDomain.sessionForTopic("all")).revealed
+}
+
+test "flashcards nextCard advances and resets reveal state" {
+  l session=(•flashcardsDomain.nextCard(•flashcardsDomain.revealAnswer(•flashcardsDomain.sessionForTopic("all"))):µStudySession);
+  session.currentIndex=1 and session.revealed=false
+}
+
+test "flashcards previousCard does not move before the first card" {
+  •flashcardsDomain.previousCard(•flashcardsDomain.sessionForTopic("all")).currentIndex=0
+}
+
+test "flashcards cards preserve linked references" {
+  l session=(•flashcardsDomain.sessionForTopic("debugging"):µStudySession);
+  #session.cards[0].references>0 and session.cards[0].references[0].route="/docs/debugging/"
+}

@@ -3,3 +3,5 @@ packages:
   - 'language/benchmarks/tools'
   - 'projects/todo-app'
   - 'projects/minesweep'
+  - 'projects/game-2048'
+  - 'projects/flashcards'

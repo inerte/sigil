@@ -1,0 +1,5 @@
+t Card={answer:String,id:String,prompt:String,references:[Reference],title:String,topics:[String]}
+
+t Reference={kind:String,label:String,route:String}
+
+t StudySession={cards:[Card],currentIndex:Int,revealed:Bool,selectedTopic:String,topics:[String]}

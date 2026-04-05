@@ -6,7 +6,9 @@
   "private": true,
   "workspaces": [
     "projects/todo-app",
-    "projects/minesweep"
+    "projects/minesweep",
+    "projects/game-2048",
+    "projects/flashcards"
   ],
   "scripts": {
     "build": "cargo build --manifest-path language/compiler/Cargo.toml -p sigil-cli",
@@ -28,11 +30,15 @@
     "sigil:test:todo": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test projects/todo-app/tests",
     "sigil:build:todo": "(cd projects/todo-app && pnpm install && SIGIL_TODO_BASE=/projects/sigil-todo/demo/ pnpm build)",
     "sigil:build:minesweep": "(cd projects/minesweep && pnpm install && SIGIL_MINESWEEP_BASE=/projects/sigil-minesweep/demo/ pnpm build)",
+    "sigil:test:2048": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test projects/game-2048/tests",
+    "sigil:build:2048": "(cd projects/game-2048 && pnpm install && SIGIL_2048_BASE=/projects/sigil-2048/demo/ pnpm build)",
+    "sigil:test:flashcards": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test projects/flashcards/tests",
+    "sigil:build:flashcards": "(cd projects/flashcards && pnpm install && SIGIL_FLASHCARDS_BASE=/projects/sigil-flashcards/demo/ pnpm build)",
     "sigil:test:canonical": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test language/integrationTests/tests/canonical.sigil",
     "sigil:test:multimodule": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test language/integrationTests/tests/multimodule.sigil",
     "sigil:test:all": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil run projects/testAllRunner/src/main.sigil --env local",
     "sigil:test:minesweep": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test projects/minesweep/tests",
-    "sigil:build:website": "pnpm sigil:build:todo && pnpm sigil:build:minesweep && language/compiler/target/debug/sigil run projects/ssg/src/main.sigil --env site",
+    "sigil:build:website": "pnpm sigil:build:todo && pnpm sigil:build:minesweep && pnpm sigil:build:2048 && pnpm sigil:build:flashcards && language/compiler/target/debug/sigil run projects/ssg/src/main.sigil --env site",
     "sigil:package:homebrew": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && VERSION=$(python3 - <<'PY'\nimport re\nline=open('packaging/homebrew/SHA256SUMS').read().splitlines()[0]\nmatch=re.search(r'sigil-(.*)-darwin-arm64\\.tar\\.gz', line)\nprint(match.group(1) if match else '')\nPY\n) && sigilHomebrewVersion=$VERSION sigilHomebrewRepo=inerte/sigil sigilHomebrewSha256SumsPath=packaging/homebrew/SHA256SUMS sigilHomebrewOutputPath=packaging/homebrew/Formula/sigil.rb language/compiler/target/debug/sigil run projects/homebrewPackaging/src/main.sigil --env release"
   },
   "devDependencies": {

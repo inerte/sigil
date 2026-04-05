@@ -10,6 +10,8 @@ on:
       - "language/docs/**"
       - "language/spec/**"
       - "projects/ssg/**"
+      - "projects/game-2048/**"
+      - "projects/flashcards/**"
       - "projects/minesweep/**"
       - "projects/todo-app/**"
       - "website/**"
@@ -24,6 +26,8 @@ on:
       - "language/docs/**"
       - "language/spec/**"
       - "projects/ssg/**"
+      - "projects/game-2048/**"
+      - "projects/flashcards/**"
       - "projects/minesweep/**"
       - "projects/todo-app/**"
       - "website/**"
@@ -74,6 +78,10 @@ jobs:
           test -f website/.local/site/articles/index.html
           test -f website/.local/site/docs/index.html
           test -f website/.local/site/projects/index.html
+          test -f website/.local/site/projects/sigil-2048/index.html
+          test -f website/.local/site/projects/sigil-2048/demo/index.html
+          test -f website/.local/site/projects/sigil-flashcards/index.html
+          test -f website/.local/site/projects/sigil-flashcards/demo/index.html
           test -f website/.local/site/projects/sigil-minesweep/index.html
           test -f website/.local/site/projects/sigil-minesweep/demo/index.html
           test -f website/.local/site/projects/sigil-todo/index.html

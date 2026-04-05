@@ -1,0 +1,206 @@
+:root {
+  color-scheme: light;
+  --bg: #f6ecdf;
+  --panel: #fff9f2;
+  --ink: #2d241d;
+  --muted: #6f6154;
+  --line: #d8c7b5;
+  --accent: #b55f34;
+  --accent-2: #8f4321;
+  --tile-0: #f0e2d2;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(247, 205, 144, 0.35), transparent 28%),
+    radial-gradient(circle at 80% 12%, rgba(181, 95, 52, 0.18), transparent 32%),
+    linear-gradient(180deg, #fbf1e3 0%, var(--bg) 100%);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", "Avenir Next", sans-serif;
+}
+
+#root {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.twenty48-shell {
+  width: min(760px, 100%);
+  background: color-mix(in srgb, var(--panel) 94%, white);
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  box-shadow: 0 18px 44px rgba(45, 36, 29, 0.12);
+  padding: 22px;
+}
+
+.twenty48-header {
+  display: flex;
+  gap: 16px;
+  align-items: start;
+  justify-content: space-between;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.twenty48-header h1 {
+  margin: 0;
+  font-size: clamp(1.8rem, 1.35rem + 1.2vw, 2.5rem);
+  letter-spacing: -0.05em;
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  color: var(--muted);
+  max-width: 60ch;
+}
+
+button {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: white;
+  color: var(--ink);
+  cursor: pointer;
+  font: inherit;
+}
+
+.restart {
+  padding: 10px 14px;
+  font-weight: 700;
+}
+
+.twenty48-toolbar {
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: center;
+  margin: 20px 0 16px;
+  flex-wrap: wrap;
+}
+
+.score-stack {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.score-card {
+  min-width: 120px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: white;
+  padding: 10px 14px;
+  display: grid;
+  gap: 4px;
+}
+
+.score-card span {
+  color: var(--muted);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.score-card strong {
+  font-size: 1.4rem;
+}
+
+.score-card.muted strong {
+  text-transform: capitalize;
+}
+
+.status-copy {
+  margin: 0;
+  color: var(--muted);
+  max-width: 32ch;
+}
+
+.twenty48-board {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: linear-gradient(180deg, #e5cfb8, #d6b99c);
+}
+
+.tile {
+  aspect-ratio: 1;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  font-size: clamp(1.1rem, 0.9rem + 1.1vw, 2rem);
+  font-weight: 800;
+  background: var(--tile-0);
+  color: #816f5e;
+  user-select: none;
+}
+
+.tile[data-tone="v-2"] { background: #f8efe4; color: #6a5847; }
+.tile[data-tone="v-4"] { background: #f5dfc2; color: #664d39; }
+.tile[data-tone="v-8"] { background: #efb36b; color: #fff8f1; }
+.tile[data-tone="v-16"] { background: #ea9a55; color: #fff8f1; }
+.tile[data-tone="v-32"] { background: #dd7f4d; color: #fffaf4; }
+.tile[data-tone="v-64"] { background: #cf6240; color: #fffaf4; }
+.tile[data-tone="v-128"] { background: #f1ce62; color: #584614; }
+.tile[data-tone="v-256"] { background: #e8bb47; color: #584614; }
+.tile[data-tone="v-512"] { background: #db9c38; color: #fff8e6; }
+.tile[data-tone="v-1024"] { background: #c87f2f; color: #fff8e6; }
+.tile[data-tone="v-2048"] { background: #b55f34; color: #fff7ef; }
+
+.twenty48-controls {
+  display: grid;
+  gap: 10px;
+  justify-items: center;
+  margin-top: 16px;
+}
+
+.twenty48-controls button {
+  min-width: 100px;
+  padding: 10px 14px;
+  font-weight: 700;
+}
+
+.row-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.twenty48-banner {
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: white;
+}
+
+.twenty48-banner.muted {
+  color: var(--muted);
+}
+
+.twenty48-banner.error {
+  color: #9f2f21;
+  background: #fff2ef;
+}
+
+@media (max-width: 640px) {
+  .twenty48-shell { padding: 18px; }
+  .twenty48-header { flex-direction: column; }
+  .score-card { min-width: 0; }
+  .row-controls button,
+  .twenty48-controls > button { flex: 1; width: 100%; }
+  .row-controls { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

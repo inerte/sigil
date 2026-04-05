@@ -12,6 +12,44 @@ importers:
         specifier: ^4.20.5
         version: 4.21.0
 
+  projects/flashcards:
+    dependencies:
+      react:
+        specifier: ^19.1.1
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.1
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@vitejs/plugin-react':
+        specifier: ^5.0.0
+        version: 5.1.4(vite@7.3.1(@types/node@24.10.13)(tsx@4.21.0))
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vite:
+        specifier: ^7.1.2
+        version: 7.3.1(@types/node@24.10.13)(tsx@4.21.0)
+
+  projects/game-2048:
+    dependencies:
+      react:
+        specifier: ^19.1.1
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.1.1
+        version: 19.2.4(react@19.2.4)
+    devDependencies:
+      '@vitejs/plugin-react':
+        specifier: ^5.0.0
+        version: 5.1.4(vite@7.3.1(@types/node@24.10.13)(tsx@4.21.0))
+      typescript:
+        specifier: ^5.7.2
+        version: 5.9.3
+      vite:
+        specifier: ^7.1.2
+        version: 7.3.1(@types/node@24.10.13)(tsx@4.21.0)
+
   projects/minesweep:
     dependencies:
       react:

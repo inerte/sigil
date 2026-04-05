@@ -90,6 +90,10 @@ jobs:
           test -f website/.local/site/assets/site.css
           test -f website/.local/site/site.json
           grep -Eq "Projects|Articles|Docs|Spec" website/.local/site/index.html
+          grep -q "/${{ github.event.repository.name }}/projects/sigil-2048/demo/assets/" website/.local/site/projects/sigil-2048/demo/index.html
+          grep -q "/${{ github.event.repository.name }}/projects/sigil-flashcards/demo/assets/" website/.local/site/projects/sigil-flashcards/demo/index.html
+          grep -q "/${{ github.event.repository.name }}/projects/sigil-minesweep/demo/assets/" website/.local/site/projects/sigil-minesweep/demo/index.html
+          grep -q "/${{ github.event.repository.name }}/projects/sigil-todo/demo/assets/" website/.local/site/projects/sigil-todo/demo/index.html
 
       - name: Upload Pages artifact
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'

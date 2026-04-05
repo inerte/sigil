@@ -3773,12 +3773,30 @@ try {{
   if (result !== undefined) {{
     console.log(result);
   }}
+  if (typeof __sigil_runtime_capture_trace_sync === 'function') {{
+    __sigil_runtime_capture_trace_sync();
+  }}
+  if (typeof __sigil_runtime_capture_breakpoints_sync === 'function') {{
+    __sigil_runtime_capture_breakpoints_sync();
+  }}
+  if (typeof __sigil_runtime_capture_replay_sync === 'function') {{
+    __sigil_runtime_capture_replay_sync();
+  }}
 }} catch (error) {{
   if (__sigil_runtime_is_breakpoint_stop(error)) {{
     // Intentional early stop for machine-first breakpoint debugging.
   }} else {{
   const captured = await __sigil_runtime_capture_error(error);
   {catch_replay_mark}
+  if (typeof __sigil_runtime_capture_trace_sync === 'function') {{
+    __sigil_runtime_capture_trace_sync();
+  }}
+  if (typeof __sigil_runtime_capture_breakpoints_sync === 'function') {{
+    __sigil_runtime_capture_breakpoints_sync();
+  }}
+  if (typeof __sigil_runtime_capture_replay_sync === 'function') {{
+    __sigil_runtime_capture_replay_sync();
+  }}
   const renderedStack = captured.stack;
   if (renderedStack) {{
     console.error(renderedStack);

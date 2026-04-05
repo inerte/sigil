@@ -33,10 +33,7 @@ pub use span_map::{
     GeneratedLineRange, ModuleSpanMap, SPAN_MAP_FORMAT_VERSION,
 };
 
-const WORLD_RUNTIME_HELPERS: &str = r#"function __sigil_world_error(message) {
-  throw new Error(String(message));
-}
-function __sigil_world_clone(value) {
+const REPLAY_RUNTIME_HELPERS: &str = r#"function __sigil_world_clone(value) {
   if (typeof globalThis.structuredClone === 'function') {
     return globalThis.structuredClone(value);
   }
@@ -302,6 +299,11 @@ function __sigil_replay_artifact() {
 globalThis.__sigil_replay_snapshot = __sigil_replay_snapshot;
 globalThis.__sigil_replay_artifact = __sigil_replay_artifact;
 globalThis.__sigil_replay_record_failure = __sigil_replay_record_failure;
+"#;
+
+const WORLD_RUNTIME_HELPERS: &str = r#"function __sigil_world_error(message) {
+  throw new Error(String(message));
+}
 function __sigil_world_host_template() {
   return {
     clock: { kind: 'system' },
@@ -1619,8 +1621,8 @@ function __sigil_record_coverage_result(moduleId, functionName, result) {
   return result;
 }"#;
 
-pub fn world_runtime_helpers_source() -> &'static str {
-    WORLD_RUNTIME_HELPERS
+pub fn world_runtime_helpers_source() -> String {
+    format!("{REPLAY_RUNTIME_HELPERS}{WORLD_RUNTIME_HELPERS}")
 }
 
 #[derive(Debug, Error)]
@@ -2239,6 +2241,7 @@ impl TypeScriptGenerator {
         self.emit("  return option && option.__tag === 'Some' ? option.__fields[0] : null;");
         self.emit("}");
         self.emit_block(COVERAGE_RUNTIME_HELPERS);
+        self.emit_block(REPLAY_RUNTIME_HELPERS);
         if include_world_runtime {
             self.emit_block(WORLD_RUNTIME_HELPERS);
         }

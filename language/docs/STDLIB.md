@@ -42,7 +42,8 @@ e console
 **Design:** Sigil writes rooted references directly at the use site.
 There are no import declarations, no selective imports, and no aliases. FFI
 still uses `e module::path`; Sigil modules use roots like `§`, `•`, `¶`, `¤`,
-`†`, and `※`, while project-defined types and project sum constructors use `µ`.
+`†`, `※`, and `☴`, while project-defined types and project sum constructors use
+`µ`.
 
 ## Length Operator (`#`)
 

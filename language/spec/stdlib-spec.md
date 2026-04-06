@@ -17,7 +17,7 @@ The Sigil standard library provides essential types and functions that are autom
 
 The prelude is available in every Sigil module without qualification. Other
 modules are reached through rooted references such as `§list`, `•topology`,
-`†runtime`, and `※check::log`.
+`†runtime`, `※check::log`, and `☴router`.
 
 ## Core Types
 

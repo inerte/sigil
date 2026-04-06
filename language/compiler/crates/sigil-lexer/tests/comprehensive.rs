@@ -64,7 +64,7 @@ fn test_all_keywords() {
 
 #[test]
 fn test_root_sigils_tokenize() {
-    let source = "§ • ¶ ¤ † ※ µ";
+    let source = "§ • ¶ ¤ † ※ ☴ µ";
     let tokens = tokenize(source).unwrap();
 
     assert_eq!(tokens[0].token_type, TokenType::StdlibRoot);
@@ -73,7 +73,8 @@ fn test_root_sigils_tokenize() {
     assert_eq!(tokens[3].token_type, TokenType::ConfigRoot);
     assert_eq!(tokens[4].token_type, TokenType::WorldRoot);
     assert_eq!(tokens[5].token_type, TokenType::TestRoot);
-    assert_eq!(tokens[6].token_type, TokenType::ProjectTypeRoot);
+    assert_eq!(tokens[6].token_type, TokenType::PackageRoot);
+    assert_eq!(tokens[7].token_type, TokenType::ProjectTypeRoot);
 }
 
 #[test]

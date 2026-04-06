@@ -18,7 +18,7 @@ TopLevelDecl = TypeDecl
 
 ModulePath = RootedModulePath ;
 RootedModulePath = RootSigil , Identifier , { "::" , Identifier } ;
-RootSigil = "§" | "•" | "¶" | "¤" | "†" | "※" ;
+RootSigil = "§" | "•" | "¶" | "¤" | "†" | "※" | "☴" ;
 
 ExternDecl = "e" , ModulePath , [ ":" , TypedMembers ] ;
 TypedMembers = "{" , TypedMember , { "," , TypedMember } , "}" ;

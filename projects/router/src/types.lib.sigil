@@ -1,0 +1,5 @@
+t MatchOutcome=Matched(RouteMatch)|MethodNotAllowed()|NotFound()
+
+t Route={handler:String,method:String,path:String}
+
+t RouteMatch={handler:String,params:{String↦String}}

@@ -25,10 +25,15 @@ These are not the language implementation itself.
 ## Typical Sigil Project Layout
 
 Most Sigil projects in this repo use:
-- `sigil.json` (project root marker; required `name` and `version`)
+- `sigil.json` (project root marker; required lowerCamel `name` and UTC timestamp `version`)
 - `src/`
 - `tests/`
 - `.local/` (generated output)
+
+Publishable packages additionally use:
+- `src/package.lib.sigil`
+- `publish` in `sigil.json`
+- exact-only direct `dependencies` in `sigil.json`
 
 When creating new projects, follow that layout unless there is a clear reason not to.
 

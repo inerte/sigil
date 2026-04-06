@@ -164,6 +164,10 @@ Current constructor and list invariants:
   - tests run in explicit worlds; prefer `config/<env>.lib.sigil` baseline worlds plus test-local `world { ... }` derivation over ad hoc rewiring
   - unused extern declarations are non-canonical in executable `.sigil` files; `.lib.sigil` files may expose extern-based API surface that is unused locally
   - rooted module references are written directly at use sites; there is no separate import declaration surface
+  - external packages use the `☴...` root and must be declared as direct exact dependencies in `sigil.json`
+  - `☴...` never resolves transitively; if user code names a package, that package must be declared directly
+  - publishable packages require both `src/package.lib.sigil` and `publish` in `sigil.json`
+  - `sigil.json.name` is lowerCamel and `sigil.json.version` uses canonical UTC timestamp format `YYYY-MM-DDTHH-mm-ssZ`
   - inline single-use pure locals; keep bindings only for reuse, effects, destructuring, or syntax-required staging
   - reject dead named bindings; use `l _=(...)` when sequencing effects without keeping a reusable local
   - `.sigil` files must keep top-level functions, consts, and types reachable from `main` or tests; `.lib.sigil` files may still expose API that is unused locally
@@ -179,7 +183,7 @@ Error messages should:
 - give the required canonical form when possible
 
 Prefer:
-- `Use a root or type sigil only where needed (e.g., §list, µTodo, ※check::log, †runtime.World)`
+- `Use a root or type sigil only where needed (e.g., §list, µTodo, ※check::log, †runtime.World, ☴router)`
 
 Over:
 - vague parse failures with no remediation

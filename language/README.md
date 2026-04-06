@@ -91,11 +91,45 @@ Module visibility is determined by file extension:
 
 No `export` keyword exists. The file extension declares the intent.
 
-- `•`, `¤`, `¶`, `§`, `†`, and `※` are the module roots
+- `•`, `¤`, `¶`, `§`, `†`, `※`, and `☴` are the module roots
 - `µ...` resolves project-defined types and project sum constructors from `src/types.lib.sigil`
 - `::` is only used after a root when descending into nested modules such as `※check::log`
 - Module cycles are compile errors
 - FFI (`e module::path`) remains trust-mode and link-time validated
+
+### Packages
+
+Sigil now has first-class packages.
+
+Direct package references use `☴...`:
+
+```text
+λmain()=>Int=☴router.resolve("GET","/health",routes)
+```
+
+Package rules are canonical:
+
+- direct dependencies live in `sigil.json.dependencies`
+- dependency versions are exact UTC timestamps in `YYYY-MM-DDTHH-mm-ssZ`
+- transitive package imports are rejected
+- publishable packages require `src/package.lib.sigil`
+- if `src/package.lib.sigil` exists, `sigil.json` must contain `publish`
+- package management lives under `sigil package ...`
+
+Examples:
+
+```bash
+sigil package add router
+sigil package install
+sigil package update router
+sigil package publish
+```
+
+Sigil keeps the timestamp version in `sigil.json`. npm is used only as the
+transport and publish registry. The compiler derives the npm transport version
+canonically as `YYYYMMDD.HHMMSS.0`.
+
+See `docs/PACKAGES.md`.
 
 Sigil also has a very small implicit core prelude:
 - `Option[T]`, `Result[T,E]`

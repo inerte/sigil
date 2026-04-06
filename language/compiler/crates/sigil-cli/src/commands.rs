@@ -639,6 +639,10 @@ pub fn parse_command(file: &Path) -> Result<(), CliError> {
 fn project_json(project: Option<&ProjectConfig>) -> Option<serde_json::Value> {
     project.map(|project| {
         serde_json::json!({
+            "name": project.name,
+            "version": project.version,
+            "dependencies": project.dependencies,
+            "publishable": project.publish.is_some(),
             "root": project.root.to_string_lossy(),
             "layout": serde_json::to_value(&project.layout).unwrap_or(serde_json::json!({}))
         })
@@ -8324,9 +8328,12 @@ fn analyze_module_graph(graph: &ModuleGraph) -> Result<AnalyzedGraphOutputs, Cli
     for module_id in &graph.topo_order {
         let module = &graph.modules[module_id];
 
-        let imported_namespaces = build_imported_namespaces(&module.ast, &compiled_modules);
-        let imported_type_regs = build_imported_type_registries(&module.ast, &type_registries);
-        let imported_value_schemes = build_imported_value_schemes(&module.ast, &compiled_schemes);
+        let imported_namespaces =
+            build_imported_namespaces(&module.source_imports, &compiled_modules);
+        let imported_type_regs =
+            build_imported_type_registries(&module.source_imports, &type_registries);
+        let imported_value_schemes =
+            build_imported_value_schemes(&module.source_imports, &compiled_schemes);
         let effect_catalog = load_project_effect_catalog_for(&module.file_path)?;
 
         let typecheck_result = type_check(
@@ -9478,25 +9485,28 @@ console.log(JSON.stringify({{
 ///
 /// For each import, creates a namespace type (record) containing exported functions/constants
 fn build_imported_namespaces(
-    _ast: &Program,
+    source_imports: &HashMap<String, String>,
     compiled_modules: &HashMap<String, HashMap<String, InferenceType>>,
 ) -> HashMap<String, InferenceType> {
     let mut imported = HashMap::new();
 
-    for (module_id, types) in compiled_modules {
+    for (source_module_id, resolved_module_id) in source_imports {
+        let Some(types) = compiled_modules.get(resolved_module_id) else {
+            continue;
+        };
         let mut fields = HashMap::new();
         for (name, typ) in types {
             fields.insert(
                 name.clone(),
-                qualify_inference_type_in_context(typ, module_id),
+                qualify_inference_type_in_context(typ, resolved_module_id),
             );
         }
 
         imported.insert(
-            module_id.clone(),
+            source_module_id.clone(),
             InferenceType::Record(TRecord {
                 fields,
-                name: Some(module_id.clone()),
+                name: Some(source_module_id.clone()),
             }),
         );
     }
@@ -9590,27 +9600,52 @@ fn qualify_inference_type_in_context(typ: &InferenceType, module_id: &str) -> In
 ///
 /// Extracts type definitions (sum types, product types) from imported modules
 fn build_imported_type_registries(
-    _ast: &Program,
+    source_imports: &HashMap<String, String>,
     type_registries: &HashMap<String, HashMap<String, TypeInfo>>,
 ) -> HashMap<String, HashMap<String, TypeInfo>> {
-    type_registries.clone()
+    let mut imported = type_registries.clone();
+    for (source_module_id, resolved_module_id) in source_imports {
+        if let Some(registry) = type_registries.get(resolved_module_id) {
+            imported.insert(source_module_id.clone(), registry.clone());
+        }
+    }
+    imported
 }
 
 fn build_imported_value_schemes(
-    _ast: &Program,
+    source_imports: &HashMap<String, String>,
     compiled_schemes: &HashMap<String, HashMap<String, TypeScheme>>,
 ) -> HashMap<String, HashMap<String, TypeScheme>> {
-    let mut imported = HashMap::new();
+    let mut imported = compiled_schemes
+        .iter()
+        .map(|(module_id, schemes)| {
+            (
+                module_id.clone(),
+                schemes
+                    .iter()
+                    .map(|(name, scheme)| {
+                        (
+                            name.clone(),
+                            qualify_scheme_for_module(module_id.as_str(), scheme),
+                        )
+                    })
+                    .collect(),
+            )
+        })
+        .collect::<HashMap<_, _>>();
 
-    for (module_id, schemes) in compiled_schemes {
+    for (source_module_id, resolved_module_id) in source_imports {
+        let Some(schemes) = compiled_schemes.get(resolved_module_id) else {
+            continue;
+        };
         imported.insert(
-            module_id.clone(),
+            source_module_id.clone(),
             schemes
                 .iter()
                 .map(|(name, scheme)| {
                     (
                         name.clone(),
-                        qualify_scheme_for_module(module_id.as_str(), scheme),
+                        qualify_scheme_for_module(resolved_module_id.as_str(), scheme),
                     )
                 })
                 .collect(),
@@ -9969,7 +10004,7 @@ fn collect_module_coverage_targets(
     imported_type_regs: &HashMap<String, HashMap<String, TypeInfo>>,
     local_type_registry: &HashMap<String, TypeInfo>,
 ) -> Vec<CoverageTarget> {
-    let Some(project) = &module.project else {
+    let Some(project) = &module.output_project else {
         return Vec::new();
     };
 
@@ -10026,7 +10061,7 @@ fn get_module_output_path(module: &LoadedModule) -> PathBuf {
     use std::fs;
 
     // Check if this is a project file
-    if let Some(project) = module.project.clone() {
+    if let Some(project) = module.output_project.clone().or_else(|| module.project.clone()) {
         // Use project's output directory
         let path_str = module.id.replace("::", "/");
         return project

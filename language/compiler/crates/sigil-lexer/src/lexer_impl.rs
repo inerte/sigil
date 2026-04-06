@@ -494,6 +494,7 @@ impl Lexer {
             '¤' => self.add_token(tokens, TokenType::ConfigRoot, "¤", start),
             '†' => self.add_token(tokens, TokenType::WorldRoot, "†", start),
             '※' => self.add_token(tokens, TokenType::TestRoot, "※", start),
+            '☴' => self.add_token(tokens, TokenType::PackageRoot, "☴", start),
             'µ' => self.add_token(tokens, TokenType::ProjectTypeRoot, "µ", start),
 
             // Unicode keywords

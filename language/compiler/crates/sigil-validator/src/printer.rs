@@ -1006,6 +1006,7 @@ fn root_sigil(root: &str) -> Option<&'static str> {
         "config" => Some("¤"),
         "world" => Some("†"),
         "test" => Some("※"),
+        "package" => Some("☴"),
         _ => None,
     }
 }

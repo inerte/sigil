@@ -6624,6 +6624,8 @@ fn is_sigil_runtime_module(module_id: &str) -> bool {
         || module_id.starts_with("test::")
         || module_id.starts_with("src::")
         || module_id.starts_with("config::")
+        || module_id.starts_with("package::")
+        || module_id.starts_with("packageConfig::")
 }
 
 fn requires_world_runtime(program: &TypedProgram, runtime_modules: &BTreeSet<String>) -> bool {
@@ -6638,6 +6640,7 @@ fn requires_world_runtime(program: &TypedProgram, runtime_modules: &BTreeSet<Str
 
 fn requires_world_runtime_module(module_id: &str) -> bool {
     module_id.starts_with("config::")
+        || module_id.starts_with("packageConfig::")
         || module_id.starts_with("world::")
         || module_id.starts_with("test::")
         || matches!(

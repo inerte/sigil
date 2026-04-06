@@ -1,0 +1,16 @@
+λmain()=>Unit=()
+
+test "match returns the first exact route" {
+  match •package.resolve("GET","/users",[•package.route("listUsers","GET","/users"),•package.route("shadowed","GET","/users")]){
+    µMatched(route)=>route.handler="listUsers"|
+    _=>false
+  }
+}
+
+test "match reports method not allowed when the path exists" {
+  •package.resolve("POST","/users",[•package.route("listUsers","GET","/users")])=µMethodNotAllowed()
+}
+
+test "match reports not found when the path is absent" {
+  •package.resolve("GET","/missing",[•package.route("listUsers","GET","/users")])=µNotFound()
+}

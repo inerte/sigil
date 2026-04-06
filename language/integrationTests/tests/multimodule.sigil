@@ -1,6 +1,6 @@
 λmain()=>Unit=()
 
-λprojectConfig()=>String="{\"name\":\"multimodule\",\"version\":\"0.1.0\"}"
+λprojectConfig()=>String="{\"name\":\"multimodule\",\"version\":\"2026-04-05T14-58-24Z\"}"
 
 λrunProject(root:String,target:String)=>!Process String={
   l result=(§process.run(•support.sigilIn(["run",target],root)):§process.ProcessResult);

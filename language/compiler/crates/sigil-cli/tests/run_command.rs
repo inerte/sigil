@@ -214,7 +214,7 @@ fn run_json_breakpoint_ambiguous_function_reports_cli_error() {
     let dir = temp_dir("break-ambiguous");
     fs::write(
         dir.join("sigil.json"),
-        "{\n  \"name\": \"break-ambiguous\",\n  \"version\": \"0.1.0\"\n}\n",
+        "{\n  \"name\": \"breakAmbiguous\",\n  \"version\": \"2026-04-05T14-58-24Z\"\n}\n",
     )
     .unwrap();
     let src_dir = dir.join("src");
@@ -848,7 +848,7 @@ fn run_json_preserves_topology_codes_for_bootstrap_failures() {
     fs::create_dir_all(&config_dir).unwrap();
     fs::write(
         dir.join("sigil.json"),
-        "{\n  \"name\": \"topology-runtime-failure\",\n  \"version\": \"0.1.0\"\n}\n",
+        "{\n  \"name\": \"topologyRuntimeFailure\",\n  \"version\": \"2026-04-05T14-58-24Z\"\n}\n",
     )
     .unwrap();
     let file = write_program(&src_dir, "main.sigil", "λmain()=>Int=1\n");

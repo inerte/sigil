@@ -235,7 +235,7 @@ fn temp_project_path(relative: &str) -> PathBuf {
     fs::create_dir_all(root.join("src")).unwrap();
     fs::write(
         root.join("sigil.json"),
-        "{\"name\":\"validator-test\",\"version\":\"0.1.0\"}\n",
+        "{\"name\":\"validatorTest\",\"version\":\"2026-04-05T14-58-24Z\"}\n",
     )
     .unwrap();
     root.join(relative)

@@ -1,0 +1,9 @@
+λresolve(method:String,path:String,routes:[µRoute])=>µMatchOutcome match §list.find(λ(route:µRoute)=>Bool=route.method=method and route.path=path,routes){
+  Some(route)=>µMatched({handler:route.handler,params:({↦}:{String↦String})})|
+  None()=>match §list.any(λ(route:µRoute)=>Bool=route.path=path,routes){
+    true=>µMethodNotAllowed()|
+    false=>µNotFound()
+  }
+}
+
+λroute(handler:String,method:String,path:String)=>µRoute={handler:handler,method:method,path:path}

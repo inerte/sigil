@@ -2,7 +2,9 @@
 //!
 //! Handles building a dependency graph of Sigil modules for multi-module compilation
 
-use crate::project::{get_project_config, ProjectConfig, ProjectConfigError};
+use crate::project::{
+    get_project_config, package_version_fragment, ProjectConfig, ProjectConfigError,
+};
 use sigil_ast::{
     ConcurrentStep, Declaration, Expr, Pattern, Program, RecordPatternField, Type, TypeDef,
 };
@@ -65,12 +67,20 @@ pub struct LoadedModule {
     pub source: String,
     pub ast: Program,
     pub project: Option<ProjectConfig>,
+    pub output_project: Option<ProjectConfig>,
+    pub source_imports: HashMap<String, String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PackageInstance {
+    pub name: String,
+    pub version: String,
 }
 
 impl ModuleGraph {
     pub fn build(entry_file: &Path) -> Result<Self, ModuleGraphError> {
         let mut builder = ModuleGraphBuilder::new();
-        builder.visit(entry_file, None, None)?;
+        builder.visit(entry_file, None, None, None, None)?;
         Ok(ModuleGraph {
             modules: builder.modules,
             topo_order: builder.topo_order,
@@ -82,7 +92,7 @@ impl ModuleGraph {
         let mut sorted_entries = entry_files.to_vec();
         sorted_entries.sort();
         for entry_file in sorted_entries {
-            builder.visit(&entry_file, None, None)?;
+            builder.visit(&entry_file, None, None, None, None)?;
         }
         Ok(ModuleGraph {
             modules: builder.modules,
@@ -120,11 +130,14 @@ impl ModuleGraphBuilder {
         file_path: &Path,
         logical_id: Option<String>,
         inherited_project: Option<ProjectConfig>,
+        inherited_output_project: Option<ProjectConfig>,
+        inherited_package_instance: Option<PackageInstance>,
     ) -> Result<(), ModuleGraphError> {
         let abs_file = fs::canonicalize(file_path)?;
 
         // Determine project
         let project = get_project_config(&abs_file)?.or(inherited_project);
+        let output_project = inherited_output_project.or_else(|| project.clone());
 
         // Compute logical ID
         let computed_id = logical_id.or_else(|| file_path_to_module_id(&abs_file, &project));
@@ -178,14 +191,26 @@ impl ModuleGraphBuilder {
         )
         .map_err(|e| ModuleGraphError::Validation(e))?;
 
+        let mut source_imports = HashMap::new();
+
         // Process implicit core prelude first for non-core modules.
         if module_key != "core::prelude" {
-            let resolved = resolve_sigil_import(&abs_file, project.as_ref(), "core::prelude")?;
+            let resolved = resolve_sigil_import(
+                &abs_file,
+                &module_key,
+                project.as_ref(),
+                output_project.as_ref(),
+                inherited_package_instance.as_ref(),
+                "core::prelude",
+            )?;
             if resolved.file_path.exists() {
+                source_imports.insert("core::prelude".to_string(), resolved.module_id.clone());
                 self.visit(
                     &resolved.file_path,
                     Some(resolved.module_id),
                     resolved.project,
+                    resolved.output_project,
+                    resolved.package_instance,
                 )?;
             }
         }
@@ -196,7 +221,14 @@ impl ModuleGraphBuilder {
                 continue;
             }
 
-            let resolved = resolve_sigil_import(&abs_file, project.as_ref(), &module_id)?;
+            let resolved = resolve_sigil_import(
+                &abs_file,
+                &module_key,
+                project.as_ref(),
+                output_project.as_ref(),
+                inherited_package_instance.as_ref(),
+                &module_id,
+            )?;
 
             if !resolved.file_path.exists() {
                 return Err(ModuleGraphError::ImportNotFound {
@@ -205,10 +237,13 @@ impl ModuleGraphBuilder {
                 });
             }
 
+            source_imports.insert(module_id.clone(), resolved.module_id.clone());
             self.visit(
                 &resolved.file_path,
                 Some(resolved.module_id),
                 resolved.project,
+                resolved.output_project,
+                resolved.package_instance,
             )?;
         }
 
@@ -225,6 +260,8 @@ impl ModuleGraphBuilder {
                 source,
                 ast,
                 project,
+                output_project,
+                source_imports,
             },
         );
         self.topo_order.push(module_key);
@@ -247,6 +284,7 @@ fn is_sigil_import_path(module_path: &str) -> bool {
         || module_path.starts_with("test::")
         || module_path.starts_with("src::")
         || module_path.starts_with("config::")
+        || module_path.starts_with("package::")
 }
 
 pub fn collect_referenced_module_ids(program: &Program) -> HashSet<String> {
@@ -550,6 +588,8 @@ struct ResolvedImport {
     module_id: String,
     file_path: PathBuf,
     project: Option<ProjectConfig>,
+    output_project: Option<ProjectConfig>,
+    package_instance: Option<PackageInstance>,
 }
 
 fn resolve_import_path(base_path: &Path, file_path_str: &str) -> Result<PathBuf, ModuleGraphError> {
@@ -606,9 +646,167 @@ fn load_project_effect_catalog(
     Ok(Some(effect_catalog))
 }
 
+fn package_internal_root_segments(instance: &PackageInstance) -> Result<Vec<String>, ModuleGraphError> {
+    let version_fragment = package_version_fragment(&instance.version).ok_or_else(|| {
+        ModuleGraphError::ProjectConfig(ProjectConfigError::Invalid {
+            path: PathBuf::from("sigil.json"),
+            message: format!(
+                "package version `{}` must use canonical UTC timestamp format",
+                instance.version
+            ),
+        })
+    })?;
+
+    Ok(vec![
+        "package".to_string(),
+        instance.name.clone(),
+        version_fragment,
+    ])
+}
+
+fn internal_package_module_id(
+    instance: &PackageInstance,
+    source_subpath: &[&str],
+) -> Result<String, ModuleGraphError> {
+    let mut segments = package_internal_root_segments(instance)?;
+    segments.extend(source_subpath.iter().map(|segment| (*segment).to_string()));
+    Ok(segments.join("::"))
+}
+
+fn internal_project_module_id(
+    instance: &PackageInstance,
+    source_module_id: &str,
+) -> Result<String, ModuleGraphError> {
+    let parts = source_module_id.split("::").collect::<Vec<_>>();
+    let (root, rest) = parts.split_first().ok_or_else(|| ModuleGraphError::ImportNotFound {
+        module_id: source_module_id.to_string(),
+        expected_path: "empty module id".to_string(),
+    })?;
+
+    let internal_root = if *root == "config" {
+        "packageConfig"
+    } else {
+        "package"
+    };
+
+    let version_fragment = package_version_fragment(&instance.version).ok_or_else(|| {
+        ModuleGraphError::ImportNotFound {
+            module_id: source_module_id.to_string(),
+            expected_path: format!(
+                "invalid package version `{}` for dependency `{}`",
+                instance.version, instance.name
+            ),
+        }
+    })?;
+
+    let mut segments = vec![
+        internal_root.to_string(),
+        instance.name.clone(),
+        version_fragment,
+    ];
+
+    if *root == "src" && rest.len() == 1 && rest[0] == "package" {
+        return Ok(segments.join("::"));
+    }
+
+    if *root == "src" && !rest.is_empty() && rest[0] == "package" {
+        segments.extend(rest[1..].iter().map(|segment| (*segment).to_string()));
+        return Ok(segments.join("::"));
+    }
+
+    segments.extend(rest.iter().map(|segment| (*segment).to_string()));
+    Ok(segments.join("::"))
+}
+
+fn resolve_package_import(
+    importer_project: &ProjectConfig,
+    importer_output_project: Option<&ProjectConfig>,
+    module_id: &str,
+) -> Result<ResolvedImport, ModuleGraphError> {
+    let parts = module_id.split("::").collect::<Vec<_>>();
+    if parts.len() < 2 {
+        return Err(ModuleGraphError::ImportNotFound {
+            module_id: module_id.to_string(),
+            expected_path: "package imports must name a direct dependency".to_string(),
+        });
+    }
+
+    let dependency_name = parts[1];
+    let dependency_version = importer_project
+        .dependencies
+        .get(dependency_name)
+        .ok_or_else(|| ModuleGraphError::ImportNotFound {
+            module_id: module_id.to_string(),
+            expected_path: format!(
+                "direct dependency `{dependency_name}` is not declared in sigil.json"
+            ),
+        })?;
+
+    let dependency_root = importer_project
+        .package_store_root()
+        .join(dependency_name)
+        .join(dependency_version);
+
+    let dependency_project =
+        get_project_config(&dependency_root)?.ok_or_else(|| ModuleGraphError::ImportNotFound {
+            module_id: module_id.to_string(),
+            expected_path: dependency_root.join("sigil.json").to_string_lossy().to_string(),
+        })?;
+
+    if dependency_project.name != dependency_name {
+        return Err(ModuleGraphError::ImportNotFound {
+            module_id: module_id.to_string(),
+            expected_path: format!(
+                "installed package at {} declares name `{}` instead of `{}`",
+                dependency_root.display(),
+                dependency_project.name,
+                dependency_name
+            ),
+        });
+    }
+
+    if dependency_project.version != *dependency_version {
+        return Err(ModuleGraphError::ImportNotFound {
+            module_id: module_id.to_string(),
+            expected_path: format!(
+                "installed package at {} declares version `{}` instead of `{}`",
+                dependency_root.display(),
+                dependency_project.version,
+                dependency_version
+            ),
+        });
+    }
+
+    let package_instance = PackageInstance {
+        name: dependency_name.to_string(),
+        version: dependency_version.clone(),
+    };
+
+    let subpath = &parts[2..];
+    let file_path = if subpath.is_empty() {
+        dependency_root.join("src/package.lib.sigil")
+    } else {
+        dependency_root
+            .join("src")
+            .join(subpath.join("/"))
+            .with_extension("lib.sigil")
+    };
+
+    Ok(ResolvedImport {
+        module_id: internal_package_module_id(&package_instance, subpath)?,
+        file_path,
+        project: Some(dependency_project),
+        output_project: importer_output_project.cloned(),
+        package_instance: Some(package_instance),
+    })
+}
+
 fn resolve_sigil_import(
     importer_file: &Path,
+    importer_module_id: &str,
     importer_project: Option<&ProjectConfig>,
+    importer_output_project: Option<&ProjectConfig>,
+    importer_package_instance: Option<&PackageInstance>,
     module_id: &str,
 ) -> Result<ResolvedImport, ModuleGraphError> {
     // Convert module ID (with :: separators) to file path
@@ -622,12 +820,26 @@ fn resolve_sigil_import(
         })?;
 
         let file_path = resolve_import_path(&project.root, &file_path_str)?;
+        let resolved_module_id = if let Some(package_instance) = importer_package_instance {
+            internal_project_module_id(package_instance, module_id)?
+        } else {
+            module_id.to_string()
+        };
 
         Ok(ResolvedImport {
-            module_id: module_id.to_string(),
+            module_id: resolved_module_id,
             file_path,
             project: Some(project.clone()),
+            output_project: importer_output_project.cloned(),
+            package_instance: importer_package_instance.cloned(),
         })
+    } else if module_id.starts_with("package::") {
+        let project = importer_project.ok_or_else(|| ModuleGraphError::ImportNotFound {
+            module_id: module_id.to_string(),
+            expected_path: "project not found".to_string(),
+        })?;
+
+        resolve_package_import(project, importer_output_project, module_id)
     } else if module_id.starts_with("stdlib::")
         || module_id.starts_with("core::")
         || module_id.starts_with("world::")
@@ -641,10 +853,12 @@ fn resolve_sigil_import(
             module_id: module_id.to_string(),
             file_path,
             project: importer_project.cloned(),
+            output_project: importer_output_project.cloned(),
+            package_instance: importer_package_instance.cloned(),
         })
     } else {
         Err(ModuleGraphError::ImportNotFound {
-            module_id: module_id.to_string(),
+            module_id: importer_module_id.to_string(),
             expected_path: "unknown module root".to_string(),
         })
     }

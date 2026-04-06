@@ -175,7 +175,7 @@ fn inspect_types_directory_reports_requested_modules_only() {
     write_program(
         &dir,
         "sigil.json",
-        "{\"name\":\"inspect-types\",\"version\":\"0.1.0\"}\n",
+        "{\"name\":\"inspectTypes\",\"version\":\"2026-04-05T14-58-24Z\"}\n",
     );
     let helper = write_program(&dir, "src/helper.lib.sigil", "λdouble(x:Int)=>Int=x*2\n");
     let main = write_program(&dir, "src/main.sigil", "λmain()=>Int=•helper.double(21)\n");
@@ -361,7 +361,7 @@ fn inspect_codegen_returns_inline_ts_and_module_inventory_without_writing_files(
     write_program(
         &dir,
         "sigil.json",
-        "{\"name\":\"inspect-codegen\",\"version\":\"0.1.0\"}\n",
+        "{\"name\":\"inspectCodegen\",\"version\":\"2026-04-05T14-58-24Z\"}\n",
     );
     write_program(&dir, "src/helper.lib.sigil", "λdouble(x:Int)=>Int=x*2\n");
     let main = write_program(&dir, "src/main.sigil", "λmain()=>Int=•helper.double(21)\n");
@@ -486,7 +486,7 @@ fn inspect_world_reports_normalized_runtime_world_for_topology_project() {
     write_program(
         &dir,
         "sigil.json",
-        "{\"name\":\"inspect-world\",\"version\":\"0.1.0\"}\n",
+        "{\"name\":\"inspectWorld\",\"version\":\"2026-04-05T14-58-24Z\"}\n",
     );
     write_program(
         &dir,
@@ -541,7 +541,7 @@ fn inspect_world_supports_config_only_projects_without_topology() {
     write_program(
         &dir,
         "sigil.json",
-        "{\"name\":\"inspect-world\",\"version\":\"0.1.0\"}\n",
+        "{\"name\":\"inspectWorld\",\"version\":\"2026-04-05T14-58-24Z\"}\n",
     );
     write_program(
         &dir,
@@ -583,7 +583,7 @@ fn inspect_world_emits_json_error_when_env_is_undeclared() {
     write_program(
         &dir,
         "sigil.json",
-        "{\"name\":\"inspect-world\",\"version\":\"0.1.0\"}\n",
+        "{\"name\":\"inspectWorld\",\"version\":\"2026-04-05T14-58-24Z\"}\n",
     );
     write_program(
         &dir,
@@ -622,7 +622,7 @@ fn inspect_world_emits_json_error_when_config_module_is_missing() {
     write_program(
         &dir,
         "sigil.json",
-        "{\"name\":\"inspect-world\",\"version\":\"0.1.0\"}\n",
+        "{\"name\":\"inspectWorld\",\"version\":\"2026-04-05T14-58-24Z\"}\n",
     );
     write_program(
         &dir,

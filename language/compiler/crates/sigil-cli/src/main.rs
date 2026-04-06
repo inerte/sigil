@@ -9,12 +9,17 @@ use std::process;
 
 mod commands;
 mod module_graph;
+mod package_manager;
 mod project;
 
 use commands::{
     compile_command, debug_run_session_command, debug_run_start_command,
     debug_test_session_command, debug_test_start_command, inspect_command, lex_command,
     parse_command, run_command, test_command, validate_command, DebugControlAction,
+};
+use package_manager::{
+    package_add_command, package_install_command, package_list_command, package_publish_command,
+    package_remove_command, package_update_command, package_why_command,
 };
 
 const SIGIL_VERSION: &str = match option_env!("SIGIL_VERSION") {
@@ -193,6 +198,12 @@ enum Command {
         env: String,
     },
 
+    /// Manage Sigil packages
+    Package {
+        #[command(subcommand)]
+        command: PackageCommand,
+    },
+
     /// Replay-backed machine-first debugging
     Debug {
         #[command(subcommand)]
@@ -283,6 +294,46 @@ enum DebugCommand {
         #[command(subcommand)]
         command: DebugTestCommand,
     },
+}
+
+#[derive(Subcommand)]
+enum PackageCommand {
+    /// Add one direct dependency at the latest exact version
+    Add {
+        /// Direct dependency name
+        name: String,
+    },
+
+    /// Install exact dependencies from sigil.json
+    Install,
+
+    /// Update one or all direct dependencies
+    Update {
+        /// Direct dependency name
+        name: Option<String>,
+
+        /// Keep updated dependencies even when project tests fail
+        #[arg(long)]
+        keep_failing: bool,
+    },
+
+    /// Remove one direct dependency
+    Remove {
+        /// Direct dependency name
+        name: String,
+    },
+
+    /// List direct dependencies
+    List,
+
+    /// Show why one package is present
+    Why {
+        /// Package name
+        name: String,
+    },
+
+    /// Publish the current package using npm transport
+    Publish,
 }
 
 #[derive(Subcommand)]
@@ -544,6 +595,23 @@ fn main() {
             replay.as_deref(),
         ),
         Command::Validate { path, env } => validate_command(&path, &env),
+        Command::Package { command } => match command {
+            PackageCommand::Add { name } => package_add_command(&std::env::current_dir().unwrap(), &name),
+            PackageCommand::Install => package_install_command(&std::env::current_dir().unwrap()),
+            PackageCommand::Update { name, keep_failing } => package_update_command(
+                &std::env::current_dir().unwrap(),
+                name.as_deref(),
+                keep_failing,
+            ),
+            PackageCommand::Remove { name } => {
+                package_remove_command(&std::env::current_dir().unwrap(), &name)
+            }
+            PackageCommand::List => package_list_command(&std::env::current_dir().unwrap()),
+            PackageCommand::Why { name } => {
+                package_why_command(&std::env::current_dir().unwrap(), &name)
+            }
+            PackageCommand::Publish => package_publish_command(&std::env::current_dir().unwrap()),
+        },
         Command::Debug { command } => match command {
             DebugCommand::Run { command } => match command {
                 DebugRunCommand::Start {

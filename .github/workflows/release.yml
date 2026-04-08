@@ -56,7 +56,7 @@ jobs:
             target: aarch64-apple-darwin
             archive_ext: tar.gz
           - platform: darwin-x64
-            runner: macos-15-intel
+            runner: macos-14
             target: x86_64-apple-darwin
             archive_ext: tar.gz
           - platform: linux-arm64
@@ -78,7 +78,7 @@ jobs:
       - uses: actions/checkout@v6
 
       - name: Select compatible macOS toolchain
-        if: matrix.platform == 'darwin-arm64'
+        if: runner.os == 'macOS'
         shell: bash
         run: |
           echo "DEVELOPER_DIR=/Applications/Xcode_16.2.app/Contents/Developer" >> "$GITHUB_ENV"
@@ -100,10 +100,61 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
+      - name: Install system Z3
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libz3-dev pkg-config
+
+      - name: Install system Z3
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          brew install z3 pkgconf
+          z3_prefix="$(brew --prefix z3)"
+          brew_prefix="$(brew --prefix)"
+          echo "PKG_CONFIG_PATH=${z3_prefix}/lib/pkgconfig:${brew_prefix}/lib/pkgconfig:${PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
+
+      - name: Install system Z3
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          choco install z3 --version=4.16.0 -y
+          $chocoRoot = if ($env:ChocolateyInstall) { $env:ChocolateyInstall } else { Join-Path $env:ProgramData "chocolatey" }
+          $z3Root = Join-Path $chocoRoot "lib\\z3\\tools\\bin"
+          $z3LibDir = Join-Path $z3Root "bin"
+          if (!(Test-Path (Join-Path $z3LibDir "libz3.lib"))) {
+            throw "expected libz3.lib in $z3LibDir"
+          }
+          if (!(Test-Path (Join-Path $z3LibDir "libz3.dll"))) {
+            throw "expected libz3.dll in $z3LibDir"
+          }
+          Add-Content -Path $env:GITHUB_ENV -Value "Z3_LIBRARY_PATH_OVERRIDE=$z3LibDir"
+          Add-Content -Path $env:GITHUB_ENV -Value "Z3_RUNTIME_DIR=$z3LibDir"
+          Add-Content -Path $env:GITHUB_PATH -Value $z3LibDir
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            language/compiler/target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-dist-system-z3-${{ hashFiles('language/compiler/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-cargo-dist-system-z3-
+
       - name: Build release binary
+        if: runner.os != 'Windows'
         env:
           SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
-        run: cargo build --locked --release --manifest-path language/compiler/Cargo.toml -p sigil-cli --target ${{ matrix.target }}
+        run: cargo build --locked --profile dist --manifest-path language/compiler/Cargo.toml -p sigil-cli --target ${{ matrix.target }} --no-default-features
+
+      - name: Build release binary
+        if: runner.os == 'Windows'
+        env:
+          SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
+        run: cargo build --locked --profile dist --manifest-path language/compiler/Cargo.toml -p sigil-cli --target ${{ matrix.target }} --no-default-features
 
       - name: Smoke test binary
         if: runner.os != 'Windows'
@@ -111,8 +162,13 @@ jobs:
           SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
         shell: bash
         run: |
-          binary="language/compiler/target/${{ matrix.target }}/release/sigil"
-          version="$("$binary" --version)"
+          binary="language/compiler/target/${{ matrix.target }}/dist/sigil"
+          if [[ "${{ matrix.target }}" == "x86_64-apple-darwin" ]]; then
+            /usr/sbin/softwareupdate --install-rosetta --agree-to-license >/dev/null 2>&1 || true
+            version="$(arch -x86_64 "$binary" --version)"
+          else
+            version="$("$binary" --version)"
+          fi
           test "$version" = "sigil ${SIGIL_VERSION}"
 
       - name: Package unix archive
@@ -124,7 +180,7 @@ jobs:
           base="sigil-${SIGIL_VERSION}-${{ matrix.platform }}"
           stage_dir="dist/${base}"
           mkdir -p "${stage_dir}"
-          cp "language/compiler/target/${{ matrix.target }}/release/sigil" "${stage_dir}/sigil"
+          cp "language/compiler/target/${{ matrix.target }}/dist/sigil" "${stage_dir}/sigil"
           cp LICENSE "${stage_dir}/LICENSE"
           printf "Sigil %s\n\nRun ./sigil --help\n" "${SIGIL_VERSION}" > "${stage_dir}/README.txt"
           tar -C dist -czf "dist/${base}.tar.gz" "${base}"
@@ -135,7 +191,7 @@ jobs:
           SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
         shell: pwsh
         run: |
-          $binary = "language/compiler/target/${{ matrix.target }}/release/sigil.exe"
+          $binary = "language/compiler/target/${{ matrix.target }}/dist/sigil.exe"
           $version = & $binary --version
           if ($version -ne "sigil $env:SIGIL_VERSION") {
             throw "unexpected version output: $version"
@@ -150,7 +206,8 @@ jobs:
           $base = "sigil-$env:SIGIL_VERSION-${{ matrix.platform }}"
           $stageDir = "dist/$base"
           New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
-          Copy-Item "language/compiler/target/${{ matrix.target }}/release/sigil.exe" "$stageDir/sigil.exe"
+          Copy-Item "language/compiler/target/${{ matrix.target }}/dist/sigil.exe" "$stageDir/sigil.exe"
+          Copy-Item "$env:Z3_RUNTIME_DIR/*.dll" $stageDir
           Copy-Item "LICENSE" "$stageDir/LICENSE"
           Set-Content -Path "$stageDir/README.txt" -Value "Sigil $env:SIGIL_VERSION`n`nRun .\\sigil.exe --help"
           Compress-Archive -Path $stageDir -DestinationPath "dist/$base.zip" -Force
@@ -159,6 +216,7 @@ jobs:
         with:
           name: release-${{ matrix.platform }}
           path: dist/*.${{ matrix.archive_ext }}
+          compression-level: 0
 
   publish-release:
     needs:

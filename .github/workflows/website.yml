@@ -49,10 +49,25 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - name: Install system Z3
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libz3-dev pkg-config
+
       - uses: actions/setup-node@v6
         with:
           node-version: 24
-          package-manager-cache: false
+          package-manager-cache: true
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            language/compiler/target
+          key: ${{ runner.os }}-website-system-z3-${{ hashFiles('language/compiler/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-website-system-z3-
 
       - name: Enable corepack pnpm
         shell: bash
@@ -63,14 +78,52 @@ jobs:
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build Sigil CLI
+        run: cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli --no-default-features
+
       - name: Test SSG helpers
-        run: pnpm sigil:test:ssg
+        run: language/compiler/target/debug/sigil test projects/ssg/tests
+
+      - name: Build React demos
+        env:
+          sigilSiteBasePath: /${{ github.event.repository.name }}/
+        shell: bash
+        run: |
+          language/compiler/target/debug/sigil compile projects/todo-app/src/todoDomain.lib.sigil -o projects/todo-app/web/src/generated/todo-domain.ts
+          (
+            cd projects/todo-app
+            SIGIL_TODO_BASE=${sigilSiteBasePath:-/}projects/sigil-todo/demo/ pnpm exec vite build
+          )
+
+          language/compiler/target/debug/sigil compile projects/minesweep/src/minesweepDomain.lib.sigil -o projects/minesweep/web/src/generated/minesweep-domain.ts
+          mkdir -p projects/minesweep/web/src/generated/core
+          cp projects/minesweep/.local/core/prelude.ts projects/minesweep/web/src/generated/core/prelude.ts
+          (
+            cd projects/minesweep
+            SIGIL_MINESWEEP_BASE=${sigilSiteBasePath:-/}projects/sigil-minesweep/demo/ pnpm exec vite build
+          )
+
+          language/compiler/target/debug/sigil compile projects/game-2048/src/game2048.lib.sigil -o projects/game-2048/web/src/generated/game-2048.ts
+          mkdir -p projects/game-2048/web/src/generated/core
+          cp projects/game-2048/.local/core/prelude.ts projects/game-2048/web/src/generated/core/prelude.ts
+          (
+            cd projects/game-2048
+            SIGIL_2048_BASE=${sigilSiteBasePath:-/}projects/sigil-2048/demo/ pnpm exec vite build
+          )
+
+          language/compiler/target/debug/sigil compile projects/flashcards/src/flashcardsDomain.lib.sigil -o projects/flashcards/web/src/generated/flashcards-domain.ts
+          mkdir -p projects/flashcards/web/src/generated/core
+          cp projects/flashcards/.local/core/prelude.ts projects/flashcards/web/src/generated/core/prelude.ts
+          (
+            cd projects/flashcards
+            SIGIL_FLASHCARDS_BASE=${sigilSiteBasePath:-/}projects/sigil-flashcards/demo/ pnpm exec vite build
+          )
 
       - name: Build website
         env:
           sigilSiteBasePath: /${{ github.event.repository.name }}/
           sigilSiteRepoUrl: https://github.com/${{ github.repository }}
-        run: pnpm sigil:build:website
+        run: language/compiler/target/debug/sigil run projects/ssg/src/main.sigil --env site
 
       - name: Verify site output
         run: |

@@ -35,8 +35,9 @@ Projects now centralize named project types in one file:
 src/types.lib.sigil
 ```
 
-That file is compiler-known and types-only. Outside it, project-defined types
-are referenced through `µ...`.
+That file is compiler-known and owns project type declarations. It now also
+hosts project `label` declarations, while the `µ...` reference surface for
+project-defined types stays the same outside the file.
 
 Example:
 

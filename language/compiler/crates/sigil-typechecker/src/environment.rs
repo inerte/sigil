@@ -6,7 +6,7 @@
 use crate::effects::EffectCatalog;
 use crate::types::{apply_subst, fresh_type_var, InferenceType, Substitution, TMap, TypeScheme};
 use sigil_ast::{Expr, TypeDef, Variant};
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 /// Type information for user-defined types
 #[derive(Debug, Clone)]
@@ -14,6 +14,26 @@ pub struct TypeInfo {
     pub type_params: Vec<String>, // Generic type parameters (e.g., ['T', 'E'] for Result[T,E])
     pub definition: TypeDef,      // The type definition (SumType, ProductType, or TypeAlias)
     pub constraint: Option<Expr>, // Optional richer meaning for constrained project types
+    pub labels: BTreeSet<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LabelInfo {
+    pub combines: BTreeSet<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum BoundaryRuleKind {
+    Allow,
+    Block,
+    Through(String),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BoundaryRule {
+    pub labels: BTreeSet<String>,
+    pub boundary: String,
+    pub action: BoundaryRuleKind,
 }
 
 #[derive(Debug, Clone)]
@@ -23,9 +43,12 @@ pub struct FunctionContract {
     pub ensures: Option<Expr>,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BindingMeta {
     pub is_extern_namespace: bool,
+    pub is_transform: bool,
+    pub labels: BTreeSet<String>,
+    pub return_labels: BTreeSet<String>,
 }
 
 /// Type environment (Γ in type theory notation)
@@ -38,10 +61,15 @@ pub struct TypeEnvironment {
     schemes: HashMap<String, TypeScheme>,
     binding_meta: HashMap<String, BindingMeta>,
     type_registry: HashMap<String, TypeInfo>, // User-defined types
+    label_registry: HashMap<String, LabelInfo>,
     function_contracts: HashMap<String, FunctionContract>,
     imported_type_registries: HashMap<String, HashMap<String, TypeInfo>>, // Types from imported modules
     imported_value_schemes: HashMap<String, HashMap<String, TypeScheme>>,
+    imported_value_meta: HashMap<String, HashMap<String, BindingMeta>>,
+    imported_label_registries: HashMap<String, HashMap<String, LabelInfo>>,
+    boundary_rules: Vec<BoundaryRule>,
     effect_catalog: EffectCatalog,
+    module_id: Option<String>,
     source_file: Option<String>,
     parent: Option<Box<TypeEnvironment>>,
 }
@@ -54,10 +82,15 @@ impl TypeEnvironment {
             schemes: HashMap::new(),
             binding_meta: HashMap::new(),
             type_registry: HashMap::new(),
+            label_registry: HashMap::new(),
             function_contracts: HashMap::new(),
             imported_type_registries: HashMap::new(),
             imported_value_schemes: HashMap::new(),
+            imported_value_meta: HashMap::new(),
+            imported_label_registries: HashMap::new(),
+            boundary_rules: Vec::new(),
             effect_catalog: EffectCatalog::empty(),
+            module_id: None,
             source_file: None,
             parent: None,
         }
@@ -70,10 +103,15 @@ impl TypeEnvironment {
             schemes: HashMap::new(),
             binding_meta: HashMap::new(),
             type_registry: HashMap::new(),
+            label_registry: HashMap::new(),
             function_contracts: parent.function_contracts.clone(),
             imported_type_registries: HashMap::new(),
             imported_value_schemes: HashMap::new(),
+            imported_value_meta: HashMap::new(),
+            imported_label_registries: HashMap::new(),
+            boundary_rules: parent.boundary_rules.clone(),
             effect_catalog: parent.effect_catalog.clone(),
+            module_id: parent.module_id.clone(),
             source_file: parent.source_file.clone(),
             parent: Some(Box::new(parent)),
         }
@@ -85,6 +123,14 @@ impl TypeEnvironment {
 
     pub fn source_file(&self) -> Option<&str> {
         self.source_file.as_deref()
+    }
+
+    pub fn set_module_id(&mut self, module_id: Option<String>) {
+        self.module_id = module_id;
+    }
+
+    pub fn module_id(&self) -> Option<&str> {
+        self.module_id.as_deref()
     }
 
     pub fn set_effect_catalog(&mut self, effect_catalog: EffectCatalog) {
@@ -145,11 +191,37 @@ impl TypeEnvironment {
         self.parent.as_ref()?.lookup_meta(name)
     }
 
+    pub fn lookup_qualified_value_meta(
+        &self,
+        module_path: &[String],
+        member_name: &str,
+    ) -> Option<BindingMeta> {
+        let module_id = module_path.join("::");
+        if self.module_id.as_deref() == Some(module_id.as_str()) {
+            if let Some(meta) = self.binding_meta.get(member_name) {
+                return Some(meta.clone());
+            }
+        }
+        if let Some(registry) = self.imported_value_meta.get(&module_id) {
+            if let Some(meta) = registry.get(member_name) {
+                return Some(meta.clone());
+            }
+        }
+
+        self.parent
+            .as_ref()?
+            .lookup_qualified_value_meta(module_path, member_name)
+    }
+
     /// Register a user-defined type
     ///
     /// Stores type definition for later lookup during type checking
     pub fn register_type(&mut self, name: String, info: TypeInfo) {
         self.type_registry.insert(name, info);
+    }
+
+    pub fn register_label(&mut self, name: String, info: LabelInfo) {
+        self.label_registry.insert(name, info);
     }
 
     pub fn register_function_contract(&mut self, name: String, contract: FunctionContract) {
@@ -168,6 +240,14 @@ impl TypeEnvironment {
         self.parent.as_ref()?.lookup_type(name)
     }
 
+    pub fn lookup_label(&self, name: &str) -> Option<LabelInfo> {
+        if let Some(info) = self.label_registry.get(name) {
+            return Some(info.clone());
+        }
+
+        self.parent.as_ref()?.lookup_label(name)
+    }
+
     pub fn lookup_function_contract(&self, name: &str) -> Option<FunctionContract> {
         if let Some(contract) = self.function_contracts.get(name) {
             return Some(contract.clone());
@@ -181,6 +261,14 @@ impl TypeEnvironment {
         self.imported_type_registries.insert(module_id, types);
     }
 
+    pub fn register_imported_labels(
+        &mut self,
+        module_id: String,
+        labels: HashMap<String, LabelInfo>,
+    ) {
+        self.imported_label_registries.insert(module_id, labels);
+    }
+
     /// Register exported value schemes from an imported module.
     pub fn register_imported_value_schemes(
         &mut self,
@@ -188,6 +276,14 @@ impl TypeEnvironment {
         value_schemes: HashMap<String, TypeScheme>,
     ) {
         self.imported_value_schemes.insert(module_id, value_schemes);
+    }
+
+    pub fn register_imported_value_meta(
+        &mut self,
+        module_id: String,
+        value_meta: HashMap<String, BindingMeta>,
+    ) {
+        self.imported_value_meta.insert(module_id, value_meta);
     }
 
     /// Look up a qualified type from an imported module
@@ -209,6 +305,23 @@ impl TypeEnvironment {
         self.parent
             .as_ref()?
             .lookup_qualified_type(module_path, type_name)
+    }
+
+    pub fn lookup_qualified_label(
+        &self,
+        module_path: &[String],
+        label_name: &str,
+    ) -> Option<LabelInfo> {
+        let module_id = module_path.join("::");
+        if let Some(registry) = self.imported_label_registries.get(&module_id) {
+            if let Some(info) = registry.get(label_name) {
+                return Some(info.clone());
+            }
+        }
+
+        self.parent
+            .as_ref()?
+            .lookup_qualified_label(module_path, label_name)
     }
 
     /// Look up an imported value member with fresh instantiation.
@@ -282,6 +395,53 @@ impl TypeEnvironment {
         self.parent
             .as_ref()?
             .get_imported_module_type_names(module_id)
+    }
+
+    pub fn add_boundary_rule(&mut self, rule: BoundaryRule) {
+        self.boundary_rules.push(rule);
+    }
+
+    pub fn boundary_rules(&self) -> &[BoundaryRule] {
+        &self.boundary_rules
+    }
+
+    pub fn binding_meta_snapshot(&self) -> HashMap<String, BindingMeta> {
+        self.binding_meta.clone()
+    }
+
+    pub fn label_registry_snapshot(&self) -> HashMap<String, LabelInfo> {
+        self.label_registry.clone()
+    }
+
+    pub fn boundary_rules_snapshot(&self) -> Vec<BoundaryRule> {
+        self.boundary_rules.clone()
+    }
+
+    pub fn all_labels(&self) -> Vec<(String, LabelInfo)> {
+        let mut labels = self
+            .label_registry
+            .iter()
+            .map(|(name, info)| {
+                let qualified = self
+                    .module_id
+                    .as_ref()
+                    .map(|module_id| format!("{}.{}", module_id, name))
+                    .unwrap_or_else(|| name.clone());
+                (qualified, info.clone())
+            })
+            .collect::<Vec<_>>();
+
+        for (module_id, registry) in &self.imported_label_registries {
+            for (name, info) in registry {
+                labels.push((format!("{}.{}", module_id, name), info.clone()));
+            }
+        }
+
+        if let Some(parent) = &self.parent {
+            labels.extend(parent.all_labels());
+        }
+
+        labels
     }
 
     /// Create a child environment with additional bindings

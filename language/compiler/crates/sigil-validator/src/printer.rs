@@ -103,7 +103,10 @@ impl Printer {
     fn declaration(&mut self, declaration: &Declaration, indent: usize) {
         match declaration {
             Declaration::Function(function) => self.function_decl(function, indent),
+            Declaration::Transform(transform_decl) => self.transform_decl(transform_decl, indent),
             Declaration::Type(type_decl) => self.type_decl(type_decl, indent),
+            Declaration::Label(label_decl) => self.label_decl(label_decl, indent),
+            Declaration::Rule(rule_decl) => self.rule_decl(rule_decl, indent),
             Declaration::Effect(effect_decl) => self.effect_decl(effect_decl, indent),
             Declaration::Const(const_decl) => {
                 self.indent(indent);
@@ -167,6 +170,16 @@ impl Printer {
         }
     }
 
+    fn transform_decl(&mut self, transform_decl: &TransformDecl, indent: usize) {
+        self.indent(indent);
+        self.push("transform ");
+        let before = self.out.len();
+        self.function_decl(&transform_decl.function, 0);
+        if self.out.len() == before {
+            self.function_decl(&transform_decl.function, indent);
+        }
+    }
+
     fn test_decl(&mut self, test_decl: &TestDecl, indent: usize) {
         self.indent(indent);
         self.push("test ");
@@ -210,6 +223,26 @@ impl Printer {
         }
     }
 
+    fn label_decl(&mut self, label_decl: &LabelDecl, indent: usize) {
+        self.indent(indent);
+        self.push("label ");
+        self.push(&label_decl.name);
+        if !label_decl.combines.is_empty() {
+            self.push(" combines ");
+            self.push(&self.label_refs_text(&label_decl.combines));
+        }
+    }
+
+    fn rule_decl(&mut self, rule_decl: &RuleDecl, indent: usize) {
+        self.indent(indent);
+        self.push("rule ");
+        self.push(&self.label_refs_text(&rule_decl.labels));
+        self.push(" for ");
+        self.push(&self.member_ref_text(&rule_decl.boundary));
+        self.push("=");
+        self.push(&self.rule_action_text(&rule_decl.action));
+    }
+
     fn extern_decl(&mut self, extern_decl: &ExternDecl, indent: usize) {
         self.indent(indent);
         self.push("e ");
@@ -238,6 +271,10 @@ impl Printer {
         if let Some(constraint) = &type_decl.constraint {
             self.push(" where ");
             self.push(&self.expr(constraint, 0, 0));
+        }
+        if !type_decl.labels.is_empty() {
+            self.push(" label ");
+            self.push(&self.label_refs_text(&type_decl.labels));
         }
     }
 
@@ -270,6 +307,40 @@ impl Printer {
         }
         if !surface_effects.is_empty() {
             self.push(" ");
+        }
+    }
+
+    fn label_refs_text(&self, refs: &[LabelRef]) -> String {
+        let mut items: Vec<String> = refs.iter().map(|label| self.label_ref_text(label)).collect();
+        items.sort();
+        match items.as_slice() {
+            [] => "[]".to_string(),
+            [single] => single.clone(),
+            _ => format!("[{}]", items.join(",")),
+        }
+    }
+
+    fn label_ref_text(&self, label: &LabelRef) -> String {
+        if label.module_path.is_empty() {
+            return label.name.clone();
+        }
+        format!("{}.{}", module_path_text(&label.module_path), label.name)
+    }
+
+    fn member_ref_text(&self, reference: &MemberRef) -> String {
+        if reference.module_path.is_empty() {
+            return reference.member.clone();
+        }
+        format!("{}.{}", module_path_text(&reference.module_path), reference.member)
+    }
+
+    fn rule_action_text(&self, action: &RuleAction) -> String {
+        match action {
+            RuleAction::Allow { .. } => "Allow()".to_string(),
+            RuleAction::Block { .. } => "Block()".to_string(),
+            RuleAction::Through { transform, .. } => {
+                format!("Through({})", self.member_ref_text(transform))
+            }
         }
     }
 

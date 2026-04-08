@@ -1,0 +1,3 @@
+rule [µ.Europe,µ.Pii] for •topology.euPayrollApi=Allow()
+
+rule [µ.Europe,µ.Pii] for •topology.usAnalyticsApi=Block()

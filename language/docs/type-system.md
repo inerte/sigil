@@ -15,6 +15,7 @@ Implemented today:
 - exact records
 - map types
 - solver-backed type refinements
+- nominal type labels
 - function contracts
 - explicit effect annotations
 
@@ -99,8 +100,48 @@ t User={birthYear:BirthYear,name:String}
 λtodoId(todo:µTodo)=>Int=todo.id
 ```
 
-`src/types.lib.sigil` is types-only and may reference only `§...` and `¶...`
-inside type definitions and constraints.
+`src/types.lib.sigil` owns `t`, `label`, and `label ... combines ...`
+declarations. Type definitions and constraints may reference only `§...` and
+`¶...`.
+
+## Labelled Types
+
+Sigil separates type membership from type classification.
+
+`where` describes what values belong to a type.
+`label` describes what kind of data a value represents for boundary handling.
+
+Example:
+
+```sigil module projects/labelled-boundaries/src/types.lib.sigil
+label Brazil
+
+label Credential
+
+label GovAuth
+
+label Pii
+
+label Usa
+
+t Cpf=String label [Brazil,Pii]
+
+t GovBrToken=String label [Brazil,Credential,GovAuth]
+
+t Ssn=String label [Pii,Usa]
+```
+
+Rules:
+
+- labels are nominal classifications, not predicates over `value`
+- `label X combines Y` adds implied labels during checking
+- labelled values behave like ordinary values inside local computation
+- labels matter when a labelled value crosses a named topology boundary
+- direct consumers must handle directly exposed labelled data at their own boundaries
+- unlabeled data is unaffected by boundary-rule checking
+
+Projects pair labelled types with boundary rules in `src/policies.lib.sigil`.
+That file owns `rule` and `transform` declarations.
 
 ## Records and Maps
 

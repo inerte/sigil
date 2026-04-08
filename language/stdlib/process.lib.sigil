@@ -14,7 +14,11 @@ t ProcessResult={code:Int,stderr:String,stdout:String}
 
 λrun(command:Command)=>!Process ProcessResult={code:-1,stderr:"process intrinsic unavailable",stdout:""}
 
+λrunAt(command:Command,handle:§topology.ProcessHandle)=>!Process ProcessResult={code:-1,stderr:"process intrinsic unavailable",stdout:""}
+
 λstart(command:Command)=>!Process RunningProcess={pid:-1}
+
+λstartAt(command:Command,handle:§topology.ProcessHandle)=>!Process RunningProcess={pid:-1}
 
 λwait(process:RunningProcess)=>!Process ProcessResult={code:-1,stderr:"process intrinsic unavailable",stdout:""}
 

@@ -48,12 +48,19 @@ Sigil uses one comment syntax:
 
 `#`, `//`, and `/* ... */` are not Sigil comments.
 
+Comments are non-semantic trivia. They are allowed in canonical source, but
+they do not participate in canonical source comparison or code coverage
+extraction for checked docs.
+
 ## Top-Level Declarations
 
 Module scope is declaration-only.
 
 Valid top-level forms:
 
+- `label`
+- `rule`
+- `transform`
 - `t`
 - `e`
 - `c`
@@ -67,7 +74,7 @@ Invalid at top level:
 Canonical declaration ordering is:
 
 ```text
-t => e => c => λ => test
+label => t => e => c => transform => λ => rule => test
 ```
 
 There is no `export` keyword in current Sigil. Visibility is file-based:
@@ -203,10 +210,60 @@ src/types.lib.sigil
 
 Rules:
 
-- `src/types.lib.sigil` may contain only `t` declarations
+- `src/types.lib.sigil` may contain only `t` and `label` declarations
 - outside that file, project-defined types are referenced as `µTypeName`
 - project sum constructors and patterns from `src/types.lib.sigil` also use `µ...`
 - `src/types.lib.sigil` may reference only `§...` and `¶...` inside type definitions and constraints
+
+### Labels
+
+Projects and standalone files may declare labels:
+
+```sigil module
+label Pii
+
+label Mercosur combines [Brazil,Paraguay]
+```
+
+Types may attach one or more labels:
+
+```sigil module
+t Ssn=String label [Pii,Usa]
+```
+
+Rules:
+
+- `where` and `label` are separate surfaces
+- `label` classifies the type; it does not replace value-level refinement
+- `label X combines Y` adds implied labels during boundary checking
+- singleton label attachment prints as `label Pii`
+- multiple labels print as `label [A,B]`
+
+### Boundary Rules and Transforms
+
+Projects use:
+
+```text
+src/policies.lib.sigil
+```
+
+That file is the canonical home for:
+
+- `rule`
+- `transform`
+
+Standalone `.sigil` and `.lib.sigil` files may also declare these forms locally
+for small examples and scripts.
+
+Example:
+
+```sigil module
+transform λredactSsn(ssn:µSsn)=>String="***"
+
+rule [µ.Pii,µ.Usa] for •topology.auditLog=Through(•policies.redactSsn)
+```
+
+`rule` targets exact named boundaries only in the current surface.
 
 ### Product Types
 
@@ -627,7 +684,3 @@ For canonical formatting and validator-enforced rules, see:
 
 - `language/docs/CANONICAL_FORMS.md`
 - `language/docs/CANONICAL_ENFORCEMENT.md`
-Comments are non-semantic trivia. They are allowed in canonical source, but
-they do not participate in canonical source comparison or code coverage
-extraction for checked docs.
-

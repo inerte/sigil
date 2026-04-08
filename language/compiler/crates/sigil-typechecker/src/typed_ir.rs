@@ -1,3 +1,4 @@
+use crate::environment::{BindingMeta, BoundaryRule, LabelInfo};
 use crate::types::{EffectSet, InferenceType, TypeScheme};
 use sigil_ast::{
     BinaryOperator, ExternDecl, IdentifierExpr, LiteralExpr, Param, Pattern, PipelineOperator,
@@ -9,6 +10,9 @@ use std::collections::HashMap;
 pub struct TypeCheckResult {
     pub declaration_types: HashMap<String, InferenceType>,
     pub declaration_schemes: HashMap<String, TypeScheme>,
+    pub declaration_meta: HashMap<String, BindingMeta>,
+    pub label_registry: HashMap<String, LabelInfo>,
+    pub boundary_rules: Vec<BoundaryRule>,
     pub typed_program: TypedProgram,
 }
 

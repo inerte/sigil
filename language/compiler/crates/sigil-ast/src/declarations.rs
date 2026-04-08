@@ -9,8 +9,14 @@ use crate::{Expr, SourceLocation, Type};
 pub enum Declaration {
     #[cfg_attr(feature = "serde", serde(rename = "FunctionDecl"))]
     Function(FunctionDecl),
+    #[cfg_attr(feature = "serde", serde(rename = "TransformDecl"))]
+    Transform(TransformDecl),
     #[cfg_attr(feature = "serde", serde(rename = "TypeDecl"))]
     Type(TypeDecl),
+    #[cfg_attr(feature = "serde", serde(rename = "LabelDecl"))]
+    Label(LabelDecl),
+    #[cfg_attr(feature = "serde", serde(rename = "RuleDecl"))]
+    Rule(RuleDecl),
     #[cfg_attr(feature = "serde", serde(rename = "EffectDecl"))]
     Effect(EffectDecl),
     #[cfg_attr(feature = "serde", serde(rename = "ConstDecl"))]
@@ -62,6 +68,77 @@ pub struct TypeDecl {
     pub definition: TypeDef,
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Option::is_none"))]
     pub constraint: Option<Expr>,
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Vec::is_empty"))]
+    pub labels: Vec<LabelRef>,
+    pub location: SourceLocation,
+}
+
+/// Label declaration: label Pii combines [Sensitive,CustomerData]
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct LabelDecl {
+    pub name: String,
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Vec::is_empty"))]
+    pub combines: Vec<LabelRef>,
+    pub location: SourceLocation,
+}
+
+/// Rule declaration: rule [•types.Pii] for •topology.auditLog=Allow()
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct RuleDecl {
+    pub labels: Vec<LabelRef>,
+    pub boundary: MemberRef,
+    pub action: RuleAction,
+    pub location: SourceLocation,
+}
+
+/// Policy transform declaration: transform λredact(...)
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct TransformDecl {
+    pub function: FunctionDecl,
+}
+
+/// Boundary rule action.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(tag = "type"))]
+pub enum RuleAction {
+    #[cfg_attr(feature = "serde", serde(rename = "AllowRuleAction"))]
+    Allow {
+        location: SourceLocation,
+    },
+    #[cfg_attr(feature = "serde", serde(rename = "BlockRuleAction"))]
+    Block {
+        location: SourceLocation,
+    },
+    #[cfg_attr(feature = "serde", serde(rename = "ThroughRuleAction"))]
+    Through {
+        transform: MemberRef,
+        location: SourceLocation,
+    },
+}
+
+/// Reference to a label declaration.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct LabelRef {
+    #[cfg_attr(feature = "serde", serde(default))]
+    #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Vec::is_empty"))]
+    pub module_path: Vec<String>,
+    pub name: String,
+    pub location: SourceLocation,
+}
+
+/// Reference to a module member such as •topology.auditLog or •policies.redactPii.
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct MemberRef {
+    pub module_path: Vec<String>,
+    pub member: String,
     pub location: SourceLocation,
 }
 

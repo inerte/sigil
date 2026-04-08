@@ -1,0 +1,7 @@
+label Internal
+
+label Sensitive combines Internal
+
+t Token=String label Sensitive
+
+transform λredactToken(token:Token)=>String="***"

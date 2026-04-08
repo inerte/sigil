@@ -1,0 +1,15 @@
+label Brazil
+
+label Credential
+
+label GovAuth
+
+label Pii
+
+label Usa
+
+t Cpf=String label [Brazil,Pii]
+
+t GovBrToken=String label [Brazil,Credential,GovAuth]
+
+t Ssn=String label [Pii,Usa]

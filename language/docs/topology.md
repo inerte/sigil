@@ -3,17 +3,17 @@
 <h2 id="topology-is-runtime-truth">Topology Is Runtime Truth</h2>
 
 Sigil topology is the canonical, compiler-visible declaration of a project's
-external runtime dependencies.
+named runtime boundaries.
 
 Topology is not config.
 
 Topology answers:
-- what external things this project depends on
-- what those logical dependencies are called
+- what named boundaries exist outside ordinary local computation
+- what those boundaries are called in application code
 - which environment names exist
 
 Config answers:
-- how one named environment constructs the runtime world for those dependencies
+- how one named environment constructs the runtime world for those boundaries
 
 ## Why Sigil Splits Topology from Config
 
@@ -23,7 +23,8 @@ Without this split, runtime truth gets blurred together:
 - tools reconstruct the system from strings
 
 Sigil prefers one explicit model:
-- `src/topology.lib.sigil` declares dependency handles and environment names
+- `src/topology.lib.sigil` declares boundary handles and environment names
+- `src/policies.lib.sigil` declares boundary rules and trusted transforms for labelled data
 - `config/<env>.lib.sigil` exports the selected environment's `world`
 - application code uses typed handles from `•topology`
 - only config modules may read `process.env`
@@ -45,12 +46,18 @@ Environment names are flexible, but the file path is canonical:
 
 ## Canonical Topology Module
 
-`src/topology.lib.sigil` declares only dependency handles and environment names:
+`src/topology.lib.sigil` declares only boundary handles and environment names:
 
 ```sigil module projects/topology-http/src/topology.lib.sigil
+c auditLog=(§topology.logSink("auditLog"):§topology.LogSink)
+
+c exportsDir=(§topology.fsRoot("exportsDir"):§topology.FsRoot)
+
 c local=(§topology.environment("local"):§topology.Environment)
 
 c mailerApi=(§topology.httpService("mailerApi"):§topology.HttpServiceDependency)
+
+c mailerCli=(§topology.processHandle("mailerCli"):§topology.ProcessHandle)
 
 c prod=(§topology.environment("prod"):§topology.Environment)
 
@@ -70,7 +77,7 @@ Those belong in config.
 Each declared environment gets one config module exporting `world`:
 
 ```sigil module projects/topology-http/config/test.lib.sigil
-c world=(†runtime.world(†clock.systemClock(),†fs.real(),[†http.proxy("http://127.0.0.1:45110",•topology.mailerApi)],†log.capture(),†process.deny(),†random.seeded(1337),[],†timer.virtual()):†runtime.World)
+c world=(†runtime.withProcessHandles([†process.fixtureHandle(•topology.mailerCli,[†process.rule(["mailer"],None(),{code:0,stderr:"",stdout:"ok"})])],†runtime.withLogSinks([†log.captureSink(•topology.auditLog)],†runtime.withFsRoots([†fs.sandboxRoot(".local/topology-http",•topology.exportsDir)],†runtime.world(†clock.systemClock(),†fs.real(),[†http.proxy("http://127.0.0.1:45110",•topology.mailerApi)],†log.capture(),†process.deny(),†random.seeded(1337),[],†timer.virtual())))):†runtime.World)
 ```
 
 Production-style config can read env vars, but only there:
@@ -107,6 +114,26 @@ Forbidden patterns:
 §httpClient.get("http://127.0.0.1:45110",headers,"/health")
 §tcpClient.send("127.0.0.1","ping",45120)
 process.env.mailerApiUrl
+§file.writeText("raw","/tmp/out.txt")
+§process.run(§process.command(["mailer"]))
+```
+
+For labelled boundary handling, projects use the handle-based `§file.*At`,
+`§log.write`, and `§process.runAt` / `§process.startAt` surfaces so policy
+rules can target exact `•topology...` boundaries.
+
+Example:
+
+```sigil program projects/labelled-boundaries/src/main.sigil
+λmain()=>!Fs!Log!Process Unit={
+  l cpf=("12345678901":µCpf);
+  l ssn=("123456789":µSsn);
+  l token=("gov-br-token":µGovBrToken);
+  l _=(§file.writeTextAt(cpf,"cpf.txt",•topology.exportsDir):Unit);
+  l _=(§log.write(•policies.redactSsn(ssn),•topology.auditLog):Unit);
+  l _=(§process.runAt(•policies.govBrCommand(token),•topology.govBrCli):§process.ProcessResult);
+  ()
+}
 ```
 
 ## `--env` Is Required
@@ -127,8 +154,9 @@ If topology is present and `--env` is missing, Sigil rejects the command.
 
 Compile-time:
 - topology constructors only in `src/topology.lib.sigil`
-- world HTTP/TCP entry constructors only in `config/*.lib.sigil` and test-local `world { ... }`
+- world named-boundary entry constructors only in `config/*.lib.sigil` and test-local `world { ... }`
 - topology-aware HTTP/TCP APIs require dependency handles
+- label-aware filesystem, log, and process crossings use named `FsRoot`, `LogSink`, and `ProcessHandle` handles
 - raw endpoint usage is rejected
 - `process.env` is only allowed in `config/*.lib.sigil`
 
@@ -137,8 +165,8 @@ Validate-time:
 - `config/<env>.lib.sigil` must exist
 - the config module must export `world`
 - `world` must include every primitive effect entry
-- every declared HTTP/TCP dependency must appear exactly once in `world`
-- no undeclared dependency handles are allowed in `world`
+- every declared named boundary must appear in the matching `world` entry collection
+- no undeclared boundary handles are allowed in `world`
 
 ## Tests Are Environments
 

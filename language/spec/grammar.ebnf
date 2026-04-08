@@ -8,13 +8,16 @@
 Program = { TopLevelDecl } ;
 
 TopLevelDecl = TypeDecl
+             | LabelDecl
              | ExternDecl
              | ConstDecl
+             | TransformDecl
              | FunctionDecl
+             | RuleDecl
              | TestDecl ;
 
 (* Canonical declaration order is enforced separately:
-   t => e => c => λ => test *)
+   label => t => e => c => transform => λ => rule => test *)
 
 ModulePath = RootedModulePath ;
 RootedModulePath = RootSigil , Identifier , { "::" , Identifier } ;
@@ -24,7 +27,13 @@ ExternDecl = "e" , ModulePath , [ ":" , TypedMembers ] ;
 TypedMembers = "{" , TypedMember , { "," , TypedMember } , "}" ;
 TypedMember = Identifier , ":" , Type ;
 
-TypeDecl = "t" , TypeName , [ TypeParams ] , "=" , TypeDef , [ "where" , Expr ] ;
+LabelDecl = "label" , UpperIdentifier , [ "combines" , LabelRefList ] ;
+LabelRefList = LabelRef | "[" , LabelRef , { "," , LabelRef } , "]" ;
+LabelRef = UpperIdentifier | RootedLabelRef | ProjectLabelRef ;
+RootedLabelRef = RootedModulePath , "." , UpperIdentifier ;
+ProjectLabelRef = "µ" , "." , UpperIdentifier ;
+
+TypeDecl = "t" , TypeName , [ TypeParams ] , "=" , TypeDef , [ "where" , Expr ] , [ "label" , LabelRefList ] ;
 TypeName = UpperIdentifier ;
 TypeParams = "[" , TypeParam , { "," , TypeParam } , "]" ;
 TypeParam = UpperIdentifier ;
@@ -59,7 +68,14 @@ TypeList = Type , { "," , Type } ;
 ConstDecl = "c" , Identifier , "=" , "(" , Expr , ":" , Type , ")" ;
 
 FunctionDecl = "λ" , Identifier , "(" , [ ParamList ] , ")" , "=>" , [ Effects ] , Type , FunctionBody ;
+TransformDecl = "transform" , FunctionDecl ;
 FunctionBody = "=" , Expr | MatchExpr ;
+RuleDecl = "rule" , LabelRefList , "for" , RuleBoundary , "=" , RuleAction ;
+RuleBoundary = RootedModulePath , "." , Identifier ;
+RuleAction = "Allow" , "(" , ")"
+           | "Block" , "(" , ")"
+           | "Through" , "(" , RuleTransformRef , ")" ;
+RuleTransformRef = RootedModulePath , "." , Identifier ;
 
 ParamList = Param , { "," , Param } ;
 Param = Identifier , ":" , Type ;

@@ -1,0 +1,3 @@
+c euPayrollApi=(§topology.httpService("euPayrollApi"):§topology.HttpServiceDependency)
+
+c usAnalyticsApi=(§topology.httpService("usAnalyticsApi"):§topology.HttpServiceDependency)

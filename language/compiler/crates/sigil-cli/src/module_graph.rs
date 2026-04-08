@@ -4,7 +4,8 @@
 
 use crate::project::{get_project_config, ProjectConfig, ProjectConfigError};
 use sigil_ast::{
-    ConcurrentStep, Declaration, Expr, Pattern, Program, RecordPatternField, Type, TypeDef,
+    ConcurrentStep, Declaration, Expr, LabelRef, MemberRef, Pattern, Program, RecordPatternField,
+    RuleAction, Type, TypeDef,
 };
 use sigil_lexer::Lexer;
 use sigil_parser::Parser;
@@ -190,9 +191,36 @@ impl ModuleGraphBuilder {
             }
         }
 
+        if let Some(project) = project.as_ref() {
+            let project_src_root = project.root.join("src");
+            let canonical_project_lib_file = abs_file
+                .file_name()
+                .and_then(|name| name.to_str())
+                .map(|name| {
+                    matches!(
+                        name,
+                        "effects.lib.sigil"
+                            | "policies.lib.sigil"
+                            | "topology.lib.sigil"
+                            | "types.lib.sigil"
+                    )
+                })
+                .unwrap_or(false);
+            let should_load_project_policies = abs_file.starts_with(&project_src_root)
+                && !canonical_project_lib_file;
+            let policies_path = project.root.join("src/policies.lib.sigil");
+            if should_load_project_policies && policies_path.exists() && policies_path != abs_file {
+                self.visit(
+                    &policies_path,
+                    Some("src::policies".to_string()),
+                    Some(project.clone()),
+                )?;
+            }
+        }
+
         // Process referenced Sigil modules
         for module_id in collect_referenced_module_ids(&ast) {
-            if module_id == "core::prelude" {
+            if module_id == "core::prelude" || module_id == module_key {
                 continue;
             }
 
@@ -271,6 +299,9 @@ fn collect_declaration_modules(declaration: &Declaration, modules: &mut HashSet<
             }
             collect_expr_modules(&function.body, modules);
         }
+        Declaration::Transform(transform_decl) => {
+            collect_declaration_modules(&Declaration::Function(transform_decl.function.clone()), modules);
+        }
         Declaration::Type(type_decl) => match &type_decl.definition {
             TypeDef::Sum(sum) => {
                 for variant in &sum.variants {
@@ -286,6 +317,20 @@ fn collect_declaration_modules(declaration: &Declaration, modules: &mut HashSet<
             }
             TypeDef::Alias(alias) => collect_type_modules(&alias.aliased_type, modules),
         },
+        Declaration::Label(label_decl) => {
+            for label_ref in &label_decl.combines {
+                collect_label_ref_modules(label_ref, modules);
+            }
+        }
+        Declaration::Rule(rule_decl) => {
+            for label_ref in &rule_decl.labels {
+                collect_label_ref_modules(label_ref, modules);
+            }
+            collect_member_ref_modules(&rule_decl.boundary, modules);
+            if let RuleAction::Through { transform, .. } = &rule_decl.action {
+                collect_member_ref_modules(transform, modules);
+            }
+        }
         Declaration::Effect(_) => {}
         Declaration::Const(const_decl) => {
             if let Some(type_annotation) = &const_decl.type_annotation {
@@ -303,6 +348,18 @@ fn collect_declaration_modules(declaration: &Declaration, modules: &mut HashSet<
             collect_expr_modules(&test_decl.body, modules);
         }
         Declaration::Extern(_) => {}
+    }
+}
+
+fn collect_label_ref_modules(label_ref: &LabelRef, modules: &mut HashSet<String>) {
+    if !label_ref.module_path.is_empty() {
+        modules.insert(label_ref.module_path.join("::"));
+    }
+}
+
+fn collect_member_ref_modules(member_ref: &MemberRef, modules: &mut HashSet<String>) {
+    if !member_ref.module_path.is_empty() {
+        modules.insert(member_ref.module_path.join("::"));
     }
 }
 

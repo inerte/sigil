@@ -1,0 +1,1 @@
+λwrite(message:String,sink:§topology.LogSink)=>!Log Unit=()

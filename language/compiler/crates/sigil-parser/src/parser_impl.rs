@@ -50,6 +50,28 @@ impl Parser {
     // ========================================================================
 
     fn declaration(&mut self) -> Result<Declaration, ParseError> {
+        // Label declaration: label Pii combines [Brazil,Paraguay]
+        if self.match_identifier("label") {
+            return self.label_declaration();
+        }
+
+        // Rule declaration: rule [•types.Pii] for •topology.auditLog=Allow()
+        if self.match_identifier("rule") {
+            return self.rule_declaration();
+        }
+
+        // Transform declaration: transform λredact(...)
+        if self.match_identifier("transform") {
+            self.consume(
+                TokenType::LAMBDA,
+                "Expected \"λ\" after transform (canonical form: transform λname(...))",
+            )?;
+            let Declaration::Function(function) = self.function_declaration()? else {
+                unreachable!("function_declaration must return Declaration::Function");
+            };
+            return Ok(Declaration::Transform(TransformDecl { function }));
+        }
+
         // Function declaration: λ identifier(params)...
         if self.match_token(TokenType::LAMBDA) {
             return self.function_declaration();
@@ -81,7 +103,9 @@ impl Parser {
             return self.test_declaration();
         }
 
-        Err(self.error("Expected top-level declaration (t, effect, e, c, λ, or test)"))
+        Err(self.error(
+            "Expected top-level declaration (label, rule, transform, t, effect, e, c, λ, or test)",
+        ))
     }
 
     fn function_declaration(&mut self) -> Result<Declaration, ParseError> {
@@ -297,6 +321,17 @@ impl Parser {
         } else {
             None
         };
+        let labels = if self.match_identifier("label") {
+            self.label_ref_list_or_single()?
+        } else {
+            Vec::new()
+        };
+
+        if self.check_identifier("where") || self.check_identifier("label") {
+            return Err(self.error(
+                "Type declarations use at most one where clause followed by at most one label clause, in that order",
+            ));
+        }
 
         let end = self.previous();
         let location = self.make_location(start.location.start, end.location.end);
@@ -306,8 +341,178 @@ impl Parser {
             type_params,
             definition,
             constraint,
+            labels,
             location,
         }))
+    }
+
+    fn label_declaration(&mut self) -> Result<Declaration, ParseError> {
+        let start = self.previous();
+        let name = self
+            .consume(TokenType::UpperIdentifier, "Expected label name")?
+            .value
+            .clone();
+        let combines = if self.match_identifier("combines") {
+            self.label_ref_list_or_single()?
+        } else {
+            Vec::new()
+        };
+        let end = self.previous();
+        Ok(Declaration::Label(LabelDecl {
+            name,
+            combines,
+            location: self.make_location(start.location.start, end.location.end),
+        }))
+    }
+
+    fn rule_declaration(&mut self) -> Result<Declaration, ParseError> {
+        let start = self.previous();
+        let labels = self.label_ref_list_or_single()?;
+        self.consume_identifier("for", "Expected \"for\" after rule labels")?;
+        let boundary = self.member_ref(true, "Expected rooted boundary reference after for")?;
+        self.consume(TokenType::EQUAL, "Expected \"=\" after rule boundary")?;
+        let action = self.rule_action()?;
+        let end = self.previous();
+        Ok(Declaration::Rule(RuleDecl {
+            labels,
+            boundary,
+            action,
+            location: self.make_location(start.location.start, end.location.end),
+        }))
+    }
+
+    fn label_ref_list_or_single(&mut self) -> Result<Vec<LabelRef>, ParseError> {
+        if self.match_token(TokenType::LBRACKET) {
+            let mut labels = Vec::new();
+            if !self.check(TokenType::RBRACKET) {
+                loop {
+                    labels.push(self.label_ref()?);
+                    if !self.match_token(TokenType::COMMA) {
+                        break;
+                    }
+                }
+            }
+            self.consume(TokenType::RBRACKET, "Expected \"]\" after label list")?;
+            return Ok(labels);
+        }
+
+        Ok(vec![self.label_ref()?])
+    }
+
+    fn label_ref(&mut self) -> Result<LabelRef, ParseError> {
+        if let Some(root) = self.match_project_type_root() {
+            let start = root.location.start;
+            self.consume(TokenType::DOT, "Expected \".\" after \"µ\" in label reference")?;
+            let name = self
+                .consume(TokenType::UpperIdentifier, "Expected label name")?
+                .value
+                .clone();
+            let end = self.previous().location.end;
+            return Ok(LabelRef {
+                module_path: project_types_module_path(),
+                name,
+                location: SourceLocation::new(start, end),
+            });
+        }
+
+        if let Some(root) = self.match_root_token() {
+            let start = root.location.start;
+            let module_path = self.rooted_module_path(&root)?;
+            self.consume(TokenType::DOT, "Expected \".\" after label namespace path")?;
+            let name = self
+                .consume(TokenType::UpperIdentifier, "Expected label name")?
+                .value
+                .clone();
+            let end = self.previous().location.end;
+            return Ok(LabelRef {
+                module_path,
+                name,
+                location: SourceLocation::new(start, end),
+            });
+        }
+
+        let token = self.consume(TokenType::UpperIdentifier, "Expected label name")?;
+        Ok(LabelRef {
+            module_path: Vec::new(),
+            name: token.value,
+            location: token.location,
+        })
+    }
+
+    fn member_ref(
+        &mut self,
+        require_rooted: bool,
+        message: &str,
+    ) -> Result<MemberRef, ParseError> {
+        if let Some(root) = self.match_root_token() {
+            let start = root.location.start;
+            let module_path = self.rooted_module_path(&root)?;
+            self.consume(TokenType::DOT, "Expected \".\" after namespace path")?;
+            let member = if self.match_token(TokenType::IDENTIFIER)
+                || self.match_token(TokenType::UpperIdentifier)
+            {
+                self.previous().value.clone()
+            } else {
+                return Err(self.error("Expected member name"));
+            };
+            let end = self.previous().location.end;
+            return Ok(MemberRef {
+                module_path,
+                member,
+                location: SourceLocation::new(start, end),
+            });
+        }
+
+        if require_rooted {
+            return Err(self.error(message));
+        }
+
+        if self.match_token(TokenType::IDENTIFIER) || self.match_token(TokenType::UpperIdentifier) {
+            let token = self.previous();
+            return Ok(MemberRef {
+                module_path: Vec::new(),
+                member: token.value,
+                location: token.location,
+            });
+        }
+
+        Err(self.error(message))
+    }
+
+    fn rule_action(&mut self) -> Result<RuleAction, ParseError> {
+        if self.check(TokenType::UpperIdentifier) && self.peek().value == "Allow" {
+            let start = self.advance();
+            self.consume(TokenType::LPAREN, "Expected \"(\" after Allow")?;
+            self.consume(TokenType::RPAREN, "Expected \")\" after Allow(")?;
+            let end = self.previous();
+            return Ok(RuleAction::Allow {
+                location: SourceLocation::new(start.location.start, end.location.end),
+            });
+        }
+
+        if self.check(TokenType::UpperIdentifier) && self.peek().value == "Block" {
+            let start = self.advance();
+            self.consume(TokenType::LPAREN, "Expected \"(\" after Block")?;
+            self.consume(TokenType::RPAREN, "Expected \")\" after Block(")?;
+            let end = self.previous();
+            return Ok(RuleAction::Block {
+                location: SourceLocation::new(start.location.start, end.location.end),
+            });
+        }
+
+        if self.check(TokenType::UpperIdentifier) && self.peek().value == "Through" {
+            let start = self.advance();
+            self.consume(TokenType::LPAREN, "Expected \"(\" after Through")?;
+            let transform = self.member_ref(false, "Expected transform reference inside Through(...)")?;
+            self.consume(TokenType::RPAREN, "Expected \")\" after Through(...)")?;
+            let end = self.previous();
+            return Ok(RuleAction::Through {
+                transform,
+                location: SourceLocation::new(start.location.start, end.location.end),
+            });
+        }
+
+        Err(self.error("Expected Allow(), Block(), or Through(transform)"))
     }
 
     fn effect_declaration(&mut self) -> Result<Declaration, ParseError> {

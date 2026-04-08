@@ -1,11 +1,23 @@
 t Environment=Environment(String)
 
+t FsRoot=FsRoot(String)
+
 t HttpServiceDependency=HttpServiceDependency(String)
+
+t LogSink=LogSink(String)
+
+t ProcessHandle=ProcessHandle(String)
 
 t TcpServiceDependency=TcpServiceDependency(String)
 
 λenvironment(name:String)=>Environment=Environment(name)
 
+λfsRoot(name:String)=>FsRoot=FsRoot(name)
+
 λhttpService(name:String)=>HttpServiceDependency=HttpServiceDependency(name)
+
+λlogSink(name:String)=>LogSink=LogSink(name)
+
+λprocessHandle(name:String)=>ProcessHandle=ProcessHandle(name)
 
 λtcpService(name:String)=>TcpServiceDependency=TcpServiceDependency(name)

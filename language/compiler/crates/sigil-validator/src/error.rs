@@ -185,6 +185,12 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
+    #[error("SIGIL-CANON-POLICY-DECL-PLACEMENT: {message}")]
+    PolicyDeclarationPlacement {
+        message: String,
+        location: SourceLocation,
+    },
+
     #[error("SIGIL-CANON-IDENTIFIER-FORM: value identifiers must be lowerCamelCase\n\nFound: {found}\nExpected form: lowerCamelCase{suggestion}")]
     IdentifierForm {
         found: String,
@@ -520,6 +526,7 @@ impl ValidationError {
             ValidationError::SourceForm { location, .. } => *location,
             ValidationError::EffectDeclarationPlacement { location, .. } => *location,
             ValidationError::TypeDeclarationPlacement { location, .. } => *location,
+            ValidationError::PolicyDeclarationPlacement { location, .. } => *location,
             ValidationError::IdentifierForm { location, .. } => *location,
             ValidationError::TypeNameForm { location, .. } => *location,
             ValidationError::ConstructorNameForm { location, .. } => *location,
@@ -893,6 +900,20 @@ impl From<ValidationError> for Diagnostic {
             }
 
             ValidationError::EffectDeclarationPlacement { message, location } => Diagnostic::new(
+                codes::canonical::SOURCE_FORM,
+                SigilPhase::Canonical,
+                message,
+            )
+            .with_location(source_location_to_span(get_file(), location)),
+
+            ValidationError::TypeDeclarationPlacement { message, location } => Diagnostic::new(
+                codes::canonical::SOURCE_FORM,
+                SigilPhase::Canonical,
+                message,
+            )
+            .with_location(source_location_to_span(get_file(), location)),
+
+            ValidationError::PolicyDeclarationPlacement { message, location } => Diagnostic::new(
                 codes::canonical::SOURCE_FORM,
                 SigilPhase::Canonical,
                 message,

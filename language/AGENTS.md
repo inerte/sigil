@@ -60,7 +60,7 @@ Current canonical boolean operators:
 - `¬`
 
 Module scope is declaration-only:
-- valid top-level forms: `t`, `e`, `c`, `λ`, `test`
+- valid top-level forms: `label`, `rule`, `transform`, `t`, `e`, `c`, `λ`, `test`
 - never generate top-level `l`
 - use `c` for immutable module-level values
 - move setup bindings inside `main()` or another function body
@@ -150,16 +150,19 @@ Current constructor and list invariants:
   - records are exact and closed; Sigil does not have open records, row tails, or width subtyping
   - if a field may be absent, keep the record exact and use `Option[T]` for that field
   - project-defined named types in projects live in `src/types.lib.sigil` and are referenced elsewhere as `µTypeName`
-  - `src/types.lib.sigil` is types-only and may reference only `§...` and `¶...` inside type definitions and constraints
+  - `src/types.lib.sigil` owns `t`, `label`, and `label ... combines ...` declarations
+  - `src/policies.lib.sigil` owns `rule` and `transform` declarations
+  - `src/types.lib.sigil` may reference only `§...` and `¶...` inside type definitions and constraints
+  - `label` is the type-classification surface; boundary handling belongs in `src/policies.lib.sigil`
   - `where` on a type declaration defines a pure, world-independent refinement over an alias or named product type; compile-time promotion into that type requires proof in Sigil's canonical solver-backed refinement fragment, and `match` / internal branching propagate supported branch facts into that proof context
   - `requires` and `ensures` are the canonical function-contract surface; `requires` may reference parameters, `ensures` may reference parameters plus `result`, and both stay pure and world-independent
   - direct boolean local aliases of supported facts participate in that same flow-sensitive refinement and coverage model
   - `where`, `requires`, and `ensures` do not imply runtime validation
   - prefer early boundary conversion with `§decode` instead of carrying raw `JsonValue` deep into business logic
   - when a validated boundary value should remain distinct from a raw primitive, prefer a named wrapper type like `Email` or `UserId`
-  - topology-aware projects must declare external HTTP/TCP dependencies and environment names in `src/topology.lib.sigil`
+  - topology-aware projects must declare named runtime boundaries and environment names in `src/topology.lib.sigil`
   - topology-aware projects are validated against the selected `--env`, which must resolve to `config/<env>.lib.sigil`
-  - topology-aware application code must use `•topology` dependency handles, not raw URLs, hosts, ports, or env-derived endpoints
+  - topology-aware application code must use `•topology` boundary handles for named HTTP/TCP/Fs/Log/Process crossings instead of raw endpoints or ad hoc boundary names
   - `process.env` belongs only in `config/*.lib.sigil`, never in ordinary application code
   - tests run in explicit worlds; prefer `config/<env>.lib.sigil` baseline worlds plus test-local `world { ... }` derivation over ad hoc rewiring
   - unused extern declarations are non-canonical in executable `.sigil` files; `.lib.sigil` files may expose extern-based API surface that is unused locally

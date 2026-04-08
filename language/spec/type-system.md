@@ -12,6 +12,7 @@ Sigil currently uses bidirectional type checking with:
 - map types
 - explicit top-level parametric polymorphism
 - solver-backed type refinements
+- nominal type labels
 - function contracts
 - effect annotations
 
@@ -96,8 +97,46 @@ t User={birthYear:BirthYear,name:String}
 λtodoId(todo:µTodo)=>Int=todo.id
 ```
 
-`src/types.lib.sigil` is types-only and may reference only `§...` and `¶...`
-inside type definitions and constraints.
+`src/types.lib.sigil` owns `t`, `label`, and `label ... combines ...`
+declarations. Type definitions and constraints may reference only `§...` and
+`¶...`.
+
+## Labelled Types
+
+Sigil has a separate type-classification layer in addition to `where`
+refinements.
+
+Example:
+
+```sigil module projects/labelled-boundaries/src/types.lib.sigil
+label Brazil
+
+label Credential
+
+label GovAuth
+
+label Pii
+
+label Usa
+
+t Cpf=String label [Brazil,Pii]
+
+t GovBrToken=String label [Brazil,Credential,GovAuth]
+
+t Ssn=String label [Pii,Usa]
+```
+
+Label rules:
+
+- labels are nominal classifications rather than value predicates
+- `label X combines Y` contributes transitive implied labels during checking
+- labelled values keep those labels through aggregate construction
+- field projection returns the projected field's labels
+- labels participate in named-boundary checking, not ordinary local computation
+- unlabeled values are unaffected by boundary-rule enforcement
+
+Projects pair labelled types with `src/policies.lib.sigil`, which owns
+`rule` and `transform` declarations for named topology boundaries.
 
 ## Algebraic Data Types
 

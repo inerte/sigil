@@ -1,19 +1,39 @@
 λappendText(content:String,path:String)=>!Fs Unit=()
 
+λappendTextAt(content:String,path:String,root:§topology.FsRoot)=>!Fs Unit=()
+
 λexists(path:String)=>!Fs Bool=false
+
+λexistsAt(path:String,root:§topology.FsRoot)=>!Fs Bool=false
 
 λlistDir(path:String)=>!Fs [String]=[]
 
+λlistDirAt(path:String,root:§topology.FsRoot)=>!Fs [String]=[]
+
 λmakeDir(path:String)=>!Fs Unit=()
+
+λmakeDirAt(path:String,root:§topology.FsRoot)=>!Fs Unit=()
 
 λmakeDirs(path:String)=>!Fs Unit=()
 
+λmakeDirsAt(path:String,root:§topology.FsRoot)=>!Fs Unit=()
+
 λmakeTempDir(prefix:String)=>!Fs String=""
+
+λmakeTempDirAt(prefix:String,root:§topology.FsRoot)=>!Fs String=""
 
 λreadText(path:String)=>!Fs String=""
 
+λreadTextAt(path:String,root:§topology.FsRoot)=>!Fs String=""
+
 λremove(path:String)=>!Fs Unit=()
+
+λremoveAt(path:String,root:§topology.FsRoot)=>!Fs Unit=()
 
 λremoveTree(path:String)=>!Fs Unit=()
 
+λremoveTreeAt(path:String,root:§topology.FsRoot)=>!Fs Unit=()
+
 λwriteText(content:String,path:String)=>!Fs Unit=()
+
+λwriteTextAt(content:String,path:String,root:§topology.FsRoot)=>!Fs Unit=()

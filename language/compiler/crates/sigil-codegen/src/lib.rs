@@ -308,9 +308,12 @@ function __sigil_world_host_template() {
   return {
     clock: { kind: 'system' },
     fs: { kind: 'real' },
+    fsRoots: Object.create(null),
     http: Object.create(null),
     log: { kind: 'stdout' },
+    logSinks: Object.create(null),
     process: { kind: 'real' },
+    processHandles: Object.create(null),
     random: { kind: 'real' },
     tcp: Object.create(null),
     timer: { kind: 'real' }
@@ -318,21 +321,30 @@ function __sigil_world_host_template() {
 }
 function __sigil_world_collect_topology(topologyExports) {
   const envs = new Set();
+  const fsRoots = new Set();
   const http = new Set();
+  const logSinks = new Set();
+  const processHandles = new Set();
   const tcp = new Set();
   if (!topologyExports || typeof topologyExports !== 'object') {
-    return { envs, http, tcp };
+    return { envs, fsRoots, http, logSinks, processHandles, tcp };
   }
   for (const value of Object.values(topologyExports)) {
     if (value?.__tag === 'Environment') {
       envs.add(String(value.__fields?.[0] ?? ''));
+    } else if (value?.__tag === 'FsRoot') {
+      fsRoots.add(String(value.__fields?.[0] ?? ''));
     } else if (value?.__tag === 'HttpServiceDependency') {
       http.add(String(value.__fields?.[0] ?? ''));
+    } else if (value?.__tag === 'LogSink') {
+      logSinks.add(String(value.__fields?.[0] ?? ''));
+    } else if (value?.__tag === 'ProcessHandle') {
+      processHandles.add(String(value.__fields?.[0] ?? ''));
     } else if (value?.__tag === 'TcpServiceDependency') {
       tcp.add(String(value.__fields?.[0] ?? ''));
     }
   }
-  return { envs, http, tcp };
+  return { envs, fsRoots, http, logSinks, processHandles, tcp };
 }
 function __sigil_world_parse_clock(value) {
   if (value?.__tag === 'SystemClock') {
@@ -383,6 +395,48 @@ function __sigil_world_parse_process(value) {
   }
   if (value?.__tag === 'RealProcess') return { kind: 'real' };
   __sigil_world_error('world.process must be world::process.ProcessEntry');
+}
+function __sigil_world_parse_fs_root_entry(value) {
+  if (value?.__tag !== 'FsRootEntry') {
+    __sigil_world_error('FS root overrides must be world::fs.FsRootEntry');
+  }
+  const payload = value.__fields?.[0] ?? {};
+  const rootName = String(payload?.rootName ?? '');
+  if (!rootName) {
+    __sigil_world_error('world::fs.FsRootEntry rootName must be a non-empty string');
+  }
+  return {
+    rootName,
+    ...__sigil_world_parse_fs(payload?.mode ?? null)
+  };
+}
+function __sigil_world_parse_log_sink_entry(value) {
+  if (value?.__tag !== 'LogSinkEntry') {
+    __sigil_world_error('Log sink overrides must be world::log.LogSinkEntry');
+  }
+  const payload = value.__fields?.[0] ?? {};
+  const sinkName = String(payload?.sinkName ?? '');
+  if (!sinkName) {
+    __sigil_world_error('world::log.LogSinkEntry sinkName must be a non-empty string');
+  }
+  return {
+    sinkName,
+    ...__sigil_world_parse_log(payload?.mode ?? null)
+  };
+}
+function __sigil_world_parse_process_handle_entry(value) {
+  if (value?.__tag !== 'ProcessHandleEntry') {
+    __sigil_world_error('Process handle overrides must be world::process.ProcessHandleEntry');
+  }
+  const payload = value.__fields?.[0] ?? {};
+  const handleName = String(payload?.handleName ?? '');
+  if (!handleName) {
+    __sigil_world_error('world::process.ProcessHandleEntry handleName must be a non-empty string');
+  }
+  return {
+    handleName,
+    ...__sigil_world_parse_process(payload?.mode ?? null)
+  };
 }
 function __sigil_world_random_normalize_seed(seed) {
   const modulus = 2147483647;
@@ -538,8 +592,23 @@ function __sigil_world_prepare_template(worldValue, topologyExports, envName) {
   const template = __sigil_world_host_template();
   template.clock = __sigil_world_parse_clock(worldValue.clock);
   template.fs = __sigil_world_parse_fs(worldValue.fs);
+  template.fsRoots = Object.create(null);
+  for (const value of worldValue.fsRoots ?? []) {
+    const entry = __sigil_world_parse_fs_root_entry(value);
+    template.fsRoots[entry.rootName] = entry;
+  }
   template.log = __sigil_world_parse_log(worldValue.log);
+  template.logSinks = Object.create(null);
+  for (const value of worldValue.logSinks ?? []) {
+    const entry = __sigil_world_parse_log_sink_entry(value);
+    template.logSinks[entry.sinkName] = entry;
+  }
   template.process = __sigil_world_parse_process(worldValue.process);
+  template.processHandles = Object.create(null);
+  for (const value of worldValue.processHandles ?? []) {
+    const entry = __sigil_world_parse_process_handle_entry(value);
+    template.processHandles[entry.handleName] = entry;
+  }
   template.random = __sigil_world_parse_random(worldValue.random);
   template.timer = __sigil_world_parse_timer(worldValue.timer);
   template.http = Object.create(null);
@@ -561,6 +630,42 @@ function __sigil_world_prepare_template(worldValue, topologyExports, envName) {
     for (const name of Object.keys(template.http)) {
       if (!topology.http.has(name)) {
         __sigil_world_error(`HTTP world entry references undeclared dependency '${name}'`);
+      }
+    }
+  }
+  if (topology.fsRoots.size > 0) {
+    for (const name of topology.fsRoots) {
+      if (!(name in template.fsRoots)) {
+        __sigil_world_error(`missing FS root world entry for '${name}' in environment '${envName ?? '<unknown>'}'`);
+      }
+    }
+    for (const name of Object.keys(template.fsRoots)) {
+      if (!topology.fsRoots.has(name)) {
+        __sigil_world_error(`FS root world entry references undeclared boundary '${name}'`);
+      }
+    }
+  }
+  if (topology.logSinks.size > 0) {
+    for (const name of topology.logSinks) {
+      if (!(name in template.logSinks)) {
+        __sigil_world_error(`missing log sink world entry for '${name}' in environment '${envName ?? '<unknown>'}'`);
+      }
+    }
+    for (const name of Object.keys(template.logSinks)) {
+      if (!topology.logSinks.has(name)) {
+        __sigil_world_error(`log sink world entry references undeclared boundary '${name}'`);
+      }
+    }
+  }
+  if (topology.processHandles.size > 0) {
+    for (const name of topology.processHandles) {
+      if (!(name in template.processHandles)) {
+        __sigil_world_error(`missing process handle world entry for '${name}' in environment '${envName ?? '<unknown>'}'`);
+      }
+    }
+    for (const name of Object.keys(template.processHandles)) {
+      if (!topology.processHandles.has(name)) {
+        __sigil_world_error(`process handle world entry references undeclared boundary '${name}'`);
       }
     }
   }
@@ -634,15 +739,30 @@ function __sigil_world_apply_overrides(world, overrides) {
       case 'SandboxFs':
         world.fs = __sigil_world_parse_fs(value);
         break;
+      case 'FsRootEntry': {
+        const entry = __sigil_world_parse_fs_root_entry(value);
+        world.fsRoots[entry.rootName] = entry;
+        break;
+      }
       case 'CaptureLog':
       case 'StdoutLog':
         world.log = __sigil_world_parse_log(value);
         break;
+      case 'LogSinkEntry': {
+        const entry = __sigil_world_parse_log_sink_entry(value);
+        world.logSinks[entry.sinkName] = entry;
+        break;
+      }
       case 'DenyProcess':
       case 'FixtureProcess':
       case 'RealProcess':
         world.process = __sigil_world_parse_process(value);
         break;
+      case 'ProcessHandleEntry': {
+        const entry = __sigil_world_parse_process_handle_entry(value);
+        world.processHandles[entry.handleName] = entry;
+        break;
+      }
       case 'FixtureRandom':
       case 'RealRandom':
       case 'SeededRandom':
@@ -815,6 +935,30 @@ function __sigil_world_process_fixture_result(world, command) {
 function __sigil_world_timer_trace(world, ms) {
   world.traces.timer.sleeps.push(Number(ms));
 }
+function __sigil_world_named_fs_entry(rootName) {
+  const world = __sigil_current_world();
+  const entry = world.fsRoots?.[String(rootName)] ?? null;
+  if (!entry) {
+    __sigil_world_error(`FsRoot '${String(rootName)}' is not configured in the current world`);
+  }
+  return entry;
+}
+function __sigil_world_named_log_sink(sinkName) {
+  const world = __sigil_current_world();
+  const entry = world.logSinks?.[String(sinkName)] ?? null;
+  if (!entry) {
+    __sigil_world_error(`LogSink '${String(sinkName)}' is not configured in the current world`);
+  }
+  return entry;
+}
+function __sigil_world_named_process_handle(handleName) {
+  const world = __sigil_current_world();
+  const entry = world.processHandles?.[String(handleName)] ?? null;
+  if (!entry) {
+    __sigil_world_error(`ProcessHandle '${String(handleName)}' is not configured in the current world`);
+  }
+  return entry;
+}
 async function __sigil_world_file_text_summary(content) {
   const { createHash } = await import('node:crypto');
   const text = String(content ?? '');
@@ -845,50 +989,53 @@ function __sigil_world_file_request_from_error(error) {
   }
   return {};
 }
-async function __sigil_world_file_resolved_path_live(pathValue) {
+async function __sigil_world_file_resolved_path_live(pathValue, entry) {
   const path = await import('node:path');
   const world = __sigil_current_world();
+  const fsEntry = entry ?? world.fs;
   const raw = String(pathValue ?? '');
-  if (world.fs.kind === 'deny') {
+  if (fsEntry.kind === 'deny') {
     __sigil_world_error('Fs is denied by the current world');
   }
-  if (world.fs.kind === 'real') {
+  if (fsEntry.kind === 'real') {
     return raw;
   }
   const relative = raw.startsWith('/') ? raw.slice(1) : raw;
-  return path.resolve(String(world.fs.root), relative);
+  return path.resolve(String(fsEntry.root), relative);
 }
-async function __sigil_world_file_temp_base_dir() {
+async function __sigil_world_file_temp_base_dir(entry) {
   const os = await import('node:os');
   const path = await import('node:path');
   const world = __sigil_current_world();
-  if (world.fs.kind === 'deny') {
+  const fsEntry = entry ?? world.fs;
+  if (fsEntry.kind === 'deny') {
     __sigil_world_error('Fs is denied by the current world');
   }
-  if (world.fs.kind === 'sandbox') {
-    return path.resolve(String(world.fs.root));
+  if (fsEntry.kind === 'sandbox') {
+    return path.resolve(String(fsEntry.root));
   }
   return os.tmpdir();
 }
-async function __sigil_world_file_request_path(pathValue, extras) {
+async function __sigil_world_file_request_path(pathValue, extras, entry) {
   const request = {
     path: String(pathValue ?? ''),
     ...(extras ?? {})
   };
   try {
-    request.resolvedPath = await __sigil_world_file_resolved_path_live(request.path);
+    request.resolvedPath = await __sigil_world_file_resolved_path_live(request.path, entry);
     return request;
   } catch (error) {
     __sigil_world_file_attach_request(error, request);
     throw error;
   }
 }
-async function __sigil_world_file_request_temp_dir(prefix) {
+async function __sigil_world_file_request_temp_dir(prefix, extras, entry) {
   const request = {
-    prefix: String(prefix ?? '')
+    prefix: String(prefix ?? ''),
+    ...(extras ?? {})
   };
   try {
-    request.baseDir = await __sigil_world_file_temp_base_dir();
+    request.baseDir = await __sigil_world_file_temp_base_dir(entry);
     return request;
   } catch (error) {
     __sigil_world_file_attach_request(error, request);
@@ -975,7 +1122,7 @@ async function __sigil_world_file_makeTempDir(prefix) {
   const path = await import('node:path');
   return await __sigil_world_file_capture(
     'makeTempDir',
-    () => __sigil_world_file_request_temp_dir(prefix),
+    () => __sigil_world_file_request_temp_dir(prefix, null, null),
     async (request) => {
       const world = __sigil_current_world();
       const base = String(request.baseDir ?? '');
@@ -1029,6 +1176,134 @@ async function __sigil_world_file_writeText(content, pathValue) {
     }
   );
 }
+async function __sigil_world_file_appendTextAt(rootName, content, pathValue) {
+  const fs = await import('node:fs/promises');
+  const entry = __sigil_world_named_fs_entry(rootName);
+  return await __sigil_world_file_capture(
+    'appendTextAt',
+    async () => __sigil_world_file_request_path(pathValue, {
+      content: await __sigil_world_file_text_summary(content),
+      rootName: String(rootName)
+    }, entry),
+    async (request) => {
+      await fs.appendFile(String(request.resolvedPath ?? ''), String(content), 'utf8');
+      return null;
+    }
+  );
+}
+async function __sigil_world_file_existsAt(rootName, pathValue) {
+  const fs = await import('node:fs/promises');
+  const entry = __sigil_world_named_fs_entry(rootName);
+  return await __sigil_world_file_capture(
+    'existsAt',
+    () => __sigil_world_file_request_path(pathValue, { rootName: String(rootName) }, entry),
+    async (request) => {
+      try {
+        await fs.access(String(request.resolvedPath ?? ''));
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }
+  );
+}
+async function __sigil_world_file_listDirAt(rootName, pathValue) {
+  const fs = await import('node:fs/promises');
+  const entry = __sigil_world_named_fs_entry(rootName);
+  return await __sigil_world_file_capture(
+    'listDirAt',
+    () => __sigil_world_file_request_path(pathValue, { rootName: String(rootName) }, entry),
+    async (request) => await fs.readdir(String(request.resolvedPath ?? ''))
+  );
+}
+async function __sigil_world_file_makeDirAt(rootName, pathValue) {
+  const fs = await import('node:fs/promises');
+  const entry = __sigil_world_named_fs_entry(rootName);
+  return await __sigil_world_file_capture(
+    'makeDirAt',
+    () => __sigil_world_file_request_path(pathValue, { rootName: String(rootName) }, entry),
+    async (request) => {
+      await fs.mkdir(String(request.resolvedPath ?? ''), { recursive: false });
+      return null;
+    }
+  );
+}
+async function __sigil_world_file_makeDirsAt(rootName, pathValue) {
+  const fs = await import('node:fs/promises');
+  const entry = __sigil_world_named_fs_entry(rootName);
+  return await __sigil_world_file_capture(
+    'makeDirsAt',
+    () => __sigil_world_file_request_path(pathValue, { rootName: String(rootName) }, entry),
+    async (request) => {
+      await fs.mkdir(String(request.resolvedPath ?? ''), { recursive: true });
+      return null;
+    }
+  );
+}
+async function __sigil_world_file_makeTempDirAt(rootName, prefix) {
+  const fs = await import('node:fs/promises');
+  const path = await import('node:path');
+  const entry = __sigil_world_named_fs_entry(rootName);
+  return await __sigil_world_file_capture(
+    'makeTempDirAt',
+    () => __sigil_world_file_request_temp_dir(prefix, { rootName: String(rootName) }, entry),
+    async (request) => {
+      const base = String(request.baseDir ?? '');
+      if (entry.kind === 'sandbox') {
+        await fs.mkdir(base, { recursive: true });
+      }
+      return await fs.mkdtemp(path.join(base, String(request.prefix ?? '')));
+    }
+  );
+}
+async function __sigil_world_file_readTextAt(rootName, pathValue) {
+  const fs = await import('node:fs/promises');
+  const entry = __sigil_world_named_fs_entry(rootName);
+  return await __sigil_world_file_capture(
+    'readTextAt',
+    () => __sigil_world_file_request_path(pathValue, { rootName: String(rootName) }, entry),
+    async (request) => await fs.readFile(String(request.resolvedPath ?? ''), 'utf8')
+  );
+}
+async function __sigil_world_file_removeAt(rootName, pathValue) {
+  const fs = await import('node:fs/promises');
+  const entry = __sigil_world_named_fs_entry(rootName);
+  return await __sigil_world_file_capture(
+    'removeAt',
+    () => __sigil_world_file_request_path(pathValue, { rootName: String(rootName) }, entry),
+    async (request) => {
+      await fs.unlink(String(request.resolvedPath ?? ''));
+      return null;
+    }
+  );
+}
+async function __sigil_world_file_removeTreeAt(rootName, pathValue) {
+  const fs = await import('node:fs/promises');
+  const entry = __sigil_world_named_fs_entry(rootName);
+  return await __sigil_world_file_capture(
+    'removeTreeAt',
+    () => __sigil_world_file_request_path(pathValue, { rootName: String(rootName) }, entry),
+    async (request) => {
+      await fs.rm(String(request.resolvedPath ?? ''), { force: true, recursive: true });
+      return null;
+    }
+  );
+}
+async function __sigil_world_file_writeTextAt(rootName, content, pathValue) {
+  const fs = await import('node:fs/promises');
+  const entry = __sigil_world_named_fs_entry(rootName);
+  return await __sigil_world_file_capture(
+    'writeTextAt',
+    async () => __sigil_world_file_request_path(pathValue, {
+      content: await __sigil_world_file_text_summary(content),
+      rootName: String(rootName)
+    }, entry),
+    async (request) => {
+      await fs.writeFile(String(request.resolvedPath ?? ''), String(content), 'utf8');
+      return null;
+    }
+  );
+}
 function __sigil_world_log_debug(message) {
   const world = __sigil_current_world();
   const text = String(message);
@@ -1071,6 +1346,16 @@ function __sigil_world_log_warn(message) {
   __sigil_world_log_trace(world, text);
   if (world.log.kind === 'stdout') {
     console.warn(text);
+  }
+  return null;
+}
+function __sigil_world_log_write_to(sinkName, message) {
+  const world = __sigil_current_world();
+  const entry = __sigil_world_named_log_sink(sinkName);
+  const text = String(message);
+  __sigil_world_log_trace(world, text);
+  if (entry.kind === 'stdout') {
+    process.stdout.write(text);
   }
   return null;
 }
@@ -1349,6 +1634,42 @@ async function __sigil_world_process_wait(processHandle) {
 }
 async function __sigil_world_process_run(command) {
   const handle = await __sigil_world_process_spawn(command);
+  return await __sigil_world_process_wait(handle);
+}
+async function __sigil_world_process_spawn_at(handleName, command) {
+  const replay = __sigil_replay_take_event('process', 'spawnAt');
+  if (replay.active) {
+    return __sigil_replay_resolve_event_value(replay, 'process', 'spawnAt', {
+      handle: { pid: -1 }
+    })?.handle ?? { pid: -1 };
+  }
+  const world = __sigil_current_world();
+  const entry = __sigil_world_named_process_handle(handleName);
+  __sigil_world_process_trace(world, command);
+  if (entry.kind === 'deny') {
+    const handle = { pid: -1 };
+    const token = __sigil_replay_next_handle_token();
+    if (token) handle.__sigil_replay_token = token;
+    __sigil_replay_record_return('process', 'spawnAt', { command, handleName: String(handleName) }, { handle, token });
+    return handle;
+  }
+  if (entry.kind === 'fixture') {
+    const handle = { pid: -1, __sigil_fixture_result: __sigil_world_clone(__sigil_world_process_fixture_result({ process: entry }, command)) };
+    const token = __sigil_replay_next_handle_token();
+    if (token) handle.__sigil_replay_token = token;
+    __sigil_replay_record_return('process', 'spawnAt', { command, handleName: String(handleName) }, { handle, token });
+    return handle;
+  }
+  const handle = await __sigil_process_spawn(command);
+  const token = __sigil_replay_next_handle_token();
+  if (token && handle && typeof handle === 'object') {
+    handle.__sigil_replay_token = token;
+  }
+  __sigil_replay_record_return('process', 'spawnAt', { command, handleName: String(handleName) }, { handle, token });
+  return handle;
+}
+async function __sigil_world_process_run_at(handleName, command) {
+  const handle = await __sigil_world_process_spawn_at(handleName, command);
   return await __sigil_world_process_wait(handle);
 }
 async function __sigil_world_process_kill(processHandle) {
@@ -1902,6 +2223,7 @@ impl TypeScriptGenerator {
             || self.source_file_is("language/stdlib/httpClient.lib.sigil")
             || self.source_file_is("language/stdlib/httpServer.lib.sigil")
             || self.source_file_is("language/stdlib/io.lib.sigil")
+            || self.source_file_is("language/stdlib/log.lib.sigil")
             || self.source_file_is("language/stdlib/process.lib.sigil")
             || self.source_file_is("language/stdlib/random.lib.sigil")
             || self.source_file_is("language/stdlib/tcpClient.lib.sigil")
@@ -4298,6 +4620,9 @@ impl TypeScriptGenerator {
                 if module == "stdlib/file" {
                     return self.generate_file_intrinsic(call_expr, member, args);
                 }
+                if module == "stdlib/log" {
+                    return self.generate_log_intrinsic(call_expr, member, args);
+                }
                 if module == "stdlib/httpClient" {
                     return self.generate_http_client_intrinsic(call_expr, member, args);
                 }
@@ -4399,6 +4724,13 @@ impl TypeScriptGenerator {
                     .is_some_and(|path| path.ends_with("language/stdlib/io.lib.sigil"))
                 {
                     return self.generate_io_intrinsic(call_expr, &name.name, args);
+                }
+                if self
+                    .source_file
+                    .as_deref()
+                    .is_some_and(|path| path.ends_with("language/stdlib/log.lib.sigil"))
+                {
+                    return self.generate_log_intrinsic(call_expr, &name.name, args);
                 }
                 if self
                     .source_file
@@ -4721,6 +5053,18 @@ impl TypeScriptGenerator {
                     None,
                 )?
             ))),
+            "appendTextAt" if generated_args.len() == 3 => Ok(Some(format!(
+                "{}.then(([__content, __path, __root]) => {})",
+                self.js_all(&generated_args),
+                self.wrap_effect_trace(
+                    span_id,
+                    "file",
+                    "appendTextAt",
+                    "[__content, __path, __root]",
+                    "__sigil_world_file_appendTextAt(__root?.__fields?.[0] ?? '', __content, __path)",
+                    None,
+                )?
+            ))),
             "exists" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__path) => {})",
                 generated_args[0],
@@ -4730,6 +5074,18 @@ impl TypeScriptGenerator {
                     "exists",
                     "[__path]",
                     "__sigil_world_file_exists(__path)",
+                    None,
+                )?
+            ))),
+            "existsAt" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__path, __root]) => {})",
+                self.js_all(&generated_args),
+                self.wrap_effect_trace(
+                    span_id,
+                    "file",
+                    "existsAt",
+                    "[__path, __root]",
+                    "__sigil_world_file_existsAt(__root?.__fields?.[0] ?? '', __path)",
                     None,
                 )?
             ))),
@@ -4745,6 +5101,18 @@ impl TypeScriptGenerator {
                     None,
                 )?
             ))),
+            "listDirAt" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__path, __root]) => {})",
+                self.js_all(&generated_args),
+                self.wrap_effect_trace(
+                    span_id,
+                    "file",
+                    "listDirAt",
+                    "[__path, __root]",
+                    "__sigil_world_file_listDirAt(__root?.__fields?.[0] ?? '', __path)",
+                    None,
+                )?
+            ))),
             "makeDir" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__path) => {})",
                 generated_args[0],
@@ -4754,6 +5122,18 @@ impl TypeScriptGenerator {
                     "makeDir",
                     "[__path]",
                     "__sigil_world_file_makeDir(__path)",
+                    None,
+                )?
+            ))),
+            "makeDirAt" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__path, __root]) => {})",
+                self.js_all(&generated_args),
+                self.wrap_effect_trace(
+                    span_id,
+                    "file",
+                    "makeDirAt",
+                    "[__path, __root]",
+                    "__sigil_world_file_makeDirAt(__root?.__fields?.[0] ?? '', __path)",
                     None,
                 )?
             ))),
@@ -4769,6 +5149,18 @@ impl TypeScriptGenerator {
                     None,
                 )?
             ))),
+            "makeDirsAt" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__path, __root]) => {})",
+                self.js_all(&generated_args),
+                self.wrap_effect_trace(
+                    span_id,
+                    "file",
+                    "makeDirsAt",
+                    "[__path, __root]",
+                    "__sigil_world_file_makeDirsAt(__root?.__fields?.[0] ?? '', __path)",
+                    None,
+                )?
+            ))),
             "makeTempDir" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__prefix) => {})",
                 generated_args[0],
@@ -4778,6 +5170,18 @@ impl TypeScriptGenerator {
                     "makeTempDir",
                     "[__prefix]",
                     "__sigil_world_file_makeTempDir(__prefix)",
+                    None,
+                )?
+            ))),
+            "makeTempDirAt" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__prefix, __root]) => {})",
+                self.js_all(&generated_args),
+                self.wrap_effect_trace(
+                    span_id,
+                    "file",
+                    "makeTempDirAt",
+                    "[__prefix, __root]",
+                    "__sigil_world_file_makeTempDirAt(__root?.__fields?.[0] ?? '', __prefix)",
                     None,
                 )?
             ))),
@@ -4793,6 +5197,18 @@ impl TypeScriptGenerator {
                     None,
                 )?
             ))),
+            "readTextAt" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__path, __root]) => {})",
+                self.js_all(&generated_args),
+                self.wrap_effect_trace(
+                    span_id,
+                    "file",
+                    "readTextAt",
+                    "[__path, __root]",
+                    "__sigil_world_file_readTextAt(__root?.__fields?.[0] ?? '', __path)",
+                    None,
+                )?
+            ))),
             "remove" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__path) => {})",
                 generated_args[0],
@@ -4802,6 +5218,18 @@ impl TypeScriptGenerator {
                     "remove",
                     "[__path]",
                     "__sigil_world_file_remove(__path)",
+                    None,
+                )?
+            ))),
+            "removeAt" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__path, __root]) => {})",
+                self.js_all(&generated_args),
+                self.wrap_effect_trace(
+                    span_id,
+                    "file",
+                    "removeAt",
+                    "[__path, __root]",
+                    "__sigil_world_file_removeAt(__root?.__fields?.[0] ?? '', __path)",
                     None,
                 )?
             ))),
@@ -4817,6 +5245,18 @@ impl TypeScriptGenerator {
                     None,
                 )?
             ))),
+            "removeTreeAt" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__path, __root]) => {})",
+                self.js_all(&generated_args),
+                self.wrap_effect_trace(
+                    span_id,
+                    "file",
+                    "removeTreeAt",
+                    "[__path, __root]",
+                    "__sigil_world_file_removeTreeAt(__root?.__fields?.[0] ?? '', __path)",
+                    None,
+                )?
+            ))),
             "writeText" if generated_args.len() == 2 => Ok(Some(format!(
                 "{}.then(([__content, __path]) => {})",
                 self.js_all(&generated_args),
@@ -4826,6 +5266,47 @@ impl TypeScriptGenerator {
                     "writeText",
                     "[__content, __path]",
                     "__sigil_world_file_writeText(__content, __path)",
+                    None,
+                )?
+            ))),
+            "writeTextAt" if generated_args.len() == 3 => Ok(Some(format!(
+                "{}.then(([__content, __path, __root]) => {})",
+                self.js_all(&generated_args),
+                self.wrap_effect_trace(
+                    span_id,
+                    "file",
+                    "writeTextAt",
+                    "[__content, __path, __root]",
+                    "__sigil_world_file_writeTextAt(__root?.__fields?.[0] ?? '', __content, __path)",
+                    None,
+                )?
+            ))),
+            _ => Ok(None),
+        }
+    }
+
+    fn generate_log_intrinsic(
+        &mut self,
+        call_expr: &TypedExpr,
+        member: &str,
+        args: &[TypedExpr],
+    ) -> Result<Option<String>, CodegenError> {
+        let generated_args = args
+            .iter()
+            .map(|arg| self.generate_expression(arg))
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+        let span_id = self.span_id_for_expr(DebugSpanKind::ExprCall, call_expr.location);
+
+        match member {
+            "write" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__message, __sink]) => {})",
+                self.js_all(&generated_args),
+                self.wrap_effect_trace(
+                    span_id,
+                    "log",
+                    "write",
+                    "[__message, __sink]",
+                    "__sigil_world_log_write_to(__sink?.__fields?.[0] ?? '', __message)",
                     None,
                 )?
             ))),
@@ -5177,6 +5658,18 @@ impl TypeScriptGenerator {
                     None
                 )?
             ))),
+            "runAt" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__command, __handle]) => {})",
+                self.js_all(&generated_args),
+                self.wrap_effect_trace(
+                    span_id,
+                    "process",
+                    "runAt",
+                    "[__command, __handle]",
+                    "__sigil_world_process_run_at(__handle?.__fields?.[0] ?? '', __command)",
+                    None
+                )?
+            ))),
             "start" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__command) => {})",
                 generated_args[0],
@@ -5186,6 +5679,18 @@ impl TypeScriptGenerator {
                     "start",
                     "[__command]",
                     "__sigil_world_process_spawn(__command)",
+                    None
+                )?
+            ))),
+            "startAt" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__command, __handle]) => {})",
+                self.js_all(&generated_args),
+                self.wrap_effect_trace(
+                    span_id,
+                    "process",
+                    "startAt",
+                    "[__command, __handle]",
+                    "__sigil_world_process_spawn_at(__handle?.__fields?.[0] ?? '', __command)",
                     None
                 )?
             ))),
@@ -5549,6 +6054,11 @@ impl TypeScriptGenerator {
         }
         if call.namespace.join("/") == "stdlib/file" {
             if let Some(intrinsic) = self.generate_file_intrinsic(expr, &call.member, &call.args)? {
+                return Ok(intrinsic);
+            }
+        }
+        if call.namespace.join("/") == "stdlib/log" {
+            if let Some(intrinsic) = self.generate_log_intrinsic(expr, &call.member, &call.args)? {
                 return Ok(intrinsic);
             }
         }
@@ -6646,6 +7156,7 @@ fn requires_world_runtime_module(module_id: &str) -> bool {
                 | "stdlib::httpClient"
                 | "stdlib::httpServer"
                 | "stdlib::io"
+                | "stdlib::log"
                 | "stdlib::process"
                 | "stdlib::random"
                 | "stdlib::tcpClient"

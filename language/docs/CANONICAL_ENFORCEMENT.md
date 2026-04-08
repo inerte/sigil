@@ -10,6 +10,9 @@ The compiler parses source, builds an AST, prints the canonical source for that
 AST internally, and then compares the original file byte-for-byte against that
 printed form.
 
+Sigil comments are ignored for this comparison. They are valid syntax, but they
+are not part of canonical source form.
+
 If the bytes differ:
 
 - `sigil compile` fails
@@ -58,8 +61,9 @@ alone, such as:
 - declaration ordering
 - file-purpose rules
 - test location rules
-- project-defined type declarations only in `src/types.lib.sigil`
-- `src/types.lib.sigil` being types-only
+- project-defined type and label declarations only in `src/types.lib.sigil`
+- `src/types.lib.sigil` being limited to `t` and `label`
+- project boundary rules and transforms only in `src/policies.lib.sigil`
 - `src/types.lib.sigil` using only `§...` and `¶...` inside type definitions and constraints
 - no dead extern declarations in executable `.sigil` files
 - no dead top-level declarations in executable `.sigil` files
@@ -129,6 +133,3 @@ Current high-signal printer choices:
 - branching and non-trivial structure print multiline earlier than dense inline forms
 - newline-containing string values print as multiline `"` literals, not `\n`-escaped one-line strings
 - spacing is a consequence of the printer, not a second style system
-Sigil comments are ignored for this comparison. They are valid syntax, but they
-are not part of canonical source form.
-

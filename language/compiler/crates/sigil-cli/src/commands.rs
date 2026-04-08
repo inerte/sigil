@@ -8,7 +8,7 @@ use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use rayon::{prelude::*, ThreadPoolBuilder};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
-use sigil_ast::{Declaration, Expr, Pattern, Program, SourceLocation, Type, TypeDef};
+use sigil_ast::{Declaration, Expr, LabelRef, Pattern, Program, SourceLocation, Type, TypeDef};
 use sigil_codegen::{
     collect_module_span_map, world_runtime_helpers_source, CodegenOptions, DebugSpanKind,
     DebugSpanRecord, ModuleSpanMap, TypeScriptGenerator,
@@ -20,14 +20,15 @@ use sigil_typechecker::types::{
     InferenceType, TConstructor, TFunction, TList, TMap, TRecord, TTuple,
 };
 use sigil_typechecker::{
-    type_check, TypeCheckOptions, TypeError, TypeInfo, TypeScheme, TypedDeclaration, TypedProgram,
+    type_check, BindingMeta, BoundaryRule, LabelInfo, TypeCheckOptions, TypeError, TypeInfo,
+    TypeScheme, TypedDeclaration, TypedProgram,
 };
 use sigil_validator::{
     print_canonical_expr, print_canonical_program_with_effects, print_canonical_type_definition,
     validate_canonical_form_with_options, validate_typed_canonical_form, ValidationError,
     ValidationOptions,
 };
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::io::{self, IsTerminal, Read, Write};
 use std::path::{Path, PathBuf};
@@ -668,6 +669,9 @@ fn ast_declaration_summary(program: &Program) -> serde_json::Value {
     let mut consts = 0usize;
     let mut tests = 0usize;
     let mut externs = 0usize;
+    let mut labels = 0usize;
+    let mut rules = 0usize;
+    let mut transforms = 0usize;
 
     for declaration in &program.declarations {
         match declaration {
@@ -677,6 +681,9 @@ fn ast_declaration_summary(program: &Program) -> serde_json::Value {
             Declaration::Const(_) => consts += 1,
             Declaration::Test(_) => tests += 1,
             Declaration::Extern(_) => externs += 1,
+            Declaration::Label(_) => labels += 1,
+            Declaration::Rule(_) => rules += 1,
+            Declaration::Transform(_) => transforms += 1,
         }
     }
 
@@ -687,7 +694,10 @@ fn ast_declaration_summary(program: &Program) -> serde_json::Value {
         "effects": effects,
         "consts": consts,
         "tests": tests,
-        "externs": externs
+        "externs": externs,
+        "labels": labels,
+        "rules": rules,
+        "transforms": transforms
     })
 }
 
@@ -1752,7 +1762,10 @@ fn inspect_proof_sites(module: &AnalyzedModule) -> Vec<Value> {
             }
             Declaration::Effect(_)
             | Declaration::Const(_)
-            | Declaration::Extern(_) => {}
+            | Declaration::Extern(_)
+            | Declaration::Transform(_)
+            | Declaration::Label(_)
+            | Declaration::Rule(_) => {}
         }
     }
 
@@ -8317,6 +8330,9 @@ struct GeneratedGraphOutputs {
 fn analyze_module_graph(graph: &ModuleGraph) -> Result<AnalyzedGraphOutputs, CliError> {
     let mut compiled_modules = HashMap::new();
     let mut compiled_schemes = HashMap::new();
+    let mut compiled_value_meta = HashMap::new();
+    let mut label_registries = HashMap::new();
+    let mut compiled_boundary_rules = Vec::new();
     let mut coverage_targets = Vec::new();
     let mut type_registries = HashMap::new();
     let mut analyzed_modules = HashMap::new();
@@ -8326,7 +8342,11 @@ fn analyze_module_graph(graph: &ModuleGraph) -> Result<AnalyzedGraphOutputs, Cli
 
         let imported_namespaces = build_imported_namespaces(&module.ast, &compiled_modules);
         let imported_type_regs = build_imported_type_registries(&module.ast, &type_registries);
+        let imported_label_regs = build_imported_label_registries(&module.ast, &label_registries);
         let imported_value_schemes = build_imported_value_schemes(&module.ast, &compiled_schemes);
+        let imported_value_meta = build_imported_value_meta(&module.ast, &compiled_value_meta);
+        let imported_boundary_rules =
+            build_imported_boundary_rules(&module.ast, &compiled_boundary_rules);
         let effect_catalog = load_project_effect_catalog_for(&module.file_path)?;
 
         let typecheck_result = type_check(
@@ -8336,11 +8356,17 @@ fn analyze_module_graph(graph: &ModuleGraph) -> Result<AnalyzedGraphOutputs, Cli
                 effect_catalog,
                 imported_namespaces: Some(imported_namespaces),
                 imported_type_registries: Some(imported_type_regs.clone()),
+                imported_label_registries: Some(imported_label_regs),
                 imported_value_schemes: Some(imported_value_schemes),
+                imported_value_meta: Some(imported_value_meta),
+                boundary_rules: Some(imported_boundary_rules),
+                module_id: Some(module_id.clone()),
                 source_file: Some(module.file_path.to_string_lossy().to_string()),
             }),
         )
         .map_err(CliError::Type)?;
+
+        let extracted_type_registry = extract_type_registry(&module.ast, &module.file_path, module_id);
 
         validate_typed_canonical_form(
             &typecheck_result.typed_program,
@@ -8363,6 +8389,7 @@ fn analyze_module_graph(graph: &ModuleGraph) -> Result<AnalyzedGraphOutputs, Cli
                             type_params: type_decl.ast.type_params.clone(),
                             definition: type_decl.ast.definition.clone(),
                             constraint: type_decl.ast.constraint.clone(),
+                            labels: qualify_label_refs(&type_decl.ast.labels, module_id),
                         },
                     )),
                     _ => None,
@@ -8380,15 +8407,18 @@ fn analyze_module_graph(graph: &ModuleGraph) -> Result<AnalyzedGraphOutputs, Cli
         let sigil_typechecker::typed_ir::TypeCheckResult {
             declaration_types,
             declaration_schemes,
+            declaration_meta,
+            label_registry,
+            boundary_rules,
             typed_program,
         } = typecheck_result;
 
         compiled_schemes.insert(module_id.clone(), declaration_schemes.clone());
         compiled_modules.insert(module_id.clone(), declaration_types.clone());
-        type_registries.insert(
-            module_id.clone(),
-            extract_type_registry(&module.ast, &module.file_path, module_id),
-        );
+        compiled_value_meta.insert(module_id.clone(), declaration_meta.clone());
+        label_registries.insert(module_id.clone(), label_registry.clone());
+        compiled_boundary_rules.extend(boundary_rules.clone());
+        type_registries.insert(module_id.clone(), extracted_type_registry);
         analyzed_modules.insert(
             module_id.clone(),
             AnalyzedModule {
@@ -9596,6 +9626,13 @@ fn build_imported_type_registries(
     type_registries.clone()
 }
 
+fn build_imported_label_registries(
+    _ast: &Program,
+    label_registries: &HashMap<String, HashMap<String, LabelInfo>>,
+) -> HashMap<String, HashMap<String, LabelInfo>> {
+    label_registries.clone()
+}
+
 fn build_imported_value_schemes(
     _ast: &Program,
     compiled_schemes: &HashMap<String, HashMap<String, TypeScheme>>,
@@ -9618,6 +9655,20 @@ fn build_imported_value_schemes(
     }
 
     imported
+}
+
+fn build_imported_value_meta(
+    _ast: &Program,
+    compiled_value_meta: &HashMap<String, HashMap<String, BindingMeta>>,
+) -> HashMap<String, HashMap<String, BindingMeta>> {
+    compiled_value_meta.clone()
+}
+
+fn build_imported_boundary_rules(
+    _ast: &Program,
+    compiled_boundary_rules: &[BoundaryRule],
+) -> Vec<BoundaryRule> {
+    compiled_boundary_rules.to_vec()
 }
 
 fn qualify_inference_type_for_module(
@@ -9703,6 +9754,21 @@ fn qualify_scheme_for_module(module_id: &str, scheme: &TypeScheme) -> TypeScheme
         quantified_vars: scheme.quantified_vars.clone(),
         typ: qualify_inference_type_for_module(module_id, &scheme.typ),
     }
+}
+
+fn qualify_label_ref(label_ref: &LabelRef, module_id: &str) -> String {
+    if label_ref.module_path.is_empty() {
+        format!("{}.{}", module_id, label_ref.name)
+    } else {
+        format!("{}.{}", label_ref.module_path.join("::"), label_ref.name)
+    }
+}
+
+fn qualify_label_refs(label_refs: &[LabelRef], module_id: &str) -> BTreeSet<String> {
+    label_refs
+        .iter()
+        .map(|label_ref| qualify_label_ref(label_ref, module_id))
+        .collect()
 }
 
 fn qualify_type_in_context(
@@ -9888,6 +9954,7 @@ fn extract_type_registry(
                     type_params: type_decl.type_params.clone(),
                     definition: type_decl.definition.clone(),
                     constraint: type_decl.constraint.clone(),
+                    labels: qualify_label_refs(&type_decl.labels, module_id),
                 },
             );
         }
@@ -9907,6 +9974,7 @@ fn extract_type_registry(
                             &type_decl.type_params,
                         ),
                         constraint: type_decl.constraint.clone(),
+                        labels: qualify_label_refs(&type_decl.labels, module_id),
                     },
                 );
             }

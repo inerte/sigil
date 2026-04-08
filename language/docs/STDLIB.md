@@ -109,6 +109,23 @@ There is no `export` keyword.
 It also exposes `makeTempDir(prefix)` for canonical temp workspace creation in
 tooling and harness code.
 
+For topology-aware projects with labelled boundary handling, the named-boundary
+surface is:
+
+- `appendTextAt`
+- `existsAt`
+- `listDirAt`
+- `makeDirAt`
+- `makeDirsAt`
+- `makeTempDirAt`
+- `readTextAt`
+- `removeAt`
+- `removeTreeAt`
+- `writeTextAt`
+
+Those functions take a `§topology.FsRoot` handle so policies can target exact
+filesystem roots.
+
 `§path` exposes canonical filesystem path operations:
 
 ```sigil program
@@ -137,12 +154,29 @@ The canonical process surface is:
 - `withCwd`
 - `withEnv`
 - `run`
+- `runAt`
 - `start`
+- `startAt`
 - `wait`
 - `kill`
 
 Commands are argv-based only. Non-zero exit status is returned in
 `ProcessResult.code`; it is not a separate failure channel.
+
+`runAt` and `startAt` are the named-boundary variants for topology-aware
+projects. They take a `Command` plus a `§topology.ProcessHandle`.
+
+`§log` is the named-boundary logging surface:
+
+```sigil program
+λmain()=>!Log Unit=§log.write("customer created",•topology.auditLog)
+```
+
+It currently exposes:
+- `write`
+
+Projects can keep using `§io` for ordinary textual output, but labelled
+boundary rules target `§log.write` because it names the sink explicitly.
 
 `§random` exposes the canonical runtime random surface:
 
@@ -389,17 +423,17 @@ Passing `0` to `listen` or `serve` asks the OS for any free ephemeral port. Use
 
 ## Topology
 
-`§topology` is the canonical declaration layer for external HTTP and TCP
-runtime dependencies. The canonical environment runtime layer now lives under
-the compiler-owned `†` roots rather than `§config`.
+`§topology` is the canonical declaration layer for named runtime boundaries.
+The canonical environment runtime layer now lives under the compiler-owned `†`
+roots rather than `§config`.
 
 `§config` remains available for low-level binding value helpers inside
 config modules, but project environments no longer export `Bindings`. The env
 ABI is `c world=(...:†runtime.World)`.
 
-Topology-aware projects define `src/topology.lib.sigil`, the selected
-`config/<env>.lib.sigil`, and use typed handles instead
-of raw endpoints in application code:
+Topology-aware projects define `src/topology.lib.sigil`, `src/policies.lib.sigil`,
+the selected `config/<env>.lib.sigil`, and use typed handles instead of raw
+endpoints or ad hoc sink names in application code:
 
 ```sigil program projects/topology-http/src/getClient.sigil
 λmain()=>!Http Unit match §httpClient.get(•topology.mailerApi,§httpClient.emptyHeaders(),"/health"){

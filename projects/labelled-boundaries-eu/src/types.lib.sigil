@@ -1,0 +1,11 @@
+label Pii
+
+label Portugal
+
+label Spain
+
+label Europe combines [Portugal,Spain]
+
+t Niss=String label [Pii,Portugal]
+
+t Nuss=String label [Pii,Spain]

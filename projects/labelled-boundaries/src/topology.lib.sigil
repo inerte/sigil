@@ -1,0 +1,7 @@
+c auditLog=(§topology.logSink("auditLog"):§topology.LogSink)
+
+c exportsDir=(§topology.fsRoot("exportsDir"):§topology.FsRoot)
+
+c govBrCli=(§topology.processHandle("govBrCli"):§topology.ProcessHandle)
+
+c test=(§topology.environment("test"):§topology.Environment)

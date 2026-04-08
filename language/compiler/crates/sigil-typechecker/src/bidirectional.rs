@@ -8,8 +8,8 @@
 //! type annotations everywhere, making the inference burden much lighter.
 
 use crate::environment::{
-    collect_type_var_ids, explicit_scheme, BindingMeta, FunctionContract, TypeEnvironment,
-    TypeInfo,
+    collect_type_var_ids, explicit_scheme, BindingMeta, BoundaryRule, BoundaryRuleKind,
+    FunctionContract, LabelInfo, TypeEnvironment, TypeInfo,
 };
 use crate::errors::{format_type, TypeError};
 use crate::typed_ir::{
@@ -32,11 +32,12 @@ use sigil_solver::{
     SolverOutcome, SymbolPath, SymbolPathStep,
 };
 use sigil_ast::{
-    BinaryOperator, Declaration, Expr, FunctionDecl, LiteralType, LiteralValue, PrimitiveName,
-    Program, Type, TypeDecl, TypeDef, UnaryOperator,
+    BinaryOperator, Declaration, Expr, FunctionDecl, LabelRef, LiteralType, LiteralValue,
+    MemberRef, PrimitiveName, Program, RuleAction, RuleDecl, SourceLocation, TransformDecl, Type,
+    TypeDecl, TypeDef, UnaryOperator,
 };
 use sigil_diagnostics::codes;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 type TypeParamEnv = HashMap<String, InferenceType>;
 
@@ -54,6 +55,7 @@ pub fn type_check(
 
         let mut env = TypeEnvironment::create_initial();
         env.set_effect_catalog(options.effect_catalog.clone().unwrap_or_default());
+        env.set_module_id(options.module_id.clone());
         env.set_source_file(options.source_file.clone());
         let mut types = HashMap::new();
         let mut schemes = HashMap::new();
@@ -65,9 +67,27 @@ pub fn type_check(
             }
         }
 
+        if let Some(imported_label_registries) = options.imported_label_registries.as_ref() {
+            for (module_id, label_registry) in imported_label_registries {
+                env.register_imported_labels(module_id.clone(), label_registry.clone());
+            }
+        }
+
         if let Some(imported_value_schemes) = options.imported_value_schemes.as_ref() {
             for (module_id, value_schemes) in imported_value_schemes {
                 env.register_imported_value_schemes(module_id.clone(), value_schemes.clone());
+            }
+        }
+
+        if let Some(imported_value_meta) = options.imported_value_meta.as_ref() {
+            for (module_id, value_meta) in imported_value_meta {
+                env.register_imported_value_meta(module_id.clone(), value_meta.clone());
+            }
+        }
+
+        if let Some(boundary_rules) = options.boundary_rules.as_ref() {
+            for rule in boundary_rules {
+                env.add_boundary_rule(rule.clone());
             }
         }
 
@@ -98,6 +118,17 @@ pub fn type_check(
             }
         }
 
+        for decl in &program.declarations {
+            if let Declaration::Label(label_decl) = decl {
+                env.register_label(
+                    label_decl.name.clone(),
+                    LabelInfo {
+                        combines: resolve_label_refs(&env, &label_decl.combines)?,
+                    },
+                );
+            }
+        }
+
         // First pass: Register all function signatures and types
         for decl in &program.declarations {
             match decl {
@@ -109,6 +140,7 @@ pub fn type_check(
                             type_params: type_decl.type_params.clone(),
                             definition: type_decl.definition.clone(),
                             constraint: type_decl.constraint.clone(),
+                            labels: resolve_label_refs(&env, &type_decl.labels)?,
                         },
                     );
 
@@ -144,6 +176,8 @@ pub fn type_check(
                         }
                     }
                 }
+
+                Declaration::Label(_) => {}
 
                 Declaration::Effect(_) => {}
 
@@ -193,13 +227,35 @@ pub fn type_check(
                         let mut quantified_vars = HashSet::new();
                         collect_type_var_ids(&func_type, &mut quantified_vars);
                         let scheme = explicit_scheme(&func_type, &quantified_vars);
-                        env.bind_scheme(func_decl.name.clone(), scheme.clone());
+                        env.bind_scheme_with_meta(
+                            func_decl.name.clone(),
+                            scheme.clone(),
+                            BindingMeta {
+                                return_labels: declared_type_labels(
+                                    &env,
+                                    Some(&type_param_env),
+                                    func_decl.return_type.as_ref(),
+                                )?,
+                                ..BindingMeta::default()
+                            },
+                        );
                         schemes.insert(func_decl.name.clone(), scheme);
                         func_type.clone()
                     };
 
                     if func_decl.type_params.is_empty() {
-                        env.bind(func_decl.name.clone(), binding_type.clone());
+                        env.bind_with_meta(
+                            func_decl.name.clone(),
+                            binding_type.clone(),
+                            BindingMeta {
+                                return_labels: declared_type_labels(
+                                    &env,
+                                    Some(&type_param_env),
+                                    func_decl.return_type.as_ref(),
+                                )?,
+                                ..BindingMeta::default()
+                            },
+                        );
                     }
 
                     if func_decl.requires.is_some() || func_decl.ensures.is_some() {
@@ -220,6 +276,85 @@ pub fn type_check(
                     types.insert(func_decl.name.clone(), binding_type);
                 }
 
+                Declaration::Transform(TransformDecl { function: func_decl }) => {
+                    let type_param_env = make_type_param_env(&func_decl.type_params);
+                    let params: Vec<InferenceType> = func_decl
+                        .params
+                        .iter()
+                        .map(|p| match &p.type_annotation {
+                            Some(ty) => {
+                                ast_type_to_inference_type_resolved(&env, Some(&type_param_env), ty)
+                            }
+                            None => Ok(InferenceType::Any),
+                        })
+                        .collect::<Result<_, _>>()?;
+
+                    let return_type = func_decl
+                        .return_type
+                        .as_ref()
+                        .map(|ty| {
+                            ast_type_to_inference_type_resolved(&env, Some(&type_param_env), ty)
+                        })
+                        .transpose()?
+                        .unwrap_or(InferenceType::Any);
+
+                    let effects = if func_decl.effects.is_empty() {
+                        None
+                    } else {
+                        Some(resolve_effect_names(
+                            &env,
+                            &func_decl.effects,
+                            func_decl.location,
+                            "transform signature",
+                        )?)
+                    };
+
+                    let func_type = InferenceType::Function(Box::new(TFunction {
+                        params,
+                        return_type,
+                        effects,
+                    }));
+
+                    let binding_meta = BindingMeta {
+                        is_transform: true,
+                        return_labels: declared_type_labels(
+                            &env,
+                            Some(&type_param_env),
+                            func_decl.return_type.as_ref(),
+                        )?,
+                        ..BindingMeta::default()
+                    };
+
+                    let binding_type = if func_decl.type_params.is_empty() {
+                        func_type.clone()
+                    } else {
+                        let mut quantified_vars = HashSet::new();
+                        collect_type_var_ids(&func_type, &mut quantified_vars);
+                        let scheme = explicit_scheme(&func_type, &quantified_vars);
+                        env.bind_scheme_with_meta(
+                            func_decl.name.clone(),
+                            scheme.clone(),
+                            binding_meta.clone(),
+                        );
+                        schemes.insert(func_decl.name.clone(), scheme);
+                        func_type.clone()
+                    };
+
+                    if func_decl.type_params.is_empty() {
+                        env.bind_with_meta(
+                            func_decl.name.clone(),
+                            binding_type.clone(),
+                            binding_meta,
+                        );
+                    }
+
+                    types.insert(func_decl.name.clone(), binding_type);
+                }
+
+                Declaration::Rule(rule_decl) => {
+                    env.add_boundary_rule(resolve_boundary_rule(&env, rule_decl)?);
+                }
+
                 Declaration::Const(const_decl) => {
                     // Register constant type
                     let const_type = const_decl
@@ -229,7 +364,14 @@ pub fn type_check(
                         .transpose()?
                         .unwrap_or(InferenceType::Any);
 
-                    env.bind(const_decl.name.clone(), const_type.clone());
+                    env.bind_with_meta(
+                        const_decl.name.clone(),
+                        const_type.clone(),
+                        BindingMeta {
+                            labels: labels_for_type(&env, &const_type),
+                            ..BindingMeta::default()
+                        },
+                    );
                     types.insert(const_decl.name.clone(), const_type);
                 }
 
@@ -251,6 +393,7 @@ pub fn type_check(
                             InferenceType::Record(TRecord { fields, name: None }),
                             BindingMeta {
                                 is_extern_namespace: true,
+                                ..BindingMeta::default()
                             },
                         );
                     } else {
@@ -260,6 +403,7 @@ pub fn type_check(
                             InferenceType::Any,
                             BindingMeta {
                                 is_extern_namespace: true,
+                                ..BindingMeta::default()
                             },
                         );
                     }
@@ -280,7 +424,12 @@ pub fn type_check(
             if let Declaration::Function(func_decl) = decl {
                 check_function_decl(&env, func_decl)?;
                 typed_declarations.push(TypedDeclaration::Function(build_typed_function_decl(
-                    &env, func_decl,
+                    &env, func_decl, false,
+                )?));
+            } else if let Declaration::Transform(TransformDecl { function }) = decl {
+                check_transform_decl(&env, function)?;
+                typed_declarations.push(TypedDeclaration::Function(build_typed_function_decl(
+                    &env, function, true,
                 )?));
             } else if let Declaration::Const(const_decl) = decl {
                 if let Some(ref annotation) = const_decl.type_annotation {
@@ -300,6 +449,8 @@ pub fn type_check(
                 typed_declarations.push(TypedDeclaration::Type(TypedTypeDecl {
                     ast: type_decl.clone(),
                 }));
+            } else if let Declaration::Label(_) | Declaration::Rule(_) = decl {
+                // Labels and rules are compile-time only.
             } else if let Declaration::Extern(extern_decl) = decl {
                 typed_declarations.push(TypedDeclaration::Extern(TypedExternDecl {
                     ast: extern_decl.clone(),
@@ -316,6 +467,9 @@ pub fn type_check(
         Ok(TypeCheckResult {
             declaration_types: types,
             declaration_schemes: schemes,
+            declaration_meta: env.binding_meta_snapshot(),
+            label_registry: env.label_registry_snapshot(),
+            boundary_rules: env.boundary_rules_snapshot(),
             typed_program: TypedProgram {
                 declarations: typed_declarations,
             },
@@ -346,6 +500,224 @@ fn make_type_param_env(type_params: &[String]) -> TypeParamEnv {
             (name, typ)
         })
         .collect()
+}
+
+fn resolve_label_ref(env: &TypeEnvironment, label_ref: &LabelRef) -> Result<String, TypeError> {
+    if label_ref.module_path.is_empty() {
+        env.lookup_label(&label_ref.name).ok_or_else(|| {
+            TypeError::new(
+                format!("Unknown label '{}'", label_ref.name),
+                Some(label_ref.location),
+            )
+        })?;
+        return Ok(
+            env.module_id()
+                .map(|module_id| format!("{}.{}", module_id, label_ref.name))
+                .unwrap_or_else(|| label_ref.name.clone()),
+        );
+    }
+
+    env.lookup_qualified_label(&label_ref.module_path, &label_ref.name)
+        .ok_or_else(|| {
+            TypeError::new(
+                format!(
+                    "Unknown label '{}.{}'",
+                    label_ref.module_path.join("::"),
+                    label_ref.name
+                ),
+                Some(label_ref.location),
+            )
+        })?;
+    Ok(format!(
+        "{}.{}",
+        label_ref.module_path.join("::"),
+        label_ref.name
+    ))
+}
+
+fn resolve_label_refs(
+    env: &TypeEnvironment,
+    label_refs: &[LabelRef],
+) -> Result<BTreeSet<String>, TypeError> {
+    label_refs
+        .iter()
+        .map(|label_ref| resolve_label_ref(env, label_ref))
+        .collect()
+}
+
+fn declared_type_labels(
+    env: &TypeEnvironment,
+    type_param_env: Option<&TypeParamEnv>,
+    ast_type: Option<&Type>,
+) -> Result<BTreeSet<String>, TypeError> {
+    let Some(ast_type) = ast_type else {
+        return Ok(BTreeSet::new());
+    };
+    let typ = ast_type_to_inference_type_resolved(env, type_param_env, ast_type)?;
+    Ok(labels_for_type(env, &typ))
+}
+
+fn lookup_named_type_info(env: &TypeEnvironment, name: &str) -> Option<TypeInfo> {
+    if let Some((module_path, type_name)) = split_qualified_constructor_name(name) {
+        return env.lookup_qualified_type(&module_path, &type_name);
+    }
+    env.lookup_type(name)
+}
+
+fn label_closure(env: &TypeEnvironment, direct: &BTreeSet<String>) -> BTreeSet<String> {
+    let mut active = direct.clone();
+
+    loop {
+        let mut changed = false;
+        for (label_name, info) in env.all_labels() {
+            if active.contains(&label_name) {
+                continue;
+            }
+            if info.combines.iter().any(|component| active.contains(component)) {
+                active.insert(label_name);
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+
+    active
+}
+
+fn labels_for_type(env: &TypeEnvironment, typ: &InferenceType) -> BTreeSet<String> {
+    match typ {
+        InferenceType::Primitive(_) | InferenceType::Var(_) | InferenceType::Any => BTreeSet::new(),
+        InferenceType::List(list) => label_closure(env, &labels_for_type(env, &list.element_type)),
+        InferenceType::Map(map) => {
+            let mut labels = labels_for_type(env, &map.key_type);
+            labels.extend(labels_for_type(env, &map.value_type));
+            label_closure(env, &labels)
+        }
+        InferenceType::Tuple(tuple) => {
+            let mut labels = BTreeSet::new();
+            for item in &tuple.types {
+                labels.extend(labels_for_type(env, item));
+            }
+            label_closure(env, &labels)
+        }
+        InferenceType::Function(_) => BTreeSet::new(),
+        InferenceType::Record(record) => {
+            let mut labels = BTreeSet::new();
+            for field_type in record.fields.values() {
+                labels.extend(labels_for_type(env, field_type));
+            }
+            if let Some(name) = &record.name {
+                if let Some(info) = lookup_named_type_info(env, name) {
+                    labels.extend(info.labels);
+                }
+            }
+            label_closure(env, &labels)
+        }
+        InferenceType::Constructor(constructor) => {
+            let mut labels = BTreeSet::new();
+            if let Some(info) = lookup_named_type_info(env, &constructor.name) {
+                labels.extend(info.labels);
+            }
+            for arg in &constructor.type_args {
+                labels.extend(labels_for_type(env, arg));
+            }
+            label_closure(env, &labels)
+        }
+    }
+}
+
+fn format_label_set(labels: &BTreeSet<String>) -> String {
+    labels.iter().cloned().collect::<Vec<_>>().join(", ")
+}
+
+fn ensure_label_subset(
+    env: &TypeEnvironment,
+    actual_type: &InferenceType,
+    expected_type: &InferenceType,
+    location: SourceLocation,
+    context: &str,
+) -> Result<(), TypeError> {
+    let actual_labels = labels_for_type(env, actual_type);
+    if actual_labels.is_empty() {
+        return Ok(());
+    }
+
+    let expected_labels = labels_for_type(env, expected_type);
+    if actual_labels.is_subset(&expected_labels) {
+        return Ok(());
+    }
+
+    let dropped: BTreeSet<String> = actual_labels
+        .difference(&expected_labels)
+        .cloned()
+        .collect();
+
+    Err(TypeError::new(
+        format!(
+            "{} would drop required labels: {}",
+            context,
+            format_label_set(&dropped)
+        ),
+        Some(location),
+    ))
+}
+
+fn resolve_member_ref(
+    env: &TypeEnvironment,
+    member_ref: &MemberRef,
+) -> String {
+    if member_ref.module_path.is_empty() {
+        return env
+            .module_id()
+            .map(|module_id| format!("{}.{}", module_id, member_ref.member))
+            .unwrap_or_else(|| member_ref.member.clone());
+    }
+    format!("{}.{}", member_ref.module_path.join("::"), member_ref.member)
+}
+
+fn resolve_boundary_rule(env: &TypeEnvironment, rule_decl: &RuleDecl) -> Result<BoundaryRule, TypeError> {
+    if rule_decl.boundary.module_path != ["src".to_string(), "topology".to_string()] {
+        return Err(TypeError::new(
+            "Boundary rules must target •topology boundaries".to_string(),
+            Some(rule_decl.boundary.location),
+        ));
+    }
+
+    let labels = resolve_label_refs(env, &rule_decl.labels)?;
+    let boundary = resolve_member_ref(env, &rule_decl.boundary);
+    let action = match &rule_decl.action {
+        RuleAction::Allow { .. } => BoundaryRuleKind::Allow,
+        RuleAction::Block { .. } => BoundaryRuleKind::Block,
+        RuleAction::Through { transform, .. } => {
+            let transform_name = resolve_member_ref(env, transform);
+            let transform_meta = if transform.module_path.is_empty() {
+                env.lookup_meta(&transform.member)
+            } else {
+                env.lookup_qualified_value_meta(&transform.module_path, &transform.member)
+            };
+            let Some(transform_meta) = transform_meta else {
+                return Err(TypeError::new(
+                    format!("Unknown transform '{}'", transform_name),
+                    Some(transform.location),
+                ));
+            };
+            if !transform_meta.is_transform {
+                return Err(TypeError::new(
+                    format!("'{}' is not a transform declaration", transform_name),
+                    Some(transform.location),
+                ));
+            }
+            BoundaryRuleKind::Through(transform_name)
+        }
+    };
+
+    Ok(BoundaryRule {
+        labels,
+        boundary,
+        action,
+    })
 }
 
 fn resolve_qualified_type(
@@ -437,6 +809,12 @@ fn resolve_qualified_type(
                 }));
             }
             TypeDef::Alias(alias) => {
+                if !type_info.labels.is_empty() {
+                    return Ok(InferenceType::Constructor(TConstructor {
+                        name: qualified_name,
+                        type_args: Vec::new(),
+                    }));
+                }
                 return ast_type_to_inference_type_resolved(
                     env,
                     type_param_env,
@@ -528,6 +906,9 @@ fn resolve_named_type(
                                 }))
                             }
                             TypeDef::Alias(alias) => {
+                                if !type_info.labels.is_empty() {
+                                    return Ok(inference_type.clone());
+                                }
                                 ast_type_to_inference_type_resolved(env, None, &alias.aliased_type)
                             }
                             TypeDef::Sum(_) => Ok(inference_type.clone()),
@@ -560,6 +941,9 @@ fn resolve_named_type(
                             }))
                         }
                         TypeDef::Alias(alias) => {
+                            if !type_info.labels.is_empty() {
+                                return Ok(inference_type.clone());
+                            }
                             ast_type_to_inference_type_resolved(env, None, &alias.aliased_type)
                         }
                         TypeDef::Sum(_) => Ok(inference_type.clone()),
@@ -2163,6 +2547,14 @@ fn ensure_expr_matches_expected(
     expected_type: &InferenceType,
     location: sigil_lexer::SourceLocation,
 ) -> Result<(), TypeError> {
+    ensure_label_subset(
+        env,
+        actual_type,
+        expected_type,
+        location,
+        "Type-directed flow",
+    )?;
+
     if matches_expected_type(env, actual_type, expected_type) {
         return Ok(());
     }
@@ -2193,6 +2585,7 @@ fn ensure_expr_matches_expected(
 
 fn validate_declaration_surface_types(decl: &Declaration) -> Result<(), TypeError> {
     match decl {
+        Declaration::Label(_) | Declaration::Rule(_) => Ok(()),
         Declaration::Type(type_decl) => match &type_decl.definition {
             TypeDef::Alias(alias) => validate_surface_type(&alias.aliased_type),
             TypeDef::Product(product) => {
@@ -2211,6 +2604,11 @@ fn validate_declaration_surface_types(decl: &Declaration) -> Result<(), TypeErro
             }
         },
         Declaration::Effect(_) => Ok(()),
+        Declaration::Transform(transform_decl) => {
+            validate_declaration_surface_types(&Declaration::Function(
+                transform_decl.function.clone(),
+            ))
+        }
         Declaration::Function(func_decl) => {
             for param in &func_decl.params {
                 if let Some(param_type) = &param.type_annotation {
@@ -2658,7 +3056,7 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
             .map(|ty| ast_type_to_inference_type_resolved(env, Some(&type_param_env), ty))
             .transpose()?
             .unwrap_or(InferenceType::Any);
-        func_env.bind(param.name.clone(), param_type);
+        func_env.bind(param.name.clone(), env.normalize_type(&param_type));
     }
 
     // Get expected return type
@@ -2736,6 +3134,59 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
         &typed_body.effects,
         func_decl.location,
         &format!("Function '{}'", func_decl.name),
+    )?;
+
+    let body_labels = labels_for_type(&func_env, &typed_body.typ);
+    let return_labels = labels_for_type(&func_env, &expected_return_type);
+    if !body_labels.is_subset(&return_labels) {
+        let missing = body_labels
+            .difference(&return_labels)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join(", ");
+        return Err(TypeError::new(
+            format!(
+                "Function '{}' returns labelled data that is not declared on its return type: {}",
+                func_decl.name, missing
+            ),
+            Some(func_decl.location),
+        ));
+    }
+
+    Ok(())
+}
+
+fn check_transform_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Result<(), TypeError> {
+    let type_param_env = make_type_param_env(&func_decl.type_params);
+    let mut func_env = env.extend(None);
+
+    for param in &func_decl.params {
+        let param_type = param
+            .type_annotation
+            .as_ref()
+            .map(|ty| ast_type_to_inference_type_resolved(env, Some(&type_param_env), ty))
+            .transpose()?
+            .unwrap_or(InferenceType::Any);
+        let body_param_type = func_env.normalize_type(&param_type);
+        func_env.bind(param.name.clone(), body_param_type);
+    }
+
+    let expected_return_type = func_decl
+        .return_type
+        .as_ref()
+        .map(|ty| ast_type_to_inference_type_resolved(env, Some(&type_param_env), ty))
+        .transpose()?
+        .unwrap_or(InferenceType::Any);
+
+    check(&func_env, &func_decl.body, &expected_return_type)?;
+
+    let typed_body = build_typed_expr(&func_env, &func_decl.body)?;
+    declared_effects_cover_actual(
+        env,
+        &func_decl.effects,
+        &typed_body.effects,
+        func_decl.location,
+        &format!("Transform '{}'", func_decl.name),
     )?;
 
     Ok(())
@@ -2940,14 +3391,21 @@ fn same_type(env: &TypeEnvironment, left: &InferenceType, right: &InferenceType)
 fn build_typed_function_decl(
     env: &TypeEnvironment,
     func_decl: &FunctionDecl,
+    strip_param_labels: bool,
 ) -> Result<TypedFunctionDecl, TypeError> {
     let type_param_env = make_type_param_env(&func_decl.type_params);
     let mut lambda_env_bindings = HashMap::new();
     for param in &func_decl.params {
         if let Some(ref ty) = param.type_annotation {
+            let param_type = ast_type_to_inference_type_resolved(env, Some(&type_param_env), ty)?;
+            let body_param_type = if strip_param_labels {
+                env.normalize_type(&param_type)
+            } else {
+                param_type
+            };
             lambda_env_bindings.insert(
                 param.name.clone(),
-                ast_type_to_inference_type_resolved(env, Some(&type_param_env), ty)?,
+                body_param_type,
             );
         }
     }
@@ -3973,6 +4431,260 @@ fn topology_call_member(expr: &Expr) -> Option<(&[String], &str)> {
     None
 }
 
+fn boundary_payload_arg_indices(module_id: &str, member: &str, arg_len: usize) -> Vec<usize> {
+    match module_id {
+        "stdlib::httpClient" => match member {
+            "request" => (0..arg_len.min(1)).collect(),
+            "get" | "getJson" | "delete" | "deleteJson" => (1..arg_len).collect(),
+            "post" | "postJson" | "put" | "putJson" | "patch" | "patchJson" => {
+                (0..arg_len).filter(|index| *index != 1).collect()
+            }
+            _ => Vec::new(),
+        },
+        "stdlib::tcpClient" => match member {
+            "request" => (0..arg_len.min(1)).collect(),
+            "send" => (1..arg_len).collect(),
+            _ => Vec::new(),
+        },
+        "stdlib::file" => match file_handle_arg_index(member) {
+            Some(handle_index) => (0..arg_len).filter(|index| *index != handle_index).collect(),
+            None => Vec::new(),
+        },
+        "stdlib::log" if member == "write" => (0..arg_len.min(1)).collect(),
+        "stdlib::process" if matches!(member, "runAt" | "startAt") => {
+            (0..arg_len).filter(|index| *index != 1).collect()
+        }
+        _ => Vec::new(),
+    }
+}
+
+fn file_handle_arg_index(member: &str) -> Option<usize> {
+    match member {
+        "appendTextAt" | "writeTextAt" => Some(2),
+        "existsAt"
+        | "listDirAt"
+        | "makeDirAt"
+        | "makeDirsAt"
+        | "makeTempDirAt"
+        | "readTextAt"
+        | "removeAt"
+        | "removeTreeAt" => Some(1),
+        _ => None,
+    }
+}
+
+#[derive(Debug, Clone)]
+enum BoundaryPayload {
+    Direct {
+        labels: BTreeSet<String>,
+    },
+    Through {
+        transform: String,
+        source_labels: BTreeSet<String>,
+    },
+}
+
+fn direct_topology_boundary_name(expr: &Expr) -> Option<String> {
+    if let Expr::MemberAccess(member_access) = expr {
+        if member_access.namespace == ["src".to_string(), "topology".to_string()] {
+            return Some(format!("src::topology.{}", member_access.member));
+        }
+    }
+
+    None
+}
+
+fn resolve_transform_call_name(env: &TypeEnvironment, expr: &Expr) -> Option<String> {
+    match expr {
+        Expr::Identifier(identifier) => {
+            let meta = env.lookup_meta(&identifier.name)?;
+            if !meta.is_transform {
+                return None;
+            }
+            Some(format!("{}.{}", env.module_id()?, identifier.name))
+        }
+        Expr::MemberAccess(member_access) => {
+            let meta =
+                env.lookup_qualified_value_meta(&member_access.namespace, &member_access.member)?;
+            if !meta.is_transform {
+                return None;
+            }
+            Some(format!(
+                "{}.{}",
+                member_access.namespace.join("::"),
+                member_access.member
+            ))
+        }
+        _ => None,
+    }
+}
+
+fn boundary_payload_for_expr(
+    env: &TypeEnvironment,
+    expr: &Expr,
+) -> Result<Option<BoundaryPayload>, TypeError> {
+    let direct_labels = labels_for_type(env, &synthesize(env, expr)?);
+    if !direct_labels.is_empty() {
+        return Ok(Some(BoundaryPayload::Direct {
+            labels: direct_labels,
+        }));
+    }
+
+    let Expr::Application(app) = expr else {
+        return Ok(None);
+    };
+    let Some(transform) = resolve_transform_call_name(env, &app.func) else {
+        return Ok(None);
+    };
+
+    let mut source_labels = BTreeSet::new();
+    for arg in &app.args {
+        source_labels.extend(labels_for_type(env, &synthesize(env, arg)?));
+    }
+    let source_labels = label_closure(env, &source_labels);
+    if source_labels.is_empty() {
+        return Ok(None);
+    }
+
+    Ok(Some(BoundaryPayload::Through {
+        transform,
+        source_labels,
+    }))
+}
+
+fn resolve_boundary_action(
+    env: &TypeEnvironment,
+    boundary_name: &str,
+    labels: &BTreeSet<String>,
+    location: SourceLocation,
+) -> Result<BoundaryRuleKind, TypeError> {
+    let mut matched_allow = false;
+    let mut matched_through = BTreeSet::new();
+
+    for rule in env.boundary_rules() {
+        if rule.boundary != boundary_name || !rule.labels.is_subset(labels) {
+            continue;
+        }
+        match &rule.action {
+            BoundaryRuleKind::Block => {
+                return Ok(BoundaryRuleKind::Block);
+            }
+            BoundaryRuleKind::Allow => matched_allow = true,
+            BoundaryRuleKind::Through(transform) => {
+                matched_through.insert(transform.clone());
+            }
+        }
+    }
+
+    if matched_allow && !matched_through.is_empty() {
+        return Err(TypeError::new(
+            format!(
+                "Boundary '{}' has ambiguous rules for labels {}: both Allow() and Through(...) match",
+                boundary_name,
+                format_label_set(labels)
+            ),
+            Some(location),
+        ));
+    }
+
+    if matched_through.len() > 1 {
+        return Err(TypeError::new(
+            format!(
+                "Boundary '{}' has multiple Through(...) rules for labels {}",
+                boundary_name,
+                format_label_set(labels)
+            ),
+            Some(location),
+        ));
+    }
+
+    if matched_allow {
+        return Ok(BoundaryRuleKind::Allow);
+    }
+
+    if let Some(transform) = matched_through.iter().next() {
+        return Ok(BoundaryRuleKind::Through(transform.clone()));
+    }
+
+    Err(TypeError::new(
+        format!(
+            "Boundary '{}' requires an explicit rule for labels {}",
+            boundary_name,
+            format_label_set(labels)
+        ),
+        Some(location),
+    ))
+}
+
+fn enforce_boundary_payload(
+    env: &TypeEnvironment,
+    boundary_expr: &Expr,
+    payload_expr: &Expr,
+    location: SourceLocation,
+) -> Result<(), TypeError> {
+    let Some(payload) = boundary_payload_for_expr(env, payload_expr)? else {
+        return Ok(());
+    };
+
+    let Some(boundary_name) = direct_topology_boundary_name(boundary_expr) else {
+        return Err(TypeError::new(
+            "Labelled boundary crossings must use a direct •topology handle".to_string(),
+            Some(location),
+        ));
+    };
+
+    let active_labels = match &payload {
+        BoundaryPayload::Direct { labels } => labels.clone(),
+        BoundaryPayload::Through { source_labels, .. } => source_labels.clone(),
+    };
+    let action = resolve_boundary_action(env, &boundary_name, &active_labels, location)?;
+
+    match (payload, action) {
+        (_, BoundaryRuleKind::Block) => Err(TypeError::new(
+            format!(
+                "Boundary '{}' blocks labels {}",
+                boundary_name,
+                format_label_set(&active_labels)
+            ),
+            Some(location),
+        )),
+        (BoundaryPayload::Direct { .. }, BoundaryRuleKind::Allow) => Ok(()),
+        (
+            BoundaryPayload::Direct { .. },
+            BoundaryRuleKind::Through(expected_transform),
+        ) => Err(TypeError::new(
+            format!(
+                "Boundary '{}' requires transform '{}' for labels {}",
+                boundary_name,
+                expected_transform,
+                format_label_set(&active_labels)
+            ),
+            Some(location),
+        )),
+        (BoundaryPayload::Through { .. }, BoundaryRuleKind::Allow) => Ok(()),
+        (
+            BoundaryPayload::Through {
+                transform,
+                source_labels: _,
+            },
+            BoundaryRuleKind::Through(expected_transform),
+        ) if transform == expected_transform => Ok(()),
+        (
+            BoundaryPayload::Through {
+                transform,
+                source_labels: _,
+            },
+            BoundaryRuleKind::Through(expected_transform),
+        ) => Err(TypeError::new(
+            format!(
+                "Boundary '{}' requires transform '{}', but '{}' was used",
+                boundary_name, expected_transform, transform
+            ),
+            Some(location),
+        )),
+    }
+}
+
 fn field_access_starts_with_process_env(field_access: &sigil_ast::FieldAccessExpr) -> bool {
     match &field_access.object {
         Expr::Identifier(identifier) => identifier.name == "process" && field_access.field == "env",
@@ -3983,6 +4695,18 @@ fn field_access_starts_with_process_env(field_access: &sigil_ast::FieldAccessExp
 
 fn is_http_dependency_type(typ: &InferenceType) -> bool {
     matches!(typ, InferenceType::Constructor(tcons) if tcons.name.ends_with(".HttpServiceDependency") || tcons.name == "HttpServiceDependency")
+}
+
+fn is_fs_root_type(typ: &InferenceType) -> bool {
+    matches!(typ, InferenceType::Constructor(tcons) if tcons.name.ends_with(".FsRoot") || tcons.name == "FsRoot")
+}
+
+fn is_log_sink_type(typ: &InferenceType) -> bool {
+    matches!(typ, InferenceType::Constructor(tcons) if tcons.name.ends_with(".LogSink") || tcons.name == "LogSink")
+}
+
+fn is_process_handle_type(typ: &InferenceType) -> bool {
+    matches!(typ, InferenceType::Constructor(tcons) if tcons.name.ends_with(".ProcessHandle") || tcons.name == "ProcessHandle")
 }
 
 fn is_tcp_dependency_type(typ: &InferenceType) -> bool {
@@ -4000,7 +4724,15 @@ fn validate_topology_application(
     let module_id = namespace.join("::");
 
     if module_id == "stdlib::topology" {
-        let restricted = matches!(member, "httpService" | "tcpService" | "environment");
+        let restricted = matches!(
+            member,
+            "environment"
+                | "fsRoot"
+                | "httpService"
+                | "logSink"
+                | "processHandle"
+                | "tcpService"
+        );
 
         if restricted && !is_canonical_topology_source(env) {
             return Err(TypeError::new(
@@ -4049,12 +4781,38 @@ fn validate_topology_application(
         } else {
             None
         };
+    let fs_handle_arg_index = if module_id == "stdlib::file" {
+        file_handle_arg_index(member)
+    } else {
+        None
+    };
+    let log_handle_arg_index = if module_id == "stdlib::log" && member == "write" {
+        Some(1)
+    } else {
+        None
+    };
+    let process_handle_arg_index =
+        if module_id == "stdlib::process" && matches!(member, "runAt" | "startAt") {
+            Some(1)
+        } else {
+            None
+        };
 
-    if http_handle_arg_index.is_none() && tcp_handle_arg_index.is_none() {
+    if http_handle_arg_index.is_none()
+        && tcp_handle_arg_index.is_none()
+        && fs_handle_arg_index.is_none()
+        && log_handle_arg_index.is_none()
+        && process_handle_arg_index.is_none()
+    {
         return Ok(());
     }
 
-    let handle_index = http_handle_arg_index.or(tcp_handle_arg_index).unwrap();
+    let handle_index = http_handle_arg_index
+        .or(tcp_handle_arg_index)
+        .or(fs_handle_arg_index)
+        .or(log_handle_arg_index)
+        .or(process_handle_arg_index)
+        .unwrap();
     let Some(handle_arg) = app.args.get(handle_index) else {
         return Ok(());
     };
@@ -4112,6 +4870,65 @@ fn validate_topology_application(
                 Some(app.location),
             ));
         }
+    }
+    if fs_handle_arg_index.is_some() && !is_fs_root_type(&handle_type) {
+        return Err(TypeError::new(
+            "stdlib::file.*At requires a FsRoot from src::topology".to_string(),
+            Some(app.location),
+        ));
+    }
+    if log_handle_arg_index.is_some() && !is_log_sink_type(&handle_type) {
+        return Err(TypeError::new(
+            "stdlib::log.write requires a LogSink from src::topology".to_string(),
+            Some(app.location),
+        ));
+    }
+    if process_handle_arg_index.is_some() && !is_process_handle_type(&handle_type) {
+        return Err(TypeError::new(
+            "stdlib::process.runAt/startAt requires a ProcessHandle from src::topology"
+                .to_string(),
+            Some(app.location),
+        ));
+    }
+
+    let payload_args: Vec<&Expr> = if module_id == "stdlib::httpClient" {
+        match member {
+            "request" => app.args.iter().take(1).collect(),
+            "get" | "getJson" | "delete" | "deleteJson" => app.args.iter().skip(1).collect(),
+            "post" | "postJson" | "put" | "putJson" | "patch" | "patchJson" => app
+                .args
+                .iter()
+                .enumerate()
+                .filter_map(|(index, expr)| (index != handle_index).then_some(expr))
+                .collect(),
+            _ => Vec::new(),
+        }
+    } else if module_id == "stdlib::tcpClient" {
+        match member {
+            "request" => app.args.iter().take(1).collect(),
+            "send" => app.args.iter().skip(1).collect(),
+            _ => Vec::new(),
+        }
+    } else if module_id == "stdlib::file" {
+        app.args
+            .iter()
+            .enumerate()
+            .filter_map(|(index, expr)| (index != handle_index).then_some(expr))
+            .collect()
+    } else if module_id == "stdlib::log" {
+        app.args.iter().take(1).collect()
+    } else if module_id == "stdlib::process" {
+        app.args
+            .iter()
+            .enumerate()
+            .filter_map(|(index, expr)| (index != handle_index).then_some(expr))
+            .collect()
+    } else {
+        Vec::new()
+    };
+
+    for payload_arg in payload_args {
+        enforce_boundary_payload(env, handle_arg, payload_arg, app.location)?;
     }
 
     Ok(())
@@ -7715,12 +8532,25 @@ fn check_application(
         ));
     }
 
+    let boundary_payload_indices = topology_call_member(&app.func)
+        .map(|(namespace, member)| boundary_payload_arg_indices(&namespace.join("::"), member, app.args.len()))
+        .unwrap_or_default();
+
     let mut subst = HashMap::new();
-    for (arg, param_type) in app.args.iter().zip(&tfunc.params) {
+    for (index, (arg, param_type)) in app.args.iter().zip(&tfunc.params).enumerate() {
         let arg_type = synthesize(env, arg)?;
         let expected_param = apply_subst(&subst, param_type);
         let (normalized_arg, normalized_param) = canonical_pair(env, &arg_type, &expected_param);
         if let Ok(next_subst) = unify(&normalized_arg, &normalized_param) {
+            if !boundary_payload_indices.contains(&index) {
+                ensure_label_subset(
+                    env,
+                    &arg_type,
+                    &expected_param,
+                    expr_location(arg),
+                    "Function argument flow",
+                )?;
+            }
             subst.extend(next_subst);
             continue;
         }
@@ -7733,6 +8563,15 @@ fn check_application(
             &expected_param,
             app.location,
         )? {
+            if !boundary_payload_indices.contains(&index) {
+                ensure_label_subset(
+                    env,
+                    &arg_type,
+                    &expected_param,
+                    expr_location(arg),
+                    "Function argument flow",
+                )?;
+            }
             continue;
         }
 

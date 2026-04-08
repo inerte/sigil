@@ -27,6 +27,7 @@ For language/compiler work, prefer the deeper guide:
    - deterministic behavior and deterministic codegen where possible
    - tests/examples as source of truth over prose docs
    - canonical semantic equality for structural types (unconstrained aliases + unconstrained named products normalize before comparison)
+   - keep `where` as the type-refinement surface, `label` as the type-classification surface, and boundary handling in `src/policies.lib.sigil`
    - first-party Sigil code outside `language/stdlib/` should use canonical stdlib helpers directly instead of locally redefining them
    - explicit named concurrent regions are the canonical widening surface; do not reintroduce a broad "concurrent by default" story in docs or code examples
 - For website/docs/article writing:

@@ -1,0 +1,9 @@
+transform λgovBrCommand(token:µGovBrToken)=>§process.Command=§process.withEnv(§process.command(["gov-client"]),{"TOKEN"↦token})
+
+transform λredactSsn(ssn:µSsn)=>String="***-**-"++(§string.substring(#ssn,ssn,5):String)
+
+rule [µ.Brazil,µ.Credential,µ.GovAuth] for •topology.govBrCli=Through(•policies.govBrCommand)
+
+rule [µ.Pii,µ.Usa] for •topology.auditLog=Through(•policies.redactSsn)
+
+rule [µ.Brazil,µ.Pii] for •topology.exportsDir=Allow()

@@ -211,19 +211,31 @@ Semantics:
 
 ```sigil decl §file
 λappendText(content:String,path:String)=>!Fs Unit
+λappendTextAt(content:String,path:String,handle:§topology.FsRoot)=>!Fs Unit
 λexists(path:String)=>!Fs Bool
+λexistsAt(path:String,handle:§topology.FsRoot)=>!Fs Bool
 λlistDir(path:String)=>!Fs [String]
+λlistDirAt(path:String,handle:§topology.FsRoot)=>!Fs [String]
 λmakeDir(path:String)=>!Fs Unit
+λmakeDirAt(path:String,handle:§topology.FsRoot)=>!Fs Unit
 λmakeDirs(path:String)=>!Fs Unit
+λmakeDirsAt(path:String,handle:§topology.FsRoot)=>!Fs Unit
 λmakeTempDir(prefix:String)=>!Fs String
+λmakeTempDirAt(prefix:String,handle:§topology.FsRoot)=>!Fs String
 λreadText(path:String)=>!Fs String
+λreadTextAt(path:String,handle:§topology.FsRoot)=>!Fs String
 λremove(path:String)=>!Fs Unit
+λremoveAt(path:String,handle:§topology.FsRoot)=>!Fs Unit
 λremoveTree(path:String)=>!Fs Unit
+λremoveTreeAt(path:String,handle:§topology.FsRoot)=>!Fs Unit
 λwriteText(content:String,path:String)=>!Fs Unit
+λwriteTextAt(content:String,path:String,handle:§topology.FsRoot)=>!Fs Unit
 ```
 
 `makeTempDir(prefix)` creates a fresh temp directory and returns its absolute
 path. Cleanup remains explicit through `removeTree`.
+
+The `*At` variants are the named-boundary surface for topology-aware projects.
 
 ### Implemented `§process` Types and Functions
 
@@ -234,10 +246,12 @@ t ProcessResult={code:Int,stderr:String,stdout:String}
 
 λcommand(argv:[String])=>Command
 λexit(code:Int)=>!Process Unit
+λrun(command:Command)=>!Process ProcessResult
+λrunAt(command:Command,handle:§topology.ProcessHandle)=>!Process ProcessResult
+λstart(command:Command)=>!Process RunningProcess
+λstartAt(command:Command,handle:§topology.ProcessHandle)=>!Process RunningProcess
 λwithCwd(command:Command,cwd:String)=>Command
 λwithEnv(command:Command,env:{String↦String})=>Command
-λrun(command:Command)=>!Process ProcessResult
-λstart(command:Command)=>!Process RunningProcess
 λwait(process:RunningProcess)=>!Process ProcessResult
 λkill(process:RunningProcess)=>!Process Unit
 ```
@@ -247,6 +261,7 @@ Process rules:
 - `withEnv` overlays explicit variables on top of the inherited environment
 - non-zero exit codes are reported in `ProcessResult.code`
 - `run` captures stdout and stderr in memory
+- `runAt` and `startAt` are the named-boundary variants for topology-aware projects
 - `kill` is a normal termination request, not a timeout/escalation protocol
 
 ### Implemented `§terminal` Types and Functions
@@ -411,6 +426,13 @@ math module today.
 λprintln(msg:String)=>!Log Unit
 λwarn(msg:String)=>!Log Unit
 ```
+
+```sigil decl §log
+λwrite(message:String,sink:§topology.LogSink)=>!Log Unit
+```
+
+`§log.write` is the named-boundary logging surface used by labelled
+boundary rules.
 
 ## Module System
 

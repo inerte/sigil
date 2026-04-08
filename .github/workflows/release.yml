@@ -100,21 +100,38 @@ jobs:
         with:
           targets: ${{ matrix.target }}
 
-      - name: Install system Z3
-        if: runner.os == 'Linux'
+      - name: Prepare prebuilt Z3
+        if: runner.os != 'Windows'
         shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y libz3-dev pkg-config
+          z3_version="4.15.4"
+          case "${{ matrix.target }}" in
+            aarch64-apple-darwin)
+              z3_asset="z3-${z3_version}-arm64-osx-13.7.6.zip"
+              ;;
+            x86_64-apple-darwin)
+              z3_asset="z3-${z3_version}-x64-osx-13.7.6.zip"
+              ;;
+            aarch64-unknown-linux-gnu)
+              z3_asset="z3-${z3_version}-arm64-glibc-2.34.zip"
+              ;;
+            x86_64-unknown-linux-gnu)
+              z3_asset="z3-${z3_version}-x64-glibc-2.39.zip"
+              ;;
+            *)
+              echo "unsupported Z3 target: ${{ matrix.target }}" >&2
+              exit 1
+              ;;
+          esac
 
-      - name: Install system Z3
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          brew install z3 pkgconf
-          z3_prefix="$(brew --prefix z3)"
-          brew_prefix="$(brew --prefix)"
-          echo "PKG_CONFIG_PATH=${z3_prefix}/lib/pkgconfig:${brew_prefix}/lib/pkgconfig:${PKG_CONFIG_PATH}" >> "$GITHUB_ENV"
+          z3_root="${RUNNER_TEMP}/z3"
+          z3_static_dir="${RUNNER_TEMP}/z3-static-lib"
+          rm -rf "${z3_root}" "${z3_static_dir}"
+          mkdir -p "${z3_root}" "${z3_static_dir}"
+          curl -L --fail "https://github.com/Z3Prover/z3/releases/download/z3-${z3_version}/${z3_asset}" -o "${RUNNER_TEMP}/z3.zip"
+          unzip -q "${RUNNER_TEMP}/z3.zip" -d "${z3_root}"
+          cp "${z3_root}"/*/bin/libz3.a "${z3_static_dir}/libz3.a"
+          echo "Z3_LIBRARY_PATH_OVERRIDE=${z3_static_dir}" >> "$GITHUB_ENV"
 
       - name: Install system Z3
         if: runner.os == 'Windows'
@@ -140,9 +157,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             language/compiler/target
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-dist-system-z3-${{ hashFiles('language/compiler/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-dist-z3-archive-${{ hashFiles('language/compiler/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.target }}-cargo-dist-system-z3-
+            ${{ runner.os }}-${{ matrix.target }}-cargo-dist-z3-archive-
 
       - name: Build release binary
         if: runner.os != 'Windows'

@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import * as sigilRaw from './generated/game-2048';
+import { TracePanel } from './tracePanel';
+import { CALL_GRAPH } from './sigilSource';
 
 type Cell = { value: number; x: number; y: number };
 type Direction = 'up' | 'down' | 'left' | 'right';
@@ -58,12 +60,6 @@ async function spawnRandomTile(game: Game): Promise<Game> {
   return sigil.spawnTile(game, next);
 }
 
-async function freshGame(): Promise<Game> {
-  let next = await sigil.newGame([]);
-  next = await spawnRandomTile(next);
-  return spawnRandomTile(next);
-}
-
 function statusText(game: Game): string {
   switch (game.status) {
     case 'won':
@@ -75,14 +71,54 @@ function statusText(game: Game): string {
   }
 }
 
+// How long each function stays highlighted before moving to the next.
+const STEP_MS = 1000;
+// Brief hold on the last function before clearing.
+const TAIL_MS = 350;
+
 function TwentyFortyEightApp(): JSX.Element {
   const [game, setGame] = useState<Game | null>(null);
   const [appError, setAppError] = useState<string | null>(null);
   const gameRef = useRef<Game | null>(null);
 
+  // Trace state — single active function name at a time.
+  const [activeFn, setActiveFn] = useState<string | null>(null);
+  const sequenceTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
   useEffect(() => {
     gameRef.current = game;
   }, [game]);
+
+  function cancelSequence(): void {
+    for (const t of sequenceTimers.current) clearTimeout(t);
+    sequenceTimers.current = [];
+  }
+
+  // Schedule a sequence starting at offsetMs from now. Does NOT cancel existing timers,
+  // so callers can chain sequences back-to-back without losing the first one.
+  function scheduleSequence(graph: string, offsetMs: number): void {
+    const fns = CALL_GRAPH[graph] ?? [];
+    fns.forEach((fn, i) => {
+      sequenceTimers.current.push(
+        setTimeout(() => setActiveFn(fn), offsetMs + i * STEP_MS)
+      );
+    });
+    sequenceTimers.current.push(
+      setTimeout(() => setActiveFn(null), offsetMs + fns.length * STEP_MS + TAIL_MS)
+    );
+  }
+
+  function sequenceDuration(graph: string): number {
+    return (CALL_GRAPH[graph]?.length ?? 0) * STEP_MS;
+  }
+
+  async function freshGame(): Promise<Game> {
+    cancelSequence();
+    scheduleSequence('new', 0);
+    let next = await sigil.newGame([]);
+    next = await spawnRandomTile(next);
+    return spawnRandomTile(next);
+  }
 
   useEffect(() => {
     void freshGame()
@@ -91,7 +127,7 @@ function TwentyFortyEightApp(): JSX.Element {
         setAppError(null);
       })
       .catch((error) => setAppError(errorMessage(error)));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function restart(): Promise<void> {
     try {
@@ -107,11 +143,17 @@ function TwentyFortyEightApp(): JSX.Element {
     const current = gameRef.current;
     if (!current || current.status !== 'playing') return;
     try {
+      cancelSequence();
+      scheduleSequence(direction, 0);
       const moved = await sigil.applyMove(direction, current);
-      const nextGame = moved.status === 'playing' && !sameGameState(current, moved)
-        ? await spawnRandomTile(moved)
-        : moved;
-      setGame(nextGame);
+      if (moved.status === 'playing' && !sameGameState(current, moved)) {
+        // Chain the spawn sequence after the move sequence — no cancel in between.
+        scheduleSequence('spawn', sequenceDuration(direction));
+        const nextGame = await spawnRandomTile(moved);
+        setGame(nextGame);
+      } else {
+        setGame(moved);
+      }
       setAppError(null);
     } catch (error) {
       setAppError(errorMessage(error));
@@ -152,7 +194,7 @@ function TwentyFortyEightApp(): JSX.Element {
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!game) {
     return (
@@ -172,38 +214,45 @@ function TwentyFortyEightApp(): JSX.Element {
         </div>
         <button className="restart" onClick={() => void restart()}>Restart</button>
       </header>
-      <section className="twenty48-toolbar">
-        <div className="score-stack">
-          <div className="score-card">
-            <span>Score</span>
-            <strong>{game.score}</strong>
-          </div>
-          <div className="score-card muted">
-            <span>Status</span>
-            <strong>{game.status}</strong>
-          </div>
+
+      <div className="twenty48-body">
+        <div className="twenty48-main">
+          <section className="twenty48-toolbar">
+            <div className="score-stack">
+              <div className="score-card">
+                <span>Score</span>
+                <strong>{game.score}</strong>
+              </div>
+              <div className="score-card muted">
+                <span>Status</span>
+                <strong>{game.status}</strong>
+              </div>
+            </div>
+            <p className="status-copy">{statusText(game)}</p>
+          </section>
+          {appError ? <p className="twenty48-banner error">App error: {appError}</p> : null}
+          <section className="twenty48-board" aria-label="2048 board" style={{ gridTemplateColumns: `repeat(${game.size}, minmax(0, 1fr))` }}>
+            {boardRows(game).flat().map((cell) => (
+              <div className="tile" data-tone={cellTone(cell.value)} key={`${cell.x}-${cell.y}`}>
+                {cell.value === 0 ? '' : cell.value}
+              </div>
+            ))}
+          </section>
+          <section className="twenty48-controls" aria-label="Move controls">
+            <button type="button" onClick={() => void applyMove('up')}>Up</button>
+            <div className="row-controls">
+              <button type="button" onClick={() => void applyMove('left')}>Left</button>
+              <button type="button" onClick={() => void applyMove('down')}>Down</button>
+              <button type="button" onClick={() => void applyMove('right')}>Right</button>
+            </div>
+          </section>
+          <p className="twenty48-banner muted">
+            Arrow keys and WASD work too. A new tile only spawns after a move that actually changes the board.
+          </p>
         </div>
-        <p className="status-copy">{statusText(game)}</p>
-      </section>
-      {appError ? <p className="twenty48-banner error">App error: {appError}</p> : null}
-      <section className="twenty48-board" aria-label="2048 board" style={{ gridTemplateColumns: `repeat(${game.size}, minmax(0, 1fr))` }}>
-        {boardRows(game).flat().map((cell) => (
-          <div className="tile" data-tone={cellTone(cell.value)} key={`${cell.x}-${cell.y}`}>
-            {cell.value === 0 ? '' : cell.value}
-          </div>
-        ))}
-      </section>
-      <section className="twenty48-controls" aria-label="Move controls">
-        <button type="button" onClick={() => void applyMove('up')}>Up</button>
-        <div className="row-controls">
-          <button type="button" onClick={() => void applyMove('left')}>Left</button>
-          <button type="button" onClick={() => void applyMove('down')}>Down</button>
-          <button type="button" onClick={() => void applyMove('right')}>Right</button>
-        </div>
-      </section>
-      <p className="twenty48-banner muted">
-        Arrow keys and WASD work too. A new tile only spawns after a move that actually changes the board.
-      </p>
+
+        <TracePanel activeFn={activeFn} />
+      </div>
     </div>
   );
 }

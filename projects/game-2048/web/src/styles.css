@@ -30,7 +30,7 @@ body {
 }
 
 .twenty48-shell {
-  width: min(760px, 100%);
+  width: min(1460px, 100%);
   background: color-mix(in srgb, var(--panel) 94%, white);
   border: 1px solid var(--line);
   border-radius: 24px;
@@ -43,6 +43,21 @@ body {
   gap: 16px;
   align-items: start;
   justify-content: space-between;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 20px;
+}
+
+/* Two-column body: game | trace panel */
+.twenty48-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 600px;
+  gap: 20px;
+  align-items: start;
+}
+
+.twenty48-main {
+  min-width: 0;
 }
 
 .eyebrow {
@@ -128,19 +143,20 @@ button {
 
 .twenty48-board {
   display: grid;
-  gap: 10px;
-  padding: 14px;
+  gap: 6px;
+  padding: 8px;
   border: 1px solid var(--line);
-  border-radius: 20px;
+  border-radius: 14px;
   background: linear-gradient(180deg, #e5cfb8, #d6b99c);
+  max-width: 280px;
 }
 
 .tile {
   aspect-ratio: 1;
-  border-radius: 16px;
+  border-radius: 8px;
   display: grid;
   place-items: center;
-  font-size: clamp(1.1rem, 0.9rem + 1.1vw, 2rem);
+  font-size: clamp(0.75rem, 0.6rem + 0.7vw, 1.1rem);
   font-weight: 800;
   background: var(--tile-0);
   color: #816f5e;
@@ -194,6 +210,155 @@ button {
 .twenty48-banner.error {
   color: #9f2f21;
   background: #fff2ef;
+}
+
+/* ─── Trace panel ─────────────────────────────────────────────── */
+
+.trace-panel {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: white;
+  overflow: hidden;
+  height: 560px;
+}
+
+.trace-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 80%, white);
+  flex-shrink: 0;
+}
+
+.trace-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.trace-pill {
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  background: var(--tile-0);
+  color: var(--muted);
+  transition: background 0.1s, color 0.1s;
+  font-family: "SF Mono", "Fira Code", ui-monospace, monospace;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-pill.trace-pill-active {
+  background: var(--accent);
+  color: white;
+}
+
+.trace-follow-btn {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: white;
+  color: var(--muted);
+  cursor: pointer;
+  letter-spacing: 0.03em;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.trace-follow-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.trace-follow-btn.trace-follow-btn-on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+
+/* Code view */
+.code-view {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: auto;
+  padding: 6px 0;
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
+.code-line {
+  display: flex;
+  gap: 0;
+  padding: 0 10px 0 0;
+  transition: background-color 0.12s ease;
+  white-space: pre;
+}
+
+@keyframes line-flash {
+  0%   { background-color: rgba(181, 95, 52, 0.45); }
+  100% { background-color: rgba(181, 95, 52, 0.16); }
+}
+
+.code-line-active {
+  background-color: rgba(181, 95, 52, 0.16);
+  animation: line-flash 0.9s ease-out;
+}
+
+.code-lnum {
+  display: inline-block;
+  width: 32px;
+  min-width: 32px;
+  padding: 0 8px 0 10px;
+  color: var(--line);
+  text-align: right;
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.code-line-active .code-lnum {
+  color: var(--accent);
+}
+
+.code-text {
+  flex: 1;
+  color: var(--ink);
+}
+
+/* Syntax token colours */
+.st-sigil  { color: var(--accent); font-weight: 700; }
+.st-kw     { color: #7a5c9e; }
+.st-type   { color: #3b7abc; }
+.st-bool   { color: #b55f34; font-weight: 600; }
+.st-string { color: #4a8c45; }
+.st-num    { color: #c07030; }
+.st-op     { color: var(--muted); }
+.st-punct  { color: #8f8074; }
+.st-comment { color: #a09080; font-style: italic; }
+.st-ident  { color: var(--ink); }
+
+/* ─── Responsive ──────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .twenty48-body {
+    grid-template-columns: 1fr;
+  }
+
+  .trace-panel {
+    height: 400px;
+  }
 }
 
 @media (max-width: 640px) {

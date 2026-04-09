@@ -98,7 +98,7 @@ Examples:
 
 Current constant syntax is typed value ascription:
 
-```sigil module
+```sigil module projects/repoAudit/src/example.lib.sigil
 c answer=(42:Int)
 ```
 

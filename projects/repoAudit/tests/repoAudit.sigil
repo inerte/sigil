@@ -1,0 +1,97 @@
+λallOk(results:[Bool])=>Bool=§list.all(λ(result:Bool)=>Bool=result,results)
+
+λmain()=>Unit=()
+
+test "all check ids stay canonical" {
+  •repoAudit.allCheckIds()=["docs-drift","canonical-stdlib","examples-compile"]
+}
+
+test "build check result counts issues" {
+  •repoAudit.buildCheckResult("docs-drift",[{check:"docs-drift",code:"docs-drift/issue",line:1,message:"bad",path:"docs/test.md",severity:"error"}])={check:"docs-drift",issueCount:1,ok:false}
+}
+
+test "audit and mapping helpers keep stable shapes" {
+  l canonicalIssue=({line:7,name:"sum",path:"projects/demo.sigil",replacement:"§list.sum"}:µCanonicalIssue);
+  l docsIssue=({line:3,message:"compiler check failed: boom",path:"docs/test.md"}:µIssue);
+  l exampleIssue=({message:"compile failed: boom",path:"language/examples/demo.sigil"}:µExampleCompileIssue);
+  allOk([•repoAudit.auditIssue("docs-drift","docs-drift/issue",3,"bad","docs/test.md")={check:"docs-drift",code:"docs-drift/issue",line:3,message:"bad",path:"docs/test.md",severity:"error"},(•repoAudit.encodeAuditIssue({check:"docs-drift",code:"docs-drift/snippet-check",line:3,message:"compiler check failed: boom",path:"docs/test.md",severity:"error"}):§json.JsonValue)=§json.JsonObject({"check"↦§json.JsonString("docs-drift"),"code"↦§json.JsonString("docs-drift/snippet-check"),"line"↦§json.JsonNumber(3.0),"message"↦§json.JsonString("compiler check failed: boom"),"path"↦§json.JsonString("docs/test.md"),"severity"↦§json.JsonString("error")}),•repoAudit.mapCanonicalIssue(canonicalIssue)={check:"canonical-stdlib",code:"canonical-stdlib/local-wrapper",line:7,message:"projects/demo.sigil:7: local 'sum' duplicates canonical helper '§list.sum'; use the qualified stdlib path instead.",path:"projects/demo.sigil",severity:"error"},•repoAudit.mapCanonicalIssues([canonicalIssue])=[{check:"canonical-stdlib",code:"canonical-stdlib/local-wrapper",line:7,message:"projects/demo.sigil:7: local 'sum' duplicates canonical helper '§list.sum'; use the qualified stdlib path instead.",path:"projects/demo.sigil",severity:"error"}],•repoAudit.mapDocsDriftIssue(docsIssue)={check:"docs-drift",code:"docs-drift/snippet-check",line:3,message:"compiler check failed: boom",path:"docs/test.md",severity:"error"},•repoAudit.mapDocsDriftIssues([docsIssue])=[{check:"docs-drift",code:"docs-drift/snippet-check",line:3,message:"compiler check failed: boom",path:"docs/test.md",severity:"error"}],•repoAudit.mapExampleIssue(exampleIssue)={check:"examples-compile",code:"examples-compile/compile-failed",line:1,message:"compile failed: boom",path:"language/examples/demo.sigil",severity:"error"},•repoAudit.mapExampleIssues([exampleIssue])=[{check:"examples-compile",code:"examples-compile/compile-failed",line:1,message:"compile failed: boom",path:"language/examples/demo.sigil",severity:"error"}]])
+}
+
+test "docs drift messages map to stable codes" {
+  allOk([•repoAudit.mapDocsDriftIssueCode("compiler check failed: boom")="docs-drift/snippet-check",•repoAudit.mapDocsDriftIssueCode("documented stdlib function lacks checked example or stdlib test coverage: §string.trim")="docs-drift/missing-coverage",•repoAudit.mapDocsDriftIssueCode("reference to missing stdlib symbol '§string.trim'")="docs-drift/missing-stdlib-ref",•repoAudit.mapDocsDriftIssueCode("sigil decl snippets require a stdlib module context")="docs-drift/invalid-fence",•repoAudit.mapDocsDriftIssueCode("misc")="docs-drift/issue"])
+}
+
+test "parse selection defaults to all checks" {
+  match •repoAudit.parseSelection([]){
+    Ok(selection)=>selection.checks=["docs-drift","canonical-stdlib","examples-compile"]|
+    Err(_)=>false
+  }
+}
+
+test "parse selection dedupes and preserves canonical order" {
+  match •repoAudit.parseSelection(["--check","examples-compile","--check","docs-drift","--check","examples-compile"]){
+    Ok(selection)=>selection.checks=["docs-drift","examples-compile"]|
+    Err(_)=>false
+  }
+}
+
+test "parse selection rejects missing check id" {
+  match •repoAudit.parseSelection(["--check"]){
+    Ok(_)=>false|
+    Err(message)=>message="expected check id after --check"
+  }
+}
+
+test "validate requested checks rejects unknown ids" {
+  match •repoAudit.validateRequestedChecks(["docs-drift","mystery-check"]){
+    Ok(_)=>false|
+    Err(message)=>message="unknown check 'mystery-check'"
+  }
+}
+
+test "run check rejects unknown ids" =>!AuditIo {
+  match •repoAudit.runCheck("mystery-check"){
+    Ok(_)=>false|
+    Err(message)=>message="unknown check 'mystery-check'"
+  }
+}
+
+test "runner surfaces argument and selection errors" =>!AuditIo {
+  allOk([match •repoAudit.runFromArgs(["--check"]){
+    Ok(_)=>false|
+    Err(message)=>message="expected check id after --check"
+  },match •repoAudit.runSelection({checks:["mystery-check"]}){
+    Ok(_)=>false|
+    Err(message)=>message="mystery-check: unknown check 'mystery-check'"
+  },match •repoAudit.runSelectionInner([],["mystery-check"],[],["mystery-check"]){
+    Ok(_)=>false|
+    Err(message)=>message="mystery-check: unknown check 'mystery-check'"
+  }])
+}
+
+test "runner executes filtered checks under a controlled world" =>!AuditIo world {
+  c fs=(†fs.sandbox(".local/repoAuditRunnerSandbox"):†fs.FsEntry)
+  c process=(†process.fixture([†process.rule(["git","rev-parse","--show-toplevel"],None(),{code:0,stderr:"",stdout:".
+"}),†process.rule(["git","ls-files","--cached","--others","--exclude-standard","language/examples/*.sigil","language/examples/*.lib.sigil"],None(),{code:0,stderr:"",stdout:"language/examples/demo.sigil
+"}),†process.rule((•examplesCompile.compilerCommand(".local/repoAuditExamples/language/examples/demo.sigil.ts",".","language/examples/demo.sigil").argv:[String]),Some("."),{code:0,stderr:"",stdout:""})]):†process.ProcessEntry)
+} {
+  l _=(§file.makeDirs("language/examples"):Unit);
+  l _=(§file.writeText("λmain()=>Unit=()
+","language/examples/demo.sigil"):Unit);
+  allOk([match •repoAudit.runCheck("examples-compile"){
+    Ok(issues)=>issues=[]|
+    Err(_)=>false
+  },match •repoAudit.runFromArgs(["--check","examples-compile"]){
+    Ok(data)=>data.summary.checks=1 and data.summary.issueCount=0 and data.summary.selectedChecks=["examples-compile"]|
+    Err(_)=>false
+  },match •repoAudit.runSelection({checks:["examples-compile"]}){
+    Ok(data)=>data.summary.checks=1 and data.summary.issueCount=0 and data.summary.selectedChecks=["examples-compile"]|
+    Err(_)=>false
+  }])
+}
+
+test "render helpers emit the canonical envelope" {
+  l error=(•repoAudit.renderError("boom"):String);
+  l success=(•repoAudit.renderSuccess({checks:[{check:"docs-drift",issueCount:0,ok:true}],issues:[],summary:{checks:1,issueCount:0,selectedChecks:["docs-drift"]}}):String);
+  allOk([§string.contains(error,"\"command\":\"repoAudit\""),§string.contains(error,"\"message\":\"boom\""),§string.contains(error,"\"ok\":false"),§string.contains(success,"\"command\":\"repoAudit\""),§string.contains(success,"\"check\":\"docs-drift\""),§string.contains(success,"\"selectedChecks\":[\"docs-drift\"]"),§string.contains(success,"\"ok\":true")])
+}

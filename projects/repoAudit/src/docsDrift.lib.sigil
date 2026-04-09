@@ -266,9 +266,12 @@
 
 λreadCoverageRefsInner(acc:[String],paths:[String],root:String)=>!Fs [String] match paths{
   []=>acc|
-  [head,.tail]=>{
-    l source=(§file.readText(§path.join(root,head)):String);
-    readCoverageRefsInner(mergeUnique(acc,•coverage.collectQualifiedRefs(source)),tail,root)
+  [head,.tail]=>match §file.exists(§path.join(root,head)){
+    true=>{
+      l source=(§file.readText(§path.join(root,head)):String);
+      readCoverageRefsInner(mergeUnique(acc,•coverage.collectQualifiedRefs(source)),tail,root)
+    }|
+    false=>readCoverageRefsInner(acc,tail,root)
   }
 }
 
@@ -276,12 +279,15 @@
 
 λreadStdlibExportsInner(acc:[String],paths:[String],root:String)=>!AuditIo Result[[String],String] match paths{
   []=>Ok(acc)|
-  [head,.tail]=>{
-    l parseResult=(§process.run(compilerCommand(["parse",head],root)):§process.ProcessResult);
-    match parseResult.code=0{
-      true=>readStdlibExportsInner(mergeUnique(acc,•coverage.collectStdlibExports(head,parseResult.stdout)),tail,root)|
-      false=>Err("sigil parse failed for "++head++": "++processOutput(parseResult))
-    }
+  [head,.tail]=>match §file.exists(§path.join(root,head)){
+    true=>{
+      l parseResult=(§process.run(compilerCommand(["parse",head],root)):§process.ProcessResult);
+      match parseResult.code=0{
+        true=>readStdlibExportsInner(mergeUnique(acc,•coverage.collectStdlibExports(head,parseResult.stdout)),tail,root)|
+        false=>Err("sigil parse failed for "++head++": "++processOutput(parseResult))
+      }
+    }|
+    false=>readStdlibExportsInner(acc,tail,root)
   }
 }
 
@@ -293,12 +299,12 @@
   }
 }
 
-λrepoTempDir(root:String)=>String=§path.join(root,".local/docsDriftAuditTmp")
+λrepoTempDir(root:String)=>String=§path.join(root,".local/repoAuditTmp")
 
 λrunCheck()=>!AuditIo Result[[µIssue],String] match gitTopLevel(){
   Ok(root)=>match selectedMarkdownPaths(){
     Ok(selection)=>{
-      l tempDir=(repoTempDir(root):String);
+      l tempDir=(§path.join(repoTempDir(root),"check"):String);
       l _=(§file.removeTree(tempDir):Unit);
       l _=(§file.makeDirs(tempDir):Unit);
       l markdownAudit=(runMarkdownAudit(selection.failFast,selection.paths,root,tempDir):µMarkdownAudit);
@@ -327,7 +333,7 @@
 
 λrunCheckForPaths(paths:[String])=>!AuditIo Result[[µIssue],String] match gitTopLevel(){
   Ok(root)=>{
-    l tempDir=(repoTempDir(root):String);
+    l tempDir=(§path.join(repoTempDir(root),"paths"):String);
     l _=(§file.removeTree(tempDir):Unit);
     l _=(§file.makeDirs(tempDir):Unit);
     l markdownAudit=(runMarkdownAudit(true,paths,root,tempDir):µMarkdownAudit);
@@ -369,9 +375,12 @@
 λrunMarkdownAuditInner(acc:µMarkdownAudit,failFast:Bool,paths:[String],root:String,tempDir:String)=>!AuditIo µMarkdownAudit match paths{
   []=>acc|
   _ when failFast and #acc.issues>0=>acc|
-  [head,.tail]=>{
-    l current=(processMarkdownFile(failFast,head,root,tempDir):µMarkdownAudit);
-    runMarkdownAuditInner({documentedRefs:mergeUnique(acc.documentedRefs,current.documentedRefs),issues:mergeIssueLists(acc.issues,current.issues),snippetRefs:mergeUnique(acc.snippetRefs,current.snippetRefs)},failFast,tail,root,tempDir)
+  [head,.tail]=>match §file.exists(§path.join(root,head)){
+    true=>{
+      l current=(processMarkdownFile(failFast,head,root,tempDir):µMarkdownAudit);
+      runMarkdownAuditInner({documentedRefs:mergeUnique(acc.documentedRefs,current.documentedRefs),issues:mergeIssueLists(acc.issues,current.issues),snippetRefs:mergeUnique(acc.snippetRefs,current.snippetRefs)},failFast,tail,root,tempDir)
+    }|
+    false=>runMarkdownAuditInner(acc,failFast,tail,root,tempDir)
   }
 }
 
@@ -379,9 +388,12 @@
 
 λrunMarkdownCoverageAuditInner(acc:µMarkdownAudit,paths:[String],root:String)=>!Fs µMarkdownAudit match paths{
   []=>acc|
-  [head,.tail]=>{
-    l current=(collectMarkdownAuditRefs(head,root):µMarkdownAudit);
-    runMarkdownCoverageAuditInner({documentedRefs:mergeUnique(acc.documentedRefs,current.documentedRefs),issues:mergeIssueLists(acc.issues,current.issues),snippetRefs:mergeUnique(acc.snippetRefs,current.snippetRefs)},tail,root)
+  [head,.tail]=>match §file.exists(§path.join(root,head)){
+    true=>{
+      l current=(collectMarkdownAuditRefs(head,root):µMarkdownAudit);
+      runMarkdownCoverageAuditInner({documentedRefs:mergeUnique(acc.documentedRefs,current.documentedRefs),issues:mergeIssueLists(acc.issues,current.issues),snippetRefs:mergeUnique(acc.snippetRefs,current.snippetRefs)},tail,root)
+    }|
+    false=>runMarkdownCoverageAuditInner(acc,tail,root)
   }
 }
 
@@ -406,7 +418,7 @@
 λrunRepoCheck()=>!AuditIo Result[[µIssue],String] match gitTopLevel(){
   Ok(root)=>match gitTrackedMarkdown(){
     Ok(markdownPaths)=>{
-      l tempDir=(repoTempDir(root):String);
+      l tempDir=(§path.join(repoTempDir(root),"repo"):String);
       l _=(§file.removeTree(tempDir):Unit);
       l _=(§file.makeDirs(tempDir):Unit);
       l markdownAudit=(runMarkdownAudit(false,markdownPaths,root,tempDir):µMarkdownAudit);
@@ -442,9 +454,12 @@
 
 λrunStdlibExportsForPathsInner(acc:[String],paths:[String],root:String)=>!Fs [String] match paths{
   []=>acc|
-  [head,.tail]=>{
-    l exports=(•coverage.documentedRefsForSnippet("§"++§string.substring(#§path.basename(head)-10,§path.basename(head),0),§file.readText(§path.join(root,head))):[String]);
-    runStdlibExportsForPathsInner(mergeUnique(acc,exports),tail,root)
+  [head,.tail]=>match §file.exists(§path.join(root,head)){
+    true=>{
+      l exports=(•coverage.documentedRefsForSnippet("§"++§string.substring(#§path.basename(head)-10,§path.basename(head),0),§file.readText(§path.join(root,head))):[String]);
+      runStdlibExportsForPathsInner(mergeUnique(acc,exports),tail,root)
+    }|
+    false=>runStdlibExportsForPathsInner(acc,tail,root)
   }
 }
 

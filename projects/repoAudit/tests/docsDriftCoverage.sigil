@@ -59,19 +59,19 @@ b.md
     Ok(_)=>false|
     Err(message)=>message="boom"
   },•docsDrift.processOutput({code:1,stderr:" boom 
-",stdout:"ok"})="boom",match •docsDrift.projectRootFromVirtualPath("projects/docsDriftAudit/src/docsDrift.lib.sigil"){
-    Some(path)=>path="projects/docsDriftAudit"|
+",stdout:"ok"})="boom",match •docsDrift.projectRootFromVirtualPath("projects/repoAudit/src/docsDrift.lib.sigil"){
+    Some(path)=>path="projects/repoAudit"|
     None()=>false
   },match •docsDrift.projectRootFromVirtualPath("snippet.sigil"){
     Some(_)=>false|
     None()=>true
-  },match •docsDrift.projectRootFromVirtualPathUsing(None(),"/src/","projects/docsDriftAudit/src/docsDrift.lib.sigil"){
-    Some(path)=>path="projects/docsDriftAudit"|
+  },match •docsDrift.projectRootFromVirtualPathUsing(None(),"/src/","projects/repoAudit/src/docsDrift.lib.sigil"){
+    Some(path)=>path="projects/repoAudit"|
     None()=>false
   },match •docsDrift.projectRootFromVirtualPathUsing(Some("fallback"),"/src/","snippet.sigil"){
     Some(path)=>path="fallback"|
     None()=>false
-  },•docsDrift.relativeToRootPath("/repo","/repo")=".",•docsDrift.relativeToRootPath("/repo",§path.join("/repo","tmp/file.sigil"))="tmp/file.sigil",•docsDrift.repoTempDir("/repo")=§path.join("/repo",".local/docsDriftAuditTmp"),•docsDrift.runCoverageChecks(["§string.trim"],["§string.trim"],[],["§string.trim"],[])=[],•docsDrift.runCoverageChecksInner(["§string.trim"],["§string.trim"],["§string.trim"],[])=[],•docsDrift.runReferenceIssues(["§string.trim"],[],["§string.trim","§string.split"])=[{line:1,message:"reference to missing stdlib symbol '§string.split'",path:"language/spec/stdlib-spec.md"}],•docsDrift.runUncoveredDocumentedIssues(["§string.trim"],["§string.trim","§string.split"],[])=[{line:1,message:"documented stdlib function lacks checked example or stdlib test coverage: §string.split",path:"language/spec/stdlib-spec.md"}],•docsDrift.snippetRefsForValidatedSnippet(snippet("§string.trim(\" hi \")","docs/test.md",fenceInfo(None(),"expr"),1))=["§string.trim"],•docsDrift.snippetRefsForValidatedSnippet(snippet("§string.trim(\" hi \") ⟦ ignore §string.split ⟧","docs/test.md",fenceInfo(None(),"module"),1))=["§string.trim"],•docsDrift.snippetSource(snippet("#xs","docs/test.md",fenceInfo(None(),"expr"),1))="λmain()=>Unit=#xs",•docsDrift.snippetSubcommand("module")="compile",•docsDrift.snippetSubcommandForSnippet(exprSnippet)="parse",•docsDrift.snippetVirtualPath(snippet("λsample()=>String=\"ok\"","docs/test.md",fenceInfo(Some("projects/docsDriftAudit/src/sample.lib.sigil"),"module"),1))="projects/docsDriftAudit/src/sample.lib.sigil",§string.contains(•docsDrift.wrapExprLines(1,["\"a\"","","\"b\""],"λmain()=>Unit={","}"),"sample2")])
+  },•docsDrift.relativeToRootPath("/repo","/repo")=".",•docsDrift.relativeToRootPath("/repo",§path.join("/repo","tmp/file.sigil"))="tmp/file.sigil",•docsDrift.repoTempDir("/repo")=§path.join("/repo",".local/repoAuditTmp"),•docsDrift.runCoverageChecks(["§string.trim"],["§string.trim"],[],["§string.trim"],[])=[],•docsDrift.runCoverageChecksInner(["§string.trim"],["§string.trim"],["§string.trim"],[])=[],•docsDrift.runReferenceIssues(["§string.trim"],[],["§string.trim","§string.split"])=[{line:1,message:"reference to missing stdlib symbol '§string.split'",path:"language/spec/stdlib-spec.md"}],•docsDrift.runUncoveredDocumentedIssues(["§string.trim"],["§string.trim","§string.split"],[])=[{line:1,message:"documented stdlib function lacks checked example or stdlib test coverage: §string.split",path:"language/spec/stdlib-spec.md"}],•docsDrift.snippetRefsForValidatedSnippet(snippet("§string.trim(\" hi \")","docs/test.md",fenceInfo(None(),"expr"),1))=["§string.trim"],•docsDrift.snippetRefsForValidatedSnippet(snippet("§string.trim(\" hi \") ⟦ ignore §string.split ⟧","docs/test.md",fenceInfo(None(),"module"),1))=["§string.trim"],•docsDrift.snippetSource(snippet("#xs","docs/test.md",fenceInfo(None(),"expr"),1))="λmain()=>Unit=#xs",•docsDrift.snippetSubcommand("module")="compile",•docsDrift.snippetSubcommandForSnippet(exprSnippet)="parse",•docsDrift.snippetVirtualPath(snippet("λsample()=>String=\"ok\"","docs/test.md",fenceInfo(Some("projects/repoAudit/src/sample.lib.sigil"),"module"),1))="projects/repoAudit/src/sample.lib.sigil",§string.contains(•docsDrift.wrapExprLines(1,["\"a\"","","\"b\""],"λmain()=>Unit={","}"),"sample2")])
 }
 
 test "fence helpers parse valid and invalid forms" {
@@ -155,7 +155,7 @@ test "fence helpers parse valid and invalid forms" {
 }
 
 test "markdown coverage helpers read sandbox files" =>!Fs world {
-  c fs=(†fs.sandbox(".local/docsDriftAuditCoverage/markdownSandbox"):†fs.FsEntry)
+  c fs=(†fs.sandbox(".local/repoAuditCoverage/markdownSandbox"):†fs.FsEntry)
 } {
   l _=(§file.makeDirs("docs"):Unit);
   l _=(§file.makeDirs("tests"):Unit);
@@ -173,9 +173,9 @@ test "markdown coverage helpers read sandbox files" =>!Fs world {
 
 test "path based helpers succeed on decl only markdown" =>!AuditIo {
   l root=(repoRoot():String);
-  l path=(".local/docsDriftAuditCoverage/declOnly.md":String);
-  l tempDir=(§path.join(root,".local/docsDriftAuditCoverage/tmp-decl"):String);
-  l _=(§file.makeDirs(".local/docsDriftAuditCoverage"):Unit);
+  l path=(".local/repoAuditCoverage/declOnly.md":String);
+  l tempDir=(§path.join(root,".local/repoAuditCoverage/tmp-decl"):String);
+  l _=(§file.makeDirs(".local/repoAuditCoverage"):Unit);
   l _=(§file.removeTree(tempDir):Unit);
   l _=(§file.makeDirs(tempDir):Unit);
   l _=(§file.writeText(§string.unlines(["```sigil decl §string","λtrim(s:String)=>String","```"]),path):Unit);
@@ -203,10 +203,10 @@ test "path based helpers succeed on decl only markdown" =>!AuditIo {
 
 test "validate snippet compiles a module workspace" =>!AuditIo {
   l root=(repoRoot():String);
-  l tempDir=(§path.join(root,".local/docsDriftAuditCoverage/tmp-module"):String);
+  l tempDir=(§path.join(root,".local/repoAuditCoverage/tmp-module"):String);
   l _=(§file.removeTree(tempDir):Unit);
   l _=(§file.makeDirs(tempDir):Unit);
-  •docsDrift.validateSnippet("docs/test.md",1,root,snippet("λsample()=>String=\"ok\"","docs/test.md",fenceInfo(Some("projects/docsDriftAudit/src/sample.lib.sigil"),"module"),1),tempDir).issues=[]
+  •docsDrift.validateSnippet("docs/test.md",1,root,snippet("λsample()=>String=\"ok\"","docs/test.md",fenceInfo(Some("projects/repoAudit/src/sample.lib.sigil"),"module"),1),tempDir).issues=[]
 }
 
 test "stdlib export helpers parse repo stdlib files" =>!AuditIo {
@@ -224,8 +224,8 @@ test "stdlib export helpers parse repo stdlib files" =>!AuditIo {
     Ok(exports)=>§list.contains("§string.trim",exports)|
     Err(_)=>false
   },match readMissing{
-    Ok(_)=>false|
-    Err(message)=>§string.contains(message,"sigil parse failed")
+    Ok(exports)=>exports=[]|
+    Err(_)=>false
   },match fileExports{
     Ok(exports)=>§list.contains("§string.trim",exports)|
     Err(_)=>false
@@ -233,6 +233,21 @@ test "stdlib export helpers parse repo stdlib files" =>!AuditIo {
     Ok(exports)=>§list.contains("§string.trim",exports)|
     Err(_)=>false
   },§list.contains("§string.trim",pathExportsInner)])
+}
+
+test "stdlib export helpers surface parse failures for existing files" =>!AuditIo world {
+  c fs=(†fs.sandbox(".local/repoAuditCoverage/stdlibParseFailure"):†fs.FsEntry)
+  c process=(†process.fixture([†process.rule((•docsDrift.compilerCommand(["parse","language/stdlib/broken.lib.sigil"],".").argv:[String]),Some("."),{code:1,stderr:"parse boom",stdout:""})]):†process.ProcessEntry)
+} {
+  l _=(§file.makeDirs("language/stdlib"):Unit);
+  l _=(§file.writeText("λbroken()=>Unit=()","language/stdlib/broken.lib.sigil"):Unit);
+  allOk([match •docsDrift.readStdlibExports(["language/stdlib/broken.lib.sigil"],"."){
+    Ok(_)=>false|
+    Err(message)=>message="sigil parse failed for language/stdlib/broken.lib.sigil: parse boom"
+  },match •docsDrift.readStdlibExportsInner([],["language/stdlib/broken.lib.sigil"],"."){
+    Ok(_)=>false|
+    Err(message)=>message="sigil parse failed for language/stdlib/broken.lib.sigil: parse boom"
+  }])
 }
 
 test "git discovery helpers return repo paths" =>!Process {
@@ -318,18 +333,18 @@ test "print issues writes formatted lines to captured log" =>!Log world {
 
 test "repo style checks succeed under a controlled world" =>!AuditIo world {
   c process=(†process.fixture([†process.rule(["git","rev-parse","--show-toplevel"],None(),{code:0,stderr:"",stdout:".
-"}),†process.rule(["git","ls-files","--cached","--others","--exclude-standard","*.md"],None(),{code:0,stderr:"",stdout:".local/docsDriftAuditCoverage/runAll/sample.md
+"}),†process.rule(["git","ls-files","--cached","--others","--exclude-standard","*.md"],None(),{code:0,stderr:"",stdout:".local/repoAuditCoverage/runAll/sample.md
 "}),†process.rule(["git","ls-files","--cached","--others","--exclude-standard","language/stdlib/*.lib.sigil"],None(),{code:0,stderr:"",stdout:"language/stdlib/string.lib.sigil
-"}),†process.rule(["git","ls-files","--cached","--others","--exclude-standard","language/stdlib-tests/tests/*.sigil"],None(),{code:0,stderr:"",stdout:".local/docsDriftAuditCoverage/runAll/stdlibTests.sigil
+"}),†process.rule(["git","ls-files","--cached","--others","--exclude-standard","language/stdlib-tests/tests/*.sigil"],None(),{code:0,stderr:"",stdout:".local/repoAuditCoverage/runAll/stdlibTests.sigil
 "}),†process.rule([§path.join(".","language/compiler/target/debug/sigil"),"parse","language/stdlib/string.lib.sigil"],Some("."),{code:0,stderr:"",stdout:"{\"type\":\"FunctionDecl\",\"name\":\"trim\"}"})]):†process.ProcessEntry)
 } {
-  l _=(§file.makeDirs(".local/docsDriftAuditCoverage/runAll"):Unit);
-  l _=(§file.writeText(§string.unlines(["```sigil decl §string","λtrim(s:String)=>String","```"]),".local/docsDriftAuditCoverage/runAll/sample.md"):Unit);
+  l _=(§file.makeDirs(".local/repoAuditCoverage/runAll"):Unit);
+  l _=(§file.writeText(§string.unlines(["```sigil decl §string","λtrim(s:String)=>String","```"]),".local/repoAuditCoverage/runAll/sample.md"):Unit);
   l _=(§file.writeText("λmain()=>Unit={
   l sample=(§string.trim(\" hi \"):String);
   ()
 }
-",".local/docsDriftAuditCoverage/runAll/stdlibTests.sigil"):Unit);
+",".local/repoAuditCoverage/runAll/stdlibTests.sigil"):Unit);
   match •docsDrift.runCheck(){
     Ok(checkIssues)=>allOk([checkIssues=[],match •docsDrift.runCoverageOnly(){
       Ok(coverageIssues)=>allOk([coverageIssues=[],match •docsDrift.runRepoCheck(){

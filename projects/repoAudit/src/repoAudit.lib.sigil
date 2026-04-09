@@ -1,0 +1,128 @@
+λallCheckIds()=>[String]=["docs-drift","canonical-stdlib","examples-compile"]
+
+λauditIssue(check:String,code:String,line:Int,message:String,path:String)=>µAuditIssue={check:check,code:code,line:line,message:message,path:path,severity:"error"}
+
+λbuildCheckResult(check:String,issues:[µAuditIssue])=>µAuditCheckResult={check:check,issueCount:#issues,ok:#issues=0}
+
+λencodeAuditCheckResult(result:µAuditCheckResult)=>§json.JsonValue=§json.JsonObject({"check"↦§json.JsonString(result.check),"issueCount"↦§json.JsonNumber(§float.toFloat(result.issueCount)),"ok"↦§json.JsonBool(result.ok)})
+
+λencodeAuditData(data:µAuditData)=>§json.JsonValue=§json.JsonObject({"checks"↦§json.JsonArray(data.checks map encodeAuditCheckResult),"issues"↦§json.JsonArray(data.issues map encodeAuditIssue),"summary"↦encodeAuditSummary(data.summary)})
+
+λencodeAuditIssue(issue:µAuditIssue)=>§json.JsonValue=§json.JsonObject({"check"↦§json.JsonString(issue.check),"code"↦§json.JsonString(issue.code),"line"↦§json.JsonNumber(§float.toFloat(issue.line)),"message"↦§json.JsonString(issue.message),"path"↦§json.JsonString(issue.path),"severity"↦§json.JsonString(issue.severity)})
+
+λencodeAuditSummary(summary:µAuditSummary)=>§json.JsonValue=§json.JsonObject({"checks"↦§json.JsonNumber(§float.toFloat(summary.checks)),"issueCount"↦§json.JsonNumber(§float.toFloat(summary.issueCount)),"selectedChecks"↦§json.JsonArray(summary.selectedChecks map §json.JsonString)})
+
+λencodeError(message:String)=>§json.JsonValue=§json.JsonObject({"message"↦§json.JsonString(message)})
+
+λinsertUnique(item:String,items:[String])=>[String] match §list.contains(item,items){
+  true=>items|
+  false=>items⧺[item]
+}
+
+λmapCanonicalIssue(issue:µCanonicalIssue)=>µAuditIssue=auditIssue("canonical-stdlib","canonical-stdlib/local-wrapper",issue.line,•canonicalStdlibUsage.issueMessage(issue),issue.path)
+
+λmapCanonicalIssues(issues:[µCanonicalIssue])=>[µAuditIssue]=issues map mapCanonicalIssue
+
+λmapDocsDriftIssue(issue:µIssue)=>µAuditIssue=auditIssue("docs-drift",mapDocsDriftIssueCode(issue.message),issue.line,issue.message,issue.path)
+
+λmapDocsDriftIssueCode(message:String)=>String match §string.startsWith("compiler check failed",message) or §string.startsWith("invalid Sigil snippet compiled successfully",message){
+  true=>"docs-drift/snippet-check"|
+  false=>match §string.startsWith("documented stdlib function lacks checked example or stdlib test coverage",message){
+    true=>"docs-drift/missing-coverage"|
+    false=>match §string.startsWith("reference to missing stdlib symbol",message){
+      true=>"docs-drift/missing-stdlib-ref"|
+      false=>match §string.startsWith("sigil decl snippets",message) or §string.startsWith("unknown Sigil fence kind",message){
+        true=>"docs-drift/invalid-fence"|
+        false=>"docs-drift/issue"
+      }
+    }
+  }
+}
+
+λmapDocsDriftIssues(issues:[µIssue])=>[µAuditIssue]=issues map mapDocsDriftIssue
+
+λmapExampleIssue(issue:µExampleCompileIssue)=>µAuditIssue=auditIssue("examples-compile","examples-compile/compile-failed",1,issue.message,issue.path)
+
+λmapExampleIssues(issues:[µExampleCompileIssue])=>[µAuditIssue]=issues map mapExampleIssue
+
+λparseSelection(args:[String])=>Result[µAuditSelection,String] match #args=0{
+  true=>Ok({checks:allCheckIds()})|
+  false=>match parseSelectionArgs([],args){
+    Ok(requested)=>validateRequestedChecks(requested)|
+    Err(message)=>Err(message)
+  }
+}
+
+λparseSelectionArgs(acc:[String],args:[String])=>Result[[String],String] match args{
+  []=>Ok(acc)|
+  ["--check"]=>Err("expected check id after --check")|
+  ["--check",checkId,.tail]=>parseSelectionArgs(insertUnique(checkId,acc),tail)|
+  [arg,.tail]=>Err("unknown argument '"++arg++"'")
+}
+
+λrenderError(message:String)=>String=§json.stringify(§json.JsonObject({"command"↦§json.JsonString("repoAudit"),"error"↦encodeError(message),"ok"↦§json.JsonBool(false),"phase"↦§json.JsonString("audit")}))
+
+λrenderSuccess(data:µAuditData)=>String=§json.stringify(§json.JsonObject({"command"↦§json.JsonString("repoAudit"),"data"↦encodeAuditData(data),"ok"↦§json.JsonBool(data.summary.issueCount=0),"phase"↦§json.JsonString("audit")}))
+
+λrunCheck(checkId:String)=>!AuditIo Result[[µAuditIssue],String] match checkId{
+  "canonical-stdlib"=>match •canonicalStdlibUsage.runCheck(){
+    Ok(issues)=>Ok(mapCanonicalIssues(issues))|
+    Err(message)=>Err(message)
+  }|
+  "docs-drift"=>match •docsDrift.runRepoCheck(){
+    Ok(issues)=>Ok(mapDocsDriftIssues(issues))|
+    Err(message)=>Err(message)
+  }|
+  "examples-compile"=>match •examplesCompile.runCheck(){
+    Ok(issues)=>Ok(mapExampleIssues(issues))|
+    Err(message)=>Err(message)
+  }|
+  _=>Err("unknown check '"++checkId++"'")
+}
+
+λrunFromArgs(args:[String])=>!AuditIo Result[µAuditData,String] match parseSelection(args){
+  Ok(selection)=>runSelection(selection)|
+  Err(message)=>Err(message)
+}
+
+λrunSelection(selection:µAuditSelection)=>!AuditIo Result[µAuditData,String]=runSelectionInner([],selection.checks,[],selection.checks)
+
+λrunSelectionInner(issues:[µAuditIssue],remaining:[String],reports:[µAuditCheckResult],selectedChecks:[String])=>!AuditIo Result[µAuditData,String] match remaining{
+  []=>Ok({checks:reports,issues:issues,summary:{checks:#selectedChecks,issueCount:#issues,selectedChecks:selectedChecks}})|
+  [checkId,.tail]=>match runCheck(checkId){
+    Ok(currentIssues)=>runSelectionInner(issues⧺currentIssues,tail,reports⧺[buildCheckResult(checkId,currentIssues)],selectedChecks)|
+    Err(message)=>Err(checkId++": "++message)
+  }
+}
+
+λselectedCheckIds(requested:[String])=>[String] match allCheckIds(){
+  []=>[]|
+  [checkId,.tail]=>match §list.contains(checkId,requested){
+    true=>[checkId]⧺selectedCheckIdsInner(tail,requested)|
+    false=>selectedCheckIdsInner(tail,requested)
+  }
+}
+
+λselectedCheckIdsInner(remaining:[String],requested:[String])=>[String] match remaining{
+  []=>[]|
+  [checkId,.tail]=>match §list.contains(checkId,requested){
+    true=>[checkId]⧺selectedCheckIdsInner(tail,requested)|
+    false=>selectedCheckIdsInner(tail,requested)
+  }
+}
+
+λunknownCheck(requested:[String])=>Option[String] match requested{
+  []=>None()|
+  [checkId,.tail]=>match §list.contains(checkId,allCheckIds()){
+    true=>unknownCheck(tail)|
+    false=>Some(checkId)
+  }
+}
+
+λvalidateRequestedChecks(requested:[String])=>Result[µAuditSelection,String] match #requested=0{
+  true=>Err("expected at least one --check <id>")|
+  false=>match unknownCheck(requested){
+    Some(checkId)=>Err("unknown check '"++checkId++"'")|
+    None()=>Ok({checks:selectedCheckIds(requested)})
+  }
+}

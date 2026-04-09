@@ -462,7 +462,7 @@ cargo test --manifest-path language/compiler/Cargo.toml
 - `docs/` = current practical/canonical usage
 - `spec/` = formal / broader design contracts
 - If implementation intentionally diverges from spec, note it explicitly instead of silently drifting examples
-- Markdown Sigil fences are checked by `projects/docsDriftAudit`
+- Markdown Sigil fences and related repo invariants are checked by `projects/repoAudit`
 - Use explicit fence kinds only:
   - `sigil program`
   - `sigil module`

@@ -73,6 +73,18 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test -
 
 See `docs/TESTING.md`.
 
+## Repo Audit
+
+The repository also ships a first-party audit runner for checked docs/examples
+and other repo invariants:
+
+```bash
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run projects/repoAudit/src/main.sigil
+```
+
+Use repeated `--check <id>` flags to run a subset such as `docs-drift`,
+`canonical-stdlib`, or `examples-compile`.
+
 ## Module System (Typed Rooted References)
 
 Sigil-to-Sigil references are typechecked across modules. There is no separate

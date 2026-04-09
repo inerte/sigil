@@ -1,0 +1,86 @@
+λallOk(results:[Bool])=>Bool=§list.all(λ(result:Bool)=>Bool=result,results)
+
+λmain()=>Unit=()
+
+test "compiler command uses repo relative output paths" {
+  l command=(•examplesCompile.compilerCommand(§path.join("/repo",".local/out/example.ts"),"/repo","language/examples/demo.sigil"):§process.Command);
+  allOk([command.argv=[§path.join("/repo","language/compiler/target/debug/sigil"),"compile","-o",".local/out/example.ts","language/examples/demo.sigil"],match command.cwd{
+    Some(cwd)=>cwd="/repo"|
+    None()=>false
+  }])
+}
+
+test "parse tracked files keeps non empty paths" {
+  match •examplesCompile.parseTrackedFiles({code:0,stderr:"",stdout:"language/examples/a.sigil
+language/examples/b.lib.sigil
+
+"}){
+    Ok(paths)=>paths=["language/examples/a.sigil","language/examples/b.lib.sigil"]|
+    Err(_)=>false
+  }
+}
+
+test "parse tracked files surfaces git failure" {
+  match •examplesCompile.parseTrackedFiles({code:1,stderr:"boom",stdout:""}){
+    Ok(_)=>false|
+    Err(message)=>message="git ls-files failed: boom"
+  }
+}
+
+test "process output prefers stderr then stdout" {
+  allOk([•examplesCompile.processOutput({code:1,stderr:" boom ",stdout:"ok"})="boom",•examplesCompile.processOutput({code:1,stderr:"",stdout:" ok "})="ok"])
+}
+
+test "git top level surfaces process failure" =>!Process world {
+  c process=(†process.fixture([†process.rule(["git","rev-parse","--show-toplevel"],None(),{code:1,stderr:"boom",stdout:""})]):†process.ProcessEntry)
+} {
+  match •examplesCompile.gitTopLevel(){
+    Ok(_)=>false|
+    Err(message)=>message="git rev-parse failed: boom"
+  }
+}
+
+test "git tracked files surfaces process failure" =>!Process world {
+  c process=(†process.fixture([†process.rule(["git","ls-files","--cached","--others","--exclude-standard","language/examples/*.sigil","language/examples/*.lib.sigil"],None(),{code:1,stderr:"boom",stdout:""})]):†process.ProcessEntry)
+} {
+  match •examplesCompile.gitTrackedFiles(){
+    Ok(_)=>false|
+    Err(message)=>message="git ls-files failed: boom"
+  }
+}
+
+test "run check surfaces git top level failure" =>!AuditIo world {
+  c process=(†process.fixture([†process.rule(["git","rev-parse","--show-toplevel"],None(),{code:1,stderr:"boom",stdout:""})]):†process.ProcessEntry)
+} {
+  match •examplesCompile.runCheck(){
+    Ok(_)=>false|
+    Err(message)=>message="git rev-parse failed: boom"
+  }
+}
+
+test "run check succeeds under a controlled world" =>!AuditIo world {
+  c fs=(†fs.sandbox(".local/repoAuditExamplesSandbox"):†fs.FsEntry)
+  c process=(†process.fixture([†process.rule(["git","rev-parse","--show-toplevel"],None(),{code:0,stderr:"",stdout:".
+"}),†process.rule(["git","ls-files","--cached","--others","--exclude-standard","language/examples/*.sigil","language/examples/*.lib.sigil"],None(),{code:0,stderr:"",stdout:"language/examples/demo.sigil
+"}),†process.rule((•examplesCompile.compilerCommand(".local/repoAuditExamples/language/examples/demo.sigil.ts",".","language/examples/demo.sigil").argv:[String]),Some("."),{code:0,stderr:"",stdout:""})]):†process.ProcessEntry)
+} {
+  l _=(§file.makeDirs("language/examples"):Unit);
+  l _=(§file.writeText("λmain()=>Unit=()
+","language/examples/demo.sigil"):Unit);
+  match •examplesCompile.runCheck(){
+    Ok(issues)=>issues=[]|
+    Err(_)=>false
+  }
+}
+
+test "run compile checks reports failures and skips missing examples" =>!AuditIo world {
+  c fs=(†fs.sandbox(".local/repoAuditExamplesSandbox"):†fs.FsEntry)
+  c process=(†process.fixture([†process.rule((•examplesCompile.compilerCommand(".local/repoAuditExamplesOut/language/examples/good.sigil.ts",".","language/examples/good.sigil").argv:[String]),Some("."),{code:0,stderr:"",stdout:""}),†process.rule((•examplesCompile.compilerCommand(".local/repoAuditExamplesOut/language/examples/bad.sigil.ts",".","language/examples/bad.sigil").argv:[String]),Some("."),{code:1,stderr:"compile boom",stdout:""})]):†process.ProcessEntry)
+} {
+  l _=(§file.makeDirs("language/examples"):Unit);
+  l _=(§file.writeText("λmain()=>Unit=()
+","language/examples/good.sigil"):Unit);
+  l _=(§file.writeText("λmain()=>Unit=()
+","language/examples/bad.sigil"):Unit);
+  •examplesCompile.runCompileChecks(["language/examples/good.sigil","language/examples/bad.sigil","language/examples/missing.sigil"],".",".local/repoAuditExamplesOut")=[{message:"compile failed: compile boom",path:"language/examples/bad.sigil"}]
+}

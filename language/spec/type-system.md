@@ -291,7 +291,7 @@ Aliases must expand to at least two primitive effects.
 
 Example:
 
-```sigil module projects/docsDriftAudit/src/effects.lib.sigil
+```sigil module projects/repoAudit/src/effects.lib.sigil
 effect CliIo=!Fs!Log!Process
 ```
 

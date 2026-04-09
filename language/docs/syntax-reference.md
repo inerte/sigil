@@ -144,7 +144,7 @@ The built-in primitive effects are:
 
 Projects may define reusable multi-effect aliases only in `src/effects.lib.sigil`:
 
-```sigil module projects/docsDriftAudit/src/effects.lib.sigil
+```sigil module projects/repoAudit/src/effects.lib.sigil
 effect CliIo=!Fs!Log!Process
 ```
 

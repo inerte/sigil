@@ -2,13 +2,9 @@
 
 λcanonicalIntegrationSuite(root:String)=>µParallelSuite={command:sigilCommand(["test","language/integrationTests/tests/canonical.sigil"],root),label:"canonical integration"}
 
-λcanonicalStdlibRoot(root:String)=>String=§path.join(§path.join(root,"projects"),"canonicalStdlibAudit")
-
 λcargo(args:[String],root:String)=>§process.Command=§process.withCwd(§process.command(["cargo"]⧺args),root)
 
 λcompilerBin(root:String)=>String=§path.join(§path.join(§path.join(§path.join(root,"language"),"compiler"),"target"),"debug/sigil")
-
-λdocsDriftRoot(root:String)=>String=§path.join(§path.join(root,"projects"),"docsDriftAudit")
 
 λfailedCommandMessage(command:§process.Command,result:§process.ProcessResult)=>String="command failed: "++renderCommand(command.argv)++" (exit "++(§string.intToString(result.code):String)++")"
 
@@ -84,6 +80,8 @@
   []=>acc|
   [head,.tail]=>renderCommandRest(acc++" "++head,tail)
 }
+
+λrepoAuditRoot(root:String)=>String=§path.join(§path.join(root,"projects"),"repoAudit")
 
 λrepoRoot()=>!Process Result[String,String]={
   l result=(§process.run(§process.command(["git","rev-parse","--show-toplevel"])):§process.ProcessResult);
@@ -161,7 +159,7 @@
 
 λstdlibSuite(root:String)=>µParallelSuite={command:sigilCommand(["test","language/stdlib-tests/tests"],root),label:"stdlib suite"}
 
-λsteps(root:String)=>[µStep]=[µSerial({commands:[cargo(["test","--manifest-path","language/compiler/Cargo.toml"],root)],label:"compiler tests"}),µSerial({commands:[sigilCommandIn(["test","tests"],canonicalStdlibRoot(root),root),sigilCommandIn(["run","src/main.sigil"],canonicalStdlibRoot(root),root)],label:"canonical stdlib audit"}),µSerial({commands:[sigilCommandIn(["test","tests"],docsDriftRoot(root),root),sigilCommandIn(["run","src/main.sigil"],docsDriftRoot(root),root)],label:"docs drift audit"}),µSerial({commands:[sigilCommand(["compile","language/examples","--ignore",".git","--ignore-from",".gitignore"],root)],label:"examples compile"}),µParallel(parallelSuites(root)),µSerial({commands:[pnpmCommand(["sigil:build:website"],root)],label:"website build"}),µSerial({commands:[homebrewCommand(root)],label:"homebrew packaging"}),µSerial({commands:[httpTestCommand(root)],label:"http integration"}),µSerial({commands:[tcpTestCommand(root)],label:"tcp integration"})]
+λsteps(root:String)=>[µStep]=[µSerial({commands:[cargo(["test","--manifest-path","language/compiler/Cargo.toml"],root)],label:"compiler tests"}),µSerial({commands:[sigilCommandIn(["test","tests"],repoAuditRoot(root),root),sigilCommandIn(["run","src/main.sigil"],repoAuditRoot(root),root)],label:"repo audit"}),µParallel(parallelSuites(root)),µSerial({commands:[pnpmCommand(["sigil:build:website"],root)],label:"website build"}),µSerial({commands:[homebrewCommand(root)],label:"homebrew packaging"}),µSerial({commands:[httpTestCommand(root)],label:"http integration"}),µSerial({commands:[tcpTestCommand(root)],label:"tcp integration"})]
 
 λsuiteFailure(results:[µSuiteResult])=>Option[String] match results{
   []=>None()|

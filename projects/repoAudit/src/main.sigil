@@ -1,0 +1,13 @@
+λmain()=>!CliIo Unit match •repoAudit.runFromArgs(§process.argv()){
+  Ok(data)=>{
+    l _=(§io.println(•repoAudit.renderSuccess(data)):Unit);
+    §process.exit(match data.summary.issueCount=0{
+      true=>0|
+      false=>1
+    })
+  }|
+  Err(message)=>{
+    l _=(§io.println(•repoAudit.renderError(message)):Unit);
+    §process.exit(1)
+  }
+}

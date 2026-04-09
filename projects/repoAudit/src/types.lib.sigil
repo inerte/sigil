@@ -1,0 +1,37 @@
+t AuditCheckResult={check:String,issueCount:Int,ok:Bool}
+
+t AuditData={checks:[AuditCheckResult],issues:[AuditIssue],summary:AuditSummary}
+
+t AuditIssue={check:String,code:String,line:Int,message:String,path:String,severity:String}
+
+t AuditSelection={checks:[String]}
+
+t AuditSummary={checks:Int,issueCount:Int,selectedChecks:[String]}
+
+t CanonicalAnalyzeState={issues:[CanonicalIssue],line:Int}
+
+t CanonicalIssue={line:Int,name:String,path:String,replacement:String}
+
+t CanonicalRule={name:String,pattern:§regex.Regex,replacement:String}
+
+t CanonicalRuleSpec={name:String,pattern:String,replacement:String}
+
+t ExampleCompileIssue={message:String,path:String}
+
+t ExtractResult={issues:[Issue],results:[Snippet]}
+
+t FenceInfo={context:Option[String],kind:String}
+
+t Issue={line:Int,message:String,path:String}
+
+t MarkdownAudit={documentedRefs:[String],issues:[Issue],snippetRefs:[String]}
+
+t MarkdownSelection={failFast:Bool,paths:[String]}
+
+t MarkdownTask={path:String,root:String,tempDir:String}
+
+t OpenSnippet={content:[String],filePath:String,info:FenceInfo,line:Int}
+
+t ScanState={current:Option[OpenSnippet],issues:[Issue],line:Int,results:[Snippet]}
+
+t Snippet={content:String,filePath:String,info:FenceInfo,line:Int}

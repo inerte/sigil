@@ -1,0 +1,54 @@
+λcompilerCommand(outputPath:String,root:String,sourcePath:String)=>§process.Command=§process.withCwd(§process.command([§path.join(root,"language/compiler/target/debug/sigil"),"compile","-o",•docsDrift.relativeToRootPath(root,outputPath),sourcePath]),root)
+
+λgitTopLevel()=>!Process Result[String,String]={
+  l result=(§process.run(§process.command(["git","rev-parse","--show-toplevel"])):§process.ProcessResult);
+  match result.code=0{
+    true=>Ok((§string.trim(result.stdout):String))|
+    false=>Err("git rev-parse failed: "++result.stderr)
+  }
+}
+
+λgitTrackedFiles()=>!Process Result[[String],String]=parseTrackedFiles(§process.run(§process.command(["git","ls-files","--cached","--others","--exclude-standard","language/examples/*.sigil","language/examples/*.lib.sigil"])))
+
+λnonEmpty(text:String)=>Bool=#text>0
+
+λparseTrackedFiles(result:§process.ProcessResult)=>Result[[String],String] match result.code=0{
+  true=>Ok((§string.lines(result.stdout):[String]) filter nonEmpty)|
+  false=>Err("git ls-files failed: "++result.stderr)
+}
+
+λprocessOutput(result:§process.ProcessResult)=>String match #§string.trim(result.stderr)>0{
+  true=>§string.trim(result.stderr)|
+  false=>§string.trim(result.stdout)
+}
+
+λrunCheck()=>!AuditIo Result[[µExampleCompileIssue],String] match gitTopLevel(){
+  Ok(root)=>match gitTrackedFiles(){
+    Ok(paths)=>{
+      l tempRoot=(§path.join(root,".local/repoAuditExamples"):String);
+      l _=(§file.removeTree(tempRoot):Unit);
+      l _=(§file.makeDirs(tempRoot):Unit);
+      l issues=(runCompileChecks(paths,root,tempRoot):[µExampleCompileIssue]);
+      l _=(§file.removeTree(tempRoot):Unit);
+      Ok(issues)
+    }|
+    Err(message)=>Err(message)
+  }|
+  Err(message)=>Err(message)
+}
+
+λrunCompileChecks(paths:[String],root:String,tempRoot:String)=>!AuditIo [µExampleCompileIssue] match paths{
+  []=>[]|
+  [path,.tail]=>match §file.exists(§path.join(root,path)){
+    true=>{
+      l outputPath=(§path.join(tempRoot,path++".ts"):String);
+      l _=(§file.makeDirs(§path.dirname(outputPath)):Unit);
+      l result=(§process.run(compilerCommand(outputPath,root,path)):§process.ProcessResult);
+      match result.code=0{
+        true=>runCompileChecks(tail,root,tempRoot)|
+        false=>[{message:"compile failed: "++processOutput(result),path:path}]⧺runCompileChecks(tail,root,tempRoot)
+      }
+    }|
+    false=>runCompileChecks(tail,root,tempRoot)
+  }
+}

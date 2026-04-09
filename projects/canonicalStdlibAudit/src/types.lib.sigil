@@ -1,7 +1,0 @@
-t AnalyzeState={issues:[Issue],line:Int}
-
-t Issue={line:Int,name:String,path:String,replacement:String}
-
-t Rule={name:String,pattern:§regex.Regex,replacement:String}
-
-t RuleSpec={name:String,pattern:String,replacement:String}

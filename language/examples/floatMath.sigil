@@ -1,0 +1,3 @@
+λhypotenuse(a:Float,b:Float)=>Float=§float.sqrt(§float.pow(a,2.0)+§float.pow(b,2.0))
+
+λmain()=>Float=hypotenuse(3.0,4.0)

@@ -16,7 +16,9 @@ The Sigil standard library provides core utility functions and predicates for co
 - ✅ File system operations - `stdlib/file`
 - ✅ Process execution for harnesses and tooling - `stdlib/process`
 - ✅ Random number generation and collection helpers - `stdlib/random`
-- ✅ Regular-expression compile/test/search - `stdlib/regex`
+- ✅ Regular-expression compile/test/search with all-matches support - `stdlib/regex`
+- ✅ Float arithmetic and math functions - `stdlib/float`
+- ✅ Cryptographic hashing and encoding - `stdlib/crypto`
 - ✅ HTTP and TCP clients and servers - `stdlib/httpClient`, `stdlib/httpServer`, `stdlib/tcpClient`, `stdlib/tcpServer`
 - ✅ Runtime dependency topology - `stdlib/topology`
 - ✅ Runtime dependency config helpers - `stdlib/config`
@@ -29,7 +31,7 @@ The Sigil standard library provides core utility functions and predicates for co
 - ✅ Length operator (`#`) - works on strings, lists, and maps
 
 **Not yet implemented:**
-- ⏳ Crypto utilities
+- ⏳ Stream utilities
 
 ## Rooted Module Syntax
 
@@ -215,11 +217,14 @@ and `†random.fixture(draws)`.
 The canonical regex surface is:
 - `compile`
 - `find`
+- `findAll`
 - `isMatch`
 
-Regex semantics in v1 follow JavaScript `RegExp`, including pattern syntax and
-flags. `compile` validates the pattern/flags first and returns `Err` on invalid
-input. `find` returns only the first match.
+Regex semantics follow JavaScript `RegExp`, including pattern syntax and flags.
+`compile` validates the pattern/flags first and returns `Err` on invalid input.
+`find` returns the first match; `findAll` returns all non-overlapping matches as
+a list. `findAll` automatically adds the `g` flag internally — callers do not
+need to include it.
 
 `§json` exposes a typed JSON AST with safe parsing:
 
@@ -1069,6 +1074,54 @@ Design notes:
 - use `#s=0` instead of a dedicated `isEmpty`
 - use `§string.trim(s)=""` instead of a dedicated whitespace predicate
 - use `§string.contains(s,search)` for containment checks
+
+## Float Arithmetic Surface
+
+`§float` provides IEEE 754 double-precision math via JavaScript's `Math` object:
+
+- `abs` — absolute value
+- `ceil` — smallest integer ≥ x (returns `Int`)
+- `cos` — cosine (radians)
+- `exp` — e^x
+- `floor` — largest integer ≤ x (returns `Int`)
+- `isFinite` — true if x is finite (not ±Infinity, not NaN)
+- `isNaN` — true if x is NaN
+- `log` — natural logarithm
+- `max` — larger of two floats
+- `min` — smaller of two floats
+- `pow` — base raised to exponent
+- `round` — nearest integer, ties round up (returns `Int`)
+- `sin` — sine (radians)
+- `sqrt` — square root
+- `tan` — tangent (radians)
+- `toFloat` — convert `Int` to `Float` (exact)
+- `toInt` — truncate `Float` toward zero (returns `Int`)
+
+Functions that can produce `NaN` or `±Infinity` (e.g. `sqrt(-1.0)`, `log(0.0)`) return those values as valid `Float`; use `isNaN` and `isFinite` to guard at boundaries.
+
+```sigil program
+λmain()=>Bool=§float.floor(3.7)=3 and §float.ceil(3.2)=4 and §float.round(2.5)=3 and §float.isNaN(§float.sqrt(-1.0))
+```
+
+## Crypto Surface
+
+`§crypto` provides deterministic hashing and binary-to-text encoding backed by Node.js's `node:crypto` module and `Buffer`:
+
+- `sha256` — SHA-256 hash of a UTF-8 string, hex-encoded
+- `hmacSha256` — HMAC-SHA-256 with the given key, hex-encoded
+- `base64Encode` — encode UTF-8 string to base64
+- `base64Decode` — decode base64 to UTF-8 string (`Err` on invalid input)
+- `hexEncode` — encode UTF-8 string to lowercase hex
+- `hexDecode` — decode hex to UTF-8 string (`Err` on odd-length or invalid input)
+
+All functions are pure (deterministic, no effect annotation).
+
+```sigil program
+λmain()=>Bool match §crypto.base64Decode(§crypto.base64Encode("hello")){
+  Ok(s)=>s="hello"|
+  Err(_)=>false
+}
+```
 
 ## Current Numeric Surface
 

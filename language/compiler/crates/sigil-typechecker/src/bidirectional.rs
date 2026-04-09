@@ -4187,12 +4187,19 @@ fn synthesize_binary(
     let bool_type = InferenceType::Primitive(TPrimitive {
         name: PrimitiveName::Bool,
     });
+    let float_type = InferenceType::Primitive(TPrimitive {
+        name: PrimitiveName::Float,
+    });
     let string_type = InferenceType::Primitive(TPrimitive {
         name: PrimitiveName::String,
     });
 
+    let is_float = |t: &InferenceType| {
+        matches!(t, InferenceType::Primitive(p) if p.name == PrimitiveName::Float)
+    };
+
     match bin.operator {
-        // Arithmetic operators: Int => Int => Int
+        // Arithmetic operators: Int => Int => Int, or Float => Float => Float
         BinaryOperator::Add
         | BinaryOperator::Subtract
         | BinaryOperator::Multiply
@@ -4206,19 +4213,31 @@ fn synthesize_binary(
                 return Ok(string_type);
             }
 
+            // If either operand is Float, both must be Float
+            if is_float(&left_type) || is_float(&right_type) {
+                check(env, &bin.left, &float_type)?;
+                check(env, &bin.right, &float_type)?;
+                return Ok(float_type);
+            }
+
             // Otherwise require both operands to be integers
             check(env, &bin.left, &int_type)?;
             check(env, &bin.right, &int_type)?;
             Ok(int_type)
         }
 
-        // Comparison operators: Int => Int => Bool
+        // Comparison operators: Int => Int => Bool, or Float => Float => Bool
         BinaryOperator::Less
         | BinaryOperator::Greater
         | BinaryOperator::LessEq
         | BinaryOperator::GreaterEq => {
-            check(env, &bin.left, &int_type)?;
-            check(env, &bin.right, &int_type)?;
+            if is_float(&left_type) || is_float(&right_type) {
+                check(env, &bin.left, &float_type)?;
+                check(env, &bin.right, &float_type)?;
+            } else {
+                check(env, &bin.left, &int_type)?;
+                check(env, &bin.right, &int_type)?;
+            }
             Ok(bool_type)
         }
 
@@ -4299,10 +4318,20 @@ fn synthesize_unary(
         name: PrimitiveName::Bool,
     });
 
+    let float_type = InferenceType::Primitive(TPrimitive {
+        name: PrimitiveName::Float,
+    });
+
     match un.operator {
         sigil_ast::UnaryOperator::Negate => {
-            check(env, &un.operand, &int_type)?;
-            Ok(int_type)
+            let operand_type = synthesize(env, &un.operand)?;
+            if matches!(operand_type, InferenceType::Primitive(ref p) if p.name == PrimitiveName::Float) {
+                check(env, &un.operand, &float_type)?;
+                Ok(float_type)
+            } else {
+                check(env, &un.operand, &int_type)?;
+                Ok(int_type)
+            }
         }
         sigil_ast::UnaryOperator::Not => {
             check(env, &un.operand, &bool_type)?;

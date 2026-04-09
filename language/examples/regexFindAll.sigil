@@ -1,0 +1,6 @@
+λextractNumbers(input:String)=>[String] match §regex.compile("","\\d+"){
+  Ok(r)=>§regex.findAll(input,r) map (λ(m:§regex.RegexMatch)=>String=m.full)|
+  Err(_)=>[]
+}
+
+λmain()=>[String]=extractNumbers("price: $42, quantity: 3, discount: 10%")

@@ -8,4 +8,6 @@ t RegexMatch={captures:[String],end:Int,full:String,start:Int}
 
 λfind(input:String,regex:Regex)=>Option[RegexMatch]=None()
 
+λfindAll(input:String,regex:Regex)=>[RegexMatch]=[]
+
 λisMatch(input:String,regex:Regex)=>Bool=false

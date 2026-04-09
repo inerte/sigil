@@ -1,0 +1,4 @@
+λmain()=>Bool match §crypto.base64Decode(§crypto.base64Encode("hello")){
+  Ok(s)=>s="hello" and #§crypto.sha256("hello")=64|
+  Err(_)=>false
+}

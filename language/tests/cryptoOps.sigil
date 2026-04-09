@@ -1,0 +1,76 @@
+λmain()=>Unit=()
+
+test "base64Decode accepts empty string" {
+  match §crypto.base64Decode(""){
+    Ok(s)=>s=""|
+    Err(_)=>false
+  }
+}
+
+test "base64Decode rejects invalid characters" {
+  match §crypto.base64Decode("!!!"){
+    Ok(_)=>false|
+    Err(_)=>true
+  }
+}
+
+test "base64Decode rejects over-padded input" {
+  match §crypto.base64Decode("YQ==="){
+    Ok(_)=>false|
+    Err(_)=>true
+  }
+}
+
+test "base64Decode rejects single-char input" {
+  match §crypto.base64Decode("A"){
+    Ok(_)=>false|
+    Err(_)=>true
+  }
+}
+
+test "base64 round-trips" {
+  match §crypto.base64Decode(§crypto.base64Encode("hello")){
+    Ok(s)=>s="hello"|
+    Err(_)=>false
+  }
+}
+
+test "hexDecode rejects invalid hex digits" {
+  match §crypto.hexDecode("zz"){
+    Ok(_)=>false|
+    Err(_)=>true
+  }
+}
+
+test "hexDecode rejects mixed valid and invalid digits" {
+  match §crypto.hexDecode("61zz"){
+    Ok(_)=>false|
+    Err(_)=>true
+  }
+}
+
+test "hexDecode rejects odd-length input" {
+  match §crypto.hexDecode("abc"){
+    Ok(_)=>false|
+    Err(_)=>true
+  }
+}
+
+test "hex round-trips" {
+  match §crypto.hexDecode(§crypto.hexEncode("hello")){
+    Ok(s)=>s="hello"|
+    Err(_)=>false
+  }
+}
+
+test "hmacSha256 returns 64-char hex string" {
+  #§crypto.hmacSha256("secret","message")=64
+}
+
+test "sha256 is deterministic" {
+  §crypto.sha256("hello")=§crypto.sha256("hello")
+}
+
+test "sha256 returns 64-char hex string" {
+  #§crypto.sha256("hello")=64
+}

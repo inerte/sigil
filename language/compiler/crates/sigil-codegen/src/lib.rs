@@ -2880,6 +2880,62 @@ impl TypeScriptGenerator {
         self.emit("    return false;");
         self.emit("  }");
         self.emit("}");
+        self.emit("function __sigil_regex_find_all(regex, input) {");
+        self.emit("  try {");
+        self.emit("    const flags = String(regex?.flags ?? '');");
+        self.emit("    const withGlobal = flags.includes('g') ? flags : flags + 'g';");
+        self.emit("    const compiled = new RegExp(String(regex?.pattern ?? ''), withGlobal);");
+        self.emit("    const source = String(input ?? '');");
+        self.emit("    const results = [];");
+        self.emit("    let match;");
+        self.emit("    const isUnicode = withGlobal.includes('u') || withGlobal.includes('v');");
+        self.emit("    while ((match = compiled.exec(source)) !== null) {");
+        self.emit("      results.push({ captures: match.slice(1).map((v) => v ?? ''), end: match.index + match[0].length, full: match[0], start: match.index });");
+        self.emit("      if (match[0].length === 0) {");
+        self.emit("        const cp = isUnicode ? (source.codePointAt(compiled.lastIndex) ?? -1) : -1;");
+        self.emit("        compiled.lastIndex += (cp > 0xFFFF) ? 2 : 1;");
+        self.emit("      }");
+        self.emit("    }");
+        self.emit("    return results;");
+        self.emit("  } catch (_) {");
+        self.emit("    return [];");
+        self.emit("  }");
+        self.emit("}");
+        self.emit("async function __sigil_crypto_sha256(input) {");
+        self.emit("  const { createHash } = await import('node:crypto');");
+        self.emit("  return createHash('sha256').update(String(input ?? '')).digest('hex');");
+        self.emit("}");
+        self.emit("async function __sigil_crypto_hmac_sha256(key, message) {");
+        self.emit("  const { createHmac } = await import('node:crypto');");
+        self.emit("  return createHmac('sha256', String(key ?? '')).update(String(message ?? '')).digest('hex');");
+        self.emit("}");
+        self.emit("function __sigil_crypto_base64_encode(input) {");
+        self.emit("  return Buffer.from(String(input ?? ''), 'utf8').toString('base64');");
+        self.emit("}");
+        self.emit("function __sigil_crypto_base64_decode(input) {");
+        self.emit("  try {");
+        self.emit("    const s = String(input ?? '');");
+        self.emit("    if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=|[A-Za-z0-9+/]{4}|)$/.test(s)) {");
+        self.emit("      return { __tag: \"Err\", __fields: [{ message: \"invalid base64 input\" }] };");
+        self.emit("    }");
+        self.emit("    return { __tag: \"Ok\", __fields: [Buffer.from(s, 'base64').toString('utf8')] };");
+        self.emit("  } catch (error) {");
+        self.emit("    return { __tag: \"Err\", __fields: [{ message: error instanceof Error ? error.message : String(error) }] };");
+        self.emit("  }");
+        self.emit("}");
+        self.emit("function __sigil_crypto_hex_encode(input) {");
+        self.emit("  return Buffer.from(String(input ?? ''), 'utf8').toString('hex');");
+        self.emit("}");
+        self.emit("function __sigil_crypto_hex_decode(input) {");
+        self.emit("  try {");
+        self.emit("    const s = String(input ?? '');");
+        self.emit("    if (s.length % 2 !== 0) { return { __tag: \"Err\", __fields: [{ message: \"invalid hex: odd length\" }] }; }");
+        self.emit("    if (s.length > 0 && !/^[0-9A-Fa-f]+$/.test(s)) { return { __tag: \"Err\", __fields: [{ message: \"invalid hex: non-hex digits\" }] }; }");
+        self.emit("    return { __tag: \"Ok\", __fields: [Buffer.from(s, 'hex').toString('utf8')] };");
+        self.emit("  } catch (error) {");
+        self.emit("    return { __tag: \"Err\", __fields: [{ message: error instanceof Error ? error.message : String(error) }] };");
+        self.emit("  }");
+        self.emit("}");
         self.emit("function __sigil_url_query_map_from_search(search) {");
         self.emit("  const params = new URLSearchParams(search);");
         self.emit("  return __sigil_map_from_entries(Array.from(params.entries()));");
@@ -5866,9 +5922,137 @@ impl TypeScriptGenerator {
                 "{}.then(([__input, __regex]) => __sigil_regex_find(__regex, __input))",
                 self.js_all(&generated_args)
             ))),
+            "findAll" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__input, __regex]) => __sigil_regex_find_all(__regex, __input))",
+                self.js_all(&generated_args)
+            ))),
             "isMatch" if generated_args.len() == 2 => Ok(Some(format!(
                 "{}.then(([__input, __regex]) => __sigil_regex_is_match(__regex, __input))",
                 self.js_all(&generated_args)
+            ))),
+            _ => Ok(None),
+        }
+    }
+
+    fn generate_float_intrinsic(
+        &mut self,
+        _call_expr: &TypedExpr,
+        member: &str,
+        args: &[TypedExpr],
+    ) -> Result<Option<String>, CodegenError> {
+        let generated_args = args
+            .iter()
+            .map(|arg| self.generate_expression(arg))
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+
+        match member {
+            "abs" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__x) => Math.abs(__x))",
+                generated_args[0]
+            ))),
+            "ceil" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__x) => Math.ceil(__x))",
+                generated_args[0]
+            ))),
+            "cos" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__x) => Math.cos(__x))",
+                generated_args[0]
+            ))),
+            "exp" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__x) => Math.exp(__x))",
+                generated_args[0]
+            ))),
+            "floor" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__x) => Math.floor(__x))",
+                generated_args[0]
+            ))),
+            "isFinite" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__x) => Number.isFinite(__x))",
+                generated_args[0]
+            ))),
+            "isNaN" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__x) => Number.isNaN(__x))",
+                generated_args[0]
+            ))),
+            "log" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__x) => Math.log(__x))",
+                generated_args[0]
+            ))),
+            "max" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__a, __b]) => Math.max(__a, __b))",
+                self.js_all(&generated_args)
+            ))),
+            "min" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__a, __b]) => Math.min(__a, __b))",
+                self.js_all(&generated_args)
+            ))),
+            "pow" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__base, __exp]) => Math.pow(__base, __exp))",
+                self.js_all(&generated_args)
+            ))),
+            "round" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__x) => Math.round(__x))",
+                generated_args[0]
+            ))),
+            "sin" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__x) => Math.sin(__x))",
+                generated_args[0]
+            ))),
+            "sqrt" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__x) => Math.sqrt(__x))",
+                generated_args[0]
+            ))),
+            "tan" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__x) => Math.tan(__x))",
+                generated_args[0]
+            ))),
+            "toFloat" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__x) => Number(__x))",
+                generated_args[0]
+            ))),
+            "toInt" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__x) => Math.trunc(__x))",
+                generated_args[0]
+            ))),
+            _ => Ok(None),
+        }
+    }
+
+    fn generate_crypto_intrinsic(
+        &mut self,
+        _call_expr: &TypedExpr,
+        member: &str,
+        args: &[TypedExpr],
+    ) -> Result<Option<String>, CodegenError> {
+        let generated_args = args
+            .iter()
+            .map(|arg| self.generate_expression(arg))
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+
+        match member {
+            "base64Decode" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__input) => __sigil_crypto_base64_decode(__input))",
+                generated_args[0]
+            ))),
+            "base64Encode" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__input) => __sigil_crypto_base64_encode(__input))",
+                generated_args[0]
+            ))),
+            "hexDecode" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__input) => __sigil_crypto_hex_decode(__input))",
+                generated_args[0]
+            ))),
+            "hexEncode" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__input) => __sigil_crypto_hex_encode(__input))",
+                generated_args[0]
+            ))),
+            "hmacSha256" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__key, __message]) => __sigil_crypto_hmac_sha256(__key, __message))",
+                self.js_all(&generated_args)
+            ))),
+            "sha256" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__input) => __sigil_crypto_sha256(__input))",
+                generated_args[0]
             ))),
             _ => Ok(None),
         }
@@ -6157,6 +6341,20 @@ impl TypeScriptGenerator {
         if call.namespace.join("/") == "stdlib/random" {
             if let Some(intrinsic) =
                 self.generate_random_intrinsic(expr, &call.member, &call.args)?
+            {
+                return Ok(intrinsic);
+            }
+        }
+        if call.namespace.join("/") == "stdlib/crypto" {
+            if let Some(intrinsic) =
+                self.generate_crypto_intrinsic(expr, &call.member, &call.args)?
+            {
+                return Ok(intrinsic);
+            }
+        }
+        if call.namespace.join("/") == "stdlib/float" {
+            if let Some(intrinsic) =
+                self.generate_float_intrinsic(expr, &call.member, &call.args)?
             {
                 return Ok(intrinsic);
             }

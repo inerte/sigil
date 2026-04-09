@@ -294,14 +294,64 @@ t RegexMatch={captures:[String],end:Int,full:String,start:Int}
 
 λcompile(flags:String,pattern:String)=>Result[Regex,RegexError]
 λfind(input:String,regex:Regex)=>Option[RegexMatch]
+λfindAll(input:String,regex:Regex)=>[RegexMatch]
 λisMatch(input:String,regex:Regex)=>Bool
 ```
 
 Regex rules:
-- v1 semantics follow JavaScript `RegExp`
+- semantics follow JavaScript `RegExp`
 - `compile` validates both flags and pattern before returning `Ok`
 - `find` returns the first match only
+- `findAll` returns all non-overlapping matches; adds the `g` flag internally
 - unmatched capture groups are returned as empty strings in `captures`
+
+### Implemented `§float` Types and Functions
+
+```sigil decl §float
+λabs(x:Float)=>Float
+λceil(x:Float)=>Int
+λcos(x:Float)=>Float
+λexp(x:Float)=>Float
+λfloor(x:Float)=>Int
+λisFinite(x:Float)=>Bool
+λisNaN(x:Float)=>Bool
+λlog(x:Float)=>Float
+λmax(a:Float,b:Float)=>Float
+λmin(a:Float,b:Float)=>Float
+λpow(base:Float,exp:Float)=>Float
+λround(x:Float)=>Int
+λsin(x:Float)=>Float
+λsqrt(x:Float)=>Float
+λtan(x:Float)=>Float
+λtoFloat(x:Int)=>Float
+λtoInt(x:Float)=>Int
+```
+
+Float rules:
+- all functions delegate to `Math.*` or `Number.*` in the JS runtime
+- `ceil`, `floor`, `round`, `toInt` return `Int` (not `Float`)
+- `toInt` truncates toward zero (equivalent to `Math.trunc`)
+- `log` is the natural logarithm
+- functions producing `NaN` or `±Infinity` do so silently; use `isNaN` / `isFinite` to guard
+
+### Implemented `§crypto` Types and Functions
+
+```sigil decl §crypto
+t CryptoError={message:String}
+
+λbase64Decode(input:String)=>Result[String,CryptoError]
+λbase64Encode(input:String)=>String
+λhexDecode(input:String)=>Result[String,CryptoError]
+λhexEncode(input:String)=>String
+λhmacSha256(key:String,message:String)=>String
+λsha256(input:String)=>String
+```
+
+Crypto rules:
+- all functions are pure (no effect annotation); all inputs are treated as UTF-8
+- `sha256` and `hmacSha256` return lowercase hex strings
+- `base64Decode` and `hexDecode` return `Err` on invalid input; `hexDecode` additionally errors on odd-length input
+- backed by `node:crypto` (`createHash`, `createHmac`) and `Buffer`
 
 ### Implemented `§time` Additions
 
@@ -721,7 +771,6 @@ Projects may define reusable multi-effect aliases in `src/effects.lib.sigil`.
 
 Planned for future stdlib versions:
 
-- **§crypto** - Cryptographic functions
 - **§stream** - Streaming I/O
 - **§concurrency** - Threads and channels
 

@@ -1,1 +1,4 @@
-λmain()=>Int=¶map.size(•wordFrequency.frequency(["sigil sigil map","filter reduce sigil"]))
+λmain()=>Int=¶map.size(•wordFrequency.frequency([
+  "sigil sigil map",
+  "filter reduce sigil"
+]))

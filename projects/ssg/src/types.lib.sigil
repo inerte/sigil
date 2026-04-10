@@ -1,19 +1,68 @@
-t AliasRoute={alias:String,route:String}
+t AliasRoute={
+  alias:String,
+  route:String
+}
 
-t CuratedProject={demoSourceDir:String,localRun:String,projectDir:String,readmePath:String}
+t CuratedProject={
+  demoSourceDir:String,
+  localRun:String,
+  projectDir:String,
+  readmePath:String
+}
 
-t PageMeta={author:String,category:String,date:String,description:String,slug:String,title:String}
+t PageMeta={
+  author:String,
+  category:String,
+  date:String,
+  description:String,
+  slug:String,
+  title:String
+}
 
-t ParseLinesResult={contentLines:[String],meta:PageMeta}
+t ParseLinesResult={
+  contentLines:[String],
+  meta:PageMeta
+}
 
-t ParseResult={content:String,meta:PageMeta}
+t ParseResult={
+  content:String,
+  meta:PageMeta
+}
 
-t ProjectInfo={demoSourceDir:String,localRun:String,projectDir:String}
+t ProjectInfo={
+  demoSourceDir:String,
+  localRun:String,
+  projectDir:String
+}
 
 t Section=Article()|Doc()|Home()|Project()|Spec()
 
-t SiteBuildConfig={basePath:String,outputDir:String,repoUrl:String,siteDescription:String,siteTitle:String,siteUrl:String}
+t SiteBuildConfig={
+  basePath:String,
+  outputDir:String,
+  repoUrl:String,
+  siteDescription:String,
+  siteTitle:String,
+  siteUrl:String
+}
 
-t SiteData={articles:[SitePage],articlesIntro:SitePage,docs:[SitePage],home:SitePage,projects:[SitePage],projectsIntro:SitePage,spec:[SitePage],standalone:[SitePage]}
+t SiteData={
+  articles:[SitePage],
+  articlesIntro:SitePage,
+  docs:[SitePage],
+  home:SitePage,
+  projects:[SitePage],
+  projectsIntro:SitePage,
+  spec:[SitePage],
+  standalone:[SitePage]
+}
 
-t SitePage={bodyHtml:String,bodyMarkdown:String,meta:PageMeta,outputDir:String,project:Option[ProjectInfo],section:Section,sourcePath:String}
+t SitePage={
+  bodyHtml:String,
+  bodyMarkdown:String,
+  meta:PageMeta,
+  outputDir:String,
+  project:Option[ProjectInfo],
+  section:Section,
+  sourcePath:String
+}

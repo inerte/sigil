@@ -3,13 +3,31 @@
   _=>permutationsFromSelections(selections(xs))
 }
 
-λpermutationsFromSelections(choices:[µSelection])=>[[Int]]=§list.flatMap(λ(choice:µSelection)=>[[Int]]=prependAll(choice.chosen,permutations(choice.rest)),choices)
+λpermutationsFromSelections(choices:[µSelection])=>[[Int]]=§list.flatMap(
+  λ(choice:µSelection)=>[[Int]]=prependAll(
+    choice.chosen,
+    permutations(choice.rest)
+  ),
+  choices
+)
 
 λprependAll(item:Int,xss:[[Int]])=>[[Int]]=xss map (λ(head:[Int])=>[Int]=[item]⧺head)
 
-λprependChoice(choices:[µSelection],prefix:Int)=>[µSelection]=choices map (λ(choice:µSelection)=>µSelection={chosen:choice.chosen,rest:[prefix]⧺choice.rest})
+λprependChoice(choices:[µSelection],prefix:Int)=>[µSelection]=choices map (λ(choice:µSelection)=>µSelection={
+  chosen:choice.chosen,
+  rest:[prefix]⧺choice.rest
+})
 
 λselections(xs:[Int])=>[µSelection] match xs{
   []=>[]|
-  [head,.tail]=>[{chosen:head,rest:tail}]⧺prependChoice(selections(tail),head)
+  [
+  head,
+  .tail
+]=>[{
+    chosen:head,
+    rest:tail
+  }]⧺prependChoice(
+    selections(tail),
+    head
+  )
 }

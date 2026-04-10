@@ -1,6 +1,15 @@
 λadd(a:Int,b:Int)=>Int=a+b
 
-λcompute()=>Int=add(multiply(10,3),multiply(5,4))
+λcompute()=>Int=add(
+  multiply(
+    10,
+    3
+  ),
+  multiply(
+    5,
+    4
+  )
+)
 
 λmain()=>Int=compute()
 

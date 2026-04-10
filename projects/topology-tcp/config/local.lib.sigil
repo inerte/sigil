@@ -1,1 +1,14 @@
-c world=(†runtime.world(†clock.systemClock(),†fs.real(),[],†log.stdout(),†process.real(),†random.real(),[†tcp.proxy(•topology.eventStream,"127.0.0.1",45120)],†timer.real()):†runtime.World)
+c world=(†runtime.world(
+  †clock.systemClock(),
+  †fs.real(),
+  [],
+  †log.stdout(),
+  †process.real(),
+  †random.real(),
+  [†tcp.proxy(
+    •topology.eventStream,
+    "127.0.0.1",
+    45120
+  )],
+  †timer.real()
+):†runtime.World)

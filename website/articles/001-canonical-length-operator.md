@@ -37,9 +37,14 @@ The language did not need another namespace decision for a primitive operation.
 
 Sigil uses a dedicated prefix operator:
 
-```sigil exprs
-#"hello"
-#[1,2,3]
+```sigil module
+λsample1()=>Int=#"hello"
+
+λsample2()=>Int=#[
+  1,
+  2,
+  3
+]
 ```
 
 The choice is intentionally narrow. There is no alternate `len(...)` spelling,

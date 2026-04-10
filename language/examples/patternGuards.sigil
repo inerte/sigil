@@ -2,13 +2,22 @@ t Action=Increment()|Decrement()|Reset()
 
 t Color=Red()|Green()|Blue()
 
-t Point={x:Int,y:Int}
+t Point={
+  x:Int,
+  y:Int
+}
 
 t Result=Ok(Int)|Err(String)
 
-t State={count:Int,mode:String}
+t State={
+  count:Int,
+  mode:String
+}
 
-t User={age:Int,name:String}
+t User={
+  age:Int,
+  name:String
+}
 
 e console
 
@@ -21,11 +30,26 @@ e console
   _=>"negative"
 }
 
-λclassifyPair(left:Bool,right:Bool)=>String match (left,right){
-  (true,true)=>"both true"|
-  (true,false)=>"left only"|
-  (false,true)=>"right only"|
-  (false,false)=>"both false"
+λclassifyPair(left:Bool,right:Bool)=>String match (
+  left,
+  right
+){
+  (
+  true,
+  true
+)=>"both true"|
+  (
+  true,
+  false
+)=>"left only"|
+  (
+  false,
+  true
+)=>"right only"|
+  (
+  false,
+  false
+)=>"both false"
 }
 
 λclassifyPoint(p:Point)=>String match p.x{
@@ -48,8 +72,14 @@ e console
 
 λfindFirstPositive(list:[Int])=>String match list{
   []=>"empty list"|
-  [x,.rest] when x>0=>"first positive: "++§string.intToString(x)|
-  [_,.xs]=>findFirstPositive(xs)
+  [
+  x,
+  .rest
+] when x>0=>"first positive: "++§string.intToString(x)|
+  [
+  _,
+  .xs
+]=>findFirstPositive(xs)
 }
 
 λmain()=>Int={
@@ -60,9 +90,18 @@ e console
   l _=(console.log(classifyNumber(-5)):Unit);
   l _=(console.log("
 === User Validation ==="):Unit);
-  l _=(console.log(validateUser({age:30,name:"Alice"})):Unit);
-  l _=(console.log(validateUser({age:25,name:""})):Unit);
-  l _=(console.log(validateUser({age:-5,name:"Bob"})):Unit);
+  l _=(console.log(validateUser({
+    age:30,
+    name:"Alice"
+  })):Unit);
+  l _=(console.log(validateUser({
+    age:25,
+    name:""
+  })):Unit);
+  l _=(console.log(validateUser({
+    age:-5,
+    name:"Bob"
+  })):Unit);
   l _=(console.log("
 === Result Processing ==="):Unit);
   l _=(console.log(processResult(Ok(150))):Unit);
@@ -70,34 +109,77 @@ e console
   l _=(console.log(processResult(Err("timeout"))):Unit);
   l _=(console.log("
 === Priority Tasks ==="):Unit);
-  l _=(console.log(prioritizeTask(5,true)):Unit);
-  l _=(console.log(prioritizeTask(5,false)):Unit);
-  l _=(console.log(prioritizeTask(9,false)):Unit);
+  l _=(console.log(prioritizeTask(
+    5,
+    true
+  )):Unit);
+  l _=(console.log(prioritizeTask(
+    5,
+    false
+  )):Unit);
+  l _=(console.log(prioritizeTask(
+    9,
+    false
+  )):Unit);
   l _=(console.log("
 === Point Classification ==="):Unit);
-  l _=(console.log(classifyPoint({x:0,y:0})):Unit);
-  l _=(console.log(classifyPoint({x:5,y:5})):Unit);
-  l _=(console.log(classifyPoint({x:3,y:7})):Unit);
+  l _=(console.log(classifyPoint({
+    x:0,
+    y:0
+  })):Unit);
+  l _=(console.log(classifyPoint({
+    x:5,
+    y:5
+  })):Unit);
+  l _=(console.log(classifyPoint({
+    x:3,
+    y:7
+  })):Unit);
   l _=(console.log("
 === Color Conversion ==="):Unit);
   l _=(console.log(colorToHex(Red())):Unit);
   l _=(console.log("
 === Tuple Coverage ==="):Unit);
-  l _=(console.log(classifyPair(true,false)):Unit);
-  l _=(console.log(classifyPair(false,false)):Unit);
+  l _=(console.log(classifyPair(
+    true,
+    false
+  )):Unit);
+  l _=(console.log(classifyPair(
+    false,
+    false
+  )):Unit);
   l _=(console.log("
 === State Transition ==="):Unit);
-  l _=(console.log(stateToString(stateTransition(Increment(),{count:99,mode:"normal"}))):Unit);
-  l _=(console.log(stateToString(stateTransition(Reset(),{count:5,mode:"busy"}))):Unit);
+  l _=(console.log(stateToString(stateTransition(
+    Increment(),
+    {
+      count:99,
+      mode:"normal"
+    }
+  ))):Unit);
+  l _=(console.log(stateToString(stateTransition(
+    Reset(),
+    {
+      count:5,
+      mode:"busy"
+    }
+  ))):Unit);
   l _=(console.log("
 === First Positive ==="):Unit);
-  l _=(console.log(findFirstPositive([-3,-1,4,8])):Unit);
+  l _=(console.log(findFirstPositive([
+    -3,
+    -1,
+    4,
+    8
+  ])):Unit);
   l _=(console.log(findFirstPositive(([]:[Int]))):Unit);
   0
 }
 
 λprioritizeTask(priority:Int,urgent:Bool)=>String match priority{
-  p when urgent=>"URGENT (priority "++§string.intToString(p)++")"|
+  p when urgent=>"URGENT (priority "
+    ++§string.intToString(p)
+    ++")"|
   p when p>7=>"High priority"|
   p when p>3=>"Medium priority"|
   _=>"Low priority"
@@ -111,14 +193,33 @@ e console
   Err(_)=>"Unknown error"
 }
 
-λstateToString(state:State)=>String="State(count="++§string.intToString(state.count)++", mode="++state.mode++")"
+λstateToString(state:State)=>String="State(count="
+  ++§string.intToString(state.count)
+  ++", mode="
+  ++state.mode
+  ++")"
 
 λstateTransition(action:Action,state:State)=>State match action{
-  Increment() when state.count<100=>{count:state.count+1,mode:state.mode}|
-  Increment()=>{count:100,mode:"maxed"}|
-  Decrement() when state.count>0=>{count:state.count-1,mode:state.mode}|
-  Decrement()=>{count:0,mode:"empty"}|
-  Reset()=>{count:0,mode:"normal"}
+  Increment() when state.count<100=>{
+    count:state.count+1,
+    mode:state.mode
+  }|
+  Increment()=>{
+    count:100,
+    mode:"maxed"
+  }|
+  Decrement() when state.count>0=>{
+    count:state.count-1,
+    mode:state.mode
+  }|
+  Decrement()=>{
+    count:0,
+    mode:"empty"
+  }|
+  Reset()=>{
+    count:0,
+    mode:"normal"
+  }
 }
 
 λvalidateUser(u:User)=>String match u.age{

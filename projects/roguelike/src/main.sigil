@@ -20,7 +20,10 @@ e console:{log:λ(String)=>!Log Unit}
   l _=(§terminal.hideCursor():Unit);
   l _=(§terminal.clearScreen():Unit);
   l state=(•roguelike.makeGame():µGameState);
-  l result=(playLoop(µMoveMode(),state):µLoopResult);
+  l result=(playLoop(
+    µMoveMode(),
+    state
+  ):µLoopResult);
   l _=(§terminal.clearScreen():Unit);
   l _=(§terminal.showCursor():Unit);
   l _=(§terminal.disableRawMode():Unit);
@@ -31,30 +34,66 @@ e console:{log:λ(String)=>!Log Unit}
 }
 
 λplayLoop(mode:µInputMode,state:µGameState)=>!Log!Random!Terminal µLoopResult={
-  l _=(showFrame(•roguelike.renderFrame(state),mode):Unit);
-  l action=(resolveKey((§terminal.readKey():§terminal.Key),mode):µLoopAction);
+  l _=(showFrame(
+    •roguelike.renderFrame(state),
+    mode
+  ):Unit);
+  l action=(resolveKey(
+    (§terminal.readKey():§terminal.Key),
+    mode
+  ):µLoopAction);
   match action{
-    µCommit(command,nextMode)=>match •roguelike.advance(command,state){
+    µCommit(
+  command,
+  nextMode
+)=>match •roguelike.advance(
+      command,
+      state
+    ){
       Some(step)=>match step.outcome{
         Some(outcome)=>{
-          l _=(showFrame(step.frame,nextMode):Unit);
+          l _=(showFrame(
+            step.frame,
+            nextMode
+          ):Unit);
           µEnded(outcome)
         }|
-        None()=>playLoop(nextMode,step.state)
+        None()=>playLoop(
+          nextMode,
+          step.state
+        )
       }|
-      None()=>playLoop(mode,state)
+      None()=>playLoop(
+        mode,
+        state
+      )
     }|
     µQuitGame()=>µQuit()|
-    µStay(nextMode)=>playLoop(nextMode,state)
+    µStay(nextMode)=>playLoop(
+      nextMode,
+      state
+    )
   }
 }
 
 λresolveDirectional(mode:µInputMode,text:String)=>µLoopAction match directionForKey(text){
   Some(direction)=>match mode{
-    µBlinkMode()=>µCommit(µBlink(direction),µMoveMode())|
-    µBombMode()=>µCommit(µBomb(direction),µMoveMode())|
-    µMoveMode()=>µCommit(µMove(direction),µMoveMode())|
-    µShootMode()=>µCommit(µShoot(direction),µMoveMode())
+    µBlinkMode()=>µCommit(
+      µBlink(direction),
+      µMoveMode()
+    )|
+    µBombMode()=>µCommit(
+      µBomb(direction),
+      µMoveMode()
+    )|
+    µMoveMode()=>µCommit(
+      µMove(direction),
+      µMoveMode()
+    )|
+    µShootMode()=>µCommit(
+      µShoot(direction),
+      µMoveMode()
+    )
   }|
   None()=>µStay(mode)
 }
@@ -62,19 +101,31 @@ e console:{log:λ(String)=>!Log Unit}
 λresolveKey(key:§terminal.Key,mode:µInputMode)=>µLoopAction match key{
   §terminal.Escape()=>µStay(µMoveMode())|
   §terminal.Text(text)=>match text{
-    "."=>µCommit(µWait(),µMoveMode())|
+    "."=>µCommit(
+      µWait(),
+      µMoveMode()
+    )|
     "b"=>µStay(µBombMode())|
     "f"=>µStay(µShootMode())|
-    "p"=>µCommit(µDrinkPotion(),µMoveMode())|
+    "p"=>µCommit(
+      µDrinkPotion(),
+      µMoveMode()
+    )|
     "q"=>µQuitGame()|
     "t"=>µStay(µBlinkMode())|
-    _=>resolveDirectional(mode,text)
+    _=>resolveDirectional(
+      mode,
+      text
+    )
   }
 }
 
 λshowFrame(frame:µFrame,mode:µInputMode)=>!Terminal Unit={
   l _=(§terminal.clearScreen():Unit);
-  §terminal.write(•roguelike.frameText(frame)++"
-"++controls(mode)++"
+  §terminal.write(•roguelike.frameText(frame)
+    ++"
+"
+    ++controls(mode)
+    ++"
 ")
 }

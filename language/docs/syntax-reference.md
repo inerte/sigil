@@ -113,7 +113,7 @@ For function declarations:
 
 - `=` is required before a non-`match` body
 - `=` is forbidden before a `match` body
-- the canonical printer keeps the full signature on one physical line
+- delimited aggregate forms stay flat with `0` or `1` item and print multiline with `2+` items, including type arguments inside signatures
 - a direct `match` body begins on that same line
 
 Effects, when present, appear between `=>` and the return type:
@@ -276,7 +276,11 @@ rule [µ.Pii,µ.Usa] for •topology.auditLog=Through(•policies.redactSsn)
 ### Product Types
 
 ```sigil module
-t User={active:Bool,id:Int,name:String}
+t User={
+  active:Bool,
+  id:Int,
+  name:String
+}
 ```
 
 Record fields are canonical alphabetical order everywhere records appear.
@@ -301,7 +305,11 @@ t TopologicalSortResult=CycleDetected()|Ordering([Int])
 ```
 
 ```sigil module projects/algorithms/src/orderingExample.lib.sigil
-λorderingResult()=>µTopologicalSortResult=µOrdering([1,2,3])
+λorderingResult()=>µTopologicalSortResult=µOrdering([
+  1,
+  2,
+  3
+])
 
 λorderingValues(result:µTopologicalSortResult)=>[Int] match result{
   µOrdering(order)=>order|
@@ -316,7 +324,10 @@ Named types may carry a pure `where` clause:
 ```sigil module
 t BirthYear=Int where value>1800 and value<10000
 
-t DateRange={end:Int,start:Int} where value.end≥value.start
+t DateRange={
+  end:Int,
+  start:Int
+} where value.end≥value.start
 ```
 
 Constraint rules:
@@ -499,7 +510,10 @@ Current match rules:
 Examples:
 
 ```sigil module
-t Point={x:Int,y:Int}
+t Point={
+  x:Int,
+  y:Int
+}
 
 λfromOption(option:Option[Int])=>Int match option{
   Some(value)=>value|
@@ -508,21 +522,51 @@ t Point={x:Int,y:Int}
 
 λheadOrZero(list:[Int])=>Int match list{
   []=>0|
-  [head,.rest]=>head
+  [
+  head,
+  .rest
+]=>head
 }
 
-λpairLabel(left:Bool,right:Bool)=>String match (left,right){
-  (true,true)=>"tt"|
-  (true,false)=>"tf"|
-  (false,true)=>"ft"|
-  (false,false)=>"ff"
+λpairLabel(left:Bool,right:Bool)=>String match (
+  left,
+  right
+){
+  (
+  true,
+  true
+)=>"tt"|
+  (
+  true,
+  false
+)=>"tf"|
+  (
+  false,
+  true
+)=>"ft"|
+  (
+  false,
+  false
+)=>"ff"
 }
 
 λpointLabel(point:Point)=>String match point{
-  {x:0,y:0}=>"origin"|
-  {x:0,y}=>"y-axis"|
-  {x,y:0}=>"x-axis"|
-  {x,y}=>"plane"
+  {
+  x:0,
+  y:0
+}=>"origin"|
+  {
+  x:0,
+  y
+}=>"y-axis"|
+  {
+  x,
+  y:0
+}=>"x-axis"|
+  {
+  x,
+  y
+}=>"plane"
 }
 ```
 
@@ -537,7 +581,11 @@ t IntList=[Int]
 List literal:
 
 ```sigil expr
-[1,2,3]
+[
+  1,
+  2,
+  3
+]
 ```
 
 Map type:
@@ -548,17 +596,27 @@ t StringIntMap={String↦Int}
 
 Map literals use `↦`:
 
-```sigil exprs
-{"a"↦1,"b"↦2}
-({↦}:{String↦Int})
+```sigil module
+λsample1()=>{String↦Int}={
+  "a"↦1,
+  "b"↦2
+}
+
+λsample2()=>{String↦Int}=({↦}:{String↦Int})
 ```
 
 Record types and literals use `:`:
 
 ```sigil module
-t User={id:Int,name:String}
+t User={
+  id:Int,
+  name:String
+}
 
-λsampleUser()=>User={id:1,name:"Ana"}
+λsampleUser()=>User={
+  id:1,
+  name:"Ana"
+}
 ```
 
 ## Built-In List Operators
@@ -573,13 +631,31 @@ Sigil includes canonical list operators:
 Examples:
 
 ```sigil module
-λconcatenated()=>[Int]=[1,2]⧺[3,4]
+λconcatenated()=>[Int]=[
+  1,
+  2
+]⧺[
+  3,
+  4
+]
 
-λdoubled()=>[Int]=[1,2,3] map (λ(x:Int)=>Int=x*2)
+λdoubled()=>[Int]=[
+  1,
+  2,
+  3
+] map (λ(x:Int)=>Int=x*2)
 
-λfiltered()=>[Int]=[1,2,3] filter (λ(x:Int)=>Bool=x>1)
+λfiltered()=>[Int]=[
+  1,
+  2,
+  3
+] filter (λ(x:Int)=>Bool=x>1)
 
-λsummed()=>Int=[1,2,3] reduce (λ(acc:Int,x:Int)=>Int=acc+x) from 0
+λsummed()=>Int=[
+  1,
+  2,
+  3
+] reduce (λ(acc:Int,x:Int)=>Int=acc+x) from 0
 ```
 
 `map` and `filter` require pure callbacks.
@@ -589,17 +665,37 @@ Examples:
 Sigil uses one explicit concurrency surface:
 
 ```sigil program
-λmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@5:{jitterMs:Some({max:25,min:1}),stopOn:shouldStop,windowMs:Some(1000)}{
+λmain()=>!Timer [ConcurrentOutcome[
+  Int,
+  String
+]]=concurrent urlAudit@5:{
+  jitterMs:Some({
+    max:25,
+    min:1
+  }),
+  stopOn:shouldStop,
+  windowMs:Some(1000)
+}{
   spawn one()
-  spawnEach [1,2,3] process
+  spawnEach [
+    1,
+    2,
+    3
+  ] process
 }
 
-λone()=>!Timer Result[Int,String]={
+λone()=>!Timer Result[
+  Int,
+  String
+]={
   l _=(§time.sleepMs(0):Unit);
   Ok(1)
 }
 
-λprocess(value:Int)=>!Timer Result[Int,String]={
+λprocess(value:Int)=>!Timer Result[
+  Int,
+  String
+]={
   l _=(§time.sleepMs(0):Unit);
   Ok(value)
 }

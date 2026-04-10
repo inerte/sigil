@@ -1,11 +1,17 @@
 λboardLength(board:[µCell])=>Int match board{
   []=>0|
-  [_,.rest]=>1+boardLength(rest)
+  [
+  _,
+  .rest
+]=>1+boardLength(rest)
 }
 
 λbombCount(board:[µCell])=>Int match board{
   []=>0|
-  [cell,.rest]=>match cell.bomb{
+  [
+  cell,
+  .rest
+]=>match cell.bomb{
     true=>1+bombCount(rest)|
     false=>bombCount(rest)
   }
@@ -13,61 +19,198 @@
 
 λcellFlagged(board:[µCell],targetX:Int,targetY:Int)=>Bool match board{
   []=>false|
-  [cell,.rest]=>match cell.x=targetX and cell.y=targetY{
+  [
+  cell,
+  .rest
+]=>match cell.x=targetX and cell.y=targetY{
     true=>cell.flagged|
-    false=>cellFlagged(rest,targetX,targetY)
+    false=>cellFlagged(
+      rest,
+      targetX,
+      targetY
+    )
   }
 }
 
 λcellRevealed(board:[µCell],targetX:Int,targetY:Int)=>Bool match board{
   []=>false|
-  [cell,.rest]=>match cell.x=targetX and cell.y=targetY{
+  [
+  cell,
+  .rest
+]=>match cell.x=targetX and cell.y=targetY{
     true=>cell.revealed|
-    false=>cellRevealed(rest,targetX,targetY)
+    false=>cellRevealed(
+      rest,
+      targetX,
+      targetY
+    )
   }
 }
 
-λdemoGame()=>µGame=•minesweepDomain.gameFromBombs([{x:1,y:0},{x:3,y:1},{x:0,y:3},{x:4,y:4}])
+λdemoGame()=>µGame=•minesweepDomain.gameFromBombs([
+  {
+    x:1,
+    y:0
+  },
+  {
+    x:3,
+    y:1
+  },
+  {
+    x:0,
+    y:3
+  },
+  {
+    x:4,
+    y:4
+  }
+])
 
 λmain()=>Unit=()
 
 test "minesweep gameFromBombs builds a full board" {
   l game=(demoGame():µGame);
-  boardLength(game.board)=36 and bombCount(game.board)=4 and game.width=6 and game.height=6 and game.status="playing"
+  boardLength(game.board)=36
+    and bombCount(game.board)=4
+    and game.width=6
+    and game.height=6
+    and game.status="playing"
 }
 
 test "minesweep point helpers enumerate the board" {
-  #•minesweepDomain.allPoints(2,3,0)=6 and #•minesweepDomain.allPointsRow(4,0,2)=4
+  #•minesweepDomain.allPoints(
+    2,
+    3,
+    0
+  )=6 and #•minesweepDomain.allPointsRow(
+    4,
+    0,
+    2
+  )=4
 }
 
 test "minesweep cellAt returns none outside the board" {
-  match •minesweepDomain.cellAt(demoGame().board,9,9){
+  match •minesweepDomain.cellAt(
+    demoGame().board,
+    9,
+    9
+  ){
     None()=>true|
     Some(_)=>false
   }
 }
 
 test "minesweep revealCell expands empty regions" {
-  l game=(•minesweepDomain.revealCell(•minesweepDomain.gameFromBombs([{x:5,y:5}]),0,0):µGame);
-  cellRevealed(game.board,0,0) and cellRevealed(game.board,0,1) and cellRevealed(game.board,4,4) and game.status="won"
+  l game=(•minesweepDomain.revealCell(
+    •minesweepDomain.gameFromBombs([{
+      x:5,
+      y:5
+    }]),
+    0,
+    0
+  ):µGame);
+  cellRevealed(
+    game.board,
+    0,
+    0
+  )
+    and cellRevealed(
+      game.board,
+      0,
+      1
+    )
+    and cellRevealed(
+      game.board,
+      4,
+      4
+    )
+    and game.status="won"
 }
 
 test "minesweep toggleFlag flips the target cell" {
-  cellFlagged(•minesweepDomain.toggleFlag(demoGame(),2,2).board,2,2)
+  cellFlagged(
+    •minesweepDomain.toggleFlag(
+      demoGame(),
+      2,
+      2
+    ).board,
+    2,
+    2
+  )
 }
 
 test "minesweep toggleFlag toggles back off" {
-  cellFlagged(•minesweepDomain.toggleFlag(•minesweepDomain.toggleFlag(demoGame(),2,2),2,2).board,2,2)=false
+  cellFlagged(
+    •minesweepDomain.toggleFlag(
+      •minesweepDomain.toggleFlag(
+        demoGame(),
+        2,
+        2
+      ),
+      2,
+      2
+    ).board,
+    2,
+    2
+  )=false
 }
 
 test "minesweep revealCell reveals a safe cell" {
-  cellRevealed(•minesweepDomain.revealCell(demoGame(),2,2).board,2,2) and •minesweepDomain.revealCell(demoGame(),2,2).status="playing"
+  cellRevealed(
+    •minesweepDomain.revealCell(
+      demoGame(),
+      2,
+      2
+    ).board,
+    2,
+    2
+  ) and •minesweepDomain.revealCell(
+    demoGame(),
+    2,
+    2
+  ).status="playing"
 }
 
 test "minesweep revealCell loses on bomb hit" {
-  cellRevealed(•minesweepDomain.revealCell(demoGame(),1,0).board,1,0) and •minesweepDomain.revealCell(demoGame(),1,0).status="lost"
+  cellRevealed(
+    •minesweepDomain.revealCell(
+      demoGame(),
+      1,
+      0
+    ).board,
+    1,
+    0
+  ) and •minesweepDomain.revealCell(
+    demoGame(),
+    1,
+    0
+  ).status="lost"
 }
 
 test "minesweep revealCell ignores flagged targets" {
-  cellFlagged(•minesweepDomain.revealCell(•minesweepDomain.toggleFlag(demoGame(),1,0),1,0).board,1,0) and cellRevealed(•minesweepDomain.revealCell(•minesweepDomain.toggleFlag(demoGame(),1,0),1,0).board,1,0)=false
+  cellFlagged(
+    •minesweepDomain.revealCell(
+      •minesweepDomain.toggleFlag(
+        demoGame(),
+        1,
+        0
+      ),
+      1,
+      0
+    ).board,
+    1,
+    0
+  ) and cellRevealed(
+    •minesweepDomain.revealCell(
+      •minesweepDomain.toggleFlag(
+        demoGame(),
+        1,
+        0
+      ),
+      1,
+      0
+    ).board,
+    1,
+    0
+  )=false
 }

@@ -1,3 +1,35 @@
 e process
 
-c world=(†runtime.withProcessHandles([†process.fixtureHandle(•topology.govBrCli,[†process.rule(["gov-client"],None(),{code:0,stderr:"",stdout:"ok"})])],†runtime.withLogSinks([†log.captureSink(•topology.auditLog)],†runtime.withFsRoots([†fs.sandboxRoot(".local",•topology.exportsDir)],†runtime.world(†clock.systemClock(),†fs.real(),[],†log.capture(),†process.deny(),†random.seeded(1337),[],†timer.virtual())))):†runtime.World)
+c world=(†runtime.withProcessHandles(
+  [†process.fixtureHandle(
+    •topology.govBrCli,
+    [†process.rule(
+      ["gov-client"],
+      None(),
+      {
+        code:0,
+        stderr:"",
+        stdout:"ok"
+      }
+    )]
+  )],
+  †runtime.withLogSinks(
+    [†log.captureSink(•topology.auditLog)],
+    †runtime.withFsRoots(
+      [†fs.sandboxRoot(
+        ".local",
+        •topology.exportsDir
+      )],
+      †runtime.world(
+        †clock.systemClock(),
+        †fs.real(),
+        [],
+        †log.capture(),
+        †process.deny(),
+        †random.seeded(1337),
+        [],
+        †timer.virtual()
+      )
+    )
+  )
+):†runtime.World)

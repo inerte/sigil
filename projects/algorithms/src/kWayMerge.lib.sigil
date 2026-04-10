@@ -1,23 +1,48 @@
 λadvanceOne(changed:Bool,minHead:Int,runs:[[Int]])=>[[Int]] match runs{
   []=>[]|
-  [run,.rest]=>match changed{
-    true=>[run]⧺advanceOne(true,minHead,rest)|
+  [
+  run,
+  .rest
+]=>match changed{
+    true=>[run]⧺advanceOne(
+      true,
+      minHead,
+      rest
+    )|
     false=>match head(run)=minHead{
       true=>match tail(run){
-        []=>advanceOne(true,minHead,rest)|
-        next=>[next]⧺advanceOne(true,minHead,rest)
+        []=>advanceOne(
+          true,
+          minHead,
+          rest
+        )|
+        next=>[next]⧺advanceOne(
+          true,
+          minHead,
+          rest
+        )
       }|
-      false=>[run]⧺advanceOne(false,minHead,rest)
+      false=>[run]⧺advanceOne(
+        false,
+        minHead,
+        rest
+      )
     }
   }
 }
 
-λhead(xs:[Int])=>Int match §list.nth(0,xs){
+λhead(xs:[Int])=>Int match §list.nth(
+  0,
+  xs
+){
   Some(value)=>value|
   None()=>0
 }
 
-λkWayMerge(runs:[[Int]])=>[Int]=kWayMergeCount(totalValues(runs),runs)
+λkWayMerge(runs:[[Int]])=>[Int]=kWayMergeCount(
+  totalValues(runs),
+  runs
+)
 
 λkWayMergeCount(remaining:Int,runs:[[Int]])=>[Int] match remaining{
   0=>[]|
@@ -25,7 +50,14 @@
     []=>[]|
     active=>{
       l minHead=(smallestHead(active):Int);
-      [minHead]⧺kWayMergeCount(remaining-1,advanceOne(false,minHead,active))
+      [minHead]⧺kWayMergeCount(
+        remaining-1,
+        advanceOne(
+          false,
+          minHead,
+          active
+        )
+      )
     }
   }
 }
@@ -37,6 +69,9 @@
   None()=>0
 }
 
-λtail(xs:[Int])=>[Int]=§list.drop(1,xs)
+λtail(xs:[Int])=>[Int]=§list.drop(
+  1,
+  xs
+)
 
 λtotalValues(runs:[[Int]])=>Int=runs map (λ(run:[Int])=>Int=#run) reduce (λ(acc:Int,count:Int)=>Int=acc+count) from 0

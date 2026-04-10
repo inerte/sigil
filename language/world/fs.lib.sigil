@@ -2,22 +2,34 @@ t FsEntry=DenyFs()|RealFs()|SandboxFs(String)
 
 t FsRootEntry=FsRootEntry(FsRootEntryValue)
 
-t FsRootEntryValue={mode:FsEntry,rootName:String}
+t FsRootEntryValue={
+  mode:FsEntry,
+  rootName:String
+}
 
 λdeny()=>FsEntry=DenyFs()
 
 λdenyRoot(root:§topology.FsRoot)=>FsRootEntry match root{
-  §topology.FsRoot(rootName)=>FsRootEntry({mode:DenyFs(),rootName:rootName})
+  §topology.FsRoot(rootName)=>FsRootEntry({
+    mode:DenyFs(),
+    rootName:rootName
+  })
 }
 
 λreal()=>FsEntry=RealFs()
 
 λrealRoot(root:§topology.FsRoot)=>FsRootEntry match root{
-  §topology.FsRoot(rootName)=>FsRootEntry({mode:RealFs(),rootName:rootName})
+  §topology.FsRoot(rootName)=>FsRootEntry({
+    mode:RealFs(),
+    rootName:rootName
+  })
 }
 
 λsandbox(root:String)=>FsEntry=SandboxFs(root)
 
 λsandboxRoot(path:String,root:§topology.FsRoot)=>FsRootEntry match root{
-  §topology.FsRoot(rootName)=>FsRootEntry({mode:SandboxFs(path),rootName:rootName})
+  §topology.FsRoot(rootName)=>FsRootEntry({
+    mode:SandboxFs(path),
+    rootName:rootName
+  })
 }

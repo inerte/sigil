@@ -8,4 +8,7 @@
 
 λcalledOnce()=>Bool=calledNTimes(1)
 
-λcalledOnceAt(handle:§topology.ProcessHandle)=>Bool=calledNTimesAt(1,handle)
+λcalledOnceAt(handle:§topology.ProcessHandle)=>Bool=calledNTimesAt(
+  1,
+  handle
+)

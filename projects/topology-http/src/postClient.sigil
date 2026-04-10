@@ -1,4 +1,11 @@
-λmain()=>!Http String match §httpClient.post("echoed",•topology.mailerApi,§httpClient.emptyHeaders(),"/echo"){
-  Ok(response)=>§string.intToString(response.status)++":"++response.body|
+λmain()=>!Http String match §httpClient.post(
+  "echoed",
+  •topology.mailerApi,
+  §httpClient.emptyHeaders(),
+  "/echo"
+){
+  Ok(response)=>§string.intToString(response.status)
+    ++":"
+    ++response.body|
   Err(error)=>"ERR:"++error.message
 }

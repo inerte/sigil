@@ -1,6 +1,19 @@
 e process
 
-c world=(†runtime.world(†clock.systemClock(),†fs.real(),[],†log.stdout(),†process.real(),†random.real(),[†tcp.proxy(•topology.eventStream,eventStreamHost(),eventStreamPort())],†timer.real()):†runtime.World)
+c world=(†runtime.world(
+  †clock.systemClock(),
+  †fs.real(),
+  [],
+  †log.stdout(),
+  †process.real(),
+  †random.real(),
+  [†tcp.proxy(
+    •topology.eventStream,
+    eventStreamHost(),
+    eventStreamPort()
+  )],
+  †timer.real()
+):†runtime.World)
 
 λeventStreamHost()=>String=eventStreamHostFromProperty(process.env.hasOwnProperty("eventStreamHost"))
 

@@ -392,7 +392,16 @@ fn run_json_trace_success_includes_call_branch_and_effect_events() {
     let file = write_program(
         &dir,
         "main.sigil",
-        "λhelper(flag:Bool)=>!Random Int match flag{\n  true=>§random.intBetween(1,1)|\n  false=>0\n}\n\nλmain()=>!Random Int=helper(true)\n",
+        r#"λhelper(flag:Bool)=>!Random Int match flag{
+  true=>§random.intBetween(
+    1,
+    1
+  )|
+  false=>0
+}
+
+λmain()=>!Random Int=helper(true)
+"#,
     );
 
     let output = Command::new(sigil_bin())
@@ -859,7 +868,19 @@ fn run_json_preserves_topology_codes_for_bootstrap_failures() {
     );
     fs::write(
         config_dir.join("staging.lib.sigil"),
-        "e process\n\nc world=(†runtime.world(†clock.systemClock(),†fs.real(),[],†log.capture(),†process.real(),†random.seeded(1337),[],†timer.virtual()):†runtime.World)\n",
+        concat!(
+            "e process\n\n",
+            "c world=(†runtime.world(\n",
+            "  †clock.systemClock(),\n",
+            "  †fs.real(),\n",
+            "  [],\n",
+            "  †log.capture(),\n",
+            "  †process.real(),\n",
+            "  †random.seeded(1337),\n",
+            "  [],\n",
+            "  †timer.virtual()\n",
+            "):†runtime.World)\n",
+        ),
     )
     .unwrap();
 
@@ -906,7 +927,19 @@ fn run_json_record_writes_replay_artifact_on_success() {
     let file = write_program(
         &dir,
         "main.sigil",
-        "λmain()=>!Clock!Random!Timer String={\n  l now=(§time.toEpochMillis((§time.now():§time.Instant)):Int);\n  l draw=(§random.intBetween(1,1):Int);\n  l _=(§time.sleepMs(1):Unit);\n  \"t=\"++§string.intToString(now)++\",n=\"++§string.intToString(draw)\n}\n",
+        r#"λmain()=>!Clock!Random!Timer String={
+  l now=(§time.toEpochMillis((§time.now():§time.Instant)):Int);
+  l draw=(§random.intBetween(
+    1,
+    1
+  ):Int);
+  l _=(§time.sleepMs(1):Unit);
+  "t="
+    ++§string.intToString(now)
+    ++",n="
+    ++§string.intToString(draw)
+}
+"#,
     );
     let artifact = dir.join("success.replay.json");
 
@@ -961,7 +994,16 @@ fn run_json_record_writes_partial_artifact_on_runtime_failure() {
     let file = write_program(
         &dir,
         "main.sigil",
-        "e boom:{explode:λ()=>Int}\n\nλmain()=>!Random Int={\n  l _=(§random.intBetween(1,1):Int);\n  boom.explode()\n}\n",
+        r#"e boom:{explode:λ()=>Int}
+
+λmain()=>!Random Int={
+  l _=(§random.intBetween(
+    1,
+    1
+  ):Int);
+  boom.explode()
+}
+"#,
     );
     let artifact = dir.join("failure.replay.json");
 
@@ -999,7 +1041,19 @@ fn run_json_replay_reproduces_recorded_success() {
     let file = write_program(
         &dir,
         "main.sigil",
-        "λmain()=>!Clock!Random!Timer String={\n  l now=(§time.toEpochMillis((§time.now():§time.Instant)):Int);\n  l draw=(§random.intBetween(1,1):Int);\n  l _=(§time.sleepMs(1):Unit);\n  \"t=\"++§string.intToString(now)++\",n=\"++§string.intToString(draw)\n}\n",
+        r#"λmain()=>!Clock!Random!Timer String={
+  l now=(§time.toEpochMillis((§time.now():§time.Instant)):Int);
+  l draw=(§random.intBetween(
+    1,
+    1
+  ):Int);
+  l _=(§time.sleepMs(1):Unit);
+  "t="
+    ++§string.intToString(now)
+    ++",n="
+    ++§string.intToString(draw)
+}
+"#,
     );
     let artifact = dir.join("success.replay.json");
 
@@ -1056,7 +1110,16 @@ fn run_json_replay_breakpoints_preserve_hit_resolution() {
     let file = write_program(
         &dir,
         "main.sigil",
-        "λhelper(flag:Bool)=>!Random Int match flag{\n  true=>§random.intBetween(1,1)|\n  false=>0\n}\n\nλmain()=>!Random Int=helper(true)\n",
+        r#"λhelper(flag:Bool)=>!Random Int match flag{
+  true=>§random.intBetween(
+    1,
+    1
+  )|
+  false=>0
+}
+
+λmain()=>!Random Int=helper(true)
+"#,
     );
     let artifact = dir.join("breakpoints.replay.json");
 
@@ -1176,7 +1239,40 @@ fn run_json_replay_reproduces_recorded_filesystem_effects_without_touching_disk(
     let file = write_program(
         &dir,
         "main.sigil",
-        "λboolText(value:Bool)=>String match value{\n  true=>\"t\"|\n  false=>\"f\"\n}\n\nλmain()=>!Fs String={\n  l root=(§file.makeTempDir(\"sigil-replay-fs-\"):String);\n  l file=(§path.join(root,\"sample.txt\"):String);\n  l _=(§file.writeText(\"hello\",file):Unit);\n  l _=(§file.appendText(\" world\",file):Unit);\n  l text=(§file.readText(file):String);\n  l entries=(§file.listDir(root):[String]);\n  l present=(§file.exists(file):Bool);\n  l _=(§file.remove(file):Unit);\n  l _=(§file.removeTree(root):Unit);\n  text++\"|\"++boolText(present)++\"|\"++§string.join(\",\",entries)\n}\n",
+        r#"λboolText(value:Bool)=>String match value{
+  true=>"t"|
+  false=>"f"
+}
+
+λmain()=>!Fs String={
+  l root=(§file.makeTempDir("sigil-replay-fs-"):String);
+  l file=(§path.join(
+    root,
+    "sample.txt"
+  ):String);
+  l _=(§file.writeText(
+    "hello",
+    file
+  ):Unit);
+  l _=(§file.appendText(
+    " world",
+    file
+  ):Unit);
+  l text=(§file.readText(file):String);
+  l entries=(§file.listDir(root):[String]);
+  l present=(§file.exists(file):Bool);
+  l _=(§file.remove(file):Unit);
+  l _=(§file.removeTree(root):Unit);
+  text
+    ++"|"
+    ++boolText(present)
+    ++"|"
+    ++§string.join(
+      ",",
+      entries
+    )
+}
+"#,
     );
     let artifact = dir.join("success-fs.replay.json");
 

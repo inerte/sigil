@@ -79,7 +79,19 @@ Each declared environment gets one config module exporting `world`:
 ```sigil module projects/topology-http/config/test.lib.sigil
 e process
 
-c world=(†runtime.world(†clock.systemClock(),†fs.real(),[†http.proxy(mailerApiBaseUrl(),•topology.mailerApi)],†log.capture(),†process.real(),†random.seeded(1337),[],†timer.virtual()):†runtime.World)
+c world=(†runtime.world(
+  †clock.systemClock(),
+  †fs.real(),
+  [†http.proxy(
+    mailerApiBaseUrl(),
+    •topology.mailerApi
+  )],
+  †log.capture(),
+  †process.real(),
+  †random.seeded(1337),
+  [],
+  †timer.virtual()
+):†runtime.World)
 
 λmailerApiBaseUrl()=>String=mailerApiBaseUrlFromProperty(process.env.hasOwnProperty("sigilHttpTestBaseUrl"))
 
@@ -94,7 +106,19 @@ Production-style config can read env vars, but only there:
 ```sigil module projects/topology-http/config/prod.lib.sigil
 e process
 
-c world=(†runtime.world(†clock.systemClock(),†fs.real(),[†http.proxy((process.env.mailerApiUrl:String),•topology.mailerApi)],†log.stdout(),†process.real(),†random.real(),[],†timer.real()):†runtime.World)
+c world=(†runtime.world(
+  †clock.systemClock(),
+  †fs.real(),
+  [†http.proxy(
+    (process.env.mailerApiUrl:String),
+    •topology.mailerApi
+  )],
+  †log.stdout(),
+  †process.real(),
+  †random.real(),
+  [],
+  †timer.real()
+):†runtime.World)
 ```
 
 ## Application Code Uses Handles, Not Endpoints
@@ -102,7 +126,11 @@ c world=(†runtime.world(†clock.systemClock(),†fs.real(),[†http.proxy((pr
 Canonical HTTP usage:
 
 ```sigil program projects/topology-http/src/getClient.sigil
-λmain()=>!Http String match §httpClient.get(•topology.mailerApi,§httpClient.emptyHeaders(),"/health"){
+λmain()=>!Http String match §httpClient.get(
+  •topology.mailerApi,
+  §httpClient.emptyHeaders(),
+  "/health"
+){
   Ok(response)=>response.body|
   Err(error)=>error.message
 }
@@ -111,7 +139,10 @@ Canonical HTTP usage:
 Canonical TCP usage:
 
 ```sigil program projects/topology-tcp/src/pingClient.sigil
-λmain()=>!Tcp String match §tcpClient.send(•topology.eventStream,"ping"){
+λmain()=>!Tcp String match §tcpClient.send(
+  •topology.eventStream,
+  "ping"
+){
   Ok(response)=>response.message|
   Err(error)=>error.message
 }
@@ -135,10 +166,23 @@ Example:
 
 ```sigil module projects/labelled-boundaries/src/app.lib.sigil
 λrunExample()=>!Fs!Log!Process Unit={
-  l _=(§file.makeDirsAt("",•topology.exportsDir):Unit);
-  l _=(§file.writeTextAt(("12345678901":µCpf),"cpf.txt",•topology.exportsDir):Unit);
-  l _=(§log.write(•policies.redactSsn(("123456789":µSsn)),•topology.auditLog):Unit);
-  l _=(§process.runAt(•policies.govBrCommand(("gov-br-token":µGovBrToken)),•topology.govBrCli):§process.ProcessResult);
+  l _=(§file.makeDirsAt(
+    "",
+    •topology.exportsDir
+  ):Unit);
+  l _=(§file.writeTextAt(
+    ("12345678901":µCpf),
+    "cpf.txt",
+    •topology.exportsDir
+  ):Unit);
+  l _=(§log.write(
+    •policies.redactSsn(("123456789":µSsn)),
+    •topology.auditLog
+  ):Unit);
+  l _=(§process.runAt(
+    •policies.govBrCommand(("gov-br-token":µGovBrToken)),
+    •topology.govBrCli
+  ):§process.ProcessResult);
   ()
 }
 ```
@@ -201,9 +245,15 @@ The canonical example shape is:
 λmain()=>Unit=()
 
 test "audit sink receives redacted ssn" =>!Fs!Log!Process world {
-  c exports=(†fs.sandboxRoot(".local/labelled-boundaries-tests/audit",•topology.exportsDir):†fs.FsRootEntry)
+  c exports=(†fs.sandboxRoot(
+  ".local/labelled-boundaries-tests/audit",
+  •topology.exportsDir
+):†fs.FsRootEntry)
 } {
   l _=(•app.runExample():Unit);
-  ※check::log.containsAt("***-**-6789",•topology.auditLog)
+  ※check::log.containsAt(
+    "***-**-6789",
+    •topology.auditLog
+  )
 }
 ```

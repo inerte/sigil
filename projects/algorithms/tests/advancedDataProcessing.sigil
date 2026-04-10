@@ -1,20 +1,40 @@
 λmain()=>Unit=()
 
 test "histogram counts duplicate integers" {
-  l counts=(•histogram.histogram([1,1,2,3,3,3]):{Int↦Int});
-  ¶map.size(counts)=3 and (match ¶map.get(3,counts){
+  l counts=(•histogram.histogram([
+    1,
+    1,
+    2,
+    3,
+    3,
+    3
+  ]):{Int↦Int});
+  ¶map.size(counts)=3 and (match ¶map.get(
+    3,
+    counts
+  ){
     Some(value)=>value=3|
     None()=>false
   })
 }
 
 test "histogram buckets map entries into records" {
-  #•histogram.buckets(•histogram.histogram([4,4,5]))=2
+  #•histogram.buckets(•histogram.histogram([
+    4,
+    4,
+    5
+  ]))=2
 }
 
 test "word frequency lowercases and counts repeated words" {
-  l counts=(•wordFrequency.frequency(["Sigil sigil map","filter reduce SIGIL"]):{String↦Int});
-  match ¶map.get("sigil",counts){
+  l counts=(•wordFrequency.frequency([
+    "Sigil sigil map",
+    "filter reduce SIGIL"
+  ]):{String↦Int});
+  match ¶map.get(
+    "sigil",
+    counts
+  ){
     Some(value)=>value=3 and ¶map.size(counts)=4|
     None()=>false
   }

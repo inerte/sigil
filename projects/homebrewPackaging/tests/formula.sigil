@@ -1,13 +1,25 @@
 λmain()=>Unit=()
 
-λsampleChecksums()=>String=§string.unlines(["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  sigil-2026-03-11T14-58-24Z-darwin-arm64.tar.gz","bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb  sigil-2026-03-11T14-58-24Z-darwin-x64.tar.gz","cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc  sigil-2026-03-11T14-58-24Z-linux-arm64.tar.gz","dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd  sigil-2026-03-11T14-58-24Z-linux-x64.tar.gz"])
+λsampleChecksums()=>String=§string.unlines([
+  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  sigil-2026-03-11T14-58-24Z-darwin-arm64.tar.gz",
+  "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb  sigil-2026-03-11T14-58-24Z-darwin-x64.tar.gz",
+  "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc  sigil-2026-03-11T14-58-24Z-linux-arm64.tar.gz",
+  "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd  sigil-2026-03-11T14-58-24Z-linux-x64.tar.gz"
+])
 
 test "archive name uses release naming convention" {
-  •formula.archiveName("darwin-arm64","2026-03-11T14-58-24Z")="sigil-2026-03-11T14-58-24Z-darwin-arm64.tar.gz"
+  •formula.archiveName(
+    "darwin-arm64",
+    "2026-03-11T14-58-24Z"
+  )="sigil-2026-03-11T14-58-24Z-darwin-arm64.tar.gz"
 }
 
 test "archive url points at GitHub release assets" {
-  •formula.archiveUrl("darwin-arm64","inerte/sigil","2026-03-11T14-58-24Z")="https://github.com/inerte/sigil/releases/download/2026-03-11T14-58-24Z/sigil-2026-03-11T14-58-24Z-darwin-arm64.tar.gz"
+  •formula.archiveUrl(
+    "darwin-arm64",
+    "inerte/sigil",
+    "2026-03-11T14-58-24Z"
+  )="https://github.com/inerte/sigil/releases/download/2026-03-11T14-58-24Z/sigil-2026-03-11T14-58-24Z-darwin-arm64.tar.gz"
 }
 
 test "checksum line rejects malformed input" {
@@ -25,26 +37,61 @@ test "checksum line parts reject missing archive name" {
 }
 
 test "find checksum returns none for missing archive" {
-  match •formula.findChecksum("missing.tar.gz",[({archive:"sigil-2026-03-11T14-58-24Z-darwin-arm64.tar.gz",sha256:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}:µChecksumEntry)]){
+  match •formula.findChecksum(
+    "missing.tar.gz",
+    [({
+      archive:"sigil-2026-03-11T14-58-24Z-darwin-arm64.tar.gz",
+      sha256:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    }:µChecksumEntry)]
+  ){
     Some(_)=>false|
     None()=>true
   }
 }
 
 test "formula renders release version and platform checksums" {
-  l text=•formula.formula({checksums:{darwinArm64:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",darwinX64:"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",linuxArm64:"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",linuxX64:"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"},repo:"inerte/sigil",version:"2026-03-11T14-58-24Z"});
-  §string.contains(text,"sha256 \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\"") and §string.contains(text,"sigil 2026-03-11T14-58-24Z") and §string.contains(text,"https://github.com/inerte/sigil/releases/download/2026-03-11T14-58-24Z/sigil-2026-03-11T14-58-24Z-linux-x64.tar.gz")
+  l text=•formula.formula({
+    checksums:{
+      darwinArm64:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      darwinX64:"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      linuxArm64:"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      linuxX64:"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    repo:"inerte/sigil",
+    version:"2026-03-11T14-58-24Z"
+  });
+  §string.contains(
+    text,
+    "sha256 \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\""
+  )
+    and §string.contains(
+      text,
+      "sigil 2026-03-11T14-58-24Z"
+    )
+    and §string.contains(
+      text,
+      "https://github.com/inerte/sigil/releases/download/2026-03-11T14-58-24Z/sigil-2026-03-11T14-58-24Z-linux-x64.tar.gz"
+    )
 }
 
 test "parse checksums extracts all release digests" {
-  match •formula.parseChecksums(sampleChecksums(),"2026-03-11T14-58-24Z"){
-    Some(checksums)=>checksums.darwinArm64="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" and checksums.darwinX64="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" and checksums.linuxArm64="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc" and checksums.linuxX64="dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"|
+  match •formula.parseChecksums(
+    sampleChecksums(),
+    "2026-03-11T14-58-24Z"
+  ){
+    Some(checksums)=>checksums.darwinArm64="aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      and checksums.darwinX64="bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      and checksums.linuxArm64="cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      and checksums.linuxX64="dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"|
     None()=>false
   }
 }
 
 test "parse checksums returns none when a platform digest is missing" {
-  match •formula.parseChecksums(§string.unlines(["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  sigil-2026-03-11T14-58-24Z-darwin-arm64.tar.gz"]),"2026-03-11T14-58-24Z"){
+  match •formula.parseChecksums(
+    §string.unlines(["aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa  sigil-2026-03-11T14-58-24Z-darwin-arm64.tar.gz"]),
+    "2026-03-11T14-58-24Z"
+  ){
     Some(_)=>false|
     None()=>true
   }

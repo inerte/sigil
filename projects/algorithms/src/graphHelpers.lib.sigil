@@ -1,22 +1,40 @@
-λhasVertex(graph:µGraph,vertex:Int)=>Bool=hasVertexNodes(graph.nodes,vertex)
+λhasVertex(graph:µGraph,vertex:Int)=>Bool=hasVertexNodes(
+  graph.nodes,
+  vertex
+)
 
 λhasVertexNodes(nodes:[µNodeNeighbors],vertex:Int)=>Bool match nodes{
   []=>false|
-  [node,.tail]=>match node.vertex=vertex{
+  [
+  node,
+  .tail
+]=>match node.vertex=vertex{
     true=>true|
-    false=>hasVertexNodes(tail,vertex)
+    false=>hasVertexNodes(
+      tail,
+      vertex
+    )
   }
 }
 
 λneighborsFromNodes(nodes:[µNodeNeighbors],vertex:Int)=>[Int] match nodes{
   []=>[]|
-  [node,.tail]=>match node.vertex=vertex{
+  [
+  node,
+  .tail
+]=>match node.vertex=vertex{
     true=>node.neighbors|
-    false=>neighborsFromNodes(tail,vertex)
+    false=>neighborsFromNodes(
+      tail,
+      vertex
+    )
   }
 }
 
-λneighborsOf(graph:µGraph,vertex:Int)=>[Int]=neighborsFromNodes(graph.nodes,vertex)
+λneighborsOf(graph:µGraph,vertex:Int)=>[Int]=neighborsFromNodes(
+  graph.nodes,
+  vertex
+)
 
 λvertices(graph:µGraph)=>[Int]=verticesFromNodes(graph.nodes)
 

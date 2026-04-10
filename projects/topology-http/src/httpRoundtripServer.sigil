@@ -1,22 +1,55 @@
 λhandleRequest(req:§httpServer.Request)=>§httpServer.Response match •httpHelpers.routePath(req.path){
-  "/echo"=>{body:req.body,headers:•httpHelpers.serverHeaders(({↦}:{String↦String})),status:201}|
-  "/headers"=>{body:"ok",headers:•httpHelpers.serverHeaders({"x-request-id"↦"abc-123"}),status:202}|
-  "/json"=>§httpServer.json("{\"ok\":true}",200)|
+  "/echo"=>{
+    body:req.body,
+    headers:•httpHelpers.serverHeaders(({↦}:{String↦String})),
+    status:201
+  }|
+  "/headers"=>{
+    body:"ok",
+    headers:•httpHelpers.serverHeaders({"x-request-id"↦"abc-123"}),
+    status:202
+  }|
+  "/json"=>§httpServer.json(
+    "{\"ok\":true}",
+    200
+  )|
   "/health"=>§httpServer.ok("healthy")|
-  "/routes"=>{body:•httpHelpers.routeSummary(•httpHelpers.allRoutes()),headers:•httpHelpers.serverHeaders(({↦}:{String↦String})),status:200}|
+  "/routes"=>{
+    body:•httpHelpers.routeSummary(•httpHelpers.allRoutes()),
+    headers:•httpHelpers.serverHeaders(({↦}:{String↦String})),
+    status:200
+  }|
   _=>§httpServer.notFound()
 }
 
 λlistenAndServe(port:Int,readyFile:Option[String])=>!Fs!Http Unit={
-  l server=(§httpServer.listen(handleRequest,port):§httpServer.Server);
-  l _=(writeReadyPort(readyFile,server):Unit);
+  l server=(§httpServer.listen(
+    handleRequest,
+    port
+  ):§httpServer.Server);
+  l _=(writeReadyPort(
+    readyFile,
+    server
+  ):Unit);
   §httpServer.wait(server)
 }
 
 λmain()=>!Fs!Http!Process Unit match §process.argv(){
-  [portText,readyFile]=>listenAndServe(parseRequestedPort(portText),Some(readyFile))|
-  [portText]=>listenAndServe(parseRequestedPort(portText),None())|
-  _=>listenAndServe(45110,None())
+  [
+  portText,
+  readyFile
+]=>listenAndServe(
+    parseRequestedPort(portText),
+    Some(readyFile)
+  )|
+  [portText]=>listenAndServe(
+    parseRequestedPort(portText),
+    None()
+  )|
+  _=>listenAndServe(
+    45110,
+    None()
+  )
 }
 
 λparseRequestedPort(text:String)=>Int match §decode.intFromText(text){
@@ -25,6 +58,9 @@
 }
 
 λwriteReadyPort(readyFile:Option[String],server:§httpServer.Server)=>!Fs Unit match readyFile{
-  Some(path)=>(§file.writeText(§string.intToString(§httpServer.port(server)),path):Unit)|
+  Some(path)=>(§file.writeText(
+    §string.intToString(§httpServer.port(server)),
+    path
+  ):Unit)|
   None()=>()
 }

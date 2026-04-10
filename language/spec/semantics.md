@@ -224,7 +224,10 @@ They are not the concurrency surface.
 Record access selects a field from an already-evaluated record value.
 
 ```sigil expr
-{id:1,name:"Alice"}.name
+{
+  id:1,
+  name:"Alice"
+}.name
 ```
 
 ## Effects

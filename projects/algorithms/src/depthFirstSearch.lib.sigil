@@ -1,14 +1,42 @@
-λdepthFirstSearch(graph:µGraph,start:Int)=>[Int] match •graphHelpers.hasVertex(graph,start){
-  true=>dfsVisit(graph,start,[])|
+λdepthFirstSearch(graph:µGraph,start:Int)=>[Int] match •graphHelpers.hasVertex(
+  graph,
+  start
+){
+  true=>dfsVisit(
+    graph,
+    start,
+    []
+  )|
   false=>[]
 }
 
 λdfsNeighbors(graph:µGraph,neighbors:[Int],visited:[Int])=>[Int] match neighbors{
   []=>visited|
-  [neighbor,.tail]=>dfsNeighbors(graph,tail,dfsVisit(graph,neighbor,visited))
+  [
+  neighbor,
+  .tail
+]=>dfsNeighbors(
+    graph,
+    tail,
+    dfsVisit(
+      graph,
+      neighbor,
+      visited
+    )
+  )
 }
 
-λdfsVisit(graph:µGraph,vertex:Int,visited:[Int])=>[Int] match §list.contains(vertex,visited){
+λdfsVisit(graph:µGraph,vertex:Int,visited:[Int])=>[Int] match §list.contains(
+  vertex,
+  visited
+){
   true=>visited|
-  false=>dfsNeighbors(graph,•graphHelpers.neighborsOf(graph,vertex),visited⧺[vertex])
+  false=>dfsNeighbors(
+    graph,
+    •graphHelpers.neighborsOf(
+      graph,
+      vertex
+    ),
+    visited⧺[vertex]
+  )
 }

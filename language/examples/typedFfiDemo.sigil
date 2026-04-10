@@ -6,4 +6,10 @@ e path:{join:λ(String,String)=>String}
 
 λmain()=>Unit=console.log(readConfig("app.json"))
 
-λreadConfig(filename:String)=>String=fs::promises.readFile((path.join("config",filename):String),"utf8")
+λreadConfig(filename:String)=>String=fs::promises.readFile(
+  (path.join(
+    "config",
+    filename
+  ):String),
+  "utf8"
+)

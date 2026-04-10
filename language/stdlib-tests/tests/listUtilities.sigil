@@ -3,114 +3,436 @@
 λmain()=>Unit=()
 
 test "list.count counts duplicates" {
-  §list.count(3,[3,1,3,2,3])=3 and §list.count(9,[])=0 and §list.count(7,[1,2,3])=0
+  §list.count(
+    3,
+    [
+      3,
+      1,
+      3,
+      2,
+      3
+    ]
+  )=3
+    and §list.count(
+      9,
+      []
+    )=0
+    and §list.count(
+      7,
+      [
+        1,
+        2,
+        3
+      ]
+    )=0
 }
 
 test "list.drop clamps naturally" {
-  §list.drop(0,[1,2,3])=[1,2,3] and §list.drop(2,[1,2,3,4])=[3,4] and §list.drop(10,[1,2])=[] and §list.drop(-1,[1,2])=[1,2]
+  §list.drop(
+    0,
+    [
+      1,
+      2,
+      3
+    ]
+  )=[
+    1,
+    2,
+    3
+  ]
+    and §list.drop(
+      2,
+      [
+        1,
+        2,
+        3,
+        4
+      ]
+    )=[
+      3,
+      4
+    ]
+    and §list.drop(
+      10,
+      [
+        1,
+        2
+      ]
+    )=[]
+    and §list.drop(
+      -1,
+      [
+        1,
+        2
+      ]
+    )=[
+      1,
+      2
+    ]
 }
 
 test "list.all checks universal predicates" {
-  §list.all(§numeric.isEven,[2,4,6]) and ¬§list.all(§numeric.isEven,[2,3,4]) and §list.all(§numeric.isEven,[])
+  §list.all(
+    §numeric.isEven,
+    [
+      2,
+      4,
+      6
+    ]
+  )
+    and ¬§list.all(
+      §numeric.isEven,
+      [
+        2,
+        3,
+        4
+      ]
+    )
+    and §list.all(
+      §numeric.isEven,
+      []
+    )
 }
 
 test "list.any checks existential predicates" {
-  ¬§list.any(§numeric.isEven,[1,3,5]) and §list.any(§numeric.isEven,[1,2,3]) and ¬§list.any(§numeric.isEven,[])
+  ¬§list.any(
+    §numeric.isEven,
+    [
+      1,
+      3,
+      5
+    ]
+  )
+    and §list.any(
+      §numeric.isEven,
+      [
+        1,
+        2,
+        3
+      ]
+    )
+    and ¬§list.any(
+      §numeric.isEven,
+      []
+    )
 }
 
 test "list.countIf counts matching predicates" {
-  §list.countIf(§numeric.isEven,[1,2,3,4])=2 and §list.countIf(§numeric.isEven,[1,3,5])=0 and §list.countIf(§numeric.isEven,[])=0
+  §list.countIf(
+    §numeric.isEven,
+    [
+      1,
+      2,
+      3,
+      4
+    ]
+  )=2
+    and §list.countIf(
+      §numeric.isEven,
+      [
+        1,
+        3,
+        5
+      ]
+    )=0
+    and §list.countIf(
+      §numeric.isEven,
+      []
+    )=0
 }
 
 test "list.find returns first matching option" {
-  (match §list.find(§numeric.isEven,[1,3,4,6]){
+  (match §list.find(
+    §numeric.isEven,
+    [
+      1,
+      3,
+      4,
+      6
+    ]
+  ){
     Some(actual)=>actual=4|
     None()=>false
-  }) and (match §list.find(§numeric.isEven,[1,3,5]){
+  }) and (match §list.find(
+    §numeric.isEven,
+    [
+      1,
+      3,
+      5
+    ]
+  ){
     None()=>true|
     _=>false
   })
 }
 
 test "list.flatMap preserves order while flattening" {
-  §list.flatMap(λ(x:Int)=>[Int]=[x,x],[1,2,3])=[1,1,2,2,3,3] and §list.flatMap(λ(x:Int)=>[Int]=[],[1,2])=[] and §list.flatMap(λ(x:Int)=>[Int]=[x],[])=[]
+  §list.flatMap(
+    λ(x:Int)=>[Int]=[
+      x,
+      x
+    ],
+    [
+      1,
+      2,
+      3
+    ]
+  )=[
+    1,
+    1,
+    2,
+    2,
+    3,
+    3
+  ]
+    and §list.flatMap(
+      λ(x:Int)=>[Int]=[],
+      [
+        1,
+        2
+      ]
+    )=[]
+    and §list.flatMap(
+      λ(x:Int)=>[Int]=[x],
+      []
+    )=[]
 }
 
 test "list.fold reduces left to right" {
-  §list.fold(0,appendDigit,[1,2,3])=123 and §list.fold(9,appendDigit,[])=9
+  §list.fold(
+    0,
+    appendDigit,
+    [
+      1,
+      2,
+      3
+    ]
+  )=123 and §list.fold(
+    9,
+    appendDigit,
+    []
+  )=9
 }
 
 test "list.last returns option" {
   (match §list.last([]){
     None()=>true|
     _=>false
-  }) and (match §list.last([9]){
-    Some(actual)=>actual=9|
-    _=>false
-  }) and (match §list.last([1,2,3]){
-    Some(actual)=>actual=3|
-    _=>false
   })
+    and (match §list.last([9]){
+      Some(actual)=>actual=9|
+      _=>false
+    })
+    and (match §list.last([
+      1,
+      2,
+      3
+    ]){
+      Some(actual)=>actual=3|
+      _=>false
+    })
 }
 
 test "list.max returns option" {
   (match §list.max([]){
     None()=>true|
     _=>false
-  }) and (match §list.max([3,9,4]){
-    Some(actual)=>actual=9|
-    _=>false
-  }) and (match §list.max([-5,-2,-9]){
-    Some(actual)=>actual=-2|
-    _=>false
   })
+    and (match §list.max([
+      3,
+      9,
+      4
+    ]){
+      Some(actual)=>actual=9|
+      _=>false
+    })
+    and (match §list.max([
+      -5,
+      -2,
+      -9
+    ]){
+      Some(actual)=>actual=-2|
+      _=>false
+    })
 }
 
 test "list.min returns option" {
   (match §list.min([]){
     None()=>true|
     _=>false
-  }) and (match §list.min([3,9,4]){
-    Some(actual)=>actual=3|
-    _=>false
-  }) and (match §list.min([-5,-2,-9]){
-    Some(actual)=>actual=-9|
-    _=>false
   })
+    and (match §list.min([
+      3,
+      9,
+      4
+    ]){
+      Some(actual)=>actual=3|
+      _=>false
+    })
+    and (match §list.min([
+      -5,
+      -2,
+      -9
+    ]){
+      Some(actual)=>actual=-9|
+      _=>false
+    })
 }
 
 test "list.nth returns option" {
-  (match §list.nth(0,[7,8]){
+  (match §list.nth(
+    0,
+    [
+      7,
+      8
+    ]
+  ){
     Some(actual)=>actual=7|
     _=>false
-  }) and (match §list.nth(1,[7,8]){
-    Some(actual)=>actual=8|
-    _=>false
-  }) and (match §list.nth(2,[7,8]){
-    None()=>true|
-    _=>false
-  }) and (match §list.nth(-1,[7,8]){
-    None()=>true|
-    _=>false
   })
+    and (match §list.nth(
+      1,
+      [
+        7,
+        8
+      ]
+    ){
+      Some(actual)=>actual=8|
+      _=>false
+    })
+    and (match §list.nth(
+      2,
+      [
+        7,
+        8
+      ]
+    ){
+      None()=>true|
+      _=>false
+    })
+    and (match §list.nth(
+      -1,
+      [
+        7,
+        8
+      ]
+    ){
+      None()=>true|
+      _=>false
+    })
 }
 
 test "list.product multiplies integer lists" {
-  §list.product([])=1 and §list.product([2,3,4])=24 and §list.product([5,-2,1])=-10
+  §list.product([])=1
+    and §list.product([
+      2,
+      3,
+      4
+    ])=24
+    and §list.product([
+      5,
+      -2,
+      1
+    ])=-10
 }
 
 test "list.removeFirst removes only first match" {
-  §list.removeFirst(2,[1,2,3,2])=[1,3,2] and §list.removeFirst(9,[1,2,3])=[1,2,3] and §list.removeFirst(9,[])=[]
+  §list.removeFirst(
+    2,
+    [
+      1,
+      2,
+      3,
+      2
+    ]
+  )=[
+    1,
+    3,
+    2
+  ]
+    and §list.removeFirst(
+      9,
+      [
+        1,
+        2,
+        3
+      ]
+    )=[
+      1,
+      2,
+      3
+    ]
+    and §list.removeFirst(
+      9,
+      []
+    )=[]
 }
 
 test "list.reverse reverses list" {
-  §list.reverse([])=[] and §list.reverse([1])=[1] and §list.reverse([1,2,3])=[3,2,1]
+  §list.reverse([])=[]
+    and §list.reverse([1])=[1]
+    and §list.reverse([
+      1,
+      2,
+      3
+    ])=[
+      3,
+      2,
+      1
+    ]
 }
 
 test "list.sum sums integer lists" {
-  §list.sum([])=0 and §list.sum([1,2,3,4])=10 and §list.sum([5,-2,1])=4
+  §list.sum([])=0
+    and §list.sum([
+      1,
+      2,
+      3,
+      4
+    ])=10
+    and §list.sum([
+      5,
+      -2,
+      1
+    ])=4
 }
 
 test "list.take clamps naturally" {
-  §list.take(0,[1,2,3])=[] and §list.take(2,[1,2,3,4])=[1,2] and §list.take(10,[1,2])=[1,2] and §list.take(-1,[1,2])=[]
+  §list.take(
+    0,
+    [
+      1,
+      2,
+      3
+    ]
+  )=[]
+    and §list.take(
+      2,
+      [
+        1,
+        2,
+        3,
+        4
+      ]
+    )=[
+      1,
+      2
+    ]
+    and §list.take(
+      10,
+      [
+        1,
+        2
+      ]
+    )=[
+      1,
+      2
+    ]
+    and §list.take(
+      -1,
+      [
+        1,
+        2
+      ]
+    )=[]
 }

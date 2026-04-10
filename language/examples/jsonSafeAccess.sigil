@@ -1,9 +1,15 @@
 λmain()=>Unit match §json.parse("{\"profile\":{\"name\":\"sigil\"}}"){
   Ok(value)=>match §json.asObject(value){
-    Some(root)=>match §json.getField("profile",root){
+    Some(root)=>match §json.getField(
+      "profile",
+      root
+    ){
       Some(profileValue)=>match §json.asObject(profileValue){
         Some(profile)=>{
-          l _=(§json.getField("name",profile):Option[§json.JsonValue]);
+          l _=(§json.getField(
+            "name",
+            profile
+          ):Option[§json.JsonValue]);
           ()
         }|
         None()=>()

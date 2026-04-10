@@ -1,26 +1,64 @@
-t DecodeError={message:String,path:[String]}
+t DecodeError={
+  message:String,
+  path:[String]
+}
 
-t Decoder[T]=λ(§json.JsonValue)=>Result[T,DecodeError]
+t Decoder[T]=λ(§json.JsonValue)=>Result[
+  T,
+  DecodeError
+]
 
-λbind[T,U](decoder:Decoder[T],fn:λ(T)=>Decoder[U])=>Decoder[U]=λ(value:§json.JsonValue)=>Result[U,DecodeError] match decoder(value){
+λbind[T,U](decoder:Decoder[T],fn:λ(T)=>Decoder[U])=>Decoder[U]=λ(value:§json.JsonValue)=>Result[
+  U,
+  DecodeError
+] match decoder(value){
   Ok(decoded)=>fn(decoded)(value)|
   Err(error)=>Err(error)
 }
 
-λbool(value:§json.JsonValue)=>Result[Bool,DecodeError] match §json.asBool(value){
+λbool(value:§json.JsonValue)=>Result[
+  Bool,
+  DecodeError
+] match §json.asBool(value){
   Some(decoded)=>Ok(decoded)|
-  None()=>Err({message:"expected bool",path:[]})
+  None()=>Err({
+    message:"expected bool",
+    path:[]
+  })
 }
 
-λdict[T](decoder:Decoder[T])=>Decoder[{String↦T}]=λ(value:§json.JsonValue)=>Result[{String↦T},DecodeError] match §json.asObject(value){
-  Some(objectValue)=>¶map.fold(λ(acc:Result[{String↦T},DecodeError],key:String,item:§json.JsonValue)=>Result[{String↦T},DecodeError] match acc{
-    Ok(current)=>match decoder(item){
-      Ok(decoded)=>Ok(¶map.insert(key,current,decoded))|
-      Err(error)=>Err(prependPath(error,key))
-    }|
-    Err(error)=>Err(error)
-  },Ok((({↦}:{String↦T}):{String↦T})),objectValue)|
-  None()=>Err({message:"expected object",path:[]})
+λdict[T](decoder:Decoder[T])=>Decoder[{String↦T}]=λ(value:§json.JsonValue)=>Result[
+  {String↦T},
+  DecodeError
+] match §json.asObject(value){
+  Some(objectValue)=>¶map.fold(
+    λ(acc:Result[
+      {String↦T},
+      DecodeError
+    ],key:String,item:§json.JsonValue)=>Result[
+      {String↦T},
+      DecodeError
+    ] match acc{
+      Ok(current)=>match decoder(item){
+        Ok(decoded)=>Ok(¶map.insert(
+          key,
+          current,
+          decoded
+        ))|
+        Err(error)=>Err(prependPath(
+          error,
+          key
+        ))
+      }|
+      Err(error)=>Err(error)
+    },
+    Ok((({↦}:{String↦T}):{String↦T})),
+    objectValue
+  )|
+  None()=>Err({
+    message:"expected object",
+    path:[]
+  })
 }
 
 λdigitValue(text:String)=>Int match text{
@@ -37,98 +75,232 @@ t Decoder[T]=λ(§json.JsonValue)=>Result[T,DecodeError]
   _=>-1
 }
 
-λfail[T](message:String)=>Decoder[T]=λ(value:§json.JsonValue)=>Result[T,DecodeError]=Err({message:message,path:[]})
+λfail[T](message:String)=>Decoder[T]=λ(value:§json.JsonValue)=>Result[
+  T,
+  DecodeError
+]=Err({
+  message:message,
+  path:[]
+})
 
-λfield[T](decoder:Decoder[T],key:String)=>Decoder[T]=λ(value:§json.JsonValue)=>Result[T,DecodeError] match §json.asObject(value){
-  Some(objectValue)=>match §json.getField(key,objectValue){
+λfield[T](decoder:Decoder[T],key:String)=>Decoder[T]=λ(value:§json.JsonValue)=>Result[
+  T,
+  DecodeError
+] match §json.asObject(value){
+  Some(objectValue)=>match §json.getField(
+    key,
+    objectValue
+  ){
     Some(fieldValue)=>match decoder(fieldValue){
       Ok(decoded)=>Ok(decoded)|
-      Err(error)=>Err(prependPath(error,key))
+      Err(error)=>Err(prependPath(
+        error,
+        key
+      ))
     }|
-    None()=>Err({message:"missing required field",path:[key]})
+    None()=>Err({
+      message:"missing required field",
+      path:[key]
+    })
   }|
-  None()=>Err({message:"expected object",path:[]})
+  None()=>Err({
+    message:"expected object",
+    path:[]
+  })
 }
 
-λfloat(value:§json.JsonValue)=>Result[Float,DecodeError] match §json.asNumber(value){
+λfloat(value:§json.JsonValue)=>Result[
+  Float,
+  DecodeError
+] match §json.asNumber(value){
   Some(decoded)=>Ok(decoded)|
-  None()=>Err({message:"expected float",path:[]})
+  None()=>Err({
+    message:"expected float",
+    path:[]
+  })
 }
 
-λint(value:§json.JsonValue)=>Result[Int,DecodeError] match §json.asString(value){
+λint(value:§json.JsonValue)=>Result[
+  Int,
+  DecodeError
+] match §json.asString(value){
   Some(text)=>intFromText(text)|
   None()=>match §json.asNumber(value){
     Some(numberValue)=>intFromText(§json.stringify(§json.JsonNumber(numberValue)))|
-    None()=>Err({message:"expected int",path:[]})
+    None()=>Err({
+      message:"expected int",
+      path:[]
+    })
   }
 }
 
-λintFromText(text:String)=>Result[Int,DecodeError] match #text=0{
-  true=>Err({message:"expected int",path:[]})|
-  false=>match §string.startsWith("-",text){
+λintFromText(text:String)=>Result[
+  Int,
+  DecodeError
+] match #text=0{
+  true=>Err({
+    message:"expected int",
+    path:[]
+  })|
+  false=>match §string.startsWith(
+    "-",
+    text
+  ){
     true=>match #text=1{
-      true=>Err({message:"expected int",path:[]})|
-      false=>match intFromTextInner(0,0,§string.drop(1,text)){
+      true=>Err({
+        message:"expected int",
+        path:[]
+      })|
+      false=>match intFromTextInner(
+        0,
+        0,
+        §string.drop(
+          1,
+          text
+        )
+      ){
         Ok(value)=>Ok(-value)|
         Err(error)=>Err(error)
       }
     }|
-    false=>intFromTextInner(0,0,text)
+    false=>intFromTextInner(
+      0,
+      0,
+      text
+    )
   }
 }
 
-λintFromTextInner(acc:Int,idx:Int,text:String)=>Result[Int,DecodeError] match idx≥#text{
+λintFromTextInner(acc:Int,idx:Int,text:String)=>Result[
+  Int,
+  DecodeError
+] match idx≥#text{
   true=>Ok(acc)|
-  false=>match (digitValue(§string.charAt(idx,text)):Int)<0{
-    true=>Err({message:"expected int",path:[]})|
-    false=>intFromTextInner(acc*10+(digitValue(§string.charAt(idx,text)):Int),idx+1,text)
+  false=>match (digitValue(§string.charAt(
+    idx,
+    text
+  )):Int)<0{
+    true=>Err({
+      message:"expected int",
+      path:[]
+    })|
+    false=>intFromTextInner(
+      acc*10+(digitValue(§string.charAt(
+        idx,
+        text
+      )):Int),
+      idx+1,
+      text
+    )
   }
 }
 
-λlist[T](decoder:Decoder[T])=>Decoder[[T]]=λ(value:§json.JsonValue)=>Result[[T],DecodeError] match §json.asArray(value){
-  Some(items)=>listInner(decoder,0,items)|
-  None()=>Err({message:"expected array",path:[]})
+λlist[T](decoder:Decoder[T])=>Decoder[[T]]=λ(value:§json.JsonValue)=>Result[
+  [T],
+  DecodeError
+] match §json.asArray(value){
+  Some(items)=>listInner(
+    decoder,
+    0,
+    items
+  )|
+  None()=>Err({
+    message:"expected array",
+    path:[]
+  })
 }
 
-λlistInner[T](decoder:Decoder[T],idx:Int,values:[§json.JsonValue])=>Result[[T],DecodeError] match values{
+λlistInner[T](decoder:Decoder[T],idx:Int,values:[§json.JsonValue])=>Result[
+  [T],
+  DecodeError
+] match values{
   []=>Ok([])|
-  [head,.tail]=>match decoder(head){
-    Ok(decoded)=>match listInner(decoder,idx+1,tail){
+  [
+  head,
+  .tail
+]=>match decoder(head){
+    Ok(decoded)=>match listInner(
+      decoder,
+      idx+1,
+      tail
+    ){
       Ok(rest)=>Ok([decoded]⧺rest)|
       Err(error)=>Err(error)
     }|
-    Err(error)=>Err(prependPath(error,§string.intToString(idx)))
+    Err(error)=>Err(prependPath(
+      error,
+      §string.intToString(idx)
+    ))
   }
 }
 
-λmap[T,U](decoder:Decoder[T],fn:λ(T)=>U)=>Decoder[U]=λ(value:§json.JsonValue)=>Result[U,DecodeError] match decoder(value){
+λmap[T,U](decoder:Decoder[T],fn:λ(T)=>U)=>Decoder[U]=λ(value:§json.JsonValue)=>Result[
+  U,
+  DecodeError
+] match decoder(value){
   Ok(decoded)=>Ok(fn(decoded))|
   Err(error)=>Err(error)
 }
 
-λoptionalField[T](decoder:Decoder[T],key:String)=>Decoder[Option[T]]=λ(value:§json.JsonValue)=>Result[Option[T],DecodeError] match §json.asObject(value){
-  Some(objectValue)=>match §json.getField(key,objectValue){
+λoptionalField[T](decoder:Decoder[T],key:String)=>Decoder[Option[T]]=λ(value:§json.JsonValue)=>Result[
+  Option[T],
+  DecodeError
+] match §json.asObject(value){
+  Some(objectValue)=>match §json.getField(
+    key,
+    objectValue
+  ){
     Some(fieldValue)=>match decoder(fieldValue){
       Ok(decoded)=>Ok(Some(decoded))|
-      Err(error)=>Err(prependPath(error,key))
+      Err(error)=>Err(prependPath(
+        error,
+        key
+      ))
     }|
     None()=>Ok(None())
   }|
-  None()=>Err({message:"expected object",path:[]})
+  None()=>Err({
+    message:"expected object",
+    path:[]
+  })
 }
 
-λparse[T](decoder:Decoder[T],input:String)=>Result[T,DecodeError] match §json.parse(input){
-  Ok(value)=>run(decoder,value)|
-  Err(error)=>Err({message:error.message,path:[]})
+λparse[T](decoder:Decoder[T],input:String)=>Result[
+  T,
+  DecodeError
+] match §json.parse(input){
+  Ok(value)=>run(
+    decoder,
+    value
+  )|
+  Err(error)=>Err({
+    message:error.message,
+    path:[]
+  })
 }
 
-λprependPath(error:DecodeError,segment:String)=>DecodeError={message:error.message,path:[segment]⧺error.path}
+λprependPath(error:DecodeError,segment:String)=>DecodeError={
+  message:error.message,
+  path:[segment]⧺error.path
+}
 
-λrun[T](decoder:Decoder[T],value:§json.JsonValue)=>Result[T,DecodeError]=decoder(value)
+λrun[T](decoder:Decoder[T],value:§json.JsonValue)=>Result[
+  T,
+  DecodeError
+]=decoder(value)
 
-λstring(value:§json.JsonValue)=>Result[String,DecodeError] match §json.asString(value){
+λstring(value:§json.JsonValue)=>Result[
+  String,
+  DecodeError
+] match §json.asString(value){
   Some(decoded)=>Ok(decoded)|
-  None()=>Err({message:"expected string",path:[]})
+  None()=>Err({
+    message:"expected string",
+    path:[]
+  })
 }
 
-λsucceed[T](value:T)=>Decoder[T]=λ(jsonValue:§json.JsonValue)=>Result[T,DecodeError]=Ok(value)
+λsucceed[T](value:T)=>Decoder[T]=λ(jsonValue:§json.JsonValue)=>Result[
+  T,
+  DecodeError
+]=Ok(value)

@@ -1,4 +1,7 @@
-λcandidateDivisors(n:Int)=>[Int]=§numeric.range(2,n-1)
+λcandidateDivisors(n:Int)=>[Int]=§numeric.range(
+  2,
+  n-1
+)
 
 λtrialDivisionPrimality(n:Int)=>Bool match n≤1{
   true=>false|

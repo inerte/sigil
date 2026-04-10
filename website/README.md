@@ -33,7 +33,13 @@ claude "Write a Hello World in Sigil and run it"
 ## Quick Example
 
 ```sigil program
-λmain()=>Bool=§list.sum([1,2,3,4,5])=15
+λmain()=>Bool=§list.sum([
+  1,
+  2,
+  3,
+  4,
+  5
+])=15
 ```
 
 ---

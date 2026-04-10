@@ -2,7 +2,7 @@
 
 use sigil_lexer::tokenize;
 use sigil_parser::parse;
-use sigil_validator::{validate_canonical_form, ValidationError};
+use sigil_validator::{print_canonical_program, validate_canonical_form, ValidationError};
 use std::fs;
 use std::path::PathBuf;
 
@@ -176,6 +176,51 @@ fn test_surface_form_multiple_functions() {
     let source = "λa()=>Int=1\nλb()=>Int=2";
     let tokens = tokenize(source).unwrap();
     let _program = parse(tokens, "test.lib.sigil").unwrap();
+}
+
+#[test]
+fn test_printer_multiline_product_type_with_two_fields() {
+    let source = "t Pair={left:Int,right:Int}\n";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.lib.sigil").unwrap();
+
+    assert_eq!(
+        print_canonical_program(&program),
+        "t Pair={\n  left:Int,\n  right:Int\n}\n"
+    );
+}
+
+#[test]
+fn test_printer_multiline_type_args_and_call_args() {
+    let source = "λmain()=>Result[String,String]=pair(\"a\",\"b\")\n";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    assert_eq!(
+        print_canonical_program(&program),
+        "λmain()=>Result[\n  String,\n  String\n]=pair(\n  \"a\",\n  \"b\"\n)\n"
+    );
+}
+
+#[test]
+fn test_printer_keeps_single_item_delimited_forms_flat() {
+    let source = "λmain()=>[Int]=sum([1])\n";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    assert_eq!(print_canonical_program(&program), source);
+}
+
+#[test]
+fn test_printer_verticalizes_boolean_chains() {
+    let source = "λmain()=>Bool=a and b and z\n";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    assert_eq!(
+        print_canonical_program(&program),
+        "λmain()=>Bool=a\n  and b\n  and z\n"
+    );
 }
 
 // ============================================================================

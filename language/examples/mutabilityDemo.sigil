@@ -1,1 +1,7 @@
-λmain()=>Int=[1,2,3,4,5] reduce (λ(a:Int,x:Int)=>Int=a+x) from 0
+λmain()=>Int=[
+  1,
+  2,
+  3,
+  4,
+  5
+] reduce (λ(a:Int,x:Int)=>Int=a+x) from 0

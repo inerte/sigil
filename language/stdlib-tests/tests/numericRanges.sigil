@@ -1,5 +1,21 @@
 λmain()=>Unit=()
 
 test "numeric.range builds ascending inclusive ranges" {
-  §numeric.range(2,5)=[2,3,4,5] and §numeric.range(3,3)=[3] and §numeric.range(5,2)=[]
+  §numeric.range(
+    2,
+    5
+  )=[
+    2,
+    3,
+    4,
+    5
+  ]
+    and §numeric.range(
+      3,
+      3
+    )=[3]
+    and §numeric.range(
+      5,
+      2
+    )=[]
 }

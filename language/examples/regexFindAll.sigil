@@ -1,5 +1,11 @@
-λextractNumbers(input:String)=>[String] match §regex.compile("","\\d+"){
-  Ok(r)=>§regex.findAll(input,r) map (λ(m:§regex.RegexMatch)=>String=m.full)|
+λextractNumbers(input:String)=>[String] match §regex.compile(
+  "",
+  "\\d+"
+){
+  Ok(r)=>§regex.findAll(
+    input,
+    r
+  ) map (λ(m:§regex.RegexMatch)=>String=m.full)|
   Err(_)=>[]
 }
 

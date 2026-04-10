@@ -1,111 +1,280 @@
-λcollectQualifiedRefs(source:String)=>[String] match §regex.compile("","§[A-Za-z0-9]+\\.[a-z][A-Za-z0-9]*"){
-  Ok(pattern)=>collectQualifiedRefsLines(normalizedRefLines(§string.lines(stripInlineComments(source))),pattern,[])|
+λcollectQualifiedRefs(source:String)=>[String] match §regex.compile(
+  "",
+  "§[A-Za-z0-9]+\\.[a-z][A-Za-z0-9]*"
+){
+  Ok(pattern)=>collectQualifiedRefsLines(
+    normalizedRefLines(§string.lines(stripInlineComments(source))),
+    pattern,
+    []
+  )|
   Err(_)=>[]
 }
 
-λcollectQualifiedRefsLine(pattern:§regex.Regex,refs:[String],source:String)=>[String] match §regex.find(source,pattern){
-  Some(found)=>collectQualifiedRefsLine(pattern,insertUnique(found.full,refs),§string.substring(#source,source,found.end))|
+λcollectQualifiedRefsLine(pattern:§regex.Regex,refs:[String],source:String)=>[String] match §regex.find(
+  source,
+  pattern
+){
+  Some(found)=>collectQualifiedRefsLine(
+    pattern,
+    insertUnique(
+      found.full,
+      refs
+    ),
+    §string.substring(
+      #source,
+      source,
+      found.end
+    )
+  )|
   None()=>refs
 }
 
 λcollectQualifiedRefsLines(lines:[String],pattern:§regex.Regex,refs:[String])=>[String] match lines{
   []=>refs|
-  [line,.rest]=>collectQualifiedRefsLines(rest,pattern,collectQualifiedRefsLine(pattern,refs,line))
+  [
+  line,
+  .rest
+]=>collectQualifiedRefsLines(
+    rest,
+    pattern,
+    collectQualifiedRefsLine(
+      pattern,
+      refs,
+      line
+    )
+  )
 }
 
-λcollectStdlibExports(filePath:String,parseJson:String)=>[String]=qualifyExports(functionNamesFromParseJson(parseJson),modulePathFromStdlibFile(filePath))
+λcollectStdlibExports(filePath:String,parseJson:String)=>[String]=qualifyExports(
+  functionNamesFromParseJson(parseJson),
+  modulePathFromStdlibFile(filePath)
+)
 
-λdocumentedRefsForSnippet(modulePath:String,source:String)=>[String]=documentedRefsForSnippetLines(§string.lines(source),modulePath,[])
+λdocumentedRefsForSnippet(modulePath:String,source:String)=>[String]=documentedRefsForSnippetLines(
+  §string.lines(source),
+  modulePath,
+  []
+)
 
 λdocumentedRefsForSnippetLines(lines:[String],modulePath:String,refs:[String])=>[String] match lines{
   []=>refs|
-  [line,.rest]=>match extractFunctionName(§string.trim(line)){
-    Some(name)=>documentedRefsForSnippetLines(rest,modulePath,insertUnique(modulePath++"."++name,refs))|
-    None()=>documentedRefsForSnippetLines(rest,modulePath,refs)
+  [
+  line,
+  .rest
+]=>match extractFunctionName(§string.trim(line)){
+    Some(name)=>documentedRefsForSnippetLines(
+      rest,
+      modulePath,
+      insertUnique(
+        modulePath
+          ++"."
+          ++name,
+        refs
+      )
+    )|
+    None()=>documentedRefsForSnippetLines(
+      rest,
+      modulePath,
+      refs
+    )
   }
 }
 
 λdropUntilBoundary(acc:String,text:String)=>String match #text=0{
   true=>acc|
-  false=>match isIdentifierChar(§string.charAt(0,text)){
-    true=>dropUntilBoundary(acc++§string.charAt(0,text),§string.drop(1,text))|
+  false=>match isIdentifierChar(§string.charAt(
+    0,
+    text
+  )){
+    true=>dropUntilBoundary(
+      acc++§string.charAt(
+        0,
+        text
+      ),
+      §string.drop(
+        1,
+        text
+      )
+    )|
     false=>acc
   }
 }
 
-λextractFunctionName(line:String)=>Option[String] match §string.startsWith("λ",line){
-  true=>Some(extractFunctionNameInner("",§string.drop(1,line)))|
+λextractFunctionName(line:String)=>Option[String] match §string.startsWith(
+  "λ",
+  line
+){
+  true=>Some(extractFunctionNameInner(
+    "",
+    §string.drop(
+      1,
+      line
+    )
+  ))|
   false=>None()
 }
 
 λextractFunctionNameInner(acc:String,text:String)=>String match #text=0{
   true=>acc|
   false=>{
-    l ch=(§string.charAt(0,text):String);
+    l ch=(§string.charAt(
+      0,
+      text
+    ):String);
     match isIdentifierChar(ch){
-      true=>extractFunctionNameInner(acc++ch,§string.drop(1,text))|
+      true=>extractFunctionNameInner(
+        acc++ch,
+        §string.drop(
+          1,
+          text
+        )
+      )|
       false=>acc
     }
   }
 }
 
-λfunctionNamesFromDeclMatches(names:[String],pattern:§regex.Regex,source:String)=>[String] match §regex.find(source,pattern){
+λfunctionNamesFromDeclMatches(names:[String],pattern:§regex.Regex,source:String)=>[String] match §regex.find(
+  source,
+  pattern
+){
   Some(found)=>{
-    l remaining=(§string.drop(found.end,source):String);
+    l remaining=(§string.drop(
+      found.end,
+      source
+    ):String);
     match found.captures{
-      [name]=>functionNamesFromDeclMatches(insertUnique(name,names),pattern,remaining)|
-      _=>functionNamesFromDeclMatches(names,pattern,remaining)
+      [name]=>functionNamesFromDeclMatches(
+        insertUnique(
+          name,
+          names
+        ),
+        pattern,
+        remaining
+      )|
+      _=>functionNamesFromDeclMatches(
+        names,
+        pattern,
+        remaining
+      )
     }
   }|
   None()=>names
 }
 
-λfunctionNamesFromParseJson(parseJson:String)=>[String] match §regex.compile("","\"type\":\"FunctionDecl\",\"name\":\"([A-Za-z_][A-Za-z0-9_]*)\""){
-  Ok(pattern)=>functionNamesFromDeclMatches([],pattern,parseJson)|
+λfunctionNamesFromParseJson(parseJson:String)=>[String] match §regex.compile(
+  "",
+  "\"type\":\"FunctionDecl\",\"name\":\"([A-Za-z_][A-Za-z0-9_]*)\""
+){
+  Ok(pattern)=>functionNamesFromDeclMatches(
+    [],
+    pattern,
+    parseJson
+  )|
   Err(_)=>[]
 }
 
-λfunctionNamesFromTokens(expectName:Bool,names:[String],pattern:§regex.Regex,source:String)=>[String] match §regex.find(source,pattern){
+λfunctionNamesFromTokens(expectName:Bool,names:[String],pattern:§regex.Regex,source:String)=>[String] match §regex.find(
+  source,
+  pattern
+){
   Some(found)=>{
-    l remaining=(§string.drop(found.end,source):String);
+    l remaining=(§string.drop(
+      found.end,
+      source
+    ):String);
     match found.full="\"type\":\"FunctionDecl\""{
-      true=>functionNamesFromTokens(true,names,pattern,remaining)|
+      true=>functionNamesFromTokens(
+        true,
+        names,
+        pattern,
+        remaining
+      )|
       false=>match expectName{
-        true=>functionNamesFromTokens(false,insertUnique(tokenName(found.full),names),pattern,remaining)|
-        false=>functionNamesFromTokens(false,names,pattern,remaining)
+        true=>functionNamesFromTokens(
+          false,
+          insertUnique(
+            tokenName(found.full),
+            names
+          ),
+          pattern,
+          remaining
+        )|
+        false=>functionNamesFromTokens(
+          false,
+          names,
+          pattern,
+          remaining
+        )
       }
     }
   }|
   None()=>names
 }
 
-λinsertUnique(item:String,items:[String])=>[String] match §list.contains(item,items){
+λinsertUnique(item:String,items:[String])=>[String] match §list.contains(
+  item,
+  items
+){
   true=>items|
   false=>items⧺[item]
 }
 
-λisDocRefIgnoredLine(trimmed:String)=>Bool=§string.startsWith("//",trimmed) or §string.startsWith("✅",trimmed) or §string.startsWith("❌",trimmed)
+λisDocRefIgnoredLine(trimmed:String)=>Bool=§string.startsWith(
+  "//",
+  trimmed
+)
+  or §string.startsWith(
+    "✅",
+    trimmed
+  )
+  or §string.startsWith(
+    "❌",
+    trimmed
+  )
 
-λisIdentifierChar(ch:String)=>Bool match §regex.compile("","^[A-Za-z0-9_]$"){
-  Ok(pattern)=>§regex.isMatch(ch,pattern)|
+λisIdentifierChar(ch:String)=>Bool match §regex.compile(
+  "",
+  "^[A-Za-z0-9_]$"
+){
+  Ok(pattern)=>§regex.isMatch(
+    ch,
+    pattern
+  )|
   Err(_)=>false
 }
 
 λmergeUnique(left:[String],right:[String])=>[String] match right{
   []=>left|
-  [head,.tail]=>mergeUnique(insertUnique(head,left),tail)
+  [
+  head,
+  .tail
+]=>mergeUnique(
+    insertUnique(
+      head,
+      left
+    ),
+    tail
+  )
 }
 
 λmoduleNameFromStdlibFile(filePath:String)=>String={
   l fileName=(§path.basename(filePath):String);
-  §string.substring(#fileName-10,fileName,0)
+  §string.substring(
+    #fileName-10,
+    fileName,
+    0
+  )
 }
 
 λmodulePathFromStdlibFile(filePath:String)=>String="§"++moduleNameFromStdlibFile(filePath)
 
 λnormalizedRefLines(lines:[String])=>[String] match lines{
   []=>[]|
-  [line,.rest]=>{
+  [
+  line,
+  .rest
+]=>{
     l trimmed=(§string.trim(line):String);
     match #trimmed=0 or isDocRefIgnoredLine(trimmed){
       true=>normalizedRefLines(rest)|
@@ -114,29 +283,61 @@
   }
 }
 
-λqualifyExports(exports:[String],modulePath:String)=>[String]=exports map (λ(name:String)=>String=modulePath++"."++name)
+λqualifyExports(exports:[String],modulePath:String)=>[String]=exports map (λ(name:String)=>String=modulePath
+  ++"."
+  ++name)
 
-λstripInlineComments(source:String)=>String=stripInlineCommentsInner(false,source)
+λstripInlineComments(source:String)=>String=stripInlineCommentsInner(
+  false,
+  source
+)
 
 λstripInlineCommentsInner(inComment:Bool,source:String)=>String match #source=0{
   true=>""|
   false=>{
-    l ch=(§string.charAt(0,source):String);
-    l rest=(§string.drop(1,source):String);
+    l ch=(§string.charAt(
+      0,
+      source
+    ):String);
+    l rest=(§string.drop(
+      1,
+      source
+    ):String);
     match inComment{
       true=>match ch{
-        "⟧"=>stripInlineCommentsInner(false,rest)|
+        "⟧"=>stripInlineCommentsInner(
+          false,
+          rest
+        )|
         "
 "=>"
-"++stripInlineCommentsInner(true,rest)|
-        _=>stripInlineCommentsInner(true,rest)
+"++stripInlineCommentsInner(
+          true,
+          rest
+        )|
+        _=>stripInlineCommentsInner(
+          true,
+          rest
+        )
       }|
       false=>match ch{
-        "⟦"=>stripInlineCommentsInner(true,rest)|
-        _=>ch++stripInlineCommentsInner(false,rest)
+        "⟦"=>stripInlineCommentsInner(
+          true,
+          rest
+        )|
+        _=>ch++stripInlineCommentsInner(
+          false,
+          rest
+        )
       }
     }
   }
 }
 
-λtokenName(token:String)=>String=dropUntilBoundary("",§string.drop(8,token))
+λtokenName(token:String)=>String=dropUntilBoundary(
+  "",
+  §string.drop(
+    8,
+    token
+  )
+)

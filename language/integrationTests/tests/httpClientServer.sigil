@@ -1,12 +1,18 @@
 λhttpClientEnv(baseUrl:String)=>{String↦String}={"sigilHttpTestBaseUrl"↦baseUrl}
 
-λhttpCommand(args:[String])=>§process.Command=•support.sigilIn(args,projectDir())
+λhttpCommand(args:[String])=>§process.Command=•support.sigilIn(
+  args,
+  projectDir()
+)
 
 λmain()=>Unit=()
 
 λprojectDir()=>String=•support.repoPath("projects/topology-http")
 
-λrawClientFile()=>String=§path.join(projectDir(),"src/rawEndpointClient.sigil")
+λrawClientFile()=>String=§path.join(
+  projectDir(),
+  "src/rawEndpointClient.sigil"
+)
 
 λrawClientSource()=>String="λmain()=>!Http String match §httpClient.get(\"http://127.0.0.1:45110\",§httpClient.emptyHeaders(),\"/health\"){
   Ok(response)=>response.body|
@@ -15,30 +21,83 @@
 "
 
 λrawEndpointCompileOutput()=>!Fs!Process String={
-  l _=(§file.writeText(rawClientSource(),rawClientFile()):Unit);
-  l result=(§process.run(httpCommand(["compile","src/rawEndpointClient.sigil"])):§process.ProcessResult);
+  l _=(§file.writeText(
+    rawClientSource(),
+    rawClientFile()
+  ):Unit);
+  l result=(§process.run(httpCommand([
+    "compile",
+    "src/rawEndpointClient.sigil"
+  ])):§process.ProcessResult);
   l _=(§file.remove(rawClientFile()):Unit);
   •support.combinedOutput(result)
 }
 
 λrunClientOutput(target:String)=>!Clock!Fs!Process!Timer String={
-  l server=(•support.startReadyServer(httpCommand(["run","src/httpRoundtripServer.sigil","--env","test","--"]),"http-server-","0"):µReadyServer);
-  l result=match •support.waitForReadyPort(50,200,server.readyFile){
+  l server=(•support.startReadyServer(
+    httpCommand([
+      "run",
+      "src/httpRoundtripServer.sigil",
+      "--env",
+      "test",
+      "--"
+    ]),
+    "http-server-",
+    "0"
+  ):µReadyServer);
+  l result=match •support.waitForReadyPort(
+    50,
+    200,
+    server.readyFile
+  ){
     Ok(port)=>{
       l baseUrl=("http://127.0.0.1:"++§string.intToString(port):String);
-      l ready=(•support.retryRunStdoutContains(50,•support.commandWithEnv(httpCommand(["run","src/getClient.sigil","--env","test"]),(httpClientEnv(baseUrl):{String↦String})),200,"200:healthy"):§process.ProcessResult);
-      match •support.runStdoutContains("200:healthy",ready){
-        true=>(§process.run(•support.commandWithEnv(httpCommand(["run",target,"--env","test"]),(httpClientEnv(baseUrl):{String↦String}))):§process.ProcessResult)|
+      l ready=(•support.retryRunStdoutContains(
+        50,
+        •support.commandWithEnv(
+          httpCommand([
+            "run",
+            "src/getClient.sigil",
+            "--env",
+            "test"
+          ]),
+          (httpClientEnv(baseUrl):{String↦String})
+        ),
+        200,
+        "200:healthy"
+      ):§process.ProcessResult);
+      match •support.runStdoutContains(
+        "200:healthy",
+        ready
+      ){
+        true=>(§process.run(•support.commandWithEnv(
+          httpCommand([
+            "run",
+            target,
+            "--env",
+            "test"
+          ]),
+          (httpClientEnv(baseUrl):{String↦String})
+        )):§process.ProcessResult)|
         false=>ready
       }
     }|
-    Err(message)=>{code:-1,stderr:message,stdout:""}
+    Err(message)=>{
+      code:-1,
+      stderr:message,
+      stdout:""
+    }
   };
   l _=(•support.stopReadyServer(server):Unit);
   •support.combinedOutput(result)
 }
 
-λvalidateResult()=>!Process §process.ProcessResult=§process.run(httpCommand(["validate",".","--env","test"]))
+λvalidateResult()=>!Process §process.ProcessResult=§process.run(httpCommand([
+  "validate",
+  ".",
+  "--env",
+  "test"
+]))
 
 test "http topology validates for test env" =>!Process {
   l result=(validateResult():§process.ProcessResult);
@@ -46,30 +105,54 @@ test "http topology validates for test env" =>!Process {
 }
 
 test "http get client reaches roundtrip server" =>!Clock!Fs!Process!Timer {
-  §string.contains(runClientOutput("src/getClient.sigil"),"200:healthy")=true
+  §string.contains(
+    runClientOutput("src/getClient.sigil"),
+    "200:healthy"
+  )=true
 }
 
 test "http post client reaches roundtrip server" =>!Clock!Fs!Process!Timer {
-  §string.contains(runClientOutput("src/postClient.sigil"),"201:echoed")=true
+  §string.contains(
+    runClientOutput("src/postClient.sigil"),
+    "201:echoed"
+  )=true
 }
 
 test "http json client reaches roundtrip server" =>!Clock!Fs!Process!Timer {
-  §string.contains(runClientOutput("src/jsonClient.sigil"),"{\"ok\":true}")=true
+  §string.contains(
+    runClientOutput("src/jsonClient.sigil"),
+    "{\"ok\":true}"
+  )=true
 }
 
 test "http headers client reaches roundtrip server" =>!Clock!Fs!Process!Timer {
-  §string.contains(runClientOutput("src/headersClient.sigil"),"202:abc-123")=true
+  §string.contains(
+    runClientOutput("src/headersClient.sigil"),
+    "202:abc-123"
+  )=true
 }
 
 test "http missing client returns 404" =>!Clock!Fs!Process!Timer {
-  §string.contains(runClientOutput("src/missingClient.sigil"),"404:<h1>404 Not Found</h1>")=true
+  §string.contains(
+    runClientOutput("src/missingClient.sigil"),
+    "404:<h1>404 Not Found</h1>"
+  )=true
 }
 
 test "http routes client returns canonical route summary" =>!Clock!Fs!Process!Timer {
   l output=(runClientOutput("src/routesClient.sigil"):String);
-  §string.contains(output,"200:/echo")=true and §string.contains(output,"/routes")=true
+  §string.contains(
+    output,
+    "200:/echo"
+  )=true and §string.contains(
+    output,
+    "/routes"
+  )=true
 }
 
 test "http raw endpoint compile is forbidden" =>!Fs!Process {
-  §string.contains(rawEndpointCompileOutput(),"SIGIL-TOPO-RAW-ENDPOINT-FORBIDDEN")=true
+  §string.contains(
+    rawEndpointCompileOutput(),
+    "SIGIL-TOPO-RAW-ENDPOINT-FORBIDDEN"
+  )=true
 }

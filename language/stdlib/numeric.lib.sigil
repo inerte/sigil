@@ -1,22 +1,47 @@
-t DivMod={quotient:Int,remainder:Int}
+t DivMod={
+  quotient:Int,
+  remainder:Int
+}
 
 λabs(x:Int)=>Int match x<0{
   true=>-x|
   false=>x
 }
 
-λclamp(hi:Int,lo:Int,x:Int)=>Int=max(lo,min(x,hi))
+λclamp(hi:Int,lo:Int,x:Int)=>Int=max(
+  lo,
+  min(
+    x,
+    hi
+  )
+)
 
 λdivisible(d:Int,n:Int)=>Bool=n%d=0
 
-λdivmod(a:Int,b:Int)=>DivMod={quotient:(a-(mod(a,b):Int))/b,remainder:(mod(a,b):Int)}
+λdivmod(a:Int,b:Int)=>DivMod={
+  quotient:(a-(mod(
+    a,
+    b
+  ):Int))/b,
+  remainder:(mod(
+    a,
+    b
+  ):Int)
+}
 
 λgcd(a:Int,b:Int)=>Int match b{
   0=>a|
-  divisor=>gcd(divisor,a%divisor)
+  divisor=>gcd(
+    divisor,
+    a%divisor
+  )
 }
 
-λinRange(max:Int,min:Int,x:Int)=>Bool=inRangeHelper(max,min,x)
+λinRange(max:Int,min:Int,x:Int)=>Bool=inRangeHelper(
+  max,
+  min,
+  x
+)
 
 λinRangeHelper(max:Int,min:Int,x:Int)=>Bool match x≥min{
   true=>x≤max|
@@ -36,20 +61,29 @@ t DivMod={quotient:Int,remainder:Int}
 λisPrime(n:Int)=>Bool match n{
   0=>false|
   1=>false|
-  value=>isPrimeHelper(2,value)
+  value=>isPrimeHelper(
+    2,
+    value
+  )
 }
 
 λisPrimeHelper(divisor:Int,n:Int)=>Bool match divisor*divisor>n{
   true=>true|
   false=>match n%divisor≠0{
-    true=>isPrimeHelper(divisor+1,n)|
+    true=>isPrimeHelper(
+      divisor+1,
+      n
+    )|
     false=>false
   }
 }
 
 λlcm(a:Int,b:Int)=>Int match a=0 or b=0{
   true=>0|
-  false=>abs(a/(abs(gcd(a,b)):Int)*b)
+  false=>abs(a/(abs(gcd(
+    a,
+    b
+  )):Int)*b)
 }
 
 λmax(a:Int,b:Int)=>Int match a>b{
@@ -69,12 +103,18 @@ t DivMod={quotient:Int,remainder:Int}
 
 λpow(base:Int,exp:Int)=>Int match exp{
   0=>1|
-  remainingExp=>base*pow(base,remainingExp-1)
+  remainingExp=>base*pow(
+    base,
+    remainingExp-1
+  )
 }
 
 λrange(start:Int,stop:Int)=>[Int] match start>stop{
   true=>[]|
-  false=>[start]⧺range(start+1,stop)
+  false=>[start]⧺range(
+    start+1,
+    stop
+  )
 }
 
 λsign(x:Int)=>Int match x<0{

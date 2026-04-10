@@ -3,24 +3,80 @@
 λmain()=>Unit=()
 
 test "core map infers and counts entries" {
-  #({"content-type"↦"application/json","x-id"↦"42"}:{String↦String})=2 and ¶map.size(({"content-type"↦"application/json","x-id"↦"42"}:{String↦String}))=2
+  #({
+    "content-type"↦"application/json",
+    "x-id"↦"42"
+  }:{String↦String})=2 and ¶map.size(({
+    "content-type"↦"application/json",
+    "x-id"↦"42"
+  }:{String↦String}))=2
 }
 
 test "core map get and has work" {
-  ¶map.has("content-type",({"content-type"↦"application/json"}:{String↦String})) and (match ¶map.get("content-type",({"content-type"↦"application/json"}:{String↦String})){
+  ¶map.has(
+    "content-type",
+    ({"content-type"↦"application/json"}:{String↦String})
+  ) and (match ¶map.get(
+    "content-type",
+    ({"content-type"↦"application/json"}:{String↦String})
+  ){
     Some(value)=>value="application/json"|
     None()=>false
   })
 }
 
 test "core map insert remove and merge work" {
-  ¶map.has("content-type",¶map.insert("content-type",({↦}:{String↦String}),"text/plain")) and #¶map.merge(¶map.insert("content-type",({↦}:{String↦String}),"text/plain"),{"x-id"↦"42"})=2 and #¶map.remove("x-id",¶map.merge(¶map.insert("content-type",({↦}:{String↦String}),"text/plain"),{"x-id"↦"42"}))=1
+  ¶map.has(
+    "content-type",
+    ¶map.insert(
+      "content-type",
+      ({↦}:{String↦String}),
+      "text/plain"
+    )
+  )
+    and #¶map.merge(
+      ¶map.insert(
+        "content-type",
+        ({↦}:{String↦String}),
+        "text/plain"
+      ),
+      {"x-id"↦"42"}
+    )=2
+    and #¶map.remove(
+      "x-id",
+      ¶map.merge(
+        ¶map.insert(
+          "content-type",
+          ({↦}:{String↦String}),
+          "text/plain"
+        ),
+        {"x-id"↦"42"}
+      )
+    )=1
 }
 
 test "core map equality ignores insertion order" {
-  ({"a"↦1,"b"↦2}:{String↦Int})=({"b"↦2,"a"↦1}:{String↦Int})
+  ({
+    "a"↦1,
+    "b"↦2
+  }:{String↦Int})=({
+    "b"↦2,
+    "a"↦1
+  }:{String↦Int})
 }
 
 test "core map helpers operate over entries" {
-  #¶map.filter(({"content-type"↦"application/json","x-id"↦"42"}:{String↦String}),keepJsonHeader)=1 and ¶map.values(¶map.filter(({"content-type"↦"application/json","x-id"↦"42"}:{String↦String}),keepJsonHeader))=["application/json"]
+  #¶map.filter(
+    ({
+      "content-type"↦"application/json",
+      "x-id"↦"42"
+    }:{String↦String}),
+    keepJsonHeader
+  )=1 and ¶map.values(¶map.filter(
+    ({
+      "content-type"↦"application/json",
+      "x-id"↦"42"
+    }:{String↦String}),
+    keepJsonHeader
+  ))=["application/json"]
 }

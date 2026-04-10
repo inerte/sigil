@@ -1,5 +1,17 @@
-t ChecksumEntry={archive:String,sha256:String}
+t ChecksumEntry={
+  archive:String,
+  sha256:String
+}
 
-t FormulaInput={checksums:ReleaseChecksums,repo:String,version:String}
+t FormulaInput={
+  checksums:ReleaseChecksums,
+  repo:String,
+  version:String
+}
 
-t ReleaseChecksums={darwinArm64:String,darwinX64:String,linuxArm64:String,linuxX64:String}
+t ReleaseChecksums={
+  darwinArm64:String,
+  darwinX64:String,
+  linuxArm64:String,
+  linuxX64:String
+}

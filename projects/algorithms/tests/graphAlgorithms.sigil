@@ -1,26 +1,106 @@
-λcyclicGraph()=>µGraph={nodes:[{neighbors:[2],vertex:1},{neighbors:[3],vertex:2},{neighbors:[1],vertex:3}]}
+λcyclicGraph()=>µGraph={nodes:[
+  {
+    neighbors:[2],
+    vertex:1
+  },
+  {
+    neighbors:[3],
+    vertex:2
+  },
+  {
+    neighbors:[1],
+    vertex:3
+  }
+]}
 
-λdagGraph()=>µGraph={nodes:[{neighbors:[2,3],vertex:1},{neighbors:[4],vertex:2},{neighbors:[4],vertex:3},{neighbors:[],vertex:4}]}
+λdagGraph()=>µGraph={nodes:[
+  {
+    neighbors:[
+      2,
+      3
+    ],
+    vertex:1
+  },
+  {
+    neighbors:[4],
+    vertex:2
+  },
+  {
+    neighbors:[4],
+    vertex:3
+  },
+  {
+    neighbors:[],
+    vertex:4
+  }
+]}
 
 λmain()=>Unit=()
 
-λorderRespects(from:Int,order:[Int],to:Int)=>Bool=•linearSearch.linearSearch(from,order)<•linearSearch.linearSearch(to,order)
+λorderRespects(from:Int,order:[Int],to:Int)=>Bool=•linearSearch.linearSearch(
+  from,
+  order
+)<•linearSearch.linearSearch(
+  to,
+  order
+)
 
 test "depth first search is deterministic" {
-  •depthFirstSearch.depthFirstSearch(dagGraph(),1)=[1,2,4,3]
+  •depthFirstSearch.depthFirstSearch(
+    dagGraph(),
+    1
+  )=[
+    1,
+    2,
+    4,
+    3
+  ]
 }
 
 test "breadth first search is deterministic" {
-  •breadthFirstSearch.breadthFirstSearch(dagGraph(),1)=[1,2,3,4]
+  •breadthFirstSearch.breadthFirstSearch(
+    dagGraph(),
+    1
+  )=[
+    1,
+    2,
+    3,
+    4
+  ]
 }
 
 test "missing start vertex returns empty traversal" {
-  •depthFirstSearch.depthFirstSearch(dagGraph(),99)=[] and •breadthFirstSearch.breadthFirstSearch(dagGraph(),99)=[]
+  •depthFirstSearch.depthFirstSearch(
+    dagGraph(),
+    99
+  )=[] and •breadthFirstSearch.breadthFirstSearch(
+    dagGraph(),
+    99
+  )=[]
 }
 
 test "topological sort returns ordering for dag" {
   match •topologicalSort.topologicalSort(dagGraph()){
-    µOrdering(order)=>orderRespects(1,order,2) and orderRespects(1,order,3) and orderRespects(2,order,4) and orderRespects(3,order,4)|
+    µOrdering(order)=>orderRespects(
+      1,
+      order,
+      2
+    )
+      and orderRespects(
+        1,
+        order,
+        3
+      )
+      and orderRespects(
+        2,
+        order,
+        4
+      )
+      and orderRespects(
+        3,
+        order,
+        4
+      )|
     µCycleDetected()=>false
   }
 }

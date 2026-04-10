@@ -4,6 +4,10 @@
 }
 
 λmain()=>!Random String={
-  l deck=(§random.shuffle(["orc","slime","bat"]):[String]);
+  l deck=(§random.shuffle([
+    "orc",
+    "slime",
+    "bat"
+  ]):[String]);
   describePick(§random.pick(deck))
 }

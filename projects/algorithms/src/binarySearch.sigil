@@ -5,11 +5,37 @@
     match xs[mid]=target{
       true=>mid|
       false=>match xs[mid]<target{
-        true=>binarySearch(high,mid+1,target,xs)|
-        false=>binarySearch(mid-1,low,target,xs)
+        true=>binarySearch(
+          high,
+          mid+1,
+          target,
+          xs
+        )|
+        false=>binarySearch(
+          mid-1,
+          low,
+          target,
+          xs
+        )
       }
     }
   }
 }
 
-λmain()=>Int=binarySearch(9,0,13,[1,3,5,7,9,11,13,15,17,19])
+λmain()=>Int=binarySearch(
+  9,
+  0,
+  13,
+  [
+    1,
+    3,
+    5,
+    7,
+    9,
+    11,
+    13,
+    15,
+    17,
+    19
+  ]
+)

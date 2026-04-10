@@ -1,1 +1,4 @@
-λmain()=>Int=§numeric.gcd(48,18)
+λmain()=>Int=§numeric.gcd(
+  48,
+  18
+)

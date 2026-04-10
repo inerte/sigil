@@ -143,7 +143,17 @@ fn test_trace_is_inline_per_result() {
     let file = write_program(
         &dir,
         "tests/random.sigil",
-        "λmain()=>Unit=()\n\ntest \"traces random\" =>!Random world {\n  c random=(†random.seeded(1337):†random.RandomEntry)\n} {\n  §random.intBetween(1,1)=1\n}\n",
+        r#"λmain()=>Unit=()
+
+test "traces random" =>!Random world {
+  c random=(†random.seeded(1337):†random.RandomEntry)
+} {
+  §random.intBetween(
+    1,
+    1
+  )=1
+}
+"#,
     );
 
     let output = Command::new(sigil_bin())
@@ -201,7 +211,24 @@ fn test_record_and_replay_preserve_test_local_world_overlays() {
     let file = write_program(
         &dir,
         "tests/random.sigil",
-        "λmain()=>Unit=()\n\ntest \"seeded replay\" =>!Random world {\n  c random=(†random.seeded(1337):†random.RandomEntry)\n} {\n  §random.shuffle([1,2,3,4])=[3,1,2,4]\n}\n",
+        r#"λmain()=>Unit=()
+
+test "seeded replay" =>!Random world {
+  c random=(†random.seeded(1337):†random.RandomEntry)
+} {
+  §random.shuffle([
+    1,
+    2,
+    3,
+    4
+  ])=[
+    3,
+    1,
+    2,
+    4
+  ]
+}
+"#,
     );
     let artifact = dir.join("tests.replay.json");
 

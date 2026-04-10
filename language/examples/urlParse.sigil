@@ -1,6 +1,13 @@
 e console
 
 λmain()=>Unit match §url.parse("https://sigil.dev/docs?lang=sigil#intro"){
-  Ok(parsed)=>console.log(("protocol="++parsed.protocol++", host="++parsed.host++", path="++parsed.path++", suffix="++§url.suffix(parsed):String))()|
+  Ok(parsed)=>console.log(("protocol="
+    ++parsed.protocol
+    ++", host="
+    ++parsed.host
+    ++", path="
+    ++parsed.path
+    ++", suffix="
+    ++§url.suffix(parsed):String))()|
   Err(err)=>console.log("url parse error: "++err.message)()
 }

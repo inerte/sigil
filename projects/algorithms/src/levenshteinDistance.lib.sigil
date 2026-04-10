@@ -1,12 +1,47 @@
-λlevenshtein(left:String,right:String)=>Int=levenshteinFrom(left,0,right,0)
+λlevenshtein(left:String,right:String)=>Int=levenshteinFrom(
+  left,
+  0,
+  right,
+  0
+)
 
 λlevenshteinFrom(left:String,leftIdx:Int,right:String,rightIdx:Int)=>Int match leftIdx=#left{
   true=>#right-rightIdx|
   false=>match rightIdx=#right{
     true=>#left-leftIdx|
-    false=>match §string.charAt(leftIdx,left)=§string.charAt(rightIdx,right){
-      true=>levenshteinFrom(left,leftIdx+1,right,rightIdx+1)|
-      false=>1+min3(levenshteinFrom(left,leftIdx+1,right,rightIdx),levenshteinFrom(left,leftIdx,right,rightIdx+1),levenshteinFrom(left,leftIdx+1,right,rightIdx+1))
+    false=>match §string.charAt(
+      leftIdx,
+      left
+    )=§string.charAt(
+      rightIdx,
+      right
+    ){
+      true=>levenshteinFrom(
+        left,
+        leftIdx+1,
+        right,
+        rightIdx+1
+      )|
+      false=>1+min3(
+        levenshteinFrom(
+          left,
+          leftIdx+1,
+          right,
+          rightIdx
+        ),
+        levenshteinFrom(
+          left,
+          leftIdx,
+          right,
+          rightIdx+1
+        ),
+        levenshteinFrom(
+          left,
+          leftIdx+1,
+          right,
+          rightIdx+1
+        )
+      )
     }
   }
 }
@@ -16,4 +51,10 @@
   false=>b
 }
 
-λmin3(a:Int,b:Int,third:Int)=>Int=min2(min2(a,b),third)
+λmin3(a:Int,b:Int,third:Int)=>Int=min2(
+  min2(
+    a,
+    b
+  ),
+  third
+)

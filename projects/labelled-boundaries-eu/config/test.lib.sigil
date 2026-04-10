@@ -1,3 +1,15 @@
 e process
 
-c world=(†runtime.world(†clock.systemClock(),†fs.real(),[†http.deny(•topology.euPayrollApi),†http.deny(•topology.usAnalyticsApi)],†log.capture(),†process.deny(),†random.seeded(1337),[],†timer.virtual()):†runtime.World)
+c world=(†runtime.world(
+  †clock.systemClock(),
+  †fs.real(),
+  [
+    †http.deny(•topology.euPayrollApi),
+    †http.deny(•topology.usAnalyticsApi)
+  ],
+  †log.capture(),
+  †process.deny(),
+  †random.seeded(1337),
+  [],
+  †timer.virtual()
+):†runtime.World)

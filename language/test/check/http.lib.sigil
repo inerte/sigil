@@ -2,7 +2,10 @@
 
 λcalledNTimes(count:Int,entry:†http.HttpEntry)=>Bool=※observe::http.callCount(entry)=count
 
-λcalledOnce(entry:†http.HttpEntry)=>Bool=calledNTimes(1,entry)
+λcalledOnce(entry:†http.HttpEntry)=>Bool=calledNTimes(
+  1,
+  entry
+)
 
 λlastPathIs(entry:†http.HttpEntry,expected:String)=>Bool match ※observe::http.lastPath(entry){
   Some(actual)=>actual=expected|

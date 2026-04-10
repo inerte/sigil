@@ -1,22 +1,46 @@
-t RelativeState={left:[String],right:[String]}
+t RelativeState={
+  left:[String],
+  right:[String]
+}
 
 λbasename(value:String)=>String match §list.last(splitNonempty(normalize(value))){
   Some(segment)=>segment|
   None()=>normalize(value)
 }
 
-λdirname(value:String)=>String=dirnameFromSegments(§string.startsWith("/",(normalize(value):String)),splitNonempty((normalize(value):String)))
+λdirname(value:String)=>String=dirnameFromSegments(
+  §string.startsWith(
+    "/",
+    (normalize(value):String)
+  ),
+  splitNonempty((normalize(value):String))
+)
 
 λdirnameFromSegments(isAbsolute:Bool,segments:[String])=>String match #segments≤1{
   true=>rootOrCurrent(isAbsolute)|
-  false=>pathFromSegments(isAbsolute,§list.take(#segments-1,segments))
+  false=>pathFromSegments(
+    isAbsolute,
+    §list.take(
+      #segments-1,
+      segments
+    )
+  )
 }
 
-λextname(value:String)=>String=extnameFromParts((basename(value):String),§string.split(".",(basename(value):String)))
+λextname(value:String)=>String=extnameFromParts(
+  (basename(value):String),
+  §string.split(
+    ".",
+    (basename(value):String)
+  )
+)
 
 λextnameFromParts(name:String,parts:[String])=>String match #parts≤1{
   true=>""|
-  false=>match §string.startsWith(".",name) and #parts=2{
+  false=>match §string.startsWith(
+    ".",
+    name
+  ) and #parts=2{
     true=>""|
     false=>match §list.last(parts){
       Some(lastPart)=>"."++lastPart|
@@ -27,7 +51,10 @@ t RelativeState={left:[String],right:[String]}
 
 λfilterEmpty(segments:[String])=>[String] match segments{
   []=>[]|
-  [segment,.rest]=>match #segment=0{
+  [
+  segment,
+  .rest
+]=>match #segment=0{
     true=>filterEmpty(rest)|
     false=>([segment]:[String])⧺filterEmpty(rest)
   }
@@ -37,67 +64,158 @@ t RelativeState={left:[String],right:[String]}
   true=>normalize(right)|
   false=>match #right=0{
     true=>normalize(left)|
-    false=>normalize(left++"/"++right)
+    false=>normalize(left
+      ++"/"
+      ++right)
   }
 }
 
 λnormalize(value:String)=>String={
-  l isAbsolute=(§string.startsWith("/",value):Bool);
-  pathFromSegments(isAbsolute,(normalizeSegments([],isAbsolute,filterEmpty(§string.split("/",value))):[String]))
+  l isAbsolute=(§string.startsWith(
+    "/",
+    value
+  ):Bool);
+  pathFromSegments(
+    isAbsolute,
+    (normalizeSegments(
+      [],
+      isAbsolute,
+      filterEmpty(§string.split(
+        "/",
+        value
+      ))
+    ):[String])
+  )
 }
 
 λnormalizeSegments(acc:[String],isAbsolute:Bool,segments:[String])=>[String] match segments{
   []=>§list.reverse(acc)|
-  [segment,.rest]=>match segment="."{
-    true=>normalizeSegments(acc,isAbsolute,rest)|
+  [
+  segment,
+  .rest
+]=>match segment="."{
+    true=>normalizeSegments(
+      acc,
+      isAbsolute,
+      rest
+    )|
     false=>match segment=".."{
-      true=>normalizeSegmentsParent(acc,isAbsolute,rest)|
-      false=>normalizeSegments(([segment]:[String])⧺acc,isAbsolute,rest)
+      true=>normalizeSegmentsParent(
+        acc,
+        isAbsolute,
+        rest
+      )|
+      false=>normalizeSegments(
+        ([segment]:[String])⧺acc,
+        isAbsolute,
+        rest
+      )
     }
   }
 }
 
 λnormalizeSegmentsParent(acc:[String],isAbsolute:Bool,rest:[String])=>[String] match acc{
   []=>match isAbsolute{
-    true=>normalizeSegments([],isAbsolute,rest)|
-    false=>normalizeSegments([".."],isAbsolute,rest)
+    true=>normalizeSegments(
+      [],
+      isAbsolute,
+      rest
+    )|
+    false=>normalizeSegments(
+      [".."],
+      isAbsolute,
+      rest
+    )
   }|
-  [head,.more]=>match head=".."{
-    true=>normalizeSegments(([".."]:[String])⧺acc,isAbsolute,rest)|
-    false=>normalizeSegments(more,isAbsolute,rest)
+  [
+  head,
+  .more
+]=>match head=".."{
+    true=>normalizeSegments(
+      ([".."]:[String])⧺acc,
+      isAbsolute,
+      rest
+    )|
+    false=>normalizeSegments(
+      more,
+      isAbsolute,
+      rest
+    )
   }
 }
 
 λpathFromSegments(isAbsolute:Bool,segments:[String])=>String match isAbsolute{
-  true=>match #(§string.join("/",segments):String)=0{
+  true=>match #(§string.join(
+    "/",
+    segments
+  ):String)=0{
     true=>"/"|
-    false=>"/"++(§string.join("/",segments):String)
+    false=>"/"++(§string.join(
+      "/",
+      segments
+    ):String)
   }|
-  false=>match #(§string.join("/",segments):String)=0{
+  false=>match #(§string.join(
+    "/",
+    segments
+  ):String)=0{
     true=>"."|
-    false=>(§string.join("/",segments):String)
+    false=>(§string.join(
+      "/",
+      segments
+    ):String)
   }
 }
 
 λrelative(from:String,to:String)=>String={
-  l state=(relativeDropCommon((splitNonempty(normalize(from)):[String]),splitNonempty(normalize(to))):RelativeState);
-  pathFromSegments(false,(repeatSegment(#state.left,".."):[String])⧺state.right)
+  l state=(relativeDropCommon(
+    (splitNonempty(normalize(from)):[String]),
+    splitNonempty(normalize(to))
+  ):RelativeState);
+  pathFromSegments(
+    false,
+    (repeatSegment(
+      #state.left,
+      ".."
+    ):[String])⧺state.right
+  )
 }
 
 λrelativeDropCommon(left:[String],right:[String])=>RelativeState match left{
-  []=>{left:[],right:right}|
-  [leftHead,.leftRest]=>match right{
-    []=>{left:left,right:[]}|
-    [rightHead,.rightRest]=>match leftHead=rightHead{
-      true=>relativeDropCommon(leftRest,rightRest)|
-      false=>{left:left,right:right}
+  []=>{
+    left:[],
+    right:right
+  }|
+  [
+  leftHead,
+  .leftRest
+]=>match right{
+    []=>{
+      left:left,
+      right:[]
+    }|
+    [
+  rightHead,
+  .rightRest
+]=>match leftHead=rightHead{
+      true=>relativeDropCommon(
+        leftRest,
+        rightRest
+      )|
+      false=>{
+        left:left,
+        right:right
+      }
     }
   }
 }
 
 λrepeatSegment(count:Int,segment:String)=>[String] match count≤0{
   true=>[]|
-  false=>([segment]:[String])⧺repeatSegment(count-1,segment)
+  false=>([segment]:[String])⧺repeatSegment(
+    count-1,
+    segment
+  )
 }
 
 λrootOrCurrent(isAbsolute:Bool)=>String match isAbsolute{
@@ -105,4 +223,7 @@ t RelativeState={left:[String],right:[String]}
   false=>"."
 }
 
-λsplitNonempty(value:String)=>[String]=filterEmpty(§string.split("/",value))
+λsplitNonempty(value:String)=>[String]=filterEmpty(§string.split(
+  "/",
+  value
+))

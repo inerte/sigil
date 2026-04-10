@@ -5,15 +5,33 @@
 }
 
 λlistenAndServe(port:Int,readyFile:Option[String])=>!Fs!Tcp Unit={
-  l server=(§tcpServer.listen(handleRequest,port):§tcpServer.Server);
-  l _=(writeReadyPort(readyFile,server):Unit);
+  l server=(§tcpServer.listen(
+    handleRequest,
+    port
+  ):§tcpServer.Server);
+  l _=(writeReadyPort(
+    readyFile,
+    server
+  ):Unit);
   §tcpServer.wait(server)
 }
 
 λmain()=>!Fs!Process!Tcp Unit match §process.argv(){
-  [portText,readyFile]=>listenAndServe(parseRequestedPort(portText),Some(readyFile))|
-  [portText]=>listenAndServe(parseRequestedPort(portText),None())|
-  _=>listenAndServe(45120,None())
+  [
+  portText,
+  readyFile
+]=>listenAndServe(
+    parseRequestedPort(portText),
+    Some(readyFile)
+  )|
+  [portText]=>listenAndServe(
+    parseRequestedPort(portText),
+    None()
+  )|
+  _=>listenAndServe(
+    45120,
+    None()
+  )
 }
 
 λparseRequestedPort(text:String)=>Int match §decode.intFromText(text){
@@ -22,6 +40,9 @@
 }
 
 λwriteReadyPort(readyFile:Option[String],server:§tcpServer.Server)=>!Fs Unit match readyFile{
-  Some(path)=>(§file.writeText(§string.intToString(§tcpServer.port(server)),path):Unit)|
+  Some(path)=>(§file.writeText(
+    §string.intToString(§tcpServer.port(server)),
+    path
+  ):Unit)|
   None()=>()
 }

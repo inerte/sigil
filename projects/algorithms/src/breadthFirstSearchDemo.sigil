@@ -1,3 +1,33 @@
-λdemoGraph()=>µGraph={nodes:[{neighbors:[2,3],vertex:1},{neighbors:[4],vertex:2},{neighbors:[4,5],vertex:3},{neighbors:[],vertex:4},{neighbors:[],vertex:5}]}
+λdemoGraph()=>µGraph={nodes:[
+  {
+    neighbors:[
+      2,
+      3
+    ],
+    vertex:1
+  },
+  {
+    neighbors:[4],
+    vertex:2
+  },
+  {
+    neighbors:[
+      4,
+      5
+    ],
+    vertex:3
+  },
+  {
+    neighbors:[],
+    vertex:4
+  },
+  {
+    neighbors:[],
+    vertex:5
+  }
+]}
 
-λmain()=>[Int]=•breadthFirstSearch.breadthFirstSearch(demoGraph(),1)
+λmain()=>[Int]=•breadthFirstSearch.breadthFirstSearch(
+  demoGraph(),
+  1
+)

@@ -1,4 +1,7 @@
-t Pair={a:String,b:String}
+t Pair={
+  a:String,
+  b:String
+}
 
 e console
 
@@ -7,7 +10,10 @@ e console
   "first"
 }
 
-λmain()=>!Log Pair={a:first(),b:second()}
+λmain()=>!Log Pair={
+  a:first(),
+  b:second()
+}
 
 λsecond()=>!Log String={
   l _=(console.log("second"):Unit);

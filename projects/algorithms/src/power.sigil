@@ -1,6 +1,12 @@
-λmain()=>Int=power(2,10)
+λmain()=>Int=power(
+  2,
+  10
+)
 
 λpower(base:Int,exp:Int)=>Int match exp{
   0=>1|
-  remainingExp=>base*power(base,remainingExp-1)
+  remainingExp=>base*power(
+    base,
+    remainingExp-1
+  )
 }

@@ -1,1 +1,9 @@
-λmain()=>[[Int]]=•combinations.combinations(2,[1,2,3,4])
+λmain()=>[[Int]]=•combinations.combinations(
+  2,
+  [
+    1,
+    2,
+    3,
+    4
+  ]
+)

@@ -2,44 +2,97 @@ t HttpBodyMatch=AnyRequest()|BodyContains(String)
 
 t HttpEntry=HttpEntry(HttpEntryValue)
 
-t HttpEntryValue={dependencyName:String,mode:HttpMode}
+t HttpEntryValue={
+  dependencyName:String,
+  mode:HttpMode
+}
 
 t HttpMode=Deny()|Fixture([HttpRule])|Proxy(String)
 
 t HttpResponsePlan=Respond(HttpResponseValue)|Timeout()
 
-t HttpResponseValue={body:String,status:Int}
+t HttpResponseValue={
+  body:String,
+  status:Int
+}
 
-t HttpRule={bodyMatch:HttpBodyMatch,method:String,path:String,response:HttpResponsePlan}
+t HttpRule={
+  bodyMatch:HttpBodyMatch,
+  method:String,
+  path:String,
+  response:HttpResponsePlan
+}
 
 λanyRequest()=>HttpBodyMatch=AnyRequest()
 
 λbodyContains(fragment:String)=>HttpBodyMatch=BodyContains(fragment)
 
-λdeleteRule(bodyMatch:HttpBodyMatch,path:String,response:HttpResponsePlan)=>HttpRule={bodyMatch:bodyMatch,method:"DELETE",path:path,response:response}
+λdeleteRule(bodyMatch:HttpBodyMatch,path:String,response:HttpResponsePlan)=>HttpRule={
+  bodyMatch:bodyMatch,
+  method:"DELETE",
+  path:path,
+  response:response
+}
 
 λdeny(dependency:§topology.HttpServiceDependency)=>HttpEntry match dependency{
-  §topology.HttpServiceDependency(dependencyName)=>HttpEntry({dependencyName:dependencyName,mode:Deny()})
+  §topology.HttpServiceDependency(dependencyName)=>HttpEntry({
+    dependencyName:dependencyName,
+    mode:Deny()
+  })
 }
 
 λfixture(dependency:§topology.HttpServiceDependency,rules:[HttpRule])=>HttpEntry match dependency{
-  §topology.HttpServiceDependency(dependencyName)=>HttpEntry({dependencyName:dependencyName,mode:Fixture(rules)})
+  §topology.HttpServiceDependency(dependencyName)=>HttpEntry({
+    dependencyName:dependencyName,
+    mode:Fixture(rules)
+  })
 }
 
-λgetRule(bodyMatch:HttpBodyMatch,path:String,response:HttpResponsePlan)=>HttpRule={bodyMatch:bodyMatch,method:"GET",path:path,response:response}
+λgetRule(bodyMatch:HttpBodyMatch,path:String,response:HttpResponsePlan)=>HttpRule={
+  bodyMatch:bodyMatch,
+  method:"GET",
+  path:path,
+  response:response
+}
 
-λpatchRule(bodyMatch:HttpBodyMatch,path:String,response:HttpResponsePlan)=>HttpRule={bodyMatch:bodyMatch,method:"PATCH",path:path,response:response}
+λpatchRule(bodyMatch:HttpBodyMatch,path:String,response:HttpResponsePlan)=>HttpRule={
+  bodyMatch:bodyMatch,
+  method:"PATCH",
+  path:path,
+  response:response
+}
 
-λpostRule(bodyMatch:HttpBodyMatch,path:String,response:HttpResponsePlan)=>HttpRule={bodyMatch:bodyMatch,method:"POST",path:path,response:response}
+λpostRule(bodyMatch:HttpBodyMatch,path:String,response:HttpResponsePlan)=>HttpRule={
+  bodyMatch:bodyMatch,
+  method:"POST",
+  path:path,
+  response:response
+}
 
 λproxy(baseUrl:String,dependency:§topology.HttpServiceDependency)=>HttpEntry match dependency{
-  §topology.HttpServiceDependency(dependencyName)=>HttpEntry({dependencyName:dependencyName,mode:Proxy(baseUrl)})
+  §topology.HttpServiceDependency(dependencyName)=>HttpEntry({
+    dependencyName:dependencyName,
+    mode:Proxy(baseUrl)
+  })
 }
 
-λputRule(bodyMatch:HttpBodyMatch,path:String,response:HttpResponsePlan)=>HttpRule={bodyMatch:bodyMatch,method:"PUT",path:path,response:response}
+λputRule(bodyMatch:HttpBodyMatch,path:String,response:HttpResponsePlan)=>HttpRule={
+  bodyMatch:bodyMatch,
+  method:"PUT",
+  path:path,
+  response:response
+}
 
-λrespond(body:String,status:Int)=>HttpResponsePlan=Respond({body:body,status:status})
+λrespond(body:String,status:Int)=>HttpResponsePlan=Respond({
+  body:body,
+  status:status
+})
 
-λrule(bodyMatch:HttpBodyMatch,method:String,path:String,response:HttpResponsePlan)=>HttpRule={bodyMatch:bodyMatch,method:method,path:path,response:response}
+λrule(bodyMatch:HttpBodyMatch,method:String,path:String,response:HttpResponsePlan)=>HttpRule={
+  bodyMatch:bodyMatch,
+  method:method,
+  path:path,
+  response:response
+}
 
 λtimeout()=>HttpResponsePlan=Timeout()

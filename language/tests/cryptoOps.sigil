@@ -64,7 +64,10 @@ test "hex round-trips" {
 }
 
 test "hmacSha256 returns 64-char hex string" {
-  #§crypto.hmacSha256("secret","message")=64
+  #§crypto.hmacSha256(
+    "secret",
+    "message"
+  )=64
 }
 
 test "sha256 is deterministic" {

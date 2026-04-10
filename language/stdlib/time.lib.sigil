@@ -14,7 +14,10 @@ t TimeError={message:String}
 
 λnow()=>!Clock Instant={epochMillis:0}
 
-λparseIso(input:String)=>Result[Instant,TimeError]=Err({message:"time parse intrinsic unavailable"})
+λparseIso(input:String)=>Result[
+  Instant,
+  TimeError
+]=Err({message:"time parse intrinsic unavailable"})
 
 λsleepMs(ms:Int)=>!Timer Unit=()
 

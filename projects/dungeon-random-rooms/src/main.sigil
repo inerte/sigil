@@ -8,7 +8,19 @@ c width=(48:Int)
 
 λcenterY(room:µRoom)=>Int=room.y+halfFloor(room.h)
 
-λcorridorL(a:µRoom,b:µRoom,x:Int,y:Int)=>Bool=inH(centerY(a),x,centerX(a),centerX(b),y) or inV(centerX(b),x,y,centerY(a),centerY(b))
+λcorridorL(a:µRoom,b:µRoom,x:Int,y:Int)=>Bool=inH(
+  centerY(a),
+  x,
+  centerX(a),
+  centerX(b),
+  y
+) or inV(
+  centerX(b),
+  x,
+  y,
+  centerY(a),
+  centerY(b)
+)
 
 λhalfFloor(n:Int)=>Int match n{
   0=>0|
@@ -16,26 +28,100 @@ c width=(48:Int)
   value=>1+halfFloor(value-2)
 }
 
-λinH(cy:Int,x:Int,x1:Int,x2:Int,y:Int)=>Bool=y=cy and x≥min2(x1,x2) and x≤max2(x1,x2)
+λinH(cy:Int,x:Int,x1:Int,x2:Int,y:Int)=>Bool=y=cy
+  and x≥min2(
+    x1,
+    x2
+  )
+  and x≤max2(
+    x1,
+    x2
+  )
 
-λinRect(rh:Int,rw:Int,rx:Int,ry:Int,x:Int,y:Int)=>Bool=x≥rx and x<rx+rw and (y≥ry and y<ry+rh)
+λinRect(rh:Int,rw:Int,rx:Int,ry:Int,x:Int,y:Int)=>Bool=x≥rx
+  and x<rx+rw
+  and y≥ry
+  and y<ry+rh
 
-λinRoom(room:µRoom,x:Int,y:Int)=>Bool=inRect(room.h,room.w,room.x,room.y,x,y)
+λinRoom(room:µRoom,x:Int,y:Int)=>Bool=inRect(
+  room.h,
+  room.w,
+  room.x,
+  room.y,
+  x,
+  y
+)
 
-λinV(cx:Int,x:Int,y:Int,y1:Int,y2:Int)=>Bool=x=cx and y≥min2(y1,y2) and y≤max2(y1,y2)
+λinV(cx:Int,x:Int,y:Int,y1:Int,y2:Int)=>Bool=x=cx
+  and y≥min2(
+    y1,
+    y2
+  )
+  and y≤max2(
+    y1,
+    y2
+  )
 
 λisExit(world:µWorld,x:Int,y:Int)=>Bool=x=centerX(world.room3) and y=centerY(world.room3)
 
-λisFloor(world:µWorld,x:Int,y:Int)=>Bool=inRoom(world.room1,x,y) or inRoom(world.room2,x,y) or inRoom(world.room3,x,y) or corridorL(world.room1,world.room2,x,y) or corridorL(world.room2,world.room3,x,y)
+λisFloor(world:µWorld,x:Int,y:Int)=>Bool=inRoom(
+  world.room1,
+  x,
+  y
+)
+  or inRoom(
+    world.room2,
+    x,
+    y
+  )
+  or inRoom(
+    world.room3,
+    x,
+    y
+  )
+  or corridorL(
+    world.room1,
+    world.room2,
+    x,
+    y
+  )
+  or corridorL(
+    world.room2,
+    world.room3,
+    x,
+    y
+  )
 
 λisPlayer(world:µWorld,x:Int,y:Int)=>Bool=x=centerX(world.room1) and y=centerY(world.room1)
 
-λmain()=>!Log!Random Unit=console.log(renderRows(makeWorld(),0))
+λmain()=>!Log!Random Unit=console.log(renderRows(
+  makeWorld(),
+  0
+))
 
 λmakeWorld()=>!Random µWorld={
-  l room1=(randRoomInZone(6,13,2,2):µRoom);
-  l room2=(randRoomInZone(7,14,18,2):µRoom);
-  {room1:room1,room2:room2,room3:(randRoomInZone(6,12,32,9):µRoom)}
+  l room1=(randRoomInZone(
+    6,
+    13,
+    2,
+    2
+  ):µRoom);
+  l room2=(randRoomInZone(
+    7,
+    14,
+    18,
+    2
+  ):µRoom);
+  {
+    room1:room1,
+    room2:room2,
+    room3:(randRoomInZone(
+      6,
+      12,
+      32,
+      9
+    ):µRoom)
+  }
 }
 
 λmax2(a:Int,b:Int)=>Int match a>b{
@@ -49,28 +135,74 @@ c width=(48:Int)
 }
 
 λrandRoomInZone(zh:Int,zw:Int,zx:Int,zy:Int)=>!Random µRoom={
-  l w=(§random.intBetween(zw-1,5):Int);
-  l h=(§random.intBetween(zh-1,4):Int);
-  l x=(§random.intBetween(zx+zw-w,zx):Int);
-  {h:h,w:w,x:x,y:(§random.intBetween(zy+zh-h,zy):Int)}
+  l w=(§random.intBetween(
+    zw-1,
+    5
+  ):Int);
+  l h=(§random.intBetween(
+    zh-1,
+    4
+  ):Int);
+  l x=(§random.intBetween(
+    zx+zw-w,
+    zx
+  ):Int);
+  {
+    h:h,
+    w:w,
+    x:x,
+    y:(§random.intBetween(
+      zy+zh-h,
+      zy
+    ):Int)
+  }
 }
 
 λrenderRow(world:µWorld,x:Int,y:Int)=>String match width-x{
   0=>""|
-  _=>tileAt(world,x,y)++renderRow(world,x+1,y)
+  _=>tileAt(
+    world,
+    x,
+    y
+  )++renderRow(
+    world,
+    x+1,
+    y
+  )
 }
 
 λrenderRows(world:µWorld,y:Int)=>String match height-y{
   0=>""|
-  _=>renderRow(world,0,y)++"
-+"++renderRows(world,y+1)
+  _=>renderRow(
+    world,
+    0,
+    y
+  )
+    ++"
++"
+    ++renderRows(
+      world,
+      y+1
+    )
 }
 
-λtileAt(world:µWorld,x:Int,y:Int)=>String match isPlayer(world,x,y){
+λtileAt(world:µWorld,x:Int,y:Int)=>String match isPlayer(
+  world,
+  x,
+  y
+){
   true=>"@"|
-  _=>match isExit(world,x,y){
+  _=>match isExit(
+    world,
+    x,
+    y
+  ){
     true=>">"|
-    _=>match isFloor(world,x,y){
+    _=>match isFloor(
+      world,
+      x,
+      y
+    ){
       true=>"."|
       _=>"#"
     }

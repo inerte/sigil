@@ -1,3 +1,10 @@
 λfilterEven(xs:[Int])=>[Int]=xs filter §numeric.isEven
 
-λmain()=>[Int]=filterEven([1,2,3,4,5,6])
+λmain()=>[Int]=filterEven([
+  1,
+  2,
+  3,
+  4,
+  5,
+  6
+])

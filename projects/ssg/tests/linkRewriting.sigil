@@ -1,23 +1,70 @@
-λaliasRoutes()=>[µAliasRoute]=[{alias:"language/docs/CANONICAL_FORMS.md",route:"/docs/canonical-forms/"},{alias:"language/spec/cli-json.md",route:"/spec/cli-json/"},{alias:"website/articles/015-why-sigil-bans-shadowing.md",route:"/articles/015-why-sigil-bans-shadowing/"},{alias:"/articles/why-sigil-bans-shadowing",route:"/articles/015-why-sigil-bans-shadowing/"}]
+λaliasRoutes()=>[µAliasRoute]=[
+  {
+    alias:"language/docs/CANONICAL_FORMS.md",
+    route:"/docs/canonical-forms/"
+  },
+  {
+    alias:"language/spec/cli-json.md",
+    route:"/spec/cli-json/"
+  },
+  {
+    alias:"website/articles/015-why-sigil-bans-shadowing.md",
+    route:"/articles/015-why-sigil-bans-shadowing/"
+  },
+  {
+    alias:"/articles/why-sigil-bans-shadowing",
+    route:"/articles/015-why-sigil-bans-shadowing/"
+  }
+]
 
 λmain()=>Unit=()
 
 test "link rewriting leaves anchors alone" {
-  •content.rewriteInternalLinks(aliasRoutes(),"/sigil","Read [more](#details)","website/README.md")="Read [more](#details)"
+  •content.rewriteInternalLinks(
+    aliasRoutes(),
+    "/sigil",
+    "Read [more](#details)",
+    "website/README.md"
+  )="Read [more](#details)"
 }
 
 test "link rewriting preserves fragments" {
-  •content.rewriteInternalLinks(aliasRoutes(),"/sigil","See [spec](../language/spec/cli-json.md#schema)","website/articles/015-why-sigil-bans-shadowing.md")="See [spec](/sigil/spec/cli-json/#schema)"
+  •content.rewriteInternalLinks(
+    aliasRoutes(),
+    "/sigil",
+    "See [spec](../language/spec/cli-json.md#schema)",
+    "website/articles/015-why-sigil-bans-shadowing.md"
+  )="See [spec](/sigil/spec/cli-json/#schema)"
 }
 
 test "link rewriting rewrites docs and articles" {
-  (•content.rewriteInternalLinks(aliasRoutes(),"/sigil","Read [docs](../language/docs/CANONICAL_FORMS.md)","website/articles/015-why-sigil-bans-shadowing.md"):String)="Read [docs](/sigil/docs/canonical-forms/)" and (•content.rewriteInternalLinks(aliasRoutes(),"/sigil","Read [article](/articles/why-sigil-bans-shadowing)","language/docs/FFI.md"):String)="Read [article](/sigil/articles/015-why-sigil-bans-shadowing/)"
+  (•content.rewriteInternalLinks(
+    aliasRoutes(),
+    "/sigil",
+    "Read [docs](../language/docs/CANONICAL_FORMS.md)",
+    "website/articles/015-why-sigil-bans-shadowing.md"
+  ):String)="Read [docs](/sigil/docs/canonical-forms/)" and (•content.rewriteInternalLinks(
+    aliasRoutes(),
+    "/sigil",
+    "Read [article](/articles/why-sigil-bans-shadowing)",
+    "language/docs/FFI.md"
+  ):String)="Read [article](/sigil/articles/015-why-sigil-bans-shadowing/)"
 }
 
 test "link rewriting leaves external links unchanged" {
-  •content.rewriteInternalLinks(aliasRoutes(),"/sigil","Visit [Claude](https://claude.com)","website/README.md")="Visit [Claude](https://claude.com)"
+  •content.rewriteInternalLinks(
+    aliasRoutes(),
+    "/sigil",
+    "Visit [Claude](https://claude.com)",
+    "website/README.md"
+  )="Visit [Claude](https://claude.com)"
 }
 
 test "link rewriting preserves query and fragment suffixes" {
-  •content.rewriteInternalLinks(aliasRoutes(),"/sigil","Read [spec](../language/spec/cli-json.md?view=raw#schema)","website/articles/015-why-sigil-bans-shadowing.md")="Read [spec](/sigil/spec/cli-json/?view=raw#schema)"
+  •content.rewriteInternalLinks(
+    aliasRoutes(),
+    "/sigil",
+    "Read [spec](../language/spec/cli-json.md?view=raw#schema)",
+    "website/articles/015-why-sigil-bans-shadowing.md"
+  )="Read [spec](/sigil/spec/cli-json/?view=raw#schema)"
 }

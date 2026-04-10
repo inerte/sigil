@@ -1,29 +1,153 @@
-λconfig()=>µSiteBuildConfig={basePath:"/",outputDir:".local/site",repoUrl:"https://github.com/inerte/sigil",siteDescription:"Machine-first programming language designed for canonical code generation.",siteTitle:"Sigil",siteUrl:"https://inerte.github.io/sigil"}
+λconfig()=>µSiteBuildConfig={
+  basePath:"/",
+  outputDir:".local/site",
+  repoUrl:"https://github.com/inerte/sigil",
+  siteDescription:"Machine-first programming language designed for canonical code generation.",
+  siteTitle:"Sigil",
+  siteUrl:"https://inerte.github.io/sigil"
+}
 
-λdocPage(slug:String)=>µSitePage=•content.blankPage("",{author:"",category:"",date:"2026-03-23",description:"Reference page",slug:slug,title:"Docs "++slug},"docs/"++slug,µDoc(),"language/docs/"++slug++".md")
+λdocPage(slug:String)=>µSitePage=•content.blankPage(
+  "",
+  {
+    author:"",
+    category:"",
+    date:"2026-03-23",
+    description:"Reference page",
+    slug:slug,
+    title:"Docs "++slug
+  },
+  "docs/"++slug,
+  µDoc(),
+  "language/docs/"
+    ++slug
+    ++".md"
+)
 
 λmain()=>Unit=()
 
-λprojectPage(slug:String)=>µSitePage={bodyHtml:"<p>Browser demo and source links live here.</p>",bodyMarkdown:"Browser demo and source links live here.",meta:{author:"",category:"",date:"2026-04-04",description:"Runnable project page",slug:slug,title:"Project "++slug},outputDir:"projects/"++slug,project:Some({demoSourceDir:"projects/todo-app/web/dist",localRun:"cd projects/todo-app && pnpm dev",projectDir:"projects/todo-app"}),section:µProject(),sourcePath:"projects/todo-app/README.md"}
+λprojectPage(slug:String)=>µSitePage={
+  bodyHtml:"<p>Browser demo and source links live here.</p>",
+  bodyMarkdown:"Browser demo and source links live here.",
+  meta:{
+    author:"",
+    category:"",
+    date:"2026-04-04",
+    description:"Runnable project page",
+    slug:slug,
+    title:"Project "++slug
+  },
+  outputDir:"projects/"++slug,
+  project:Some({
+    demoSourceDir:"projects/todo-app/web/dist",
+    localRun:"cd projects/todo-app && pnpm dev",
+    projectDir:"projects/todo-app"
+  }),
+  section:µProject(),
+  sourcePath:"projects/todo-app/README.md"
+}
 
-λspecPage(slug:String)=>µSitePage=•content.blankPage("",{author:"",category:"",date:"2026-03-23",description:"Spec page",slug:slug,title:"Spec "++slug},"spec/"++slug,µSpec(),"language/spec/"++slug++".md")
+λspecPage(slug:String)=>µSitePage=•content.blankPage(
+  "",
+  {
+    author:"",
+    category:"",
+    date:"2026-03-23",
+    description:"Spec page",
+    slug:slug,
+    title:"Spec "++slug
+  },
+  "spec/"++slug,
+  µSpec(),
+  "language/spec/"
+    ++slug
+    ++".md"
+)
 
 test "reference list renders heading and first pages" {
-  l html=(•templates.referenceList(config(),"Docs",[docPage("stdlib"),docPage("testing")]):String);
-  §string.contains(html,"<h2>Docs</h2>") and §string.contains(html,"Docs stdlib") and §string.contains(html,"Docs testing")
+  l html=(•templates.referenceList(
+    config(),
+    "Docs",
+    [
+      docPage("stdlib"),
+      docPage("testing")
+    ]
+  ):String);
+  §string.contains(
+    html,
+    "<h2>Docs</h2>"
+  )
+    and §string.contains(
+      html,
+      "Docs stdlib"
+    )
+    and §string.contains(
+      html,
+      "Docs testing"
+    )
 }
 
 test "reference lists render docs and spec sections" {
-  l html=(•templates.referenceLists(config(),[docPage("stdlib")],[specPage("grammar")]):String);
-  §string.contains(html,"<h2>Docs</h2>") and §string.contains(html,"<h2>Spec</h2>") and §string.contains(html,"Spec grammar")
+  l html=(•templates.referenceLists(
+    config(),
+    [docPage("stdlib")],
+    [specPage("grammar")]
+  ):String);
+  §string.contains(
+    html,
+    "<h2>Docs</h2>"
+  )
+    and §string.contains(
+      html,
+      "<h2>Spec</h2>"
+    )
+    and §string.contains(
+      html,
+      "Spec grammar"
+    )
 }
 
 test "section card renders heading route and call to action" {
-  l html=(•templates.sectionCard("Reference docs rendered directly from the repo.",config(),"Read docs","Docs","/docs/"):String);
-  §string.contains(html,"<h2>Docs</h2>") and §string.contains(html,"href=\"/docs/\"") and §string.contains(html,">Read docs<")
+  l html=(•templates.sectionCard(
+    "Reference docs rendered directly from the repo.",
+    config(),
+    "Read docs",
+    "Docs",
+    "/docs/"
+  ):String);
+  §string.contains(
+    html,
+    "<h2>Docs</h2>"
+  )
+    and §string.contains(
+      html,
+      "href=\"/docs/\""
+    )
+    and §string.contains(
+      html,
+      ">Read docs<"
+    )
 }
 
 test "project page renders demo and source actions" {
-  l html=(•templates.projectPage(config(),projectPage("sigil-todo")):String);
-  §string.contains(html,"href=\"/projects/sigil-todo/demo/\"") and §string.contains(html,">Run demo<") and §string.contains(html,"/tree/main/projects/todo-app") and §string.contains(html,"Run locally:")
+  l html=(•templates.projectPage(
+    config(),
+    projectPage("sigil-todo")
+  ):String);
+  §string.contains(
+    html,
+    "href=\"/projects/sigil-todo/demo/\""
+  )
+    and §string.contains(
+      html,
+      ">Run demo<"
+    )
+    and §string.contains(
+      html,
+      "/tree/main/projects/todo-app"
+    )
+    and §string.contains(
+      html,
+      "Run locally:"
+    )
 }

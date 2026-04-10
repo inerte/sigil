@@ -1,27 +1,54 @@
 t BindingValue=EnvVar(String)|Literal(String)
 
-t Bindings={httpBindings:[HttpBinding],tcpBindings:[TcpBinding]}
+t Bindings={
+  httpBindings:[HttpBinding],
+  tcpBindings:[TcpBinding]
+}
 
-t HttpBinding={baseUrl:BindingValue,dependencyName:String}
+t HttpBinding={
+  baseUrl:BindingValue,
+  dependencyName:String
+}
 
 t PortBindingValue=EnvVarPort(String)|LiteralPort(Int)
 
-t TcpBinding={dependencyName:String,host:BindingValue,port:PortBindingValue}
+t TcpBinding={
+  dependencyName:String,
+  host:BindingValue,
+  port:PortBindingValue
+}
 
 λbindHttp(baseUrl:String,dependency:§topology.HttpServiceDependency)=>HttpBinding match dependency{
-  §topology.HttpServiceDependency(dependencyName)=>{baseUrl:Literal(baseUrl),dependencyName:dependencyName}
+  §topology.HttpServiceDependency(dependencyName)=>{
+    baseUrl:Literal(baseUrl),
+    dependencyName:dependencyName
+  }
 }
 
 λbindHttpEnv(dependency:§topology.HttpServiceDependency,envVar:String)=>HttpBinding match dependency{
-  §topology.HttpServiceDependency(dependencyName)=>{baseUrl:EnvVar(envVar),dependencyName:dependencyName}
+  §topology.HttpServiceDependency(dependencyName)=>{
+    baseUrl:EnvVar(envVar),
+    dependencyName:dependencyName
+  }
 }
 
 λbindTcp(dependency:§topology.TcpServiceDependency,host:String,port:Int)=>TcpBinding match dependency{
-  §topology.TcpServiceDependency(dependencyName)=>{dependencyName:dependencyName,host:Literal(host),port:LiteralPort(port)}
+  §topology.TcpServiceDependency(dependencyName)=>{
+    dependencyName:dependencyName,
+    host:Literal(host),
+    port:LiteralPort(port)
+  }
 }
 
 λbindTcpEnv(dependency:§topology.TcpServiceDependency,hostEnvVar:String,portEnvVar:String)=>TcpBinding match dependency{
-  §topology.TcpServiceDependency(dependencyName)=>{dependencyName:dependencyName,host:EnvVar(hostEnvVar),port:EnvVarPort(portEnvVar)}
+  §topology.TcpServiceDependency(dependencyName)=>{
+    dependencyName:dependencyName,
+    host:EnvVar(hostEnvVar),
+    port:EnvVarPort(portEnvVar)
+  }
 }
 
-λbindings(httpBindings:[HttpBinding],tcpBindings:[TcpBinding])=>Bindings={httpBindings:httpBindings,tcpBindings:tcpBindings}
+λbindings(httpBindings:[HttpBinding],tcpBindings:[TcpBinding])=>Bindings={
+  httpBindings:httpBindings,
+  tcpBindings:tcpBindings
+}

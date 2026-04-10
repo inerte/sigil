@@ -1,5 +1,11 @@
 λdouble(x:Int)=>Int=x*2
 
-λmain()=>[Int]=mapDouble([1,2,3,4,5])
+λmain()=>[Int]=mapDouble([
+  1,
+  2,
+  3,
+  4,
+  5
+])
 
 λmapDouble(xs:[Int])=>[Int]=xs map double

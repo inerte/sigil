@@ -1,30 +1,112 @@
-λabsoluteFeedUrl(config:µSiteBuildConfig)=>String=§string.trimEndChars("/",config.siteUrl)++"/feed.xml"
+λabsoluteFeedUrl(config:µSiteBuildConfig)=>String=§string.trimEndChars(
+  "/",
+  config.siteUrl
+)++"/feed.xml"
 
-λabsolutePageUrl(config:µSiteBuildConfig,page:µSitePage)=>String=§string.trimEndChars("/",config.siteUrl)++•content.canonicalRoute(page)
+λabsolutePageUrl(config:µSiteBuildConfig,page:µSitePage)=>String=§string.trimEndChars(
+  "/",
+  config.siteUrl
+)++•content.canonicalRoute(page)
 
 λarticleAuthor(page:µSitePage)=>String match #page.meta.author>0{
-  true=>"<author><name>"++escapeXml(page.meta.author)++"</name></author>"|
+  true=>"<author><name>"
+    ++escapeXml(page.meta.author)
+    ++"</name></author>"|
   false=>""
 }
 
-λarticleEntries(config:µSiteBuildConfig,pages:[µSitePage])=>String=§string.join("",pages map (λ(page:µSitePage)=>String=articleEntry(config,page)))
+λarticleEntries(config:µSiteBuildConfig,pages:[µSitePage])=>String=§string.join(
+  "",
+  pages map (λ(page:µSitePage)=>String=articleEntry(
+    config,
+    page
+  ))
+)
 
-λarticleEntry(config:µSiteBuildConfig,page:µSitePage)=>String="<entry><id>"++escapeXml(absolutePageUrl(config,page))++"</id><title>"++escapeXml(page.meta.title)++"</title><link href=\""++escapeXml(absolutePageUrl(config,page))++"\"/>"++articleUpdated(page)++articleSummary(page)++articleAuthor(page)++"</entry>"
+λarticleEntry(config:µSiteBuildConfig,page:µSitePage)=>String="<entry><id>"
+  ++escapeXml(absolutePageUrl(
+    config,
+    page
+  ))
+  ++"</id><title>"
+  ++escapeXml(page.meta.title)
+  ++"</title><link href=\""
+  ++escapeXml(absolutePageUrl(
+    config,
+    page
+  ))
+  ++"\"/>"
+  ++articleUpdated(page)
+  ++articleSummary(page)
+  ++articleAuthor(page)
+  ++"</entry>"
 
 λarticleSummary(page:µSitePage)=>String match #page.meta.description>0{
-  true=>"<summary>"++escapeXml(page.meta.description)++"</summary>"|
+  true=>"<summary>"
+    ++escapeXml(page.meta.description)
+    ++"</summary>"|
   false=>""
 }
 
-λarticleUpdated(page:µSitePage)=>String="<updated>"++isoDate(page.meta.date)++"</updated>"
+λarticleUpdated(page:µSitePage)=>String="<updated>"
+  ++isoDate(page.meta.date)
+  ++"</updated>"
 
-λatomFeedXml(config:µSiteBuildConfig,data:µSiteData)=>String="<?xml version=\"1.0\" encoding=\"UTF-8\"?>"++"<feed xmlns=\"http://www.w3.org/2005/Atom\"><id>"++escapeXml(§string.trimEndChars("/",config.siteUrl)++"/")++"</id><title>"++escapeXml(config.siteTitle)++"</title><subtitle>"++escapeXml(config.siteDescription)++"</subtitle><link href=\""++escapeXml(§string.trimEndChars("/",config.siteUrl)++"/")++"\"/><link href=\""++escapeXml(absoluteFeedUrl(config))++"\" rel=\"self\"/>"++feedUpdated(data.articles)++articleEntries(config,data.articles)++"</feed>"
+λatomFeedXml(config:µSiteBuildConfig,data:µSiteData)=>String="<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+  ++"<feed xmlns=\"http://www.w3.org/2005/Atom\"><id>"
+  ++escapeXml(§string.trimEndChars(
+    "/",
+    config.siteUrl
+  )++"/")
+  ++"</id><title>"
+  ++escapeXml(config.siteTitle)
+  ++"</title><subtitle>"
+  ++escapeXml(config.siteDescription)
+  ++"</subtitle><link href=\""
+  ++escapeXml(§string.trimEndChars(
+    "/",
+    config.siteUrl
+  )++"/")
+  ++"\"/><link href=\""
+  ++escapeXml(absoluteFeedUrl(config))
+  ++"\" rel=\"self\"/>"
+  ++feedUpdated(data.articles)
+  ++articleEntries(
+    config,
+    data.articles
+  )
+  ++"</feed>"
 
-λescapeXml(text:String)=>String=§string.replaceAll(">","&gt;",§string.replaceAll("<","&lt;",§string.replaceAll("\"","&quot;",§string.replaceAll("'","&apos;",§string.replaceAll("&","&amp;",text)))))
+λescapeXml(text:String)=>String=§string.replaceAll(
+  ">",
+  "&gt;",
+  §string.replaceAll(
+    "<",
+    "&lt;",
+    §string.replaceAll(
+      "\"",
+      "&quot;",
+      §string.replaceAll(
+        "'",
+        "&apos;",
+        §string.replaceAll(
+          "&",
+          "&amp;",
+          text
+        )
+      )
+    )
+  )
+)
 
 λfeedUpdated(articles:[µSitePage])=>String match articles{
   []=>"<updated>1970-01-01T00:00:00Z</updated>"|
-  [page,.rest]=>"<updated>"++isoDate(page.meta.date)++"</updated>"
+  [
+  page,
+  .rest
+]=>"<updated>"
+    ++isoDate(page.meta.date)
+    ++"</updated>"
 }
 
 λisoDate(date:String)=>String match #date>0{

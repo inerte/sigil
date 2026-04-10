@@ -1,33 +1,82 @@
-λblockSize(n:Int)=>Int=blockSizeFrom(1,n)
+λblockSize(n:Int)=>Int=blockSizeFrom(
+  1,
+  n
+)
 
 λblockSizeFrom(candidate:Int,n:Int)=>Int match (candidate+1)*(candidate+1)>n{
   true=>candidate|
-  false=>blockSizeFrom(candidate+1,n)
+  false=>blockSizeFrom(
+    candidate+1,
+    n
+  )
 }
 
-λblockStarts(block:Int,xs:[Int])=>[Int]=§numeric.range(0,(#xs-1)/block) map (λ(step:Int)=>Int=step*block)
+λblockStarts(block:Int,xs:[Int])=>[Int]=§numeric.range(
+  0,
+  (#xs-1)/block
+) map (λ(step:Int)=>Int=step*block)
 
-λendIndex(block:Int,start:Int,xs:[Int])=>Int=§numeric.min(#xs-1,start+block-1)
+λendIndex(block:Int,start:Int,xs:[Int])=>Int=§numeric.min(
+  #xs-1,
+  start+block-1
+)
 
-λindexValue(idx:Int,xs:[Int])=>Int match §list.nth(idx,xs){
+λindexValue(idx:Int,xs:[Int])=>Int match §list.nth(
+  idx,
+  xs
+){
   Some(value)=>value|
   None()=>0
 }
 
 λjumpSearch(target:Int,xs:[Int])=>Int match #xs=0{
   true=>-1|
-  false=>jumpSearchInBlock(blockSize(#xs),target,xs)
+  false=>jumpSearchInBlock(
+    blockSize(#xs),
+    target,
+    xs
+  )
 }
 
-λjumpSearchInBlock(block:Int,target:Int,xs:[Int])=>Int match §list.nth(0,(blockStarts(block,xs) filter (λ(start:Int)=>Bool=indexValue(endIndex(block,start,xs),xs)≥target):[Int])){
-  Some(start)=>linearSearchBlock(endIndex(block,start,xs),start,target,xs)|
+λjumpSearchInBlock(block:Int,target:Int,xs:[Int])=>Int match §list.nth(
+  0,
+  (blockStarts(
+    block,
+    xs
+  ) filter (λ(start:Int)=>Bool=indexValue(
+    endIndex(
+      block,
+      start,
+      xs
+    ),
+    xs
+  )≥target):[Int])
+){
+  Some(start)=>linearSearchBlock(
+    endIndex(
+      block,
+      start,
+      xs
+    ),
+    start,
+    target,
+    xs
+  )|
   None()=>-1
 }
 
 λlinearSearchBlock(end:Int,start:Int,target:Int,xs:[Int])=>Int match start>end{
   true=>-1|
-  false=>match indexValue(start,xs)=target{
+  false=>match indexValue(
+    start,
+    xs
+  )=target{
     true=>start|
-    false=>linearSearchBlock(end,start+1,target,xs)
+    false=>linearSearchBlock(
+      end,
+      start+1,
+      target,
+      xs
+    )
   }
 }

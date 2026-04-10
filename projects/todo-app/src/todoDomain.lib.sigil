@@ -1,4 +1,8 @@
-λaddTodo(id:Int,text:String,todos:[µTodo])=>[µTodo]=[{done:false,id:id,text:text}]⧺todos
+λaddTodo(id:Int,text:String,todos:[µTodo])=>[µTodo]=[{
+  done:false,
+  id:id,
+  text:text
+}]⧺todos
 
 λcanAdd(text:String)=>Bool=text≠""
 
@@ -12,7 +16,11 @@
 λdeleteTodo(targetId:Int,todos:[µTodo])=>[µTodo]=todos filter (λ(todo:µTodo)=>Bool=todo.id≠targetId)
 
 λeditTodo(newText:String,targetId:Int,todos:[µTodo])=>[µTodo]=todos map (λ(todo:µTodo)=>µTodo match todo.id=targetId{
-  true=>{done:todo.done,id:todo.id,text:newText}|
+  true=>{
+    done:todo.done,
+    id:todo.id,
+    text:newText
+  }|
   false=>todo
 })
 
@@ -29,6 +37,10 @@ ensures result≥0
 =total-completed
 
 λtoggleTodo(targetId:Int,todos:[µTodo])=>[µTodo]=todos map (λ(todo:µTodo)=>µTodo match todo.id=targetId{
-  true=>{done:¬todo.done,id:todo.id,text:todo.text}|
+  true=>{
+    done:¬todo.done,
+    id:todo.id,
+    text:todo.text
+  }|
   false=>todo
 })

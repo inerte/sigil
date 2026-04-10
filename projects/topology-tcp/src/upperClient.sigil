@@ -1,4 +1,7 @@
-λmain()=>!Tcp String match §tcpClient.send(•topology.eventStream,"upper:hello"){
+λmain()=>!Tcp String match §tcpClient.send(
+  •topology.eventStream,
+  "upper:hello"
+){
   Ok(response)=>response.message|
   Err(error)=>"ERR:"++error.message
 }

@@ -1,8 +1,25 @@
-λbuckets(histogram:{Int↦Int})=>[µBucket]=¶map.entries(histogram) map (λ(entry:¶map.Entry[Int,Int])=>µBucket={count:entry.value,value:entry.key})
+λbuckets(histogram:{Int↦Int})=>[µBucket]=¶map.entries(histogram) map (λ(entry:¶map.Entry[
+  Int,
+  Int
+])=>µBucket={
+  count:entry.value,
+  value:entry.key
+})
 
 λhistogram(xs:[Int])=>{Int↦Int}=xs reduce increment from (¶map.empty():{Int↦Int})
 
-λincrement(histogram:{Int↦Int},value:Int)=>{Int↦Int} match ¶map.get(value,histogram){
-  Some(count)=>¶map.insert(value,histogram,count+1)|
-  None()=>¶map.insert(value,histogram,1)
+λincrement(histogram:{Int↦Int},value:Int)=>{Int↦Int} match ¶map.get(
+  value,
+  histogram
+){
+  Some(count)=>¶map.insert(
+    value,
+    histogram,
+    count+1
+  )|
+  None()=>¶map.insert(
+    value,
+    histogram,
+    1
+  )
 }

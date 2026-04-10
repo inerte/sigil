@@ -1,4 +1,7 @@
-λaddUnique(acc:[Int],value:Int)=>[Int] match §list.contains(value,acc){
+λaddUnique(acc:[Int],value:Int)=>[Int] match §list.contains(
+  value,
+  acc
+){
   true=>acc|
   false=>acc⧺[value]
 }
@@ -7,18 +10,49 @@
   []=>seen|
   _=>{
     l nextSeen=(frontier reduce addUnique from seen:[Int]);
-    componentMembers((uniqueInts((§list.flatMap(λ(vertex:Int)=>[Int]=•graphHelpers.neighborsOf(graph,vertex),frontier):[Int]) filter (λ(vertex:Int)=>Bool=¬§list.contains(vertex,nextSeen))):[Int]),graph,nextSeen)
+    componentMembers(
+      (uniqueInts((§list.flatMap(
+        λ(vertex:Int)=>[Int]=•graphHelpers.neighborsOf(
+          graph,
+          vertex
+        ),
+        frontier
+      ):[Int]) filter (λ(vertex:Int)=>Bool=¬§list.contains(
+        vertex,
+        nextSeen
+      ))):[Int]),
+      graph,
+      nextSeen
+    )
   }
 }
 
 λcomponentsFrom(acc:[[Int]],graph:µGraph,remaining:[Int])=>[[Int]] match remaining{
   []=>acc|
-  [vertex,.tail]=>{
-    l component=(componentMembers([vertex],graph,[]):[Int]);
-    componentsFrom(acc⧺[component],graph,(tail filter (λ(candidate:Int)=>Bool=¬§list.contains(candidate,component)):[Int]))
+  [
+  vertex,
+  .tail
+]=>{
+    l component=(componentMembers(
+      [vertex],
+      graph,
+      []
+    ):[Int]);
+    componentsFrom(
+      acc⧺[component],
+      graph,
+      (tail filter (λ(candidate:Int)=>Bool=¬§list.contains(
+        candidate,
+        component
+      )):[Int])
+    )
   }
 }
 
-λconnectedComponents(graph:µGraph)=>[[Int]]=componentsFrom([],graph,•graphHelpers.vertices(graph))
+λconnectedComponents(graph:µGraph)=>[[Int]]=componentsFrom(
+  [],
+  graph,
+  •graphHelpers.vertices(graph)
+)
 
 λuniqueInts(xs:[Int])=>[Int]=xs reduce addUnique from []

@@ -4,4 +4,18 @@
 
 λkeepLarge(xs:[Int])=>[Int]=xs filter (λ(x:Int)=>Bool=x>2)
 
-λmain()=>Int=§list.sum(doubleAll([1,2,3]))+§list.sum(filterThenMap([-2,1,3]))+§list.sum(keepLarge([1,2,3,4,5]))
+λmain()=>Int=§list.sum(doubleAll([
+  1,
+  2,
+  3
+]))+§list.sum(filterThenMap([
+  -2,
+  1,
+  3
+]))+§list.sum(keepLarge([
+  1,
+  2,
+  3,
+  4,
+  5
+]))

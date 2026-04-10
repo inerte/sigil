@@ -1,4 +1,8 @@
-t Request={host:String,message:String,port:Int}
+t Request={
+  host:String,
+  message:String,
+  port:Int
+}
 
 t Response={message:String}
 

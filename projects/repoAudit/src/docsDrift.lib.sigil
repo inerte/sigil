@@ -1,55 +1,166 @@
 λallLinesSatisfy(lines:[String],predicate:λ(String)=>Bool)=>Bool match lines{
   []=>true|
-  [head,.tail]=>match predicate(head){
-    true=>allLinesSatisfy(tail,predicate)|
+  [
+  head,
+  .tail
+]=>match predicate(head){
+    true=>allLinesSatisfy(
+      tail,
+      predicate
+    )|
     false=>false
   }
 }
 
 λcollectMarkdownAuditRefs(filePath:String,root:String)=>!Fs µMarkdownAudit={
-  l markdown=(§file.readText(§path.join(root,filePath)):String);
-  l extraction=(extractSnippets(filePath,markdown):µExtractResult);
-  collectMarkdownAuditRefsFromSnippets(extraction.results,{documentedRefs:[],issues:extraction.issues,snippetRefs:[]})
+  l markdown=(§file.readText(§path.join(
+    root,
+    filePath
+  )):String);
+  l extraction=(extractSnippets(
+    filePath,
+    markdown
+  ):µExtractResult);
+  collectMarkdownAuditRefsFromSnippets(
+    extraction.results,
+    {
+      documentedRefs:[],
+      issues:extraction.issues,
+      snippetRefs:[]
+    }
+  )
 }
 
 λcollectMarkdownAuditRefsFromSnippets(snippets:[µSnippet],state:µMarkdownAudit)=>µMarkdownAudit match snippets{
   []=>state|
-  [head,.tail]=>{
+  [
+  head,
+  .tail
+]=>{
     l current=(match isCheckedKind(head.info.kind){
-      false=>{documentedRefs:[],issues:[invalidFenceIssue(head.filePath,head.line,"unknown Sigil fence kind '"++head.info.kind++"'")],snippetRefs:[]}|
+      false=>{
+        documentedRefs:[],
+        issues:[invalidFenceIssue(
+          head.filePath,
+          head.line,
+          "unknown Sigil fence kind '"
+            ++head.info.kind
+            ++"'"
+        )],
+        snippetRefs:[]
+      }|
       true=>match head.info.kind{
         "decl"=>match head.info.context{
-          Some(modulePath)=>match §string.startsWith("§",modulePath){
+          Some(modulePath)=>match §string.startsWith(
+            "§",
+            modulePath
+          ){
             true=>{
-              l refs=(•coverage.documentedRefsForSnippet(modulePath,head.content):[String]);
-              {documentedRefs:refs,issues:[],snippetRefs:refs}
+              l refs=(•coverage.documentedRefsForSnippet(
+                modulePath,
+                head.content
+              ):[String]);
+              {
+                documentedRefs:refs,
+                issues:[],
+                snippetRefs:refs
+              }
             }|
-            false=>{documentedRefs:[],issues:[],snippetRefs:[]}
+            false=>{
+              documentedRefs:[],
+              issues:[],
+              snippetRefs:[]
+            }
           }|
-          None()=>{documentedRefs:[],issues:[invalidFenceIssue(head.filePath,head.line,"sigil decl snippets require a stdlib module context")],snippetRefs:[]}
+          None()=>{
+            documentedRefs:[],
+            issues:[invalidFenceIssue(
+              head.filePath,
+              head.line,
+              "sigil decl snippets require a stdlib module context"
+            )],
+            snippetRefs:[]
+          }
         }|
-        _=>{documentedRefs:[],issues:[],snippetRefs:snippetRefsForValidatedSnippet(head)}
+        _=>{
+          documentedRefs:[],
+          issues:[],
+          snippetRefs:snippetRefsForValidatedSnippet(head)
+        }
       }
     }:µMarkdownAudit);
-    collectMarkdownAuditRefsFromSnippets(tail,{documentedRefs:mergeUnique(state.documentedRefs,current.documentedRefs),issues:mergeIssueLists(state.issues,current.issues),snippetRefs:mergeUnique(state.snippetRefs,current.snippetRefs)})
+    collectMarkdownAuditRefsFromSnippets(
+      tail,
+      {
+        documentedRefs:mergeUnique(
+          state.documentedRefs,
+          current.documentedRefs
+        ),
+        issues:mergeIssueLists(
+          state.issues,
+          current.issues
+        ),
+        snippetRefs:mergeUnique(
+          state.snippetRefs,
+          current.snippetRefs
+        )
+      }
+    )
   }
 }
 
 λcollectQualifiedRefs(source:String)=>[String]=•coverage.collectQualifiedRefs(source)
 
-λcollectStdlibExports(filePath:String,parseJson:String)=>[String]=•coverage.collectStdlibExports(filePath,parseJson)
+λcollectStdlibExports(filePath:String,parseJson:String)=>[String]=•coverage.collectStdlibExports(
+  filePath,
+  parseJson
+)
 
-λcompilerCommand(argv:[String],root:String)=>§process.Command=§process.withCwd(§process.command([§path.join(root,"language/compiler/target/debug/sigil")]⧺argv),root)
+λcompilerCommand(argv:[String],root:String)=>§process.Command=§process.withCwd(
+  §process.command([§path.join(
+    root,
+    "language/compiler/target/debug/sigil"
+  )]⧺argv),
+  root
+)
 
-λdeclSnippetIssues(filePath:String,line:Int,source:String)=>[µIssue]=declSnippetIssuesInner(filePath,line,§string.lines(source))
+λdeclSnippetIssues(filePath:String,line:Int,source:String)=>[µIssue]=declSnippetIssuesInner(
+  filePath,
+  line,
+  §string.lines(source)
+)
 
 λdeclSnippetIssuesInner(filePath:String,line:Int,lines:[String])=>[µIssue] match lines{
   []=>[]|
-  [head,.tail]=>{
+  [
+  head,
+  .tail
+]=>{
     l trimmed=(§string.trim(head):String);
-    match #trimmed=0 or isDocAnnotationLine(trimmed) or §string.startsWith("t",trimmed) or §string.startsWith("λ",trimmed){
-      true=>declSnippetIssuesInner(filePath,line,tail)|
-      false=>[{line:line,message:"sigil decl snippets may only contain type or function signatures",path:filePath}]⧺declSnippetIssuesInner(filePath,line,tail)
+    match #trimmed=0
+      or isDocAnnotationLine(trimmed)
+      or §string.startsWith(
+        "t",
+        trimmed
+      )
+      or §string.startsWith(
+        "λ",
+        trimmed
+      ){
+      true=>declSnippetIssuesInner(
+        filePath,
+        line,
+        tail
+      )|
+      false=>[{
+        line:line,
+        message:"sigil decl snippets may only contain type or function signatures",
+        path:filePath
+      }]⧺declSnippetIssuesInner(
+        filePath,
+        line,
+        tail
+      )
     }
   }
 }
@@ -62,25 +173,59 @@
   _=>"snippet.sigil"
 }
 
-λdocumentedRefsForSnippet(modulePath:String,source:String)=>[String]=•coverage.documentedRefsForSnippet(modulePath,source)
+λdocumentedRefsForSnippet(modulePath:String,source:String)=>[String]=•coverage.documentedRefsForSnippet(
+  modulePath,
+  source
+)
 
 λexecuteSnippetCheck(expectsSuccess:Bool,filePath:String,root:String,subcommand:String,tempDir:String,virtualPath:String,wrappedSource:String)=>!AuditIo [µIssue]={
-  l snippetPath=(§path.join(tempDir,virtualPath):String);
-  l preparation=(prepareSnippetWorkspace(filePath,root,tempDir,virtualPath):[µIssue]);
+  l snippetPath=(§path.join(
+    tempDir,
+    virtualPath
+  ):String);
+  l preparation=(prepareSnippetWorkspace(
+    filePath,
+    root,
+    tempDir,
+    virtualPath
+  ):[µIssue]);
   l _=(§file.makeDirs(§path.dirname(snippetPath)):Unit);
   match #preparation>0{
     true=>preparation|
     false=>{
-      l _=(§file.writeText(wrappedSource++"
-",snippetPath):Unit);
-      l result=(§process.run(compilerCommand([subcommand,relativeToRootPath(root,snippetPath)],root)):§process.ProcessResult);
+      l _=(§file.writeText(
+        wrappedSource++"
+",
+        snippetPath
+      ):Unit);
+      l result=(§process.run(compilerCommand(
+        [
+          subcommand,
+          relativeToRootPath(
+            root,
+            snippetPath
+          )
+        ],
+        root
+      )):§process.ProcessResult);
       match expectsSuccess{
         true=>match result.code=0{
           true=>[]|
-          false=>[{line:0,message:"compiler check failed for "++virtualPath++": "++processOutput(result),path:filePath}]
+          false=>[{
+            line:0,
+            message:"compiler check failed for "
+              ++virtualPath
+              ++": "
+              ++processOutput(result),
+            path:filePath
+          }]
         }|
         false=>match result.code=0{
-          true=>[{line:0,message:"invalid Sigil snippet compiled successfully for "++virtualPath,path:filePath}]|
+          true=>[{
+            line:0,
+            message:"invalid Sigil snippet compiled successfully for "++virtualPath,
+            path:filePath
+          }]|
           false=>[]
         }
       }
@@ -88,31 +233,84 @@
   }
 }
 
-λextractSnippets(filePath:String,markdown:String)=>µExtractResult=•fences.extractSnippets(filePath,markdown)
+λextractSnippets(filePath:String,markdown:String)=>µExtractResult=•fences.extractSnippets(
+  filePath,
+  markdown
+)
 
-λgitTopLevel()=>!Process Result[String,String]={
-  l result=(§process.run(§process.command(["git","rev-parse","--show-toplevel"])):§process.ProcessResult);
+λgitTopLevel()=>!Process Result[
+  String,
+  String
+]={
+  l result=(§process.run(§process.command([
+    "git",
+    "rev-parse",
+    "--show-toplevel"
+  ])):§process.ProcessResult);
   match result.code=0{
     true=>Ok((§string.trim(result.stdout):String))|
     false=>Err("git rev-parse failed: "++result.stderr)
   }
 }
 
-λgitTrackedMarkdown()=>!Process Result[[String],String]=parseTrackedFiles(§process.run(§process.command(["git","ls-files","--cached","--others","--exclude-standard","*.md"])))
+λgitTrackedMarkdown()=>!Process Result[
+  [String],
+  String
+]=parseTrackedFiles(§process.run(§process.command([
+  "git",
+  "ls-files",
+  "--cached",
+  "--others",
+  "--exclude-standard",
+  "*.md"
+])))
 
-λgitTrackedStdlib()=>!Process Result[[String],String]=parseTrackedFiles(§process.run(§process.command(["git","ls-files","--cached","--others","--exclude-standard","language/stdlib/*.lib.sigil"])))
+λgitTrackedStdlib()=>!Process Result[
+  [String],
+  String
+]=parseTrackedFiles(§process.run(§process.command([
+  "git",
+  "ls-files",
+  "--cached",
+  "--others",
+  "--exclude-standard",
+  "language/stdlib/*.lib.sigil"
+])))
 
-λgitTrackedStdlibTests()=>!Process Result[[String],String]=parseTrackedFiles(§process.run(§process.command(["git","ls-files","--cached","--others","--exclude-standard","language/stdlib-tests/tests/*.sigil"])))
+λgitTrackedStdlibTests()=>!Process Result[
+  [String],
+  String
+]=parseTrackedFiles(§process.run(§process.command([
+  "git",
+  "ls-files",
+  "--cached",
+  "--others",
+  "--exclude-standard",
+  "language/stdlib-tests/tests/*.sigil"
+])))
 
 λhasTopLevelPrefix(lines:[String],prefix:String)=>Bool match lines{
   []=>false|
-  [head,.tail]=>match §string.startsWith(prefix,head){
+  [
+  head,
+  .tail
+]=>match §string.startsWith(
+    prefix,
+    head
+  ){
     true=>true|
-    false=>hasTopLevelPrefix(tail,prefix)
+    false=>hasTopLevelPrefix(
+      tail,
+      prefix
+    )
   }
 }
 
-λinvalidFenceIssue(filePath:String,line:Int,message:String)=>µIssue={line:line,message:message,path:filePath}
+λinvalidFenceIssue(filePath:String,line:Int,message:String)=>µIssue={
+  line:line,
+  message:message,
+  path:filePath
+}
 
 λisCheckedKind(kind:String)=>Bool match kind{
   "decl"=>true|
@@ -128,31 +326,96 @@
   _=>false
 }
 
-λisDocAnnotationLine(line:String)=>Bool=§string.startsWith("//",line) or §string.startsWith("⟦",line) or §string.startsWith("✅",line) or §string.startsWith("❌",line)
+λisDocAnnotationLine(line:String)=>Bool=§string.startsWith(
+  "//",
+  line
+)
+  or §string.startsWith(
+    "⟦",
+    line
+  )
+  or §string.startsWith(
+    "✅",
+    line
+  )
+  or §string.startsWith(
+    "❌",
+    line
+  )
 
-λisProgramLikeLines(lines:[String])=>Bool=hasTopLevelPrefix(lines,"test ") or hasTopLevelPrefix(lines,"λmain(")
+λisProgramLikeLines(lines:[String])=>Bool=hasTopLevelPrefix(
+  lines,
+  "test "
+) or hasTopLevelPrefix(
+  lines,
+  "λmain("
+)
 
-λisTopLevelLikeLine(line:String)=>Bool=§string.startsWith("c ",line) or §string.startsWith("e ",line) or §string.startsWith("t ",line) or §string.startsWith("test ",line) or §string.startsWith("λ",line)
+λisTopLevelLikeLine(line:String)=>Bool=§string.startsWith(
+  "c ",
+  line
+)
+  or §string.startsWith(
+    "e ",
+    line
+  )
+  or §string.startsWith(
+    "t ",
+    line
+  )
+  or §string.startsWith(
+    "test ",
+    line
+  )
+  or §string.startsWith(
+    "λ",
+    line
+  )
 
 λisTopLevelLikeLines(lines:[String])=>Bool match lines{
   []=>false|
-  [head,.tail]=>isTopLevelLikeLine(head)
+  [
+  head,
+  .tail
+]=>isTopLevelLikeLine(head)
 }
 
-λissueMessage(issue:µIssue)=>String=issue.path++":"++§string.intToString(issue.line)++": "++issue.message
+λissueMessage(issue:µIssue)=>String=issue.path
+  ++":"
+  ++§string.intToString(issue.line)
+  ++": "
+  ++issue.message
 
 λmergeIssueLists(left:[µIssue],right:[µIssue])=>[µIssue] match right{
   []=>left|
-  [head,.tail]=>mergeIssueLists(left⧺[head],tail)
+  [
+  head,
+  .tail
+]=>mergeIssueLists(
+    left⧺[head],
+    tail
+  )
 }
 
 λmergeUnique(left:[String],right:[String])=>[String] match right{
   []=>left|
-  [head,.tail]=>mergeUnique(•coverage.insertUnique(head,left),tail)
+  [
+  head,
+  .tail
+]=>mergeUnique(
+    •coverage.insertUnique(
+      head,
+      left
+    ),
+    tail
+  )
 }
 
-λnormalizeSnippetContent(source:String)=>String=§string.join("
-",normalizedSnippetLines(source))
+λnormalizeSnippetContent(source:String)=>String=§string.join(
+  "
+",
+  normalizedSnippetLines(source)
+)
 
 λnormalizedExprsKind(snippet:µSnippet)=>String={
   l lines=(normalizedSnippetLines(snippet.content):[String]);
@@ -178,7 +441,10 @@
 
 λnormalizedSnippetLinesInner(lines:[String])=>[String] match lines{
   []=>[]|
-  [head,.tail]=>{
+  [
+  head,
+  .tail
+]=>{
     l trimmed=(§string.trim(head):String);
     match #trimmed=0 or isDocAnnotationLine(trimmed){
       true=>normalizedSnippetLinesInner(tail)|
@@ -187,23 +453,46 @@
   }
 }
 
-λordinalPath(ordinal:Int,tempDir:String)=>String=§path.join(tempDir,"snippet-"++§string.intToString(ordinal))
+λordinalPath(ordinal:Int,tempDir:String)=>String=§path.join(
+  tempDir,
+  "snippet-"++§string.intToString(ordinal)
+)
 
-λparseFenceInfo(info:String)=>Result[µFenceInfo,String]=•fences.parseFenceInfo(info)
+λparseFenceInfo(info:String)=>Result[
+  µFenceInfo,
+  String
+]=•fences.parseFenceInfo(info)
 
-λparseTrackedFiles(result:§process.ProcessResult)=>Result[[String],String] match result.code=0{
+λparseTrackedFiles(result:§process.ProcessResult)=>Result[
+  [String],
+  String
+] match result.code=0{
   true=>Ok((§string.lines(result.stdout):[String]) filter •fences.nonEmpty)|
   false=>Err(result.stderr)
 }
 
 λprepareSnippetWorkspace(filePath:String,root:String,tempDir:String,virtualPath:String)=>!AuditIo [µIssue] match projectRootFromVirtualPath(virtualPath){
   Some(projectRoot)=>{
-    l targetProjectRoot=(§path.join(tempDir,projectRoot):String);
+    l targetProjectRoot=(§path.join(
+      tempDir,
+      projectRoot
+    ):String);
     l _=(§file.makeDirs(targetProjectRoot):Unit);
-    l copyResult=(§process.run(§process.command(["rsync"]⧺projectWorkspaceCopyArgs(projectRoot,root,targetProjectRoot))):§process.ProcessResult);
+    l copyResult=(§process.run(§process.command(["rsync"]⧺projectWorkspaceCopyArgs(
+      projectRoot,
+      root,
+      targetProjectRoot
+    ))):§process.ProcessResult);
     match copyResult.code=0{
       true=>[]|
-      false=>[{line:0,message:"failed to prepare snippet workspace for "++virtualPath++": "++processOutput(copyResult),path:filePath}]
+      false=>[{
+        line:0,
+        message:"failed to prepare snippet workspace for "
+          ++virtualPath
+          ++": "
+          ++processOutput(copyResult),
+        path:filePath
+      }]
     }
   }|
   None()=>[]
@@ -211,21 +500,53 @@
 
 λprintIssues(issues:[µIssue])=>!Log Unit match issues{
   []=>()|
-  [head,.tail]=>{
+  [
+  head,
+  .tail
+]=>{
     l _=(§io.println(issueMessage(head)):Unit);
     printIssues(tail)
   }
 }
 
 λprocessMarkdownFile(failFast:Bool,filePath:String,root:String,tempDir:String)=>!AuditIo µMarkdownAudit={
-  l markdown=(§file.readText(§path.join(root,filePath)):String);
-  l extraction=(extractSnippets(filePath,markdown):µExtractResult);
+  l markdown=(§file.readText(§path.join(
+    root,
+    filePath
+  )):String);
+  l extraction=(extractSnippets(
+    filePath,
+    markdown
+  ):µExtractResult);
   match failFast and #extraction.issues>0{
     true=>match extraction.issues{
-      [first,.tail]=>{documentedRefs:[],issues:[first],snippetRefs:[]}|
-      []=>{documentedRefs:[],issues:[],snippetRefs:[]}
+      [
+  first,
+  .tail
+]=>{
+        documentedRefs:[],
+        issues:[first],
+        snippetRefs:[]
+      }|
+      []=>{
+        documentedRefs:[],
+        issues:[],
+        snippetRefs:[]
+      }
     }|
-    false=>processSnippets(failFast,filePath,1,root,extraction.results,{documentedRefs:[],issues:extraction.issues,snippetRefs:[]},tempDir)
+    false=>processSnippets(
+      failFast,
+      filePath,
+      1,
+      root,
+      extraction.results,
+      {
+        documentedRefs:[],
+        issues:extraction.issues,
+        snippetRefs:[]
+      },
+      tempDir
+    )
   }
 }
 
@@ -236,87 +557,291 @@
 
 λprocessSnippets(failFast:Bool,filePath:String,ordinal:Int,root:String,snippets:[µSnippet],state:µMarkdownAudit,tempDir:String)=>!AuditIo µMarkdownAudit match snippets{
   []=>state|
-  [head,.tail]=>{
-    l checked=(validateSnippet(filePath,ordinal,root,head,tempDir):µMarkdownAudit);
+  [
+  head,
+  .tail
+]=>{
+    l checked=(validateSnippet(
+      filePath,
+      ordinal,
+      root,
+      head,
+      tempDir
+    ):µMarkdownAudit);
     match failFast and #checked.issues>0{
       true=>match checked.issues{
-        [first,.rest]=>{documentedRefs:mergeUnique(state.documentedRefs,checked.documentedRefs),issues:[first],snippetRefs:mergeUnique(state.snippetRefs,checked.snippetRefs)}|
-        []=>{documentedRefs:mergeUnique(state.documentedRefs,checked.documentedRefs),issues:[],snippetRefs:mergeUnique(state.snippetRefs,checked.snippetRefs)}
+        [
+  first,
+  .rest
+]=>{
+          documentedRefs:mergeUnique(
+            state.documentedRefs,
+            checked.documentedRefs
+          ),
+          issues:[first],
+          snippetRefs:mergeUnique(
+            state.snippetRefs,
+            checked.snippetRefs
+          )
+        }|
+        []=>{
+          documentedRefs:mergeUnique(
+            state.documentedRefs,
+            checked.documentedRefs
+          ),
+          issues:[],
+          snippetRefs:mergeUnique(
+            state.snippetRefs,
+            checked.snippetRefs
+          )
+        }
       }|
-      false=>processSnippets(failFast,filePath,ordinal+1,root,tail,{documentedRefs:mergeUnique(state.documentedRefs,checked.documentedRefs),issues:mergeIssueLists(state.issues,checked.issues),snippetRefs:mergeUnique(state.snippetRefs,checked.snippetRefs)},tempDir)
+      false=>processSnippets(
+        failFast,
+        filePath,
+        ordinal+1,
+        root,
+        tail,
+        {
+          documentedRefs:mergeUnique(
+            state.documentedRefs,
+            checked.documentedRefs
+          ),
+          issues:mergeIssueLists(
+            state.issues,
+            checked.issues
+          ),
+          snippetRefs:mergeUnique(
+            state.snippetRefs,
+            checked.snippetRefs
+          )
+        },
+        tempDir
+      )
     }
   }
 }
 
-λprojectRootFromVirtualPath(virtualPath:String)=>Option[String]=projectRootFromVirtualPathUsing(projectRootFromVirtualPathUsing(projectRootFromVirtualPathUsing(None(),"/config/",virtualPath),"/src/",virtualPath),"/tests/",virtualPath)
+λprojectRootFromVirtualPath(virtualPath:String)=>Option[String]=projectRootFromVirtualPathUsing(
+  projectRootFromVirtualPathUsing(
+    projectRootFromVirtualPathUsing(
+      None(),
+      "/config/",
+      virtualPath
+    ),
+    "/src/",
+    virtualPath
+  ),
+  "/tests/",
+  virtualPath
+)
 
-λprojectRootFromVirtualPathUsing(fallback:Option[String],marker:String,virtualPath:String)=>Option[String] match §string.indexOf(virtualPath,marker){
-  idx when idx>0=>Some((§string.substring(idx,virtualPath,0):String))|
+λprojectRootFromVirtualPathUsing(fallback:Option[String],marker:String,virtualPath:String)=>Option[String] match §string.indexOf(
+  virtualPath,
+  marker
+){
+  idx when idx>0=>Some((§string.substring(
+    idx,
+    virtualPath,
+    0
+  ):String))|
   _=>fallback
 }
 
-λprojectWorkspaceCopyArgs(projectRoot:String,root:String,targetProjectRoot:String)=>[String]=["-a"]⧺projectWorkspaceCopyPatternArgs(projectRoot)⧺["--exclude","*",§path.join(root,projectRoot)++"/",targetProjectRoot]
+λprojectWorkspaceCopyArgs(projectRoot:String,root:String,targetProjectRoot:String)=>[String]=["-a"]
+  ⧺projectWorkspaceCopyPatternArgs(projectRoot)
+  ⧺[
+    "--exclude",
+    "*",
+    §path.join(
+      root,
+      projectRoot
+    )++"/",
+    targetProjectRoot
+  ]
 
 λprojectWorkspaceCopyPatternArgs(projectRoot:String)=>[String] match projectRoot{
-  "language"=>["--include","/config/***","--include","/core/***","--include","/sigil.json","--include","/src/***","--include","/stdlib/***","--include","/test/***","--include","/tests/***","--include","/world/***"]|
-  _=>["--include","/config/***","--include","/sigil.json","--include","/src/***","--include","/tests/***"]
+  "language"=>[
+    "--include",
+    "/config/***",
+    "--include",
+    "/core/***",
+    "--include",
+    "/sigil.json",
+    "--include",
+    "/src/***",
+    "--include",
+    "/stdlib/***",
+    "--include",
+    "/test/***",
+    "--include",
+    "/tests/***",
+    "--include",
+    "/world/***"
+  ]|
+  _=>[
+    "--include",
+    "/config/***",
+    "--include",
+    "/sigil.json",
+    "--include",
+    "/src/***",
+    "--include",
+    "/tests/***"
+  ]
 }
 
-λreadCoverageRefs(paths:[String],root:String)=>!Fs [String]=readCoverageRefsInner([],paths,root)
+λreadCoverageRefs(paths:[String],root:String)=>!Fs [String]=readCoverageRefsInner(
+  [],
+  paths,
+  root
+)
 
 λreadCoverageRefsInner(acc:[String],paths:[String],root:String)=>!Fs [String] match paths{
   []=>acc|
-  [head,.tail]=>match §file.exists(§path.join(root,head)){
+  [
+  head,
+  .tail
+]=>match §file.exists(§path.join(
+    root,
+    head
+  )){
     true=>{
-      l source=(§file.readText(§path.join(root,head)):String);
-      readCoverageRefsInner(mergeUnique(acc,•coverage.collectQualifiedRefs(source)),tail,root)
+      l source=(§file.readText(§path.join(
+        root,
+        head
+      )):String);
+      readCoverageRefsInner(
+        mergeUnique(
+          acc,
+          •coverage.collectQualifiedRefs(source)
+        ),
+        tail,
+        root
+      )
     }|
-    false=>readCoverageRefsInner(acc,tail,root)
+    false=>readCoverageRefsInner(
+      acc,
+      tail,
+      root
+    )
   }
 }
 
-λreadStdlibExports(paths:[String],root:String)=>!AuditIo Result[[String],String]=readStdlibExportsInner([],paths,root)
+λreadStdlibExports(paths:[String],root:String)=>!AuditIo Result[
+  [String],
+  String
+]=readStdlibExportsInner(
+  [],
+  paths,
+  root
+)
 
-λreadStdlibExportsInner(acc:[String],paths:[String],root:String)=>!AuditIo Result[[String],String] match paths{
+λreadStdlibExportsInner(acc:[String],paths:[String],root:String)=>!AuditIo Result[
+  [String],
+  String
+] match paths{
   []=>Ok(acc)|
-  [head,.tail]=>match §file.exists(§path.join(root,head)){
+  [
+  head,
+  .tail
+]=>match §file.exists(§path.join(
+    root,
+    head
+  )){
     true=>{
-      l parseResult=(§process.run(compilerCommand(["parse",head],root)):§process.ProcessResult);
+      l parseResult=(§process.run(compilerCommand(
+        [
+          "parse",
+          head
+        ],
+        root
+      )):§process.ProcessResult);
       match parseResult.code=0{
-        true=>readStdlibExportsInner(mergeUnique(acc,•coverage.collectStdlibExports(head,parseResult.stdout)),tail,root)|
-        false=>Err("sigil parse failed for "++head++": "++processOutput(parseResult))
+        true=>readStdlibExportsInner(
+          mergeUnique(
+            acc,
+            •coverage.collectStdlibExports(
+              head,
+              parseResult.stdout
+            )
+          ),
+          tail,
+          root
+        )|
+        false=>Err("sigil parse failed for "
+          ++head
+          ++": "
+          ++processOutput(parseResult))
       }
     }|
-    false=>readStdlibExportsInner(acc,tail,root)
+    false=>readStdlibExportsInner(
+      acc,
+      tail,
+      root
+    )
   }
 }
 
 λrelativeToRootPath(root:String,value:String)=>String match value=root{
   true=>"."|
-  false=>match §string.startsWith(root++"/",value){
-    true=>§string.substring(#value,value,#root+1)|
+  false=>match §string.startsWith(
+    root++"/",
+    value
+  ){
+    true=>§string.substring(
+      #value,
+      value,
+      #root+1
+    )|
     false=>value
   }
 }
 
-λrepoTempDir(root:String)=>String=§path.join(root,".local/repoAuditTmp")
+λrepoTempDir(root:String)=>String=§path.join(
+  root,
+  ".local/repoAuditTmp"
+)
 
-λrunCheck()=>!AuditIo Result[[µIssue],String] match gitTopLevel(){
+λrunCheck()=>!AuditIo Result[
+  [µIssue],
+  String
+] match gitTopLevel(){
   Ok(root)=>match selectedMarkdownPaths(){
     Ok(selection)=>{
-      l tempDir=(§path.join(repoTempDir(root),"check"):String);
+      l tempDir=(§path.join(
+        repoTempDir(root),
+        "check"
+      ):String);
       l _=(§file.removeTree(tempDir):Unit);
       l _=(§file.makeDirs(tempDir):Unit);
-      l markdownAudit=(runMarkdownAudit(selection.failFast,selection.paths,root,tempDir):µMarkdownAudit);
+      l markdownAudit=(runMarkdownAudit(
+        selection.failFast,
+        selection.paths,
+        root,
+        tempDir
+      ):µMarkdownAudit);
       match selection.failFast{
         true=>Ok(markdownAudit.issues)|
         false=>match gitTrackedStdlib(){
           Ok(stdlibPaths)=>match gitTrackedStdlibTests(){
             Ok(testPaths)=>{
               l _=(§file.removeTree(tempDir):Unit);
-              l stdlibRefs=(readCoverageRefs(testPaths,root):[String]);
-              match readStdlibExports(stdlibPaths,root){
-                Ok(actualExports)=>Ok(runCoverageChecks(actualExports,markdownAudit.documentedRefs,markdownAudit.issues,markdownAudit.snippetRefs,stdlibRefs))|
+              l stdlibRefs=(readCoverageRefs(
+                testPaths,
+                root
+              ):[String]);
+              match readStdlibExports(
+                stdlibPaths,
+                root
+              ){
+                Ok(actualExports)=>Ok(runCoverageChecks(
+                  actualExports,
+                  markdownAudit.documentedRefs,
+                  markdownAudit.issues,
+                  markdownAudit.snippetRefs,
+                  stdlibRefs
+                ))|
                 Err(message)=>Err(message)
               }
             }|
@@ -331,32 +856,81 @@
   Err(message)=>Err(message)
 }
 
-λrunCheckForPaths(paths:[String])=>!AuditIo Result[[µIssue],String] match gitTopLevel(){
+λrunCheckForPaths(paths:[String])=>!AuditIo Result[
+  [µIssue],
+  String
+] match gitTopLevel(){
   Ok(root)=>{
-    l tempDir=(§path.join(repoTempDir(root),"paths"):String);
+    l tempDir=(§path.join(
+      repoTempDir(root),
+      "paths"
+    ):String);
     l _=(§file.removeTree(tempDir):Unit);
     l _=(§file.makeDirs(tempDir):Unit);
-    l markdownAudit=(runMarkdownAudit(true,paths,root,tempDir):µMarkdownAudit);
+    l markdownAudit=(runMarkdownAudit(
+      true,
+      paths,
+      root,
+      tempDir
+    ):µMarkdownAudit);
     l _=(§file.removeTree(tempDir):Unit);
     Ok(markdownAudit.issues)
   }|
   Err(message)=>Err(message)
 }
 
-λrunCoverageChecks(actualExports:[String],documentedRefs:[String],existingIssues:[µIssue],snippetRefs:[String],stdlibRefs:[String])=>[µIssue]=runCoverageChecksInner(actualExports,mergeUnique(snippetRefs,stdlibRefs),documentedRefs,existingIssues)
+λrunCoverageChecks(actualExports:[String],documentedRefs:[String],existingIssues:[µIssue],snippetRefs:[String],stdlibRefs:[String])=>[µIssue]=runCoverageChecksInner(
+  actualExports,
+  mergeUnique(
+    snippetRefs,
+    stdlibRefs
+  ),
+  documentedRefs,
+  existingIssues
+)
 
-λrunCoverageChecksInner(actualExports:[String],coverageRefs:[String],documentedRefs:[String],issues:[µIssue])=>[µIssue]=runReferenceIssues(actualExports,runReferenceIssues(actualExports,runUncoveredDocumentedIssues(coverageRefs,documentedRefs,issues),documentedRefs),coverageRefs)
+λrunCoverageChecksInner(actualExports:[String],coverageRefs:[String],documentedRefs:[String],issues:[µIssue])=>[µIssue]=runReferenceIssues(
+  actualExports,
+  runReferenceIssues(
+    actualExports,
+    runUncoveredDocumentedIssues(
+      coverageRefs,
+      documentedRefs,
+      issues
+    ),
+    documentedRefs
+  ),
+  coverageRefs
+)
 
-λrunCoverageOnly()=>!AuditIo Result[[µIssue],String] match gitTopLevel(){
+λrunCoverageOnly()=>!AuditIo Result[
+  [µIssue],
+  String
+] match gitTopLevel(){
   Ok(root)=>match gitTrackedMarkdown(){
     Ok(markdownPaths)=>{
-      l markdownAudit=(runMarkdownCoverageAudit(markdownPaths,root):µMarkdownAudit);
+      l markdownAudit=(runMarkdownCoverageAudit(
+        markdownPaths,
+        root
+      ):µMarkdownAudit);
       match gitTrackedStdlib(){
         Ok(stdlibPaths)=>match gitTrackedStdlibTests(){
           Ok(testPaths)=>{
-            l stdlibRefs=(readCoverageRefs(testPaths,root):[String]);
-            match readStdlibExports(stdlibPaths,root){
-              Ok(actualExports)=>Ok(runCoverageChecks(actualExports,markdownAudit.documentedRefs,markdownAudit.issues,markdownAudit.snippetRefs,stdlibRefs))|
+            l stdlibRefs=(readCoverageRefs(
+              testPaths,
+              root
+            ):[String]);
+            match readStdlibExports(
+              stdlibPaths,
+              root
+            ){
+              Ok(actualExports)=>Ok(runCoverageChecks(
+                actualExports,
+                markdownAudit.documentedRefs,
+                markdownAudit.issues,
+                markdownAudit.snippetRefs,
+                stdlibRefs
+              ))|
               Err(message)=>Err(message)
             }
           }|
@@ -370,65 +944,204 @@
   Err(message)=>Err(message)
 }
 
-λrunMarkdownAudit(failFast:Bool,paths:[String],root:String,tempDir:String)=>!AuditIo µMarkdownAudit=runMarkdownAuditInner({documentedRefs:[],issues:[],snippetRefs:[]},failFast,paths,root,tempDir)
+λrunMarkdownAudit(failFast:Bool,paths:[String],root:String,tempDir:String)=>!AuditIo µMarkdownAudit=runMarkdownAuditInner(
+  {
+    documentedRefs:[],
+    issues:[],
+    snippetRefs:[]
+  },
+  failFast,
+  paths,
+  root,
+  tempDir
+)
 
 λrunMarkdownAuditInner(acc:µMarkdownAudit,failFast:Bool,paths:[String],root:String,tempDir:String)=>!AuditIo µMarkdownAudit match paths{
   []=>acc|
   _ when failFast and #acc.issues>0=>acc|
-  [head,.tail]=>match §file.exists(§path.join(root,head)){
+  [
+  head,
+  .tail
+]=>match §file.exists(§path.join(
+    root,
+    head
+  )){
     true=>{
-      l current=(processMarkdownFile(failFast,head,root,tempDir):µMarkdownAudit);
-      runMarkdownAuditInner({documentedRefs:mergeUnique(acc.documentedRefs,current.documentedRefs),issues:mergeIssueLists(acc.issues,current.issues),snippetRefs:mergeUnique(acc.snippetRefs,current.snippetRefs)},failFast,tail,root,tempDir)
+      l current=(processMarkdownFile(
+        failFast,
+        head,
+        root,
+        tempDir
+      ):µMarkdownAudit);
+      runMarkdownAuditInner(
+        {
+          documentedRefs:mergeUnique(
+            acc.documentedRefs,
+            current.documentedRefs
+          ),
+          issues:mergeIssueLists(
+            acc.issues,
+            current.issues
+          ),
+          snippetRefs:mergeUnique(
+            acc.snippetRefs,
+            current.snippetRefs
+          )
+        },
+        failFast,
+        tail,
+        root,
+        tempDir
+      )
     }|
-    false=>runMarkdownAuditInner(acc,failFast,tail,root,tempDir)
+    false=>runMarkdownAuditInner(
+      acc,
+      failFast,
+      tail,
+      root,
+      tempDir
+    )
   }
 }
 
-λrunMarkdownCoverageAudit(paths:[String],root:String)=>!Fs µMarkdownAudit=runMarkdownCoverageAuditInner({documentedRefs:[],issues:[],snippetRefs:[]},paths,root)
+λrunMarkdownCoverageAudit(paths:[String],root:String)=>!Fs µMarkdownAudit=runMarkdownCoverageAuditInner(
+  {
+    documentedRefs:[],
+    issues:[],
+    snippetRefs:[]
+  },
+  paths,
+  root
+)
 
 λrunMarkdownCoverageAuditInner(acc:µMarkdownAudit,paths:[String],root:String)=>!Fs µMarkdownAudit match paths{
   []=>acc|
-  [head,.tail]=>match §file.exists(§path.join(root,head)){
+  [
+  head,
+  .tail
+]=>match §file.exists(§path.join(
+    root,
+    head
+  )){
     true=>{
-      l current=(collectMarkdownAuditRefs(head,root):µMarkdownAudit);
-      runMarkdownCoverageAuditInner({documentedRefs:mergeUnique(acc.documentedRefs,current.documentedRefs),issues:mergeIssueLists(acc.issues,current.issues),snippetRefs:mergeUnique(acc.snippetRefs,current.snippetRefs)},tail,root)
+      l current=(collectMarkdownAuditRefs(
+        head,
+        root
+      ):µMarkdownAudit);
+      runMarkdownCoverageAuditInner(
+        {
+          documentedRefs:mergeUnique(
+            acc.documentedRefs,
+            current.documentedRefs
+          ),
+          issues:mergeIssueLists(
+            acc.issues,
+            current.issues
+          ),
+          snippetRefs:mergeUnique(
+            acc.snippetRefs,
+            current.snippetRefs
+          )
+        },
+        tail,
+        root
+      )
     }|
-    false=>runMarkdownCoverageAuditInner(acc,tail,root)
+    false=>runMarkdownCoverageAuditInner(
+      acc,
+      tail,
+      root
+    )
   }
 }
 
 λrunReferenceIssues(actualExports:[String],issues:[µIssue],refs:[String])=>[µIssue] match refs{
   []=>issues|
-  [head,.tail]=>match §list.contains(head,actualExports){
-    true=>runReferenceIssues(actualExports,issues,tail)|
-    false=>runReferenceIssues(actualExports,issues⧺[{line:1,message:"reference to missing stdlib symbol '"++head++"'",path:"language/spec/stdlib-spec.md"}],tail)
+  [
+  head,
+  .tail
+]=>match §list.contains(
+    head,
+    actualExports
+  ){
+    true=>runReferenceIssues(
+      actualExports,
+      issues,
+      tail
+    )|
+    false=>runReferenceIssues(
+      actualExports,
+      issues⧺[{
+        line:1,
+        message:"reference to missing stdlib symbol '"
+          ++head
+          ++"'",
+        path:"language/spec/stdlib-spec.md"
+      }],
+      tail
+    )
   }
 }
 
-λrunRefsForFile(filePath:String)=>!AuditIo Result[µMarkdownAudit,String] match gitTopLevel(){
-  Ok(root)=>Ok(collectMarkdownAuditRefs(filePath,root))|
+λrunRefsForFile(filePath:String)=>!AuditIo Result[
+  µMarkdownAudit,
+  String
+] match gitTopLevel(){
+  Ok(root)=>Ok(collectMarkdownAuditRefs(
+    filePath,
+    root
+  ))|
   Err(message)=>Err(message)
 }
 
-λrunRefsForPaths(paths:[String])=>!AuditIo Result[µMarkdownAudit,String] match gitTopLevel(){
-  Ok(root)=>Ok(runMarkdownCoverageAudit(paths,root))|
+λrunRefsForPaths(paths:[String])=>!AuditIo Result[
+  µMarkdownAudit,
+  String
+] match gitTopLevel(){
+  Ok(root)=>Ok(runMarkdownCoverageAudit(
+    paths,
+    root
+  ))|
   Err(message)=>Err(message)
 }
 
-λrunRepoCheck()=>!AuditIo Result[[µIssue],String] match gitTopLevel(){
+λrunRepoCheck()=>!AuditIo Result[
+  [µIssue],
+  String
+] match gitTopLevel(){
   Ok(root)=>match gitTrackedMarkdown(){
     Ok(markdownPaths)=>{
-      l tempDir=(§path.join(repoTempDir(root),"repo"):String);
+      l tempDir=(§path.join(
+        repoTempDir(root),
+        "repo"
+      ):String);
       l _=(§file.removeTree(tempDir):Unit);
       l _=(§file.makeDirs(tempDir):Unit);
-      l markdownAudit=(runMarkdownAudit(false,markdownPaths,root,tempDir):µMarkdownAudit);
+      l markdownAudit=(runMarkdownAudit(
+        false,
+        markdownPaths,
+        root,
+        tempDir
+      ):µMarkdownAudit);
       l _=(§file.removeTree(tempDir):Unit);
       match gitTrackedStdlib(){
         Ok(stdlibPaths)=>match gitTrackedStdlibTests(){
           Ok(testPaths)=>{
-            l stdlibRefs=(readCoverageRefs(testPaths,root):[String]);
-            match readStdlibExports(stdlibPaths,root){
-              Ok(actualExports)=>Ok(runCoverageChecks(actualExports,markdownAudit.documentedRefs,markdownAudit.issues,markdownAudit.snippetRefs,stdlibRefs))|
+            l stdlibRefs=(readCoverageRefs(
+              testPaths,
+              root
+            ):[String]);
+            match readStdlibExports(
+              stdlibPaths,
+              root
+            ){
+              Ok(actualExports)=>Ok(runCoverageChecks(
+                actualExports,
+                markdownAudit.documentedRefs,
+                markdownAudit.issues,
+                markdownAudit.snippetRefs,
+                stdlibRefs
+              ))|
               Err(message)=>Err(message)
             }
           }|
@@ -442,43 +1155,117 @@
   Err(message)=>Err(message)
 }
 
-λrunStdlibExportsForFile(filePath:String)=>!AuditIo Result[[String],String] match gitTopLevel(){
-  Ok(root)=>Ok(•coverage.documentedRefsForSnippet("§"++§string.substring(#§path.basename(filePath)-10,§path.basename(filePath),0),§file.readText(§path.join(root,filePath))))|
+λrunStdlibExportsForFile(filePath:String)=>!AuditIo Result[
+  [String],
+  String
+] match gitTopLevel(){
+  Ok(root)=>Ok(•coverage.documentedRefsForSnippet(
+    "§"++§string.substring(
+      #§path.basename(filePath)-10,
+      §path.basename(filePath),
+      0
+    ),
+    §file.readText(§path.join(
+      root,
+      filePath
+    ))
+  ))|
   Err(message)=>Err(message)
 }
 
-λrunStdlibExportsForPaths(paths:[String])=>!AuditIo Result[[String],String] match gitTopLevel(){
-  Ok(root)=>Ok(runStdlibExportsForPathsInner([],paths,root))|
+λrunStdlibExportsForPaths(paths:[String])=>!AuditIo Result[
+  [String],
+  String
+] match gitTopLevel(){
+  Ok(root)=>Ok(runStdlibExportsForPathsInner(
+    [],
+    paths,
+    root
+  ))|
   Err(message)=>Err(message)
 }
 
 λrunStdlibExportsForPathsInner(acc:[String],paths:[String],root:String)=>!Fs [String] match paths{
   []=>acc|
-  [head,.tail]=>match §file.exists(§path.join(root,head)){
+  [
+  head,
+  .tail
+]=>match §file.exists(§path.join(
+    root,
+    head
+  )){
     true=>{
-      l exports=(•coverage.documentedRefsForSnippet("§"++§string.substring(#§path.basename(head)-10,§path.basename(head),0),§file.readText(§path.join(root,head))):[String]);
-      runStdlibExportsForPathsInner(mergeUnique(acc,exports),tail,root)
+      l exports=(•coverage.documentedRefsForSnippet(
+        "§"++§string.substring(
+          #§path.basename(head)-10,
+          §path.basename(head),
+          0
+        ),
+        §file.readText(§path.join(
+          root,
+          head
+        ))
+      ):[String]);
+      runStdlibExportsForPathsInner(
+        mergeUnique(
+          acc,
+          exports
+        ),
+        tail,
+        root
+      )
     }|
-    false=>runStdlibExportsForPathsInner(acc,tail,root)
+    false=>runStdlibExportsForPathsInner(
+      acc,
+      tail,
+      root
+    )
   }
 }
 
 λrunUncoveredDocumentedIssues(coverageRefs:[String],documentedRefs:[String],issues:[µIssue])=>[µIssue] match documentedRefs{
   []=>issues|
-  [head,.tail]=>match §list.contains(head,coverageRefs){
-    true=>runUncoveredDocumentedIssues(coverageRefs,tail,issues)|
-    false=>runUncoveredDocumentedIssues(coverageRefs,tail,issues⧺[{line:1,message:"documented stdlib function lacks checked example or stdlib test coverage: "++head,path:"language/spec/stdlib-spec.md"}])
+  [
+  head,
+  .tail
+]=>match §list.contains(
+    head,
+    coverageRefs
+  ){
+    true=>runUncoveredDocumentedIssues(
+      coverageRefs,
+      tail,
+      issues
+    )|
+    false=>runUncoveredDocumentedIssues(
+      coverageRefs,
+      tail,
+      issues⧺[{
+        line:1,
+        message:"documented stdlib function lacks checked example or stdlib test coverage: "++head,
+        path:"language/spec/stdlib-spec.md"
+      }]
+    )
   }
 }
 
-λselectedMarkdownPaths()=>!Process Result[µMarkdownSelection,String]={
+λselectedMarkdownPaths()=>!Process Result[
+  µMarkdownSelection,
+  String
+]={
   l args=(§process.argv():[String]);
   match #args=0{
     true=>match gitTrackedMarkdown(){
-      Ok(paths)=>Ok({failFast:false,paths:paths})|
+      Ok(paths)=>Ok({
+        failFast:false,
+        paths:paths
+      })|
       Err(message)=>Err(message)
     }|
-    false=>Ok({failFast:true,paths:args})
+    false=>Ok({
+      failFast:true,
+      paths:args
+    })
   }
 }
 
@@ -492,11 +1279,19 @@
 }
 
 λsnippetSource(snippet:µSnippet)=>String={
-  l normalized=(normalizedSnippetContentForKind(snippet.info.kind,snippet.content):String);
+  l normalized=(normalizedSnippetContentForKind(
+    snippet.info.kind,
+    snippet.content
+  ):String);
   match snippet.info.kind{
     "expr"=>"λmain()=>Unit="++normalized|
     "exprs"=>match normalizedExprsKind(snippet){
-      "exprs"=>wrapExprLines(1,normalizedSnippetLines(snippet.content),"λmain()=>Unit={","}")|
+      "exprs"=>wrapExprLines(
+        1,
+        normalizedSnippetLines(snippet.content),
+        "λmain()=>Unit={",
+        "}"
+      )|
       _=>normalized
     }|
     "invalid-expr"=>"λmain()=>Unit="++normalized|
@@ -531,22 +1326,62 @@
 }
 
 λvalidateSnippet(filePath:String,ordinal:Int,root:String,snippet:µSnippet,tempDir:String)=>!AuditIo µMarkdownAudit match isCheckedKind(snippet.info.kind){
-  false=>{documentedRefs:[],issues:[invalidFenceIssue(filePath,snippet.line,"unknown Sigil fence kind '"++snippet.info.kind++"'")],snippetRefs:[]}|
+  false=>{
+    documentedRefs:[],
+    issues:[invalidFenceIssue(
+      filePath,
+      snippet.line,
+      "unknown Sigil fence kind '"
+        ++snippet.info.kind
+        ++"'"
+    )],
+    snippetRefs:[]
+  }|
   true=>match snippet.info.kind{
     "decl"=>{
-      l issues=(declSnippetIssues(filePath,snippet.line,snippet.content):[µIssue]);
+      l issues=(declSnippetIssues(
+        filePath,
+        snippet.line,
+        snippet.content
+      ):[µIssue]);
       match #issues=0{
         true=>match snippet.info.context{
-          Some(modulePath)=>match §string.startsWith("§",modulePath){
+          Some(modulePath)=>match §string.startsWith(
+            "§",
+            modulePath
+          ){
             true=>{
-              l refs=(•coverage.documentedRefsForSnippet(modulePath,snippet.content):[String]);
-              {documentedRefs:refs,issues:[],snippetRefs:refs}
+              l refs=(•coverage.documentedRefsForSnippet(
+                modulePath,
+                snippet.content
+              ):[String]);
+              {
+                documentedRefs:refs,
+                issues:[],
+                snippetRefs:refs
+              }
             }|
-            false=>{documentedRefs:[],issues:[],snippetRefs:[]}
+            false=>{
+              documentedRefs:[],
+              issues:[],
+              snippetRefs:[]
+            }
           }|
-          None()=>{documentedRefs:[],issues:[invalidFenceIssue(filePath,snippet.line,"sigil decl snippets require a stdlib module context")],snippetRefs:[]}
+          None()=>{
+            documentedRefs:[],
+            issues:[invalidFenceIssue(
+              filePath,
+              snippet.line,
+              "sigil decl snippets require a stdlib module context"
+            )],
+            snippetRefs:[]
+          }
         }|
-        false=>{documentedRefs:[],issues:issues,snippetRefs:[]}
+        false=>{
+          documentedRefs:[],
+          issues:issues,
+          snippetRefs:[]
+        }
       }
     }|
     kind=>{
@@ -554,22 +1389,69 @@
         "exprs"=>normalizedExprsKind(snippet)|
         _=>kind
       }:String);
-      l issues=(executeSnippetCheck(snippetKind="expr" or snippetKind="exprs" or snippetKind="module" or snippetKind="program" or snippetKind="type",filePath,root,snippetSubcommandForSnippet(snippet),ordinalPath(ordinal,tempDir),snippetVirtualPath(snippet),snippetSource(snippet)):[µIssue]);
+      l issues=(executeSnippetCheck(
+        snippetKind="expr"
+          or snippetKind="exprs"
+          or snippetKind="module"
+          or snippetKind="program"
+          or snippetKind="type",
+        filePath,
+        root,
+        snippetSubcommandForSnippet(snippet),
+        ordinalPath(
+          ordinal,
+          tempDir
+        ),
+        snippetVirtualPath(snippet),
+        snippetSource(snippet)
+      ):[µIssue]);
       match #issues=0{
-        true=>{documentedRefs:[],issues:[],snippetRefs:snippetRefsForValidatedSnippet(snippet)}|
-        false=>{documentedRefs:[],issues:issues map (λ(issue:µIssue)=>µIssue={line:snippet.line,message:issue.message,path:snippet.filePath}),snippetRefs:[]}
+        true=>{
+          documentedRefs:[],
+          issues:[],
+          snippetRefs:snippetRefsForValidatedSnippet(snippet)
+        }|
+        false=>{
+          documentedRefs:[],
+          issues:issues map (λ(issue:µIssue)=>µIssue={
+            line:snippet.line,
+            message:issue.message,
+            path:snippet.filePath
+          }),
+          snippetRefs:[]
+        }
       }
     }
   }
 }
 
 λwrapExprLines(idx:Int,lines:[String],prefix:String,suffix:String)=>String match lines{
-  []=>prefix++"
+  []=>prefix
+    ++"
   ()
-"++suffix|
-  [head,.tail]=>match •fences.nonEmpty(§string.trim(head)){
-    true=>wrapExprLines(idx+1,tail,prefix++"
-  l sample"++§string.intToString(idx)++"=("++head++":String);",suffix)|
-    false=>wrapExprLines(idx,tail,prefix,suffix)
+"
+    ++suffix|
+  [
+  head,
+  .tail
+]=>match •fences.nonEmpty(§string.trim(head)){
+    true=>wrapExprLines(
+      idx+1,
+      tail,
+      prefix
+        ++"
+  l sample"
+        ++§string.intToString(idx)
+        ++"=("
+        ++head
+        ++":String);",
+      suffix
+    )|
+    false=>wrapExprLines(
+      idx,
+      tail,
+      prefix,
+      suffix
+    )
   }
 }

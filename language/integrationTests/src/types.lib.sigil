@@ -1,1 +1,5 @@
-t ReadyServer={process:§process.RunningProcess,readyFile:String,tempDir:String}
+t ReadyServer={
+  process:§process.RunningProcess,
+  readyFile:String,
+  tempDir:String
+}

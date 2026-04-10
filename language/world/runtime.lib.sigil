@@ -1,9 +1,69 @@
-t World={clock:†clock.ClockEntry,fs:†fs.FsEntry,fsRoots:[†fs.FsRootEntry],http:[†http.HttpEntry],log:†log.LogEntry,logSinks:[†log.LogSinkEntry],process:†process.ProcessEntry,processHandles:[†process.ProcessHandleEntry],random:†random.RandomEntry,tcp:[†tcp.TcpEntry],timer:†timer.TimerEntry}
+t World={
+  clock:†clock.ClockEntry,
+  fs:†fs.FsEntry,
+  fsRoots:[†fs.FsRootEntry],
+  http:[†http.HttpEntry],
+  log:†log.LogEntry,
+  logSinks:[†log.LogSinkEntry],
+  process:†process.ProcessEntry,
+  processHandles:[†process.ProcessHandleEntry],
+  random:†random.RandomEntry,
+  tcp:[†tcp.TcpEntry],
+  timer:†timer.TimerEntry
+}
 
-λwithFsRoots(fsRoots:[†fs.FsRootEntry],world:World)=>World={clock:world.clock,fs:world.fs,fsRoots:fsRoots,http:world.http,log:world.log,logSinks:world.logSinks,process:world.process,processHandles:world.processHandles,random:world.random,tcp:world.tcp,timer:world.timer}
+λwithFsRoots(fsRoots:[†fs.FsRootEntry],world:World)=>World={
+  clock:world.clock,
+  fs:world.fs,
+  fsRoots:fsRoots,
+  http:world.http,
+  log:world.log,
+  logSinks:world.logSinks,
+  process:world.process,
+  processHandles:world.processHandles,
+  random:world.random,
+  tcp:world.tcp,
+  timer:world.timer
+}
 
-λwithLogSinks(logSinks:[†log.LogSinkEntry],world:World)=>World={clock:world.clock,fs:world.fs,fsRoots:world.fsRoots,http:world.http,log:world.log,logSinks:logSinks,process:world.process,processHandles:world.processHandles,random:world.random,tcp:world.tcp,timer:world.timer}
+λwithLogSinks(logSinks:[†log.LogSinkEntry],world:World)=>World={
+  clock:world.clock,
+  fs:world.fs,
+  fsRoots:world.fsRoots,
+  http:world.http,
+  log:world.log,
+  logSinks:logSinks,
+  process:world.process,
+  processHandles:world.processHandles,
+  random:world.random,
+  tcp:world.tcp,
+  timer:world.timer
+}
 
-λwithProcessHandles(processHandles:[†process.ProcessHandleEntry],world:World)=>World={clock:world.clock,fs:world.fs,fsRoots:world.fsRoots,http:world.http,log:world.log,logSinks:world.logSinks,process:world.process,processHandles:processHandles,random:world.random,tcp:world.tcp,timer:world.timer}
+λwithProcessHandles(processHandles:[†process.ProcessHandleEntry],world:World)=>World={
+  clock:world.clock,
+  fs:world.fs,
+  fsRoots:world.fsRoots,
+  http:world.http,
+  log:world.log,
+  logSinks:world.logSinks,
+  process:world.process,
+  processHandles:processHandles,
+  random:world.random,
+  tcp:world.tcp,
+  timer:world.timer
+}
 
-λworld(clock:†clock.ClockEntry,fs:†fs.FsEntry,http:[†http.HttpEntry],log:†log.LogEntry,process:†process.ProcessEntry,random:†random.RandomEntry,tcp:[†tcp.TcpEntry],timer:†timer.TimerEntry)=>World={clock:clock,fs:fs,fsRoots:[],http:http,log:log,logSinks:[],process:process,processHandles:[],random:random,tcp:tcp,timer:timer}
+λworld(clock:†clock.ClockEntry,fs:†fs.FsEntry,http:[†http.HttpEntry],log:†log.LogEntry,process:†process.ProcessEntry,random:†random.RandomEntry,tcp:[†tcp.TcpEntry],timer:†timer.TimerEntry)=>World={
+  clock:clock,
+  fs:fs,
+  fsRoots:[],
+  http:http,
+  log:log,
+  logSinks:[],
+  process:process,
+  processHandles:[],
+  random:random,
+  tcp:tcp,
+  timer:timer
+}

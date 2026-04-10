@@ -1,29 +1,53 @@
 t TcpEntry=TcpEntry(TcpEntryValue)
 
-t TcpEntryValue={dependencyName:String,mode:TcpMode}
+t TcpEntryValue={
+  dependencyName:String,
+  mode:TcpMode
+}
 
 t TcpMode=Deny()|Fixture([TcpRule])|Proxy(TcpProxyTarget)
 
-t TcpProxyTarget={host:String,port:Int}
+t TcpProxyTarget={
+  host:String,
+  port:Int
+}
 
 t TcpResponsePlan=Respond(String)|Timeout()
 
-t TcpRule={request:String,response:TcpResponsePlan}
+t TcpRule={
+  request:String,
+  response:TcpResponsePlan
+}
 
 λdeny(dependency:§topology.TcpServiceDependency)=>TcpEntry match dependency{
-  §topology.TcpServiceDependency(dependencyName)=>TcpEntry({dependencyName:dependencyName,mode:Deny()})
+  §topology.TcpServiceDependency(dependencyName)=>TcpEntry({
+    dependencyName:dependencyName,
+    mode:Deny()
+  })
 }
 
 λfixture(dependency:§topology.TcpServiceDependency,rules:[TcpRule])=>TcpEntry match dependency{
-  §topology.TcpServiceDependency(dependencyName)=>TcpEntry({dependencyName:dependencyName,mode:Fixture(rules)})
+  §topology.TcpServiceDependency(dependencyName)=>TcpEntry({
+    dependencyName:dependencyName,
+    mode:Fixture(rules)
+  })
 }
 
 λproxy(dependency:§topology.TcpServiceDependency,host:String,port:Int)=>TcpEntry match dependency{
-  §topology.TcpServiceDependency(dependencyName)=>TcpEntry({dependencyName:dependencyName,mode:Proxy({host:host,port:port})})
+  §topology.TcpServiceDependency(dependencyName)=>TcpEntry({
+    dependencyName:dependencyName,
+    mode:Proxy({
+      host:host,
+      port:port
+    })
+  })
 }
 
 λrespond(body:String)=>TcpResponsePlan=Respond(body)
 
 λtimeout()=>TcpResponsePlan=Timeout()
 
-λwhenRequest(request:String,response:TcpResponsePlan)=>TcpRule={request:request,response:response}
+λwhenRequest(request:String,response:TcpResponsePlan)=>TcpRule={
+  request:request,
+  response:response
+}

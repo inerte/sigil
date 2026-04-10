@@ -2,12 +2,27 @@ e console:{log:λ(String)=>!Log Unit}
 
 λallPoints(height:Int,width:Int,y:Int)=>[µPoint] match height-y{
   0=>[]|
-  _=>allPointsRow(width,0,y)⧺allPoints(height,width,y+1)
+  _=>allPointsRow(
+    width,
+    0,
+    y
+  )⧺allPoints(
+    height,
+    width,
+    y+1
+  )
 }
 
 λallPointsRow(width:Int,x:Int,y:Int)=>[µPoint] match width-x{
   0=>[]|
-  _=>[point(x,y)]⧺allPointsRow(width,x+1,y)
+  _=>[point(
+    x,
+    y
+  )]⧺allPointsRow(
+    width,
+    x+1,
+    y
+  )
 }
 
 λcellLabel(cell:µCell)=>String match cell.revealed{
@@ -27,40 +42,95 @@ e console:{log:λ(String)=>!Log Unit}
 λjoinCells(cells:[µCell])=>String match cells{
   []=>""|
   [cell]=>cellLabel(cell)|
-  [cell,.rest]=>cellLabel(cell)++" "++joinCells(rest)
+  [
+  cell,
+  .rest
+]=>cellLabel(cell)
+    ++" "
+    ++joinCells(rest)
 }
 
 λmain()=>!Log!Random Unit={
   l game=(•minesweepDomain.gameFromBombs(randomBombPositions()):µGame);
   console.log("Sigil Minesweep
 
-"++renderRows(game.board,game.height,game.width,0)++"
+"
+    ++renderRows(
+      game.board,
+      game.height,
+      game.width,
+      0
+    )
+    ++"
 
 Open the website demo to play the interactive version.")
 }
 
-λpoint(x:Int,y:Int)=>µPoint={x:x,y:y}
+λpoint(x:Int,y:Int)=>µPoint={
+  x:x,
+  y:y
+}
 
-λrandomBombPositions()=>!Random [µPoint]=takePoints(6,(§random.shuffle(allPoints(6,6,0)):[µPoint]))
+λrandomBombPositions()=>!Random [µPoint]=takePoints(
+  6,
+  (§random.shuffle(allPoints(
+    6,
+    6,
+    0
+  )):[µPoint])
+)
 
 λrenderRow(board:[µCell],width:Int,x:Int,y:Int)=>[µCell] match board{
   []=>[]|
-  [cell,.rest]=>match cell.y=y and cell.x≥x and cell.x<width{
-    true=>[cell]⧺renderRow(rest,width,cell.x+1,y)|
-    false=>renderRow(rest,width,x,y)
+  [
+  cell,
+  .rest
+]=>match cell.y=y
+    and cell.x≥x
+    and cell.x<width{
+    true=>[cell]⧺renderRow(
+      rest,
+      width,
+      cell.x+1,
+      y
+    )|
+    false=>renderRow(
+      rest,
+      width,
+      x,
+      y
+    )
   }
 }
 
 λrenderRows(board:[µCell],height:Int,width:Int,y:Int)=>String match height-y{
   0=>""|
-  _=>joinCells(renderRow(board,width,0,y))++"
-"++renderRows(board,height,width,y+1)
+  _=>joinCells(renderRow(
+    board,
+    width,
+    0,
+    y
+  ))
+    ++"
+"
+    ++renderRows(
+      board,
+      height,
+      width,
+      y+1
+    )
 }
 
 λtakePoints(count:Int,points:[µPoint])=>[µPoint] match count{
   0=>[]|
   _=>match points{
     []=>[]|
-    [head,.tail]=>[head]⧺takePoints(count-1,tail)
+    [
+  head,
+  .tail
+]=>[head]⧺takePoints(
+      count-1,
+      tail
+    )
   }
 }

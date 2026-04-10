@@ -1,8 +1,18 @@
-λmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@1{
-  spawnEach [1,2,3] process
+λmain()=>!Timer [ConcurrentOutcome[
+  Int,
+  String
+]]=concurrent urlAudit@1{
+  spawnEach [
+    1,
+    2,
+    3
+  ] process
 }
 
-λprocess(value:Int)=>!Timer Result[Int,String]={
+λprocess(value:Int)=>!Timer Result[
+  Int,
+  String
+]={
   l _=(§time.sleepMs(0):Unit);
   Ok(value)
 }

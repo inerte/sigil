@@ -1,3 +1,5 @@
-λhello(name:String)=>String="Hello, "++name++"!"
+λhello(name:String)=>String="Hello, "
+  ++name
+  ++"!"
 
 λmain()=>String=hello("World")

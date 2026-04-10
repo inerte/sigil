@@ -1,5 +1,12 @@
 t NextTodoId=NextTodoId(Int)
 
-t PersistedState={nextId:NextTodoId,todos:[Todo]}
+t PersistedState={
+  nextId:NextTodoId,
+  todos:[Todo]
+}
 
-t Todo={done:Bool,id:Int,text:String}
+t Todo={
+  done:Bool,
+  id:Int,
+  text:String
+}

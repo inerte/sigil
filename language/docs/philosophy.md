@@ -107,14 +107,20 @@ That leads to four canonical rules:
 Practical example:
 
 ```sigil module
-t Message={createdAt:§time.Instant,text:String}
+t Message={
+  createdAt:§time.Instant,
+  text:String
+}
 ```
 
 If code has a `Message`, then `createdAt` is there.
 If `createdAt` might be absent, the canonical encoding is:
 
 ```sigil module
-t MaybeMessage={createdAt:Option[§time.Instant],text:String}
+t MaybeMessage={
+  createdAt:Option[§time.Instant],
+  text:String
+}
 ```
 
 not an open record, a partial record, or ambient nullability.
@@ -185,7 +191,10 @@ e fs::promises
 
 λadd(a:Int,b:Int)=>Int=a+b
 
-λread(path:String)=>!Fs String=fs::promises.readFile(path,"utf8")
+λread(path:String)=>!Fs String=fs::promises.readFile(
+  path,
+  "utf8"
+)
 ```
 
 Both use the same source form. Ordinary composition stays uniform, but explicit

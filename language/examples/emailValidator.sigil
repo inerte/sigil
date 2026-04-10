@@ -1,70 +1,160 @@
-t EmailParts={domain:String,local:String}
+t EmailParts={
+  domain:String,
+  local:String
+}
 
 t ValidationResult=Valid()|Invalid(String)
 
 e console
 
-λcountChar(char:String,str:String)=>Int=countHelper(0,char,0,str)
+λcountChar(char:String,str:String)=>Int=countHelper(
+  0,
+  char,
+  0,
+  str
+)
 
 λcountHelper(acc:Int,char:String,idx:Int,str:String)=>Int match idx<#str{
-  true=>countHelper(acc+(match §string.charAt(idx,str)=char{
-    true=>1|
-    false=>0
-  }),char,idx+1,str)|
+  true=>countHelper(
+    acc+(match §string.charAt(
+      idx,
+      str
+    )=char{
+      true=>1|
+      false=>0
+    }),
+    char,
+    idx+1,
+    str
+  )|
   false=>acc
 }
 
 λextractParts(parts:[String])=>EmailParts match #parts=2{
   true=>extractTwoParts(parts)|
-  false=>{domain:"",local:""}
+  false=>{
+    domain:"",
+    local:""
+  }
 }
 
 λextractTwoParts(parts:[String])=>EmailParts match parts{
-  [local,domain]=>{domain:domain,local:local}|
-  _=>{domain:"",local:""}
+  [
+  local,
+  domain
+]=>{
+    domain:domain,
+    local:local
+  }|
+  _=>{
+    domain:"",
+    local:""
+  }
 }
 
 λformatResult(email:String,result:ValidationResult)=>String match result{
-  Valid()=>"✓ '"++email++"' is valid"|
-  Invalid(reason)=>"✗ '"++email++"': "++reason
+  Valid()=>"✓ '"
+    ++email
+    ++"' is valid"|
+  Invalid(reason)=>"✗ '"
+    ++email
+    ++"': "
+    ++reason
 }
 
 λmain()=>!Log Unit={
   l _=(console.log("=== Email Validator ===
 "):Unit);
   l _=(console.log("Valid examples:"):Unit);
-  l _=(console.log(formatResult("user@example.com",validateEmail("user@example.com"))):Unit);
-  l _=(console.log(formatResult("alice.bob@mail.co.uk",validateEmail("alice.bob@mail.co.uk"))):Unit);
-  l _=(console.log(formatResult("test123@domain.org",validateEmail("test123@domain.org"))):Unit);
+  l _=(console.log(formatResult(
+    "user@example.com",
+    validateEmail("user@example.com")
+  )):Unit);
+  l _=(console.log(formatResult(
+    "alice.bob@mail.co.uk",
+    validateEmail("alice.bob@mail.co.uk")
+  )):Unit);
+  l _=(console.log(formatResult(
+    "test123@domain.org",
+    validateEmail("test123@domain.org")
+  )):Unit);
   l _=(console.log("
 Invalid examples:"):Unit);
-  l _=(console.log(formatResult("userexample.com",validateEmail("userexample.com"))):Unit);
-  l _=(console.log(formatResult("user@@example.com",validateEmail("user@@example.com"))):Unit);
-  l _=(console.log(formatResult("@example.com",validateEmail("@example.com"))):Unit);
-  l _=(console.log(formatResult("user@",validateEmail("user@"))):Unit);
-  l _=(console.log(formatResult("user@domain",validateEmail("user@domain"))):Unit);
-  l _=(console.log(formatResult("user@.example.com",validateEmail("user@.example.com"))):Unit);
-  l _=(console.log(formatResult("user@example.com.",validateEmail("user@example.com."))):Unit);
-  l _=(console.log(formatResult(".user@example.com",validateEmail(".user@example.com"))):Unit);
-  l _=(console.log(formatResult("user..name@example.com",validateEmail("user..name@example.com"))):Unit);
-  console.log(formatResult("",validateEmail("")))
+  l _=(console.log(formatResult(
+    "userexample.com",
+    validateEmail("userexample.com")
+  )):Unit);
+  l _=(console.log(formatResult(
+    "user@@example.com",
+    validateEmail("user@@example.com")
+  )):Unit);
+  l _=(console.log(formatResult(
+    "@example.com",
+    validateEmail("@example.com")
+  )):Unit);
+  l _=(console.log(formatResult(
+    "user@",
+    validateEmail("user@")
+  )):Unit);
+  l _=(console.log(formatResult(
+    "user@domain",
+    validateEmail("user@domain")
+  )):Unit);
+  l _=(console.log(formatResult(
+    "user@.example.com",
+    validateEmail("user@.example.com")
+  )):Unit);
+  l _=(console.log(formatResult(
+    "user@example.com.",
+    validateEmail("user@example.com.")
+  )):Unit);
+  l _=(console.log(formatResult(
+    ".user@example.com",
+    validateEmail(".user@example.com")
+  )):Unit);
+  l _=(console.log(formatResult(
+    "user..name@example.com",
+    validateEmail("user..name@example.com")
+  )):Unit);
+  console.log(formatResult(
+    "",
+    validateEmail("")
+  ))
 }
 
-λsplitAt(email:String)=>EmailParts=extractParts(§string.split(email,"@"))
+λsplitAt(email:String)=>EmailParts=extractParts(§string.split(
+  email,
+  "@"
+))
 
-λvalidateDomain(domain:String)=>ValidationResult=validateDomainChecks(domain,#domain)
+λvalidateDomain(domain:String)=>ValidationResult=validateDomainChecks(
+  domain,
+  #domain
+)
 
 λvalidateDomainChecks(domain:String,len:Int)=>ValidationResult match len=0{
   true=>Invalid("Domain cannot be empty")|
   false=>match len>255{
     true=>Invalid("Domain too long (max 255 characters)")|
-    false=>match §string.indexOf(domain,".")<0{
+    false=>match §string.indexOf(
+      domain,
+      "."
+    )<0{
       true=>Invalid("Domain must contain at least one dot")|
-      false=>match §string.startsWith(domain,"."){
+      false=>match §string.startsWith(
+        domain,
+        "."
+      ){
         true=>Invalid("Domain cannot start with dot")|
-        false=>match §string.endsWith(domain,"."){
+        false=>match §string.endsWith(
+          domain,
+          "."
+        ){
           true=>Invalid("Domain cannot end with dot")|
-          false=>match §string.contains(domain,".."){
+          false=>match §string.contains(
+            domain,
+            ".."
+          ){
             true=>Invalid("Domain cannot contain consecutive dots")|
             false=>Valid()
           }
@@ -74,7 +164,10 @@ Invalid examples:"):Unit);
   }
 }
 
-λvalidateEmail(email:String)=>ValidationResult=validateEmailWithParts(email,splitAt(email))
+λvalidateEmail(email:String)=>ValidationResult=validateEmailWithParts(
+  email,
+  splitAt(email)
+)
 
 λvalidateEmailParts(parts:EmailParts)=>ValidationResult match validateLocal(parts.local){
   Invalid(msg)=>Invalid(msg)|
@@ -85,7 +178,10 @@ Invalid examples:"):Unit);
   true=>Invalid("Email cannot be empty")|
   false=>match #email>320{
     true=>Invalid("Email too long (max 320 characters)")|
-    false=>match countChar("@",email)=1{
+    false=>match countChar(
+      "@",
+      email
+    )=1{
       false=>Invalid("Email must contain exactly one @ symbol")|
       true=>match #parts.local=0 and #parts.domain=0{
         true=>Invalid("Email must contain exactly one @ symbol")|
@@ -95,17 +191,29 @@ Invalid examples:"):Unit);
   }
 }
 
-λvalidateLocal(local:String)=>ValidationResult=validateLocalChecks(#local,local)
+λvalidateLocal(local:String)=>ValidationResult=validateLocalChecks(
+  #local,
+  local
+)
 
 λvalidateLocalChecks(len:Int,local:String)=>ValidationResult match len=0{
   true=>Invalid("Local part cannot be empty")|
   false=>match len>64{
     true=>Invalid("Local part too long (max 64 characters)")|
-    false=>match §string.startsWith(local,"."){
+    false=>match §string.startsWith(
+      local,
+      "."
+    ){
       true=>Invalid("Local part cannot start with dot")|
-      false=>match §string.endsWith(local,"."){
+      false=>match §string.endsWith(
+        local,
+        "."
+      ){
         true=>Invalid("Local part cannot end with dot")|
-        false=>match §string.contains(local,".."){
+        false=>match §string.contains(
+          local,
+          ".."
+        ){
           true=>Invalid("Local part cannot contain consecutive dots")|
           false=>Valid()
         }

@@ -261,9 +261,6 @@ pub enum ValidationError {
     #[error("SIGIL-CANON-OPERATOR-SPACING: non-canonical operator spacing\n\nUse no spaces around ':', '=>', '=', '|', '+', '-', '*', '/', and '%'.")]
     OperatorSpacing { location: SourceLocation },
 
-    #[error("SIGIL-CANON-SIGNATURE-LAYOUT: function and lambda signatures must stay on one line\n\nKeep the full signature and direct body introducer on a single line.")]
-    SignatureLayout { location: SourceLocation },
-
     #[error("SIGIL-CANON-MATCH-LAYOUT: non-canonical match layout\n\nSingle-arm match may stay on one line. Multi-arm match must use multiline canonical layout.")]
     MatchLayout { location: SourceLocation },
 
@@ -538,7 +535,6 @@ impl ValidationError {
             ValidationError::BlankLines { location, .. } => *location,
             ValidationError::DelimiterSpacing { location } => *location,
             ValidationError::OperatorSpacing { location } => *location,
-            ValidationError::SignatureLayout { location } => *location,
             ValidationError::MatchLayout { location } => *location,
             ValidationError::MatchArmLayout { location } => *location,
             ValidationError::RedundantParens { location } => *location,
@@ -988,15 +984,6 @@ impl From<ValidationError> for Diagnostic {
                     codes::canonical::OPERATOR_SPACING,
                     SigilPhase::Canonical,
                     "non-canonical operator spacing",
-                )
-                .with_location(source_location_to_span(get_file(), location))
-            }
-
-            ValidationError::SignatureLayout { location } => {
-                Diagnostic::new(
-                    codes::canonical::SIGNATURE_LAYOUT,
-                    SigilPhase::Canonical,
-                    "function and lambda signatures must stay on one line",
                 )
                 .with_location(source_location_to_span(get_file(), location))
             }

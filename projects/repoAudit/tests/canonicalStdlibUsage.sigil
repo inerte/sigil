@@ -3,53 +3,108 @@
 λmain()=>Unit=()
 
 test "compile rule rejects invalid regex" {
-  match •canonicalStdlibUsage.compileRule({name:"broken",pattern:"(",replacement:"§list.sum"}){
+  match •canonicalStdlibUsage.compileRule({
+    name:"broken",
+    pattern:"(",
+    replacement:"§list.sum"
+  }){
     Ok(_)=>false|
-    Err(message)=>§string.contains(message,"broken")
+    Err(message)=>§string.contains(
+      message,
+      "broken"
+    )
   }
 }
 
 test "duplicate numeric max is rejected" {
-  match •canonicalStdlibUsage.analyzeFile("projects/demo.sigil",compiledRules(),"λmax(a:Int,b:Int)=>Int=a
-"){
-    [issue]=>issue.line=1 and issue.name="maxNumeric" and issue.path="projects/demo.sigil" and issue.replacement="§numeric.max"|
+  match •canonicalStdlibUsage.analyzeFile(
+    "projects/demo.sigil",
+    compiledRules(),
+    "λmax(a:Int,b:Int)=>Int=a
+"
+  ){
+    [issue]=>issue.line=1
+      and issue.name="maxNumeric"
+      and issue.path="projects/demo.sigil"
+      and issue.replacement="§numeric.max"|
     _=>false
   }
 }
 
 test "duplicate reverse is rejected" {
-  match •canonicalStdlibUsage.analyzeFile("language/examples/example.sigil",compiledRules(),"λreverse[T](xs:[T])=>[T]=[]
-"){
-    [issue]=>issue.line=1 and issue.name="reverseList" and issue.path="language/examples/example.sigil" and issue.replacement="§list.reverse"|
+  match •canonicalStdlibUsage.analyzeFile(
+    "language/examples/example.sigil",
+    compiledRules(),
+    "λreverse[T](xs:[T])=>[T]=[]
+"
+  ){
+    [issue]=>issue.line=1
+      and issue.name="reverseList"
+      and issue.path="language/examples/example.sigil"
+      and issue.replacement="§list.reverse"|
     _=>false
   }
 }
 
 test "duplicate string take is rejected" {
-  match •canonicalStdlibUsage.analyzeFile("projects/demo.sigil",compiledRules(),"λtake(n:Int,s:String)=>String=s
-"){
-    [issue]=>issue.line=1 and issue.name="takeString" and issue.path="projects/demo.sigil" and issue.replacement="§string.take"|
+  match •canonicalStdlibUsage.analyzeFile(
+    "projects/demo.sigil",
+    compiledRules(),
+    "λtake(n:Int,s:String)=>String=s
+"
+  ){
+    [issue]=>issue.line=1
+      and issue.name="takeString"
+      and issue.path="projects/demo.sigil"
+      and issue.replacement="§string.take"|
     _=>false
   }
 }
 
 test "duplicate sum is rejected" {
-  match •canonicalStdlibUsage.analyzeFile("language/examples/example.sigil",compiledRules(),"λsum(xs:[Int])=>Int=0
-"){
-    [issue]=>issue.line=1 and issue.name="sum" and issue.path="language/examples/example.sigil" and issue.replacement="§list.sum"|
+  match •canonicalStdlibUsage.analyzeFile(
+    "language/examples/example.sigil",
+    compiledRules(),
+    "λsum(xs:[Int])=>Int=0
+"
+  ){
+    [issue]=>issue.line=1
+      and issue.name="sum"
+      and issue.path="language/examples/example.sigil"
+      and issue.replacement="§list.sum"|
     _=>false
   }
 }
 
 test "parse tracked files rejects failed git output" {
-  match •canonicalStdlibUsage.parseTrackedFiles({code:1,stderr:"boom",stdout:""}){
+  match •canonicalStdlibUsage.parseTrackedFiles({
+    code:1,
+    stderr:"boom",
+    stdout:""
+  }){
     Ok(_)=>false|
     Err(message)=>message="git ls-files failed: boom"
   }
 }
 
 test "git tracked files surfaces git failure" =>!Process world {
-  c process=(†process.fixture([†process.rule(["git","ls-files","--cached","--others","--exclude-standard","*.sigil","*.lib.sigil"],None(),{code:1,stderr:"boom",stdout:""})]):†process.ProcessEntry)
+  c process=(†process.fixture([†process.rule(
+  [
+    "git",
+    "ls-files",
+    "--cached",
+    "--others",
+    "--exclude-standard",
+    "*.sigil",
+    "*.lib.sigil"
+  ],
+  None(),
+  {
+    code:1,
+    stderr:"boom",
+    stdout:""
+  }
+)]):†process.ProcessEntry)
 } {
   match •canonicalStdlibUsage.gitTrackedFiles(){
     Ok(_)=>false|
@@ -60,12 +115,29 @@ test "git tracked files surfaces git failure" =>!Process world {
 test "print issues writes formatted log line" =>!Log world {
   c log=(†log.capture():†log.LogEntry)
 } {
-  l _=(•canonicalStdlibUsage.printIssues([{line:7,name:"sum",path:"projects/demo.sigil",replacement:"§list.sum"}]):Unit);
+  l _=(•canonicalStdlibUsage.printIssues([{
+    line:7,
+    name:"sum",
+    path:"projects/demo.sigil",
+    replacement:"§list.sum"
+  }]):Unit);
   ※check::log.contains("projects/demo.sigil:7: local 'sum' duplicates canonical helper '§list.sum'; use the qualified stdlib path instead.")
 }
 
 test "run check surfaces git top level failure" =>!AuditIo world {
-  c process=(†process.fixture([†process.rule(["git","rev-parse","--show-toplevel"],None(),{code:1,stderr:"boom",stdout:""})]):†process.ProcessEntry)
+  c process=(†process.fixture([†process.rule(
+  [
+    "git",
+    "rev-parse",
+    "--show-toplevel"
+  ],
+  None(),
+  {
+    code:1,
+    stderr:"boom",
+    stdout:""
+  }
+)]):†process.ProcessEntry)
 } {
   match •canonicalStdlibUsage.runCheck(){
     Ok(_)=>false|
@@ -81,13 +153,21 @@ test "run check finds no canonical stdlib duplicates in repo" =>!AuditIo {
 }
 
 test "same name with different shape is allowed" {
-  •canonicalStdlibUsage.analyzeFile("language/tests/addsNumbers.sigil",compiledRules(),"λsum(acc:Int,x:Int)=>Int=acc+x
-")=[]
+  •canonicalStdlibUsage.analyzeFile(
+    "language/tests/addsNumbers.sigil",
+    compiledRules(),
+    "λsum(acc:Int,x:Int)=>Int=acc+x
+"
+  )=[]
 }
 
 test "direct canonical helper wrapper is compiler-owned and skipped by audit" {
-  •canonicalStdlibUsage.analyzeFile("language/examples/example.sigil",compiledRules(),"λsum(xs:[Int])=>Int=§list.sum(xs)
-")=[]
+  •canonicalStdlibUsage.analyzeFile(
+    "language/examples/example.sigil",
+    compiledRules(),
+    "λsum(xs:[Int])=>Int=§list.sum(xs)
+"
+  )=[]
 }
 
 test "stdlib path is ignored" {

@@ -1,20 +1,50 @@
-t Actor={ammo:Int,hp:Int,id:Int,kind:ActorKind,pos:Point}
+t Actor={
+  ammo:Int,
+  hp:Int,
+  id:Int,
+  kind:ActorKind,
+  pos:Point
+}
 
 t ActorKind=Archer()|Brute()|Goblin()|Player()|Shaman()
 
-t Advance={frame:Frame,outcome:Option[Outcome],state:GameState}
+t Advance={
+  frame:Frame,
+  outcome:Option[Outcome],
+  state:GameState
+}
 
 t Direction=East()|North()|South()|West()
 
-t Frame={map:String,status:String,turn:Int}
+t Frame={
+  map:String,
+  status:String,
+  turn:Int
+}
 
 t InventoryCount=Int where value≥0
 
-t GameState={actorIndex:{String↦Actor},actors:[Actor],collectedTreasure:TreasureCount,exit:Point,floorIndex:{String↦Bool},floors:[Point],lastAction:String,loadout:PlayerLoadout,pickupIndex:{String↦Pickup},pickups:[Pickup],rooms:[Room],turn:TurnCount}
+t GameState={
+  actorIndex:{String↦Actor},
+  actors:[Actor],
+  collectedTreasure:TreasureCount,
+  exit:Point,
+  floorIndex:{String↦Bool},
+  floors:[Point],
+  lastAction:String,
+  loadout:PlayerLoadout,
+  pickupIndex:{String↦Pickup},
+  pickups:[Pickup],
+  rooms:[Room],
+  turn:TurnCount
+}
 
 t InputMode=BlinkMode()|BombMode()|MoveMode()|ShootMode()
 
-t LoopAction=Commit(PlayerCommand,InputMode)|QuitGame()|Stay(InputMode)
+t LoopAction=Commit(
+  PlayerCommand,
+  InputMode
+)|QuitGame()|Stay(InputMode)
 
 t LoopResult=Ended(Outcome)|Quit()
 
@@ -22,23 +52,48 @@ t MeleeWeapon=Spear()|Sword()
 
 t Outcome=Escaped(Int)|Slain(Int)|Stalled(Int)
 
-t PathNode={distance:Int,first:Point,pos:Point}
+t PathNode={
+  distance:Int,
+  first:Point,
+  pos:Point
+}
 
-t PathTarget={distance:Int,pos:Point}
+t PathTarget={
+  distance:Int,
+  pos:Point
+}
 
-t Pickup={kind:PickupKind,pos:Point}
+t Pickup={
+  kind:PickupKind,
+  pos:Point
+}
 
 t PickupKind=BlinkPickup()|BombPickup()|PotionPickup()|SpearPickup()|TreasurePickup()
 
 t PlayerCommand=Blink(Direction)|Bomb(Direction)|DrinkPotion()|Move(Direction)|Shoot(Direction)|Wait()
 
-t PlayerLoadout={arrows:InventoryCount,blinks:InventoryCount,bombs:InventoryCount,melee:MeleeWeapon,potions:InventoryCount,ranged:Option[RangedWeapon]}
+t PlayerLoadout={
+  arrows:InventoryCount,
+  blinks:InventoryCount,
+  bombs:InventoryCount,
+  melee:MeleeWeapon,
+  potions:InventoryCount,
+  ranged:Option[RangedWeapon]
+}
 
-t Point={x:Int,y:Int}
+t Point={
+  x:Int,
+  y:Int
+}
 
 t RangedWeapon=Bow()
 
-t Room={h:Int,w:Int,x:Int,y:Int}
+t Room={
+  h:Int,
+  w:Int,
+  x:Int,
+  y:Int
+}
 
 t TreasureCount=Int where value≥0
 

@@ -2,7 +2,9 @@
 
 test "flashcards sessionForTopic filters to matching cards" {
   l session=(•flashcardsDomain.sessionForTopic("topology"):µStudySession);
-  #session.cards>0 and session.selectedTopic="topology" and session.cards[0].id="topology-vs-config"
+  #session.cards>0
+    and session.selectedTopic="topology"
+    and session.cards[0].id="topology-vs-config"
 }
 
 test "flashcards sessionForTopic can produce an empty deck" {

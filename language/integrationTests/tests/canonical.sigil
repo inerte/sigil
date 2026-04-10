@@ -13,7 +13,10 @@ match n{0=>0}
 λmain()=>Int=fib(5)
 "
 
-λcompile(file:String)=>!Process §process.ProcessResult=§process.run(•support.sigil(["compile",file]))
+λcompile(file:String)=>!Process §process.ProcessResult=§process.run(•support.sigil([
+  "compile",
+  file
+]))
 
 λgoodFibSource()=>String="λfib(n:Int)=>Int=fibHelper(0,1,n)
 
@@ -32,26 +35,50 @@ match n{0=>0}
 
 test "canonical rejects single-line multi-arm match" =>!Clock!Fs!Process {
   l root=(•support.uniqueRepoTempDir("canonicalMatch"):String);
-  l file=(§path.join(root,"badMatch.sigil"):String);
-  l _=(§file.writeText(badMatchSource(),file):Unit);
+  l file=(§path.join(
+    root,
+    "badMatch.sigil"
+  ):String);
+  l _=(§file.writeText(
+    badMatchSource(),
+    file
+  ):Unit);
   l result=(compile(file):§process.ProcessResult);
   l _=(§file.removeTree(root):Unit);
-  §string.contains(•support.combinedOutput(result),"SIGIL-CANON-SOURCE-FORM")=true
+  §string.contains(
+    •support.combinedOutput(result),
+    "SIGIL-CANON-SOURCE-FORM"
+  )=true
 }
 
 test "canonical rejects split signature before match" =>!Clock!Fs!Process {
   l root=(•support.uniqueRepoTempDir("canonicalSignature"):String);
-  l file=(§path.join(root,"badSignature.sigil"):String);
-  l _=(§file.writeText(badSignatureSource(),file):Unit);
+  l file=(§path.join(
+    root,
+    "badSignature.sigil"
+  ):String);
+  l _=(§file.writeText(
+    badSignatureSource(),
+    file
+  ):Unit);
   l result=(compile(file):§process.ProcessResult);
   l _=(§file.removeTree(root):Unit);
-  §string.contains(•support.combinedOutput(result),"SIGIL-CANON-SOURCE-FORM")=true
+  §string.contains(
+    •support.combinedOutput(result),
+    "SIGIL-CANON-SOURCE-FORM"
+  )=true
 }
 
 test "canonical fib fixture compiles" =>!Clock!Fs!Process {
   l root=(•support.uniqueRepoTempDir("canonicalGood"):String);
-  l file=(§path.join(root,"goodFib.sigil"):String);
-  l _=(§file.writeText(goodFibSource(),file):Unit);
+  l file=(§path.join(
+    root,
+    "goodFib.sigil"
+  ):String);
+  l _=(§file.writeText(
+    goodFibSource(),
+    file
+  ):Unit);
   l result=(compile(file):§process.ProcessResult);
   l _=(§file.removeTree(root):Unit);
   result.code=0
@@ -59,26 +86,50 @@ test "canonical fib fixture compiles" =>!Clock!Fs!Process {
 
 test "canonical rejects exact stdlib helper wrappers" =>!Clock!Fs!Process {
   l root=(•support.uniqueRepoTempDir("canonicalDirectWrapper"):String);
-  l file=(§path.join(root,"badWrapper.lib.sigil"):String);
-  l _=(§file.writeText(badDirectWrapperSource(),file):Unit);
+  l file=(§path.join(
+    root,
+    "badWrapper.lib.sigil"
+  ):String);
+  l _=(§file.writeText(
+    badDirectWrapperSource(),
+    file
+  ):Unit);
   l result=(compile(file):§process.ProcessResult);
   l _=(§file.removeTree(root):Unit);
-  result.code≠0 and §string.contains(•support.combinedOutput(result),"SIGIL-CANON-HELPER-DIRECT-WRAPPER")
+  result.code≠0 and §string.contains(
+    •support.combinedOutput(result),
+    "SIGIL-CANON-HELPER-DIRECT-WRAPPER"
+  )
 }
 
 test "canonical rejects exact operator wrappers" =>!Clock!Fs!Process {
   l root=(•support.uniqueRepoTempDir("canonicalOperatorWrapper"):String);
-  l file=(§path.join(root,"badMapWrapper.lib.sigil"):String);
-  l _=(§file.writeText(badMapWrapperSource(),file):Unit);
+  l file=(§path.join(
+    root,
+    "badMapWrapper.lib.sigil"
+  ):String);
+  l _=(§file.writeText(
+    badMapWrapperSource(),
+    file
+  ):Unit);
   l result=(compile(file):§process.ProcessResult);
   l _=(§file.removeTree(root):Unit);
-  result.code≠0 and §string.contains(•support.combinedOutput(result),"SIGIL-CANON-HELPER-DIRECT-WRAPPER")
+  result.code≠0 and §string.contains(
+    •support.combinedOutput(result),
+    "SIGIL-CANON-HELPER-DIRECT-WRAPPER"
+  )
 }
 
 test "wrapper with extra logic still compiles" =>!Clock!Fs!Process {
   l root=(•support.uniqueRepoTempDir("canonicalWrapperLike"):String);
-  l file=(§path.join(root,"goodWrapper.lib.sigil"):String);
-  l _=(§file.writeText(wrapperPlusLogicSource(),file):Unit);
+  l file=(§path.join(
+    root,
+    "goodWrapper.lib.sigil"
+  ):String);
+  l _=(§file.writeText(
+    wrapperPlusLogicSource(),
+    file
+  ):Unit);
   l result=(compile(file):§process.ProcessResult);
   l _=(§file.removeTree(root):Unit);
   result.code=0

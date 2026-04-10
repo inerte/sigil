@@ -1,7 +1,10 @@
 λmain()=>Unit match §time.parseIso("2026-03-01"){
   Ok(first)=>match §time.parseIso("2026-03-03"){
     Ok(second)=>{
-      l _=(§time.compare(first,second):Int);
+      l _=(§time.compare(
+        first,
+        second
+      ):Int);
       ()
     }|
     Err(_)=>()

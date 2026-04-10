@@ -1,6 +1,9 @@
 t MkdirOptions={recursive:Bool}
 
-t RmOptions={force:Bool,recursive:Bool}
+t RmOptions={
+  force:Bool,
+  recursive:Bool
+}
 
 e fs:{existsSync:λ(String)=>Bool}
 

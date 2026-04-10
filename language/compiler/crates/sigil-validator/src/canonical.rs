@@ -628,11 +628,6 @@ fn validate_function_body_layout(
     source: &str,
 ) -> Result<(), Vec<ValidationError>> {
     let body_location = expr_location(&function.body);
-    if function.location.start.line != body_location.start.line {
-        return Err(vec![ValidationError::SignatureLayout {
-            location: function.location,
-        }]);
-    }
 
     if matches!(function.body, Expr::Match(_)) {
         let between = slice_between(
@@ -657,11 +652,6 @@ fn validate_lambda_body_layout(
     source: &str,
 ) -> Result<(), Vec<ValidationError>> {
     let body_location = expr_location(&lambda.body);
-    if lambda.location.start.line != body_location.start.line {
-        return Err(vec![ValidationError::SignatureLayout {
-            location: lambda.location,
-        }]);
-    }
 
     if matches!(lambda.body, Expr::Match(_)) {
         let between = slice_between(
@@ -6510,7 +6500,10 @@ mod tests {
   _=>3
 }
 
-λmain()=>Int=f(0,1)
+λmain()=>Int=f(
+  0,
+  1
+)
 "#;
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
@@ -6520,7 +6513,7 @@ mod tests {
     }
 
     #[test]
-    fn test_non_canonical_signature_layout_rejected() {
+    fn test_non_canonical_match_after_signature_rejected_as_source_form() {
         let source = "λfib(n:Int)=>Int\nmatch n{0=>0}\n";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
@@ -6751,7 +6744,11 @@ mod tests {
     fn test_canonical_map_operator_allowed() {
         let source = r#"λdouble(xs:[Int])=>[Int]=xs map (λ(x:Int)=>Int=x*2)
 
-λmain()=>[Int]=double([1,2,3])
+λmain()=>[Int]=double([
+  1,
+  2,
+  3
+])
 "#;
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
@@ -6760,13 +6757,37 @@ mod tests {
 
     #[test]
     fn test_canonical_any_all_find_allowed() {
-        let source = r#"λallPositive(xs:[Int])=>Bool=§list.all(λ(x:Int)=>Bool=x>0,xs)
+        let source = r#"λallPositive(xs:[Int])=>Bool=§list.all(
+  λ(x:Int)=>Bool=x>0,
+  xs
+)
 
-λanyEven(xs:[Int])=>Bool=§list.any(λ(x:Int)=>Bool=x%2=0,xs)
+λanyEven(xs:[Int])=>Bool=§list.any(
+  λ(x:Int)=>Bool=x%2=0,
+  xs
+)
 
-λfindEven(xs:[Int])=>Option[Int]=§list.find(λ(x:Int)=>Bool=x%2=0,xs)
+λfindEven(xs:[Int])=>Option[Int]=§list.find(
+  λ(x:Int)=>Bool=x%2=0,
+  xs
+)
 
-λmain()=>Bool=allPositive([1,2,3]) and anyEven([1,2,3]) and findEven([1,2,3,4])=Some(2)
+λmain()=>Bool=allPositive([
+  1,
+  2,
+  3
+])
+  and anyEven([
+    1,
+    2,
+    3
+  ])
+  and findEven([
+    1,
+    2,
+    3,
+    4
+  ])=Some(2)
 "#;
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();
@@ -6775,11 +6796,33 @@ mod tests {
 
     #[test]
     fn test_canonical_flat_map_and_count_if_allowed() {
-        let source = r#"λcountEven(xs:[Int])=>Int=§list.countIf(λ(x:Int)=>Bool=x%2=0,xs)
+        let source = r#"λcountEven(xs:[Int])=>Int=§list.countIf(
+  λ(x:Int)=>Bool=x%2=0,
+  xs
+)
 
-λexplode(xs:[Int])=>[Int]=§list.flatMap(λ(x:Int)=>[Int]=[x,x],xs)
+λexplode(xs:[Int])=>[Int]=§list.flatMap(
+  λ(x:Int)=>[Int]=[
+    x,
+    x
+  ],
+  xs
+)
 
-λmain()=>Bool=countEven([1,2,3,4])=2 and explode([1,2])=[1,1,2,2]
+λmain()=>Bool=countEven([
+  1,
+  2,
+  3,
+  4
+])=2 and explode([
+  1,
+  2
+])=[
+  1,
+  1,
+  2,
+  2
+]
 "#;
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.sigil").unwrap();

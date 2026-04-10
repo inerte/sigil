@@ -18,7 +18,10 @@ test "json parse returns object for valid input" {
 }
 
 test "json stringify roundtrip preserves shape" {
-  l value=(§json.JsonObject({"active"↦§json.JsonBool(true),"name"↦§json.JsonString("sigil")}):§json.JsonValue);
+  l value=(§json.JsonObject({
+    "active"↦§json.JsonBool(true),
+    "name"↦§json.JsonString("sigil")
+  }):§json.JsonValue);
   match §json.parse(§json.stringify(value)){
     Ok(parsed)=>parsed=value|
     Err(_)=>false

@@ -1,14 +1,39 @@
-λdecodeNextTodoId(value:§json.JsonValue)=>Result[µNextTodoId,§decode.DecodeError] match §decode.int(value){
+λdecodeNextTodoId(value:§json.JsonValue)=>Result[
+  µNextTodoId,
+  §decode.DecodeError
+] match §decode.int(value){
   Ok(nextId)=>Ok(µNextTodoId(nextId))|
   Err(error)=>Err(error)
 }
 
-λdecodeState(input:String)=>Result[µPersistedState,§decode.DecodeError]=§decode.parse(stateDecoder,input)
+λdecodeState(input:String)=>Result[
+  µPersistedState,
+  §decode.DecodeError
+]=§decode.parse(
+  stateDecoder,
+  input
+)
 
-λdecodeTodo(value:§json.JsonValue)=>Result[µTodo,§decode.DecodeError] match §decode.field(§decode.bool,"done")(value){
-  Ok(done)=>match §decode.field(§decode.int,"id")(value){
-    Ok(id)=>match §decode.field(§decode.string,"text")(value){
-      Ok(text)=>Ok({done:done,id:id,text:text})|
+λdecodeTodo(value:§json.JsonValue)=>Result[
+  µTodo,
+  §decode.DecodeError
+] match §decode.field(
+  §decode.bool,
+  "done"
+)(value){
+  Ok(done)=>match §decode.field(
+    §decode.int,
+    "id"
+  )(value){
+    Ok(id)=>match §decode.field(
+      §decode.string,
+      "text"
+    )(value){
+      Ok(text)=>Ok({
+        done:done,
+        id:id,
+        text:text
+      })|
       Err(error)=>Err(error)
     }|
     Err(error)=>Err(error)
@@ -18,13 +43,23 @@
 
 λencodeState(state:µPersistedState)=>String=§json.stringify(encodeStateToJson(state))
 
-λencodeStateToJson(state:µPersistedState)=>§json.JsonValue=§json.JsonObject({"nextId"↦§json.JsonString(§string.intToString(nextTodoIdValue(state.nextId))),"todos"↦encodeTodos(state.todos)})
+λencodeStateToJson(state:µPersistedState)=>§json.JsonValue=§json.JsonObject({
+  "nextId"↦§json.JsonString(§string.intToString(nextTodoIdValue(state.nextId))),
+  "todos"↦encodeTodos(state.todos)
+})
 
-λencodeTodo(todo:µTodo)=>§json.JsonValue=§json.JsonObject({"done"↦§json.JsonBool(todo.done),"id"↦§json.JsonString(§string.intToString(todo.id)),"text"↦§json.JsonString(todo.text)})
+λencodeTodo(todo:µTodo)=>§json.JsonValue=§json.JsonObject({
+  "done"↦§json.JsonBool(todo.done),
+  "id"↦§json.JsonString(§string.intToString(todo.id)),
+  "text"↦§json.JsonString(todo.text)
+})
 
 λencodeTodos(todos:[µTodo])=>§json.JsonValue match todos{
   []=>§json.JsonArray([])|
-  [todo,.rest]=>match encodeTodos(rest){
+  [
+  todo,
+  .rest
+]=>match encodeTodos(rest){
     §json.JsonArray(items)=>§json.JsonArray([encodeTodo(todo)]⧺items)|
     _=>§json.JsonArray([encodeTodo(todo)])
   }
@@ -34,9 +69,21 @@
   µNextTodoId(value)=>value
 }
 
-λstateDecoder(value:§json.JsonValue)=>Result[µPersistedState,§decode.DecodeError] match §decode.field(decodeNextTodoId,"nextId")(value){
-  Ok(nextId)=>match §decode.field(§decode.list(decodeTodo),"todos")(value){
-    Ok(todos)=>Ok({nextId:nextId,todos:todos})|
+λstateDecoder(value:§json.JsonValue)=>Result[
+  µPersistedState,
+  §decode.DecodeError
+] match §decode.field(
+  decodeNextTodoId,
+  "nextId"
+)(value){
+  Ok(nextId)=>match §decode.field(
+    §decode.list(decodeTodo),
+    "todos"
+  )(value){
+    Ok(todos)=>Ok({
+      nextId:nextId,
+      todos:todos
+    })|
     Err(error)=>Err(error)
   }|
   Err(error)=>Err(error)

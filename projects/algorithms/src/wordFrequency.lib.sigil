@@ -1,14 +1,37 @@
 λfrequency(lines:[String])=>{String↦Int}=normalizedWords(lines) reduce increment from (¶map.empty():{String↦Int})
 
-λincrement(histogram:{String↦Int},word:String)=>{String↦Int} match ¶map.get(word,histogram){
-  Some(count)=>¶map.insert(word,histogram,count+1)|
-  None()=>¶map.insert(word,histogram,1)
+λincrement(histogram:{String↦Int},word:String)=>{String↦Int} match ¶map.get(
+  word,
+  histogram
+){
+  Some(count)=>¶map.insert(
+    word,
+    histogram,
+    count+1
+  )|
+  None()=>¶map.insert(
+    word,
+    histogram,
+    1
+  )
 }
 
 λnonEmpty(word:String)=>Bool=word≠""
 
-λnormalizedWords(lines:[String])=>[String]=§list.flatMap(splitWords,lines) filter nonEmpty
+λnormalizedWords(lines:[String])=>[String]=§list.flatMap(
+  splitWords,
+  lines
+) filter nonEmpty
 
-λsplitWords(line:String)=>[String]=§string.split(" ",§string.toLower(line))
+λsplitWords(line:String)=>[String]=§string.split(
+  " ",
+  §string.toLower(line)
+)
 
-λsummary(lines:[String])=>[µWordBucket]=¶map.entries(frequency(lines)) map (λ(entry:¶map.Entry[String,Int])=>µWordBucket={count:entry.value,word:entry.key})
+λsummary(lines:[String])=>[µWordBucket]=¶map.entries(frequency(lines)) map (λ(entry:¶map.Entry[
+  String,
+  Int
+])=>µWordBucket={
+  count:entry.value,
+  word:entry.key
+})

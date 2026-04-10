@@ -1,12 +1,31 @@
-λallRoutes()=>[String]=["/echo","/headers","/health","/json","/routes"]
+λallRoutes()=>[String]=[
+  "/echo",
+  "/headers",
+  "/health",
+  "/json",
+  "/routes"
+]
 
-λpublicRoute(route:String)=>Bool=§string.startsWith("/",route)
+λpublicRoute(route:String)=>Bool=§string.startsWith(
+  "/",
+  route
+)
 
-λroutePath(path:String)=>String match §string.indexOf(path,"?"){
-  idx when idx≥0=>§string.substring(idx,path,0)|
+λroutePath(path:String)=>String match §string.indexOf(
+  path,
+  "?"
+){
+  idx when idx≥0=>§string.substring(
+    idx,
+    path,
+    0
+  )|
   _=>path
 }
 
 λrouteSummary(routes:[String])=>String=§string.unlines(routes filter publicRoute)
 
-λserverHeaders(extra:{String↦String})=>{String↦String}=¶map.merge({"content-type"↦"text/plain; charset=utf-8"},extra)
+λserverHeaders(extra:{String↦String})=>{String↦String}=¶map.merge(
+  {"content-type"↦"text/plain; charset=utf-8"},
+  extra
+)

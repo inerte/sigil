@@ -1,7 +1,15 @@
 t Headers={}
 
-t Response={body:String,headers:Headers,status:Int}
+t Response={
+  body:String,
+  headers:Headers,
+  status:Int
+}
 
 λmain()=>Response=test()
 
-λtest()=>Response={body:"ok",headers:{},status:200}
+λtest()=>Response={
+  body:"ok",
+  headers:{},
+  status:200
+}

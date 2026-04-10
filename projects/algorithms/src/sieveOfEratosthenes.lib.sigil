@@ -2,10 +2,19 @@
 
 λsieve(limit:Int)=>[Int] match limit<2{
   true=>[]|
-  false=>sieveCandidates(§numeric.range(2,limit))
+  false=>sieveCandidates(§numeric.range(
+    2,
+    limit
+  ))
 }
 
 λsieveCandidates(candidates:[Int])=>[Int] match candidates{
   []=>[]|
-  [head,.tail]=>[head]⧺sieveCandidates(filterMultiples(head,tail))
+  [
+  head,
+  .tail
+]=>[head]⧺sieveCandidates(filterMultiples(
+    head,
+    tail
+  ))
 }

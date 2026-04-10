@@ -1,7 +1,13 @@
 λexists(path:String)=>Bool=※observe::file.exists(path)
 
-λexistsAt(path:String,root:§topology.FsRoot)=>Bool=※observe::file.existsAt(path,root)
+λexistsAt(path:String,root:§topology.FsRoot)=>Bool=※observe::file.existsAt(
+  path,
+  root
+)
 
 λtextEquals(expected:String,path:String)=>Bool=※observe::file.readText(path)=expected
 
-λtextEqualsAt(expected:String,path:String,root:§topology.FsRoot)=>Bool=※observe::file.readTextAt(path,root)=expected
+λtextEqualsAt(expected:String,path:String,root:§topology.FsRoot)=>Bool=※observe::file.readTextAt(
+  path,
+  root
+)=expected

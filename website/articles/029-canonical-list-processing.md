@@ -88,7 +88,10 @@ Rejected:
 Required:
 
 ```sigil module
-λallPositive(xs:[Int])=>Bool=§list.all(isPositive,xs)
+λallPositive(xs:[Int])=>Bool=§list.all(
+  isPositive,
+  xs
+)
 
 λisPositive(x:Int)=>Bool=x>0
 ```
@@ -119,7 +122,10 @@ Rejected:
 Required:
 
 ```sigil module projects/repoAudit/src/anyEven.lib.sigil
-λanyEven(xs:[Int])=>Bool=§list.any(isEven,xs)
+λanyEven(xs:[Int])=>Bool=§list.any(
+  isEven,
+  xs
+)
 
 λisEven(x:Int)=>Bool=x%2=0
 ```
@@ -176,7 +182,10 @@ Rejected:
 Required:
 
 ```sigil module
-λcountEven(xs:[Int])=>Int=§list.countIf(isEven,xs)
+λcountEven(xs:[Int])=>Int=§list.countIf(
+  isEven,
+  xs
+)
 
 λisEven(x:Int)=>Bool=x%2=0
 ```
@@ -244,7 +253,10 @@ Rejected:
 Required:
 
 ```sigil module
-λfindEven(xs:[Int])=>Option[Int]=§list.find(isEven,xs)
+λfindEven(xs:[Int])=>Option[Int]=§list.find(
+  isEven,
+  xs
+)
 
 λisEven(x:Int)=>Bool=x%2=0
 ```
@@ -277,7 +289,10 @@ Required:
 ```sigil module
 λdigits(x:Int)=>[Int]=[x]
 
-λexplode(xs:[Int])=>[Int]=§list.flatMap(digits,xs)
+λexplode(xs:[Int])=>[Int]=§list.flatMap(
+  digits,
+  xs
+)
 ```
 
 ### Reverse

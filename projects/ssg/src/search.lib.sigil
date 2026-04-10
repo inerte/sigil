@@ -1,8 +1,24 @@
-λallPages(data:µSiteData)=>[µSitePage]=[data.home,data.articlesIntro,data.projectsIntro]⧺data.articles⧺data.docs⧺data.projects⧺data.spec⧺data.standalone
+λallPages(data:µSiteData)=>[µSitePage]=[
+  data.home,
+  data.articlesIntro,
+  data.projectsIntro
+]
+  ⧺data.articles
+  ⧺data.docs
+  ⧺data.projects
+  ⧺data.spec
+  ⧺data.standalone
 
 λpageText(page:µSitePage)=>String=§string.trim(page.bodyMarkdown)
 
-λpageValue(page:µSitePage)=>§json.JsonValue=§json.JsonObject({"description"↦§json.JsonString(page.meta.description),"section"↦§json.JsonString(•content.sectionNameLowercase(page.section)),"sourcePath"↦§json.JsonString(page.sourcePath),"text"↦§json.JsonString(pageText(page)),"title"↦§json.JsonString(page.meta.title),"url"↦§json.JsonString(•content.canonicalRoute(page))})
+λpageValue(page:µSitePage)=>§json.JsonValue=§json.JsonObject({
+  "description"↦§json.JsonString(page.meta.description),
+  "section"↦§json.JsonString(•content.sectionNameLowercase(page.section)),
+  "sourcePath"↦§json.JsonString(page.sourcePath),
+  "text"↦§json.JsonString(pageText(page)),
+  "title"↦§json.JsonString(page.meta.title),
+  "url"↦§json.JsonString(•content.canonicalRoute(page))
+})
 
 λpagesValue(pages:[µSitePage])=>§json.JsonValue=§json.JsonArray(pages map pageValue)
 

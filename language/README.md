@@ -26,11 +26,19 @@ Sigil is optimized for:
 
 ### What's Written (Dense, Canonical Format)
 ```sigil module
-λfibonacci(n:Int)=>Int=fibonacciHelper(0,1,n)
+λfibonacci(n:Int)=>Int=fibonacciHelper(
+  0,
+  1,
+  n
+)
 
 λfibonacciHelper(a:Int,b:Int,n:Int)=>Int match n{
   0=>a|
-  count=>fibonacciHelper(b,a+b,count-1)
+  count=>fibonacciHelper(
+    b,
+    a+b,
+    count-1
+  )
 }
 ```
 
@@ -238,7 +246,12 @@ t Option[T]=Some(T)|None()
 
 t Result[T,E]=Ok(T)|Err(E)
 
-t User={active:Bool,email:String,id:Int,name:String}
+t User={
+  active:Bool,
+  email:String,
+  id:Int,
+  name:String
+}
 ```
 
 Sigil supports explicit parametric polymorphism on top-level declarations.
@@ -246,16 +259,37 @@ It does not use Hindley-Milner let-polymorphism for local bindings.
 
 ### Built-in List Operations
 ```sigil module
-λdoubled()=>[Int]=[1,2,3,4,5] map (λ(x:Int)=>Int=x*2)
+λdoubled()=>[Int]=[
+  1,
+  2,
+  3,
+  4,
+  5
+] map (λ(x:Int)=>Int=x*2)
 
-λevens()=>[Int]=[1,2,3,4,5] filter §numeric.isEven
+λevens()=>[Int]=[
+  1,
+  2,
+  3,
+  4,
+  5
+] filter §numeric.isEven
 
-λtotal()=>Int=[1,2,3,4,5] reduce (λ(acc:Int,x:Int)=>Int=acc+x) from 0
+λtotal()=>Int=[
+  1,
+  2,
+  3,
+  4,
+  5
+] reduce (λ(acc:Int,x:Int)=>Int=acc+x) from 0
 ```
 
 ### Composed List Operations
 ```sigil module
-t User={active:Bool,name:String}
+t User={
+  active:Bool,
+  name:String
+}
 
 λactiveNames(users:[User])=>[String]=users filter (λ(user:User)=>Bool=user.active) map (λ(user:User)=>String=user.name)
 ```

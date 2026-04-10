@@ -2,26 +2,46 @@ t ProcessEntry=DenyProcess()|FixtureProcess([ProcessRule])|RealProcess()
 
 t ProcessHandleEntry=ProcessHandleEntry(ProcessHandleEntryValue)
 
-t ProcessHandleEntryValue={handleName:String,mode:ProcessEntry}
+t ProcessHandleEntryValue={
+  handleName:String,
+  mode:ProcessEntry
+}
 
-t ProcessRule={argv:[String],cwd:Option[String],result:§process.ProcessResult}
+t ProcessRule={
+  argv:[String],
+  cwd:Option[String],
+  result:§process.ProcessResult
+}
 
 λdeny()=>ProcessEntry=DenyProcess()
 
 λdenyHandle(handle:§topology.ProcessHandle)=>ProcessHandleEntry match handle{
-  §topology.ProcessHandle(handleName)=>ProcessHandleEntry({handleName:handleName,mode:DenyProcess()})
+  §topology.ProcessHandle(handleName)=>ProcessHandleEntry({
+    handleName:handleName,
+    mode:DenyProcess()
+  })
 }
 
 λfixture(rules:[ProcessRule])=>ProcessEntry=FixtureProcess(rules)
 
 λfixtureHandle(handle:§topology.ProcessHandle,rules:[ProcessRule])=>ProcessHandleEntry match handle{
-  §topology.ProcessHandle(handleName)=>ProcessHandleEntry({handleName:handleName,mode:FixtureProcess(rules)})
+  §topology.ProcessHandle(handleName)=>ProcessHandleEntry({
+    handleName:handleName,
+    mode:FixtureProcess(rules)
+  })
 }
 
 λreal()=>ProcessEntry=RealProcess()
 
 λrealHandle(handle:§topology.ProcessHandle)=>ProcessHandleEntry match handle{
-  §topology.ProcessHandle(handleName)=>ProcessHandleEntry({handleName:handleName,mode:RealProcess()})
+  §topology.ProcessHandle(handleName)=>ProcessHandleEntry({
+    handleName:handleName,
+    mode:RealProcess()
+  })
 }
 
-λrule(argv:[String],cwd:Option[String],result:§process.ProcessResult)=>ProcessRule={argv:argv,cwd:cwd,result:result}
+λrule(argv:[String],cwd:Option[String],result:§process.ProcessResult)=>ProcessRule={
+  argv:argv,
+  cwd:cwd,
+  result:result
+}

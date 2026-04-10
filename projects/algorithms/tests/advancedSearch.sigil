@@ -1,17 +1,73 @@
 λmain()=>Unit=()
 
 test "fibonacci search finds present target" {
-  •fibonacciSearch.fibonacciSearch(13,[1,3,5,7,9,11,13,15,17,19])=6
+  •fibonacciSearch.fibonacciSearch(
+    13,
+    [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19
+    ]
+  )=6
 }
 
 test "fibonacci search returns minus one when absent" {
-  •fibonacciSearch.fibonacciSearch(12,[1,3,5,7,9,11,13,15,17,19])=-1
+  •fibonacciSearch.fibonacciSearch(
+    12,
+    [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19
+    ]
+  )=-1
 }
 
 test "jump search finds present target" {
-  •jumpSearch.jumpSearch(13,[1,3,5,7,9,11,13,15,17,19])=6
+  •jumpSearch.jumpSearch(
+    13,
+    [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19
+    ]
+  )=6
 }
 
 test "jump search returns minus one when absent" {
-  •jumpSearch.jumpSearch(12,[1,3,5,7,9,11,13,15,17,19])=-1
+  •jumpSearch.jumpSearch(
+    12,
+    [
+      1,
+      3,
+      5,
+      7,
+      9,
+      11,
+      13,
+      15,
+      17,
+      19
+    ]
+  )=-1
 }

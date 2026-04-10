@@ -1,11 +1,23 @@
 λflatten(tree:µIntTree)=>[Int] match tree{
   µEmpty()=>[]|
-  µNode(children,value)=>[value]⧺§list.flatMap(flatten,children)
+  µNode(
+  children,
+  value
+)=>[value]⧺§list.flatMap(
+    flatten,
+    children
+  )
 }
 
 λincremented(tree:µIntTree)=>µIntTree match tree{
   µEmpty()=>µEmpty()|
-  µNode(children,value)=>µNode(children map incremented,value+1)
+  µNode(
+  children,
+  value
+)=>µNode(
+    children map incremented,
+    value+1
+  )
 }
 
 λpositiveValues(tree:µIntTree)=>[Int]=flatten(tree) filter §numeric.isPositive

@@ -2,7 +2,11 @@
 
 λcontains(s:String,search:String)=>Bool=false
 
-λdrop(n:Int,s:String)=>String=substring(#s,s,n)
+λdrop(n:Int,s:String)=>String=substring(
+  #s,
+  s,
+  n
+)
 
 λendsWith(s:String,suffix:String)=>Bool=false
 
@@ -14,12 +18,18 @@
 
 λjoin(separator:String,strings:[String])=>String=""
 
-λlines(s:String)=>[String]=split("
-",s)
+λlines(s:String)=>[String]=split(
+  "
+",
+  s
+)
 
 λrepeat(count:Int,s:String)=>String match count≤0{
   true=>""|
-  false=>s++repeat(count-1,s)
+  false=>s++repeat(
+    count-1,
+    s
+  )
 }
 
 λreplaceAll(pattern:String,replacement:String,s:String)=>String=""
@@ -32,7 +42,11 @@
 
 λsubstring(end:Int,s:String,start:Int)=>String=""
 
-λtake(n:Int,s:String)=>String=substring(n,s,0)
+λtake(n:Int,s:String)=>String=substring(
+  n,
+  s,
+  0
+)
 
 λtoLower(s:String)=>String=""
 
@@ -44,5 +58,8 @@
 
 λtrimStartChars(chars:String,s:String)=>String=""
 
-λunlines(lines:[String])=>String=join("
-",lines)
+λunlines(lines:[String])=>String=join(
+  "
+",
+  lines
+)

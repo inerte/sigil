@@ -129,7 +129,8 @@ For Sigil, canonicality means the toolchain actually rejects the alternative.
 Current high-signal printer choices:
 
 - `λfib(n:Int)=>Int match n{...}` is canonical; splitting the signature/body introducer is not
+- delimited aggregate forms stay flat with `0` or `1` item and print multiline with `2+` items
+- repeated `++`, `⧺`, `and`, and `or` chains print vertically one continued operand per line
 - multi-arm `match` prints multiline
-- branching and non-trivial structure print multiline earlier than dense inline forms
 - newline-containing string values print as multiline `"` literals, not `\n`-escaped one-line strings
 - spacing is a consequence of the printer, not a second style system

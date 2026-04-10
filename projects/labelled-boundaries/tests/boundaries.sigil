@@ -1,25 +1,50 @@
 λmain()=>Unit=()
 
 test "labelled boundaries allow cpf export at the named fs root" =>!Fs!Log!Process world {
-  c exports=(†fs.sandboxRoot(".local/labelled-boundaries-tests/exports",•topology.exportsDir):†fs.FsRootEntry)
+  c exports=(†fs.sandboxRoot(
+  ".local/labelled-boundaries-tests/exports",
+  •topology.exportsDir
+):†fs.FsRootEntry)
 } {
   l _=(•app.runExample():Unit);
-  ※check::file.existsAt("cpf.txt",•topology.exportsDir) and ※check::file.textEqualsAt("12345678901","cpf.txt",•topology.exportsDir)
+  ※check::file.existsAt(
+    "cpf.txt",
+    •topology.exportsDir
+  ) and ※check::file.textEqualsAt(
+    "12345678901",
+    "cpf.txt",
+    •topology.exportsDir
+  )
 }
 
 test "labelled boundaries redact pii before writing the named audit sink" =>!Fs!Log!Process world {
-  c exports=(†fs.sandboxRoot(".local/labelled-boundaries-tests/audit",•topology.exportsDir):†fs.FsRootEntry)
+  c exports=(†fs.sandboxRoot(
+  ".local/labelled-boundaries-tests/audit",
+  •topology.exportsDir
+):†fs.FsRootEntry)
 } {
   l _=(•app.runExample():Unit);
-  ※check::log.containsAt("***-**-6789",•topology.auditLog) and ¬※check::log.containsAt("123456789",•topology.auditLog)
+  ※check::log.containsAt(
+    "***-**-6789",
+    •topology.auditLog
+  ) and ¬※check::log.containsAt(
+    "123456789",
+    •topology.auditLog
+  )
 }
 
 test "labelled boundaries transform credentials before running the named process handle" =>!Fs!Log!Process world {
-  c exports=(†fs.sandboxRoot(".local/labelled-boundaries-tests/process",•topology.exportsDir):†fs.FsRootEntry)
+  c exports=(†fs.sandboxRoot(
+  ".local/labelled-boundaries-tests/process",
+  •topology.exportsDir
+):†fs.FsRootEntry)
 } {
   l _=(•app.runExample():Unit);
   ※check::process.calledOnceAt(•topology.govBrCli) and (match §list.last(※observe::process.commandsAt(•topology.govBrCli)){
-    Some(command)=>command.argv=["gov-client"] and ¶map.get("TOKEN",command.env)=Some("gov-br-token")|
+    Some(command)=>command.argv=["gov-client"] and ¶map.get(
+      "TOKEN",
+      command.env
+    )=Some("gov-br-token")|
     None()=>false
   })
 }

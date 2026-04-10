@@ -1,14 +1,23 @@
-t Entry[K,V]={key:K,value:V}
+t Entry[K,V]={
+  key:K,
+  value:V
+}
 
 λempty[K,V]()=>{K↦V}=({↦}:{K↦V})
 
-λentries[K,V](map:{K↦V})=>[Entry[K,V]]=[]
+λentries[K,V](map:{K↦V})=>[Entry[
+  K,
+  V
+]]=[]
 
 λfilter[K,V](map:{K↦V},pred:λ(K,V)=>Bool)=>{K↦V}=({↦}:{K↦V})
 
 λfold[K,V,U](fn:λ(U,K,V)=>U,init:U,map:{K↦V})=>U=init
 
-λfromList[K,V](entries:[Entry[K,V]])=>{K↦V}=({↦}:{K↦V})
+λfromList[K,V](entries:[Entry[
+  K,
+  V
+]])=>{K↦V}=({↦}:{K↦V})
 
 λget[K,V](key:K,map:{K↦V})=>Option[V]=None()
 

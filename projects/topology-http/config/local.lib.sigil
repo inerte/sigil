@@ -1,1 +1,13 @@
-c world=(†runtime.world(†clock.systemClock(),†fs.real(),[†http.proxy("http://127.0.0.1:45110",•topology.mailerApi)],†log.stdout(),†process.real(),†random.real(),[],†timer.real()):†runtime.World)
+c world=(†runtime.world(
+  †clock.systemClock(),
+  †fs.real(),
+  [†http.proxy(
+    "http://127.0.0.1:45110",
+    •topology.mailerApi
+  )],
+  †log.stdout(),
+  †process.real(),
+  †random.real(),
+  [],
+  †timer.real()
+):†runtime.World)

@@ -1,25 +1,58 @@
 λmain()=>Unit=()
 
 test "linear search finds first occurrence" {
-  •linearSearch.linearSearch(2,[5,2,3,2])=1
+  •linearSearch.linearSearch(
+    2,
+    [
+      5,
+      2,
+      3,
+      2
+    ]
+  )=1
 }
 
 test "linear search missing value returns minus one" {
-  •linearSearch.linearSearch(9,[1,2,3])=-1
+  •linearSearch.linearSearch(
+    9,
+    [
+      1,
+      2,
+      3
+    ]
+  )=-1
 }
 
 test "levenshtein identical strings is zero" {
-  •levenshteinDistance.levenshtein("sigil","sigil")=0
+  •levenshteinDistance.levenshtein(
+    "sigil",
+    "sigil"
+  )=0
 }
 
 test "levenshtein kitten sitting is three" {
-  •levenshteinDistance.levenshtein("kitten","sitting")=3
+  •levenshteinDistance.levenshtein(
+    "kitten",
+    "sitting"
+  )=3
 }
 
 test "levenshtein is symmetric" {
-  •levenshteinDistance.levenshtein("flaw","lawn")=•levenshteinDistance.levenshtein("lawn","flaw")
+  •levenshteinDistance.levenshtein(
+    "flaw",
+    "lawn"
+  )=•levenshteinDistance.levenshtein(
+    "lawn",
+    "flaw"
+  )
 }
 
 test "levenshtein handles empty strings" {
-  •levenshteinDistance.levenshtein("","abc")=3 and •levenshteinDistance.levenshtein("abc","")=3
+  •levenshteinDistance.levenshtein(
+    "",
+    "abc"
+  )=3 and •levenshteinDistance.levenshtein(
+    "abc",
+    ""
+  )=3
 }

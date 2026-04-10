@@ -1,1 +1,8 @@
-λmain()=>Int=¶map.size(•histogram.histogram([1,1,2,3,3,3]))
+λmain()=>Int=¶map.size(•histogram.histogram([
+  1,
+  1,
+  2,
+  3,
+  3,
+  3
+]))

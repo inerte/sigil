@@ -13,55 +13,95 @@ test "# works on unicode strings" {
 }
 
 test "# returns list length" {
-  #[1,2,3]=3
+  #[
+    1,
+    2,
+    3
+  ]=3
 }
 
 test "charAt at index 0" {
-  §string.charAt(0,"hello")="h"
+  §string.charAt(
+    0,
+    "hello"
+  )="h"
 }
 
 test "contains finds present substring" {
-  §string.contains("hello world","world")
+  §string.contains(
+    "hello world",
+    "world"
+  )
 }
 
 test "contains reports missing substring" {
-  ¬§string.contains("hello","xyz")
+  ¬§string.contains(
+    "hello",
+    "xyz"
+  )
 }
 
 test "contains treats empty search as present" {
-  §string.contains("hello","")
+  §string.contains(
+    "hello",
+    ""
+  )
 }
 
 test "contains matches whole string" {
-  §string.contains("hello","hello")
+  §string.contains(
+    "hello",
+    "hello"
+  )
 }
 
 test "charAt at middle index" {
-  §string.charAt(2,"hello")="l"
+  §string.charAt(
+    2,
+    "hello"
+  )="l"
 }
 
 test "drop first n characters" {
-  §string.drop(2,"hello")="llo"
+  §string.drop(
+    2,
+    "hello"
+  )="llo"
 }
 
 test "drop with 0" {
-  §string.drop(0,"hello")="hello"
+  §string.drop(
+    0,
+    "hello"
+  )="hello"
 }
 
 test "endsWith actual suffix" {
-  §string.endsWith("file.txt",".txt")=true
+  §string.endsWith(
+    "file.txt",
+    ".txt"
+  )=true
 }
 
 test "endsWith non-suffix" {
-  §string.endsWith("hello",".txt")=false
+  §string.endsWith(
+    "hello",
+    ".txt"
+  )=false
 }
 
 test "indexOf finds occurrence" {
-  §string.indexOf("hello world","o")=4
+  §string.indexOf(
+    "hello world",
+    "o"
+  )=4
 }
 
 test "indexOf not found" {
-  §string.indexOf("hello","z")=-1
+  §string.indexOf(
+    "hello",
+    "z"
+  )=-1
 }
 
 test "intToString negative" {
@@ -89,17 +129,31 @@ test "isDigit single" {
 }
 
 test "join empty list" {
-  §string.join(",",[])=""
+  §string.join(
+    ",",
+    []
+  )=""
 }
 
 test "join with separator" {
-  §string.join(",",["a","b","c"])="a,b,c"
+  §string.join(
+    ",",
+    [
+      "a",
+      "b",
+      "c"
+    ]
+  )="a,b,c"
 }
 
 test "lines splits on newline" {
   §string.lines("a
 b
-c")=["a","b","c"]
+c")=[
+    "a",
+    "b",
+    "c"
+  ]
 }
 
 test "lines preserves single line" {
@@ -107,11 +161,17 @@ test "lines preserves single line" {
 }
 
 test "repeat repeats content" {
-  §string.repeat(3,"ab")="ababab"
+  §string.repeat(
+    3,
+    "ab"
+  )="ababab"
 }
 
 test "repeat with non-positive count returns empty" {
-  §string.repeat(0,"ab")=""
+  §string.repeat(
+    0,
+    "ab"
+  )=""
 }
 
 test "reverse flips string contents" {
@@ -119,43 +179,81 @@ test "reverse flips string contents" {
 }
 
 test "replaceAll all occurrences" {
-  §string.replaceAll("o","0","hello world")="hell0 w0rld"
+  §string.replaceAll(
+    "o",
+    "0",
+    "hello world"
+  )="hell0 w0rld"
 }
 
 test "replaceAll no matches" {
-  §string.replaceAll("z","x","hello")="hello"
+  §string.replaceAll(
+    "z",
+    "x",
+    "hello"
+  )="hello"
 }
 
 test "split by delimiter" {
-  §string.split(",","a,b,c")=["a","b","c"]
+  §string.split(
+    ",",
+    "a,b,c"
+  )=[
+    "a",
+    "b",
+    "c"
+  ]
 }
 
 test "split single element" {
-  §string.split(",","hello")=["hello"]
+  §string.split(
+    ",",
+    "hello"
+  )=["hello"]
 }
 
 test "startsWith non-prefix" {
-  §string.startsWith("abc","hello")=false
+  §string.startsWith(
+    "abc",
+    "hello"
+  )=false
 }
 
 test "startsWith prefix" {
-  §string.startsWith("hel","hello")=true
+  §string.startsWith(
+    "hel",
+    "hello"
+  )=true
 }
 
 test "substring full string" {
-  §string.substring(5,"hello",0)="hello"
+  §string.substring(
+    5,
+    "hello",
+    0
+  )="hello"
 }
 
 test "substring portion" {
-  §string.substring(4,"hello",1)="ell"
+  §string.substring(
+    4,
+    "hello",
+    1
+  )="ell"
 }
 
 test "take first n" {
-  §string.take(3,"hello")="hel"
+  §string.take(
+    3,
+    "hello"
+  )="hel"
 }
 
 test "take n greater than length" {
-  §string.take(10,"hi")="hi"
+  §string.take(
+    10,
+    "hi"
+  )="hi"
 }
 
 test "toLower converts uppercase" {
@@ -175,35 +273,59 @@ test "toUpper preserves uppercase" {
 }
 
 test "trimEndChars trims repeated trailing slash characters" {
-  §string.trimEndChars("/","https://sigil.dev///")="https://sigil.dev"
+  §string.trimEndChars(
+    "/",
+    "https://sigil.dev///"
+  )="https://sigil.dev"
 }
 
 test "trimEndChars uses chars as a set" {
-  §string.trimEndChars("/.","docs/...")="docs"
+  §string.trimEndChars(
+    "/.",
+    "docs/..."
+  )="docs"
 }
 
 test "trimEndChars leaves non-matching suffix untouched" {
-  §string.trimEndChars("/","docs")="docs"
+  §string.trimEndChars(
+    "/",
+    "docs"
+  )="docs"
 }
 
 test "trimEndChars with empty chars is a no-op" {
-  §string.trimEndChars("","docs///")="docs///"
+  §string.trimEndChars(
+    "",
+    "docs///"
+  )="docs///"
 }
 
 test "trimStartChars trims repeated leading slash characters" {
-  §string.trimStartChars("/","///docs")="docs"
+  §string.trimStartChars(
+    "/",
+    "///docs"
+  )="docs"
 }
 
 test "trimStartChars uses chars as a set" {
-  §string.trimStartChars("/.","../docs")="docs"
+  §string.trimStartChars(
+    "/.",
+    "../docs"
+  )="docs"
 }
 
 test "trimStartChars leaves non-matching prefix untouched" {
-  §string.trimStartChars("/","docs")="docs"
+  §string.trimStartChars(
+    "/",
+    "docs"
+  )="docs"
 }
 
 test "trimStartChars with empty chars is a no-op" {
-  §string.trimStartChars("","///docs")="///docs"
+  §string.trimStartChars(
+    "",
+    "///docs"
+  )="///docs"
 }
 
 test "trim both sides" {
@@ -219,7 +341,11 @@ test "trim trailing" {
 }
 
 test "unlines joins with newline" {
-  §string.unlines(["a","b","c"])="a
+  §string.unlines([
+    "a",
+    "b",
+    "c"
+  ])="a
 b
 c"
 }
@@ -229,14 +355,30 @@ test "unlines on empty list" {
 }
 
 test "extract title from markdown" {
-  match §string.startsWith("# ",§string.split("
-","# Hello World
-Content here")[0]){
-    true=>§string.substring(#§string.split("
-","# Hello World
-Content here")[0],§string.split("
-","# Hello World
-Content here")[0],2)="Hello World"|
+  match §string.startsWith(
+    "# ",
+    §string.split(
+      "
+",
+      "# Hello World
+Content here"
+    )[0]
+  ){
+    true=>§string.substring(
+      #§string.split(
+        "
+",
+        "# Hello World
+Content here"
+      )[0],
+      §string.split(
+        "
+",
+        "# Hello World
+Content here"
+      )[0],
+      2
+    )="Hello World"|
     false=>false
   }
 }

@@ -11,86 +11,246 @@ c boardWidth=(6:Int)
 ensures result≥0
 match points{
   []=>0|
-  [head,.tail]=>match isNeighbor(head.x,head.y,x,y){
-    true=>1+adjacentBombs(tail,x,y)|
-    false=>adjacentBombs(tail,x,y)
+  [
+  head,
+  .tail
+]=>match isNeighbor(
+    head.x,
+    head.y,
+    x,
+    y
+  ){
+    true=>1+adjacentBombs(
+      tail,
+      x,
+      y
+    )|
+    false=>adjacentBombs(
+      tail,
+      x,
+      y
+    )
   }
 }
 
 λallPoints(height:Int,width:Int,y:Int)=>[µPoint] match height-y{
   0=>[]|
-  _=>allPointsRow(width,0,y)⧺allPoints(height,width,y+1)
+  _=>allPointsRow(
+    width,
+    0,
+    y
+  )⧺allPoints(
+    height,
+    width,
+    y+1
+  )
 }
 
 λallPointsRow(width:Int,x:Int,y:Int)=>[µPoint] match width-x{
   0=>[]|
-  _=>[point(x,y)]⧺allPointsRow(width,x+1,y)
+  _=>[point(
+    x,
+    y
+  )]⧺allPointsRow(
+    width,
+    x+1,
+    y
+  )
 }
 
 λallSafeCellsRevealed(board:[µCell])=>Bool=board reduce (λ(acc:Bool,cell:µCell)=>Bool=acc and (cell.bomb or cell.revealed)) from true
 
 λbuildBoard(height:Int,points:[µPoint],width:Int,y:Int)=>[µCell] match height-y{
   0=>[]|
-  _=>buildRow(points,width,0,y)⧺buildBoard(height,points,width,y+1)
+  _=>buildRow(
+    points,
+    width,
+    0,
+    y
+  )⧺buildBoard(
+    height,
+    points,
+    width,
+    y+1
+  )
 }
 
 λbuildRow(points:[µPoint],width:Int,x:Int,y:Int)=>[µCell] match width-x{
   0=>[]|
-  _=>[makeCell(points,x,y)]⧺buildRow(points,width,x+1,y)
+  _=>[makeCell(
+    points,
+    x,
+    y
+  )]⧺buildRow(
+    points,
+    width,
+    x+1,
+    y
+  )
 }
 
 λcellAt(board:[µCell],targetX:Int,targetY:Int)=>Option[µCell] match board{
   []=>None()|
-  [head,.tail]=>match isTarget(head,targetX,targetY){
+  [
+  head,
+  .tail
+]=>match isTarget(
+    head,
+    targetX,
+    targetY
+  ){
     true=>Some(head)|
-    false=>cellAt(tail,targetX,targetY)
+    false=>cellAt(
+      tail,
+      targetX,
+      targetY
+    )
   }
 }
 
 λcontainsPoint(points:[µPoint],targetX:Int,targetY:Int)=>Bool match points{
   []=>false|
-  [head,.tail]=>head.x=targetX and head.y=targetY or containsPoint(tail,targetX,targetY)
+  [
+  head,
+  .tail
+]=>head.x=targetX and head.y=targetY or containsPoint(
+    tail,
+    targetX,
+    targetY
+  )
 }
 
 λexpandReveal(board:[µCell],frontier:[µPoint],visited:[µPoint])=>[µCell] match frontier{
   []=>board|
-  [head,.tail]=>match containsPoint(visited,head.x,head.y){
-    true=>expandReveal(board,tail,visited)|
-    false=>match cellAt(board,head.x,head.y){
+  [
+  head,
+  .tail
+]=>match containsPoint(
+    visited,
+    head.x,
+    head.y
+  ){
+    true=>expandReveal(
+      board,
+      tail,
+      visited
+    )|
+    false=>match cellAt(
+      board,
+      head.x,
+      head.y
+    ){
       Some(cell)=>match cell.flagged or cell.revealed{
-        true=>expandReveal(board,tail,[head]⧺visited)|
+        true=>expandReveal(
+          board,
+          tail,
+          [head]⧺visited
+        )|
         false=>{
-          l nextBoard=(setReveal(board,true,head.x,head.y):[µCell]);
+          l nextBoard=(setReveal(
+            board,
+            true,
+            head.x,
+            head.y
+          ):[µCell]);
           match cell.bomb{
-            true=>expandReveal(nextBoard,tail,[head]⧺visited)|
+            true=>expandReveal(
+              nextBoard,
+              tail,
+              [head]⧺visited
+            )|
             false=>match cell.adjacent=0{
-              true=>expandReveal(nextBoard,tail⧺neighborPoints(nextBoard,head.x,head.y),[head]⧺visited)|
-              false=>expandReveal(nextBoard,tail,[head]⧺visited)
+              true=>expandReveal(
+                nextBoard,
+                tail⧺neighborPoints(
+                  nextBoard,
+                  head.x,
+                  head.y
+                ),
+                [head]⧺visited
+              )|
+              false=>expandReveal(
+                nextBoard,
+                tail,
+                [head]⧺visited
+              )
             }
           }
         }
       }|
-      None()=>expandReveal(board,tail,[head]⧺visited)
+      None()=>expandReveal(
+        board,
+        tail,
+        [head]⧺visited
+      )
     }
   }
 }
 
 λgameFromBombs(points:[µPoint])=>µGame
 ensures result.height=boardHeight and result.width=boardWidth
-={board:(buildBoard(boardHeight,points,boardWidth,0):[µCell]),height:boardHeight,status:"playing",width:boardWidth}
+={
+  board:(buildBoard(
+    boardHeight,
+    points,
+    boardWidth,
+    0
+  ):[µCell]),
+  height:boardHeight,
+  status:"playing",
+  width:boardWidth
+}
 
 λhasBomb(points:[µPoint],x:Int,y:Int)=>Bool match points{
   []=>false|
-  [head,.tail]=>head.x=x and head.y=y or hasBomb(tail,x,y)
+  [
+  head,
+  .tail
+]=>head.x=x and head.y=y or hasBomb(
+    tail,
+    x,
+    y
+  )
 }
 
-λisNeighbor(pointX:Int,pointY:Int,targetX:Int,targetY:Int)=>Bool=¬(pointX=targetX and pointY=targetY) and absDiff(pointX,targetX)≤1 and absDiff(pointY,targetY)≤1
+λisNeighbor(pointX:Int,pointY:Int,targetX:Int,targetY:Int)=>Bool=¬(pointX=targetX and pointY=targetY)
+  and absDiff(
+    pointX,
+    targetX
+  )≤1
+  and absDiff(
+    pointY,
+    targetY
+  )≤1
 
 λisTarget(cell:µCell,targetX:Int,targetY:Int)=>Bool=cell.x=targetX and cell.y=targetY
 
-λmakeCell(points:[µPoint],x:Int,y:Int)=>µCell={adjacent:(adjacentBombs(points,x,y):Int),bomb:(hasBomb(points,x,y):Bool),flagged:false,revealed:false,x:x,y:y}
+λmakeCell(points:[µPoint],x:Int,y:Int)=>µCell={
+  adjacent:(adjacentBombs(
+    points,
+    x,
+    y
+  ):Int),
+  bomb:(hasBomb(
+    points,
+    x,
+    y
+  ):Bool),
+  flagged:false,
+  revealed:false,
+  x:x,
+  y:y
+}
 
-λneighborPoints(board:[µCell],targetX:Int,targetY:Int)=>[µPoint]=board filter (λ(cell:µCell)=>Bool=isNeighbor(cell.x,cell.y,targetX,targetY)) map (λ(cell:µCell)=>µPoint=point(cell.x,cell.y))
+λneighborPoints(board:[µCell],targetX:Int,targetY:Int)=>[µPoint]=board filter (λ(cell:µCell)=>Bool=isNeighbor(
+  cell.x,
+  cell.y,
+  targetX,
+  targetY
+)) map (λ(cell:µCell)=>µPoint=point(
+  cell.x,
+  cell.y
+))
 
 λnextStatus(board:[µCell])=>String match revealedBomb(board){
   true=>"lost"|
@@ -100,23 +260,48 @@ ensures result.height=boardHeight and result.width=boardWidth
   }
 }
 
-λpoint(x:Int,y:Int)=>µPoint={x:x,y:y}
+λpoint(x:Int,y:Int)=>µPoint={
+  x:x,
+  y:y
+}
 
 λrevealBombs(board:[µCell])=>[µCell]=board map (λ(cell:µCell)=>µCell match cell.bomb{
-  true=>withReveal(withFlag(cell,false),true)|
+  true=>withReveal(
+    withFlag(
+      cell,
+      false
+    ),
+    true
+  )|
   false=>cell
 })
 
 λrevealCell(game:µGame,targetX:Int,targetY:Int)=>µGame match game.status{
-  "playing"=>match targetBlocked(game.board,targetX,targetY){
+  "playing"=>match targetBlocked(
+    game.board,
+    targetX,
+    targetY
+  ){
     true=>game|
     false=>{
-      l board=(expandReveal(game.board,[point(targetX,targetY)],([]:[µPoint])):[µCell]);
+      l board=(expandReveal(
+        game.board,
+        [point(
+          targetX,
+          targetY
+        )],
+        ([]:[µPoint])
+      ):[µCell]);
       l status=(nextStatus(board):String);
-      {board:(match status{
-        "lost"=>revealBombs(board)|
-        _=>board
-      }:[µCell]),height:game.height,status:status,width:game.width}
+      {
+        board:(match status{
+          "lost"=>revealBombs(board)|
+          _=>board
+        }:[µCell]),
+        height:game.height,
+        status:status,
+        width:game.width
+      }
     }
   }|
   _=>game
@@ -127,26 +312,67 @@ ensures result.height=boardHeight and result.width=boardWidth
   false=>acc
 }) from false
 
-λsetReveal(board:[µCell],revealed:Bool,targetX:Int,targetY:Int)=>[µCell]=board map (λ(cell:µCell)=>µCell match isTarget(cell,targetX,targetY){
-  true=>withReveal(cell,revealed)|
+λsetReveal(board:[µCell],revealed:Bool,targetX:Int,targetY:Int)=>[µCell]=board map (λ(cell:µCell)=>µCell match isTarget(
+  cell,
+  targetX,
+  targetY
+){
+  true=>withReveal(
+    cell,
+    revealed
+  )|
   false=>cell
 })
 
-λtargetBlocked(board:[µCell],targetX:Int,targetY:Int)=>Bool match cellAt(board,targetX,targetY){
+λtargetBlocked(board:[µCell],targetX:Int,targetY:Int)=>Bool match cellAt(
+  board,
+  targetX,
+  targetY
+){
   Some(cell)=>cell.flagged or cell.revealed|
   None()=>false
 }
 
 λtoggleFlag(game:µGame,targetX:Int,targetY:Int)=>µGame match game.status{
-  "playing"=>{board:(toggleFlagOnBoard(game.board,targetX,targetY):[µCell]),height:game.height,status:game.status,width:game.width}|
+  "playing"=>{
+    board:(toggleFlagOnBoard(
+      game.board,
+      targetX,
+      targetY
+    ):[µCell]),
+    height:game.height,
+    status:game.status,
+    width:game.width
+  }|
   _=>game
 }
 
-λtoggleFlagOnBoard(board:[µCell],targetX:Int,targetY:Int)=>[µCell]=board map (λ(cell:µCell)=>µCell match isTarget(cell,targetX,targetY) and ¬cell.revealed{
-  true=>withFlag(cell,¬cell.flagged)|
+λtoggleFlagOnBoard(board:[µCell],targetX:Int,targetY:Int)=>[µCell]=board map (λ(cell:µCell)=>µCell match isTarget(
+  cell,
+  targetX,
+  targetY
+) and ¬cell.revealed{
+  true=>withFlag(
+    cell,
+    ¬cell.flagged
+  )|
   false=>cell
 })
 
-λwithFlag(cell:µCell,flagged:Bool)=>µCell={adjacent:cell.adjacent,bomb:cell.bomb,flagged:flagged,revealed:cell.revealed,x:cell.x,y:cell.y}
+λwithFlag(cell:µCell,flagged:Bool)=>µCell={
+  adjacent:cell.adjacent,
+  bomb:cell.bomb,
+  flagged:flagged,
+  revealed:cell.revealed,
+  x:cell.x,
+  y:cell.y
+}
 
-λwithReveal(cell:µCell,revealed:Bool)=>µCell={adjacent:cell.adjacent,bomb:cell.bomb,flagged:cell.flagged,revealed:revealed,x:cell.x,y:cell.y}
+λwithReveal(cell:µCell,revealed:Bool)=>µCell={
+  adjacent:cell.adjacent,
+  bomb:cell.bomb,
+  flagged:cell.flagged,
+  revealed:revealed,
+  x:cell.x,
+  y:cell.y
+}

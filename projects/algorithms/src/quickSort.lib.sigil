@@ -2,9 +2,27 @@
 
 λlessThan(pivot:Int,xs:[Int])=>[Int]=xs filter (λ(value:Int)=>Bool=value<pivot)
 
-λquickSort(xs:[Int])=>[Int]=quickSortInto([],xs)
+λquickSort(xs:[Int])=>[Int]=quickSortInto(
+  [],
+  xs
+)
 
 λquickSortInto(acc:[Int],xs:[Int])=>[Int] match xs{
   []=>acc|
-  [pivot,.tail]=>quickSortInto([pivot]⧺(quickSortInto(acc,greaterOrEqual(pivot,tail)):[Int]),lessThan(pivot,tail))
+  [
+  pivot,
+  .tail
+]=>quickSortInto(
+    [pivot]⧺(quickSortInto(
+      acc,
+      greaterOrEqual(
+        pivot,
+        tail
+      )
+    ):[Int]),
+    lessThan(
+      pivot,
+      tail
+    )
+  )
 }

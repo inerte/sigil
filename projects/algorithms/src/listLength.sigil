@@ -1,6 +1,15 @@
 λlength(lst:[Int])=>Int match lst{
   []=>0|
-  [_,.xs]=>1+length(xs)
+  [
+  _,
+  .xs
+]=>1+length(xs)
 }
 
-λmain()=>Int=length([1,2,3,4,5])
+λmain()=>Int=length([
+  1,
+  2,
+  3,
+  4,
+  5
+])

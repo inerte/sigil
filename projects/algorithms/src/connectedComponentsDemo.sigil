@@ -1,3 +1,27 @@
-λgraph()=>µGraph={nodes:[{neighbors:[2],vertex:1},{neighbors:[1,3],vertex:2},{neighbors:[2],vertex:3},{neighbors:[5],vertex:4},{neighbors:[4],vertex:5}]}
+λgraph()=>µGraph={nodes:[
+  {
+    neighbors:[2],
+    vertex:1
+  },
+  {
+    neighbors:[
+      1,
+      3
+    ],
+    vertex:2
+  },
+  {
+    neighbors:[2],
+    vertex:3
+  },
+  {
+    neighbors:[5],
+    vertex:4
+  },
+  {
+    neighbors:[4],
+    vertex:5
+  }
+]}
 
 λmain()=>[[Int]]=•connectedComponents.connectedComponents(graph())

@@ -1,37 +1,638 @@
-λallCards()=>[µCard]=[{answer:"Declare dependency identity in topology, then bind it per environment in config/world. Do not hardcode raw URLs in application logic.",id:"topology-vs-config",prompt:"A user wants the same program to talk to different service URLs in local, test, and prod. What should Codex change in Sigil?",references:[{kind:"doc",label:"Docs: topology",route:"/docs/topology/"},{kind:"spec",label:"Spec: topology",route:"/spec/topology/"},{kind:"article",label:"Article: Topology Says What, Config Says How",route:"/articles/topology-vs-config/"}],title:"Topology vs config",topics:["topology","worlds"]},{answer:"The world owns effect interpretation. Keep effects explicit in signatures and vary the world per environment or test instead of inventing mocks.",id:"world-boundary",prompt:"A function needs !Http and !Timer in prod, but tests should swap those behaviors predictably. What Sigil feature owns that boundary?",references:[{kind:"doc",label:"Docs: testing",route:"/docs/testing/"},{kind:"spec",label:"Spec: testing",route:"/spec/testing/"},{kind:"article",label:"Article: Worlds, Not Mocks",route:"/articles/worlds-not-mocks/"}],title:"World-owned effects",topics:["worlds","testing"]},{answer:"Use a named concurrent region. It is Sigil's canonical widening surface for controlled overlap with limits, jitter, and stop policies.",id:"named-concurrency",prompt:"A batch workflow needs width limits, jitter, rate windows, and stop-on-systemic-error semantics. Which Sigil surface should Codex reach for?",references:[{kind:"doc",label:"Docs: async",route:"/docs/async/"},{kind:"spec",label:"Spec: semantics",route:"/spec/semantics/"},{kind:"article",label:"Article: Named Concurrent Regions in Sigil",route:"/articles/named-concurrent-regions/"}],title:"Named concurrent regions",topics:["concurrency"]},{answer:"Look for an explicit decode boundary into a trusted named type. Keep the trust promotion at the edge so the rest of the program can work with the trusted shape.",id:"trusted-boundary",prompt:"A JSON payload enters the system and must become a trusted domain type before app logic uses it. What shape should Codex look for?",references:[{kind:"doc",label:"Docs: type system",route:"/docs/type-system/"},{kind:"spec",label:"Spec: type system",route:"/spec/type-system/"},{kind:"article",label:"Article: Exact Records and Trusted Boundaries",route:"/articles/exact-records-and-trusted-boundaries/"}],title:"Trusted boundaries",topics:["boundaries","types"]},{answer:"Use a constrained type when a value itself needs a checked invariant. Use `requires` and `ensures` when the important fact lives on a function boundary instead. Sigil proves both through the same flow-sensitive solver-backed proof fragment, including supported branch facts, exact record patterns, `#`, and direct boolean aliases.",id:"nominal-meaning",prompt:"The user wants one domain type to carry a checked invariant instead of staying a bare primitive or record. What should Codex choose?",references:[{kind:"doc",label:"Docs: type system",route:"/docs/type-system/"},{kind:"spec",label:"Spec: type system",route:"/spec/type-system/"},{kind:"article",label:"Article: Centralized Project Types and Constrained Type Meanings",route:"/articles/centralized-project-types-and-constrained-type-meanings/"},{kind:"article",label:"Article: Function Contracts With requires and ensures",route:"/articles/requires-and-ensures-function-contracts/"}],title:"Constrained domain types",topics:["types"]},{answer:"Delete the wrapper and call the canonical stdlib or helper surface directly. Sigil prefers one helper name over local aliases.",id:"canonical-helper",prompt:"Codex sees a local helper that only wraps a canonical helper surface over the same parameters. What is the canonical fix?",references:[{kind:"doc",label:"Docs: stdlib",route:"/docs/stdlib/"},{kind:"doc",label:"Docs: philosophy",route:"/docs/philosophy/"},{kind:"article",label:"Article: Canonical Helper Surfaces in Sigil",route:"/articles/canonical-helper-surfaces/"}],title:"Canonical helper surfaces",topics:["canonical"]},{answer:"Use structured machine-first debugging surfaces: test output, replay, spans, and runtime context. Prefer reproducible structured state over handwritten logs.",id:"machine-debugging",prompt:"A test is failing and the instinct is to add ad hoc logs. What is the better Sigil-first approach?",references:[{kind:"doc",label:"Docs: debugging",route:"/docs/debugging/"},{kind:"doc",label:"Docs: testing",route:"/docs/testing/"},{kind:"article",label:"Article: Machine-First Debugging",route:"/articles/machine-first-debugging/"}],title:"Machine-first debugging",topics:["debugging","testing"]},{answer:"Build or select a test world and run the project under it. Tests should derive the world they need instead of smuggling raw endpoints into application code.",id:"testing-worlds",prompt:"A topology-aware project needs deterministic tests for external dependencies. How should Codex structure them?",references:[{kind:"doc",label:"Docs: testing",route:"/docs/testing/"},{kind:"spec",label:"Spec: testing",route:"/spec/testing/"},{kind:"article",label:"Article: Worlds, Not Mocks",route:"/articles/worlds-not-mocks/"}],title:"Testing with worlds",topics:["testing","worlds"]},{answer:"Start in topology to declare the dependency identity, then update the environment config/world binding, then consume the declared handle in application code.",id:"new-service-handle",prompt:"The user asks to add a new external dependency used across environments. Where should Codex start?",references:[{kind:"doc",label:"Docs: topology",route:"/docs/topology/"},{kind:"spec",label:"Spec: topology",route:"/spec/topology/"},{kind:"article",label:"Article: Topology Is Runtime Truth",route:"/articles/topology-is-runtime-truth/"}],title:"Adding a new dependency",topics:["topology","worlds"]},{answer:"Use the CLI JSON/spec docs for the machine-readable contract, then pair them with the debugging/testing docs for how those outputs fit into workflows.",id:"cli-json",prompt:"Codex needs machine-readable compiler or test output for automation. Which docs explain the stable JSON surfaces?",references:[{kind:"doc",label:"Docs: debugging",route:"/docs/debugging/"},{kind:"spec",label:"Spec: CLI JSON",route:"/spec/cli-json/"},{kind:"article",label:"Article: Machine-First Debugging",route:"/articles/machine-first-debugging/"}],title:"CLI JSON surfaces",topics:["debugging","testing"]},{answer:"Canonical source form wins. Prefer the one accepted textual and helper shape so the repo teaches one form to models instead of many aliases.",id:"canonical-source",prompt:"The agent wants to invent a nicer alternate spelling or local helper because it reads better. What principle should win in Sigil?",references:[{kind:"doc",label:"Docs: philosophy",route:"/docs/philosophy/"},{kind:"article",label:"Article: One Canonical Naming System",route:"/articles/021-one-canonical-naming-system/"},{kind:"article",label:"Article: Canonical Helper Surfaces in Sigil",route:"/articles/canonical-helper-surfaces/"}],title:"Canonical source first",topics:["canonical"]},{answer:"Look for the boundary declaration or decoder that turns untrusted input into the named type. That boundary is where field-shape mismatches and trust promotion belong.",id:"boundary-debugging",prompt:"Codex needs to find where a trusted type first enters the system from inbound JSON or another untrusted source. What should it look for?",references:[{kind:"doc",label:"Docs: type system",route:"/docs/type-system/"},{kind:"spec",label:"Spec: CLI JSON",route:"/spec/cli-json/"},{kind:"article",label:"Article: Exact Records and Trusted Boundaries",route:"/articles/exact-records-and-trusted-boundaries/"}],title:"Finding the boundary",topics:["boundaries","debugging"]},{answer:"Use `label` for classification and `where` for value membership and refinement. They can both appear on the same type when both the business meaning and the value invariant matter.",id:"label-vs-where",prompt:"A type needs business or security classification, while another needs an invariant like `#value=11`. Which Sigil surfaces fit each job?",references:[{kind:"doc",label:"Docs: type system",route:"/docs/type-system/"},{kind:"spec",label:"Spec: type system",route:"/spec/type-system/"},{kind:"article",label:"Article: Labelled Types and Boundary Rules",route:"/articles/labelled-types-and-boundary-rules/"}],title:"label vs where",topics:["types","labels"]},{answer:"Sigil blocks the crossing by default. For labelled data at named topology boundaries, no matching rule means `Block()`.",id:"boundary-default-block",prompt:"Labelled data is about to cross a named topology boundary, but the project has no matching rule for that boundary. What should Codex expect?",references:[{kind:"doc",label:"Docs: topology",route:"/docs/topology/"},{kind:"doc",label:"Docs: type system",route:"/docs/type-system/"},{kind:"article",label:"Article: Labelled Types and Boundary Rules",route:"/articles/labelled-types-and-boundary-rules/"}],title:"Labelled boundary default",topics:["boundaries","labels","topology"]},{answer:"Use `rule ...=Through(•policies.someTransform)` and define the trusted `transform` in `src/policies.lib.sigil`. The language does not hardcode `redact` or `hash` keywords.",id:"through-transform",prompt:"PII must reach a log or service, but only after masking, hashing, or another explicit reshape. What Sigil surface handles that?",references:[{kind:"doc",label:"Docs: topology",route:"/docs/topology/"},{kind:"doc",label:"Docs: type system",route:"/docs/type-system/"},{kind:"article",label:"Article: Labelled Types and Boundary Rules",route:"/articles/labelled-types-and-boundary-rules/"}],title:"Through transforms",topics:["boundaries","labels","topology"]},{answer:"Put `t`, `label`, and `label ... combines ...` in `src/types.lib.sigil`. Put `rule` and `transform` in `src/policies.lib.sigil`.",id:"types-vs-policies-files",prompt:"A project introduces `Ssn`, `label Pii`, and a rule for `•topology.auditLog`. Which file owns each piece?",references:[{kind:"doc",label:"Docs: type system",route:"/docs/type-system/"},{kind:"spec",label:"Spec: type system",route:"/spec/type-system/"},{kind:"article",label:"Article: Labelled Types and Boundary Rules",route:"/articles/labelled-types-and-boundary-rules/"}],title:"Types file vs policies file",topics:["types","boundaries","labels"]},{answer:"Declare `label Europe combines [Portugal,Spain]`, label the concrete types with their country, and write the boundary rule against `Europe`.",id:"combined-labels",prompt:"Portuguese and Spanish data should both match one Europe-level handling rule. How should Codex model that?",references:[{kind:"doc",label:"Docs: type system",route:"/docs/type-system/"},{kind:"spec",label:"Spec: type system",route:"/spec/type-system/"},{kind:"article",label:"Article: Labelled Types and Boundary Rules",route:"/articles/labelled-types-and-boundary-rules/"}],title:"Combined labels",topics:["types","boundaries","labels"]},{answer:"Use an exact record and model optionality with `Option[T]`. Sigil keeps records exact and closed instead of blurring them with maps.",id:"exact-records-option",prompt:"An inbound payload has fixed fields, but one field may be missing. Should Codex use a map, an open record, or an exact record with `Option`?",references:[{kind:"doc",label:"Docs: type system",route:"/docs/type-system/"},{kind:"spec",label:"Spec: type system",route:"/spec/type-system/"},{kind:"article",label:"Article: Exact Records and Trusted Boundaries",route:"/articles/exact-records-and-trusted-boundaries/"}],title:"Exact records with Option",topics:["types","boundaries"]},{answer:"Use `where` when the invariant belongs to the type everywhere. Use `requires` and `ensures` when the important fact lives on a function boundary instead.",id:"where-vs-contracts",prompt:"A fact matters at a function boundary, not as permanent type meaning. Should Codex use a new named type with `where` or `requires` and `ensures`?",references:[{kind:"doc",label:"Docs: type system",route:"/docs/type-system/"},{kind:"spec",label:"Spec: type system",route:"/spec/type-system/"},{kind:"article",label:"Article: Function Contracts With requires and ensures",route:"/articles/requires-and-ensures-function-contracts/"}],title:"where vs contracts",topics:["types","contracts"]},{answer:"Yes. Topology now names runtime boundaries more broadly, including http, tcp, fs roots, log sinks, and process handles.",id:"topology-beyond-network",prompt:"A project wants to treat logs, filesystem roots, and child processes as real named boundaries instead of ambient effects. Is that still topology in Sigil?",references:[{kind:"doc",label:"Docs: topology",route:"/docs/topology/"},{kind:"spec",label:"Spec: topology",route:"/spec/topology/"},{kind:"article",label:"Article: Topology Is Runtime Truth",route:"/articles/topology-is-runtime-truth/"},{kind:"article",label:"Article: Labelled Types and Boundary Rules",route:"/articles/labelled-types-and-boundary-rules/"}],title:"Topology beyond network",topics:["topology","boundaries","labels"]}]
+λallCards()=>[µCard]=[
+  {
+    answer:"Declare dependency identity in topology, then bind it per environment in config/world. Do not hardcode raw URLs in application logic.",
+    id:"topology-vs-config",
+    prompt:"A user wants the same program to talk to different service URLs in local, test, and prod. What should Codex change in Sigil?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: topology",
+        route:"/docs/topology/"
+      },
+      {
+        kind:"spec",
+        label:"Spec: topology",
+        route:"/spec/topology/"
+      },
+      {
+        kind:"article",
+        label:"Article: Topology Says What, Config Says How",
+        route:"/articles/topology-vs-config/"
+      }
+    ],
+    title:"Topology vs config",
+    topics:[
+      "topology",
+      "worlds"
+    ]
+  },
+  {
+    answer:"The world owns effect interpretation. Keep effects explicit in signatures and vary the world per environment or test instead of inventing mocks.",
+    id:"world-boundary",
+    prompt:"A function needs !Http and !Timer in prod, but tests should swap those behaviors predictably. What Sigil feature owns that boundary?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: testing",
+        route:"/docs/testing/"
+      },
+      {
+        kind:"spec",
+        label:"Spec: testing",
+        route:"/spec/testing/"
+      },
+      {
+        kind:"article",
+        label:"Article: Worlds, Not Mocks",
+        route:"/articles/worlds-not-mocks/"
+      }
+    ],
+    title:"World-owned effects",
+    topics:[
+      "worlds",
+      "testing"
+    ]
+  },
+  {
+    answer:"Use a named concurrent region. It is Sigil's canonical widening surface for controlled overlap with limits, jitter, and stop policies.",
+    id:"named-concurrency",
+    prompt:"A batch workflow needs width limits, jitter, rate windows, and stop-on-systemic-error semantics. Which Sigil surface should Codex reach for?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: async",
+        route:"/docs/async/"
+      },
+      {
+        kind:"spec",
+        label:"Spec: semantics",
+        route:"/spec/semantics/"
+      },
+      {
+        kind:"article",
+        label:"Article: Named Concurrent Regions in Sigil",
+        route:"/articles/named-concurrent-regions/"
+      }
+    ],
+    title:"Named concurrent regions",
+    topics:["concurrency"]
+  },
+  {
+    answer:"Look for an explicit decode boundary into a trusted named type. Keep the trust promotion at the edge so the rest of the program can work with the trusted shape.",
+    id:"trusted-boundary",
+    prompt:"A JSON payload enters the system and must become a trusted domain type before app logic uses it. What shape should Codex look for?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: type system",
+        route:"/docs/type-system/"
+      },
+      {
+        kind:"spec",
+        label:"Spec: type system",
+        route:"/spec/type-system/"
+      },
+      {
+        kind:"article",
+        label:"Article: Exact Records and Trusted Boundaries",
+        route:"/articles/exact-records-and-trusted-boundaries/"
+      }
+    ],
+    title:"Trusted boundaries",
+    topics:[
+      "boundaries",
+      "types"
+    ]
+  },
+  {
+    answer:"Use a constrained type when a value itself needs a checked invariant. Use `requires` and `ensures` when the important fact lives on a function boundary instead. Sigil proves both through the same flow-sensitive solver-backed proof fragment, including supported branch facts, exact record patterns, `#`, and direct boolean aliases.",
+    id:"nominal-meaning",
+    prompt:"The user wants one domain type to carry a checked invariant instead of staying a bare primitive or record. What should Codex choose?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: type system",
+        route:"/docs/type-system/"
+      },
+      {
+        kind:"spec",
+        label:"Spec: type system",
+        route:"/spec/type-system/"
+      },
+      {
+        kind:"article",
+        label:"Article: Centralized Project Types and Constrained Type Meanings",
+        route:"/articles/centralized-project-types-and-constrained-type-meanings/"
+      },
+      {
+        kind:"article",
+        label:"Article: Function Contracts With requires and ensures",
+        route:"/articles/requires-and-ensures-function-contracts/"
+      }
+    ],
+    title:"Constrained domain types",
+    topics:["types"]
+  },
+  {
+    answer:"Delete the wrapper and call the canonical stdlib or helper surface directly. Sigil prefers one helper name over local aliases.",
+    id:"canonical-helper",
+    prompt:"Codex sees a local helper that only wraps a canonical helper surface over the same parameters. What is the canonical fix?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: stdlib",
+        route:"/docs/stdlib/"
+      },
+      {
+        kind:"doc",
+        label:"Docs: philosophy",
+        route:"/docs/philosophy/"
+      },
+      {
+        kind:"article",
+        label:"Article: Canonical Helper Surfaces in Sigil",
+        route:"/articles/canonical-helper-surfaces/"
+      }
+    ],
+    title:"Canonical helper surfaces",
+    topics:["canonical"]
+  },
+  {
+    answer:"Use structured machine-first debugging surfaces: test output, replay, spans, and runtime context. Prefer reproducible structured state over handwritten logs.",
+    id:"machine-debugging",
+    prompt:"A test is failing and the instinct is to add ad hoc logs. What is the better Sigil-first approach?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: debugging",
+        route:"/docs/debugging/"
+      },
+      {
+        kind:"doc",
+        label:"Docs: testing",
+        route:"/docs/testing/"
+      },
+      {
+        kind:"article",
+        label:"Article: Machine-First Debugging",
+        route:"/articles/machine-first-debugging/"
+      }
+    ],
+    title:"Machine-first debugging",
+    topics:[
+      "debugging",
+      "testing"
+    ]
+  },
+  {
+    answer:"Build or select a test world and run the project under it. Tests should derive the world they need instead of smuggling raw endpoints into application code.",
+    id:"testing-worlds",
+    prompt:"A topology-aware project needs deterministic tests for external dependencies. How should Codex structure them?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: testing",
+        route:"/docs/testing/"
+      },
+      {
+        kind:"spec",
+        label:"Spec: testing",
+        route:"/spec/testing/"
+      },
+      {
+        kind:"article",
+        label:"Article: Worlds, Not Mocks",
+        route:"/articles/worlds-not-mocks/"
+      }
+    ],
+    title:"Testing with worlds",
+    topics:[
+      "testing",
+      "worlds"
+    ]
+  },
+  {
+    answer:"Start in topology to declare the dependency identity, then update the environment config/world binding, then consume the declared handle in application code.",
+    id:"new-service-handle",
+    prompt:"The user asks to add a new external dependency used across environments. Where should Codex start?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: topology",
+        route:"/docs/topology/"
+      },
+      {
+        kind:"spec",
+        label:"Spec: topology",
+        route:"/spec/topology/"
+      },
+      {
+        kind:"article",
+        label:"Article: Topology Is Runtime Truth",
+        route:"/articles/topology-is-runtime-truth/"
+      }
+    ],
+    title:"Adding a new dependency",
+    topics:[
+      "topology",
+      "worlds"
+    ]
+  },
+  {
+    answer:"Use the CLI JSON/spec docs for the machine-readable contract, then pair them with the debugging/testing docs for how those outputs fit into workflows.",
+    id:"cli-json",
+    prompt:"Codex needs machine-readable compiler or test output for automation. Which docs explain the stable JSON surfaces?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: debugging",
+        route:"/docs/debugging/"
+      },
+      {
+        kind:"spec",
+        label:"Spec: CLI JSON",
+        route:"/spec/cli-json/"
+      },
+      {
+        kind:"article",
+        label:"Article: Machine-First Debugging",
+        route:"/articles/machine-first-debugging/"
+      }
+    ],
+    title:"CLI JSON surfaces",
+    topics:[
+      "debugging",
+      "testing"
+    ]
+  },
+  {
+    answer:"Canonical source form wins. Prefer the one accepted textual and helper shape so the repo teaches one form to models instead of many aliases.",
+    id:"canonical-source",
+    prompt:"The agent wants to invent a nicer alternate spelling or local helper because it reads better. What principle should win in Sigil?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: philosophy",
+        route:"/docs/philosophy/"
+      },
+      {
+        kind:"article",
+        label:"Article: One Canonical Naming System",
+        route:"/articles/021-one-canonical-naming-system/"
+      },
+      {
+        kind:"article",
+        label:"Article: Canonical Helper Surfaces in Sigil",
+        route:"/articles/canonical-helper-surfaces/"
+      }
+    ],
+    title:"Canonical source first",
+    topics:["canonical"]
+  },
+  {
+    answer:"Look for the boundary declaration or decoder that turns untrusted input into the named type. That boundary is where field-shape mismatches and trust promotion belong.",
+    id:"boundary-debugging",
+    prompt:"Codex needs to find where a trusted type first enters the system from inbound JSON or another untrusted source. What should it look for?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: type system",
+        route:"/docs/type-system/"
+      },
+      {
+        kind:"spec",
+        label:"Spec: CLI JSON",
+        route:"/spec/cli-json/"
+      },
+      {
+        kind:"article",
+        label:"Article: Exact Records and Trusted Boundaries",
+        route:"/articles/exact-records-and-trusted-boundaries/"
+      }
+    ],
+    title:"Finding the boundary",
+    topics:[
+      "boundaries",
+      "debugging"
+    ]
+  },
+  {
+    answer:"Use `label` for classification and `where` for value membership and refinement. They can both appear on the same type when both the business meaning and the value invariant matter.",
+    id:"label-vs-where",
+    prompt:"A type needs business or security classification, while another needs an invariant like `#value=11`. Which Sigil surfaces fit each job?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: type system",
+        route:"/docs/type-system/"
+      },
+      {
+        kind:"spec",
+        label:"Spec: type system",
+        route:"/spec/type-system/"
+      },
+      {
+        kind:"article",
+        label:"Article: Labelled Types and Boundary Rules",
+        route:"/articles/labelled-types-and-boundary-rules/"
+      }
+    ],
+    title:"label vs where",
+    topics:[
+      "types",
+      "labels"
+    ]
+  },
+  {
+    answer:"Sigil blocks the crossing by default. For labelled data at named topology boundaries, no matching rule means `Block()`.",
+    id:"boundary-default-block",
+    prompt:"Labelled data is about to cross a named topology boundary, but the project has no matching rule for that boundary. What should Codex expect?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: topology",
+        route:"/docs/topology/"
+      },
+      {
+        kind:"doc",
+        label:"Docs: type system",
+        route:"/docs/type-system/"
+      },
+      {
+        kind:"article",
+        label:"Article: Labelled Types and Boundary Rules",
+        route:"/articles/labelled-types-and-boundary-rules/"
+      }
+    ],
+    title:"Labelled boundary default",
+    topics:[
+      "boundaries",
+      "labels",
+      "topology"
+    ]
+  },
+  {
+    answer:"Use `rule ...=Through(•policies.someTransform)` and define the trusted `transform` in `src/policies.lib.sigil`. The language does not hardcode `redact` or `hash` keywords.",
+    id:"through-transform",
+    prompt:"PII must reach a log or service, but only after masking, hashing, or another explicit reshape. What Sigil surface handles that?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: topology",
+        route:"/docs/topology/"
+      },
+      {
+        kind:"doc",
+        label:"Docs: type system",
+        route:"/docs/type-system/"
+      },
+      {
+        kind:"article",
+        label:"Article: Labelled Types and Boundary Rules",
+        route:"/articles/labelled-types-and-boundary-rules/"
+      }
+    ],
+    title:"Through transforms",
+    topics:[
+      "boundaries",
+      "labels",
+      "topology"
+    ]
+  },
+  {
+    answer:"Put `t`, `label`, and `label ... combines ...` in `src/types.lib.sigil`. Put `rule` and `transform` in `src/policies.lib.sigil`.",
+    id:"types-vs-policies-files",
+    prompt:"A project introduces `Ssn`, `label Pii`, and a rule for `•topology.auditLog`. Which file owns each piece?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: type system",
+        route:"/docs/type-system/"
+      },
+      {
+        kind:"spec",
+        label:"Spec: type system",
+        route:"/spec/type-system/"
+      },
+      {
+        kind:"article",
+        label:"Article: Labelled Types and Boundary Rules",
+        route:"/articles/labelled-types-and-boundary-rules/"
+      }
+    ],
+    title:"Types file vs policies file",
+    topics:[
+      "types",
+      "boundaries",
+      "labels"
+    ]
+  },
+  {
+    answer:"Declare `label Europe combines [Portugal,Spain]`, label the concrete types with their country, and write the boundary rule against `Europe`.",
+    id:"combined-labels",
+    prompt:"Portuguese and Spanish data should both match one Europe-level handling rule. How should Codex model that?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: type system",
+        route:"/docs/type-system/"
+      },
+      {
+        kind:"spec",
+        label:"Spec: type system",
+        route:"/spec/type-system/"
+      },
+      {
+        kind:"article",
+        label:"Article: Labelled Types and Boundary Rules",
+        route:"/articles/labelled-types-and-boundary-rules/"
+      }
+    ],
+    title:"Combined labels",
+    topics:[
+      "types",
+      "boundaries",
+      "labels"
+    ]
+  },
+  {
+    answer:"Use an exact record and model optionality with `Option[T]`. Sigil keeps records exact and closed instead of blurring them with maps.",
+    id:"exact-records-option",
+    prompt:"An inbound payload has fixed fields, but one field may be missing. Should Codex use a map, an open record, or an exact record with `Option`?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: type system",
+        route:"/docs/type-system/"
+      },
+      {
+        kind:"spec",
+        label:"Spec: type system",
+        route:"/spec/type-system/"
+      },
+      {
+        kind:"article",
+        label:"Article: Exact Records and Trusted Boundaries",
+        route:"/articles/exact-records-and-trusted-boundaries/"
+      }
+    ],
+    title:"Exact records with Option",
+    topics:[
+      "types",
+      "boundaries"
+    ]
+  },
+  {
+    answer:"Use `where` when the invariant belongs to the type everywhere. Use `requires` and `ensures` when the important fact lives on a function boundary instead.",
+    id:"where-vs-contracts",
+    prompt:"A fact matters at a function boundary, not as permanent type meaning. Should Codex use a new named type with `where` or `requires` and `ensures`?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: type system",
+        route:"/docs/type-system/"
+      },
+      {
+        kind:"spec",
+        label:"Spec: type system",
+        route:"/spec/type-system/"
+      },
+      {
+        kind:"article",
+        label:"Article: Function Contracts With requires and ensures",
+        route:"/articles/requires-and-ensures-function-contracts/"
+      }
+    ],
+    title:"where vs contracts",
+    topics:[
+      "types",
+      "contracts"
+    ]
+  },
+  {
+    answer:"Yes. Topology now names runtime boundaries more broadly, including http, tcp, fs roots, log sinks, and process handles.",
+    id:"topology-beyond-network",
+    prompt:"A project wants to treat logs, filesystem roots, and child processes as real named boundaries instead of ambient effects. Is that still topology in Sigil?",
+    references:[
+      {
+        kind:"doc",
+        label:"Docs: topology",
+        route:"/docs/topology/"
+      },
+      {
+        kind:"spec",
+        label:"Spec: topology",
+        route:"/spec/topology/"
+      },
+      {
+        kind:"article",
+        label:"Article: Topology Is Runtime Truth",
+        route:"/articles/topology-is-runtime-truth/"
+      },
+      {
+        kind:"article",
+        label:"Article: Labelled Types and Boundary Rules",
+        route:"/articles/labelled-types-and-boundary-rules/"
+      }
+    ],
+    title:"Topology beyond network",
+    topics:[
+      "topology",
+      "boundaries",
+      "labels"
+    ]
+  }
+]
 
 λhasTopic(target:String,topics:[String])=>Bool match topics{
   []=>false|
-  [topic,.rest]=>match topic=target{
+  [
+  topic,
+  .rest
+]=>match topic=target{
     true=>true|
-    false=>hasTopic(target,rest)
+    false=>hasTopic(
+      target,
+      rest
+    )
   }
 }
 
 λnextCard(session:µStudySession)=>µStudySession match #session.cards=0 or session.currentIndex+1≥#session.cards{
   true=>session|
-  false=>{cards:session.cards,currentIndex:session.currentIndex+1,revealed:false,selectedTopic:session.selectedTopic,topics:session.topics}
+  false=>{
+    cards:session.cards,
+    currentIndex:session.currentIndex+1,
+    revealed:false,
+    selectedTopic:session.selectedTopic,
+    topics:session.topics
+  }
 }
 
 λpreviousCard(session:µStudySession)=>µStudySession match #session.cards=0 or session.currentIndex=0{
   true=>session|
-  false=>{cards:session.cards,currentIndex:session.currentIndex-1,revealed:false,selectedTopic:session.selectedTopic,topics:session.topics}
+  false=>{
+    cards:session.cards,
+    currentIndex:session.currentIndex-1,
+    revealed:false,
+    selectedTopic:session.selectedTopic,
+    topics:session.topics
+  }
 }
 
 λrevealAnswer(session:µStudySession)=>µStudySession
 ensures result.revealed
-={cards:session.cards,currentIndex:session.currentIndex,revealed:true,selectedTopic:session.selectedTopic,topics:session.topics}
+={
+  cards:session.cards,
+  currentIndex:session.currentIndex,
+  revealed:true,
+  selectedTopic:session.selectedTopic,
+  topics:session.topics
+}
 
 λselectCards(cards:[µCard],selectedTopic:String)=>[µCard] match cards{
   []=>[]|
-  [card,.rest]=>match selectedTopic="all" or hasTopic(selectedTopic,card.topics){
-    true=>[card]⧺selectCards(rest,selectedTopic)|
-    false=>selectCards(rest,selectedTopic)
+  [
+  card,
+  .rest
+]=>match selectedTopic="all" or hasTopic(
+    selectedTopic,
+    card.topics
+  ){
+    true=>[card]⧺selectCards(
+      rest,
+      selectedTopic
+    )|
+    false=>selectCards(
+      rest,
+      selectedTopic
+    )
   }
 }
 
 λsessionForTopic(selectedTopic:String)=>µStudySession
 ensures result.currentIndex=0 and ¬result.revealed
-={cards:(selectCards(allCards(),selectedTopic):[µCard]),currentIndex:0,revealed:false,selectedTopic:selectedTopic,topics:(topicCatalog():[String])}
+={
+  cards:(selectCards(
+    allCards(),
+    selectedTopic
+  ):[µCard]),
+  currentIndex:0,
+  revealed:false,
+  selectedTopic:selectedTopic,
+  topics:(topicCatalog():[String])
+}
 
-λtopicCatalog()=>[String]=["all","topology","worlds","types","boundaries","labels","contracts","testing","debugging","concurrency","canonical"]
+λtopicCatalog()=>[String]=[
+  "all",
+  "topology",
+  "worlds",
+  "types",
+  "boundaries",
+  "labels",
+  "contracts",
+  "testing",
+  "debugging",
+  "concurrency",
+  "canonical"
+]

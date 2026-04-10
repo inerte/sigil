@@ -5,38 +5,87 @@ ensures result.size=game.size
 match game.status{
   "playing"=>{
     l outcome=(match direction{
-      "down"=>moveColumnsDown(game.board,0,0)|
-      "left"=>moveRowsLeft(game.board,0,0)|
-      "right"=>moveRowsRight(game.board,0,0)|
-      "up"=>moveColumnsUp(game.board,0,0)|
-      _=>{board:game.board,scoreGain:0}
+      "down"=>moveColumnsDown(
+        game.board,
+        0,
+        0
+      )|
+      "left"=>moveRowsLeft(
+        game.board,
+        0,
+        0
+      )|
+      "right"=>moveRowsRight(
+        game.board,
+        0,
+        0
+      )|
+      "up"=>moveColumnsUp(
+        game.board,
+        0,
+        0
+      )|
+      _=>{
+        board:game.board,
+        scoreGain:0
+      }
     }:µMoveOutcome);
-    {board:outcome.board,score:(game.score+outcome.scoreGain:Int),size:game.size,status:statusForBoard(outcome.board)}
+    {
+      board:outcome.board,
+      score:(game.score+outcome.scoreGain:Int),
+      size:game.size,
+      status:statusForBoard(outcome.board)
+    }
   }|
   _=>game
 }
 
 λbuildBoard(y:Int)=>[µCell] match boardSize-y{
   0=>[]|
-  _=>buildRow(0,y)⧺buildBoard(y+1)
+  _=>buildRow(
+    0,
+    y
+  )⧺buildBoard(y+1)
 }
 
 λbuildRow(x:Int,y:Int)=>[µCell] match boardSize-x{
   0=>[]|
-  _=>[{value:0,x:x,y:y}]⧺buildRow(x+1,y)
+  _=>[{
+    value:0,
+    x:x,
+    y:y
+  }]⧺buildRow(
+    x+1,
+    y
+  )
 }
 
 λcellAt(board:[µCell],targetX:Int,targetY:Int)=>Option[µCell] match board{
   []=>None()|
-  [head,.tail]=>match head.x=targetX and head.y=targetY{
+  [
+  head,
+  .tail
+]=>match head.x=targetX and head.y=targetY{
     true=>Some(head)|
-    false=>cellAt(tail,targetX,targetY)
+    false=>cellAt(
+      tail,
+      targetX,
+      targetY
+    )
   }
 }
 
 λcolumnValues(board:[µCell],x:Int,y:Int)=>[Int] match boardSize-y{
   0=>[]|
-  _=>[valueAt(board,x,y)]⧺columnValues(board,x,y+1)
+  _=>[valueAt(
+    board,
+    x,
+    y
+  )]⧺columnValues(
+    board,
+    x,
+    y+1
+  )
 }
 
 λcompressValues(values:[Int])=>[Int]=values filter (λ(value:Int)=>Bool=value≠0)
@@ -45,7 +94,12 @@ match game.status{
 
 λemptyGame()=>µGame
 ensures result.score=0 and result.size=boardSize
-={board:(buildBoard(0):[µCell]),score:0,size:boardSize,status:"playing"}
+={
+  board:(buildBoard(0):[µCell]),
+  score:0,
+  size:boardSize,
+  status:"playing"
+}
 
 λhasEmptyCell(board:[µCell])=>Bool=board reduce (λ(acc:Bool,cell:µCell)=>Bool=acc or cell.value=0) from false
 
@@ -53,9 +107,18 @@ ensures result.score=0 and result.size=boardSize
 
 λhasMergeNeighbor(board:[µCell])=>Bool match board{
   []=>false|
-  [cell,.tail]=>match cell.value=0{
+  [
+  cell,
+  .tail
+]=>match cell.value=0{
     true=>hasMergeNeighbor(tail)|
-    false=>match horizontalMatch(board,cell) or verticalMatch(board,cell){
+    false=>match horizontalMatch(
+      board,
+      cell
+    ) or verticalMatch(
+      board,
+      cell
+    ){
       true=>true|
       false=>hasMergeNeighbor(tail)
     }
@@ -63,83 +126,199 @@ ensures result.score=0 and result.size=boardSize
 }
 
 λhorizontalMatch(board:[µCell],cell:µCell)=>Bool match cell.x+1<boardSize{
-  true=>valueAt(board,cell.x+1,cell.y)=cell.value|
+  true=>valueAt(
+    board,
+    cell.x+1,
+    cell.y
+  )=cell.value|
   false=>false
 }
 
 λmergeCompressed(values:[Int])=>µLineOutcome match values{
-  []=>{scoreGain:0,values:[]}|
-  [head]=>{scoreGain:0,values:[head]}|
-  [head,next,.rest]=>match head=next{
+  []=>{
+    scoreGain:0,
+    values:[]
+  }|
+  [head]=>{
+    scoreGain:0,
+    values:[head]
+  }|
+  [
+  head,
+  next,
+  .rest
+]=>match head=next{
     true=>{
       l tail=(mergeCompressed(rest):µLineOutcome);
-      {scoreGain:(head+next+tail.scoreGain:Int),values:[head+next]⧺tail.values}
+      {
+        scoreGain:(head+next+tail.scoreGain:Int),
+        values:[head+next]⧺tail.values
+      }
     }|
     false=>{
       l tail=(mergeCompressed([next]⧺rest):µLineOutcome);
-      {scoreGain:tail.scoreGain,values:[head]⧺tail.values}
+      {
+        scoreGain:tail.scoreGain,
+        values:[head]⧺tail.values
+      }
     }
   }
 }
 
 λmoveColumnsDown(board:[µCell],scoreGain:Int,x:Int)=>µMoveOutcome match boardSize-x{
-  0=>{board:board,scoreGain:scoreGain}|
+  0=>{
+    board:board,
+    scoreGain:scoreGain
+  }|
   _=>{
-    l line=(normalizeLine((reverseInts(columnValues(board,x,0)):[Int])):µLineOutcome);
-    moveColumnsDown((writeColumn(board,(reverseInts(line.values):[Int]),x,0):[µCell]),scoreGain+line.scoreGain,x+1)
+    l line=(normalizeLine((reverseInts(columnValues(
+      board,
+      x,
+      0
+    )):[Int])):µLineOutcome);
+    moveColumnsDown(
+      (writeColumn(
+        board,
+        (reverseInts(line.values):[Int]),
+        x,
+        0
+      ):[µCell]),
+      scoreGain+line.scoreGain,
+      x+1
+    )
   }
 }
 
 λmoveColumnsUp(board:[µCell],scoreGain:Int,x:Int)=>µMoveOutcome match boardSize-x{
-  0=>{board:board,scoreGain:scoreGain}|
+  0=>{
+    board:board,
+    scoreGain:scoreGain
+  }|
   _=>{
-    l line=(normalizeLine(columnValues(board,x,0)):µLineOutcome);
-    moveColumnsUp((writeColumn(board,line.values,x,0):[µCell]),scoreGain+line.scoreGain,x+1)
+    l line=(normalizeLine(columnValues(
+      board,
+      x,
+      0
+    )):µLineOutcome);
+    moveColumnsUp(
+      (writeColumn(
+        board,
+        line.values,
+        x,
+        0
+      ):[µCell]),
+      scoreGain+line.scoreGain,
+      x+1
+    )
   }
 }
 
 λmoveRowsLeft(board:[µCell],scoreGain:Int,y:Int)=>µMoveOutcome match boardSize-y{
-  0=>{board:board,scoreGain:scoreGain}|
+  0=>{
+    board:board,
+    scoreGain:scoreGain
+  }|
   _=>{
-    l line=(normalizeLine(rowValues(board,0,y)):µLineOutcome);
-    moveRowsLeft((writeRow(board,line.values,0,y):[µCell]),scoreGain+line.scoreGain,y+1)
+    l line=(normalizeLine(rowValues(
+      board,
+      0,
+      y
+    )):µLineOutcome);
+    moveRowsLeft(
+      (writeRow(
+        board,
+        line.values,
+        0,
+        y
+      ):[µCell]),
+      scoreGain+line.scoreGain,
+      y+1
+    )
   }
 }
 
 λmoveRowsRight(board:[µCell],scoreGain:Int,y:Int)=>µMoveOutcome match boardSize-y{
-  0=>{board:board,scoreGain:scoreGain}|
+  0=>{
+    board:board,
+    scoreGain:scoreGain
+  }|
   _=>{
-    l line=(normalizeLine((reverseInts(rowValues(board,0,y)):[Int])):µLineOutcome);
-    moveRowsRight((writeRow(board,(reverseInts(line.values):[Int]),0,y):[µCell]),scoreGain+line.scoreGain,y+1)
+    l line=(normalizeLine((reverseInts(rowValues(
+      board,
+      0,
+      y
+    )):[Int])):µLineOutcome);
+    moveRowsRight(
+      (writeRow(
+        board,
+        (reverseInts(line.values):[Int]),
+        0,
+        y
+      ):[µCell]),
+      scoreGain+line.scoreGain,
+      y+1
+    )
   }
 }
 
-λnewGame(initialSpawns:[µSpawn])=>µGame=spawnTiles(emptyGame(),initialSpawns)
+λnewGame(initialSpawns:[µSpawn])=>µGame=spawnTiles(
+  emptyGame(),
+  initialSpawns
+)
 
 λnormalizeLine(values:[Int])=>µLineOutcome={
   l merged=(mergeCompressed((compressValues(values):[Int])):µLineOutcome);
-  {scoreGain:merged.scoreGain,values:(merged.values⧺zeroes(boardSize-#merged.values):[Int])}
+  {
+    scoreGain:merged.scoreGain,
+    values:(merged.values⧺zeroes(boardSize-#merged.values):[Int])
+  }
 }
 
 λreverseInts(values:[Int])=>[Int]=values reduce (λ(acc:[Int],value:Int)=>[Int]=[value]⧺acc) from ([]:[Int])
 
 λrowValues(board:[µCell],x:Int,y:Int)=>[Int] match boardSize-x{
   0=>[]|
-  _=>[valueAt(board,x,y)]⧺rowValues(board,x+1,y)
+  _=>[valueAt(
+    board,
+    x,
+    y
+  )]⧺rowValues(
+    board,
+    x+1,
+    y
+  )
 }
 
 λsetValue(board:[µCell],targetX:Int,targetY:Int,value:Int)=>[µCell]=board map (λ(cell:µCell)=>µCell match cell.x=targetX and cell.y=targetY{
-  true=>{value:value,x:cell.x,y:cell.y}|
+  true=>{
+    value:value,
+    x:cell.x,
+    y:cell.y
+  }|
   false=>cell
 })
 
 λspawnTile(game:µGame,tileSpawn:µSpawn)=>µGame match game.status{
   "playing"=>match tileSpawn.value>0{
-    true=>match cellAt(game.board,tileSpawn.x,tileSpawn.y){
+    true=>match cellAt(
+      game.board,
+      tileSpawn.x,
+      tileSpawn.y
+    ){
       Some(cell)=>match cell.value=0{
         true=>{
-          l board=(setValue(game.board,tileSpawn.x,tileSpawn.y,tileSpawn.value):[µCell]);
-          {board:board,score:game.score,size:game.size,status:statusForBoard(board)}
+          l board=(setValue(
+            game.board,
+            tileSpawn.x,
+            tileSpawn.y,
+            tileSpawn.value
+          ):[µCell]);
+          {
+            board:board,
+            score:game.score,
+            size:game.size,
+            status:statusForBoard(board)
+          }
         }|
         false=>game
       }|
@@ -152,7 +331,16 @@ ensures result.score=0 and result.size=boardSize
 
 λspawnTiles(game:µGame,spawns:[µSpawn])=>µGame match spawns{
   []=>game|
-  [tileSpawn,.rest]=>spawnTiles(spawnTile(game,tileSpawn),rest)
+  [
+  tileSpawn,
+  .rest
+]=>spawnTiles(
+    spawnTile(
+      game,
+      tileSpawn
+    ),
+    rest
+  )
 }
 
 λstatusForBoard(board:[µCell])=>String match containsWinningTile(board){
@@ -163,24 +351,58 @@ ensures result.score=0 and result.size=boardSize
   }
 }
 
-λvalueAt(board:[µCell],targetX:Int,targetY:Int)=>Int match cellAt(board,targetX,targetY){
+λvalueAt(board:[µCell],targetX:Int,targetY:Int)=>Int match cellAt(
+  board,
+  targetX,
+  targetY
+){
   Some(cell)=>cell.value|
   None()=>0
 }
 
 λverticalMatch(board:[µCell],cell:µCell)=>Bool match cell.y+1<boardSize{
-  true=>valueAt(board,cell.x,cell.y+1)=cell.value|
+  true=>valueAt(
+    board,
+    cell.x,
+    cell.y+1
+  )=cell.value|
   false=>false
 }
 
 λwriteColumn(board:[µCell],values:[Int],x:Int,y:Int)=>[µCell] match values{
   []=>board|
-  [value,.rest]=>writeColumn((setValue(board,x,y,value):[µCell]),rest,x,y+1)
+  [
+  value,
+  .rest
+]=>writeColumn(
+    (setValue(
+      board,
+      x,
+      y,
+      value
+    ):[µCell]),
+    rest,
+    x,
+    y+1
+  )
 }
 
 λwriteRow(board:[µCell],values:[Int],x:Int,y:Int)=>[µCell] match values{
   []=>board|
-  [value,.rest]=>writeRow((setValue(board,x,y,value):[µCell]),rest,x+1,y)
+  [
+  value,
+  .rest
+]=>writeRow(
+    (setValue(
+      board,
+      x,
+      y,
+      value
+    ):[µCell]),
+    rest,
+    x+1,
+    y
+  )
 }
 
 λzeroes(count:Int)=>[Int] match count{

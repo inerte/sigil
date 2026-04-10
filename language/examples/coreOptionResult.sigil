@@ -6,7 +6,10 @@ t ParseError={message:String}
   _=>None()
 }
 
-λmain()=>Result[String,ParseError] match lookupUser(1){
+λmain()=>Result[
+  String,
+  ParseError
+] match lookupUser(1){
   Some(name)=>Ok("Hello, "++name)|
   None()=>Err({message:"missing user"})
 }

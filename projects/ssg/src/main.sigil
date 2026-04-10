@@ -1,1 +1,8 @@
-λmain()=>!SiteBuild Unit=•build.buildSite({basePath:¤site.basePath(),outputDir:"website/.local/site",repoUrl:¤site.repoUrl(),siteDescription:"Machine-first programming language designed for canonical code generation.",siteTitle:"⌬ Sigil",siteUrl:¤site.siteUrl()})
+λmain()=>!SiteBuild Unit=•build.buildSite({
+  basePath:¤site.basePath(),
+  outputDir:"website/.local/site",
+  repoUrl:¤site.repoUrl(),
+  siteDescription:"Machine-first programming language designed for canonical code generation.",
+  siteTitle:"⌬ Sigil",
+  siteUrl:¤site.siteUrl()
+})

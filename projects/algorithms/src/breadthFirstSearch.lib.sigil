@@ -1,12 +1,36 @@
 λbfsLoop(graph:µGraph,queue:[Int],visited:[Int])=>[Int] match queue{
   []=>visited|
-  [head,.tail]=>match §list.contains(head,visited){
-    true=>bfsLoop(graph,tail,visited)|
-    false=>bfsLoop(graph,tail⧺•graphHelpers.neighborsOf(graph,head),visited⧺[head])
+  [
+  head,
+  .tail
+]=>match §list.contains(
+    head,
+    visited
+  ){
+    true=>bfsLoop(
+      graph,
+      tail,
+      visited
+    )|
+    false=>bfsLoop(
+      graph,
+      tail⧺•graphHelpers.neighborsOf(
+        graph,
+        head
+      ),
+      visited⧺[head]
+    )
   }
 }
 
-λbreadthFirstSearch(graph:µGraph,start:Int)=>[Int] match •graphHelpers.hasVertex(graph,start){
-  true=>bfsLoop(graph,[start],[])|
+λbreadthFirstSearch(graph:µGraph,start:Int)=>[Int] match •graphHelpers.hasVertex(
+  graph,
+  start
+){
+  true=>bfsLoop(
+    graph,
+    [start],
+    []
+  )|
   false=>[]
 }

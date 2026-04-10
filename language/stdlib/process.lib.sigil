@@ -1,27 +1,59 @@
-t Command={argv:[String],cwd:Option[String],env:{String↦String}}
+t Command={
+  argv:[String],
+  cwd:Option[String],
+  env:{String↦String}
+}
 
 t RunningProcess={pid:Int}
 
-t ProcessResult={code:Int,stderr:String,stdout:String}
+t ProcessResult={
+  code:Int,
+  stderr:String,
+  stdout:String
+}
 
 λargv()=>!Process [String]=[]
 
-λcommand(argv:[String])=>Command={argv:argv,cwd:None(),env:({↦}:{String↦String})}
+λcommand(argv:[String])=>Command={
+  argv:argv,
+  cwd:None(),
+  env:({↦}:{String↦String})
+}
 
 λexit(code:Int)=>!Process Unit=()
 
 λkill(process:RunningProcess)=>!Process Unit=()
 
-λrun(command:Command)=>!Process ProcessResult={code:-1,stderr:"process intrinsic unavailable",stdout:""}
+λrun(command:Command)=>!Process ProcessResult={
+  code:-1,
+  stderr:"process intrinsic unavailable",
+  stdout:""
+}
 
-λrunAt(command:Command,handle:§topology.ProcessHandle)=>!Process ProcessResult={code:-1,stderr:"process intrinsic unavailable",stdout:""}
+λrunAt(command:Command,handle:§topology.ProcessHandle)=>!Process ProcessResult={
+  code:-1,
+  stderr:"process intrinsic unavailable",
+  stdout:""
+}
 
 λstart(command:Command)=>!Process RunningProcess={pid:-1}
 
 λstartAt(command:Command,handle:§topology.ProcessHandle)=>!Process RunningProcess={pid:-1}
 
-λwait(process:RunningProcess)=>!Process ProcessResult={code:-1,stderr:"process intrinsic unavailable",stdout:""}
+λwait(process:RunningProcess)=>!Process ProcessResult={
+  code:-1,
+  stderr:"process intrinsic unavailable",
+  stdout:""
+}
 
-λwithCwd(command:Command,cwd:String)=>Command={argv:command.argv,cwd:Some(cwd),env:command.env}
+λwithCwd(command:Command,cwd:String)=>Command={
+  argv:command.argv,
+  cwd:Some(cwd),
+  env:command.env
+}
 
-λwithEnv(command:Command,env:{String↦String})=>Command={argv:command.argv,cwd:command.cwd,env:env}
+λwithEnv(command:Command,env:{String↦String})=>Command={
+  argv:command.argv,
+  cwd:command.cwd,
+  env:env
+}

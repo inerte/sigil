@@ -22,7 +22,11 @@ Consider these two forms:
 ```
 
 ```sigil exprs
-λformulaText(repo:String,version:String)=>String="["++(repo++":"++version)++"]"
+λformulaText(repo:String,version:String)=>String="["
+  ++repo
+  ++":"
+  ++version
+  ++"]"
 ```
 
 They mean the same thing. The only difference is whether the program introduces

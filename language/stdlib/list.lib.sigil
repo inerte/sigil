@@ -1,90 +1,190 @@
 λaddInt(acc:Int,x:Int)=>Int=acc+x
 
-λall[T](pred:λ(T)=>Bool,xs:[T])=>Bool=fold(true,λ(acc:Bool,x:T)=>Bool=acc and pred(x),xs)
+λall[T](pred:λ(T)=>Bool,xs:[T])=>Bool=fold(
+  true,
+  λ(acc:Bool,x:T)=>Bool=acc and pred(x),
+  xs
+)
 
-λany[T](pred:λ(T)=>Bool,xs:[T])=>Bool=fold(false,λ(acc:Bool,x:T)=>Bool=acc or pred(x),xs)
+λany[T](pred:λ(T)=>Bool,xs:[T])=>Bool=fold(
+  false,
+  λ(acc:Bool,x:T)=>Bool=acc or pred(x),
+  xs
+)
 
 λcontains[T](item:T,xs:[T])=>Bool match xs{
   []=>false|
-  [x,.rest]=>match x=item{
+  [
+  x,
+  .rest
+]=>match x=item{
     true=>true|
-    false=>contains(item,rest)
+    false=>contains(
+      item,
+      rest
+    )
   }
 }
 
 λcount[T](item:T,xs:[T])=>Int match xs{
   []=>0|
-  [x,.rest]=>match x=item{
-    true=>1+count(item,rest)|
-    false=>count(item,rest)
+  [
+  x,
+  .rest
+]=>match x=item{
+    true=>1+count(
+      item,
+      rest
+    )|
+    false=>count(
+      item,
+      rest
+    )
   }
 }
 
-λcountIf[T](pred:λ(T)=>Bool,xs:[T])=>Int=fold(0,λ(acc:Int,x:T)=>Int match pred(x){
-  true=>acc+1|
-  false=>acc
-},xs)
+λcountIf[T](pred:λ(T)=>Bool,xs:[T])=>Int=fold(
+  0,
+  λ(acc:Int,x:T)=>Int match pred(x){
+    true=>acc+1|
+    false=>acc
+  },
+  xs
+)
 
 λdrop[T](n:Int,xs:[T])=>[T] match n≤0{
   true=>xs|
   false=>match xs{
     []=>[]|
-    [x,.rest]=>drop(n-1,rest)
+    [
+  x,
+  .rest
+]=>drop(
+      n-1,
+      rest
+    )
   }
 }
 
-λfind[T](pred:λ(T)=>Bool,xs:[T])=>Option[T]=fold(None(),λ(acc:Option[T],x:T)=>Option[T] match acc{
-  Some(value)=>Some(value)|
-  None()=>match pred(x){
-    true=>Some(x)|
-    false=>None()
-  }
-},xs)
+λfind[T](pred:λ(T)=>Bool,xs:[T])=>Option[T]=fold(
+  None(),
+  λ(acc:Option[T],x:T)=>Option[T] match acc{
+    Some(value)=>Some(value)|
+    None()=>match pred(x){
+      true=>Some(x)|
+      false=>None()
+    }
+  },
+  xs
+)
 
-λflatMap[T,U](fn:λ(T)=>[U],xs:[T])=>[U]=reverse(flatMapHelper([],fn,xs))
+λflatMap[T,U](fn:λ(T)=>[U],xs:[T])=>[U]=reverse(flatMapHelper(
+  [],
+  fn,
+  xs
+))
 
 λflatMapHelper[T,U](acc:[U],fn:λ(T)=>[U],xs:[T])=>[U] match xs{
   []=>acc|
-  [x,.rest]=>flatMapHelper(prependReversed(acc,fn(x)),fn,rest)
+  [
+  x,
+  .rest
+]=>flatMapHelper(
+    prependReversed(
+      acc,
+      fn(x)
+    ),
+    fn,
+    rest
+  )
 }
 
 λfold[T,U](acc:U,fn:λ(U,T)=>U,xs:[T])=>U match xs{
   []=>acc|
-  [x,.rest]=>fold(fn(acc,x),fn,rest)
+  [
+  x,
+  .rest
+]=>fold(
+    fn(
+      acc,
+      x
+    ),
+    fn,
+    rest
+  )
 }
 
 λinBounds[T](idx:Int,xs:[T])=>Bool=idx≥0 and idx<#xs
 
-λlast[T](xs:[T])=>Option[T]=lastHelper(None(),xs)
+λlast[T](xs:[T])=>Option[T]=lastHelper(
+  None(),
+  xs
+)
 
 λlastHelper[T](result:Option[T],xs:[T])=>Option[T] match xs{
   []=>result|
-  [x,.rest]=>lastHelper(Some(x),rest)
+  [
+  x,
+  .rest
+]=>lastHelper(
+    Some(x),
+    rest
+  )
 }
 
-λmax(xs:[Int])=>Option[Int]=maxHelper(None(),xs)
+λmax(xs:[Int])=>Option[Int]=maxHelper(
+  None(),
+  xs
+)
 
 λmaxHelper(current:Option[Int],xs:[Int])=>Option[Int] match xs{
   []=>current|
-  [x,.rest]=>match current{
+  [
+  x,
+  .rest
+]=>match current{
     Some(value)=>match x>value{
-      true=>maxHelper(Some(x),rest)|
-      false=>maxHelper(current,rest)
+      true=>maxHelper(
+        Some(x),
+        rest
+      )|
+      false=>maxHelper(
+        current,
+        rest
+      )
     }|
-    None()=>maxHelper(Some(x),rest)
+    None()=>maxHelper(
+      Some(x),
+      rest
+    )
   }
 }
 
-λmin(xs:[Int])=>Option[Int]=minHelper(None(),xs)
+λmin(xs:[Int])=>Option[Int]=minHelper(
+  None(),
+  xs
+)
 
 λminHelper(current:Option[Int],xs:[Int])=>Option[Int] match xs{
   []=>current|
-  [x,.rest]=>match current{
+  [
+  x,
+  .rest
+]=>match current{
     Some(value)=>match x<value{
-      true=>minHelper(Some(x),rest)|
-      false=>minHelper(current,rest)
+      true=>minHelper(
+        Some(x),
+        rest
+      )|
+      false=>minHelper(
+        current,
+        rest
+      )
     }|
-    None()=>minHelper(Some(x),rest)
+    None()=>minHelper(
+      Some(x),
+      rest
+    )
   }
 }
 
@@ -94,62 +194,135 @@
   true=>None()|
   false=>match xs{
     []=>None()|
-    [x,.rest]=>match idx=0{
+    [
+  x,
+  .rest
+]=>match idx=0{
       true=>Some(x)|
-      false=>nth(idx-1,rest)
+      false=>nth(
+        idx-1,
+        rest
+      )
     }
   }
 }
 
-λprependReversed[T](acc:[T],xs:[T])=>[T]=fold(acc,λ(result:[T],x:T)=>[T]=([x]:[T])⧺result,xs)
+λprependReversed[T](acc:[T],xs:[T])=>[T]=fold(
+  acc,
+  λ(result:[T],x:T)=>[T]=([x]:[T])⧺result,
+  xs
+)
 
-λproduct(xs:[Int])=>Int=fold(1,multiplyInt,xs)
+λproduct(xs:[Int])=>Int=fold(
+  1,
+  multiplyInt,
+  xs
+)
 
-λremoveFirst[T](item:T,xs:[T])=>[T]=reverse(removeFirstHelper([],item,xs))
+λremoveFirst[T](item:T,xs:[T])=>[T]=reverse(removeFirstHelper(
+  [],
+  item,
+  xs
+))
 
 λremoveFirstHelper[T](acc:[T],item:T,xs:[T])=>[T] match xs{
   []=>acc|
-  [x,.rest]=>match x=item{
+  [
+  x,
+  .rest
+]=>match x=item{
     true=>reverse(rest)⧺acc|
-    false=>removeFirstHelper(([x]:[T])⧺acc,item,rest)
+    false=>removeFirstHelper(
+      ([x]:[T])⧺acc,
+      item,
+      rest
+    )
   }
 }
 
-λreverse[T](xs:[T])=>[T]=reverseHelper([],xs)
+λreverse[T](xs:[T])=>[T]=reverseHelper(
+  [],
+  xs
+)
 
 λreverseHelper[T](acc:[T],xs:[T])=>[T] match xs{
   []=>acc|
-  [x,.rest]=>reverseHelper(([x]:[T])⧺acc,rest)
+  [
+  x,
+  .rest
+]=>reverseHelper(
+    ([x]:[T])⧺acc,
+    rest
+  )
 }
 
 λsortedAsc(xs:[Int])=>Bool match xs{
   []=>true|
-  [x,.rest]=>sortedAscHelper(x,rest)
+  [
+  x,
+  .rest
+]=>sortedAscHelper(
+    x,
+    rest
+  )
 }
 
 λsortedAscHelper(previous:Int,xs:[Int])=>Bool match xs{
   []=>true|
-  [x,.rest]=>previous≤x and sortedAscHelper(x,rest)
+  [
+  x,
+  .rest
+]=>previous≤x and sortedAscHelper(
+    x,
+    rest
+  )
 }
 
 λsortedDesc(xs:[Int])=>Bool match xs{
   []=>true|
-  [x,.rest]=>sortedDescHelper(x,rest)
+  [
+  x,
+  .rest
+]=>sortedDescHelper(
+    x,
+    rest
+  )
 }
 
 λsortedDescHelper(previous:Int,xs:[Int])=>Bool match xs{
   []=>true|
-  [x,.rest]=>previous≥x and sortedDescHelper(x,rest)
+  [
+  x,
+  .rest
+]=>previous≥x and sortedDescHelper(
+    x,
+    rest
+  )
 }
 
-λsum(xs:[Int])=>Int=fold(0,addInt,xs)
+λsum(xs:[Int])=>Int=fold(
+  0,
+  addInt,
+  xs
+)
 
-λtake[T](n:Int,xs:[T])=>[T]=reverse(takeHelper([],n,xs))
+λtake[T](n:Int,xs:[T])=>[T]=reverse(takeHelper(
+  [],
+  n,
+  xs
+))
 
 λtakeHelper[T](acc:[T],n:Int,xs:[T])=>[T] match n≤0{
   true=>acc|
   false=>match xs{
     []=>acc|
-    [x,.rest]=>takeHelper(([x]:[T])⧺acc,n-1,rest)
+    [
+  x,
+  .rest
+]=>takeHelper(
+      ([x]:[T])⧺acc,
+      n-1,
+      rest
+    )
   }
 }

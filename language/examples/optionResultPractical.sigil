@@ -1,4 +1,7 @@
-λgetOrDefault(fallback:Int,res:Result[Int,String])=>Int match res{
+λgetOrDefault(fallback:Int,res:Result[
+  Int,
+  String
+])=>Int match res{
   Ok(value)=>value|
   Err(_)=>fallback
 }
@@ -8,22 +11,50 @@
   None()=>0
 }
 
-λisOk(res:Result[Int,String])=>Bool match res{
+λisOk(res:Result[
+  Int,
+  String
+])=>Bool match res{
   Ok(_)=>true|
   Err(_)=>false
 }
 
-λmain()=>Int=getOrZero(safeHead([1,2,3]))+getOrDefault(0,safeSubtract(10,2))+getOrDefault(999,safeSubtract(10,20))+(match isOk(safeSubtract(3,1)){
+λmain()=>Int=getOrZero(safeHead([
+  1,
+  2,
+  3
+]))+getOrDefault(
+  0,
+  safeSubtract(
+    10,
+    2
+  )
+)+getOrDefault(
+  999,
+  safeSubtract(
+    10,
+    20
+  )
+)+(match isOk(safeSubtract(
+  3,
+  1
+)){
   true=>1|
   false=>0
 })
 
 λsafeHead(xs:[Int])=>Option[Int] match xs{
   []=>None()|
-  [x,.rest]=>Some(x)
+  [
+  x,
+  .rest
+]=>Some(x)
 }
 
-λsafeSubtract(num1:Int,num2:Int)=>Result[Int,String] match num2>10{
+λsafeSubtract(num1:Int,num2:Int)=>Result[
+  Int,
+  String
+] match num2>10{
   true=>Err("second number too large")|
   false=>Ok(num1-num2)
 }

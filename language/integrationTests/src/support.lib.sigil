@@ -2,41 +2,81 @@ e process
 
 λcombinedOutput(result:§process.ProcessResult)=>String=result.stdout++result.stderr
 
-λcommandWithArgs(args:[String],command:§process.Command)=>§process.Command={argv:command.argv⧺args,cwd:command.cwd,env:command.env}
+λcommandWithArgs(args:[String],command:§process.Command)=>§process.Command={
+  argv:command.argv⧺args,
+  cwd:command.cwd,
+  env:command.env
+}
 
-λcommandWithEnv(command:§process.Command,env:{String↦String})=>§process.Command=§process.withEnv(command,¶map.merge(command.env,env))
+λcommandWithEnv(command:§process.Command,env:{String↦String})=>§process.Command=§process.withEnv(
+  command,
+  ¶map.merge(
+    command.env,
+    env
+  )
+)
 
 λfailedReadyPortMessage(path:String)=>String="timed out waiting for ready port file "++path
 
-λrepoPath(relative:String)=>String=§path.join(repoRoot(),relative)
+λrepoPath(relative:String)=>String=§path.join(
+  repoRoot(),
+  relative
+)
 
 λrepoRoot()=>String=process.cwd()
 
 λretryRunStdoutContains(attempts:Int,command:§process.Command,delayMs:Int,expected:String)=>!Process!Timer §process.ProcessResult={
   l result=(§process.run(command):§process.ProcessResult);
-  match runStdoutContains(expected,result){
+  match runStdoutContains(
+    expected,
+    result
+  ){
     true=>result|
     false=>match attempts≤1{
       true=>result|
       false=>{
         l _=(§time.sleepMs(delayMs):Unit);
-        retryRunStdoutContains(attempts-1,command,delayMs,expected)
+        retryRunStdoutContains(
+          attempts-1,
+          command,
+          delayMs,
+          expected
+        )
       }
     }
   }
 }
 
-λrunStdoutContains(expected:String,result:§process.ProcessResult)=>Bool=§string.contains(result.stdout,expected)
+λrunStdoutContains(expected:String,result:§process.ProcessResult)=>Bool=§string.contains(
+  result.stdout,
+  expected
+)
 
 λsigil(args:[String])=>§process.Command=§process.command([repoPath("language/compiler/target/debug/sigil")]⧺args)
 
-λsigilIn(args:[String],cwd:String)=>§process.Command=§process.withCwd(sigil(args),cwd)
+λsigilIn(args:[String],cwd:String)=>§process.Command=§process.withCwd(
+  sigil(args),
+  cwd
+)
 
 λstartReadyServer(command:§process.Command,prefix:String,requestedPort:String)=>!Clock!Fs!Process µReadyServer={
   l tempDir=(uniqueRepoTempDir(prefix):String);
-  l readyFile=(§path.join(tempDir,"ready.txt"):String);
-  l process=(§process.start(commandWithArgs([requestedPort,readyFile],command)):§process.RunningProcess);
-  {process:process,readyFile:readyFile,tempDir:tempDir}
+  l readyFile=(§path.join(
+    tempDir,
+    "ready.txt"
+  ):String);
+  l process=(§process.start(commandWithArgs(
+    [
+      requestedPort,
+      readyFile
+    ],
+    command
+  )):§process.RunningProcess);
+  {
+    process:process,
+    readyFile:readyFile,
+    tempDir:tempDir
+  }
 }
 
 λstopReadyServer(server:µReadyServer)=>!Fs!Process Unit={
@@ -49,29 +89,53 @@ e process
 
 λuniqueRepoTempDir(prefix:String)=>!Clock!Fs String={
   l millis=(§time.toEpochMillis(§time.now()):Int);
-  l path=(repoPath("language/integrationTests/.tmp"++prefix++§string.intToString(millis)):String);
+  l path=(repoPath("language/integrationTests/.tmp"
+    ++prefix
+    ++§string.intToString(millis)):String);
   l _=(§file.makeDirs(path):Unit);
   path
 }
 
-λwaitForReadyPort(attempts:Int,delayMs:Int,readyFile:String)=>!Fs!Timer Result[Int,String] match §file.exists(readyFile){
+λwaitForReadyPort(attempts:Int,delayMs:Int,readyFile:String)=>!Fs!Timer Result[
+  Int,
+  String
+] match §file.exists(readyFile){
   true=>{
     l text=(§string.trim(§file.readText(readyFile)):String);
     match #text=0{
-      true=>waitForReadyPortRetry(attempts,delayMs,readyFile)|
+      true=>waitForReadyPortRetry(
+        attempts,
+        delayMs,
+        readyFile
+      )|
       false=>match §decode.intFromText(text){
         Ok(port)=>Ok(port)|
-        Err(_)=>waitForReadyPortRetry(attempts,delayMs,readyFile)
+        Err(_)=>waitForReadyPortRetry(
+          attempts,
+          delayMs,
+          readyFile
+        )
       }
     }
   }|
-  false=>waitForReadyPortRetry(attempts,delayMs,readyFile)
+  false=>waitForReadyPortRetry(
+    attempts,
+    delayMs,
+    readyFile
+  )
 }
 
-λwaitForReadyPortRetry(attempts:Int,delayMs:Int,readyFile:String)=>!Fs!Timer Result[Int,String] match attempts≤1{
+λwaitForReadyPortRetry(attempts:Int,delayMs:Int,readyFile:String)=>!Fs!Timer Result[
+  Int,
+  String
+] match attempts≤1{
   true=>Err(failedReadyPortMessage(readyFile))|
   false=>{
     l _=(§time.sleepMs(delayMs):Unit);
-    waitForReadyPort(attempts-1,delayMs,readyFile)
+    waitForReadyPort(
+      attempts-1,
+      delayMs,
+      readyFile
+    )
   }
 }

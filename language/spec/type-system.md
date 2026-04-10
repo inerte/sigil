@@ -90,7 +90,10 @@ Example:
 ```sigil module projects/todo-app/src/types.lib.sigil
 t BirthYear=Int where value>1800 and value<10000
 
-t User={birthYear:BirthYear,name:String}
+t User={
+  birthYear:BirthYear,
+  name:String
+}
 ```
 
 ```sigil module projects/todo-app/src/todoDomain.lib.sigil
@@ -183,7 +186,10 @@ Named user-defined types may carry a pure `where` clause:
 ```sigil module
 t BirthYear=Int where value>1800 and value<10000
 
-t DateRange={end:Int,start:Int} where value.end≥value.start
+t DateRange={
+  end:Int,
+  start:Int
+} where value.end≥value.start
 ```
 
 Constraint rules:

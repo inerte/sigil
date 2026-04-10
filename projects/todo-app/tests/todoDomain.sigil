@@ -1,13 +1,22 @@
 λlenTodos(todos:[µTodo])=>Int match todos{
   []=>0|
-  [_,.rest]=>1+lenTodos(rest)
+  [
+  _,
+  .rest
+]=>1+lenTodos(rest)
 }
 
 λmain()=>Unit=()
 
 test "todo add prepends item" {
-  match •todoDomain.addTodo(1,"Task",[]){
-    [todo]=>todo.id=1 and todo.text="Task" and todo.done=false|
+  match •todoDomain.addTodo(
+    1,
+    "Task",
+    []
+  ){
+    [todo]=>todo.id=1
+      and todo.text="Task"
+      and todo.done=false|
     _=>false
   }
 }
@@ -17,44 +26,148 @@ test "todo canAdd rejects empty text" {
 }
 
 test "todo clearCompleted keeps active only" {
-  match •todoDomain.clearCompleted([{done:true,id:1,text:"A"},{done:false,id:2,text:"B"}]){
+  match •todoDomain.clearCompleted([
+    {
+      done:true,
+      id:1,
+      text:"A"
+    },
+    {
+      done:false,
+      id:2,
+      text:"B"
+    }
+  ]){
     [todo]=>todo.id=2 and todo.done=false|
     _=>false
   }
 }
 
 test "todo completedCount counts completed" {
-  •todoDomain.completedCount([{done:true,id:1,text:"A"},{done:false,id:2,text:"B"},{done:true,id:3,text:"C"}])=2
+  •todoDomain.completedCount([
+    {
+      done:true,
+      id:1,
+      text:"A"
+    },
+    {
+      done:false,
+      id:2,
+      text:"B"
+    },
+    {
+      done:true,
+      id:3,
+      text:"C"
+    }
+  ])=2
 }
 
 test "todo completedCount result can use numeric predicates" {
-  l count=(•todoDomain.completedCount([{done:true,id:1,text:"A"},{done:false,id:2,text:"B"},{done:true,id:3,text:"C"}]):Int);
-  §numeric.isEven(count)=true and §numeric.inRange(3,0,count)=true
+  l count=(•todoDomain.completedCount([
+    {
+      done:true,
+      id:1,
+      text:"A"
+    },
+    {
+      done:false,
+      id:2,
+      text:"B"
+    },
+    {
+      done:true,
+      id:3,
+      text:"C"
+    }
+  ]):Int);
+  §numeric.isEven(count)=true and §numeric.inRange(
+    3,
+    0,
+    count
+  )=true
 }
 
 test "todo delete reduces length" {
-  lenTodos(•todoDomain.deleteTodo(1,[{done:false,id:1,text:"A"},{done:false,id:2,text:"B"}]))=1
+  lenTodos(•todoDomain.deleteTodo(
+    1,
+    [
+      {
+        done:false,
+        id:1,
+        text:"A"
+      },
+      {
+        done:false,
+        id:2,
+        text:"B"
+      }
+    ]
+  ))=1
 }
 
 test "todo delete removes target" {
-  match •todoDomain.deleteTodo(1,[{done:false,id:1,text:"A"},{done:false,id:2,text:"B"}]){
+  match •todoDomain.deleteTodo(
+    1,
+    [
+      {
+        done:false,
+        id:1,
+        text:"A"
+      },
+      {
+        done:false,
+        id:2,
+        text:"B"
+      }
+    ]
+  ){
     [todo]=>todo.id=2 and todo.text="B"|
     _=>false
   }
 }
 
 test "todo edit updates text" {
-  •todoDomain.editTodo("New",1,[{done:false,id:1,text:"Old"}])[0].text="New"
+  •todoDomain.editTodo(
+    "New",
+    1,
+    [{
+      done:false,
+      id:1,
+      text:"Old"
+    }]
+  )[0].text="New"
 }
 
 test "todo remainingCount subtracts completed items" {
-  •todoDomain.remainingCount(2,5)=3
+  •todoDomain.remainingCount(
+    2,
+    5
+  )=3
 }
 
 test "todo visibility filter covers canonical states" {
-  •todoDomain.isVisible(false,"active") and •todoDomain.isVisible(true,"completed") and •todoDomain.isVisible(false,"all")
+  •todoDomain.isVisible(
+    false,
+    "active"
+  )
+    and •todoDomain.isVisible(
+      true,
+      "completed"
+    )
+    and •todoDomain.isVisible(
+      false,
+      "all"
+    )
 }
 
 test "todo toggle flips done flag" {
-  •todoDomain.toggleTodo(1,[{done:false,id:1,text:"Task"}])[0].done=true
+  •todoDomain.toggleTodo(
+    1,
+    [{
+      done:false,
+      id:1,
+      text:"Task"
+    }]
+  )[0].done=true
 }

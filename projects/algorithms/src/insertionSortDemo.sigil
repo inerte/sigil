@@ -1,1 +1,8 @@
-λmain()=>[Int]=•insertionSort.insertionSort([5,3,1,4,2,3])
+λmain()=>[Int]=•insertionSort.insertionSort([
+  5,
+  3,
+  1,
+  4,
+  2,
+  3
+])

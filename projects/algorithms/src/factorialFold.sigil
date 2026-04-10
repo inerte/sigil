@@ -1,4 +1,11 @@
-λfactorial(n:Int)=>Int=§list.fold(1,multiply,§numeric.range(1,n))
+λfactorial(n:Int)=>Int=§list.fold(
+  1,
+  multiply,
+  §numeric.range(
+    1,
+    n
+  )
+)
 
 λmain()=>Int=factorial(5)
 

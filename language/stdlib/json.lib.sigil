@@ -18,6 +18,9 @@ t JsonValue=JsonArray([JsonValue])|JsonBool(Bool)|JsonNull()|JsonNumber(Float)|J
 
 λisNull(value:JsonValue)=>Bool=false
 
-λparse(input:String)=>Result[JsonValue,JsonError]=Err({message:"JSON parse intrinsic unavailable"})
+λparse(input:String)=>Result[
+  JsonValue,
+  JsonError
+]=Err({message:"JSON parse intrinsic unavailable"})
 
 λstringify(value:JsonValue)=>String=""

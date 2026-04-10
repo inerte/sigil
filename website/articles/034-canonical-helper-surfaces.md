@@ -98,10 +98,19 @@ Still allowed:
 ```sigil module
 λgo(acc:Int,xs:[Int])=>Int match xs{
   []=>acc|
-  [x,.rest]=>go(acc+x,rest)
+  [
+  x,
+  .rest
+]=>go(
+    acc+x,
+    rest
+  )
 }
 
-λsumWithHelper(xs:[Int])=>Int=go(0,xs)
+λsumWithHelper(xs:[Int])=>Int=go(
+  0,
+  xs
+)
 ```
 
 Those may still be undesirable for other reasons, but they are no longer exact

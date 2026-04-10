@@ -1,21 +1,47 @@
 λcandidateIndex(frame:µFibFrame,xs:[Int])=>Int
 ensures result<#xs
-=minIndex(#xs-1,frame.offset+frame.fibMm2)
+=minIndex(
+  #xs-1,
+  frame.offset+frame.fibMm2
+)
 
 λfibonacciSearch(target:Int,xs:[Int])=>Int match #xs=0{
   true=>-1|
-  false=>searchFrame(initialFrame(#xs),target,xs)
+  false=>searchFrame(
+    initialFrame(#xs),
+    target,
+    xs
+  )
 }
 
-λindexValue(idx:Int,xs:[Int])=>Int match §list.nth(idx,xs){
+λindexValue(idx:Int,xs:[Int])=>Int match §list.nth(
+  idx,
+  xs
+){
   Some(value)=>value|
   None()=>0
 }
 
-λinitialFrame(size:Int)=>µFibFrame=initialFrameFrom({fibM:1,fibMm1:1,fibMm2:0,offset:-1},size)
+λinitialFrame(size:Int)=>µFibFrame=initialFrameFrom(
+  {
+    fibM:1,
+    fibMm1:1,
+    fibMm2:0,
+    offset:-1
+  },
+  size
+)
 
 λinitialFrameFrom(frame:µFibFrame,size:Int)=>µFibFrame match frame.fibM<size{
-  true=>initialFrameFrom({fibM:frame.fibM+frame.fibMm1,fibMm1:frame.fibM,fibMm2:frame.fibMm1,offset:-1},size)|
+  true=>initialFrameFrom(
+    {
+      fibM:frame.fibM+frame.fibMm1,
+      fibMm1:frame.fibM,
+      fibMm2:frame.fibMm1,
+      offset:-1
+    },
+    size
+  )|
   false=>frame
 }
 
@@ -26,22 +52,57 @@ match left<right{
   false=>right
 }
 
-λmoveLeft(frame:µFibFrame)=>µFibFrame={fibM:frame.fibMm2,fibMm1:frame.fibMm1-frame.fibMm2,fibMm2:frame.fibMm2-(frame.fibMm1-frame.fibMm2),offset:frame.offset}
+λmoveLeft(frame:µFibFrame)=>µFibFrame={
+  fibM:frame.fibMm2,
+  fibMm1:frame.fibMm1-frame.fibMm2,
+  fibMm2:frame.fibMm2-(frame.fibMm1-frame.fibMm2),
+  offset:frame.offset
+}
 
-λmoveRight(frame:µFibFrame,idx:Int)=>µFibFrame={fibM:frame.fibMm1,fibMm1:frame.fibMm2,fibMm2:frame.fibMm1-frame.fibMm2,offset:idx}
+λmoveRight(frame:µFibFrame,idx:Int)=>µFibFrame={
+  fibM:frame.fibMm1,
+  fibMm1:frame.fibMm2,
+  fibMm2:frame.fibMm1-frame.fibMm2,
+  offset:idx
+}
 
 λsearchFrame(frame:µFibFrame,target:Int,xs:[Int])=>Int match frame.fibM>1{
   true=>{
-    l idx=(candidateIndex(frame,xs):Int);
-    match indexValue(idx,xs)<target{
-      true=>searchFrame(moveRight(frame,idx),target,xs)|
-      false=>match indexValue(idx,xs)>target{
-        true=>searchFrame(moveLeft(frame),target,xs)|
+    l idx=(candidateIndex(
+      frame,
+      xs
+    ):Int);
+    match indexValue(
+      idx,
+      xs
+    )<target{
+      true=>searchFrame(
+        moveRight(
+          frame,
+          idx
+        ),
+        target,
+        xs
+      )|
+      false=>match indexValue(
+        idx,
+        xs
+      )>target{
+        true=>searchFrame(
+          moveLeft(frame),
+          target,
+          xs
+        )|
         false=>idx
       }
     }
   }|
-  false=>match frame.fibMm1=1 and frame.offset+1<#xs and indexValue(frame.offset+1,xs)=target{
+  false=>match frame.fibMm1=1
+    and frame.offset+1<#xs
+    and indexValue(
+      frame.offset+1,
+      xs
+    )=target{
     true=>frame.offset+1|
     false=>-1
   }

@@ -1,11 +1,17 @@
 λmain()=>Unit=()
 
 test "extended gcd returns gcd 2 for 240 and 46" {
-  •extendedGcd.extendedGcd(240,46).gcd=2
+  •extendedGcd.extendedGcd(
+    240,
+    46
+  ).gcd=2
 }
 
 test "extended gcd satisfies bezout identity" {
-  l result=(•extendedGcd.extendedGcd(240,46):µExtendedGcd);
+  l result=(•extendedGcd.extendedGcd(
+    240,
+    46
+  ):µExtendedGcd);
   240*result.x+46*result.y=result.gcd
 }
 
@@ -14,17 +20,34 @@ test "sieve of 1 is empty" {
 }
 
 test "sieve of 10 finds first primes" {
-  •sieveOfEratosthenes.sieve(10)=[2,3,5,7]
+  •sieveOfEratosthenes.sieve(10)=[
+    2,
+    3,
+    5,
+    7
+  ]
 }
 
 test "mod pow computes repeated squaring result" {
-  •modularExponentiation.modPow(2,10,1000)=24
+  •modularExponentiation.modPow(
+    2,
+    10,
+    1000
+  )=24
 }
 
 test "mod pow zero exponent returns one modulo modulus" {
-  •modularExponentiation.modPow(9,0,7)=1
+  •modularExponentiation.modPow(
+    9,
+    0,
+    7
+  )=1
 }
 
 test "mod pow modulus one returns zero" {
-  •modularExponentiation.modPow(8,5,1)=0
+  •modularExponentiation.modPow(
+    8,
+    5,
+    1
+  )=0
 }

@@ -1,23 +1,41 @@
 λmain()=>Unit=()
 
 test "regex compile accepts valid patterns" {
-  match §regex.compile("","^a+$"){
+  match §regex.compile(
+    "",
+    "^a+$"
+  ){
     Ok(regex)=>regex.flags="" and regex.pattern="^a+$"|
     Err(_)=>false
   }
 }
 
 test "regex compile rejects invalid patterns" {
-  match §regex.compile("",")"){
+  match §regex.compile(
+    "",
+    ")"
+  ){
     Ok(_)=>false|
     Err(_)=>true
   }
 }
 
 test "regex find returns first capture set" {
-  match §regex.compile("","([a-z]+)([0-9]+)"){
-    Ok(regex)=>match §regex.find("abc123xyz",regex){
-      Some(found)=>found.captures=["abc","123"] and found.end=6 and found.full="abc123" and found.start=0|
+  match §regex.compile(
+    "",
+    "([a-z]+)([0-9]+)"
+  ){
+    Ok(regex)=>match §regex.find(
+      "abc123xyz",
+      regex
+    ){
+      Some(found)=>found.captures=[
+        "abc",
+        "123"
+      ]
+        and found.end=6
+        and found.full="abc123"
+        and found.start=0|
       None()=>false
     }|
     Err(_)=>false
@@ -25,8 +43,14 @@ test "regex find returns first capture set" {
 }
 
 test "regex find returns none when absent" {
-  match §regex.compile("","z+"){
-    Ok(regex)=>match §regex.find("abc",regex){
+  match §regex.compile(
+    "",
+    "z+"
+  ){
+    Ok(regex)=>match §regex.find(
+      "abc",
+      regex
+    ){
       Some(_)=>false|
       None()=>true
     }|
@@ -35,15 +59,27 @@ test "regex find returns none when absent" {
 }
 
 test "regex flags affect matching" {
-  match §regex.compile("i","^abc$"){
-    Ok(regex)=>§regex.isMatch("ABC",regex)|
+  match §regex.compile(
+    "i",
+    "^abc$"
+  ){
+    Ok(regex)=>§regex.isMatch(
+      "ABC",
+      regex
+    )|
     Err(_)=>false
   }
 }
 
 test "regex isMatch reports non-matches" {
-  match §regex.compile("","^abc$"){
-    Ok(regex)=>¬§regex.isMatch("ab",regex)|
+  match §regex.compile(
+    "",
+    "^abc$"
+  ){
+    Ok(regex)=>¬§regex.isMatch(
+      "ab",
+      regex
+    )|
     Err(_)=>false
   }
 }

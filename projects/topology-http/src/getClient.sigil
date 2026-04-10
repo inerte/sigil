@@ -1,4 +1,10 @@
-λmain()=>!Http String match §httpClient.get(•topology.mailerApi,§httpClient.emptyHeaders(),"/health"){
-  Ok(response)=>§string.intToString(response.status)++":"++response.body|
+λmain()=>!Http String match §httpClient.get(
+  •topology.mailerApi,
+  §httpClient.emptyHeaders(),
+  "/health"
+){
+  Ok(response)=>§string.intToString(response.status)
+    ++":"
+    ++response.body|
   Err(error)=>"ERR:"++error.message
 }

@@ -1,21 +1,107 @@
 λmain()=>Unit=()
 
 test "bestStepToward returns none from a blocked wall position" {
-  match •roguelike.bestStepToward(1,false,•roguelike.point(0,0),•roguelike.demoState([•roguelike.playerActor(5,1,•roguelike.point(0,0))],•roguelike.point(35,12),([]:[µPickup]),0),•roguelike.point(1,1)){
+  match •roguelike.bestStepToward(
+    1,
+    false,
+    •roguelike.point(
+      0,
+      0
+    ),
+    •roguelike.demoState(
+      [•roguelike.playerActor(
+        5,
+        1,
+        •roguelike.point(
+          0,
+          0
+        )
+      )],
+      •roguelike.point(
+        35,
+        12
+      ),
+      ([]:[µPickup]),
+      0
+    ),
+    •roguelike.point(
+      1,
+      1
+    )
+  ){
     None()=>true|
     Some(_)=>false
   }
 }
 
 test "collectPickup updates inventory and score" {
-  l potionState=(•roguelike.collectPickup(•roguelike.point(4,4),•roguelike.demoStateWithInventory([•roguelike.playerActor(5,1,•roguelike.point(6,4))],0,0,•roguelike.point(35,12),[•roguelike.potionPickup(•roguelike.point(4,4))],0)):µGameState);
-  l treasureState=(•roguelike.collectPickup(•roguelike.point(5,4),•roguelike.demoStateWithInventory([•roguelike.playerActor(5,1,•roguelike.point(6,4))],0,0,•roguelike.point(35,12),[•roguelike.treasurePickup(•roguelike.point(5,4))],0)):µGameState);
-  (potionState.loadout.potions:Int)=1 and (treasureState.collectedTreasure:Int)=1 and (#potionState.pickups=0 and #treasureState.pickups=0)
+  l potionState=(•roguelike.collectPickup(
+    •roguelike.point(
+      4,
+      4
+    ),
+    •roguelike.demoStateWithInventory(
+      [•roguelike.playerActor(
+        5,
+        1,
+        •roguelike.point(
+          6,
+          4
+        )
+      )],
+      0,
+      0,
+      •roguelike.point(
+        35,
+        12
+      ),
+      [•roguelike.potionPickup(•roguelike.point(
+        4,
+        4
+      ))],
+      0
+    )
+  ):µGameState);
+  l treasureState=(•roguelike.collectPickup(
+    •roguelike.point(
+      5,
+      4
+    ),
+    •roguelike.demoStateWithInventory(
+      [•roguelike.playerActor(
+        5,
+        1,
+        •roguelike.point(
+          6,
+          4
+        )
+      )],
+      0,
+      0,
+      •roguelike.point(
+        35,
+        12
+      ),
+      [•roguelike.treasurePickup(•roguelike.point(
+        5,
+        4
+      ))],
+      0
+    )
+  ):µGameState);
+  (potionState.loadout.potions:Int)=1
+    and (treasureState.collectedTreasure:Int)=1
+    and #potionState.pickups=0
+    and #treasureState.pickups=0
 }
 
 test "frameText includes map and status line" {
-  •roguelike.frameText({map:"##
-..",status:"Turn 0",turn:0})="##
+  •roguelike.frameText({
+    map:"##
+..",
+    status:"Turn 0",
+    turn:0
+  })="##
 ..
 Turn 0"
 }
@@ -28,23 +114,200 @@ test "generated game has five rooms and five pickups" =>!Random world {
 }
 
 test "rendered frame contains player enemies exit and pickup glyphs" {
-  l map=(•roguelike.renderFrame(•roguelike.demoStateWithInventory([•roguelike.playerActor(5,1,•roguelike.point(4,4)),•roguelike.goblinActor(2,2,•roguelike.point(20,4)),•roguelike.archerActor(2,3,•roguelike.point(21,4)),•roguelike.bruteActor(4,4,•roguelike.point(22,4)),•roguelike.shamanActor(2,5,•roguelike.point(23,4))],0,0,•roguelike.point(35,12),[•roguelike.potionPickup(•roguelike.point(24,4)),•roguelike.bombPickup(•roguelike.point(25,4)),•roguelike.blinkPickup(•roguelike.point(26,4)),•roguelike.spearPickup(•roguelike.point(27,4)),•roguelike.treasurePickup(•roguelike.point(28,4))],0)).map:String);
-  §string.indexOf(map,"@")≥0 and §string.indexOf(map,"g")≥0 and (§string.indexOf(map,"a")≥0 and §string.indexOf(map,"B")≥0) and (§string.indexOf(map,"s")≥0 and §string.indexOf(map,">")≥0 and (§string.indexOf(map,"!")≥0 and §string.indexOf(map,"*")≥0 and (§string.indexOf(map,"?")≥0 and §string.indexOf(map,"/")≥0 and §string.indexOf(map,"$")≥0)))
+  l map=(•roguelike.renderFrame(•roguelike.demoStateWithInventory(
+    [
+      •roguelike.playerActor(
+        5,
+        1,
+        •roguelike.point(
+          4,
+          4
+        )
+      ),
+      •roguelike.goblinActor(
+        2,
+        2,
+        •roguelike.point(
+          20,
+          4
+        )
+      ),
+      •roguelike.archerActor(
+        2,
+        3,
+        •roguelike.point(
+          21,
+          4
+        )
+      ),
+      •roguelike.bruteActor(
+        4,
+        4,
+        •roguelike.point(
+          22,
+          4
+        )
+      ),
+      •roguelike.shamanActor(
+        2,
+        5,
+        •roguelike.point(
+          23,
+          4
+        )
+      )
+    ],
+    0,
+    0,
+    •roguelike.point(
+      35,
+      12
+    ),
+    [
+      •roguelike.potionPickup(•roguelike.point(
+        24,
+        4
+      )),
+      •roguelike.bombPickup(•roguelike.point(
+        25,
+        4
+      )),
+      •roguelike.blinkPickup(•roguelike.point(
+        26,
+        4
+      )),
+      •roguelike.spearPickup(•roguelike.point(
+        27,
+        4
+      )),
+      •roguelike.treasurePickup(•roguelike.point(
+        28,
+        4
+      ))
+    ],
+    0
+  )).map:String);
+  §string.indexOf(
+    map,
+    "@"
+  )≥0
+    and §string.indexOf(
+      map,
+      "g"
+    )≥0
+    and §string.indexOf(
+      map,
+      "a"
+    )≥0
+    and §string.indexOf(
+      map,
+      "B"
+    )≥0
+    and §string.indexOf(
+      map,
+      "s"
+    )≥0
+    and §string.indexOf(
+      map,
+      ">"
+    )≥0
+    and §string.indexOf(
+      map,
+      "!"
+    )≥0
+    and §string.indexOf(
+      map,
+      "*"
+    )≥0
+    and §string.indexOf(
+      map,
+      "?"
+    )≥0
+    and §string.indexOf(
+      map,
+      "/"
+    )≥0
+    and §string.indexOf(
+      map,
+      "$"
+    )≥0
 }
 
 test "move command walks onto pickups" {
-  match •roguelike.advance(µMove(µEast()),•roguelike.demoStateWithInventory([•roguelike.playerActor(5,1,•roguelike.point(4,4))],0,0,•roguelike.point(35,12),[•roguelike.potionPickup(•roguelike.point(5,4))],0)){
-    Some(step)=>(step.state.loadout.potions:Int)=1 and step.state.lastAction="move" and (match •roguelike.player(step.state){
-      Some(actor)=>•roguelike.samePoint(actor.pos,•roguelike.point(5,4))|
-      None()=>false
-    })|
+  match •roguelike.advance(
+    µMove(µEast()),
+    •roguelike.demoStateWithInventory(
+      [•roguelike.playerActor(
+        5,
+        1,
+        •roguelike.point(
+          4,
+          4
+        )
+      )],
+      0,
+      0,
+      •roguelike.point(
+        35,
+        12
+      ),
+      [•roguelike.potionPickup(•roguelike.point(
+        5,
+        4
+      ))],
+      0
+    )
+  ){
+    Some(step)=>(step.state.loadout.potions:Int)=1
+      and step.state.lastAction="move"
+      and (match •roguelike.player(step.state){
+        Some(actor)=>•roguelike.samePoint(
+          actor.pos,
+          •roguelike.point(
+            5,
+            4
+          )
+        )|
+        None()=>false
+      })|
     None()=>false
   }
 }
 
 test "move command becomes melee when an enemy is in that direction" {
-  match •roguelike.advance(µMove(µEast()),•roguelike.demoState([•roguelike.playerActor(5,1,•roguelike.point(4,4)),•roguelike.goblinActor(2,2,•roguelike.point(5,4))],•roguelike.point(35,12),([]:[µPickup]),0)){
-    Some(step)=>step.state.lastAction="swing sword" and (match •roguelike.findActorById(2,step.state.actors){
+  match •roguelike.advance(
+    µMove(µEast()),
+    •roguelike.demoState(
+      [
+        •roguelike.playerActor(
+          5,
+          1,
+          •roguelike.point(
+            4,
+            4
+          )
+        ),
+        •roguelike.goblinActor(
+          2,
+          2,
+          •roguelike.point(
+            5,
+            4
+          )
+        )
+      ],
+      •roguelike.point(
+        35,
+        12
+      ),
+      ([]:[µPickup]),
+      0
+    )
+  ){
+    Some(step)=>step.state.lastAction="swing sword" and (match •roguelike.findActorById(
+      2,
+      step.state.actors
+    ){
       Some(actor)=>actor.hp=1|
       None()=>false
     })|
@@ -53,8 +316,45 @@ test "move command becomes melee when an enemy is in that direction" {
 }
 
 test "spear move command lunges two tiles in a direction" {
-  match •roguelike.advance(µMove(µSouth()),•roguelike.withLoadout(•roguelike.loadoutWithMelee(•roguelike.defaultLoadout(),µSpear()),•roguelike.demoState([•roguelike.playerActor(5,1,•roguelike.point(4,4)),•roguelike.goblinActor(2,2,•roguelike.point(4,6))],•roguelike.point(35,12),([]:[µPickup]),0))){
-    Some(step)=>step.state.lastAction="lunge spear" and (match •roguelike.findActorById(2,step.state.actors){
+  match •roguelike.advance(
+    µMove(µSouth()),
+    •roguelike.withLoadout(
+      •roguelike.loadoutWithMelee(
+        •roguelike.defaultLoadout(),
+        µSpear()
+      ),
+      •roguelike.demoState(
+        [
+          •roguelike.playerActor(
+            5,
+            1,
+            •roguelike.point(
+              4,
+              4
+            )
+          ),
+          •roguelike.goblinActor(
+            2,
+            2,
+            •roguelike.point(
+              4,
+              6
+            )
+          )
+        ],
+        •roguelike.point(
+          35,
+          12
+        ),
+        ([]:[µPickup]),
+        0
+      )
+    )
+  ){
+    Some(step)=>step.state.lastAction="lunge spear" and (match •roguelike.findActorById(
+      2,
+      step.state.actors
+    ){
       Some(actor)=>actor.hp=1|
       None()=>false
     })|
@@ -63,85 +363,430 @@ test "spear move command lunges two tiles in a direction" {
 }
 
 test "shoot command hits the nearest visible enemy in a direction" {
-  match •roguelike.advance(µShoot(µEast()),•roguelike.demoStateWithInventory([•roguelike.playerActor(5,1,•roguelike.point(4,4)),•roguelike.archerActor(2,2,•roguelike.point(8,4))],0,0,•roguelike.point(35,12),([]:[µPickup]),0)){
-    Some(step)=>step.state.lastAction="shoot bow" and (step.state.loadout.arrows:Int)=5 and (match •roguelike.findActorById(2,step.state.actors){
-      Some(actor)=>actor.hp=1|
-      None()=>false
-    })|
+  match •roguelike.advance(
+    µShoot(µEast()),
+    •roguelike.demoStateWithInventory(
+      [
+        •roguelike.playerActor(
+          5,
+          1,
+          •roguelike.point(
+            4,
+            4
+          )
+        ),
+        •roguelike.archerActor(
+          2,
+          2,
+          •roguelike.point(
+            8,
+            4
+          )
+        )
+      ],
+      0,
+      0,
+      •roguelike.point(
+        35,
+        12
+      ),
+      ([]:[µPickup]),
+      0
+    )
+  ){
+    Some(step)=>step.state.lastAction="shoot bow"
+      and (step.state.loadout.arrows:Int)=5
+      and (match •roguelike.findActorById(
+        2,
+        step.state.actors
+      ){
+        Some(actor)=>actor.hp=1|
+        None()=>false
+      })|
     None()=>false
   }
 }
 
 test "bomb command throws in a chosen direction" {
-  match •roguelike.advance(µBomb(µEast()),•roguelike.withLoadout(•roguelike.loadoutWithBombs(1,•roguelike.defaultLoadout()),•roguelike.demoState([•roguelike.playerActor(5,1,•roguelike.point(4,4)),•roguelike.goblinActor(2,2,•roguelike.point(6,4)),•roguelike.archerActor(2,3,•roguelike.point(7,4))],•roguelike.point(35,12),([]:[µPickup]),0))){
-    Some(step)=>step.state.lastAction="throw bomb" and (step.state.loadout.bombs:Int)=0 and (match •roguelike.findActorById(2,step.state.actors){
-      Some(_)=>false|
-      None()=>match •roguelike.findActorById(3,step.state.actors){
+  match •roguelike.advance(
+    µBomb(µEast()),
+    •roguelike.withLoadout(
+      •roguelike.loadoutWithBombs(
+        1,
+        •roguelike.defaultLoadout()
+      ),
+      •roguelike.demoState(
+        [
+          •roguelike.playerActor(
+            5,
+            1,
+            •roguelike.point(
+              4,
+              4
+            )
+          ),
+          •roguelike.goblinActor(
+            2,
+            2,
+            •roguelike.point(
+              6,
+              4
+            )
+          ),
+          •roguelike.archerActor(
+            2,
+            3,
+            •roguelike.point(
+              7,
+              4
+            )
+          )
+        ],
+        •roguelike.point(
+          35,
+          12
+        ),
+        ([]:[µPickup]),
+        0
+      )
+    )
+  ){
+    Some(step)=>step.state.lastAction="throw bomb"
+      and (step.state.loadout.bombs:Int)=0
+      and (match •roguelike.findActorById(
+        2,
+        step.state.actors
+      ){
         Some(_)=>false|
-        None()=>true
-      }
-    })|
+        None()=>match •roguelike.findActorById(
+          3,
+          step.state.actors
+        ){
+          Some(_)=>false|
+          None()=>true
+        }
+      })|
     None()=>false
   }
 }
 
 test "bomb command requires inventory" {
-  match •roguelike.advance(µBomb(µEast()),•roguelike.demoState([•roguelike.playerActor(5,1,•roguelike.point(4,4)),•roguelike.goblinActor(2,2,•roguelike.point(6,4))],•roguelike.point(35,12),([]:[µPickup]),0)){
+  match •roguelike.advance(
+    µBomb(µEast()),
+    •roguelike.demoState(
+      [
+        •roguelike.playerActor(
+          5,
+          1,
+          •roguelike.point(
+            4,
+            4
+          )
+        ),
+        •roguelike.goblinActor(
+          2,
+          2,
+          •roguelike.point(
+            6,
+            4
+          )
+        )
+      ],
+      •roguelike.point(
+        35,
+        12
+      ),
+      ([]:[µPickup]),
+      0
+    )
+  ){
     Some(_)=>false|
     None()=>true
   }
 }
 
 test "blink command picks the farthest walkable tile in a direction" {
-  l actors=([•roguelike.playerActor(5,1,•roguelike.point(4,4))]:[µActor]);
-  l floors=([•roguelike.point(4,4),•roguelike.point(5,4),•roguelike.point(6,4),•roguelike.point(7,4),•roguelike.point(8,4)]:[µPoint]);
-  match •roguelike.advance(µBlink(µEast()),({actorIndex:•roguelike.actorIndexFor(actors),actors:actors,collectedTreasure:0,exit:•roguelike.point(35,12),floorIndex:•roguelike.floorIndexFor(floors),floors:floors,lastAction:"ready",loadout:•roguelike.loadoutWithBlinks(1,•roguelike.defaultLoadout()),pickupIndex:•roguelike.pickupIndexFor(([]:[µPickup])),pickups:([]:[µPickup]),rooms:[{h:1,w:5,x:4,y:4}],turn:0}:µGameState)){
-    Some(step)=>step.state.lastAction="blink" and (step.state.loadout.blinks:Int)=0 and (match •roguelike.player(step.state){
-      Some(actor)=>•roguelike.samePoint(actor.pos,•roguelike.point(8,4))|
-      None()=>false
-    })|
+  l actors=([•roguelike.playerActor(
+    5,
+    1,
+    •roguelike.point(
+      4,
+      4
+    )
+  )]:[µActor]);
+  l floors=([
+    •roguelike.point(
+      4,
+      4
+    ),
+    •roguelike.point(
+      5,
+      4
+    ),
+    •roguelike.point(
+      6,
+      4
+    ),
+    •roguelike.point(
+      7,
+      4
+    ),
+    •roguelike.point(
+      8,
+      4
+    )
+  ]:[µPoint]);
+  match •roguelike.advance(
+    µBlink(µEast()),
+    ({
+      actorIndex:•roguelike.actorIndexFor(actors),
+      actors:actors,
+      collectedTreasure:0,
+      exit:•roguelike.point(
+        35,
+        12
+      ),
+      floorIndex:•roguelike.floorIndexFor(floors),
+      floors:floors,
+      lastAction:"ready",
+      loadout:•roguelike.loadoutWithBlinks(
+        1,
+        •roguelike.defaultLoadout()
+      ),
+      pickupIndex:•roguelike.pickupIndexFor(([]:[µPickup])),
+      pickups:([]:[µPickup]),
+      rooms:[{
+        h:1,
+        w:5,
+        x:4,
+        y:4
+      }],
+      turn:0
+    }:µGameState)
+  ){
+    Some(step)=>step.state.lastAction="blink"
+      and (step.state.loadout.blinks:Int)=0
+      and (match •roguelike.player(step.state){
+        Some(actor)=>•roguelike.samePoint(
+          actor.pos,
+          •roguelike.point(
+            8,
+            4
+          )
+        )|
+        None()=>false
+      })|
     None()=>false
   }
 }
 
 test "blink command requires inventory" {
-  l actors=([•roguelike.playerActor(5,1,•roguelike.point(4,4))]:[µActor]);
-  l floors=([•roguelike.point(4,4),•roguelike.point(5,4),•roguelike.point(6,4),•roguelike.point(7,4),•roguelike.point(8,4)]:[µPoint]);
-  match •roguelike.advance(µBlink(µEast()),({actorIndex:•roguelike.actorIndexFor(actors),actors:actors,collectedTreasure:0,exit:•roguelike.point(35,12),floorIndex:•roguelike.floorIndexFor(floors),floors:floors,lastAction:"ready",loadout:•roguelike.defaultLoadout(),pickupIndex:•roguelike.pickupIndexFor(([]:[µPickup])),pickups:([]:[µPickup]),rooms:[{h:1,w:5,x:4,y:4}],turn:0}:µGameState)){
+  l actors=([•roguelike.playerActor(
+    5,
+    1,
+    •roguelike.point(
+      4,
+      4
+    )
+  )]:[µActor]);
+  l floors=([
+    •roguelike.point(
+      4,
+      4
+    ),
+    •roguelike.point(
+      5,
+      4
+    ),
+    •roguelike.point(
+      6,
+      4
+    ),
+    •roguelike.point(
+      7,
+      4
+    ),
+    •roguelike.point(
+      8,
+      4
+    )
+  ]:[µPoint]);
+  match •roguelike.advance(
+    µBlink(µEast()),
+    ({
+      actorIndex:•roguelike.actorIndexFor(actors),
+      actors:actors,
+      collectedTreasure:0,
+      exit:•roguelike.point(
+        35,
+        12
+      ),
+      floorIndex:•roguelike.floorIndexFor(floors),
+      floors:floors,
+      lastAction:"ready",
+      loadout:•roguelike.defaultLoadout(),
+      pickupIndex:•roguelike.pickupIndexFor(([]:[µPickup])),
+      pickups:([]:[µPickup]),
+      rooms:[{
+        h:1,
+        w:5,
+        x:4,
+        y:4
+      }],
+      turn:0
+    }:µGameState)
+  ){
     Some(_)=>false|
     None()=>true
   }
 }
 
 test "drink potion only commits when healing is possible" {
-  (match •roguelike.advance(µDrinkPotion(),•roguelike.demoStateWithInventory([•roguelike.playerActor(2,1,•roguelike.point(4,4))],1,0,•roguelike.point(35,12),([]:[µPickup]),0)){
-    Some(step)=>step.state.lastAction="drink potion" and (step.state.loadout.potions:Int)=0 and •roguelike.playerHp(step.state)=4|
+  (match •roguelike.advance(
+    µDrinkPotion(),
+    •roguelike.demoStateWithInventory(
+      [•roguelike.playerActor(
+        2,
+        1,
+        •roguelike.point(
+          4,
+          4
+        )
+      )],
+      1,
+      0,
+      •roguelike.point(
+        35,
+        12
+      ),
+      ([]:[µPickup]),
+      0
+    )
+  ){
+    Some(step)=>step.state.lastAction="drink potion"
+      and (step.state.loadout.potions:Int)=0
+      and •roguelike.playerHp(step.state)=4|
     None()=>false
-  }) and (match •roguelike.advance(µDrinkPotion(),•roguelike.demoStateWithInventory([•roguelike.playerActor(5,1,•roguelike.point(4,4))],1,0,•roguelike.point(35,12),([]:[µPickup]),0)){
+  }) and (match •roguelike.advance(
+    µDrinkPotion(),
+    •roguelike.demoStateWithInventory(
+      [•roguelike.playerActor(
+        5,
+        1,
+        •roguelike.point(
+          4,
+          4
+        )
+      )],
+      1,
+      0,
+      •roguelike.point(
+        35,
+        12
+      ),
+      ([]:[µPickup]),
+      0
+    )
+  ){
     Some(_)=>false|
     None()=>true
   })
 }
 
 test "wait consumes a turn and lets enemies act" {
-  match •roguelike.advance(µWait(),•roguelike.demoState([•roguelike.playerActor(5,1,•roguelike.point(4,4)),•roguelike.goblinActor(2,2,•roguelike.point(6,4))],•roguelike.point(35,12),([]:[µPickup]),0)){
-    Some(step)=>step.state.lastAction="wait" and (step.state.turn:Int)=1 and (match •roguelike.findActorById(2,step.state.actors){
-      Some(actor)=>•roguelike.samePoint(actor.pos,•roguelike.point(5,4))|
-      None()=>false
-    })|
+  match •roguelike.advance(
+    µWait(),
+    •roguelike.demoState(
+      [
+        •roguelike.playerActor(
+          5,
+          1,
+          •roguelike.point(
+            4,
+            4
+          )
+        ),
+        •roguelike.goblinActor(
+          2,
+          2,
+          •roguelike.point(
+            6,
+            4
+          )
+        )
+      ],
+      •roguelike.point(
+        35,
+        12
+      ),
+      ([]:[µPickup]),
+      0
+    )
+  ){
+    Some(step)=>step.state.lastAction="wait"
+      and (step.state.turn:Int)=1
+      and (match •roguelike.findActorById(
+        2,
+        step.state.actors
+      ){
+        Some(actor)=>•roguelike.samePoint(
+          actor.pos,
+          •roguelike.point(
+            5,
+            4
+          )
+        )|
+        None()=>false
+      })|
     None()=>false
   }
 }
 
 test "invalid move into a wall does not commit" {
-  match •roguelike.advance(µMove(µWest()),•roguelike.demoState([•roguelike.playerActor(5,1,•roguelike.point(0,0))],•roguelike.point(35,12),([]:[µPickup]),0)){
+  match •roguelike.advance(
+    µMove(µWest()),
+    •roguelike.demoState(
+      [•roguelike.playerActor(
+        5,
+        1,
+        •roguelike.point(
+          0,
+          0
+        )
+      )],
+      •roguelike.point(
+        35,
+        12
+      ),
+      ([]:[µPickup]),
+      0
+    )
+  ){
     Some(_)=>false|
     None()=>true
   }
 }
 
 test "moving onto the exit preserves escaped outcome" {
-  match •roguelike.advance(µMove(µEast()),•roguelike.demoState([•roguelike.playerActor(5,1,•roguelike.point(34,12))],•roguelike.point(35,12),([]:[µPickup]),0)){
+  match •roguelike.advance(
+    µMove(µEast()),
+    •roguelike.demoState(
+      [•roguelike.playerActor(
+        5,
+        1,
+        •roguelike.point(
+          34,
+          12
+        )
+      )],
+      •roguelike.point(
+        35,
+        12
+      ),
+      ([]:[µPickup]),
+      0
+    )
+  ){
     Some(step)=>match step.outcome{
       Some(µEscaped(turn))=>turn=1 and (step.state.turn:Int)=1|
       Some(_)=>false|
@@ -152,18 +797,178 @@ test "moving onto the exit preserves escaped outcome" {
 }
 
 test "path and movement helpers execute reachable routes" {
-  l state=(•roguelike.demoStateWithInventory([•roguelike.playerActor(5,1,•roguelike.point(4,4))],0,0,•roguelike.point(35,12),([]:[µPickup]),0):µGameState);
-  l step0=(•roguelike.point(5,4):µPoint);
-  l initial=(•roguelike.initialNodes(1,false,•roguelike.neighbors(•roguelike.point(4,4)),•roguelike.point(4,4),state,•roguelike.point(8,4)):[µPathNode]);
-  #•roguelike.appendNodes(([]:[µPathNode]),{distance:1,first:step0,pos:step0},([]:[µPathNode]))=1 and #initial>0 and #•roguelike.expandNodes(1,false,{distance:1,first:step0,pos:step0},([]:[µPathNode]),state,•roguelike.point(8,4),[•roguelike.point(4,4)])>0 and •roguelike.nodePosIn(initial,step0) and (match •roguelike.bestStepToward(1,false,•roguelike.point(4,4),state,•roguelike.point(8,4)){
-    Some(best)=>match •roguelike.nextStepToward(1,false,•roguelike.point(4,4),state,•roguelike.point(8,4)){
-      Some(next)=>match •roguelike.searchQueue(1,false,initial,state,•roguelike.point(8,4),[•roguelike.point(4,4)]){
-        Some(node)=>match •roguelike.pathDistance(1,false,•roguelike.point(4,4),state,•roguelike.point(8,4)){
-          Some(distance)=>match •roguelike.player(•roguelike.moveActor(1,step0,state)){
-            Some(actor)=>•roguelike.samePoint(best,next) and node.distance>0 and (distance>0 and •roguelike.samePoint(actor.pos,step0) and (match •roguelike.player(•roguelike.moveToward(1,false,•roguelike.point(4,4),state,•roguelike.point(8,4))){
-              Some(afterToward)=>•roguelike.samePoint(afterToward.pos,step0) and (•roguelike.movePlayerToward(1,•roguelike.point(4,4),•roguelike.withPickups([•roguelike.potionPickup(step0)],state),step0).loadout.potions:Int)=1|
+  l state=(•roguelike.demoStateWithInventory(
+    [•roguelike.playerActor(
+      5,
+      1,
+      •roguelike.point(
+        4,
+        4
+      )
+    )],
+    0,
+    0,
+    •roguelike.point(
+      35,
+      12
+    ),
+    ([]:[µPickup]),
+    0
+  ):µGameState);
+  l step0=(•roguelike.point(
+    5,
+    4
+  ):µPoint);
+  l initial=(•roguelike.initialNodes(
+    1,
+    false,
+    •roguelike.neighbors(•roguelike.point(
+      4,
+      4
+    )),
+    •roguelike.point(
+      4,
+      4
+    ),
+    state,
+    •roguelike.point(
+      8,
+      4
+    )
+  ):[µPathNode]);
+  #•roguelike.appendNodes(
+    ([]:[µPathNode]),
+    {
+      distance:1,
+      first:step0,
+      pos:step0
+    },
+    ([]:[µPathNode])
+  )=1
+    and #initial>0
+    and #•roguelike.expandNodes(
+      1,
+      false,
+      {
+        distance:1,
+        first:step0,
+        pos:step0
+      },
+      ([]:[µPathNode]),
+      state,
+      •roguelike.point(
+        8,
+        4
+      ),
+      [•roguelike.point(
+        4,
+        4
+      )]
+    )>0
+    and •roguelike.nodePosIn(
+      initial,
+      step0
+    )
+    and (match •roguelike.bestStepToward(
+      1,
+      false,
+      •roguelike.point(
+        4,
+        4
+      ),
+      state,
+      •roguelike.point(
+        8,
+        4
+      )
+    ){
+      Some(best)=>match •roguelike.nextStepToward(
+        1,
+        false,
+        •roguelike.point(
+          4,
+          4
+        ),
+        state,
+        •roguelike.point(
+          8,
+          4
+        )
+      ){
+        Some(next)=>match •roguelike.searchQueue(
+          1,
+          false,
+          initial,
+          state,
+          •roguelike.point(
+            8,
+            4
+          ),
+          [•roguelike.point(
+            4,
+            4
+          )]
+        ){
+          Some(node)=>match •roguelike.pathDistance(
+            1,
+            false,
+            •roguelike.point(
+              4,
+              4
+            ),
+            state,
+            •roguelike.point(
+              8,
+              4
+            )
+          ){
+            Some(distance)=>match •roguelike.player(•roguelike.moveActor(
+              1,
+              step0,
+              state
+            )){
+              Some(actor)=>•roguelike.samePoint(
+                best,
+                next
+              )
+                and node.distance>0
+                and distance>0
+                and •roguelike.samePoint(
+                  actor.pos,
+                  step0
+                )
+                and (match •roguelike.player(•roguelike.moveToward(
+                  1,
+                  false,
+                  •roguelike.point(
+                    4,
+                    4
+                  ),
+                  state,
+                  •roguelike.point(
+                    8,
+                    4
+                  )
+                )){
+                  Some(afterToward)=>•roguelike.samePoint(
+                    afterToward.pos,
+                    step0
+                  ) and (•roguelike.movePlayerToward(
+                    1,
+                    •roguelike.point(
+                      4,
+                      4
+                    ),
+                    •roguelike.withPickups(
+                      [•roguelike.potionPickup(step0)],
+                      state
+                    ),
+                    step0
+                  ).loadout.potions:Int)=1|
+                  None()=>false
+                })|
               None()=>false
-            }))|
+            }|
             None()=>false
           }|
           None()=>false
@@ -171,20 +976,150 @@ test "path and movement helpers execute reachable routes" {
         None()=>false
       }|
       None()=>false
-    }|
-    None()=>false
-  })
+    })
 }
 
 test "classification and pickup helpers execute" {
-  l goblin=(•roguelike.goblinActor(2,2,•roguelike.point(5,4)):µActor);
-  l archer=(•roguelike.archerActor(2,3,•roguelike.point(8,4)):µActor);
-  l brute=(•roguelike.bruteActor(4,4,•roguelike.point(10,4)):µActor);
-  l shaman=(•roguelike.shamanActor(2,5,•roguelike.point(12,4)):µActor);
-  l state=(•roguelike.demoStateWithInventory([•roguelike.playerActor(5,1,•roguelike.point(4,4)),goblin,archer,brute,shaman],0,0,•roguelike.point(35,12),[•roguelike.potionPickup(•roguelike.point(6,4)),•roguelike.bombPickup(•roguelike.point(7,4)),•roguelike.blinkPickup(•roguelike.point(8,5)),•roguelike.spearPickup(•roguelike.point(9,5)),•roguelike.treasurePickup(•roguelike.point(10,5))],0):µGameState);
-  match •roguelike.actorAtExcept(1,•roguelike.point(5,4),state){
-    Some(other)=>match •roguelike.adjacentGoblin(•roguelike.point(4,4),•roguelike.withActors([•roguelike.playerActor(5,1,•roguelike.point(4,4)),•roguelike.goblinActor(2,2,•roguelike.point(4,5))],state)){
-      Some(target)=>other.id=2 and target.id=2 and (#•roguelike.goblinIds(state.actors)=1 and •roguelike.livingGoblinCount(state.actors)=1) and (•roguelike.isArcher(archer) and •roguelike.isBrute(brute) and •roguelike.isGoblin(goblin) and •roguelike.isShaman(shaman)) and (•roguelike.isPickupPotion(•roguelike.potionPickup(•roguelike.point(0,0))) and •roguelike.isPickupBomb(•roguelike.bombPickup(•roguelike.point(0,0))) and •roguelike.isPickupBlink(•roguelike.blinkPickup(•roguelike.point(0,0))) and •roguelike.isPickupSpear(•roguelike.spearPickup(•roguelike.point(0,0))) and •roguelike.isPickupTreasure(•roguelike.treasurePickup(•roguelike.point(0,0))))|
+  l goblin=(•roguelike.goblinActor(
+    2,
+    2,
+    •roguelike.point(
+      5,
+      4
+    )
+  ):µActor);
+  l archer=(•roguelike.archerActor(
+    2,
+    3,
+    •roguelike.point(
+      8,
+      4
+    )
+  ):µActor);
+  l brute=(•roguelike.bruteActor(
+    4,
+    4,
+    •roguelike.point(
+      10,
+      4
+    )
+  ):µActor);
+  l shaman=(•roguelike.shamanActor(
+    2,
+    5,
+    •roguelike.point(
+      12,
+      4
+    )
+  ):µActor);
+  l state=(•roguelike.demoStateWithInventory(
+    [
+      •roguelike.playerActor(
+        5,
+        1,
+        •roguelike.point(
+          4,
+          4
+        )
+      ),
+      goblin,
+      archer,
+      brute,
+      shaman
+    ],
+    0,
+    0,
+    •roguelike.point(
+      35,
+      12
+    ),
+    [
+      •roguelike.potionPickup(•roguelike.point(
+        6,
+        4
+      )),
+      •roguelike.bombPickup(•roguelike.point(
+        7,
+        4
+      )),
+      •roguelike.blinkPickup(•roguelike.point(
+        8,
+        5
+      )),
+      •roguelike.spearPickup(•roguelike.point(
+        9,
+        5
+      )),
+      •roguelike.treasurePickup(•roguelike.point(
+        10,
+        5
+      ))
+    ],
+    0
+  ):µGameState);
+  match •roguelike.actorAtExcept(
+    1,
+    •roguelike.point(
+      5,
+      4
+    ),
+    state
+  ){
+    Some(other)=>match •roguelike.adjacentGoblin(
+      •roguelike.point(
+        4,
+        4
+      ),
+      •roguelike.withActors(
+        [
+          •roguelike.playerActor(
+            5,
+            1,
+            •roguelike.point(
+              4,
+              4
+            )
+          ),
+          •roguelike.goblinActor(
+            2,
+            2,
+            •roguelike.point(
+              4,
+              5
+            )
+          )
+        ],
+        state
+      )
+    ){
+      Some(target)=>other.id=2
+        and target.id=2
+        and #•roguelike.goblinIds(state.actors)=1
+        and •roguelike.livingGoblinCount(state.actors)=1
+        and •roguelike.isArcher(archer)
+        and •roguelike.isBrute(brute)
+        and •roguelike.isGoblin(goblin)
+        and •roguelike.isShaman(shaman)
+        and •roguelike.isPickupPotion(•roguelike.potionPickup(•roguelike.point(
+          0,
+          0
+        )))
+        and •roguelike.isPickupBomb(•roguelike.bombPickup(•roguelike.point(
+          0,
+          0
+        )))
+        and •roguelike.isPickupBlink(•roguelike.blinkPickup(•roguelike.point(
+          0,
+          0
+        )))
+        and •roguelike.isPickupSpear(•roguelike.spearPickup(•roguelike.point(
+          0,
+          0
+        )))
+        and •roguelike.isPickupTreasure(•roguelike.treasurePickup(•roguelike.point(
+          0,
+          0
+        )))|
       None()=>false
     }|
     None()=>false
@@ -192,18 +1127,133 @@ test "classification and pickup helpers execute" {
 }
 
 test "pickup target helpers observe some variants" {
-  l player=(•roguelike.playerActor(5,1,•roguelike.point(4,4)):µActor);
-  l state=(•roguelike.demoState([player],•roguelike.point(35,12),[•roguelike.potionPickup(•roguelike.point(6,4)),•roguelike.bombPickup(•roguelike.point(7,4)),•roguelike.blinkPickup(•roguelike.point(8,4)),•roguelike.spearPickup(•roguelike.point(9,4)),•roguelike.treasurePickup(•roguelike.point(6,6))],0):µGameState);
-  l noneState=(•roguelike.demoState([player],•roguelike.point(35,12),[•roguelike.bombPickup(•roguelike.point(7,4))],0):µGameState);
-  match •roguelike.nearestPotionPickup(player,state){
-    Some(potion)=>match •roguelike.nearestPotionTarget(1,player.pos,state){
-      Some(target)=>match •roguelike.nearestBlinkPickup(player,state){
-        Some(blink)=>match •roguelike.nearestBombPickup(player,state){
-          Some(bomb)=>match •roguelike.nearestSpearPickup(player,state){
-            Some(spear)=>match •roguelike.nearestTreasureTarget(1,player.pos,state){
-              Some(treasure)=>match •roguelike.nearestPotionPickup(player,noneState){
-                None()=>match •roguelike.nearestPotionTarget(1,player.pos,noneState){
-                  None()=>•roguelike.samePoint(potion,•roguelike.point(6,4)) and •roguelike.samePoint(target.pos,•roguelike.point(6,4)) and (•roguelike.samePoint(blink,•roguelike.point(8,4)) and •roguelike.samePoint(bomb,•roguelike.point(7,4))) and (•roguelike.samePoint(spear,•roguelike.point(9,4)) and •roguelike.samePoint(treasure.pos,•roguelike.point(6,6)))|
+  l player=(•roguelike.playerActor(
+    5,
+    1,
+    •roguelike.point(
+      4,
+      4
+    )
+  ):µActor);
+  l state=(•roguelike.demoState(
+    [player],
+    •roguelike.point(
+      35,
+      12
+    ),
+    [
+      •roguelike.potionPickup(•roguelike.point(
+        6,
+        4
+      )),
+      •roguelike.bombPickup(•roguelike.point(
+        7,
+        4
+      )),
+      •roguelike.blinkPickup(•roguelike.point(
+        8,
+        4
+      )),
+      •roguelike.spearPickup(•roguelike.point(
+        9,
+        4
+      )),
+      •roguelike.treasurePickup(•roguelike.point(
+        6,
+        6
+      ))
+    ],
+    0
+  ):µGameState);
+  l noneState=(•roguelike.demoState(
+    [player],
+    •roguelike.point(
+      35,
+      12
+    ),
+    [•roguelike.bombPickup(•roguelike.point(
+      7,
+      4
+    ))],
+    0
+  ):µGameState);
+  match •roguelike.nearestPotionPickup(
+    player,
+    state
+  ){
+    Some(potion)=>match •roguelike.nearestPotionTarget(
+      1,
+      player.pos,
+      state
+    ){
+      Some(target)=>match •roguelike.nearestBlinkPickup(
+        player,
+        state
+      ){
+        Some(blink)=>match •roguelike.nearestBombPickup(
+          player,
+          state
+        ){
+          Some(bomb)=>match •roguelike.nearestSpearPickup(
+            player,
+            state
+          ){
+            Some(spear)=>match •roguelike.nearestTreasureTarget(
+              1,
+              player.pos,
+              state
+            ){
+              Some(treasure)=>match •roguelike.nearestPotionPickup(
+                player,
+                noneState
+              ){
+                None()=>match •roguelike.nearestPotionTarget(
+                  1,
+                  player.pos,
+                  noneState
+                ){
+                  None()=>•roguelike.samePoint(
+                    potion,
+                    •roguelike.point(
+                      6,
+                      4
+                    )
+                  )
+                    and •roguelike.samePoint(
+                      target.pos,
+                      •roguelike.point(
+                        6,
+                        4
+                      )
+                    )
+                    and •roguelike.samePoint(
+                      blink,
+                      •roguelike.point(
+                        8,
+                        4
+                      )
+                    )
+                    and •roguelike.samePoint(
+                      bomb,
+                      •roguelike.point(
+                        7,
+                        4
+                      )
+                    )
+                    and •roguelike.samePoint(
+                      spear,
+                      •roguelike.point(
+                        9,
+                        4
+                      )
+                    )
+                    and •roguelike.samePoint(
+                      treasure.pos,
+                      •roguelike.point(
+                        6,
+                        6
+                      )
+                    )|
                   Some(_)=>false
                 }|
                 Some(_)=>false
@@ -223,15 +1273,180 @@ test "pickup target helpers observe some variants" {
 }
 
 test "none variants and retreat helpers execute" {
-  l emptyState=(•roguelike.demoState([•roguelike.playerActor(5,1,•roguelike.point(0,0))],•roguelike.point(35,12),([]:[µPickup]),0):µGameState);
+  l emptyState=(•roguelike.demoState(
+    [•roguelike.playerActor(
+      5,
+      1,
+      •roguelike.point(
+        0,
+        0
+      )
+    )],
+    •roguelike.point(
+      35,
+      12
+    ),
+    ([]:[µPickup]),
+    0
+  ):µGameState);
   match •roguelike.findPlayer(([]:[µActor])){
-    None()=>match •roguelike.player(•roguelike.withActors(([]:[µActor]),emptyState)){
-      None()=>match •roguelike.nextStepToward(1,false,•roguelike.point(0,0),emptyState,•roguelike.point(0,0)){
-        None()=>match •roguelike.pathDistance(1,false,•roguelike.point(0,0),emptyState,•roguelike.point(1,1)){
-          None()=>match •roguelike.searchQueue(1,false,([]:[µPathNode]),emptyState,•roguelike.point(1,1),[•roguelike.point(0,0)]){
-            None()=>match •roguelike.teleportSafe(•roguelike.playerActor(5,1,•roguelike.point(4,4)),[•roguelike.point(4,4),•roguelike.point(5,4)],•roguelike.demoState([•roguelike.playerActor(5,1,•roguelike.point(4,4)),•roguelike.goblinActor(2,2,•roguelike.point(5,4))],•roguelike.point(35,12),([]:[µPickup]),0)){
-              None()=>match •roguelike.stepEnemyRetreat(2,•roguelike.point(4,4),•roguelike.demoState([•roguelike.playerActor(5,1,•roguelike.point(5,4)),•roguelike.archerActor(2,2,•roguelike.point(4,4))],•roguelike.point(35,12),([]:[µPickup]),0),•roguelike.point(5,4)){
-                Some(next)=>•roguelike.outcomeText(µEscaped(3))="Escaped on turn 3" and •roguelike.shootClearColumn(1,•roguelike.demoState([•roguelike.playerActor(5,1,•roguelike.point(4,4))],•roguelike.point(35,12),([]:[µPickup]),0),4,5,7) and •roguelike.samePoint(next,•roguelike.point(4,3))|
+    None()=>match •roguelike.player(•roguelike.withActors(
+      ([]:[µActor]),
+      emptyState
+    )){
+      None()=>match •roguelike.nextStepToward(
+        1,
+        false,
+        •roguelike.point(
+          0,
+          0
+        ),
+        emptyState,
+        •roguelike.point(
+          0,
+          0
+        )
+      ){
+        None()=>match •roguelike.pathDistance(
+          1,
+          false,
+          •roguelike.point(
+            0,
+            0
+          ),
+          emptyState,
+          •roguelike.point(
+            1,
+            1
+          )
+        ){
+          None()=>match •roguelike.searchQueue(
+            1,
+            false,
+            ([]:[µPathNode]),
+            emptyState,
+            •roguelike.point(
+              1,
+              1
+            ),
+            [•roguelike.point(
+              0,
+              0
+            )]
+          ){
+            None()=>match •roguelike.teleportSafe(
+              •roguelike.playerActor(
+                5,
+                1,
+                •roguelike.point(
+                  4,
+                  4
+                )
+              ),
+              [
+                •roguelike.point(
+                  4,
+                  4
+                ),
+                •roguelike.point(
+                  5,
+                  4
+                )
+              ],
+              •roguelike.demoState(
+                [
+                  •roguelike.playerActor(
+                    5,
+                    1,
+                    •roguelike.point(
+                      4,
+                      4
+                    )
+                  ),
+                  •roguelike.goblinActor(
+                    2,
+                    2,
+                    •roguelike.point(
+                      5,
+                      4
+                    )
+                  )
+                ],
+                •roguelike.point(
+                  35,
+                  12
+                ),
+                ([]:[µPickup]),
+                0
+              )
+            ){
+              None()=>match •roguelike.stepEnemyRetreat(
+                2,
+                •roguelike.point(
+                  4,
+                  4
+                ),
+                •roguelike.demoState(
+                  [
+                    •roguelike.playerActor(
+                      5,
+                      1,
+                      •roguelike.point(
+                        5,
+                        4
+                      )
+                    ),
+                    •roguelike.archerActor(
+                      2,
+                      2,
+                      •roguelike.point(
+                        4,
+                        4
+                      )
+                    )
+                  ],
+                  •roguelike.point(
+                    35,
+                    12
+                  ),
+                  ([]:[µPickup]),
+                  0
+                ),
+                •roguelike.point(
+                  5,
+                  4
+                )
+              ){
+                Some(next)=>•roguelike.outcomeText(µEscaped(3))="Escaped on turn 3"
+                  and •roguelike.shootClearColumn(
+                    1,
+                    •roguelike.demoState(
+                      [•roguelike.playerActor(
+                        5,
+                        1,
+                        •roguelike.point(
+                          4,
+                          4
+                        )
+                      )],
+                      •roguelike.point(
+                        35,
+                        12
+                      ),
+                      ([]:[µPickup]),
+                      0
+                    ),
+                    4,
+                    5,
+                    7
+                  )
+                  and •roguelike.samePoint(
+                    next,
+                    •roguelike.point(
+                      4,
+                      3
+                    )
+                  )|
                 None()=>false
               }|
               Some(_)=>false
@@ -249,13 +1464,58 @@ test "none variants and retreat helpers execute" {
 }
 
 test "adjacency and pickup none variants execute" {
-  l player=(•roguelike.playerActor(5,1,•roguelike.point(4,4)):µActor);
-  l noneState=(•roguelike.demoState([player],•roguelike.point(35,12),([]:[µPickup]),0):µGameState);
-  match •roguelike.adjacentGoblin(•roguelike.point(4,4),noneState){
-    None()=>match •roguelike.nearestBlinkPickup(player,noneState){
-      None()=>match •roguelike.nearestBombPickup(player,noneState){
-        None()=>match •roguelike.nearestSpearPickup(player,noneState){
-          None()=>match •roguelike.nearestTreasureTarget(1,player.pos,•roguelike.demoState([player],•roguelike.point(35,12),[•roguelike.treasurePickup(•roguelike.point(20,20))],0)){
+  l player=(•roguelike.playerActor(
+    5,
+    1,
+    •roguelike.point(
+      4,
+      4
+    )
+  ):µActor);
+  l noneState=(•roguelike.demoState(
+    [player],
+    •roguelike.point(
+      35,
+      12
+    ),
+    ([]:[µPickup]),
+    0
+  ):µGameState);
+  match •roguelike.adjacentGoblin(
+    •roguelike.point(
+      4,
+      4
+    ),
+    noneState
+  ){
+    None()=>match •roguelike.nearestBlinkPickup(
+      player,
+      noneState
+    ){
+      None()=>match •roguelike.nearestBombPickup(
+        player,
+        noneState
+      ){
+        None()=>match •roguelike.nearestSpearPickup(
+          player,
+          noneState
+        ){
+          None()=>match •roguelike.nearestTreasureTarget(
+            1,
+            player.pos,
+            •roguelike.demoState(
+              [player],
+              •roguelike.point(
+                35,
+                12
+              ),
+              [•roguelike.treasurePickup(•roguelike.point(
+                20,
+                20
+              ))],
+              0
+            )
+          ){
             None()=>true|
             Some(_)=>false
           }|
@@ -270,16 +1530,152 @@ test "adjacency and pickup none variants execute" {
 }
 
 test "bomb and teleport helpers execute" {
-  l player=(•roguelike.playerActor(5,1,•roguelike.point(4,4)):µActor);
-  l bombState=(•roguelike.withLoadout(•roguelike.loadoutWithBombs(1,•roguelike.defaultLoadout()),•roguelike.demoState([player,•roguelike.goblinActor(2,2,•roguelike.point(6,4)),•roguelike.archerActor(2,3,•roguelike.point(7,4))],•roguelike.point(35,12),([]:[µPickup]),0)):µGameState);
-  l blinkFloors=([•roguelike.point(4,4)]:[µPoint]);
+  l player=(•roguelike.playerActor(
+    5,
+    1,
+    •roguelike.point(
+      4,
+      4
+    )
+  ):µActor);
+  l bombState=(•roguelike.withLoadout(
+    •roguelike.loadoutWithBombs(
+      1,
+      •roguelike.defaultLoadout()
+    ),
+    •roguelike.demoState(
+      [
+        player,
+        •roguelike.goblinActor(
+          2,
+          2,
+          •roguelike.point(
+            6,
+            4
+          )
+        ),
+        •roguelike.archerActor(
+          2,
+          3,
+          •roguelike.point(
+            7,
+            4
+          )
+        )
+      ],
+      •roguelike.point(
+        35,
+        12
+      ),
+      ([]:[µPickup]),
+      0
+    )
+  ):µGameState);
+  l blinkFloors=([•roguelike.point(
+    4,
+    4
+  )]:[µPoint]);
   l blinkActors=([player]:[µActor]);
-  match •roguelike.targetBombInDirection(player,µEast(),bombState){
-    Some(target)=>match •roguelike.targetBombInDirection(player,µWest(),bombState){
-      None()=>match •roguelike.targetRangedInDirection(player,µWest(),bombState){
-        None()=>match •roguelike.targetBlinkInDirection(player,µEast(),({actorIndex:•roguelike.actorIndexFor(blinkActors),actors:blinkActors,collectedTreasure:0,exit:•roguelike.point(35,12),floorIndex:•roguelike.floorIndexFor(blinkFloors),floors:blinkFloors,lastAction:"ready",loadout:•roguelike.loadoutWithBlinks(1,•roguelike.defaultLoadout()),pickupIndex:•roguelike.pickupIndexFor(([]:[µPickup])),pickups:([]:[µPickup]),rooms:[{h:1,w:1,x:4,y:4}],turn:0}:µGameState)){
-          None()=>match •roguelike.teleportSafe(player,[•roguelike.point(4,4),•roguelike.point(5,4),•roguelike.point(7,7)],•roguelike.demoState([player,•roguelike.goblinActor(2,2,•roguelike.point(5,4))],•roguelike.point(35,12),([]:[µPickup]),0)){
-            Some(safe)=>•roguelike.bombTarget(player,bombState,target) and •roguelike.throwBombEnemyCount(bombState.actors,target.pos)=2 and •roguelike.samePoint(safe,•roguelike.point(7,7)) and ¬•roguelike.teleportThreatened(player,bombState)|
+  match •roguelike.targetBombInDirection(
+    player,
+    µEast(),
+    bombState
+  ){
+    Some(target)=>match •roguelike.targetBombInDirection(
+      player,
+      µWest(),
+      bombState
+    ){
+      None()=>match •roguelike.targetRangedInDirection(
+        player,
+        µWest(),
+        bombState
+      ){
+        None()=>match •roguelike.targetBlinkInDirection(
+          player,
+          µEast(),
+          ({
+            actorIndex:•roguelike.actorIndexFor(blinkActors),
+            actors:blinkActors,
+            collectedTreasure:0,
+            exit:•roguelike.point(
+              35,
+              12
+            ),
+            floorIndex:•roguelike.floorIndexFor(blinkFloors),
+            floors:blinkFloors,
+            lastAction:"ready",
+            loadout:•roguelike.loadoutWithBlinks(
+              1,
+              •roguelike.defaultLoadout()
+            ),
+            pickupIndex:•roguelike.pickupIndexFor(([]:[µPickup])),
+            pickups:([]:[µPickup]),
+            rooms:[{
+              h:1,
+              w:1,
+              x:4,
+              y:4
+            }],
+            turn:0
+          }:µGameState)
+        ){
+          None()=>match •roguelike.teleportSafe(
+            player,
+            [
+              •roguelike.point(
+                4,
+                4
+              ),
+              •roguelike.point(
+                5,
+                4
+              ),
+              •roguelike.point(
+                7,
+                7
+              )
+            ],
+            •roguelike.demoState(
+              [
+                player,
+                •roguelike.goblinActor(
+                  2,
+                  2,
+                  •roguelike.point(
+                    5,
+                    4
+                  )
+                )
+              ],
+              •roguelike.point(
+                35,
+                12
+              ),
+              ([]:[µPickup]),
+              0
+            )
+          ){
+            Some(safe)=>•roguelike.bombTarget(
+              player,
+              bombState,
+              target
+            )
+              and •roguelike.throwBombEnemyCount(
+                bombState.actors,
+                target.pos
+              )=2
+              and •roguelike.samePoint(
+                safe,
+                •roguelike.point(
+                  7,
+                  7
+                )
+              )
+              and ¬•roguelike.teleportThreatened(
+                player,
+                bombState
+              )|
             None()=>false
           }|
           Some(_)=>false
@@ -293,12 +1689,180 @@ test "bomb and teleport helpers execute" {
 }
 
 test "enemy specialty helpers execute" {
-  l bruteState=(•roguelike.demoState([•roguelike.playerActor(5,1,•roguelike.point(6,4)),•roguelike.bruteActor(4,2,•roguelike.point(4,4))],•roguelike.point(35,12),([]:[µPickup]),0):µGameState);
-  l shamanState=(•roguelike.demoState([•roguelike.playerActor(5,1,•roguelike.point(10,10)),•roguelike.shamanActor(2,5,•roguelike.point(12,10)),•roguelike.goblinActor(1,2,•roguelike.point(13,10))],•roguelike.point(35,12),([]:[µPickup]),0):µGameState);
-  match •roguelike.stepEnemyRetreat(2,•roguelike.point(0,0),•roguelike.demoState([•roguelike.playerActor(5,1,•roguelike.point(1,1)),•roguelike.archerActor(2,2,•roguelike.point(0,0))],•roguelike.point(35,12),([]:[µPickup]),0),•roguelike.point(1,1)){
-    None()=>match •roguelike.findActorById(1,•roguelike.stepEnemyBrute(•roguelike.bruteActor(4,2,•roguelike.point(4,4)),bruteState).actors){
-      Some(bruteHit)=>match •roguelike.findActorById(2,•roguelike.stepEnemyShaman(•roguelike.shamanActor(2,5,•roguelike.point(12,10)),shamanState).actors){
-        Some(healed)=>•roguelike.shamanHealTarget(•roguelike.shamanActor(2,5,•roguelike.point(12,10)),•roguelike.goblinActor(1,2,•roguelike.point(13,10)),shamanState) and •roguelike.shamanMoveTarget(•roguelike.shamanActor(2,5,•roguelike.point(12,10)),•roguelike.goblinActor(1,2,•roguelike.point(13,10))) and (•roguelike.playerHp(•roguelike.stepEnemyBrute(•roguelike.bruteActor(4,2,•roguelike.point(4,4)),bruteState))=3 and healed.hp=2)|
+  l bruteState=(•roguelike.demoState(
+    [
+      •roguelike.playerActor(
+        5,
+        1,
+        •roguelike.point(
+          6,
+          4
+        )
+      ),
+      •roguelike.bruteActor(
+        4,
+        2,
+        •roguelike.point(
+          4,
+          4
+        )
+      )
+    ],
+    •roguelike.point(
+      35,
+      12
+    ),
+    ([]:[µPickup]),
+    0
+  ):µGameState);
+  l shamanState=(•roguelike.demoState(
+    [
+      •roguelike.playerActor(
+        5,
+        1,
+        •roguelike.point(
+          10,
+          10
+        )
+      ),
+      •roguelike.shamanActor(
+        2,
+        5,
+        •roguelike.point(
+          12,
+          10
+        )
+      ),
+      •roguelike.goblinActor(
+        1,
+        2,
+        •roguelike.point(
+          13,
+          10
+        )
+      )
+    ],
+    •roguelike.point(
+      35,
+      12
+    ),
+    ([]:[µPickup]),
+    0
+  ):µGameState);
+  match •roguelike.stepEnemyRetreat(
+    2,
+    •roguelike.point(
+      0,
+      0
+    ),
+    •roguelike.demoState(
+      [
+        •roguelike.playerActor(
+          5,
+          1,
+          •roguelike.point(
+            1,
+            1
+          )
+        ),
+        •roguelike.archerActor(
+          2,
+          2,
+          •roguelike.point(
+            0,
+            0
+          )
+        )
+      ],
+      •roguelike.point(
+        35,
+        12
+      ),
+      ([]:[µPickup]),
+      0
+    ),
+    •roguelike.point(
+      1,
+      1
+    )
+  ){
+    None()=>match •roguelike.findActorById(
+      1,
+      •roguelike.stepEnemyBrute(
+        •roguelike.bruteActor(
+          4,
+          2,
+          •roguelike.point(
+            4,
+            4
+          )
+        ),
+        bruteState
+      ).actors
+    ){
+      Some(bruteHit)=>match •roguelike.findActorById(
+        2,
+        •roguelike.stepEnemyShaman(
+          •roguelike.shamanActor(
+            2,
+            5,
+            •roguelike.point(
+              12,
+              10
+            )
+          ),
+          shamanState
+        ).actors
+      ){
+        Some(healed)=>•roguelike.shamanHealTarget(
+          •roguelike.shamanActor(
+            2,
+            5,
+            •roguelike.point(
+              12,
+              10
+            )
+          ),
+          •roguelike.goblinActor(
+            1,
+            2,
+            •roguelike.point(
+              13,
+              10
+            )
+          ),
+          shamanState
+        )
+          and •roguelike.shamanMoveTarget(
+            •roguelike.shamanActor(
+              2,
+              5,
+              •roguelike.point(
+                12,
+                10
+              )
+            ),
+            •roguelike.goblinActor(
+              1,
+              2,
+              •roguelike.point(
+                13,
+                10
+              )
+            )
+          )
+          and •roguelike.playerHp(•roguelike.stepEnemyBrute(
+            •roguelike.bruteActor(
+              4,
+              2,
+              •roguelike.point(
+                4,
+                4
+              )
+            ),
+            bruteState
+          ))=3
+          and healed.hp=2|
         None()=>false
       }|
       None()=>false

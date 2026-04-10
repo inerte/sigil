@@ -1,60 +1,164 @@
-t Block=Header(Int,String)|Paragraph(String)|CodeBlock(String,String)|UnorderedList([String])|OrderedList([String])|Blockquote(String)|HorizontalRule()
+t Block=Header(
+  Int,
+  String
+)|Paragraph(String)|CodeBlock(
+  String,
+  String
+)|UnorderedList([String])|OrderedList([String])|Blockquote(String)|HorizontalRule()
 
-t ParserState={codeLang:String,codeLines:[String],inCodeBlock:Bool,inList:Bool,listItems:[String],listType:String,paraLines:[String]}
+t ParserState={
+  codeLang:String,
+  codeLines:[String],
+  inCodeBlock:Bool,
+  inList:Bool,
+  listItems:[String],
+  listType:String,
+  paraLines:[String]
+}
 
-t ParsingResult={blocks:[Block],state:ParserState}
+t ParsingResult={
+  blocks:[Block],
+  state:ParserState
+}
 
 λblockToHtml(block:Block)=>String match block{
-  Header(level,text)=>{
+  Header(
+  level,
+  text
+)=>{
     l tag=("h"++§string.intToString(level):String);
-    "<"++tag++">"++processInline(text)++"</"++tag++">"
+    "<"
+      ++tag
+      ++">"
+      ++processInline(text)
+      ++"</"
+      ++tag
+      ++">"
   }|
-  Paragraph(text)=>"<p>"++processInline(text)++"</p>"|
-  CodeBlock(lang,code)=>"<pre><code>"++code++"</code></pre>"|
-  UnorderedList(items)=>"<ul>"++§string.join("",items map (λ(item:String)=>String="<li>"++processInline(item)++"</li>"))++"</ul>"|
-  OrderedList(items)=>"<ol>"++§string.join("",items map (λ(item:String)=>String="<li>"++processInline(item)++"</li>"))++"</ol>"|
-  Blockquote(text)=>"<blockquote>"++processInline(text)++"</blockquote>"|
+  Paragraph(text)=>"<p>"
+    ++processInline(text)
+    ++"</p>"|
+  CodeBlock(
+  lang,
+  code
+)=>"<pre><code>"
+    ++code
+    ++"</code></pre>"|
+  UnorderedList(items)=>"<ul>"
+    ++§string.join(
+      "",
+      items map (λ(item:String)=>String="<li>"
+        ++processInline(item)
+        ++"</li>")
+    )
+    ++"</ul>"|
+  OrderedList(items)=>"<ol>"
+    ++§string.join(
+      "",
+      items map (λ(item:String)=>String="<li>"
+        ++processInline(item)
+        ++"</li>")
+    )
+    ++"</ol>"|
+  Blockquote(text)=>"<blockquote>"
+    ++processInline(text)
+    ++"</blockquote>"|
   HorizontalRule()=>"<hr>"
 }
 
 λemptyBlocks()=>[Block]=[]
 
-λemptyState()=>ParserState={codeLang:"",codeLines:[],inCodeBlock:false,inList:false,listItems:[],listType:"",paraLines:[]}
+λemptyState()=>ParserState={
+  codeLang:"",
+  codeLines:[],
+  inCodeBlock:false,
+  inList:false,
+  listItems:[],
+  listType:"",
+  paraLines:[]
+}
 
-λextractBlockquoteText(line:String)=>String=§string.substring(#line,line,2)
+λextractBlockquoteText(line:String)=>String=§string.substring(
+  #line,
+  line,
+  2
+)
 
 λextractCodeLang(line:String)=>String match #line{
-  len when len>3=>§string.substring(len,line,3)|
+  len when len>3=>§string.substring(
+    len,
+    line,
+    3
+  )|
   _=>""
 }
 
 λextractHeaderLevel(line:String)=>Int match line{
-  s when §string.startsWith("###### ",s)=>6|
-  s when §string.startsWith("##### ",s)=>5|
-  s when §string.startsWith("#### ",s)=>4|
-  s when §string.startsWith("### ",s)=>3|
-  s when §string.startsWith("## ",s)=>2|
-  s when §string.startsWith("# ",s)=>1|
+  s when §string.startsWith(
+    "###### ",
+    s
+  )=>6|
+  s when §string.startsWith(
+    "##### ",
+    s
+  )=>5|
+  s when §string.startsWith(
+    "#### ",
+    s
+  )=>4|
+  s when §string.startsWith(
+    "### ",
+    s
+  )=>3|
+  s when §string.startsWith(
+    "## ",
+    s
+  )=>2|
+  s when §string.startsWith(
+    "# ",
+    s
+  )=>1|
   _=>0
 }
 
-λextractHeaderText(level:Int,line:String)=>String=§string.substring(#line,line,level+1)
+λextractHeaderText(level:Int,line:String)=>String=§string.substring(
+  #line,
+  line,
+  level+1
+)
 
 λextractListItem(line:String)=>String match line{
-  s when isUnorderedList(s)=>§string.substring(#s,s,2)|
-  s when isOrderedList(s)=>§string.substring(#s,s,3)|
+  s when isUnorderedList(s)=>§string.substring(
+    #s,
+    s,
+    2
+  )|
+  s when isOrderedList(s)=>§string.substring(
+    #s,
+    s,
+    3
+  )|
   _=>""
 }
 
 λflushCodeBlock(state:ParserState)=>[Block] match state.inCodeBlock{
-  true=>[CodeBlock(state.codeLang,§string.join("
-",state.codeLines))]|
+  true=>[CodeBlock(
+    state.codeLang,
+    §string.join(
+      "
+",
+      state.codeLines
+    )
+  )]|
   false=>emptyBlocks()
 }
 
 λflushList(state:ParserState)=>[Block] match state.inList{
   false=>emptyBlocks()|
-  true=>flushListByType(state.listItems,state.listType)
+  true=>flushListByType(
+    state.listItems,
+    state.listType
+  )
 }
 
 λflushListByType(listItems:[String],listType:String)=>[Block] match listType{
@@ -65,16 +169,28 @@ t ParsingResult={blocks:[Block],state:ParserState}
 
 λflushParagraph(state:ParserState)=>[Block] match state.paraLines{
   []=>emptyBlocks()|
-  lines=>[Paragraph(§string.join(" ",lines))]
+  lines=>[Paragraph(§string.join(
+    " ",
+    lines
+  ))]
 }
 
-λisBlockquote(line:String)=>Bool=§string.startsWith("> ",line)
+λisBlockquote(line:String)=>Bool=§string.startsWith(
+  "> ",
+  line
+)
 
-λisCodeFence(line:String)=>Bool=§string.startsWith("```",line)
+λisCodeFence(line:String)=>Bool=§string.startsWith(
+  "```",
+  line
+)
 
 λisEmpty(line:String)=>Bool=§string.trim(line)=""
 
-λisHeader(line:String)=>Bool=§string.startsWith("#",line)
+λisHeader(line:String)=>Bool=§string.startsWith(
+  "#",
+  line
+)
 
 λisHr(line:String)=>Bool match line{
   "---"=>true|
@@ -83,57 +199,253 @@ t ParsingResult={blocks:[Block],state:ParserState}
   _=>false
 }
 
-λisOrderedList(line:String)=>Bool=#line>2 and §string.isDigit(§string.charAt(0,line)) and §string.charAt(1,line)="."
+λisOrderedList(line:String)=>Bool=#line>2
+  and §string.isDigit(§string.charAt(
+    0,
+    line
+  ))
+  and §string.charAt(
+    1,
+    line
+  )="."
 
-λisUnorderedList(line:String)=>Bool=§string.startsWith("- ",line) or §string.startsWith("* ",line) or §string.startsWith("+ ",line)
+λisUnorderedList(line:String)=>Bool=§string.startsWith(
+  "- ",
+  line
+)
+  or §string.startsWith(
+    "* ",
+    line
+  )
+  or §string.startsWith(
+    "+ ",
+    line
+  )
 
-λparse(markdown:String)=>String=§string.join("
-",parseLines(markdown) map blockToHtml)
+λparse(markdown:String)=>String=§string.join(
+  "
+",
+  parseLines(markdown) map blockToHtml
+)
 
 λparseLine(line:String,state:ParserState)=>ParsingResult match state.inCodeBlock{
-  true when isCodeFence(line)=>{blocks:flushCodeBlock(state),state:emptyState()}|
-  true=>{blocks:[],state:{codeLang:state.codeLang,codeLines:state.codeLines⧺[line],inCodeBlock:true,inList:false,listItems:[],listType:"",paraLines:[]}}|
-  false when isCodeFence(line)=>{blocks:flushList(state)⧺flushParagraph(state),state:{codeLang:extractCodeLang(line),codeLines:[],inCodeBlock:true,inList:false,listItems:[],listType:"",paraLines:[]}}|
+  true when isCodeFence(line)=>{
+    blocks:flushCodeBlock(state),
+    state:emptyState()
+  }|
+  true=>{
+    blocks:[],
+    state:{
+      codeLang:state.codeLang,
+      codeLines:state.codeLines⧺[line],
+      inCodeBlock:true,
+      inList:false,
+      listItems:[],
+      listType:"",
+      paraLines:[]
+    }
+  }|
+  false when isCodeFence(line)=>{
+    blocks:flushList(state)⧺flushParagraph(state),
+    state:{
+      codeLang:extractCodeLang(line),
+      codeLines:[],
+      inCodeBlock:true,
+      inList:false,
+      listItems:[],
+      listType:"",
+      paraLines:[]
+    }
+  }|
   false when isHeader(line)=>{
     l level=(extractHeaderLevel(line):Int);
-    {blocks:flushList(state)⧺flushParagraph(state)⧺[Header(level,extractHeaderText(level,line))],state:emptyState()}
+    {
+      blocks:flushList(state)
+        ⧺flushParagraph(state)
+        ⧺[Header(
+          level,
+          extractHeaderText(
+            level,
+            line
+          )
+        )],
+      state:emptyState()
+    }
   }|
-  false when isHr(line)=>{blocks:flushList(state)⧺flushParagraph(state)⧺[HorizontalRule()],state:emptyState()}|
-  false when state.inList and state.listType="ul" and isUnorderedList(line)=>{blocks:flushParagraph(state),state:{codeLang:"",codeLines:[],inCodeBlock:false,inList:true,listItems:state.listItems⧺[extractListItem(line)],listType:"ul",paraLines:[]}}|
-  false when isUnorderedList(line)=>{blocks:flushParagraph(state),state:{codeLang:"",codeLines:[],inCodeBlock:false,inList:true,listItems:[extractListItem(line)],listType:"ul",paraLines:[]}}|
-  false when state.inList and state.listType="ol" and isOrderedList(line)=>{blocks:flushParagraph(state),state:{codeLang:"",codeLines:[],inCodeBlock:false,inList:true,listItems:state.listItems⧺[extractListItem(line)],listType:"ol",paraLines:[]}}|
-  false when isOrderedList(line)=>{blocks:flushParagraph(state),state:{codeLang:"",codeLines:[],inCodeBlock:false,inList:true,listItems:[extractListItem(line)],listType:"ol",paraLines:[]}}|
-  false when isBlockquote(line)=>{blocks:flushList(state)⧺flushParagraph(state)⧺[Blockquote(extractBlockquoteText(line))],state:emptyState()}|
-  false when isEmpty(line)=>{blocks:flushList(state)⧺flushParagraph(state),state:emptyState()}|
-  false=>{blocks:flushList(state),state:{codeLang:"",codeLines:[],inCodeBlock:false,inList:false,listItems:[],listType:"",paraLines:state.paraLines⧺[line]}}
+  false when isHr(line)=>{
+    blocks:flushList(state)
+      ⧺flushParagraph(state)
+      ⧺[HorizontalRule()],
+    state:emptyState()
+  }|
+  false when state.inList
+    and state.listType="ul"
+    and isUnorderedList(line)=>{
+    blocks:flushParagraph(state),
+    state:{
+      codeLang:"",
+      codeLines:[],
+      inCodeBlock:false,
+      inList:true,
+      listItems:state.listItems⧺[extractListItem(line)],
+      listType:"ul",
+      paraLines:[]
+    }
+  }|
+  false when isUnorderedList(line)=>{
+    blocks:flushParagraph(state),
+    state:{
+      codeLang:"",
+      codeLines:[],
+      inCodeBlock:false,
+      inList:true,
+      listItems:[extractListItem(line)],
+      listType:"ul",
+      paraLines:[]
+    }
+  }|
+  false when state.inList
+    and state.listType="ol"
+    and isOrderedList(line)=>{
+    blocks:flushParagraph(state),
+    state:{
+      codeLang:"",
+      codeLines:[],
+      inCodeBlock:false,
+      inList:true,
+      listItems:state.listItems⧺[extractListItem(line)],
+      listType:"ol",
+      paraLines:[]
+    }
+  }|
+  false when isOrderedList(line)=>{
+    blocks:flushParagraph(state),
+    state:{
+      codeLang:"",
+      codeLines:[],
+      inCodeBlock:false,
+      inList:true,
+      listItems:[extractListItem(line)],
+      listType:"ol",
+      paraLines:[]
+    }
+  }|
+  false when isBlockquote(line)=>{
+    blocks:flushList(state)
+      ⧺flushParagraph(state)
+      ⧺[Blockquote(extractBlockquoteText(line))],
+    state:emptyState()
+  }|
+  false when isEmpty(line)=>{
+    blocks:flushList(state)⧺flushParagraph(state),
+    state:emptyState()
+  }|
+  false=>{
+    blocks:flushList(state),
+    state:{
+      codeLang:"",
+      codeLines:[],
+      inCodeBlock:false,
+      inList:false,
+      listItems:[],
+      listType:"",
+      paraLines:state.paraLines⧺[line]
+    }
+  }
 }
 
-λparseLines(markdown:String)=>[Block]=parseLinesHelper([],§string.split("
-",markdown),emptyState())
+λparseLines(markdown:String)=>[Block]=parseLinesHelper(
+  [],
+  §string.split(
+    "
+",
+    markdown
+  ),
+  emptyState()
+)
 
 λparseLinesHelper(blocks:[Block],lines:[String],state:ParserState)=>[Block] match lines{
-  []=>blocks⧺flushCodeBlock(state)⧺flushList(state)⧺flushParagraph(state)|
-  [line,.rest]=>{
-    l result=(parseLine(line,state):ParsingResult);
-    parseLinesHelper(blocks⧺result.blocks,rest,result.state)
+  []=>blocks
+    ⧺flushCodeBlock(state)
+    ⧺flushList(state)
+    ⧺flushParagraph(state)|
+  [
+  line,
+  .rest
+]=>{
+    l result=(parseLine(
+      line,
+      state
+    ):ParsingResult);
+    parseLinesHelper(
+      blocks⧺result.blocks,
+      rest,
+      result.state
+    )
   }
 }
 
 λprocessInline(text:String)=>String=processInlineLinks(processInlineItalic(processInlineBold(processInlineCode(text))))
 
-λprocessInlineBold(text:String)=>String=replacePairedDelimiters("</strong>","**","<strong>","",text)
+λprocessInlineBold(text:String)=>String=replacePairedDelimiters(
+  "</strong>",
+  "**",
+  "<strong>",
+  "",
+  text
+)
 
-λprocessInlineCode(text:String)=>String=replacePairedDelimiters("</code>","`","<code>","",text)
+λprocessInlineCode(text:String)=>String=replacePairedDelimiters(
+  "</code>",
+  "`",
+  "<code>",
+  "",
+  text
+)
 
-λprocessInlineItalic(text:String)=>String=replacePairedDelimiters("</em>","*","<em>","",text)
+λprocessInlineItalic(text:String)=>String=replacePairedDelimiters(
+  "</em>",
+  "*",
+  "<em>",
+  "",
+  text
+)
 
 λprocessInlineLinks(text:String)=>String=text
 
-λreplacePairedDelimiters(closeTag:String,delimiter:String,openTag:String,result:String,text:String)=>String match §string.indexOf(text,delimiter){
+λreplacePairedDelimiters(closeTag:String,delimiter:String,openTag:String,result:String,text:String)=>String match §string.indexOf(
+  text,
+  delimiter
+){
   idx when idx≥0=>{
-    l afterFirst=(§string.substring(#text,text,idx+#delimiter):String);
-    match §string.indexOf(afterFirst,delimiter){
-      idx2 when idx2≥0=>replacePairedDelimiters(closeTag,delimiter,openTag,result+§string.substring(idx,text,0)+openTag+§string.substring(idx2,afterFirst,0)+closeTag,§string.substring(#afterFirst,afterFirst,idx2+#delimiter))|
+    l afterFirst=(§string.substring(
+      #text,
+      text,
+      idx+#delimiter
+    ):String);
+    match §string.indexOf(
+      afterFirst,
+      delimiter
+    ){
+      idx2 when idx2≥0=>replacePairedDelimiters(
+        closeTag,
+        delimiter,
+        openTag,
+        result+§string.substring(
+          idx,
+          text,
+          0
+        )+openTag+§string.substring(
+          idx2,
+          afterFirst,
+          0
+        )+closeTag,
+        §string.substring(
+          #afterFirst,
+          afterFirst,
+          idx2+#delimiter
+        )
+      )|
       _=>result+text
     }
   }|

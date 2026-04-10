@@ -1,25 +1,72 @@
-λcountEdgesToVertex(neighbors:[Int],target:Int)=>Int=§list.count(target,neighbors)
+λcountEdgesToVertex(neighbors:[Int],target:Int)=>Int=§list.count(
+  target,
+  neighbors
+)
 
-λindegreeFromSource(acc:Int,graph:µGraph,source:Int,target:Int)=>Int=acc+countEdgesToVertex(•graphHelpers.neighborsOf(graph,source),target)
+λindegreeFromSource(acc:Int,graph:µGraph,source:Int,target:Int)=>Int=acc+countEdgesToVertex(
+  •graphHelpers.neighborsOf(
+    graph,
+    source
+  ),
+  target
+)
 
-λindegreeFromSources(graph:µGraph,sources:[Int],target:Int)=>Int=§list.fold(0,λ(acc:Int,source:Int)=>Int=indegreeFromSource(acc,graph,source,target),sources)
+λindegreeFromSources(graph:µGraph,sources:[Int],target:Int)=>Int=§list.fold(
+  0,
+  λ(acc:Int,source:Int)=>Int=indegreeFromSource(
+    acc,
+    graph,
+    source,
+    target
+  ),
+  sources
+)
 
 λpickZeroCandidate(candidates:[Int],graph:µGraph,remaining:[Int])=>Int match candidates{
   []=>-1|
-  [vertex,.tail]=>match indegreeFromSources(graph,remaining,vertex)=0{
+  [
+  vertex,
+  .tail
+]=>match indegreeFromSources(
+    graph,
+    remaining,
+    vertex
+  )=0{
     true=>vertex|
-    false=>pickZeroCandidate(tail,graph,remaining)
+    false=>pickZeroCandidate(
+      tail,
+      graph,
+      remaining
+    )
   }
 }
 
-λpickZeroIndegree(graph:µGraph,remaining:[Int])=>Int=pickZeroCandidate(remaining,graph,remaining)
+λpickZeroIndegree(graph:µGraph,remaining:[Int])=>Int=pickZeroCandidate(
+  remaining,
+  graph,
+  remaining
+)
 
 λtopologicalLoop(graph:µGraph,ordered:[Int],remaining:[Int])=>µTopologicalSortResult match remaining{
   []=>µOrdering(ordered)|
-  _=>match pickZeroIndegree(graph,remaining){
+  _=>match pickZeroIndegree(
+    graph,
+    remaining
+  ){
     value when value=-1=>µCycleDetected()|
-    nextVertex=>topologicalLoop(graph,ordered⧺[nextVertex],§list.removeFirst(nextVertex,remaining))
+    nextVertex=>topologicalLoop(
+      graph,
+      ordered⧺[nextVertex],
+      §list.removeFirst(
+        nextVertex,
+        remaining
+      )
+    )
   }
 }
 
-λtopologicalSort(graph:µGraph)=>µTopologicalSortResult=topologicalLoop(graph,[],•graphHelpers.vertices(graph))
+λtopologicalSort(graph:µGraph)=>µTopologicalSortResult=topologicalLoop(
+  graph,
+  [],
+  •graphHelpers.vertices(graph)
+)

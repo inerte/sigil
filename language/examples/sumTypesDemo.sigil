@@ -10,14 +10,20 @@ t Result[T,E]=Ok(T)|Err(E)
   Blue()=>3
 }
 
-λdivide(a:Int,b:Int)=>Result[Int,String] match b{
+λdivide(a:Int,b:Int)=>Result[
+  Int,
+  String
+] match b{
   0=>Err("division by zero")|
   divisor=>Ok(a/divisor)
 }
 
 λfirst[T](list:[T])=>Option[T] match list{
   []=>None()|
-  [x,.rest]=>Some(x)
+  [
+  x,
+  .rest
+]=>Some(x)
 }
 
 λgetOrDefault(default:Int,opt:Option[Int])=>Int match opt{
@@ -25,9 +31,28 @@ t Result[T,E]=Ok(T)|Err(E)
   None()=>default
 }
 
-λmain()=>Int=(colorToNumber(Green())+processResult(divide(10,2))+processResult(divide(10,0))+getOrDefault(99,first(([]:[Int])))+getOrDefault(0,first([7,8,9])):Int)
+λmain()=>Int=(colorToNumber(Green())+processResult(divide(
+  10,
+  2
+))+processResult(divide(
+  10,
+  0
+))+getOrDefault(
+  99,
+  first(([]:[Int]))
+)+getOrDefault(
+  0,
+  first([
+    7,
+    8,
+    9
+  ])
+):Int)
 
-λprocessResult(result:Result[Int,String])=>Int match result{
+λprocessResult(result:Result[
+  Int,
+  String
+])=>Int match result{
   Ok(value)=>value|
   Err(_)=>0
 }

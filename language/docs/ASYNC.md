@@ -32,11 +32,27 @@ Sigil uses one concurrency surface:
 ```sigil program
 λisTransportFailure(err:String)=>Bool=err="NETWORK"
 
-λmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@5:{jitterMs:Some({max:25,min:1}),stopOn:isTransportFailure,windowMs:Some(1000)}{
-  spawnEach ["alpha","beta"] processUrl
+λmain()=>!Timer [ConcurrentOutcome[
+  Int,
+  String
+]]=concurrent urlAudit@5:{
+  jitterMs:Some({
+    max:25,
+    min:1
+  }),
+  stopOn:isTransportFailure,
+  windowMs:Some(1000)
+}{
+  spawnEach [
+    "alpha",
+    "beta"
+  ] processUrl
 }
 
-λprocessUrl(url:String)=>!Timer Result[Int,String]={
+λprocessUrl(url:String)=>!Timer Result[
+  Int,
+  String
+]={
   l _=(§time.sleepMs(0):Unit);
   Ok(#url)
 }
@@ -83,11 +99,20 @@ Defaults:
 Canonical code omits default-valued policy entirely, so the smallest region is:
 
 ```sigil program
-λmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@5{
-  spawnEach ["alpha","beta"] processUrl
+λmain()=>!Timer [ConcurrentOutcome[
+  Int,
+  String
+]]=concurrent urlAudit@5{
+  spawnEach [
+    "alpha",
+    "beta"
+  ] processUrl
 }
 
-λprocessUrl(url:String)=>!Timer Result[Int,String]={
+λprocessUrl(url:String)=>!Timer Result[
+  Int,
+  String
+]={
   l _=(§time.sleepMs(0):Unit);
   Ok(#url)
 }

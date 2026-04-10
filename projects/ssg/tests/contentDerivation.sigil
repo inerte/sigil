@@ -1,17 +1,53 @@
-λarticlePage(date:String,slug:String)=>µSitePage=•content.blankPage("",{author:"Sigil",category:"",date:date,description:"",slug:slug,title:slug},"articles/"++slug,µArticle(),"website/articles/"++slug++".md")
+λarticlePage(date:String,slug:String)=>µSitePage=•content.blankPage(
+  "",
+  {
+    author:"Sigil",
+    category:"",
+    date:date,
+    description:"",
+    slug:slug,
+    title:slug
+  },
+  "articles/"++slug,
+  µArticle(),
+  "website/articles/"
+    ++slug
+    ++".md"
+)
 
 λmain()=>Unit=()
 
 test "article ordering uses newest date first" {
-  l sorted=(•content.pagesNewestFirst([articlePage("2026-02-24","older"),articlePage("2026-03-03","newer")]):[µSitePage]);
+  l sorted=(•content.pagesNewestFirst([
+    articlePage(
+      "2026-02-24",
+      "older"
+    ),
+    articlePage(
+      "2026-03-03",
+      "newer"
+    )
+  ]):[µSitePage]);
   sorted[0].meta.slug="newer" and sorted[1].meta.slug="older"
 }
 
 test "article ordering falls back to descending source path" {
-  l sorted=(•content.pagesNewestFirst([articlePage("","001-alpha"),articlePage("","002-beta")]):[µSitePage]);
+  l sorted=(•content.pagesNewestFirst([
+    articlePage(
+      "",
+      "001-alpha"
+    ),
+    articlePage(
+      "",
+      "002-beta"
+    )
+  ]):[µSitePage]);
   sorted[0].meta.slug="002-beta" and sorted[1].meta.slug="001-alpha"
 }
 
 test "base path prefix handles repo pages subpaths" {
-  •content.basePathPrefix("/ai-pl/","/docs/ffi/")="/ai-pl/docs/ffi/"
+  •content.basePathPrefix(
+    "/ai-pl/",
+    "/docs/ffi/"
+  )="/ai-pl/docs/ffi/"
 }

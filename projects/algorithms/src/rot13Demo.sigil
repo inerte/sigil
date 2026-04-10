@@ -1,1 +1,15 @@
-λmain()=>String=•rot13Encoder.rot13(["H","e","l","l","o",","," ","W","o","r","l","d","!"])
+λmain()=>String=•rot13Encoder.rot13([
+  "H",
+  "e",
+  "l",
+  "l",
+  "o",
+  ",",
+  " ",
+  "W",
+  "o",
+  "r",
+  "l",
+  "d",
+  "!"
+])

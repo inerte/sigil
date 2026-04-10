@@ -15,9 +15,19 @@ test "core prelude exposes result constructors without import" {
 }
 
 test "core option helpers stay namespaced" {
-  ¶option.isSome(Some(1)) and ¶option.isNone(None()) and ¶option.unwrapOr(7,None())=7
+  ¶option.isSome(Some(1))
+    and ¶option.isNone(None())
+    and ¶option.unwrapOr(
+      7,
+      None()
+    )=7
 }
 
 test "core result helpers stay namespaced" {
-  ¶result.isOk(Ok(1)) and ¶result.isErr(Err("bad")) and ¶result.unwrapOrResult(9,Err("bad"))=9
+  ¶result.isOk(Ok(1))
+    and ¶result.isErr(Err("bad"))
+    and ¶result.unwrapOrResult(
+      9,
+      Err("bad")
+    )=9
 }

@@ -48,14 +48,32 @@ So these are real checked programs:
 
 λheadOrZero(xs:[Int])=>Int match xs{
   []=>0|
-  [head,.tail]=>head
+  [
+  head,
+  .tail
+]=>head
 }
 
-λpairLabel(left:Bool,right:Bool)=>String match (left,right){
-  (true,true)=>"tt"|
-  (true,false)=>"tf"|
-  (false,true)=>"ft"|
-  (false,false)=>"ff"
+λpairLabel(left:Bool,right:Bool)=>String match (
+  left,
+  right
+){
+  (
+  true,
+  true
+)=>"tt"|
+  (
+  true,
+  false
+)=>"tf"|
+  (
+  false,
+  true
+)=>"ft"|
+  (
+  false,
+  false
+)=>"ff"
 }
 ```
 

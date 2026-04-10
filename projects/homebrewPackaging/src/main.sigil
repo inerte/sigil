@@ -9,10 +9,20 @@ e console:{error:λ(String)=>!Log Unit}
   Ok(version)=>match sha256SumsPath(){
     Ok(path)=>{
       l text=(§file.readText(path):String);
-      match •formula.parseChecksums(text,version){
+      match •formula.parseChecksums(
+        text,
+        version
+      ){
         Some(checksums)=>{
           l _=(§file.makeDirs(§path.dirname(¤release.outputPath())):Unit);
-          (§file.writeText(•formula.formula({checksums:checksums,repo:¤release.releaseRepo(),version:version}),¤release.outputPath()):Unit)
+          (§file.writeText(
+            •formula.formula({
+              checksums:checksums,
+              repo:¤release.releaseRepo(),
+              version:version
+            }),
+            ¤release.outputPath()
+          ):Unit)
         }|
         None()=>fail("could not parse required Homebrew release checksums")
       }
@@ -22,6 +32,12 @@ e console:{error:λ(String)=>!Log Unit}
   Err(message)=>fail(message)
 }
 
-λreleaseVersion()=>Result[String,String]=¤release.releaseVersion()
+λreleaseVersion()=>Result[
+  String,
+  String
+]=¤release.releaseVersion()
 
-λsha256SumsPath()=>Result[String,String]=¤release.sha256SumsPath()
+λsha256SumsPath()=>Result[
+  String,
+  String
+]=¤release.sha256SumsPath()

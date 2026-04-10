@@ -4,20 +4,45 @@ t Option[T]=Some(T)|None()
 
 t Result[T,E]=Ok(T)|Err(E)
 
-t Tree[T]=Leaf(T)|Node(Tree[T],T,Tree[T])
+t Tree[T]=Leaf(T)|Node(
+  Tree[T],
+  T,
+  Tree[T]
+)
 
-t User={active:Bool,email:String,id:Int,name:String}
+t User={
+  active:Bool,
+  email:String,
+  id:Int,
+  name:String
+}
 
-λmain()=>Int match ({active:true,email:"ada@example.com",id:7,name:"Ada"}:User){
-  user=>match (Node(Leaf(1),2,Leaf(3)):Tree[Int]){
-    Node(leftTree,root,rightTree)=>match leftTree{
+λmain()=>Int match ({
+  active:true,
+  email:"ada@example.com",
+  id:7,
+  name:"Ada"
+}:User){
+  user=>match (Node(
+    Leaf(1),
+    2,
+    Leaf(3)
+  ):Tree[Int]){
+    Node(
+  leftTree,
+  root,
+  rightTree
+)=>match leftTree{
       Leaf(left)=>match rightTree{
         Leaf(right)=>match (Some(Green()):Option[Color]){
           Some(color)=>match (Ok((match color{
             Red()=>0|
             Green()=>1|
             Blue()=>2
-          })+user.id+left+root+right):Result[Int,String]){
+          })+user.id+left+root+right):Result[
+  Int,
+  String
+]){
             Ok(total)=>total|
             Err(_)=>0
           }|

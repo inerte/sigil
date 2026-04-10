@@ -1,1 +1,4 @@
-λmain()=>µExtendedGcd=•extendedGcd.extendedGcd(240,46)
+λmain()=>µExtendedGcd=•extendedGcd.extendedGcd(
+  240,
+  46
+)

@@ -1,6 +1,15 @@
 e process
 
-c world=(†runtime.world(†clock.systemClock(),†fs.real(),[],†log.stdout(),†process.real(),†random.real(),[],†timer.real()):†runtime.World)
+c world=(†runtime.world(
+  †clock.systemClock(),
+  †fs.real(),
+  [],
+  †log.stdout(),
+  †process.real(),
+  †random.real(),
+  [],
+  †timer.real()
+):†runtime.World)
 
 λoutputPath()=>String=outputPathFromProperty(process.env.hasOwnProperty("sigilHomebrewOutputPath"))
 
@@ -16,16 +25,28 @@ c world=(†runtime.world(†clock.systemClock(),†fs.real(),[],†log.stdout()
   false=>"inerte/sigil"
 }
 
-λreleaseVersion()=>Result[String,String]=releaseVersionFromProperty(process.env.hasOwnProperty("sigilHomebrewVersion"))
+λreleaseVersion()=>Result[
+  String,
+  String
+]=releaseVersionFromProperty(process.env.hasOwnProperty("sigilHomebrewVersion"))
 
-λreleaseVersionFromProperty(hasValue:Bool)=>Result[String,String] match hasValue{
+λreleaseVersionFromProperty(hasValue:Bool)=>Result[
+  String,
+  String
+] match hasValue{
   true=>Ok((process.env.sigilHomebrewVersion:String))|
   false=>Err("sigilHomebrewVersion is required")
 }
 
-λsha256SumsPath()=>Result[String,String]=sha256SumsPathFromProperty(process.env.hasOwnProperty("sigilHomebrewSha256SumsPath"))
+λsha256SumsPath()=>Result[
+  String,
+  String
+]=sha256SumsPathFromProperty(process.env.hasOwnProperty("sigilHomebrewSha256SumsPath"))
 
-λsha256SumsPathFromProperty(hasValue:Bool)=>Result[String,String] match hasValue{
+λsha256SumsPathFromProperty(hasValue:Bool)=>Result[
+  String,
+  String
+] match hasValue{
   true=>Ok((process.env.sigilHomebrewSha256SumsPath:String))|
   false=>Err("sigilHomebrewSha256SumsPath is required")
 }

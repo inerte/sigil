@@ -92,11 +92,11 @@ Canonical source is now printer-first:
 - when updating syntax or source shape, think in terms of AST => one printed form
 
 Current high-signal printer choices:
-- signatures stay on one line
+- delimited aggregate forms stay flat with `0` or `1` item and print multiline with `2+` items
+- repeated `++`, `⧺`, `and`, and `or` chains print vertically one continued operand per line
 - `requires` / `ensures` print on following lines before the body
 - direct `match` bodies begin on that same line
 - direct `match` bodies stay `match ...` with no `=` even after contract lines
-- branching prints multiline early
 - multi-arm `match` is always multiline
 - each arm starts as `pattern=>`
 - no discretionary alternative layout for the same AST shape
@@ -331,7 +331,11 @@ Create new test file:
 λmain()=>Unit=()
 
 test "my feature works" {
-  #[1,2,3]=3
+  #[
+    1,
+    2,
+    3
+  ]=3
 }
 ```
 
@@ -364,11 +368,19 @@ Use one of these instead:
 Canonical example:
 
 ```sigil module
-λfib(n:Int)=>Int=fibHelper(0,1,n)
+λfib(n:Int)=>Int=fibHelper(
+  0,
+  1,
+  n
+)
 
 λfibHelper(a:Int,b:Int,n:Int)=>Int match n{
   0=>a|
-  count=>fibHelper(b,a+b,count-1)
+  count=>fibHelper(
+    b,
+    a+b,
+    count-1
+  )
 }
 ```
 

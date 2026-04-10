@@ -1,26 +1,71 @@
 λmain()=>Unit=()
 
 test "frontmatter derives title and slug without header" {
-  l result=(•frontmatter.parseFrontmatter("Body only","language/docs/CANONICAL_FORMS.md"):µParseResult);
+  l result=(•frontmatter.parseFrontmatter(
+    "Body only",
+    "language/docs/CANONICAL_FORMS.md"
+  ):µParseResult);
   result.meta.slug="canonical-forms" and result.meta.title="Canonical Forms"
 }
 
 test "frontmatter dropLast keeps all but final path segment" {
-  •frontmatter.dropLast(["language","docs","TESTING.md"])=["language","docs"]
+  •frontmatter.dropLast([
+    "language",
+    "docs",
+    "TESTING.md"
+  ])=[
+    "language",
+    "docs"
+  ]
 }
 
 test "frontmatter parses canonical metadata" {
-  l result=(•frontmatter.parseFrontmatter(§string.unlines(["---","title: Batteries Included","date: 2026-03-03","author: Sigil Language Team","slug: ssg-notes","---","# Batteries Included","Body"]),"website/articles/ssg.md"):µParseResult);
+  l result=(•frontmatter.parseFrontmatter(
+    §string.unlines([
+      "---",
+      "title: Batteries Included",
+      "date: 2026-03-03",
+      "author: Sigil Language Team",
+      "slug: ssg-notes",
+      "---",
+      "# Batteries Included",
+      "Body"
+    ]),
+    "website/articles/ssg.md"
+  ):µParseResult);
   result.content="# Batteries Included
-Body" and result.meta={author:"Sigil Language Team",category:"",date:"2026-03-03",description:"",slug:"ssg-notes",title:"Batteries Included"}
+Body" and result.meta={
+    author:"Sigil Language Team",
+    category:"",
+    date:"2026-03-03",
+    description:"",
+    slug:"ssg-notes",
+    title:"Batteries Included"
+  }
 }
 
 test "frontmatter strips quotes" {
-  l result=(•frontmatter.parseFrontmatter(§string.unlines(["---","title: \"Quoted Title\"","author: 'Sigil Team'","---","# Quoted Title"]),"website/articles/quoted.md"):µParseResult);
+  l result=(•frontmatter.parseFrontmatter(
+    §string.unlines([
+      "---",
+      "title: \"Quoted Title\"",
+      "author: 'Sigil Team'",
+      "---",
+      "# Quoted Title"
+    ]),
+    "website/articles/quoted.md"
+  ):µParseResult);
   result.meta.title="Quoted Title" and result.meta.author="Sigil Team"
 }
 
 test "frontmatter uses first heading when title missing" {
-  l result=(•frontmatter.parseFrontmatter(§string.unlines(["# Hello Sigil","","Body"]),"website/articles/hello.sigil.md"):µParseResult);
+  l result=(•frontmatter.parseFrontmatter(
+    §string.unlines([
+      "# Hello Sigil",
+      "",
+      "Body"
+    ]),
+    "website/articles/hello.sigil.md"
+  ):µParseResult);
   result.meta.title="Hello Sigil" and result.meta.slug="hello.sigil"
 }

@@ -3,15 +3,30 @@
 test "file listDir includes written entry" =>!Fs {
   l _=(§file.removeTree(("/tmp/sigil-stdlib-file-list":String)):Unit);
   l _=(§file.makeDirs(("/tmp/sigil-stdlib-file-list":String)):Unit);
-  l _=(§file.writeText("hello",(§path.join(("/tmp/sigil-stdlib-file-list":String),"entry.txt"):String)):Unit);
-  §list.contains("entry.txt",(§file.listDir(("/tmp/sigil-stdlib-file-list":String)):[String]))
+  l _=(§file.writeText(
+    "hello",
+    (§path.join(
+      ("/tmp/sigil-stdlib-file-list":String),
+      "entry.txt"
+    ):String)
+  ):Unit);
+  §list.contains(
+    "entry.txt",
+    (§file.listDir(("/tmp/sigil-stdlib-file-list":String)):[String])
+  )
 }
 
 test "file makeDir creates a single directory" =>!Fs {
   l _=(§file.removeTree(("/tmp/sigil-stdlib-file-mkdir":String)):Unit);
   l _=(§file.makeDirs(("/tmp/sigil-stdlib-file-mkdir":String)):Unit);
-  l _=(§file.makeDir((§path.join(("/tmp/sigil-stdlib-file-mkdir":String),"child"):String)):Unit);
-  §file.exists((§path.join(("/tmp/sigil-stdlib-file-mkdir":String),"child"):String))
+  l _=(§file.makeDir((§path.join(
+    ("/tmp/sigil-stdlib-file-mkdir":String),
+    "child"
+  ):String)):Unit);
+  §file.exists((§path.join(
+    ("/tmp/sigil-stdlib-file-mkdir":String),
+    "child"
+  ):String))
 }
 
 test "file makeDirs creates nested directories" =>!Fs {
@@ -23,23 +38,62 @@ test "file makeDirs creates nested directories" =>!Fs {
 test "file readText and appendText preserve utf8 content" =>!Fs {
   l _=(§file.removeTree(("/tmp/sigil-stdlib-file-read-write":String)):Unit);
   l _=(§file.makeDirs(("/tmp/sigil-stdlib-file-read-write":String)):Unit);
-  l _=(§file.writeText("hello",(§path.join(("/tmp/sigil-stdlib-file-read-write":String),"sample.txt"):String)):Unit);
-  l _=(§file.appendText(" world",(§path.join(("/tmp/sigil-stdlib-file-read-write":String),"sample.txt"):String)):Unit);
-  (§file.readText((§path.join(("/tmp/sigil-stdlib-file-read-write":String),"sample.txt"):String)):String)="hello world"
+  l _=(§file.writeText(
+    "hello",
+    (§path.join(
+      ("/tmp/sigil-stdlib-file-read-write":String),
+      "sample.txt"
+    ):String)
+  ):Unit);
+  l _=(§file.appendText(
+    " world",
+    (§path.join(
+      ("/tmp/sigil-stdlib-file-read-write":String),
+      "sample.txt"
+    ):String)
+  ):Unit);
+  (§file.readText((§path.join(
+    ("/tmp/sigil-stdlib-file-read-write":String),
+    "sample.txt"
+  ):String)):String)="hello world"
 }
 
 test "file remove removes a file" =>!Fs {
   l _=(§file.removeTree(("/tmp/sigil-stdlib-file-delete":String)):Unit);
   l _=(§file.makeDirs(("/tmp/sigil-stdlib-file-delete":String)):Unit);
-  l _=(§file.writeText("hello",(§path.join(("/tmp/sigil-stdlib-file-delete":String),"sample.txt"):String)):Unit);
-  l _=(§file.remove((§path.join(("/tmp/sigil-stdlib-file-delete":String),"sample.txt"):String)):Unit);
-  §file.exists((§path.join(("/tmp/sigil-stdlib-file-delete":String),"sample.txt"):String))=false
+  l _=(§file.writeText(
+    "hello",
+    (§path.join(
+      ("/tmp/sigil-stdlib-file-delete":String),
+      "sample.txt"
+    ):String)
+  ):Unit);
+  l _=(§file.remove((§path.join(
+    ("/tmp/sigil-stdlib-file-delete":String),
+    "sample.txt"
+  ):String)):Unit);
+  §file.exists((§path.join(
+    ("/tmp/sigil-stdlib-file-delete":String),
+    "sample.txt"
+  ):String))=false
 }
 
 test "file removeTree removes nested output" =>!Fs {
   l _=(§file.removeTree(("/tmp/sigil-stdlib-file-rmtree":String)):Unit);
-  l _=(§file.makeDirs((§path.join(("/tmp/sigil-stdlib-file-rmtree":String),"a/b"):String)):Unit);
-  l _=(§file.writeText("hello",(§path.join((§path.join(("/tmp/sigil-stdlib-file-rmtree":String),"a/b"):String),"sample.txt"):String)):Unit);
+  l _=(§file.makeDirs((§path.join(
+    ("/tmp/sigil-stdlib-file-rmtree":String),
+    "a/b"
+  ):String)):Unit);
+  l _=(§file.writeText(
+    "hello",
+    (§path.join(
+      (§path.join(
+        ("/tmp/sigil-stdlib-file-rmtree":String),
+        "a/b"
+      ):String),
+      "sample.txt"
+    ):String)
+  ):Unit);
   l _=(§file.removeTree(("/tmp/sigil-stdlib-file-rmtree":String)):Unit);
   §file.exists(("/tmp/sigil-stdlib-file-rmtree":String))=false
 }

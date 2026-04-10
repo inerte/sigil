@@ -1,6 +1,19 @@
 e process
 
-c world=(†runtime.world(†clock.systemClock(),†fs.real(),[],†log.capture(),†process.real(),†random.seeded(1337),[†tcp.proxy(•topology.eventStream,eventStreamHost(),eventStreamPort())],†timer.virtual()):†runtime.World)
+c world=(†runtime.world(
+  †clock.systemClock(),
+  †fs.real(),
+  [],
+  †log.capture(),
+  †process.real(),
+  †random.seeded(1337),
+  [†tcp.proxy(
+    •topology.eventStream,
+    eventStreamHost(),
+    eventStreamPort()
+  )],
+  †timer.virtual()
+):†runtime.World)
 
 λeventStreamHost()=>String=eventStreamHostFromProperty(process.env.hasOwnProperty("sigilTcpTestHost"))
 

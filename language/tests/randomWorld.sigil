@@ -1,12 +1,27 @@
 λmain()=>Unit=()
 
 test "fixture random normalizes draws into inclusive ranges" =>!Random world {
-  c random=(†random.fixture([5,-1,8]):†random.RandomEntry)
+  c random=(†random.fixture([
+  5,
+  -1,
+  8
+]):†random.RandomEntry)
 } {
-  l first=(§random.intBetween(7,3):Int);
-  l second=(§random.intBetween(7,3):Int);
-  l third=(§random.intBetween(7,3):Int);
-  first=3 and second=7 and third=6
+  l first=(§random.intBetween(
+    7,
+    3
+  ):Int);
+  l second=(§random.intBetween(
+    7,
+    3
+  ):Int);
+  l third=(§random.intBetween(
+    7,
+    3
+  ):Int);
+  first=3
+    and second=7
+    and third=6
 }
 
 test "pick returns none for empty list" =>!Random world {
@@ -21,11 +36,25 @@ test "pick returns none for empty list" =>!Random world {
 test "seeded random stays deterministic across fresh test worlds" =>!Random world {
   c random=(†random.seeded(1337):†random.RandomEntry)
 } {
-  §random.shuffle([1,2,3,4])=[3,1,2,4]
+  §random.shuffle([
+    1,
+    2,
+    3,
+    4
+  ])=[
+    3,
+    1,
+    2,
+    4
+  ]
 }
 
 test "seeded pick returns a deterministic element" =>!Random world {
   c random=(†random.seeded(1337):†random.RandomEntry)
 } {
-  §random.pick(["orc","slime","bat"])=Some("bat")
+  §random.pick([
+    "orc",
+    "slime",
+    "bat"
+  ])=Some("bat")
 }

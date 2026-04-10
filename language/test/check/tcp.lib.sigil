@@ -2,7 +2,10 @@
 
 λcalledNTimes(count:Int,entry:†tcp.TcpEntry)=>Bool=※observe::tcp.callCount(entry)=count
 
-λcalledOnce(entry:†tcp.TcpEntry)=>Bool=calledNTimes(1,entry)
+λcalledOnce(entry:†tcp.TcpEntry)=>Bool=calledNTimes(
+  1,
+  entry
+)
 
 λlastRequestIs(entry:†tcp.TcpEntry,expected:String)=>Bool match ※observe::tcp.lastRequest(entry){
   Some(actual)=>actual=expected|

@@ -1,7 +1,18 @@
 λmain()=>Unit=()
 
 test "filter even keeps only even numbers" {
-  •filterEven.filterEven([1,2,3,4,5,6])=[2,4,6]
+  •filterEven.filterEven([
+    1,
+    2,
+    3,
+    4,
+    5,
+    6
+  ])=[
+    2,
+    4,
+    6
+  ]
 }
 
 test "is palindrome recognizes mirrored strings" {
@@ -9,9 +20,25 @@ test "is palindrome recognizes mirrored strings" {
 }
 
 test "map double doubles every value" {
-  •mapDouble.mapDouble([1,2,3,4])=[2,4,6,8]
+  •mapDouble.mapDouble([
+    1,
+    2,
+    3,
+    4
+  ])=[
+    2,
+    4,
+    6,
+    8
+  ]
 }
 
 test "sum list uses canonical stdlib sum" {
-  §list.sum([1,2,3,4,5])=15
+  §list.sum([
+    1,
+    2,
+    3,
+    4,
+    5
+  ])=15
 }

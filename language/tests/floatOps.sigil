@@ -13,7 +13,9 @@ test "floor rounds down to nearest integer" {
 }
 
 test "isFinite accepts normal floats" {
-  §float.isFinite(1.5) and §float.isFinite(-3.0) and §float.isFinite(0.0)
+  §float.isFinite(1.5)
+    and §float.isFinite(-3.0)
+    and §float.isFinite(0.0)
 }
 
 test "isNaN detects not-a-number" {
@@ -25,15 +27,24 @@ test "isNaN rejects normal floats" {
 }
 
 test "max returns the larger value" {
-  §float.max(2.0,5.0)=5.0
+  §float.max(
+    2.0,
+    5.0
+  )=5.0
 }
 
 test "min returns the smaller value" {
-  §float.min(2.0,5.0)=2.0
+  §float.min(
+    2.0,
+    5.0
+  )=2.0
 }
 
 test "pow raises base to exponent" {
-  §float.pow(2.0,10.0)=1024.0
+  §float.pow(
+    2.0,
+    10.0
+  )=1024.0
 }
 
 test "round ties round up" {

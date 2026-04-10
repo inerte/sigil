@@ -27,9 +27,15 @@ e console
 ```sigil program
 e fs::promises
 
-λmain()=>Unit=writeFile("output.txt","Hello, Sigil!")
+λmain()=>Unit=writeFile(
+  "output.txt",
+  "Hello, Sigil!"
+)
 
-λwriteFile(content:String,path:String)=>Unit=fs::promises.writeFile(path,content)
+λwriteFile(content:String,path:String)=>Unit=fs::promises.writeFile(
+  path,
+  content
+)
 ```
 
 ### NPM Packages
@@ -80,7 +86,10 @@ This catches typos WITHOUT needing type annotations!
 ```sigil program
 e fs::promises
 
-λmain()=>Unit=fs::promises.readFile("file.txt","utf-8")
+λmain()=>Unit=fs::promises.readFile(
+  "file.txt",
+  "utf-8"
+)
 ```
 
 Compiles to:
@@ -164,7 +173,10 @@ t MkdirOptions={recursive:Bool}
 
 e fs::promises:{mkdir:λ(String,MkdirOptions)=>Unit}
 
-λensureDir(dir:String)=>Unit=fs::promises.mkdir(dir,({recursive:true}:MkdirOptions))
+λensureDir(dir:String)=>Unit=fs::promises.mkdir(
+  dir,
+  ({recursive:true}:MkdirOptions)
+)
 ```
 
 **Benefits:**
@@ -226,7 +238,10 @@ e fs::promises
 
 λmain()=>!Fs String=readFile("data.txt")
 
-λreadFile(path:String)=>!Fs String=fs::promises.readFile(path,"utf8")
+λreadFile(path:String)=>!Fs String=fs::promises.readFile(
+  path,
+  "utf8"
+)
 ```
 
 Compiles to:
@@ -312,9 +327,15 @@ e console
 ```sigil module
 e fs::promises
 
-λreadFile(path:String)=>Unit=fs::promises.readFile(path,"utf-8")
+λreadFile(path:String)=>Unit=fs::promises.readFile(
+  path,
+  "utf-8"
+)
 
-λwriteFile(content:String,path:String)=>Unit=fs::promises.writeFile(path,content)
+λwriteFile(content:String,path:String)=>Unit=fs::promises.writeFile(
+  path,
+  content
+)
 ```
 
 ### 3. Validate at Boundaries

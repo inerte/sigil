@@ -1,3 +1,18 @@
 λmain()=>[Int]=•treeTraversals.preorder(sampleTree())
 
-λsampleTree()=>µIntTree=µNode([µNode([µNode([],4)],2),µNode([],3)],1)
+λsampleTree()=>µIntTree=µNode(
+  [
+    µNode(
+      [µNode(
+        [],
+        4
+      )],
+      2
+    ),
+    µNode(
+      [],
+      3
+    )
+  ],
+  1
+)

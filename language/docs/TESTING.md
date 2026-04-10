@@ -35,7 +35,18 @@ Library code is file-based, not `export`-based:
 λmain()=>Unit=()
 
 test "count completed todos" {
-  •todoDomain.completedCount([{done:true,id:1,text:"A"},{done:false,id:2,text:"B"}])=1
+  •todoDomain.completedCount([
+    {
+      done:true,
+      id:1,
+      text:"A"
+    },
+    {
+      done:false,
+      id:2,
+      text:"B"
+    }
+  ])=1
 }
 ```
 
@@ -91,7 +102,10 @@ Multiline descriptions use the same string syntax:
 test "multiline
 test description works" {
   §string.lines("alpha
-beta")=["alpha","beta"]
+beta")=[
+    "alpha",
+    "beta"
+  ]
 }
 ```
 
@@ -151,10 +165,16 @@ Example:
 λmain()=>Unit=()
 
 test "audit sink receives redacted ssn" =>!Fs!Log!Process world {
-  c exports=(†fs.sandboxRoot(".local/labelled-boundaries-tests/audit",•topology.exportsDir):†fs.FsRootEntry)
+  c exports=(†fs.sandboxRoot(
+  ".local/labelled-boundaries-tests/audit",
+  •topology.exportsDir
+):†fs.FsRootEntry)
 } {
   l _=(•app.runExample():Unit);
-  ※check::log.containsAt("***-**-6789",•topology.auditLog)
+  ※check::log.containsAt(
+    "***-**-6789",
+    •topology.auditLog
+  )
 }
 ```
 

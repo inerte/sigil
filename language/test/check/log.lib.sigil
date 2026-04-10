@@ -1,3 +1,9 @@
-λcontains(message:String)=>Bool=§list.any(λ(entry:String)=>Bool=entry=message,※observe::log.entries())
+λcontains(message:String)=>Bool=§list.any(
+  λ(entry:String)=>Bool=entry=message,
+  ※observe::log.entries()
+)
 
-λcontainsAt(message:String,sink:§topology.LogSink)=>Bool=§list.any(λ(entry:String)=>Bool=entry=message,※observe::log.entriesAt(sink))
+λcontainsAt(message:String,sink:§topology.LogSink)=>Bool=§list.any(
+  λ(entry:String)=>Bool=entry=message,
+  ※observe::log.entriesAt(sink)
+)

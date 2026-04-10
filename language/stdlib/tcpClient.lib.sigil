@@ -1,11 +1,29 @@
-t TcpError={kind:TcpErrorKind,message:String}
+t TcpError={
+  kind:TcpErrorKind,
+  message:String
+}
 
 t TcpErrorKind=Connection()|InvalidAddress()|Protocol()|Timeout()|Topology()
 
-t TcpRequest={dependency:§topology.TcpServiceDependency,message:String}
+t TcpRequest={
+  dependency:§topology.TcpServiceDependency,
+  message:String
+}
 
 t TcpResponse={message:String}
 
-λrequest(request:TcpRequest)=>!Tcp Result[TcpResponse,TcpError]=Err({kind:Connection(),message:"tcp client runtime unavailable"})
+λrequest(request:TcpRequest)=>!Tcp Result[
+  TcpResponse,
+  TcpError
+]=Err({
+  kind:Connection(),
+  message:"tcp client runtime unavailable"
+})
 
-λsend(dependency:§topology.TcpServiceDependency,message:String)=>!Tcp Result[TcpResponse,TcpError]=request({dependency:dependency,message:message})
+λsend(dependency:§topology.TcpServiceDependency,message:String)=>!Tcp Result[
+  TcpResponse,
+  TcpError
+]=request({
+  dependency:dependency,
+  message:message
+})

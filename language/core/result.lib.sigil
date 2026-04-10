@@ -1,24 +1,48 @@
-λbindResult[T,U,E](fn:λ(T)=>Result[U,E],res:Result[T,E])=>Result[U,E] match res{
+λbindResult[T,U,E](fn:λ(T)=>Result[
+  U,
+  E
+],res:Result[
+  T,
+  E
+])=>Result[
+  U,
+  E
+] match res{
   Ok(value)=>fn(value)|
   Err(error)=>Err(error)
 }
 
-λisErr[T,E](res:Result[T,E])=>Bool match res{
+λisErr[T,E](res:Result[
+  T,
+  E
+])=>Bool match res{
   Ok(value)=>false|
   Err(error)=>true
 }
 
-λisOk[T,E](res:Result[T,E])=>Bool match res{
+λisOk[T,E](res:Result[
+  T,
+  E
+])=>Bool match res{
   Ok(value)=>true|
   Err(error)=>false
 }
 
-λmapResult[T,U,E](fn:λ(T)=>U,res:Result[T,E])=>Result[U,E] match res{
+λmapResult[T,U,E](fn:λ(T)=>U,res:Result[
+  T,
+  E
+])=>Result[
+  U,
+  E
+] match res{
   Ok(value)=>Ok(fn(value))|
   Err(error)=>Err(error)
 }
 
-λunwrapOrResult[T,E](fallback:T,res:Result[T,E])=>T match res{
+λunwrapOrResult[T,E](fallback:T,res:Result[
+  T,
+  E
+])=>T match res{
   Ok(value)=>value|
   Err(error)=>fallback
 }

@@ -13,7 +13,10 @@ test "path extname returns file extension" {
 }
 
 test "path join combines two segments" {
-  §path.join("website","articles")="website/articles"
+  §path.join(
+    "website",
+    "articles"
+  )="website/articles"
 }
 
 test "path normalize removes redundant navigation" {
@@ -21,5 +24,8 @@ test "path normalize removes redundant navigation" {
 }
 
 test "path relative computes sibling route" {
-  §path.relative("website/articles","website/spec/cli-json.md")="../spec/cli-json.md"
+  §path.relative(
+    "website/articles",
+    "website/spec/cli-json.md"
+  )="../spec/cli-json.md"
 }

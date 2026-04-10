@@ -1,7 +1,12 @@
 λmain()=>Unit=()
 
 test "prime factorization of composite number is sorted by discovery" {
-  •primeFactorization.primeFactors(84)=[2,2,3,7]
+  •primeFactorization.primeFactors(84)=[
+    2,
+    2,
+    3,
+    7
+  ]
 }
 
 test "prime factorization of prime number returns singleton list" {

@@ -1,10 +1,16 @@
 t CryptoError={message:String}
 
-λbase64Decode(input:String)=>Result[String,CryptoError]=Err({message:"crypto intrinsic unavailable"})
+λbase64Decode(input:String)=>Result[
+  String,
+  CryptoError
+]=Err({message:"crypto intrinsic unavailable"})
 
 λbase64Encode(input:String)=>String=""
 
-λhexDecode(input:String)=>Result[String,CryptoError]=Err({message:"crypto intrinsic unavailable"})
+λhexDecode(input:String)=>Result[
+  String,
+  CryptoError
+]=Err({message:"crypto intrinsic unavailable"})
 
 λhexEncode(input:String)=>String=""
 

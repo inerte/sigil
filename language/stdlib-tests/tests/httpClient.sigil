@@ -5,27 +5,65 @@ test "http client emptyHeaders returns empty map" {
 }
 
 test "http client header creates singleton header map" {
-  match ¶map.get("content-type",§httpClient.header("content-type","application/json")){
+  match ¶map.get(
+    "content-type",
+    §httpClient.header(
+      "content-type",
+      "application/json"
+    )
+  ){
     Some(value)=>value="application/json"|
     None()=>false
   }
 }
 
 test "http client request record preserves dependency headers and path" {
-  ({body:None(),dependency:§topology.HttpServiceDependency("mailerApi"),headers:§httpClient.emptyHeaders(),method:§httpClient.Get(),path:"/health"}:§httpClient.HttpRequest).dependency=§topology.HttpServiceDependency("mailerApi") and ({body:None(),dependency:§topology.HttpServiceDependency("mailerApi"),headers:§httpClient.emptyHeaders(),method:§httpClient.Get(),path:"/health"}:§httpClient.HttpRequest).path="/health"
+  ({
+    body:None(),
+    dependency:§topology.HttpServiceDependency("mailerApi"),
+    headers:§httpClient.emptyHeaders(),
+    method:§httpClient.Get(),
+    path:"/health"
+  }:§httpClient.HttpRequest).dependency=§topology.HttpServiceDependency("mailerApi") and ({
+    body:None(),
+    dependency:§topology.HttpServiceDependency("mailerApi"),
+    headers:§httpClient.emptyHeaders(),
+    method:§httpClient.Get(),
+    path:"/health"
+  }:§httpClient.HttpRequest).path="/health"
 }
 
 test "http client mergeHeaders prefers right map values" {
-  match ¶map.get("content-type",(§httpClient.mergeHeaders(§httpClient.header("content-type","text/plain"),§httpClient.header("content-type","application/json")):§httpClient.Headers)){
+  match ¶map.get(
+    "content-type",
+    (§httpClient.mergeHeaders(
+      §httpClient.header(
+        "content-type",
+        "text/plain"
+      ),
+      §httpClient.header(
+        "content-type",
+        "application/json"
+      )
+    ):§httpClient.Headers)
+  ){
     Some(value)=>value="application/json"|
     None()=>false
   }
 }
 
 test "http client responseJson parses valid json body" {
-  match §httpClient.responseJson({body:"{\"ok\":true}",headers:§httpClient.emptyHeaders(),status:200,url:"https://sigil.dev/health"}){
+  match §httpClient.responseJson({
+    body:"{\"ok\":true}",
+    headers:§httpClient.emptyHeaders(),
+    status:200,
+    url:"https://sigil.dev/health"
+  }){
     Ok(value)=>match §json.asObject(value){
-      Some(obj)=>match §json.getField("ok",obj){
+      Some(obj)=>match §json.getField(
+        "ok",
+        obj
+      ){
         Some(field)=>match §json.asBool(field){
           Some(flag)=>flag|
           None()=>false
@@ -39,7 +77,12 @@ test "http client responseJson parses valid json body" {
 }
 
 test "http client responseJson returns invalid json error" {
-  match §httpClient.responseJson({body:"{not json}",headers:§httpClient.emptyHeaders(),status:200,url:"https://sigil.dev/bad"}){
+  match §httpClient.responseJson({
+    body:"{not json}",
+    headers:§httpClient.emptyHeaders(),
+    status:200,
+    url:"https://sigil.dev/bad"
+  }){
     Ok(_)=>false|
     Err(error)=>#error.message>0
   }

@@ -1,21 +1,59 @@
 λmain()=>Unit=()
 
 test "numeric.abs returns magnitude" {
-  §numeric.abs(-5)=5 and §numeric.abs(0)=0 and §numeric.abs(7)=7
+  §numeric.abs(-5)=5
+    and §numeric.abs(0)=0
+    and §numeric.abs(7)=7
 }
 
 test "numeric.divmod returns quotient and remainder" {
-  §numeric.divmod(17,5)={quotient:3,remainder:2} and §numeric.divmod(-17,5)={quotient:-4,remainder:3}
+  §numeric.divmod(
+    17,
+    5
+  )={
+    quotient:3,
+    remainder:2
+  } and §numeric.divmod(
+    -17,
+    5
+  )={
+    quotient:-4,
+    remainder:3
+  }
 }
 
 test "numeric.lcm handles signs and zero" {
-  §numeric.lcm(6,8)=24 and §numeric.lcm(-6,8)=24 and §numeric.lcm(0,7)=0
+  §numeric.lcm(
+    6,
+    8
+  )=24
+    and §numeric.lcm(
+      -6,
+      8
+    )=24
+    and §numeric.lcm(
+      0,
+      7
+    )=0
 }
 
 test "numeric.mod uses non-negative remainder" {
-  §numeric.mod(17,5)=2 and §numeric.mod(-17,5)=3 and §numeric.mod(17,-5)=2
+  §numeric.mod(
+    17,
+    5
+  )=2
+    and §numeric.mod(
+      -17,
+      5
+    )=3
+    and §numeric.mod(
+      17,
+      -5
+    )=2
 }
 
 test "numeric.sign returns canonical sign" {
-  §numeric.sign(-8)=-1 and §numeric.sign(0)=0 and §numeric.sign(12)=1
+  §numeric.sign(-8)=-1
+    and §numeric.sign(0)=0
+    and §numeric.sign(12)=1
 }

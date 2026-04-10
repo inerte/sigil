@@ -1,6 +1,9 @@
 λmain()=>Unit=()
 
 test "tcp client request record preserves dependency and message" {
-  l request=({dependency:§topology.TcpServiceDependency("eventStream"),message:"ping"}:§tcpClient.TcpRequest);
+  l request=({
+    dependency:§topology.TcpServiceDependency("eventStream"),
+    message:"ping"
+  }:§tcpClient.TcpRequest);
   request.dependency=§topology.TcpServiceDependency("eventStream") and request.message="ping"
 }

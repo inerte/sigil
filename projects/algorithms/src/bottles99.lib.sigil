@@ -25,10 +25,19 @@
 
 λsong(n:Int)=>String match n{
   0=>verse(0)|
-  count=>verse(count)++"
+  count=>verse(count)
+    ++"
 
-"++song(count-1)
+"
+    ++song(count-1)
 }
 
-λverse(n:Int)=>String=countUpper(n)++" of beer on the wall, "++countLower(n)++" of beer.
-"++action(n)++", "++nextCount(n)++" of beer on the wall."
+λverse(n:Int)=>String=countUpper(n)
+  ++" of beer on the wall, "
+  ++countLower(n)
+  ++" of beer.
+"
+  ++action(n)
+  ++", "
+  ++nextCount(n)
+  ++" of beer on the wall."

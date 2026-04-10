@@ -81,6 +81,7 @@ Canonical function/lambda rules:
 - effects, when present, appear between `=>` and the return type
 - `=` is required before non-`match` bodies
 - `=` is forbidden before `match` bodies
+- multi-item aggregate subforms inside signatures follow the global printer rule, so type arguments and other delimited `2+` forms may span lines
 
 Examples:
 
@@ -114,7 +115,10 @@ Records and maps are distinct.
 Examples:
 
 ```sigil module
-t User={id:Int,name:String}
+t User={
+  id:Int,
+  name:String
+}
 
 t Scores={String↦Int}
 ```
@@ -145,14 +149,18 @@ Example:
 ```sigil module
 λgreeting(name:String)=>String={
   l prefix=("Hello, ":String);
-  prefix++name++prefix
+  prefix
+    ++name
+    ++prefix
 }
 ```
 
 Required canonical form:
 
 ```sigil module
-λgreeting(name:String)=>String="Hello, "++name++"Hello, "
+λgreeting(name:String)=>String="Hello, "
+  ++name
+  ++"Hello, "
 ```
 
 Current mechanical rule:
@@ -279,10 +287,10 @@ That gives Sigil a source normal form:
 
 Some surface constraints are still easiest to think about mechanically:
 
-- signatures print on one line
+- delimited aggregate forms stay flat with `0` or `1` item and print multiline with `2+` items
+- repeated `++`, `⧺`, `and`, and `or` chains print vertically one continued operand per line
 - direct `match` bodies begin on that same line
 - multi-arm `match` prints multiline
-- branching and other non-trivial structure print multiline earlier than dense inline forms
 - string values containing newline characters print as multiline `"` literals with exact preserved line breaks
 
 Canonical examples:
@@ -314,11 +322,19 @@ Sigil rejects this shape because it duplicates work instead of following one can
 ### Canonical Replacement
 
 ```sigil module
-λfib(n:Int)=>Int=fibHelper(0,1,n)
+λfib(n:Int)=>Int=fibHelper(
+  0,
+  1,
+  n
+)
 
 λfibHelper(a:Int,b:Int,n:Int)=>Int match n{
   0=>a|
-  count=>fibHelper(b,a+b,count-1)
+  count=>fibHelper(
+    b,
+    a+b,
+    count-1
+  )
 }
 ```
 
@@ -344,7 +360,10 @@ Sigil also rejects obvious nested amplification of that same shape, such as:
 ```sigil module
 λlength(xs:[Int])=>Int match xs{
   []=>0|
-  [h,.tail]=>1+length(tail)
+  [
+  h,
+  .tail
+]=>1+length(tail)
 }
 ```
 
@@ -352,11 +371,23 @@ Sigil also rejects obvious nested amplification of that same shape, such as:
 ```sigil module
 λmerge(left:[Int],right:[Int])=>[Int] match left{
   []=>right|
-  [lh,.lt]=>match right{
+  [
+  lh,
+  .lt
+]=>match right{
     []=>left|
-    [rh,.rt]=>match lh≤rh{
-      true=>[lh]⧺merge(lt,right)|
-      _=>[rh]⧺merge(left,rt)
+    [
+  rh,
+  .rt
+]=>match lh≤rh{
+      true=>[lh]⧺merge(
+        lt,
+        right
+      )|
+      _=>[rh]⧺merge(
+        left,
+        rt
+      )
     }
   }
 }

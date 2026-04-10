@@ -32,7 +32,10 @@ starts to disappear.
 If a Sigil value has type:
 
 ```sigil module
-t Message={createdAt:§time.Instant,text:String}
+t Message={
+  createdAt:§time.Instant,
+  text:String
+}
 ```
 
 then the language treats that as an exact internal shape:
@@ -44,7 +47,10 @@ then the language treats that as an exact internal shape:
 If absence is real, Sigil expects it in the type:
 
 ```sigil module
-t MaybeMessage={createdAt:Option[§time.Instant],text:String}
+t MaybeMessage={
+  createdAt:Option[§time.Instant],
+  text:String
+}
 ```
 
 ## Why the Boundary Matters

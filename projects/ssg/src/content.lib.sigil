@@ -2,18 +2,42 @@
   l bareSlug=(stripNumericPrefix(page.meta.slug):String);
   match bareSlug=page.meta.slug{
     true=>routes|
-    false=>routes⧺[{alias:"/articles/"++bareSlug,route:canonicalRoute(page)}]⧺[{alias:"/articles/"++bareSlug++"/",route:canonicalRoute(page)}]
+    false=>routes
+      ⧺[{
+        alias:"/articles/"++bareSlug,
+        route:canonicalRoute(page)
+      }]
+      ⧺[{
+        alias:"/articles/"
+          ++bareSlug
+          ++"/",
+        route:canonicalRoute(page)
+      }]
   }
 }
 
 λaddKnownAliases(page:µSitePage,routes:[µAliasRoute])=>[µAliasRoute] match page.section{
-  µArticle()=>addArticleAliases(page,routes)|
+  µArticle()=>addArticleAliases(
+    page,
+    routes
+  )|
   µDoc()=>match page.meta.slug{
-    "philosophy"=>routes⧺[{alias:"/about/philosophy",route:canonicalRoute(page)}]|
+    "philosophy"=>routes⧺[{
+      alias:"/about/philosophy",
+      route:canonicalRoute(page)
+    }]|
     _=>routes
   }|
   µProject()=>match page.sourcePath{
-    "website/projects/README.md"=>routes⧺[{alias:"website/projects",route:canonicalRoute(page)}]⧺[{alias:"website/projects/",route:canonicalRoute(page)}]|
+    "website/projects/README.md"=>routes
+      ⧺[{
+        alias:"website/projects",
+        route:canonicalRoute(page)
+      }]
+      ⧺[{
+        alias:"website/projects/",
+        route:canonicalRoute(page)
+      }]|
     _=>routes
   }|
   _=>routes
@@ -21,56 +45,140 @@
 
 λaliasRoutesForPage(page:µSitePage)=>[µAliasRoute]={
   l route=(canonicalRoute(page):String);
-  l baseRoutes=([{alias:page.sourcePath,route:route},{alias:"/"++page.sourcePath,route:route},{alias:route,route:route}]:[µAliasRoute]);
+  l baseRoutes=([
+    {
+      alias:page.sourcePath,
+      route:route
+    },
+    {
+      alias:"/"++page.sourcePath,
+      route:route
+    },
+    {
+      alias:route,
+      route:route
+    }
+  ]:[µAliasRoute]);
   l withSourceDir=(match page.sourcePath{
-    "website/articles/README.md"=>baseRoutes⧺[{alias:"website/articles",route:route}]⧺[{alias:"website/articles/",route:route}]|
-    "website/projects/README.md"=>baseRoutes⧺[{alias:"website/projects",route:route}]⧺[{alias:"website/projects/",route:route}]|
+    "website/articles/README.md"=>baseRoutes
+      ⧺[{
+        alias:"website/articles",
+        route:route
+      }]
+      ⧺[{
+        alias:"website/articles/",
+        route:route
+      }]|
+    "website/projects/README.md"=>baseRoutes
+      ⧺[{
+        alias:"website/projects",
+        route:route
+      }]
+      ⧺[{
+        alias:"website/projects/",
+        route:route
+      }]|
     _=>baseRoutes
   }:[µAliasRoute]);
-  addKnownAliases(page,match route{
-    "/"=>withSourceDir|
-    _=>withSourceDir⧺[{alias:§string.trimEndChars("/",route),route:route}]
-  })
+  addKnownAliases(
+    page,
+    match route{
+      "/"=>withSourceDir|
+      _=>withSourceDir⧺[{
+        alias:§string.trimEndChars(
+          "/",
+          route
+        ),
+        route:route
+      }]
+    }
+  )
 }
 
 λbasePathPrefix(basePath:String,route:String)=>String match basePath{
   "/"=>route|
   ""=>route|
-  _=>§string.trimEndChars("/",basePath)++route
+  _=>§string.trimEndChars(
+    "/",
+    basePath
+  )++route
 }
 
-λblankPage(markdown:String,meta:µPageMeta,outputDir:String,section:µSection,sourcePath:String)=>µSitePage={bodyHtml:"",bodyMarkdown:markdown,meta:meta,outputDir:outputDir,project:None(),section:section,sourcePath:sourcePath}
+λblankPage(markdown:String,meta:µPageMeta,outputDir:String,section:µSection,sourcePath:String)=>µSitePage={
+  bodyHtml:"",
+  bodyMarkdown:markdown,
+  meta:meta,
+  outputDir:outputDir,
+  project:None(),
+  section:section,
+  sourcePath:sourcePath
+}
 
-λbuildAliasRoutes(data:µSiteData)=>[µAliasRoute]=aliasRoutesForPage(data.home)⧺aliasRoutesForPage(data.articlesIntro)⧺aliasRoutesForPage(data.projectsIntro)⧺pagesAliasRoutes(data.articles)⧺pagesAliasRoutes(data.docs)⧺pagesAliasRoutes(data.projects)⧺pagesAliasRoutes(data.spec)⧺pagesAliasRoutes(data.standalone)
+λbuildAliasRoutes(data:µSiteData)=>[µAliasRoute]=aliasRoutesForPage(data.home)
+  ⧺aliasRoutesForPage(data.articlesIntro)
+  ⧺aliasRoutesForPage(data.projectsIntro)
+  ⧺pagesAliasRoutes(data.articles)
+  ⧺pagesAliasRoutes(data.docs)
+  ⧺pagesAliasRoutes(data.projects)
+  ⧺pagesAliasRoutes(data.spec)
+  ⧺pagesAliasRoutes(data.standalone)
 
 λcanonicalRoute(page:µSitePage)=>String match page.outputDir{
   ""=>"/"|
-  dir=>"/"++dir++"/"
+  dir=>"/"
+    ++dir
+    ++"/"
 }
 
 λcompareArticlePages(left:µSitePage,right:µSitePage)=>Bool={
   l leftKey=(dateSortKey(left.meta.date):Int);
   l rightKey=(dateSortKey(right.meta.date):Int);
   match leftKey=rightKey{
-    true=>compareText(right.sourcePath,left.sourcePath)|
+    true=>compareText(
+      right.sourcePath,
+      left.sourcePath
+    )|
     false=>leftKey>rightKey
   }
 }
 
-λcompareText(left:String,right:String)=>Bool=compareTextInner(0,§string.toLower(left),§string.toLower(right))
+λcompareText(left:String,right:String)=>Bool=compareTextInner(
+  0,
+  §string.toLower(left),
+  §string.toLower(right)
+)
 
 λcompareTextInner(idx:Int,left:String,right:String)=>Bool match idx≥#left{
   true=>idx<#right|
   false=>match idx≥#right{
     true=>false|
-    false=>match (sortCharRank(§string.charAt(idx,left)):Int)=(sortCharRank(§string.charAt(idx,right)):Int){
-      true=>compareTextInner(idx+1,left,right)|
-      false=>(sortCharRank(§string.charAt(idx,left)):Int)<(sortCharRank(§string.charAt(idx,right)):Int)
+    false=>match (sortCharRank(§string.charAt(
+      idx,
+      left
+    )):Int)=(sortCharRank(§string.charAt(
+      idx,
+      right
+    )):Int){
+      true=>compareTextInner(
+        idx+1,
+        left,
+        right
+      )|
+      false=>(sortCharRank(§string.charAt(
+        idx,
+        left
+      )):Int)<(sortCharRank(§string.charAt(
+        idx,
+        right
+      )):Int)
     }
   }
 }
 
-λcompareTitlePages(left:µSitePage,right:µSitePage)=>Bool=compareText(left.meta.slug,right.meta.slug)
+λcompareTitlePages(left:µSitePage,right:µSitePage)=>Bool=compareText(
+  left.meta.slug,
+  right.meta.slug
+)
 
 λdateSortKey(date:String)=>Int match §time.parseIso(date){
   Ok(instant)=>§time.toEpochMillis(instant)|
@@ -79,59 +187,169 @@
 
 λdropLast(parts:[String])=>[String] match parts{
   []=>[]|
-  [part,.rest]=>match rest{
+  [
+  part,
+  .rest
+]=>match rest{
     []=>[]|
     _=>[part]⧺dropLast(rest)
   }
 }
 
-λdropNumericPrefix(slug:String)=>String match #slug>4 and §string.isDigit(§string.charAt(0,slug)) and §string.isDigit(§string.charAt(1,slug)) and §string.isDigit(§string.charAt(2,slug)) and §string.charAt(3,slug)="-"{
-  true=>§string.substring(#slug,slug,4)|
+λdropNumericPrefix(slug:String)=>String match #slug>4
+  and §string.isDigit(§string.charAt(
+    0,
+    slug
+  ))
+  and §string.isDigit(§string.charAt(
+    1,
+    slug
+  ))
+  and §string.isDigit(§string.charAt(
+    2,
+    slug
+  ))
+  and §string.charAt(
+    3,
+    slug
+  )="-"{
+  true=>§string.substring(
+    #slug,
+    slug,
+    4
+  )|
   false=>slug
 }
 
-λfileDir(path:String)=>String=§string.join("/",dropLast(§string.split("/",path)))
+λfileDir(path:String)=>String=§string.join(
+  "/",
+  dropLast(§string.split(
+    "/",
+    path
+  ))
+)
 
-λfindLinkClose(afterOpen:String)=>Int=§string.indexOf(afterOpen,")")
+λfindLinkClose(afterOpen:String)=>Int=§string.indexOf(
+  afterOpen,
+  ")"
+)
 
-λisExternalLink(target:§url.Url)=>Bool=§url.isAnchor(target) or target.protocol="http" or target.protocol="https" or target.protocol="mailto"
+λisExternalLink(target:§url.Url)=>Bool=§url.isAnchor(target)
+  or target.protocol="http"
+  or target.protocol="https"
+  or target.protocol="mailto"
 
 λlookupAlias(alias:String,aliasRoutes:[µAliasRoute])=>String match aliasRoutes{
   []=>""|
-  [route,.rest]=>match route.alias=alias{
+  [
+  route,
+  .rest
+]=>match route.alias=alias{
     true=>route.route|
-    false=>lookupAlias(alias,rest)
+    false=>lookupAlias(
+      alias,
+      rest
+    )
   }
 }
 
-λnormalizeRepoPath(path:String)=>String=§string.join("/",normalizeSegments(§string.split("/",path),[]))
+λnormalizeRepoPath(path:String)=>String=§string.join(
+  "/",
+  normalizeSegments(
+    §string.split(
+      "/",
+      path
+    ),
+    []
+  )
+)
 
 λnormalizeSegments(parts:[String],stack:[String])=>[String] match parts{
   []=>stack|
-  [part,.rest]=>match part{
-    ""=>normalizeSegments(rest,stack)|
-    "."=>normalizeSegments(rest,stack)|
-    ".."=>normalizeSegments(rest,dropLast(stack))|
-    _=>normalizeSegments(rest,stack⧺[part])
+  [
+  part,
+  .rest
+]=>match part{
+    ""=>normalizeSegments(
+      rest,
+      stack
+    )|
+    "."=>normalizeSegments(
+      rest,
+      stack
+    )|
+    ".."=>normalizeSegments(
+      rest,
+      dropLast(stack)
+    )|
+    _=>normalizeSegments(
+      rest,
+      stack⧺[part]
+    )
   }
 }
 
-λpagesAliasRoutes(pages:[µSitePage])=>[µAliasRoute]=§list.flatMap(aliasRoutesForPage,pages)
+λpagesAliasRoutes(pages:[µSitePage])=>[µAliasRoute]=§list.flatMap(
+  aliasRoutesForPage,
+  pages
+)
 
-λpagesNewestFirst(pages:[µSitePage])=>[µSitePage]=sortPagesInner(compareArticlePages,pages)
+λpagesNewestFirst(pages:[µSitePage])=>[µSitePage]=sortPagesInner(
+  compareArticlePages,
+  pages
+)
 
-λpagesSortedByTitle(pages:[µSitePage])=>[µSitePage]=sortPagesInner(compareTitlePages,pages)
+λpagesSortedByTitle(pages:[µSitePage])=>[µSitePage]=sortPagesInner(
+  compareTitlePages,
+  pages
+)
 
-λrenderPage(aliasRoutes:[µAliasRoute],basePath:String,page:µSitePage)=>µSitePage={bodyHtml:§markdown.parse(rewriteInternalLinks(aliasRoutes,basePath,page.bodyMarkdown,page.sourcePath)),bodyMarkdown:page.bodyMarkdown,meta:page.meta,outputDir:page.outputDir,project:page.project,section:page.section,sourcePath:page.sourcePath}
+λrenderPage(aliasRoutes:[µAliasRoute],basePath:String,page:µSitePage)=>µSitePage={
+  bodyHtml:§markdown.parse(rewriteInternalLinks(
+    aliasRoutes,
+    basePath,
+    page.bodyMarkdown,
+    page.sourcePath
+  )),
+  bodyMarkdown:page.bodyMarkdown,
+  meta:page.meta,
+  outputDir:page.outputDir,
+  project:page.project,
+  section:page.section,
+  sourcePath:page.sourcePath
+}
 
-λresolveRepoPath(sourcePath:String,targetPath:String)=>String match §string.startsWith("/",targetPath){
-  true=>normalizeRepoPath(§string.substring(#targetPath,targetPath,1))|
-  false=>match §string.startsWith("../docs/",targetPath){
-    true=>normalizeRepoPath("language/docs/"++§string.substring(#targetPath,targetPath,8))|
-    false=>match §string.startsWith("../language/",targetPath){
-      true=>normalizeRepoPath(§string.substring(#targetPath,targetPath,3))|
+λresolveRepoPath(sourcePath:String,targetPath:String)=>String match §string.startsWith(
+  "/",
+  targetPath
+){
+  true=>normalizeRepoPath(§string.substring(
+    #targetPath,
+    targetPath,
+    1
+  ))|
+  false=>match §string.startsWith(
+    "../docs/",
+    targetPath
+  ){
+    true=>normalizeRepoPath("language/docs/"++§string.substring(
+      #targetPath,
+      targetPath,
+      8
+    ))|
+    false=>match §string.startsWith(
+      "../language/",
+      targetPath
+    ){
+      true=>normalizeRepoPath(§string.substring(
+        #targetPath,
+        targetPath,
+        3
+      ))|
       false=>match #fileDir(sourcePath)>0{
-        true=>normalizeRepoPath(fileDir(sourcePath)++"/"++targetPath)|
+        true=>normalizeRepoPath(fileDir(sourcePath)
+          ++"/"
+          ++targetPath)|
         false=>normalizeRepoPath(targetPath)
       }
     }
@@ -139,12 +357,56 @@
 }
 
 λrewriteInternalLinks(aliasRoutes:[µAliasRoute],basePath:String,markdown:String,sourcePath:String)=>String={
-  l openIdx=(§string.indexOf(markdown,"]("):Int);
+  l openIdx=(§string.indexOf(
+    markdown,
+    "]("
+  ):Int);
   match openIdx<0{
     true=>markdown|
-    false=>match findLinkClose(§string.substring(#markdown,markdown,openIdx+2)){
+    false=>match findLinkClose(§string.substring(
+      #markdown,
+      markdown,
+      openIdx+2
+    )){
       closeIdx when closeIdx<0=>markdown|
-      closeIdx=>§string.substring(openIdx+2,markdown,0)++rewriteLinkTarget(aliasRoutes,basePath,sourcePath,§string.substring(closeIdx,§string.substring(#markdown,markdown,openIdx+2),0))++")"++rewriteInternalLinks(aliasRoutes,basePath,§string.substring(#§string.substring(#markdown,markdown,openIdx+2),§string.substring(#markdown,markdown,openIdx+2),closeIdx+1),sourcePath)
+      closeIdx=>§string.substring(
+        openIdx+2,
+        markdown,
+        0
+      )
+        ++rewriteLinkTarget(
+          aliasRoutes,
+          basePath,
+          sourcePath,
+          §string.substring(
+            closeIdx,
+            §string.substring(
+              #markdown,
+              markdown,
+              openIdx+2
+            ),
+            0
+          )
+        )
+        ++")"
+        ++rewriteInternalLinks(
+          aliasRoutes,
+          basePath,
+          §string.substring(
+            #§string.substring(
+              #markdown,
+              markdown,
+              openIdx+2
+            ),
+            §string.substring(
+              #markdown,
+              markdown,
+              openIdx+2
+            ),
+            closeIdx+1
+          ),
+          sourcePath
+        )
     }
   }
 }
@@ -153,10 +415,34 @@
   Err(_)=>target|
   Ok(parsedTarget)=>match isExternalLink(parsedTarget){
     true=>target|
-    false=>match #lookupAlias(parsedTarget.path,aliasRoutes)>0{
-      true=>basePathPrefix(basePath,lookupAlias(parsedTarget.path,aliasRoutes))++§url.suffix(parsedTarget)|
-      false=>match #lookupAlias(resolveRepoPath(sourcePath,parsedTarget.path),aliasRoutes)>0{
-        true=>basePathPrefix(basePath,lookupAlias(resolveRepoPath(sourcePath,parsedTarget.path),aliasRoutes))++§url.suffix(parsedTarget)|
+    false=>match #lookupAlias(
+      parsedTarget.path,
+      aliasRoutes
+    )>0{
+      true=>basePathPrefix(
+        basePath,
+        lookupAlias(
+          parsedTarget.path,
+          aliasRoutes
+        )
+      )++§url.suffix(parsedTarget)|
+      false=>match #lookupAlias(
+        resolveRepoPath(
+          sourcePath,
+          parsedTarget.path
+        ),
+        aliasRoutes
+      )>0{
+        true=>basePathPrefix(
+          basePath,
+          lookupAlias(
+            resolveRepoPath(
+              sourcePath,
+              parsedTarget.path
+            ),
+            aliasRoutes
+          )
+        )++§url.suffix(parsedTarget)|
         false=>target
       }
     }
@@ -224,15 +510,38 @@
 
 λsortInsert(compare:λ(µSitePage,µSitePage)=>Bool,page:µSitePage,pages:[µSitePage])=>[µSitePage] match pages{
   []=>[page]|
-  [head,.rest]=>match compare(page,head){
-    true=>[page,head]⧺rest|
-    false=>[head]⧺sortInsert(compare,page,rest)
+  [
+  head,
+  .rest
+]=>match compare(
+    page,
+    head
+  ){
+    true=>[
+      page,
+      head
+    ]⧺rest|
+    false=>[head]⧺sortInsert(
+      compare,
+      page,
+      rest
+    )
   }
 }
 
 λsortPagesInner(compare:λ(µSitePage,µSitePage)=>Bool,pages:[µSitePage])=>[µSitePage] match pages{
   []=>[]|
-  [page,.rest]=>sortInsert(compare,page,sortPagesInner(compare,rest))
+  [
+  page,
+  .rest
+]=>sortInsert(
+    compare,
+    page,
+    sortPagesInner(
+      compare,
+      rest
+    )
+  )
 }
 
 λstripNumericPrefix(slug:String)=>String=dropNumericPrefix(slug)
@@ -241,6 +550,12 @@
   true=>[]|
   false=>match pages{
     []=>[]|
-    [page,.rest]=>[page]⧺takeFirst(count-1,rest)
+    [
+  page,
+  .rest
+]=>[page]⧺takeFirst(
+      count-1,
+      rest
+    )
   }
 }

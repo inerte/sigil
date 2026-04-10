@@ -1,31 +1,88 @@
-λappendContent(current:µOpenSnippet,line:String)=>µOpenSnippet={content:current.content⧺[line],filePath:current.filePath,info:current.info,line:current.line}
+λappendContent(current:µOpenSnippet,line:String)=>µOpenSnippet={
+  content:current.content⧺[line],
+  filePath:current.filePath,
+  info:current.info,
+  line:current.line
+}
 
-λcloseSnippet(current:µOpenSnippet,results:[µSnippet])=>[µSnippet]=results⧺[{content:§string.join("
-",current.content),filePath:current.filePath,info:current.info,line:current.line}]
+λcloseSnippet(current:µOpenSnippet,results:[µSnippet])=>[µSnippet]=results⧺[{
+  content:§string.join(
+    "
+",
+    current.content
+  ),
+  filePath:current.filePath,
+  info:current.info,
+  line:current.line
+}]
 
 λextractSnippets(filePath:String,markdown:String)=>µExtractResult={
-  l scan=(finishScan(scanLines(filePath,§string.lines(markdown),{current:None(),issues:[],line:1,results:[]})):µScanState);
-  {issues:scan.issues,results:scan.results}
+  l scan=(finishScan(scanLines(
+    filePath,
+    §string.lines(markdown),
+    {
+      current:None(),
+      issues:[],
+      line:1,
+      results:[]
+    }
+  )):µScanState);
+  {
+    issues:scan.issues,
+    results:scan.results
+  }
 }
 
 λfinishScan(state:µScanState)=>µScanState match state.current{
-  Some(current)=>{current:None(),issues:state.issues⧺[{line:current.line,message:"unterminated Sigil code fence",path:current.filePath}],line:state.line,results:state.results}|
+  Some(current)=>{
+    current:None(),
+    issues:state.issues⧺[{
+      line:current.line,
+      message:"unterminated Sigil code fence",
+      path:current.filePath
+    }],
+    line:state.line,
+    results:state.results
+  }|
   None()=>state
 }
 
-λinvalidFenceIssue(filePath:String,line:Int,message:String)=>µIssue={line:line,message:message,path:filePath}
+λinvalidFenceIssue(filePath:String,line:Int,message:String)=>µIssue={
+  line:line,
+  message:message,
+  path:filePath
+}
 
-λisFence(line:String)=>Bool=§string.startsWith("```",line)
+λisFence(line:String)=>Bool=§string.startsWith(
+  "```",
+  line
+)
 
-λisSigilFence(line:String)=>Bool=§string.startsWith("```sigil",line)
+λisSigilFence(line:String)=>Bool=§string.startsWith(
+  "```sigil",
+  line
+)
 
 λnonEmpty(text:String)=>Bool=#text>0
 
-λparseFenceInfo(info:String)=>Result[µFenceInfo,String]={
+λparseFenceInfo(info:String)=>Result[
+  µFenceInfo,
+  String
+]={
   l trimmed=(§string.trim(info):String);
-  match §string.indexOf(trimmed," "){
-    idx when idx≥0=>match §string.substring(idx,trimmed,0){
-      "sigil"=>parseFenceKind(§string.trim(§string.drop(idx+1,trimmed)))|
+  match §string.indexOf(
+    trimmed,
+    " "
+  ){
+    idx when idx≥0=>match §string.substring(
+      idx,
+      trimmed,
+      0
+    ){
+      "sigil"=>parseFenceKind(§string.trim(§string.drop(
+        idx+1,
+        trimmed
+      )))|
       _=>Err("Sigil code fences must start with 'sigil'")
     }|
     _=>match trimmed{
@@ -35,65 +92,219 @@
   }
 }
 
-λparseFenceKind(rest:String)=>Result[µFenceInfo,String] match §string.indexOf(rest," "){
-  idx when idx≥0=>parseFenceKindWithContext(§string.substring(idx,rest,0),§string.trim(§string.drop(idx+1,rest)))|
+λparseFenceKind(rest:String)=>Result[
+  µFenceInfo,
+  String
+] match §string.indexOf(
+  rest,
+  " "
+){
+  idx when idx≥0=>parseFenceKindWithContext(
+    §string.substring(
+      idx,
+      rest,
+      0
+    ),
+    §string.trim(§string.drop(
+      idx+1,
+      rest
+    ))
+  )|
   _=>parseFenceKindWithoutContext(rest)
 }
 
-λparseFenceKindWithContext(kind:String,rest:String)=>Result[µFenceInfo,String] match §string.indexOf(rest," "){
-  idx when idx≥0=>Err("Sigil fence '"++kind++"' has too many arguments")|
+λparseFenceKindWithContext(kind:String,rest:String)=>Result[
+  µFenceInfo,
+  String
+] match §string.indexOf(
+  rest,
+  " "
+){
+  idx when idx≥0=>Err("Sigil fence '"
+    ++kind
+    ++"' has too many arguments")|
   _=>match kind{
-    "decl"=>Ok({context:Some(rest),kind:"decl"})|
-    "invalid-module"=>parseModulePath("invalid-module",rest)|
-    "invalid-program"=>parseProgramPath("invalid-program",rest)|
-    "module"=>parseModulePath("module",rest)|
-    "program"=>parseProgramPath("program",rest)|
-    _=>Err("Sigil fence '"++kind++"' does not accept an argument")
+    "decl"=>Ok({
+      context:Some(rest),
+      kind:"decl"
+    })|
+    "invalid-module"=>parseModulePath(
+      "invalid-module",
+      rest
+    )|
+    "invalid-program"=>parseProgramPath(
+      "invalid-program",
+      rest
+    )|
+    "module"=>parseModulePath(
+      "module",
+      rest
+    )|
+    "program"=>parseProgramPath(
+      "program",
+      rest
+    )|
+    _=>Err("Sigil fence '"
+      ++kind
+      ++"' does not accept an argument")
   }
 }
 
-λparseFenceKindWithoutContext(kind:String)=>Result[µFenceInfo,String] match kind{
+λparseFenceKindWithoutContext(kind:String)=>Result[
+  µFenceInfo,
+  String
+] match kind{
   "decl"=>Err("sigil decl fences must include a module path like 'sigil decl §list'")|
-  "expr"=>Ok({context:None(),kind:"expr"})|
-  "exprs"=>Ok({context:None(),kind:"exprs"})|
-  "invalid-expr"=>Ok({context:None(),kind:"invalid-expr"})|
-  "invalid-module"=>Ok({context:None(),kind:"invalid-module"})|
-  "invalid-program"=>Ok({context:None(),kind:"invalid-program"})|
-  "invalid-type"=>Ok({context:None(),kind:"invalid-type"})|
-  "module"=>Ok({context:None(),kind:"module"})|
-  "program"=>Ok({context:None(),kind:"program"})|
-  "type"=>Ok({context:None(),kind:"type"})|
-  _=>Err("unknown Sigil fence kind '"++kind++"'")
+  "expr"=>Ok({
+    context:None(),
+    kind:"expr"
+  })|
+  "exprs"=>Ok({
+    context:None(),
+    kind:"exprs"
+  })|
+  "invalid-expr"=>Ok({
+    context:None(),
+    kind:"invalid-expr"
+  })|
+  "invalid-module"=>Ok({
+    context:None(),
+    kind:"invalid-module"
+  })|
+  "invalid-program"=>Ok({
+    context:None(),
+    kind:"invalid-program"
+  })|
+  "invalid-type"=>Ok({
+    context:None(),
+    kind:"invalid-type"
+  })|
+  "module"=>Ok({
+    context:None(),
+    kind:"module"
+  })|
+  "program"=>Ok({
+    context:None(),
+    kind:"program"
+  })|
+  "type"=>Ok({
+    context:None(),
+    kind:"type"
+  })|
+  _=>Err("unknown Sigil fence kind '"
+    ++kind
+    ++"'")
 }
 
-λparseModulePath(kind:String,virtualPath:String)=>Result[µFenceInfo,String] match §string.endsWith(virtualPath,".lib.sigil"){
-  true=>Ok({context:Some(virtualPath),kind:kind})|
-  false=>Err("sigil "++kind++" fences must use a .lib.sigil virtual path")
+λparseModulePath(kind:String,virtualPath:String)=>Result[
+  µFenceInfo,
+  String
+] match §string.endsWith(
+  virtualPath,
+  ".lib.sigil"
+){
+  true=>Ok({
+    context:Some(virtualPath),
+    kind:kind
+  })|
+  false=>Err("sigil "
+    ++kind
+    ++" fences must use a .lib.sigil virtual path")
 }
 
-λparseProgramPath(kind:String,virtualPath:String)=>Result[µFenceInfo,String] match §string.endsWith(virtualPath,".sigil"){
-  true=>match §string.endsWith(virtualPath,".lib.sigil"){
-    true=>Err("sigil "++kind++" fences must use a .sigil virtual path")|
-    false=>Ok({context:Some(virtualPath),kind:kind})
+λparseProgramPath(kind:String,virtualPath:String)=>Result[
+  µFenceInfo,
+  String
+] match §string.endsWith(
+  virtualPath,
+  ".sigil"
+){
+  true=>match §string.endsWith(
+    virtualPath,
+    ".lib.sigil"
+  ){
+    true=>Err("sigil "
+      ++kind
+      ++" fences must use a .sigil virtual path")|
+    false=>Ok({
+      context:Some(virtualPath),
+      kind:kind
+    })
   }|
-  false=>Err("sigil "++kind++" fences must use a .sigil virtual path")
+  false=>Err("sigil "
+    ++kind
+    ++" fences must use a .sigil virtual path")
 }
 
 λscanLines(filePath:String,lines:[String],state:µScanState)=>µScanState match lines{
   []=>state|
-  [line,.rest]=>scanLines(filePath,rest,scanNextLine(filePath,line,state))
+  [
+  line,
+  .rest
+]=>scanLines(
+    filePath,
+    rest,
+    scanNextLine(
+      filePath,
+      line,
+      state
+    )
+  )
 }
 
 λscanNextLine(filePath:String,line:String,state:µScanState)=>µScanState match state.current{
   Some(current)=>match isFence(line){
-    true=>{current:None(),issues:state.issues,line:state.line+1,results:closeSnippet(current,state.results)}|
-    false=>{current:Some(appendContent(current,line)),issues:state.issues,line:state.line+1,results:state.results}
+    true=>{
+      current:None(),
+      issues:state.issues,
+      line:state.line+1,
+      results:closeSnippet(
+        current,
+        state.results
+      )
+    }|
+    false=>{
+      current:Some(appendContent(
+        current,
+        line
+      )),
+      issues:state.issues,
+      line:state.line+1,
+      results:state.results
+    }
   }|
   None()=>match isSigilFence(line){
-    true=>match parseFenceInfo(§string.drop(3,line)){
-      Ok(info)=>{current:Some({content:[],filePath:filePath,info:info,line:state.line}),issues:state.issues,line:state.line+1,results:state.results}|
-      Err(message)=>{current:None(),issues:state.issues⧺[invalidFenceIssue(filePath,state.line,message)],line:state.line+1,results:state.results}
+    true=>match parseFenceInfo(§string.drop(
+      3,
+      line
+    )){
+      Ok(info)=>{
+        current:Some({
+          content:[],
+          filePath:filePath,
+          info:info,
+          line:state.line
+        }),
+        issues:state.issues,
+        line:state.line+1,
+        results:state.results
+      }|
+      Err(message)=>{
+        current:None(),
+        issues:state.issues⧺[invalidFenceIssue(
+          filePath,
+          state.line,
+          message
+        )],
+        line:state.line+1,
+        results:state.results
+      }
     }|
-    false=>{current:None(),issues:state.issues,line:state.line+1,results:state.results}
+    false=>{
+      current:None(),
+      issues:state.issues,
+      line:state.line+1,
+      results:state.results
+    }
   }
 }

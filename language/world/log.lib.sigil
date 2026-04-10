@@ -2,16 +2,25 @@ t LogEntry=CaptureLog()|StdoutLog()
 
 t LogSinkEntry=LogSinkEntry(LogSinkEntryValue)
 
-t LogSinkEntryValue={mode:LogEntry,sinkName:String}
+t LogSinkEntryValue={
+  mode:LogEntry,
+  sinkName:String
+}
 
 λcapture()=>LogEntry=CaptureLog()
 
 λcaptureSink(sink:§topology.LogSink)=>LogSinkEntry match sink{
-  §topology.LogSink(sinkName)=>LogSinkEntry({mode:CaptureLog(),sinkName:sinkName})
+  §topology.LogSink(sinkName)=>LogSinkEntry({
+    mode:CaptureLog(),
+    sinkName:sinkName
+  })
 }
 
 λstdout()=>LogEntry=StdoutLog()
 
 λstdoutSink(sink:§topology.LogSink)=>LogSinkEntry match sink{
-  §topology.LogSink(sinkName)=>LogSinkEntry({mode:StdoutLog(),sinkName:sinkName})
+  §topology.LogSink(sinkName)=>LogSinkEntry({
+    mode:StdoutLog(),
+    sinkName:sinkName
+  })
 }

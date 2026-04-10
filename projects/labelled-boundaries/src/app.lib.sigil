@@ -1,7 +1,20 @@
 λrunExample()=>!Fs!Log!Process Unit={
-  l _=(§file.makeDirsAt("",•topology.exportsDir):Unit);
-  l _=(§file.writeTextAt(("12345678901":µCpf),"cpf.txt",•topology.exportsDir):Unit);
-  l _=(§log.write(•policies.redactSsn(("123456789":µSsn)),•topology.auditLog):Unit);
-  l _=(§process.runAt(•policies.govBrCommand(("gov-br-token":µGovBrToken)),•topology.govBrCli):§process.ProcessResult);
+  l _=(§file.makeDirsAt(
+    "",
+    •topology.exportsDir
+  ):Unit);
+  l _=(§file.writeTextAt(
+    ("12345678901":µCpf),
+    "cpf.txt",
+    •topology.exportsDir
+  ):Unit);
+  l _=(§log.write(
+    •policies.redactSsn(("123456789":µSsn)),
+    •topology.auditLog
+  ):Unit);
+  l _=(§process.runAt(
+    •policies.govBrCommand(("gov-br-token":µGovBrToken)),
+    •topology.govBrCli
+  ):§process.ProcessResult);
   ()
 }

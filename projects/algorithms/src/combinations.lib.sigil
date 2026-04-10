@@ -1,9 +1,24 @@
-λcombinations(k:Int,xs:[Int])=>[[Int]]=combinationsInto([],k,xs)
+λcombinations(k:Int,xs:[Int])=>[[Int]]=combinationsInto(
+  [],
+  k,
+  xs
+)
 
 λcombinationsInto(acc:[[Int]],k:Int,xs:[Int])=>[[Int]] match k{
   0=>[[]]⧺acc|
   _=>match xs{
     []=>acc|
-    [head,.tail]=>(combinationsInto([],k-1,tail) map (λ(choice:[Int])=>[Int]=[head]⧺choice):[[Int]])⧺combinationsInto(acc,k,tail)
+    [
+  head,
+  .tail
+]=>(combinationsInto(
+      [],
+      k-1,
+      tail
+    ) map (λ(choice:[Int])=>[Int]=[head]⧺choice):[[Int]])⧺combinationsInto(
+      acc,
+      k,
+      tail
+    )
   }
 }

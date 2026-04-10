@@ -46,7 +46,10 @@ t BirthYear=Int where value>1800 and value<10000
 
 t TopologicalSortResult=CycleDetected()|Ordering([Int])
 
-t User={birthYear:BirthYear,name:String}
+t User={
+  birthYear:BirthYear,
+  name:String
+}
 ```
 
 ```sigil module projects/algorithms/src/topologicalSortView.lib.sigil
@@ -69,7 +72,10 @@ Named user-defined types may also carry a pure `where` clause:
 ```sigil module projects/algorithms/src/types.lib.sigil
 t BirthYear=Int where value>1800 and value<10000
 
-t DateRange={end:Int,start:Int} where value.end≥value.start
+t DateRange={
+  end:Int,
+  start:Int
+} where value.end≥value.start
 ```
 
 The point is not to turn every type declaration into a runtime admission gate.

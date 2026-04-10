@@ -1,15 +1,32 @@
-t Url={fragment:String,host:String,path:String,port:Option[Int],protocol:String,query:{String↦String},queryString:String}
+t Url={
+  fragment:String,
+  host:String,
+  path:String,
+  port:Option[Int],
+  protocol:String,
+  query:{String↦String},
+  queryString:String
+}
 
 t UrlError={message:String}
 
-λgetQuery(key:String,url:Url)=>Option[String]=¶map.get(key,url.query)
+λgetQuery(key:String,url:Url)=>Option[String]=¶map.get(
+  key,
+  url.query
+)
 
-λhasQuery(key:String,url:Url)=>Bool=¶map.has(key,url.query)
+λhasQuery(key:String,url:Url)=>Bool=¶map.has(
+  key,
+  url.query
+)
 
 λisAbsolute(url:Url)=>Bool=#url.protocol>0
 
 λisAnchor(url:Url)=>Bool=#url.path=0 and #url.fragment>0
 
-λparse(input:String)=>Result[Url,UrlError]=Err({message:"url parse intrinsic unavailable"})
+λparse(input:String)=>Result[
+  Url,
+  UrlError
+]=Err({message:"url parse intrinsic unavailable"})
 
 λsuffix(url:Url)=>String=url.queryString++url.fragment

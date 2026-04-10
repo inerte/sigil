@@ -1,1 +1,4 @@
-λmain()=>Option[Int]=¶option.mapOption(λ(x:Int)=>Int=x*2,Some(21))
+λmain()=>Option[Int]=¶option.mapOption(
+  λ(x:Int)=>Int=x*2,
+  Some(21)
+)

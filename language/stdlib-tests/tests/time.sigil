@@ -3,7 +3,10 @@
 test "time compare orders instants" {
   match §time.parseIso("2026-03-01"){
     Ok(first)=>match §time.parseIso("2026-03-03"){
-      Ok(second)=>§time.compare(first,second)<0|
+      Ok(second)=>§time.compare(
+        first,
+        second
+      )<0|
       Err(_)=>false
     }|
     Err(_)=>false

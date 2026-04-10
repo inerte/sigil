@@ -1,16 +1,29 @@
 λmain()=>Unit=()
 
 test "bare sigil fence is rejected" {
-  match •docsDrift.extractSnippets("docs/test.md",§string.unlines(["```sigil","λmain()=>Unit=()","```"])).issues{
+  match •docsDrift.extractSnippets(
+    "docs/test.md",
+    §string.unlines([
+      "```sigil",
+      "λmain()=>Unit=()",
+      "```"
+    ])
+  ).issues{
     [issue]=>issue.line=1|
     _=>false
   }
 }
 
 test "decl block extracts documented names" {
-  •docsDrift.documentedRefsForSnippet("§process","λcommand(argv:[String])=>Command
+  •docsDrift.documentedRefsForSnippet(
+    "§process",
+    "λcommand(argv:[String])=>Command
 λrun(command:Command)=>!Process ProcessResult
-")=["§process.command","§process.run"]
+"
+  )=[
+    "§process.command",
+    "§process.run"
+  ]
 }
 
 test "invalid module path extension is rejected" {
@@ -24,18 +37,35 @@ test "qualified refs are collected uniquely" {
   •docsDrift.collectQualifiedRefs("§list.sum(xs)
 §list.sum(ys)
 §string.trim(s)
-")=["§list.sum","§string.trim"]
+")=[
+    "§list.sum",
+    "§string.trim"
+  ]
 }
 
 test "sigil expr fence is extracted" {
-  match •docsDrift.extractSnippets("docs/test.md",§string.unlines(["```sigil expr","#xs","```"])).results{
+  match •docsDrift.extractSnippets(
+    "docs/test.md",
+    §string.unlines([
+      "```sigil expr",
+      "#xs",
+      "```"
+    ])
+  ).results{
     [snippet]=>snippet.info.kind="expr" and snippet.line=1|
     _=>false
   }
 }
 
 test "sigil program fence keeps custom virtual path" {
-  match •docsDrift.extractSnippets("docs/test.md",§string.unlines(["```sigil program tests/my-feature.sigil","λmain()=>Unit=()","```"])).results{
+  match •docsDrift.extractSnippets(
+    "docs/test.md",
+    §string.unlines([
+      "```sigil program tests/my-feature.sigil",
+      "λmain()=>Unit=()",
+      "```"
+    ])
+  ).results{
     [snippet]=>match snippet.info.context{
       Some(path)=>path="tests/my-feature.sigil" and snippet.info.kind="program"|
       None()=>false

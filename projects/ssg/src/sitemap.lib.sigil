@@ -1,14 +1,47 @@
-λabsoluteUrl(config:µSiteBuildConfig,page:µSitePage)=>String=§string.trimEndChars("/",config.siteUrl)++•content.canonicalRoute(page)
+λabsoluteUrl(config:µSiteBuildConfig,page:µSitePage)=>String=§string.trimEndChars(
+  "/",
+  config.siteUrl
+)++•content.canonicalRoute(page)
 
-λallPages(data:µSiteData)=>[µSitePage]=[data.home,data.articlesIntro,data.projectsIntro]⧺data.articles⧺data.docs⧺data.projects⧺data.spec⧺data.standalone
+λallPages(data:µSiteData)=>[µSitePage]=[
+  data.home,
+  data.articlesIntro,
+  data.projectsIntro
+]
+  ⧺data.articles
+  ⧺data.docs
+  ⧺data.projects
+  ⧺data.spec
+  ⧺data.standalone
 
-λpageEntries(config:µSiteBuildConfig,pages:[µSitePage])=>String=§string.join("",pages map (λ(page:µSitePage)=>String=pageEntry(config,page)))
+λpageEntries(config:µSiteBuildConfig,pages:[µSitePage])=>String=§string.join(
+  "",
+  pages map (λ(page:µSitePage)=>String=pageEntry(
+    config,
+    page
+  ))
+)
 
-λpageEntry(config:µSiteBuildConfig,page:µSitePage)=>String="<url><loc>"++absoluteUrl(config,page)++"</loc>"++pageLastMod(page)++"</url>"
+λpageEntry(config:µSiteBuildConfig,page:µSitePage)=>String="<url><loc>"
+  ++absoluteUrl(
+    config,
+    page
+  )
+  ++"</loc>"
+  ++pageLastMod(page)
+  ++"</url>"
 
 λpageLastMod(page:µSitePage)=>String match #page.meta.date>0{
-  true=>"<lastmod>"++page.meta.date++"</lastmod>"|
+  true=>"<lastmod>"
+    ++page.meta.date
+    ++"</lastmod>"|
   false=>""
 }
 
-λsitemapXml(config:µSiteBuildConfig,data:µSiteData)=>String="<?xml version=\"1.0\" encoding=\"UTF-8\"?>"++"<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">"++pageEntries(config,allPages(data))++"</urlset>"
+λsitemapXml(config:µSiteBuildConfig,data:µSiteData)=>String="<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+  ++"<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">"
+  ++pageEntries(
+    config,
+    allPages(data)
+  )
+  ++"</urlset>"

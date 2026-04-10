@@ -1,10 +1,16 @@
-λclientEnv(port:Int)=>{String↦String}={"sigilTcpTestHost"↦"127.0.0.1","sigilTcpTestPort"↦§string.intToString(port)}
+λclientEnv(port:Int)=>{String↦String}={
+  "sigilTcpTestHost"↦"127.0.0.1",
+  "sigilTcpTestPort"↦§string.intToString(port)
+}
 
 λmain()=>Unit=()
 
 λprojectDir()=>String=•support.repoPath("projects/topology-tcp")
 
-λrawClientFile()=>String=§path.join(projectDir(),"src/rawTcpClient.sigil")
+λrawClientFile()=>String=§path.join(
+  projectDir(),
+  "src/rawTcpClient.sigil"
+)
 
 λrawClientSource()=>String="λmain()=>!Tcp String match §tcpClient.send(\"ping\",\"127.0.0.1\"){
   Ok(response)=>response.message|
@@ -13,31 +19,87 @@
 "
 
 λrawEndpointCompileOutput()=>!Fs!Process String={
-  l _=(§file.writeText(rawClientSource(),rawClientFile()):Unit);
-  l result=(§process.run(tcpCommand(["compile","src/rawTcpClient.sigil"])):§process.ProcessResult);
+  l _=(§file.writeText(
+    rawClientSource(),
+    rawClientFile()
+  ):Unit);
+  l result=(§process.run(tcpCommand([
+    "compile",
+    "src/rawTcpClient.sigil"
+  ])):§process.ProcessResult);
   l _=(§file.remove(rawClientFile()):Unit);
   •support.combinedOutput(result)
 }
 
 λrunClientOutput(target:String)=>!Clock!Fs!Process!Timer String={
-  l server=(•support.startReadyServer(tcpCommand(["run","src/tcpRoundtripServer.sigil","--env","test","--"]),"tcp-server-","0"):µReadyServer);
-  l result=match •support.waitForReadyPort(50,200,server.readyFile){
+  l server=(•support.startReadyServer(
+    tcpCommand([
+      "run",
+      "src/tcpRoundtripServer.sigil",
+      "--env",
+      "test",
+      "--"
+    ]),
+    "tcp-server-",
+    "0"
+  ):µReadyServer);
+  l result=match •support.waitForReadyPort(
+    50,
+    200,
+    server.readyFile
+  ){
     Ok(port)=>{
-      l ready=(•support.retryRunStdoutContains(50,•support.commandWithEnv(tcpCommand(["run","src/pingClient.sigil","--env","test"]),(clientEnv(port):{String↦String})),200,"pong"):§process.ProcessResult);
-      match •support.runStdoutContains("pong",ready){
-        true=>(§process.run(•support.commandWithEnv(tcpCommand(["run",target,"--env","test"]),(clientEnv(port):{String↦String}))):§process.ProcessResult)|
+      l ready=(•support.retryRunStdoutContains(
+        50,
+        •support.commandWithEnv(
+          tcpCommand([
+            "run",
+            "src/pingClient.sigil",
+            "--env",
+            "test"
+          ]),
+          (clientEnv(port):{String↦String})
+        ),
+        200,
+        "pong"
+      ):§process.ProcessResult);
+      match •support.runStdoutContains(
+        "pong",
+        ready
+      ){
+        true=>(§process.run(•support.commandWithEnv(
+          tcpCommand([
+            "run",
+            target,
+            "--env",
+            "test"
+          ]),
+          (clientEnv(port):{String↦String})
+        )):§process.ProcessResult)|
         false=>ready
       }
     }|
-    Err(message)=>{code:-1,stderr:message,stdout:""}
+    Err(message)=>{
+      code:-1,
+      stderr:message,
+      stdout:""
+    }
   };
   l _=(•support.stopReadyServer(server):Unit);
   •support.combinedOutput(result)
 }
 
-λtcpCommand(args:[String])=>§process.Command=•support.sigilIn(args,projectDir())
+λtcpCommand(args:[String])=>§process.Command=•support.sigilIn(
+  args,
+  projectDir()
+)
 
-λvalidateResult()=>!Process §process.ProcessResult=§process.run(tcpCommand(["validate",".","--env","test"]))
+λvalidateResult()=>!Process §process.ProcessResult=§process.run(tcpCommand([
+  "validate",
+  ".",
+  "--env",
+  "test"
+]))
 
 test "tcp topology validates for test env" =>!Process {
   l result=(validateResult():§process.ProcessResult);
@@ -45,17 +107,29 @@ test "tcp topology validates for test env" =>!Process {
 }
 
 test "tcp ping client reaches roundtrip server" =>!Clock!Fs!Process!Timer {
-  §string.contains(runClientOutput("src/pingClient.sigil"),"pong")=true
+  §string.contains(
+    runClientOutput("src/pingClient.sigil"),
+    "pong"
+  )=true
 }
 
 test "tcp echo client reaches roundtrip server" =>!Clock!Fs!Process!Timer {
-  §string.contains(runClientOutput("src/echoClient.sigil"),"echoed")=true
+  §string.contains(
+    runClientOutput("src/echoClient.sigil"),
+    "echoed"
+  )=true
 }
 
 test "tcp upper client reaches roundtrip server" =>!Clock!Fs!Process!Timer {
-  §string.contains(runClientOutput("src/upperClient.sigil"),"HELLO")=true
+  §string.contains(
+    runClientOutput("src/upperClient.sigil"),
+    "HELLO"
+  )=true
 }
 
 test "tcp raw endpoint compile is forbidden" =>!Fs!Process {
-  §string.contains(rawEndpointCompileOutput(),"SIGIL-TOPO-RAW-ENDPOINT-FORBIDDEN")=true
+  §string.contains(
+    rawEndpointCompileOutput(),
+    "SIGIL-TOPO-RAW-ENDPOINT-FORBIDDEN"
+  )=true
 }

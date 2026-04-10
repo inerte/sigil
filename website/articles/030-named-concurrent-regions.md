@@ -32,12 +32,25 @@ Sigil has one canonical concurrency surface:
 ```sigil module
 λisSystemic(err:String)=>Bool=err="NETWORK"
 
-λprocessUrl(url:String)=>!Timer Result[Int,String]={
+λprocessUrl(url:String)=>!Timer Result[
+  Int,
+  String
+]={
   l _=(§time.sleepMs(0):Unit);
   Ok(#url)
 }
 
-λrun(urls:[String])=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@5:{jitterMs:Some({max:25,min:1}),stopOn:isSystemic,windowMs:Some(1000)}{
+λrun(urls:[String])=>!Timer [ConcurrentOutcome[
+  Int,
+  String
+]]=concurrent urlAudit@5:{
+  jitterMs:Some({
+    max:25,
+    min:1
+  }),
+  stopOn:isSystemic,
+  windowMs:Some(1000)
+}{
   spawnEach urls processUrl
 }
 ```
@@ -59,12 +72,18 @@ Current policy fields are:
 Minimal form:
 
 ```sigil module
-λprocessUrl(url:String)=>!Timer Result[Int,String]={
+λprocessUrl(url:String)=>!Timer Result[
+  Int,
+  String
+]={
   l _=(§time.sleepMs(0):Unit);
   Ok(#url)
 }
 
-λrun(urls:[String])=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@5{
+λrun(urls:[String])=>!Timer [ConcurrentOutcome[
+  Int,
+  String
+]]=concurrent urlAudit@5{
   spawnEach urls processUrl
 }
 ```

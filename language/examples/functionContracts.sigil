@@ -1,6 +1,9 @@
 t BirthYear=Int where value>1800
 
-λmain()=>Int=positiveGap(1800,normalizeYear(1700))
+λmain()=>Int=positiveGap(
+  1800,
+  normalizeYear(1700)
+)
 
 λnormalizeYear(raw:Int)=>Int
 ensures result>1800

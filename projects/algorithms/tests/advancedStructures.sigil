@@ -1,27 +1,136 @@
-λgraph()=>µGraph={nodes:[{neighbors:[2],vertex:1},{neighbors:[1,3],vertex:2},{neighbors:[2],vertex:3},{neighbors:[5],vertex:4},{neighbors:[4],vertex:5}]}
+λgraph()=>µGraph={nodes:[
+  {
+    neighbors:[2],
+    vertex:1
+  },
+  {
+    neighbors:[
+      1,
+      3
+    ],
+    vertex:2
+  },
+  {
+    neighbors:[2],
+    vertex:3
+  },
+  {
+    neighbors:[5],
+    vertex:4
+  },
+  {
+    neighbors:[4],
+    vertex:5
+  }
+]}
 
 λmain()=>Unit=()
 
-λsampleTree()=>µIntTree=µNode([µNode([µNode([],-4)],2),µNode([],3)],1)
+λsampleTree()=>µIntTree=µNode(
+  [
+    µNode(
+      [µNode(
+        [],
+        -4
+      )],
+      2
+    ),
+    µNode(
+      [],
+      3
+    )
+  ],
+  1
+)
 
 test "combinations chooses pairs in input order" {
-  •combinations.combinations(2,[1,2,3,4])=[[1,2],[1,3],[1,4],[2,3],[2,4],[3,4]]
+  •combinations.combinations(
+    2,
+    [
+      1,
+      2,
+      3,
+      4
+    ]
+  )=[
+    [
+      1,
+      2
+    ],
+    [
+      1,
+      3
+    ],
+    [
+      1,
+      4
+    ],
+    [
+      2,
+      3
+    ],
+    [
+      2,
+      4
+    ],
+    [
+      3,
+      4
+    ]
+  ]
 }
 
 test "combinations of zero is one empty combination" {
-  •combinations.combinations(0,[1,2,3])=[[]]
+  •combinations.combinations(
+    0,
+    [
+      1,
+      2,
+      3
+    ]
+  )=[[]]
 }
 
 test "connected components groups disconnected subgraphs" {
-  •connectedComponents.connectedComponents(graph())=[[1,2,3],[4,5]]
+  •connectedComponents.connectedComponents(graph())=[
+    [
+      1,
+      2,
+      3
+    ],
+    [
+      4,
+      5
+    ]
+  ]
 }
 
 test "tree preorder flattens node before children" {
-  •treeTraversals.preorder(sampleTree())=[1,2,-4,3]
+  •treeTraversals.preorder(sampleTree())=[
+    1,
+    2,
+    -4,
+    3
+  ]
 }
 
 test "tree incremented adds one everywhere" {
-  •treeTraversals.incremented(sampleTree())=µNode([µNode([µNode([],-3)],3),µNode([],4)],2)
+  •treeTraversals.incremented(sampleTree())=µNode(
+    [
+      µNode(
+        [µNode(
+          [],
+          -3
+        )],
+        3
+      ),
+      µNode(
+        [],
+        4
+      )
+    ],
+    2
+  )
 }
 
 test "tree incremented preserves empty tree" {
@@ -29,7 +138,11 @@ test "tree incremented preserves empty tree" {
 }
 
 test "tree positive values filters negatives after flattening" {
-  •treeTraversals.positiveValues(sampleTree())=[1,2,3]
+  •treeTraversals.positiveValues(sampleTree())=[
+    1,
+    2,
+    3
+  ]
 }
 
 test "tree sum values reduces flattened tree" {

@@ -1,48 +1,182 @@
 λapplyFrontmatterLine(line:String,meta:µPageMeta)=>µPageMeta={
-  l separatorIdx=(§string.indexOf(line,":"):Int);
+  l separatorIdx=(§string.indexOf(
+    line,
+    ":"
+  ):Int);
   match separatorIdx<0{
     true=>meta|
-    false=>match §string.trim(§string.substring(separatorIdx,line,0)){
-      "author"=>{author:(stripQuotes(§string.trim(§string.substring(#line,line,separatorIdx+1))):String),category:meta.category,date:meta.date,description:meta.description,slug:meta.slug,title:meta.title}|
-      "category"=>{author:meta.author,category:(stripQuotes(§string.trim(§string.substring(#line,line,separatorIdx+1))):String),date:meta.date,description:meta.description,slug:meta.slug,title:meta.title}|
-      "date"=>{author:meta.author,category:meta.category,date:(stripQuotes(§string.trim(§string.substring(#line,line,separatorIdx+1))):String),description:meta.description,slug:meta.slug,title:meta.title}|
-      "description"=>{author:meta.author,category:meta.category,date:meta.date,description:(stripQuotes(§string.trim(§string.substring(#line,line,separatorIdx+1))):String),slug:meta.slug,title:meta.title}|
-      "slug"=>{author:meta.author,category:meta.category,date:meta.date,description:meta.description,slug:(stripQuotes(§string.trim(§string.substring(#line,line,separatorIdx+1))):String),title:meta.title}|
-      "title"=>{author:meta.author,category:meta.category,date:meta.date,description:meta.description,slug:meta.slug,title:(stripQuotes(§string.trim(§string.substring(#line,line,separatorIdx+1))):String)}|
+    false=>match §string.trim(§string.substring(
+      separatorIdx,
+      line,
+      0
+    )){
+      "author"=>{
+        author:(stripQuotes(§string.trim(§string.substring(
+          #line,
+          line,
+          separatorIdx+1
+        ))):String),
+        category:meta.category,
+        date:meta.date,
+        description:meta.description,
+        slug:meta.slug,
+        title:meta.title
+      }|
+      "category"=>{
+        author:meta.author,
+        category:(stripQuotes(§string.trim(§string.substring(
+          #line,
+          line,
+          separatorIdx+1
+        ))):String),
+        date:meta.date,
+        description:meta.description,
+        slug:meta.slug,
+        title:meta.title
+      }|
+      "date"=>{
+        author:meta.author,
+        category:meta.category,
+        date:(stripQuotes(§string.trim(§string.substring(
+          #line,
+          line,
+          separatorIdx+1
+        ))):String),
+        description:meta.description,
+        slug:meta.slug,
+        title:meta.title
+      }|
+      "description"=>{
+        author:meta.author,
+        category:meta.category,
+        date:meta.date,
+        description:(stripQuotes(§string.trim(§string.substring(
+          #line,
+          line,
+          separatorIdx+1
+        ))):String),
+        slug:meta.slug,
+        title:meta.title
+      }|
+      "slug"=>{
+        author:meta.author,
+        category:meta.category,
+        date:meta.date,
+        description:meta.description,
+        slug:(stripQuotes(§string.trim(§string.substring(
+          #line,
+          line,
+          separatorIdx+1
+        ))):String),
+        title:meta.title
+      }|
+      "title"=>{
+        author:meta.author,
+        category:meta.category,
+        date:meta.date,
+        description:meta.description,
+        slug:meta.slug,
+        title:(stripQuotes(§string.trim(§string.substring(
+          #line,
+          line,
+          separatorIdx+1
+        ))):String)
+      }|
       _=>meta
     }
   }
 }
 
-λcapitalizeWords(lowered:String)=>String=capitalizeWordsInner(true,0,lowered)
+λcapitalizeWords(lowered:String)=>String=capitalizeWordsInner(
+  true,
+  0,
+  lowered
+)
 
 λcapitalizeWordsInner(capitalizeNext:Bool,idx:Int,lowered:String)=>String match idx≥#lowered{
   true=>""|
-  false=>match §string.charAt(idx,lowered){
-    " "=>" "++capitalizeWordsInner(true,idx+1,lowered)|
-    "-"=>"-"++capitalizeWordsInner(true,idx+1,lowered)|
-    "_"=>"_"++capitalizeWordsInner(true,idx+1,lowered)|
+  false=>match §string.charAt(
+    idx,
+    lowered
+  ){
+    " "=>" "++capitalizeWordsInner(
+      true,
+      idx+1,
+      lowered
+    )|
+    "-"=>"-"++capitalizeWordsInner(
+      true,
+      idx+1,
+      lowered
+    )|
+    "_"=>"_"++capitalizeWordsInner(
+      true,
+      idx+1,
+      lowered
+    )|
     ch=>match capitalizeNext{
-      true=>§string.toUpper(ch)++capitalizeWordsInner(false,idx+1,lowered)|
-      false=>ch++capitalizeWordsInner(false,idx+1,lowered)
+      true=>§string.toUpper(ch)++capitalizeWordsInner(
+        false,
+        idx+1,
+        lowered
+      )|
+      false=>ch++capitalizeWordsInner(
+        false,
+        idx+1,
+        lowered
+      )
     }
   }
 }
 
-λcollapseHyphens(text:String)=>String match §string.replaceAll("--","-",text)=text{
-  true=>§string.replaceAll("--","-",text)|
-  false=>collapseHyphens(§string.replaceAll("--","-",text))
+λcollapseHyphens(text:String)=>String match §string.replaceAll(
+  "--",
+  "-",
+  text
+)=text{
+  true=>§string.replaceAll(
+    "--",
+    "-",
+    text
+  )|
+  false=>collapseHyphens(§string.replaceAll(
+    "--",
+    "-",
+    text
+  ))
 }
 
 λconsumeFrontmatter(lines:[String],meta:µPageMeta)=>µParseLinesResult match lines{
-  []=>{contentLines:[],meta:meta}|
-  [line,.rest]=>match line{
-    "---"=>{contentLines:rest,meta:meta}|
-    _=>consumeFrontmatter(rest,applyFrontmatterLine(line,meta))
+  []=>{
+    contentLines:[],
+    meta:meta
+  }|
+  [
+  line,
+  .rest
+]=>match line{
+    "---"=>{
+      contentLines:rest,
+      meta:meta
+    }|
+    _=>consumeFrontmatter(
+      rest,
+      applyFrontmatterLine(
+        line,
+        meta
+      )
+    )
   }
 }
 
-λdefaultMeta()=>µPageMeta={author:"",category:"",date:"",description:"",slug:"",title:""}
+λdefaultMeta()=>µPageMeta={
+  author:"",
+  category:"",
+  date:"",
+  description:"",
+  slug:"",
+  title:""
+}
 
 λderiveSlug(meta:µPageMeta,sourcePath:String)=>String match #meta.slug>0{
   true=>normalizeSlug(meta.slug)|
@@ -51,90 +185,239 @@
 
 λderiveTitle(content:String,meta:µPageMeta,sourcePath:String)=>String match #meta.title>0{
   true=>meta.title|
-  false=>match firstH1Line(§string.split("
-",content)){
+  false=>match firstH1Line(§string.split(
+    "
+",
+    content
+  )){
     []=>humanizeStem(filenameStem(sourcePath))|
-    [title,.rest]=>title
+    [
+  title,
+  .rest
+]=>title
   }
 }
 
 λdropLast(parts:[String])=>[String] match parts{
   []=>[]|
-  [part,.rest]=>match rest{
+  [
+  part,
+  .rest
+]=>match rest{
     []=>[]|
     _=>[part]⧺dropLast(rest)
   }
 }
 
-λfileName(path:String)=>String match §string.split("/",path){
+λfileName(path:String)=>String match §string.split(
+  "/",
+  path
+){
   []=>path|
   parts=>lastPart(parts)
 }
 
 λfilenameStem(path:String)=>String={
   l name=(fileName(path):String);
-  match §string.endsWith(name,".md"){
-    true=>§string.substring(#name-3,name,0)|
+  match §string.endsWith(
+    name,
+    ".md"
+  ){
+    true=>§string.substring(
+      #name-3,
+      name,
+      0
+    )|
     false=>name
   }
 }
 
 λfirstH1Line(lines:[String])=>[String] match lines{
   []=>[]|
-  [line,.rest]=>match §string.startsWith("# ",line){
-    true=>[§string.substring(#line,line,2)]|
+  [
+  line,
+  .rest
+]=>match §string.startsWith(
+    "# ",
+    line
+  ){
+    true=>[§string.substring(
+      #line,
+      line,
+      2
+    )]|
     false=>firstH1Line(rest)
   }
 }
 
-λhumanizeStem(stem:String)=>String=capitalizeWords(§string.replaceAll("_"," ",§string.replaceAll("-"," ",§string.toLower(stem))))
+λhumanizeStem(stem:String)=>String=capitalizeWords(§string.replaceAll(
+  "_",
+  " ",
+  §string.replaceAll(
+    "-",
+    " ",
+    §string.toLower(stem)
+  )
+))
 
 λlastPart(parts:[String])=>String match parts{
   []=>""|
-  [part,.rest]=>match rest{
+  [
+  part,
+  .rest
+]=>match rest{
     []=>part|
     _=>lastPart(rest)
   }
 }
 
-λnormalizeSlug(slug:String)=>String=trimHyphens(collapseHyphens(§string.replaceAll(" ","-",§string.replaceAll("_","-",§string.toLower(slug)))))
+λnormalizeSlug(slug:String)=>String=trimHyphens(collapseHyphens(§string.replaceAll(
+  " ",
+  "-",
+  §string.replaceAll(
+    "_",
+    "-",
+    §string.toLower(slug)
+  )
+)))
 
-λparseFrontmatter(markdown:String,sourcePath:String)=>µParseResult match §string.split("
-",markdown){
+λparseFrontmatter(markdown:String,sourcePath:String)=>µParseResult match §string.split(
+  "
+",
+  markdown
+){
   []=>{
     l meta=(defaultMeta():µPageMeta);
-    {content:markdown,meta:{author:"",category:"",date:"",description:"",slug:deriveSlug(meta,sourcePath),title:deriveTitle(markdown,meta,sourcePath)}}
+    {
+      content:markdown,
+      meta:{
+        author:"",
+        category:"",
+        date:"",
+        description:"",
+        slug:deriveSlug(
+          meta,
+          sourcePath
+        ),
+        title:deriveTitle(
+          markdown,
+          meta,
+          sourcePath
+        )
+      }
+    }
   }|
-  [line,.rest]=>match line{
+  [
+  line,
+  .rest
+]=>match line{
     "---"=>{
-      l parsed=(consumeFrontmatter(rest,defaultMeta()):µParseLinesResult);
-      l content=(§string.join("
-",parsed.contentLines):String);
-      {content:content,meta:{author:parsed.meta.author,category:parsed.meta.category,date:parsed.meta.date,description:parsed.meta.description,slug:deriveSlug(parsed.meta,sourcePath),title:deriveTitle(content,parsed.meta,sourcePath)}}
+      l parsed=(consumeFrontmatter(
+        rest,
+        defaultMeta()
+      ):µParseLinesResult);
+      l content=(§string.join(
+        "
+",
+        parsed.contentLines
+      ):String);
+      {
+        content:content,
+        meta:{
+          author:parsed.meta.author,
+          category:parsed.meta.category,
+          date:parsed.meta.date,
+          description:parsed.meta.description,
+          slug:deriveSlug(
+            parsed.meta,
+            sourcePath
+          ),
+          title:deriveTitle(
+            content,
+            parsed.meta,
+            sourcePath
+          )
+        }
+      }
     }|
     _=>{
       l meta=(defaultMeta():µPageMeta);
-      {content:markdown,meta:{author:"",category:"",date:"",description:"",slug:deriveSlug(meta,sourcePath),title:deriveTitle(markdown,meta,sourcePath)}}
+      {
+        content:markdown,
+        meta:{
+          author:"",
+          category:"",
+          date:"",
+          description:"",
+          slug:deriveSlug(
+            meta,
+            sourcePath
+          ),
+          title:deriveTitle(
+            markdown,
+            meta,
+            sourcePath
+          )
+        }
+      }
     }
   }
 }
 
-λstripQuotes(value:String)=>String match #value≥2 and §string.startsWith("\"",value) and §string.endsWith(value,"\""){
-  true=>§string.substring(#value-1,value,1)|
-  false=>match #value≥2 and §string.startsWith("'",value) and §string.endsWith(value,"'"){
-    true=>§string.substring(#value-1,value,1)|
+λstripQuotes(value:String)=>String match #value≥2
+  and §string.startsWith(
+    "\"",
+    value
+  )
+  and §string.endsWith(
+    value,
+    "\""
+  ){
+  true=>§string.substring(
+    #value-1,
+    value,
+    1
+  )|
+  false=>match #value≥2
+    and §string.startsWith(
+      "'",
+      value
+    )
+    and §string.endsWith(
+      value,
+      "'"
+    ){
+    true=>§string.substring(
+      #value-1,
+      value,
+      1
+    )|
     false=>value
   }
 }
 
 λtrimHyphens(text:String)=>String=trimTrailingHyphens(trimLeadingHyphens(text))
 
-λtrimLeadingHyphens(text:String)=>String match #text>0 and §string.startsWith("-",text){
-  true=>trimLeadingHyphens(§string.substring(#text,text,1))|
+λtrimLeadingHyphens(text:String)=>String match #text>0 and §string.startsWith(
+  "-",
+  text
+){
+  true=>trimLeadingHyphens(§string.substring(
+    #text,
+    text,
+    1
+  ))|
   false=>text
 }
 
-λtrimTrailingHyphens(text:String)=>String match #text>0 and §string.endsWith(text,"-"){
-  true=>trimTrailingHyphens(§string.substring(#text-1,text,0))|
+λtrimTrailingHyphens(text:String)=>String match #text>0 and §string.endsWith(
+  text,
+  "-"
+){
+  true=>trimTrailingHyphens(§string.substring(
+    #text-1,
+    text,
+    0
+  ))|
   false=>text
 }

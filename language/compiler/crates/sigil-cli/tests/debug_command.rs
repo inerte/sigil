@@ -375,7 +375,29 @@ fn debug_run_watches_follow_scope_and_record_fields() {
     let file = write_program(
         &dir,
         "main.sigil",
-        "t User={name:String,score:Int}\n\nt UserId=Int where value≥0\n\nλhelper(user:User,userId:UserId)=>Int={\n  l current=(userId:UserId);\n  user.score+(match current=(0:UserId){\n    true=>0|\n    false=>current-current\n  })\n}\n\nλmain()=>Int=helper({name:\"Ada\",score:1},(1:UserId))\n",
+        r#"t User={
+  name:String,
+  score:Int
+}
+
+t UserId=Int where value≥0
+
+λhelper(user:User,userId:UserId)=>Int={
+  l current=(userId:UserId);
+  user.score+(match current=(0:UserId){
+    true=>0|
+    false=>current-current
+  })
+}
+
+λmain()=>Int=helper(
+  {
+    name:"Ada",
+    score:1
+  },
+  (1:UserId)
+)
+"#,
     );
     let artifact = dir.join("run.replay.json");
 
@@ -406,7 +428,7 @@ fn debug_run_watches_follow_scope_and_record_fields() {
         .arg("--watch")
         .arg("user.name.first")
         .arg("--break")
-        .arg(line_break_selector(&file, 7))
+        .arg(line_break_selector(&file, 10))
         .arg(&file)
         .output()
         .unwrap();
@@ -515,7 +537,33 @@ fn debug_test_watches_resolve_at_breakpoint_scope() {
     let file = write_program(
         &dir,
         "tests/basic.sigil",
-        "t User={name:String,score:Int}\n\nt UserId=Int where value≥0\n\nλhelper(user:User,userId:UserId)=>Int={\n  l current=(userId:UserId);\n  user.score+(match current=(0:UserId){\n    true=>0|\n    false=>current-current\n  })\n}\n\nλmain()=>Unit=()\n\ntest \"demo\" {\n  helper({name:\"Ada\",score:2},(2:UserId))=2\n}\n",
+        r#"t User={
+  name:String,
+  score:Int
+}
+
+t UserId=Int where value≥0
+
+λhelper(user:User,userId:UserId)=>Int={
+  l current=(userId:UserId);
+  user.score+(match current=(0:UserId){
+    true=>0|
+    false=>current-current
+  })
+}
+
+λmain()=>Unit=()
+
+test "demo" {
+  helper(
+    {
+      name:"Ada",
+      score:2
+    },
+    (2:UserId)
+  )=2
+}
+"#,
     );
     let artifact = dir.join("tests.replay.json");
 
@@ -550,7 +598,7 @@ fn debug_test_watches_resolve_at_breakpoint_scope() {
         .arg("--watch")
         .arg("user.score")
         .arg("--break")
-        .arg(line_break_selector(&file, 7))
+        .arg(line_break_selector(&file, 10))
         .arg(&file)
         .output()
         .unwrap();

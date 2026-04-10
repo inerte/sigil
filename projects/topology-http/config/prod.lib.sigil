@@ -1,6 +1,18 @@
 e process
 
-c world=(†runtime.world(†clock.systemClock(),†fs.real(),[†http.proxy(mailerApiBaseUrl(),•topology.mailerApi)],†log.stdout(),†process.real(),†random.real(),[],†timer.real()):†runtime.World)
+c world=(†runtime.world(
+  †clock.systemClock(),
+  †fs.real(),
+  [†http.proxy(
+    mailerApiBaseUrl(),
+    •topology.mailerApi
+  )],
+  †log.stdout(),
+  †process.real(),
+  †random.real(),
+  [],
+  †timer.real()
+):†runtime.World)
 
 λmailerApiBaseUrl()=>String=mailerApiBaseUrlFromProperty(process.env.hasOwnProperty("mailerApiUrl"))
 

@@ -1,61 +1,185 @@
 t Headers={String↦String}
 
-t HttpError={kind:HttpErrorKind,message:String}
+t HttpError={
+  kind:HttpErrorKind,
+  message:String
+}
 
 t HttpErrorKind=InvalidJson()|InvalidUrl()|Network()|Timeout()|Topology()
 
 t HttpMethod=Delete()|Get()|Patch()|Post()|Put()
 
-t HttpRequest={body:Option[String],dependency:§topology.HttpServiceDependency,headers:Headers,method:HttpMethod,path:String}
+t HttpRequest={
+  body:Option[String],
+  dependency:§topology.HttpServiceDependency,
+  headers:Headers,
+  method:HttpMethod,
+  path:String
+}
 
-t HttpResponse={body:String,headers:Headers,status:Int,url:String}
+t HttpResponse={
+  body:String,
+  headers:Headers,
+  status:Int,
+  url:String
+}
 
-λdelete(dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[HttpResponse,HttpError]=request({body:None(),dependency:dependency,headers:headers,method:Delete(),path:path})
+λdelete(dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[
+  HttpResponse,
+  HttpError
+]=request({
+  body:None(),
+  dependency:dependency,
+  headers:headers,
+  method:Delete(),
+  path:path
+})
 
-λdeleteJson(dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[§json.JsonValue,HttpError] match delete(dependency,headers,path){
+λdeleteJson(dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[
+  §json.JsonValue,
+  HttpError
+] match delete(
+  dependency,
+  headers,
+  path
+){
   Ok(response)=>responseJson(response)|
   Err(error)=>Err(error)
 }
 
 λemptyHeaders()=>Headers=({↦}:{String↦String})
 
-λget(dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[HttpResponse,HttpError]=request({body:None(),dependency:dependency,headers:headers,method:Get(),path:path})
+λget(dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[
+  HttpResponse,
+  HttpError
+]=request({
+  body:None(),
+  dependency:dependency,
+  headers:headers,
+  method:Get(),
+  path:path
+})
 
-λgetJson(dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[§json.JsonValue,HttpError] match get(dependency,headers,path){
+λgetJson(dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[
+  §json.JsonValue,
+  HttpError
+] match get(
+  dependency,
+  headers,
+  path
+){
   Ok(response)=>responseJson(response)|
   Err(error)=>Err(error)
 }
 
-λheader(key:String,value:String)=>Headers=¶map.singleton(key,value)
+λheader(key:String,value:String)=>Headers=¶map.singleton(
+  key,
+  value
+)
 
 λjsonHeaders()=>Headers={"content-type"↦"application/json; charset=utf-8"}
 
-λmergeHeaders(left:Headers,right:Headers)=>Headers=¶map.merge(left,right)
+λmergeHeaders(left:Headers,right:Headers)=>Headers=¶map.merge(
+  left,
+  right
+)
 
-λpatch(body:String,dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[HttpResponse,HttpError]=request({body:Some(body),dependency:dependency,headers:headers,method:Patch(),path:path})
+λpatch(body:String,dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[
+  HttpResponse,
+  HttpError
+]=request({
+  body:Some(body),
+  dependency:dependency,
+  headers:headers,
+  method:Patch(),
+  path:path
+})
 
-λpatchJson(body:§json.JsonValue,dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[§json.JsonValue,HttpError] match patch(§json.stringify(body),dependency,mergeHeaders(jsonHeaders(),headers),path){
+λpatchJson(body:§json.JsonValue,dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[
+  §json.JsonValue,
+  HttpError
+] match patch(
+  §json.stringify(body),
+  dependency,
+  mergeHeaders(
+    jsonHeaders(),
+    headers
+  ),
+  path
+){
   Ok(response)=>responseJson(response)|
   Err(error)=>Err(error)
 }
 
-λpost(body:String,dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[HttpResponse,HttpError]=request({body:Some(body),dependency:dependency,headers:headers,method:Post(),path:path})
+λpost(body:String,dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[
+  HttpResponse,
+  HttpError
+]=request({
+  body:Some(body),
+  dependency:dependency,
+  headers:headers,
+  method:Post(),
+  path:path
+})
 
-λpostJson(body:§json.JsonValue,dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[§json.JsonValue,HttpError] match post(§json.stringify(body),dependency,mergeHeaders(jsonHeaders(),headers),path){
+λpostJson(body:§json.JsonValue,dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[
+  §json.JsonValue,
+  HttpError
+] match post(
+  §json.stringify(body),
+  dependency,
+  mergeHeaders(
+    jsonHeaders(),
+    headers
+  ),
+  path
+){
   Ok(response)=>responseJson(response)|
   Err(error)=>Err(error)
 }
 
-λput(body:String,dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[HttpResponse,HttpError]=request({body:Some(body),dependency:dependency,headers:headers,method:Put(),path:path})
+λput(body:String,dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[
+  HttpResponse,
+  HttpError
+]=request({
+  body:Some(body),
+  dependency:dependency,
+  headers:headers,
+  method:Put(),
+  path:path
+})
 
-λputJson(body:§json.JsonValue,dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[§json.JsonValue,HttpError] match put(§json.stringify(body),dependency,mergeHeaders(jsonHeaders(),headers),path){
+λputJson(body:§json.JsonValue,dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[
+  §json.JsonValue,
+  HttpError
+] match put(
+  §json.stringify(body),
+  dependency,
+  mergeHeaders(
+    jsonHeaders(),
+    headers
+  ),
+  path
+){
   Ok(response)=>responseJson(response)|
   Err(error)=>Err(error)
 }
 
-λrequest(request:HttpRequest)=>!Http Result[HttpResponse,HttpError]=Err({kind:Network(),message:"http client runtime unavailable"})
+λrequest(request:HttpRequest)=>!Http Result[
+  HttpResponse,
+  HttpError
+]=Err({
+  kind:Network(),
+  message:"http client runtime unavailable"
+})
 
-λresponseJson(response:HttpResponse)=>Result[§json.JsonValue,HttpError] match §json.parse(response.body){
+λresponseJson(response:HttpResponse)=>Result[
+  §json.JsonValue,
+  HttpError
+] match §json.parse(response.body){
   Ok(value)=>Ok(value)|
-  Err(error)=>Err({kind:InvalidJson(),message:error.message})
+  Err(error)=>Err({
+    kind:InvalidJson(),
+    message:error.message
+  })
 }

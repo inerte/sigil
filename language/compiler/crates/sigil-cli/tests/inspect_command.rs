@@ -94,8 +94,8 @@ fn inspect_types_reports_named_type_inventory_and_constraints() {
         concat!(
             "t Age=Int\n\n",
             "t BirthYear=Int where value>1800 and value<10000\n\n",
-            "t User={birthYear:BirthYear,name:String}\n\n",
-            "t DateRange={end:Int,start:Int} where value.end≥value.start\n\n",
+            "t User={\n  birthYear:BirthYear,\n  name:String\n}\n\n",
+            "t DateRange={\n  end:Int,\n  start:Int\n} where value.end≥value.start\n\n",
             "t Result=Ok(Int)|Err(String)\n",
         ),
     );
@@ -496,7 +496,21 @@ fn inspect_world_reports_normalized_runtime_world_for_topology_project() {
     write_program(
         &dir,
         "config/local.lib.sigil",
-        "c world=(†runtime.world(†clock.systemClock(),†fs.real(),[†http.proxy(\"http://127.0.0.1:45110\",•topology.mailerApi)],†log.capture(),†process.real(),†random.seeded(1337),[],†timer.virtual()):†runtime.World)\n",
+        concat!(
+            "c world=(†runtime.world(\n",
+            "  †clock.systemClock(),\n",
+            "  †fs.real(),\n",
+            "  [†http.proxy(\n",
+            "    \"http://127.0.0.1:45110\",\n",
+            "    •topology.mailerApi\n",
+            "  )],\n",
+            "  †log.capture(),\n",
+            "  †process.real(),\n",
+            "  †random.seeded(1337),\n",
+            "  [],\n",
+            "  †timer.virtual()\n",
+            "):†runtime.World)\n",
+        ),
     );
 
     let output = Command::new(sigil_bin())
@@ -546,7 +560,18 @@ fn inspect_world_supports_config_only_projects_without_topology() {
     write_program(
         &dir,
         "config/local.lib.sigil",
-        "c world=(†runtime.world(†clock.systemClock(),†fs.real(),[],†log.stdout(),†process.real(),†random.seeded(7),[],†timer.real()):†runtime.World)\n",
+        concat!(
+            "c world=(†runtime.world(\n",
+            "  †clock.systemClock(),\n",
+            "  †fs.real(),\n",
+            "  [],\n",
+            "  †log.stdout(),\n",
+            "  †process.real(),\n",
+            "  †random.seeded(7),\n",
+            "  [],\n",
+            "  †timer.real()\n",
+            "):†runtime.World)\n",
+        ),
     );
 
     let output = Command::new(sigil_bin())
@@ -593,7 +618,18 @@ fn inspect_world_emits_json_error_when_env_is_undeclared() {
     write_program(
         &dir,
         "config/prod.lib.sigil",
-        "c world=(†runtime.world(†clock.systemClock(),†fs.real(),[],†log.stdout(),†process.real(),†random.real(),[],†timer.real()):†runtime.World)\n",
+        concat!(
+            "c world=(†runtime.world(\n",
+            "  †clock.systemClock(),\n",
+            "  †fs.real(),\n",
+            "  [],\n",
+            "  †log.stdout(),\n",
+            "  †process.real(),\n",
+            "  †random.real(),\n",
+            "  [],\n",
+            "  †timer.real()\n",
+            "):†runtime.World)\n",
+        ),
     );
 
     let output = Command::new(sigil_bin())

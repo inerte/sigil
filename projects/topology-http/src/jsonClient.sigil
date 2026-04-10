@@ -1,4 +1,8 @@
-λmain()=>!Http String match §httpClient.getJson(•topology.mailerApi,§httpClient.emptyHeaders(),"/json"){
+λmain()=>!Http String match §httpClient.getJson(
+  •topology.mailerApi,
+  §httpClient.emptyHeaders(),
+  "/json"
+){
   Ok(value)=>§json.stringify(value)|
   Err(error)=>"ERR:"++error.message
 }

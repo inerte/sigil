@@ -38,7 +38,13 @@ The Sigil standard library provides core utility functions and predicates for co
 ```sigil program
 e console
 
-λmain()=>Unit=console.log(§string.intToString(#[1,2,3])++" "++§time.formatIso(§time.fromEpochMillis(0)))
+λmain()=>Unit=console.log(§string.intToString(#[
+  1,
+  2,
+  3
+])
+  ++" "
+  ++§time.formatIso(§time.fromEpochMillis(0)))
 ```
 
 **Design:** Sigil writes rooted references directly at the use site.
@@ -62,7 +68,17 @@ The `#` operator is a **built-in language operator** that returns the length of 
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=#"hello"=5 and #""=0 and #[1,2,3]=3 and #{"a"↦1,"b"↦2}=2
+λmain()=>Bool=#"hello"=5
+  and #""=0
+  and #[
+    1,
+    2,
+    3
+  ]=3
+  and #{
+    "a"↦1,
+    "b"↦2
+  }=2
 ```
 
 **Note on Empty Lists:**
@@ -101,8 +117,14 @@ There is no `export` keyword.
 
 ```sigil program
 λmain()=>!Fs Unit={
-  l out=(§path.join("/tmp","sigil.txt"):String);
-  l _=(§file.writeText("hello",out):Unit);
+  l out=(§path.join(
+    "/tmp",
+    "sigil.txt"
+  ):String);
+  l _=(§file.writeText(
+    "hello",
+    out
+  ):Unit);
   l _=(§file.readText(out):String);
   ()
 }
@@ -133,7 +155,10 @@ filesystem roots.
 ```sigil program
 λmain()=>Unit={
   l _=(§path.basename("website/articles/hello.md"):String);
-  l _=(§path.join("website","articles"):String);
+  l _=(§path.join(
+    "website",
+    "articles"
+  ):String);
   ()
 }
 ```
@@ -142,7 +167,10 @@ filesystem roots.
 
 ```sigil program
 λmain()=>!Process Unit={
-  l result=(§process.run(§process.command(["git","status"])):§process.ProcessResult);
+  l result=(§process.run(§process.command([
+    "git",
+    "status"
+  ])):§process.ProcessResult);
   match result.code=0{
     true=>()|
     false=>()
@@ -171,7 +199,10 @@ projects. They take a `Command` plus a `§topology.ProcessHandle`.
 `§log` is the named-boundary logging surface:
 
 ```sigil program projects/labelled-boundaries/src/logExample.sigil
-λmain()=>!Log Unit=§log.write("customer created",•topology.auditLog)
+λmain()=>!Log Unit=§log.write(
+  "customer created",
+  •topology.auditLog
+)
 ```
 
 It currently exposes:
@@ -184,8 +215,15 @@ boundary rules target `§log.write` because it names the sink explicitly.
 
 ```sigil program
 λmain()=>!Random Unit={
-  l _=(§random.intBetween(6,1):Int);
-  l deck=(§random.shuffle(["orc","slime","bat"]):[String]);
+  l _=(§random.intBetween(
+    6,
+    1
+  ):Int);
+  l deck=(§random.shuffle([
+    "orc",
+    "slime",
+    "bat"
+  ]):[String]);
   l _=(§random.pick(deck):Option[String]);
   ()
 }
@@ -202,8 +240,14 @@ and `†random.fixture(draws)`.
 `§regex` exposes a small JavaScript-backed regular-expression surface:
 
 ```sigil program
-λmain()=>Unit match §regex.compile("i","^(sigil)-(.*)$"){
-  Ok(regex)=>match §regex.find("Sigil-lang",regex){
+λmain()=>Unit match §regex.compile(
+  "i",
+  "^(sigil)-(.*)$"
+){
+  Ok(regex)=>match §regex.find(
+    "Sigil-lang",
+    regex
+  ){
     Some(found)=>{
       l _=(found.full:String);
       ()
@@ -242,19 +286,40 @@ need to include it.
 internal Sigil values:
 
 ```sigil module
-t Message={createdAt:§time.Instant,text:String}
+t Message={
+  createdAt:§time.Instant,
+  text:String
+}
 
-λinstant(value:§json.JsonValue)=>Result[§time.Instant,§decode.DecodeError] match §decode.string(value){
+λinstant(value:§json.JsonValue)=>Result[
+  §time.Instant,
+  §decode.DecodeError
+] match §decode.string(value){
   Ok(text)=>match §time.parseIso(text){
     Ok(instant)=>Ok(instant)|
-    Err(error)=>Err({message:error.message,path:[]})
+    Err(error)=>Err({
+      message:error.message,
+      path:[]
+    })
   }|
   Err(error)=>Err(error)
 }
 
-λmessage(value:§json.JsonValue)=>Result[Message,§decode.DecodeError] match §decode.field(instant,"createdAt")(value){
-  Ok(createdAt)=>match §decode.field(§decode.string,"text")(value){
-    Ok(text)=>Ok({createdAt:createdAt,text:text})|
+λmessage(value:§json.JsonValue)=>Result[
+  Message,
+  §decode.DecodeError
+] match §decode.field(
+  instant,
+  "createdAt"
+)(value){
+  Ok(createdAt)=>match §decode.field(
+    §decode.string,
+    "text"
+  )(value){
+    Ok(text)=>Ok({
+      createdAt:createdAt,
+      text:text
+    })|
     Err(error)=>Err(error)
   }|
   Err(error)=>Err(error)
@@ -332,7 +397,11 @@ For topology-aware projects, the canonical surface is handle-based rather than
 raw-URL based:
 
 ```sigil program projects/topology-http/src/getClient.sigil
-λmain()=>!Http Unit match §httpClient.get(•topology.mailerApi,§httpClient.emptyHeaders(),"/health"){
+λmain()=>!Http Unit match §httpClient.get(
+  •topology.mailerApi,
+  §httpClient.emptyHeaders(),
+  "/health"
+){
   Ok(response)=>{
     l _=(response.body:String);
     ()
@@ -361,7 +430,10 @@ The split is:
   _=>§httpServer.notFound()
 }
 
-λmain()=>!Http Unit=§httpServer.serve(handle,8080)
+λmain()=>!Http Unit=§httpServer.serve(
+  handle,
+  8080
+)
 ```
 
 The public server surface is:
@@ -385,7 +457,10 @@ Passing `0` to `listen` or `serve` asks the OS for any free ephemeral port. Use
 For topology-aware projects, the canonical surface is handle-based:
 
 ```sigil program projects/topology-tcp/src/pingClient.sigil
-λmain()=>!Tcp Unit match §tcpClient.send(•topology.eventStream,"ping"){
+λmain()=>!Tcp Unit match §tcpClient.send(
+  •topology.eventStream,
+  "ping"
+){
   Ok(response)=>{
     l _=(response.message:String);
     ()
@@ -410,7 +485,10 @@ The canonical framing model is:
 ```sigil program
 λhandle(request:§tcpServer.Request)=>§tcpServer.Response=§tcpServer.response(request.message)
 
-λmain()=>!Tcp Unit=§tcpServer.serve(handle,45120)
+λmain()=>!Tcp Unit=§tcpServer.serve(
+  handle,
+  45120
+)
 ```
 
 The public server surface is:
@@ -441,7 +519,11 @@ the selected `config/<env>.lib.sigil`, and use typed handles instead of raw
 endpoints or ad hoc sink names in application code:
 
 ```sigil program projects/topology-http/src/getClient.sigil
-λmain()=>!Http Unit match §httpClient.get(•topology.mailerApi,§httpClient.emptyHeaders(),"/health"){
+λmain()=>!Http Unit match §httpClient.get(
+  •topology.mailerApi,
+  §httpClient.emptyHeaders(),
+  "/health"
+){
   Ok(_)=>()|
   Err(_)=>()
 }
@@ -463,7 +545,18 @@ Check if a list is sorted in ascending order.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§list.sortedAsc([1,2,3]) and ¬§list.sortedAsc([3,2,1]) and §list.sortedAsc([]) and §list.sortedAsc([5])
+λmain()=>Bool=§list.sortedAsc([
+  1,
+  2,
+  3
+])
+  and ¬§list.sortedAsc([
+    3,
+    2,
+    1
+  ])
+  and §list.sortedAsc([])
+  and §list.sortedAsc([5])
 ```
 
 **Use case:** Validate precondition for binary search or other sorted-list algorithms.
@@ -478,7 +571,15 @@ Check if a list is sorted in descending order.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§list.sortedDesc([3,2,1]) and ¬§list.sortedDesc([1,2,3])
+λmain()=>Bool=§list.sortedDesc([
+  3,
+  2,
+  1
+]) and ¬§list.sortedDesc([
+  1,
+  2,
+  3
+])
 ```
 
 ### all
@@ -491,7 +592,30 @@ Check if all elements in a list satisfy a predicate.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§list.all(§numeric.isPositive,[1,2,3]) and ¬§list.all(§numeric.isPositive,[1,-2,3]) and §list.all(§numeric.isEven,[2,4,6])
+λmain()=>Bool=§list.all(
+  §numeric.isPositive,
+  [
+    1,
+    2,
+    3
+  ]
+)
+  and ¬§list.all(
+    §numeric.isPositive,
+    [
+      1,
+      -2,
+      3
+    ]
+  )
+  and §list.all(
+    §numeric.isEven,
+    [
+      2,
+      4,
+      6
+    ]
+  )
 ```
 
 **Use case:** Validate that all elements meet a requirement.
@@ -506,7 +630,31 @@ Check if any element in a list satisfies a predicate.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=¬§list.any(§numeric.isEven,[1,3,5]) and §list.any(§numeric.isEven,[1,2,3]) and §list.any(§numeric.isPrime,[4,6,8,7])
+λmain()=>Bool=¬§list.any(
+  §numeric.isEven,
+  [
+    1,
+    3,
+    5
+  ]
+)
+  and §list.any(
+    §numeric.isEven,
+    [
+      1,
+      2,
+      3
+    ]
+  )
+  and §list.any(
+    §numeric.isPrime,
+    [
+      4,
+      6,
+      8,
+      7
+    ]
+  )
 ```
 
 **Use case:** Check if at least one element meets a requirement.
@@ -521,7 +669,28 @@ Check if an element exists in a list.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§list.contains(3,[1,2,3,4]) and ¬§list.contains(5,[1,2,3,4]) and ¬§list.contains(1,[])
+λmain()=>Bool=§list.contains(
+  3,
+  [
+    1,
+    2,
+    3,
+    4
+  ]
+)
+  and ¬§list.contains(
+    5,
+    [
+      1,
+      2,
+      3,
+      4
+    ]
+  )
+  and ¬§list.contains(
+    1,
+    []
+  )
 ```
 
 **Use case:** Membership testing.
@@ -560,10 +729,25 @@ Find the first element that satisfies a predicate.
 
 Examples:
 ```sigil program
-λmain()=>Bool=(match §list.find(§numeric.isEven,[1,3,4,6]){
+λmain()=>Bool=(match §list.find(
+  §numeric.isEven,
+  [
+    1,
+    3,
+    4,
+    6
+  ]
+){
   Some(value)=>value=4|
   None()=>false
-}) and (match §list.find(§numeric.isEven,[1,3,5]){
+}) and (match §list.find(
+  §numeric.isEven,
+  [
+    1,
+    3,
+    5
+  ]
+){
   Some(_)=>false|
   None()=>true
 })
@@ -579,7 +763,24 @@ Map each element to a list and flatten the results in order.
 
 Examples:
 ```sigil program
-λmain()=>Bool=§list.flatMap(λ(x:Int)=>[Int]=[x,x],[1,2,3])=[1,1,2,2,3,3]
+λmain()=>Bool=§list.flatMap(
+  λ(x:Int)=>[Int]=[
+    x,
+    x
+  ],
+  [
+    1,
+    2,
+    3
+  ]
+)=[
+  1,
+  1,
+  2,
+  2,
+  3,
+  3
+]
 ```
 
 ### fold
@@ -594,7 +795,23 @@ Examples:
 ```sigil program
 λappendDigit(acc:Int,x:Int)=>Int=acc*10+x
 
-λmain()=>Bool=§list.fold(0,λ(acc:Int,x:Int)=>Int=acc+x,[1,2,3])=6 and §list.fold(0,appendDigit,[1,2,3])=123
+λmain()=>Bool=§list.fold(
+  0,
+  λ(acc:Int,x:Int)=>Int=acc+x,
+  [
+    1,
+    2,
+    3
+  ]
+)=6 and §list.fold(
+  0,
+  appendDigit,
+  [
+    1,
+    2,
+    3
+  ]
+)=123
 ```
 
 ### inBounds
@@ -607,7 +824,42 @@ Check if an index is valid for a list (in range [0, len-1]).
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§list.inBounds(0,[1,2,3]) and §list.inBounds(2,[1,2,3]) and ¬§list.inBounds(3,[1,2,3]) and ¬§list.inBounds(-1,[1,2,3]) and ¬§list.inBounds(0,[])
+λmain()=>Bool=§list.inBounds(
+  0,
+  [
+    1,
+    2,
+    3
+  ]
+)
+  and §list.inBounds(
+    2,
+    [
+      1,
+      2,
+      3
+    ]
+  )
+  and ¬§list.inBounds(
+    3,
+    [
+      1,
+      2,
+      3
+    ]
+  )
+  and ¬§list.inBounds(
+    -1,
+    [
+      1,
+      2,
+      3
+    ]
+  )
+  and ¬§list.inBounds(
+    0,
+    []
+  )
 ```
 
 **Use case:** Validate array/list access before indexing. Prevents out-of-bounds errors.
@@ -633,7 +885,11 @@ Examples:
 λmain()=>Bool=(match §list.last([]){
   Some(_)=>false|
   None()=>true
-}) and (match §list.last([1,2,3]){
+}) and (match §list.last([
+  1,
+  2,
+  3
+]){
   Some(value)=>value=3|
   None()=>false
 })
@@ -652,7 +908,11 @@ Examples:
 λmain()=>Bool=(match §list.max([]){
   Some(_)=>false|
   None()=>true
-}) and (match §list.max([3,9,4]){
+}) and (match §list.max([
+  3,
+  9,
+  4
+]){
   Some(value)=>value=9|
   None()=>false
 })
@@ -671,7 +931,11 @@ Examples:
 λmain()=>Bool=(match §list.min([]){
   Some(_)=>false|
   None()=>true
-}) and (match §list.min([3,9,4]){
+}) and (match §list.min([
+  3,
+  9,
+  4
+]){
   Some(value)=>value=3|
   None()=>false
 })
@@ -687,10 +951,22 @@ Get the item at a zero-based index safely.
 
 Examples:
 ```sigil program
-λmain()=>Bool=(match §list.nth(0,[7,8]){
+λmain()=>Bool=(match §list.nth(
+  0,
+  [
+    7,
+    8
+  ]
+){
   Some(value)=>value=7|
   None()=>false
-}) and (match §list.nth(2,[7,8]){
+}) and (match §list.nth(
+  2,
+  [
+    7,
+    8
+  ]
+){
   Some(_)=>false|
   None()=>true
 })
@@ -706,7 +982,11 @@ Multiply all integers in a list.
 
 Examples:
 ```sigil program
-λmain()=>Bool=§list.product([])=1 and §list.product([2,3,4])=24
+λmain()=>Bool=§list.product([])=1 and §list.product([
+  2,
+  3,
+  4
+])=24
 ```
 
 ### removeFirst
@@ -735,7 +1015,12 @@ Sum all integers in a list.
 
 Examples:
 ```sigil program
-λmain()=>Bool=§list.sum([])=0 and §list.sum([1,2,3,4])=10
+λmain()=>Bool=§list.sum([])=0 and §list.sum([
+  1,
+  2,
+  3,
+  4
+])=10
 ```
 
 ### take
@@ -760,7 +1045,23 @@ Build an ascending integer range, inclusive at both ends.
 
 Examples:
 ```sigil program
-λmain()=>Bool=§numeric.range(2,5)=[2,3,4,5] and §numeric.range(3,3)=[3] and §numeric.range(5,2)=[]
+λmain()=>Bool=§numeric.range(
+  2,
+  5
+)=[
+  2,
+  3,
+  4,
+  5
+]
+  and §numeric.range(
+    3,
+    3
+  )=[3]
+  and §numeric.range(
+    5,
+    2
+  )=[]
 ```
 
 ## Canonical List-Processing Surface
@@ -805,7 +1106,13 @@ Get character at index.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§string.charAt(0,"hello")="h" and §string.charAt(4,"hello")="o"
+λmain()=>Bool=§string.charAt(
+  0,
+  "hello"
+)="h" and §string.charAt(
+  4,
+  "hello"
+)="o"
 ```
 
 **Codegen:** `s.charAt(idx)`
@@ -820,7 +1127,15 @@ Get substring from start to end index.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§string.substring(11,"hello world",6)="world" and §string.substring(3,"hello",0)="hel"
+λmain()=>Bool=§string.substring(
+  11,
+  "hello world",
+  6
+)="world" and §string.substring(
+  3,
+  "hello",
+  0
+)="hel"
 ```
 
 **Codegen:** `s.substring(start, end)`
@@ -835,7 +1150,13 @@ Take first n characters.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§string.take(3,"hello")="hel" and §string.take(5,"hi")="hi"
+λmain()=>Bool=§string.take(
+  3,
+  "hello"
+)="hel" and §string.take(
+  5,
+  "hi"
+)="hi"
 ```
 
 **Implementation:** `substring(n, s, 0)` (in Sigil)
@@ -850,7 +1171,13 @@ Drop first n characters.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§string.drop(2,"hello")="llo" and §string.drop(5,"hi")=""
+λmain()=>Bool=§string.drop(
+  2,
+  "hello"
+)="llo" and §string.drop(
+  5,
+  "hi"
+)=""
 ```
 
 **Implementation:** `substring(#s, s, n)` (in Sigil, uses `#` operator)
@@ -867,7 +1194,11 @@ Split a string on newline characters.
 ```sigil program
 λmain()=>Bool=§string.lines("a
 b
-c")=["a","b","c"] and §string.lines("hello")=["hello"]
+c")=[
+  "a",
+  "b",
+  "c"
+] and §string.lines("hello")=["hello"]
 ```
 
 **Implementation:** `split("
@@ -930,7 +1261,13 @@ Remove any leading characters that appear in `chars`.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§string.trimStartChars("/","///docs")="docs" and §string.trimStartChars("/.","../docs")="docs"
+λmain()=>Bool=§string.trimStartChars(
+  "/",
+  "///docs"
+)="docs" and §string.trimStartChars(
+  "/.",
+  "../docs"
+)="docs"
 ```
 
 **Codegen:** edge trim using the characters listed in `chars`
@@ -945,7 +1282,13 @@ Remove any trailing characters that appear in `chars`.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§string.trimEndChars("/","https://sigil.dev///")="https://sigil.dev" and §string.trimEndChars("/.","docs/...")="docs"
+λmain()=>Bool=§string.trimEndChars(
+  "/",
+  "https://sigil.dev///"
+)="https://sigil.dev" and §string.trimEndChars(
+  "/.",
+  "docs/..."
+)="docs"
 ```
 
 **Codegen:** edge trim using the characters listed in `chars`
@@ -960,7 +1303,13 @@ Find index of first occurrence (returns -1 if not found).
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§string.indexOf("hello world","world")=6 and §string.indexOf("hello","xyz")=-1
+λmain()=>Bool=§string.indexOf(
+  "hello world",
+  "world"
+)=6 and §string.indexOf(
+  "hello",
+  "xyz"
+)=-1
 ```
 
 **Codegen:** `s.indexOf(search)`
@@ -975,7 +1324,18 @@ Check whether `search` appears anywhere within `s`.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§string.contains("hello world","world") and ¬§string.contains("hello","xyz") and §string.contains("hello","")
+λmain()=>Bool=§string.contains(
+  "hello world",
+  "world"
+)
+  and ¬§string.contains(
+    "hello",
+    "xyz"
+  )
+  and §string.contains(
+    "hello",
+    ""
+  )
 ```
 
 **Codegen:** `s.includes(search)`
@@ -990,9 +1350,22 @@ Split string by delimiter.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§string.split(",","a,b,c")=["a","b","c"] and §string.split("
-","line1
-line2")=["line1","line2"]
+λmain()=>Bool=§string.split(
+  ",",
+  "a,b,c"
+)=[
+  "a",
+  "b",
+  "c"
+] and §string.split(
+  "
+",
+  "line1
+line2"
+)=[
+  "line1",
+  "line2"
+]
 ```
 
 **Codegen:** `s.split(delimiter)`
@@ -1007,7 +1380,11 @@ Replace all occurrences of pattern with replacement.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§string.replaceAll("hello","hi","hello hello")="hi hi"
+λmain()=>Bool=§string.replaceAll(
+  "hello",
+  "hi",
+  "hello hello"
+)="hi hi"
 ```
 
 **Codegen:** `s.replaceAll(pattern, replacement)`
@@ -1022,7 +1399,13 @@ Repeat a string `count` times.
 
 **Examples:**
 ```sigil program
-λmain()=>Bool=§string.repeat(3,"ab")="ababab" and §string.repeat(0,"ab")=""
+λmain()=>Bool=§string.repeat(
+  3,
+  "ab"
+)="ababab" and §string.repeat(
+  0,
+  "ab"
+)=""
 ```
 
 **Implementation:** recursive concatenation in Sigil
@@ -1100,7 +1483,10 @@ Design notes:
 Functions that can produce `NaN` or `±Infinity` (e.g. `sqrt(-1.0)`, `log(0.0)`) return those values as valid `Float`; use `isNaN` and `isFinite` to guard at boundaries.
 
 ```sigil program
-λmain()=>Bool=§float.floor(3.7)=3 and §float.ceil(3.2)=4 and §float.round(2.5)=3 and §float.isNaN(§float.sqrt(-1.0))
+λmain()=>Bool=§float.floor(3.7)=3
+  and §float.ceil(3.2)=4
+  and §float.round(2.5)=3
+  and §float.isNaN(§float.sqrt(-1.0))
 ```
 
 ## Crypto Surface
@@ -1150,7 +1536,18 @@ All functions are pure (deterministic, no effect annotation).
 Examples:
 
 ```sigil program
-λmain()=>Bool=§numeric.abs(-5)=5 and §numeric.isEven(4) and §numeric.isPrime(17) and §numeric.range(2,5)=[2,3,4,5]
+λmain()=>Bool=§numeric.abs(-5)=5
+  and §numeric.isEven(4)
+  and §numeric.isPrime(17)
+  and §numeric.range(
+    2,
+    5
+  )=[
+    2,
+    3,
+    4,
+    5
+  ]
 ```
 
 ## Core Prelude
@@ -1177,7 +1574,10 @@ Typical usage:
   None()=>default
 }
 
-λprocessResult(res:Result[String,String])=>String match res{
+λprocessResult(res:Result[
+  String,
+  String
+])=>String match res{
   Ok(value)=>"Success: "++value|
   Err(msg)=>"Error: "++msg
 }

@@ -1,1 +1,5 @@
-λmain()=>[[Int]]=•permutations.permutations([1,2,3])
+λmain()=>[[Int]]=•permutations.permutations([
+  1,
+  2,
+  3
+])

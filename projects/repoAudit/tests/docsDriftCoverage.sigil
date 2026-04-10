@@ -377,21 +377,6 @@ b.md
       Some(path)=>path="fallback"|
       None()=>false
     },
-    •docsDrift.relativeToRootPath(
-      "/repo",
-      "/repo"
-    )=".",
-    •docsDrift.relativeToRootPath(
-      "/repo",
-      §path.join(
-        "/repo",
-        "tmp/file.sigil"
-      )
-    )="tmp/file.sigil",
-    •docsDrift.repoTempDir("/repo")=§path.join(
-      "/repo",
-      ".local/repoAuditTmp"
-    ),
     •docsDrift.runCoverageChecks(
       ["§string.trim"],
       ["§string.trim"],
@@ -480,6 +465,116 @@ b.md
       ),
       "sample2"
     )
+  ])
+}
+
+test "markdown task helpers keep deterministic concurrent merge order" {
+  l tasks=(•docsDrift.markdownTasks(
+    [
+      "docs/a.md",
+      "docs/b.md"
+    ],
+    "/repo",
+    "tmp"
+  ):[µMarkdownTask]);
+  l merged=(•docsDrift.mergeMarkdownTaskOutcomes(
+    •docsDrift.emptyMarkdownAudit(),
+    [
+      Success({
+        documentedRefs:["§string.trim"],
+        issues:[],
+        snippetRefs:["§string.trim"]
+      }),
+      Failure("boom")
+    ],
+    tasks
+  ):µMarkdownAudit);
+  allOk([
+    •docsDrift.markdownTaskTempDir(
+      2,
+      "tmp"
+    )=§path.join(
+      "tmp",
+      "file-2"
+    ),
+    tasks=[
+      {
+        path:"docs/a.md",
+        root:"/repo",
+        tempDir:§path.join(
+          "tmp",
+          "file-1"
+        )
+      },
+      {
+        path:"docs/b.md",
+        root:"/repo",
+        tempDir:§path.join(
+          "tmp",
+          "file-2"
+        )
+      }
+    ],
+    merged.documentedRefs=["§string.trim"],
+    merged.snippetRefs=["§string.trim"],
+    merged.issues=[{
+      line:0,
+      message:"concurrent markdown audit failed: boom",
+      path:"docs/b.md"
+    }],
+    •docsDrift.mergeMarkdownTaskOutcomes(
+      •docsDrift.emptyMarkdownAudit(),
+      [],
+      [•docsDrift.markdownTask(
+        "docs/c.md",
+        "/repo",
+        "tmp/file-3"
+      )]
+    ).issues=[{
+      line:0,
+      message:"concurrent markdown audit aborted",
+      path:"docs/c.md"
+    }]
+  ])
+}
+
+test "process markdown task reports missing files as failures" =>!AuditIo {
+  l _=(§file.removeTree(".local/repoAuditCoverage/missing-task"):Unit);
+  match •docsDrift.processMarkdownTask(•docsDrift.markdownTask(
+    "docs/missing.md",
+    ".local/repoAuditCoverage/missing-task",
+    "tmp/file-1"
+  )){
+    Err(message)=>message="markdown file disappeared before concurrent audit: docs/missing.md"|
+    Ok(_)=>false
+  }
+}
+
+test "bare project virtual paths resolve from markdown project roots" =>!AuditIo {
+  l root=(repoRoot():String);
+  allOk([
+    match •docsDrift.projectRootFromDocPath(
+      "language/docs/TESTING.md",
+      root
+    ){
+      Some(_)=>false|
+      None()=>true
+    },
+    •docsDrift.resolvedSnippetVirtualPath(
+      "language/docs/TESTING.md",
+      root,
+      "tests/basic.sigil"
+    )="tests/basic.sigil",
+    •docsDrift.resolvedSnippetVirtualPath(
+      "projects/repoAudit/README.md",
+      root,
+      "src/docsDrift.lib.sigil"
+    )="projects/repoAudit/src/docsDrift.lib.sigil",
+    •docsDrift.resolvedSnippetVirtualPath(
+      "projects/repoAudit/README.md",
+      root,
+      "projects/repoAudit/src/docsDrift.lib.sigil"
+    )="projects/repoAudit/src/docsDrift.lib.sigil"
   ])
 }
 

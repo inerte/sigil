@@ -317,6 +317,34 @@ fn inspect_validate_returns_canonical_source_for_noncanonical_input() {
 }
 
 #[test]
+fn inspect_validate_rejects_leading_blank_line_as_noncanonical() {
+    let dir = temp_dir("validate-leading-blank-line");
+    let file = write_program(&dir, "main.sigil", "\nλmain()=>Int=1\n");
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("inspect")
+        .arg("validate")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["command"], "sigilc inspect validate");
+    assert_eq!(json["ok"], true);
+    assert_eq!(json["data"]["alreadyCanonical"], false);
+    assert_eq!(json["data"]["validation"]["ok"], false);
+    assert_eq!(json["data"]["canonicalSource"], "λmain()=>Int=1\n");
+    assert!(!json["data"]["validation"]["errors"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+}
+
+#[test]
 fn inspect_validate_directory_reports_per_file_status() {
     let dir = temp_dir("validate-directory");
     let canonical = write_program(&dir, "ok.sigil", "λmain()=>Int=1\n");

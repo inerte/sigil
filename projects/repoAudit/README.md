@@ -9,6 +9,10 @@ V1 owns three checks:
 2. `canonical-stdlib` rejects local wrappers around canonical stdlib helpers
 3. `repo-compile` batch-compiles non-ignored Sigil source across the repo
 
+`docs-drift` is also where `repoAudit` currently uses Sigil's named concurrent
+regions: tracked Markdown files are audited in parallel, but the merged issue
+order still follows the canonical path order.
+
 ## Running it
 
 From the repo root:

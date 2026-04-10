@@ -178,16 +178,27 @@
   source
 )
 
+λemptyMarkdownAudit()=>µMarkdownAudit={
+  documentedRefs:[],
+  issues:[],
+  snippetRefs:[]
+}
+
 λexecuteSnippetCheck(expectsSuccess:Bool,filePath:String,root:String,subcommand:String,tempDir:String,virtualPath:String,wrappedSource:String)=>!AuditIo [µIssue]={
+  l resolvedVirtualPath=(resolvedSnippetVirtualPath(
+    filePath,
+    root,
+    virtualPath
+  ):String);
   l snippetPath=(§path.join(
     tempDir,
-    virtualPath
+    resolvedVirtualPath
   ):String);
   l preparation=(prepareSnippetWorkspace(
     filePath,
     root,
     tempDir,
-    virtualPath
+    resolvedVirtualPath
   ):[µIssue]);
   l _=(§file.makeDirs(§path.dirname(snippetPath)):Unit);
   match #preparation>0{
@@ -201,10 +212,7 @@
       l result=(§process.run(compilerCommand(
         [
           subcommand,
-          relativeToRootPath(
-            root,
-            snippetPath
-          )
+          snippetPath
         ],
         root
       )):§process.ProcessResult);
@@ -214,7 +222,7 @@
           false=>[{
             line:0,
             message:"compiler check failed for "
-              ++virtualPath
+              ++resolvedVirtualPath
               ++": "
               ++processOutput(result),
             path:filePath
@@ -223,7 +231,7 @@
         false=>match result.code=0{
           true=>[{
             line:0,
-            message:"invalid Sigil snippet compiled successfully for "++virtualPath,
+            message:"invalid Sigil snippet compiled successfully for "++resolvedVirtualPath,
             path:filePath
           }]|
           false=>[]
@@ -237,6 +245,31 @@
   filePath,
   markdown
 )
+
+λfreshRepoTempDir(label:String,root:String)=>!Fs String=freshRepoTempDirInner(
+  1,
+  label,
+  root
+)
+
+λfreshRepoTempDirInner(index:Int,label:String,root:String)=>!Fs String={
+  l candidate=(repoTempPath(
+    index,
+    label,
+    root
+  ):String);
+  match §file.exists(candidate){
+    true=>freshRepoTempDirInner(
+      index+1,
+      label,
+      root
+    )|
+    false=>{
+      l _=(§file.makeDirs(candidate):Unit);
+      candidate
+    }
+  }
+}
 
 λgitTopLevel()=>!Process Result[
   String,
@@ -386,6 +419,50 @@
   ++": "
   ++issue.message
 
+λmarkdownTask(path:String,root:String,tempDir:String)=>µMarkdownTask={
+  path:path,
+  root:root,
+  tempDir:tempDir
+}
+
+λmarkdownTaskIssue(line:Int,message:String,path:String)=>µIssue={
+  line:line,
+  message:message,
+  path:path
+}
+
+λmarkdownTaskTempDir(index:Int,tempDir:String)=>String=§path.join(
+  tempDir,
+  "file-"++§string.intToString(index)
+)
+
+λmarkdownTasks(paths:[String],root:String,tempDir:String)=>[µMarkdownTask]=markdownTasksInner(
+  1,
+  paths,
+  root,
+  tempDir
+)
+
+λmarkdownTasksInner(index:Int,paths:[String],root:String,tempDir:String)=>[µMarkdownTask] match paths{
+  []=>[]|
+  [
+  head,
+  .tail
+]=>[markdownTask(
+    head,
+    root,
+    markdownTaskTempDir(
+      index,
+      tempDir
+    )
+  )]⧺markdownTasksInner(
+    index+1,
+    tail,
+    root,
+    tempDir
+  )
+}
+
 λmergeIssueLists(left:[µIssue],right:[µIssue])=>[µIssue] match right{
   []=>left|
   [
@@ -395,6 +472,83 @@
     left⧺[head],
     tail
   )
+}
+
+λmergeMarkdownTaskOutcome(acc:µMarkdownAudit,outcome:ConcurrentOutcome[
+  µMarkdownAudit,
+  String
+],task:µMarkdownTask)=>µMarkdownAudit match outcome{
+  Success(current)=>{
+    documentedRefs:mergeUnique(
+      acc.documentedRefs,
+      current.documentedRefs
+    ),
+    issues:mergeIssueLists(
+      acc.issues,
+      current.issues
+    ),
+    snippetRefs:mergeUnique(
+      acc.snippetRefs,
+      current.snippetRefs
+    )
+  }|
+  Failure(message)=>{
+    documentedRefs:acc.documentedRefs,
+    issues:mergeIssueLists(
+      acc.issues,
+      [markdownTaskIssue(
+        0,
+        "concurrent markdown audit failed: "++message,
+        task.path
+      )]
+    ),
+    snippetRefs:acc.snippetRefs
+  }|
+  Aborted()=>{
+    documentedRefs:acc.documentedRefs,
+    issues:mergeIssueLists(
+      acc.issues,
+      [markdownTaskIssue(
+        0,
+        "concurrent markdown audit aborted",
+        task.path
+      )]
+    ),
+    snippetRefs:acc.snippetRefs
+  }
+}
+
+λmergeMarkdownTaskOutcomes(acc:µMarkdownAudit,outcomes:[ConcurrentOutcome[
+  µMarkdownAudit,
+  String
+]],tasks:[µMarkdownTask])=>µMarkdownAudit match tasks{
+  []=>acc|
+  [
+  task,
+  .remainingTasks
+]=>match outcomes{
+    []=>mergeMarkdownTaskOutcomes(
+      mergeMarkdownTaskOutcome(
+        acc,
+        Aborted(),
+        task
+      ),
+      [],
+      remainingTasks
+    )|
+    [
+  outcome,
+  .remainingOutcomes
+]=>mergeMarkdownTaskOutcomes(
+      mergeMarkdownTaskOutcome(
+        acc,
+        outcome,
+        task
+      ),
+      remainingOutcomes,
+      remainingTasks
+    )
+  }
 }
 
 λmergeUnique(left:[String],right:[String])=>[String] match right{
@@ -550,6 +704,22 @@
   }
 }
 
+λprocessMarkdownTask(task:µMarkdownTask)=>!AuditIo Result[
+  µMarkdownAudit,
+  String
+] match §file.exists(§path.join(
+  task.root,
+  task.path
+)){
+  true=>Ok(processMarkdownFile(
+    false,
+    task.path,
+    task.root,
+    task.tempDir
+  ))|
+  false=>Err("markdown file disappeared before concurrent audit: "++task.path)
+}
+
 λprocessOutput(result:§process.ProcessResult)=>String match #§string.trim(result.stderr)>0{
   true=>§string.trim(result.stderr)|
   false=>§string.trim(result.stdout)
@@ -619,6 +789,28 @@
         tempDir
       )
     }
+  }
+}
+
+λprojectRootFromDocPath(filePath:String,root:String)=>!Fs Option[String]=projectRootFromDocPathDir(
+  §path.dirname(filePath),
+  root
+)
+
+λprojectRootFromDocPathDir(current:String,root:String)=>!Fs Option[String] match §file.exists(§path.join(
+  root,
+  §path.join(
+    current,
+    "sigil.json"
+  )
+)){
+  true=>Some(current)|
+  false=>match current="" or current="."{
+    true=>None()|
+    false=>projectRootFromDocPathDir(
+      §path.dirname(current),
+      root
+    )
   }
 }
 
@@ -783,25 +975,48 @@
   }
 }
 
-λrelativeToRootPath(root:String,value:String)=>String match value=root{
-  true=>"."|
-  false=>match §string.startsWith(
-    root++"/",
-    value
-  ){
-    true=>§string.substring(
-      #value,
-      value,
-      #root+1
-    )|
-    false=>value
-  }
-}
-
 λrepoTempDir(root:String)=>String=§path.join(
   root,
   ".local/repoAuditTmp"
 )
+
+λrepoTempPath(index:Int,label:String,root:String)=>String=§path.join(
+  repoTempDir(root),
+  label
+    ++"-"
+    ++§string.intToString(index)
+)
+
+λresolvedSnippetVirtualPath(filePath:String,root:String,virtualPath:String)=>!Fs String match projectRootFromVirtualPath(virtualPath){
+  Some(projectRoot)=>workspaceVirtualPath(
+    projectRoot,
+    virtualPath
+  )|
+  None()=>match §string.startsWith(
+    "config/",
+    virtualPath
+  )
+    or §string.startsWith(
+      "src/",
+      virtualPath
+    )
+    or §string.startsWith(
+      "tests/",
+      virtualPath
+    ){
+    true=>match projectRootFromDocPath(
+      filePath,
+      root
+    ){
+      Some(projectRoot)=>workspaceVirtualPath(
+        projectRoot,
+        virtualPath
+      )|
+      None()=>virtualPath
+    }|
+    false=>virtualPath
+  }
+}
 
 λrunCheck()=>!AuditIo Result[
   [µIssue],
@@ -809,12 +1024,10 @@
 ] match gitTopLevel(){
   Ok(root)=>match selectedMarkdownPaths(){
     Ok(selection)=>{
-      l tempDir=(§path.join(
-        repoTempDir(root),
-        "check"
+      l tempDir=(freshRepoTempDir(
+        "check",
+        root
       ):String);
-      l _=(§file.removeTree(tempDir):Unit);
-      l _=(§file.makeDirs(tempDir):Unit);
       l markdownAudit=(runMarkdownAudit(
         selection.failFast,
         selection.paths,
@@ -826,7 +1039,6 @@
         false=>match gitTrackedStdlib(){
           Ok(stdlibPaths)=>match gitTrackedStdlibTests(){
             Ok(testPaths)=>{
-              l _=(§file.removeTree(tempDir):Unit);
               l stdlibRefs=(readCoverageRefs(
                 testPaths,
                 root
@@ -861,19 +1073,16 @@
   String
 ] match gitTopLevel(){
   Ok(root)=>{
-    l tempDir=(§path.join(
-      repoTempDir(root),
-      "paths"
+    l tempDir=(freshRepoTempDir(
+      "paths",
+      root
     ):String);
-    l _=(§file.removeTree(tempDir):Unit);
-    l _=(§file.makeDirs(tempDir):Unit);
     l markdownAudit=(runMarkdownAudit(
       true,
       paths,
       root,
       tempDir
     ):µMarkdownAudit);
-    l _=(§file.removeTree(tempDir):Unit);
     Ok(markdownAudit.issues)
   }|
   Err(message)=>Err(message)
@@ -944,17 +1153,38 @@
   Err(message)=>Err(message)
 }
 
-λrunMarkdownAudit(failFast:Bool,paths:[String],root:String,tempDir:String)=>!AuditIo µMarkdownAudit=runMarkdownAuditInner(
-  {
-    documentedRefs:[],
-    issues:[],
-    snippetRefs:[]
-  },
-  failFast,
-  paths,
-  root,
-  tempDir
-)
+λrunMarkdownAudit(failFast:Bool,paths:[String],root:String,tempDir:String)=>!AuditIo µMarkdownAudit match failFast{
+  true=>runMarkdownAuditInner(
+    emptyMarkdownAudit(),
+    true,
+    paths,
+    root,
+    tempDir
+  )|
+  false=>runMarkdownAuditConcurrent(
+    paths,
+    root,
+    tempDir
+  )
+}
+
+λrunMarkdownAuditConcurrent(paths:[String],root:String,tempDir:String)=>!AuditIo µMarkdownAudit={
+  l tasks=(markdownTasks(
+    paths,
+    root,
+    tempDir
+  ):[µMarkdownTask]);
+  mergeMarkdownTaskOutcomes(
+    emptyMarkdownAudit(),
+    (concurrent markdownAudit@4{
+      spawnEach tasks processMarkdownTask
+    }:[ConcurrentOutcome[
+  µMarkdownAudit,
+  String
+]]),
+    tasks
+  )
+}
 
 λrunMarkdownAuditInner(acc:µMarkdownAudit,failFast:Bool,paths:[String],root:String,tempDir:String)=>!AuditIo µMarkdownAudit match paths{
   []=>acc|
@@ -1005,11 +1235,7 @@
 }
 
 λrunMarkdownCoverageAudit(paths:[String],root:String)=>!Fs µMarkdownAudit=runMarkdownCoverageAuditInner(
-  {
-    documentedRefs:[],
-    issues:[],
-    snippetRefs:[]
-  },
+  emptyMarkdownAudit(),
   paths,
   root
 )
@@ -1111,19 +1337,16 @@
 ] match gitTopLevel(){
   Ok(root)=>match gitTrackedMarkdown(){
     Ok(markdownPaths)=>{
-      l tempDir=(§path.join(
-        repoTempDir(root),
-        "repo"
+      l tempDir=(freshRepoTempDir(
+        "repo",
+        root
       ):String);
-      l _=(§file.removeTree(tempDir):Unit);
-      l _=(§file.makeDirs(tempDir):Unit);
       l markdownAudit=(runMarkdownAudit(
         false,
         markdownPaths,
         root,
         tempDir
       ):µMarkdownAudit);
-      l _=(§file.removeTree(tempDir):Unit);
       match gitTrackedStdlib(){
         Ok(stdlibPaths)=>match gitTrackedStdlibTests(){
           Ok(testPaths)=>{
@@ -1422,6 +1645,20 @@
         }
       }
     }
+  }
+}
+
+λworkspaceVirtualPath(projectRoot:String,virtualPath:String)=>String match virtualPath=projectRoot{
+  true=>virtualPath|
+  false=>match §string.startsWith(
+    projectRoot++"/",
+    virtualPath
+  ){
+    true=>virtualPath|
+    false=>§path.join(
+      projectRoot,
+      virtualPath
+    )
   }
 }
 

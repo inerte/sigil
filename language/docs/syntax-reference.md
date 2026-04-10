@@ -367,6 +367,16 @@ c greeting=("hello":String)
 Current parser behavior requires the typed form above. Untyped constants and the
 older `c name:Type=value` surface are not current Sigil.
 
+This follows Sigil's general type-ascription rule:
+
+- if you want to ascribe a type to an expression, write `(expr:Type)`
+- the same parenthesized form is used everywhere instead of declaration-specific
+  variants
+
+Sigil keeps that single rule even though it adds parentheses, because the
+language prefers one canonical annotation surface over multiple equivalent
+forms.
+
 ## String Literals
 
 Sigil uses one string literal surface:

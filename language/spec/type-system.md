@@ -38,6 +38,39 @@ This matches Sigil’s explicit surface:
 - lambda parameter types are required
 - lambda return types are required
 
+## Type Ascription
+
+Sigil defines one expression-level type-ascription form:
+
+```sigil expr
+(expr:Type)
+```
+
+Examples:
+
+```sigil module
+c airAccel=(1:Int)
+```
+
+```sigil program
+λmain()=>Int={
+  l speed=(1:Int);
+  speed+speed
+}
+```
+
+Current Sigil does not define separate declaration-level annotation surfaces
+such as `c name:Type=value`, and it does not define a bare postfix expression
+surface such as `expr:Type`.
+
+This is intentional. The language keeps one canonical ascription rule:
+
+- if a type is being ascribed to an expression, the source form is `(expr:Type)`
+- the same form is used in constant values, local bindings, and ordinary
+  subexpressions
+
+The purpose is canonical simplicity rather than minimizing parentheses.
+
 ## Local Bindings
 
 Local `l` bindings are monomorphic.

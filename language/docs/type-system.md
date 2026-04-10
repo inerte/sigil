@@ -52,6 +52,40 @@ c pi=(3.14:Float)
 
 Missing parameter or return type annotations are parse errors.
 
+## Type Ascription
+
+Type ascription uses one explicit expression form:
+
+```sigil expr
+(expr:Type)
+```
+
+Examples:
+
+```sigil module
+c airAccel=(1:Int)
+```
+
+```sigil program
+λmain()=>Int={
+  l speed=(1:Int);
+  speed+speed
+}
+```
+
+Sigil intentionally keeps this as one uniform rule. It does not use separate
+binding-level surfaces like `c name:Type=value`, and it does not use bare
+postfix expression forms like `expr:Type`.
+
+The goal is canonical simplicity for humans and LLMs:
+
+- if you want to ascribe a type to an expression, write `(expr:Type)`
+- the same rule applies everywhere
+- there is no second declaration-specific rule to learn
+
+The tradeoff is extra parentheses. Sigil accepts that cost to keep one
+teachable surface instead of multiple equivalent annotation forms.
+
 ## Top-Level Generics
 
 Sigil supports explicit generic declarations at top level:

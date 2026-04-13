@@ -1,30 +1,25 @@
 //! Command implementations for CLI
 
 use super::compile_support::{
-    analyze_module_graph, build_world_runtime_prelude, collect_sigil_targets,
-    compile_module_graph, generate_module_graph_outputs, group_compile_targets, runner_prelude,
-    topology_source_path, AnalyzedModule, CompiledGraphOutputs, CoverageTarget,
-    GeneratedGraphOutputs,
+    analyze_module_graph, build_world_runtime_prelude, collect_sigil_targets, compile_module_graph,
+    generate_module_graph_outputs, group_compile_targets, runner_prelude, topology_source_path,
+    AnalyzedModule, CompiledGraphOutputs, CoverageTarget, GeneratedGraphOutputs,
 };
 use super::shared::{
     extract_error_code, format_validation_errors, output_inspect_error, output_json_error_to,
     output_json_value, project_error_json_details, type_error_json_details,
-    validate_project_entrypoint_for_path,
-    validate_project_entrypoints_for_files, SourcePoint as TestLocation,
+    validate_project_entrypoint_for_path, validate_project_entrypoints_for_files,
+    SourcePoint as TestLocation,
 };
 use crate::module_graph::{
     entry_module_key, load_project_effect_catalog_for, ModuleGraph, ModuleGraphError,
 };
-use crate::project::{
-    get_project_config, ProjectConfig, ProjectConfigError,
-};
+use crate::project::{get_project_config, ProjectConfig, ProjectConfigError};
 use rayon::{prelude::*, ThreadPoolBuilder};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
 use sigil_ast::{Declaration, Expr, Pattern, Program, SourceLocation, Type, TypeDef};
-use sigil_codegen::{
-    world_runtime_helpers_source, DebugSpanKind, DebugSpanRecord, ModuleSpanMap,
-};
+use sigil_codegen::{world_runtime_helpers_source, DebugSpanKind, DebugSpanRecord, ModuleSpanMap};
 use sigil_diagnostics::codes;
 use sigil_lexer::Lexer;
 use sigil_parser::Parser;

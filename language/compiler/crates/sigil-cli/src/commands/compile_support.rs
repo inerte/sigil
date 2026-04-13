@@ -10,9 +10,7 @@ use crate::project::{get_project_config, ProjectConfig};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use serde_json::json;
 use sigil_ast::{Declaration, LabelRef, Program, Type, TypeDef};
-use sigil_codegen::{
-    collect_module_span_map, CodegenOptions, ModuleSpanMap, TypeScriptGenerator,
-};
+use sigil_codegen::{collect_module_span_map, CodegenOptions, ModuleSpanMap, TypeScriptGenerator};
 use sigil_diagnostics::codes;
 use sigil_typechecker::types::{
     InferenceType, TConstructor, TFunction, TList, TMap, TRecord, TTuple,
@@ -1422,8 +1420,8 @@ fn qualify_inference_type_for_module(
     module_id: &str,
     typ: &sigil_typechecker::InferenceType,
 ) -> sigil_typechecker::InferenceType {
-    use sigil_typechecker::InferenceType;
     use sigil_typechecker::types::{TConstructor, TFunction, TList, TRecord, TTuple, TVar};
+    use sigil_typechecker::InferenceType;
 
     match typ {
         InferenceType::Primitive(_) | InferenceType::Any => typ.clone(),

@@ -19,8 +19,7 @@ use commands::{
 };
 use package_manager::{
     package_add_command, package_install_command, package_list_command, package_publish_command,
-    package_remove_command, package_update_command, package_validate_command,
-    package_why_command,
+    package_remove_command, package_update_command, package_validate_command, package_why_command,
 };
 
 const SIGIL_VERSION: &str = match option_env!("SIGIL_VERSION") {
@@ -600,7 +599,9 @@ fn main() {
         ),
         Command::Validate { path, env } => validate_command(&path, &env),
         Command::Package { command } => match command {
-            PackageCommand::Add { name } => package_add_command(&std::env::current_dir().unwrap(), &name),
+            PackageCommand::Add { name } => {
+                package_add_command(&std::env::current_dir().unwrap(), &name)
+            }
             PackageCommand::Install => package_install_command(&std::env::current_dir().unwrap()),
             PackageCommand::Update { name, keep_failing } => package_update_command(
                 &std::env::current_dir().unwrap(),
@@ -615,9 +616,7 @@ fn main() {
                 package_why_command(&std::env::current_dir().unwrap(), &name)
             }
             PackageCommand::Publish => package_publish_command(&std::env::current_dir().unwrap()),
-            PackageCommand::Validate => {
-                package_validate_command(&std::env::current_dir().unwrap())
-            }
+            PackageCommand::Validate => package_validate_command(&std::env::current_dir().unwrap()),
         },
         Command::Debug { command } => match command {
             DebugCommand::Run { command } => match command {

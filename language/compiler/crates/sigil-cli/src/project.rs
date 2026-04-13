@@ -294,14 +294,14 @@ pub fn package_version_fragment(version: &str) -> Option<String> {
         return None;
     }
 
-    Some(format!("v{}_{}", &version[0..10].replace('-', ""), &version[11..19].replace('-', "")))
+    Some(format!(
+        "v{}_{}",
+        &version[0..10].replace('-', ""),
+        &version[11..19].replace('-', "")
+    ))
 }
 
-fn validate_name(
-    path: &Path,
-    field_name: &str,
-    value: &str,
-) -> Result<(), ProjectConfigError> {
+fn validate_name(path: &Path, field_name: &str, value: &str) -> Result<(), ProjectConfigError> {
     if value.trim().is_empty() {
         return Err(invalid_config(
             path.to_path_buf(),
@@ -311,19 +311,13 @@ fn validate_name(
     if !is_lower_camel_name(value) {
         return Err(invalid_config(
             path.to_path_buf(),
-            format!(
-                "field `{field_name}` must use lowerCamel with ASCII letters and digits only"
-            ),
+            format!("field `{field_name}` must use lowerCamel with ASCII letters and digits only"),
         ));
     }
     Ok(())
 }
 
-fn validate_version(
-    path: &Path,
-    field_name: &str,
-    value: &str,
-) -> Result<(), ProjectConfigError> {
+fn validate_version(path: &Path, field_name: &str, value: &str) -> Result<(), ProjectConfigError> {
     if value.trim().is_empty() {
         return Err(invalid_config(
             path.to_path_buf(),
@@ -431,13 +425,18 @@ pub fn get_project_config(start_path: &Path) -> Result<Option<ProjectConfig>, Pr
     parse_project_config(config_path, root, &source).map(Some)
 }
 
-pub fn write_project_manifest(root: &Path, manifest: &ProjectManifest) -> Result<(), ProjectConfigError> {
+pub fn write_project_manifest(
+    root: &Path,
+    manifest: &ProjectManifest,
+) -> Result<(), ProjectConfigError> {
     validate_manifest(&root.join("sigil.json"), root, manifest)?;
     let text = serde_json::to_string_pretty(manifest)
         .map_err(|err| invalid_config(root.join("sigil.json"), err.to_string()))?;
-    fs::write(root.join("sigil.json"), format!("{text}\n")).map_err(|source| ProjectConfigError::Io {
-        path: root.join("sigil.json"),
-        source,
+    fs::write(root.join("sigil.json"), format!("{text}\n")).map_err(|source| {
+        ProjectConfigError::Io {
+            path: root.join("sigil.json"),
+            source,
+        }
     })
 }
 
@@ -464,7 +463,7 @@ pub fn validate_project_default_entrypoint(
 mod tests {
     use super::{
         is_canonical_timestamp_version, is_lower_camel_name, npm_version_to_sigil_version,
-        parse_project_config, package_version_fragment, sigil_name_to_npm_package_name,
+        package_version_fragment, parse_project_config, sigil_name_to_npm_package_name,
         sigil_version_to_npm_version, validate_project_default_entrypoint, ProjectConfigError,
     };
     use sigil_diagnostics::codes;
@@ -482,7 +481,11 @@ mod tests {
         dir
     }
 
-    fn parse(source: &str, label: &str, create_package_root: bool) -> Result<super::ProjectConfig, ProjectConfigError> {
+    fn parse(
+        source: &str,
+        label: &str,
+        create_package_root: bool,
+    ) -> Result<super::ProjectConfig, ProjectConfigError> {
         let root = temp_root(label);
         if create_package_root {
             fs::write(root.join("src/package.lib.sigil"), "λmain()=>Unit=()\n").unwrap();
@@ -555,7 +558,12 @@ mod tests {
 
     #[test]
     fn config_rejects_missing_name() {
-        let err = parse(r#"{"version":"2026-04-05T14-58-24Z"}"#, "missing-name", false).unwrap_err();
+        let err = parse(
+            r#"{"version":"2026-04-05T14-58-24Z"}"#,
+            "missing-name",
+            false,
+        )
+        .unwrap_err();
 
         assert!(err.to_string().contains("missing field `name`"));
     }
@@ -583,14 +591,17 @@ mod tests {
         )
         .unwrap_err();
 
-        assert!(err
-            .to_string()
-            .contains("field `name` must use lowerCamel"));
+        assert!(err.to_string().contains("field `name` must use lowerCamel"));
     }
 
     #[test]
     fn config_rejects_non_timestamp_versions() {
-        let err = parse(r#"{"name":"demoApp","version":"0.1.0"}"#, "bad-version", false).unwrap_err();
+        let err = parse(
+            r#"{"name":"demoApp","version":"0.1.0"}"#,
+            "bad-version",
+            false,
+        )
+        .unwrap_err();
 
         assert!(err.to_string().contains("YYYY-MM-DDTHH-mm-ssZ"));
     }

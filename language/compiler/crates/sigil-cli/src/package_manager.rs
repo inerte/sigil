@@ -125,7 +125,9 @@ pub fn package_update_command(
             .ok_or_else(|| CliError::Validation(format!("missing dependency `{name}`")))?;
         let latest_version = latest_registry_version(&name)?;
         if latest_version > current_version {
-            manifest.dependencies.insert(name.clone(), latest_version.clone());
+            manifest
+                .dependencies
+                .insert(name.clone(), latest_version.clone());
             updated.push(json!({
                 "dependency": name,
                 "from": current_version,
@@ -288,7 +290,8 @@ pub fn package_publish_command(path: &Path) -> Result<(), CliError> {
     let npm_name = npm_package_name(&project.name)?;
     let npm_version = npm_transport_version(&project.version)?;
     validate_publishable_package(&project, "sigil package publish")?;
-    let publish_dir = prepare_publish_dir(&project, &npm_name, &npm_version, "sigil-package-publish")?;
+    let publish_dir =
+        prepare_publish_dir(&project, &npm_name, &npm_version, "sigil-package-publish")?;
 
     let output = Command::new("npm")
         .current_dir(&publish_dir)
@@ -545,7 +548,9 @@ fn run_compile_in_project(root: &Path, target: &str) -> Result<(), CliError> {
         .current_dir(root)
         .args(["compile", target])
         .output()
-        .map_err(|error| CliError::Runtime(format!("failed to compile packaged project: {error}")))?;
+        .map_err(|error| {
+            CliError::Runtime(format!("failed to compile packaged project: {error}"))
+        })?;
     if output.status.success() {
         Ok(())
     } else {
@@ -624,7 +629,10 @@ fn apply_manifest_with_install(root: &Path, manifest: &ProjectManifest) -> Resul
     }
 }
 
-fn install_manifest_dependencies(project: &ProjectConfig, use_backup: bool) -> Result<(), CliError> {
+fn install_manifest_dependencies(
+    project: &ProjectConfig,
+    use_backup: bool,
+) -> Result<(), CliError> {
     let backup = if use_backup {
         Some(backup_project_state(&project.root)?)
     } else {
@@ -700,30 +708,22 @@ fn install_dependency_tree(
     }
     fs::create_dir_all(install_root.parent().unwrap())?;
 
-    let installed_package = fetch_and_unpack_package(dependency_name, dependency_version, &install_root)?;
+    let installed_package =
+        fetch_and_unpack_package(dependency_name, dependency_version, &install_root)?;
     stack.push(cycle_key.clone());
     for (child_name, child_version) in &installed_package.project.dependencies {
-        install_dependency_tree(
-            &install_root,
-            child_name,
-            child_version,
-            lockfile,
-            stack,
-        )?;
+        install_dependency_tree(&install_root, child_name, child_version, lockfile, stack)?;
     }
     stack.pop();
 
-    lockfile
-        .packages
-        .entry(cycle_key)
-        .or_insert(LockedPackage {
-            name: installed_package.project.name.clone(),
-            sigil_version: installed_package.project.version.clone(),
-            npm_package: installed_package.npm_package,
-            npm_version: installed_package.npm_version,
-            integrity: installed_package.integrity,
-            dependencies: installed_package.project.dependencies.clone(),
-        });
+    lockfile.packages.entry(cycle_key).or_insert(LockedPackage {
+        name: installed_package.project.name.clone(),
+        sigil_version: installed_package.project.version.clone(),
+        npm_package: installed_package.npm_package,
+        npm_version: installed_package.npm_version,
+        integrity: installed_package.integrity,
+        dependencies: installed_package.project.dependencies.clone(),
+    });
     Ok(())
 }
 
@@ -820,8 +820,9 @@ fn latest_registry_version(dependency_name: &str) -> Result<String, CliError> {
         )));
     }
 
-    let versions_value: Value = serde_json::from_slice(&output.stdout)
-        .map_err(|error| CliError::Validation(format!("npm view returned invalid JSON: {error}")))?;
+    let versions_value: Value = serde_json::from_slice(&output.stdout).map_err(|error| {
+        CliError::Validation(format!("npm view returned invalid JSON: {error}"))
+    })?;
     let versions = if let Some(version) = versions_value.as_str() {
         vec![version.to_string()]
     } else {
@@ -840,11 +841,11 @@ fn latest_registry_version(dependency_name: &str) -> Result<String, CliError> {
         .filter_map(|version| crate::project::npm_version_to_sigil_version(&version))
         .collect::<Vec<_>>();
     sigil_versions.sort();
-    sigil_versions
-        .pop()
-        .ok_or_else(|| CliError::Validation(format!(
+    sigil_versions.pop().ok_or_else(|| {
+        CliError::Validation(format!(
             "npm registry did not return any canonical Sigil versions for `{dependency_name}`"
-        )))
+        ))
+    })
 }
 
 fn temp_dir(label: &str) -> Result<PathBuf, CliError> {
@@ -862,9 +863,7 @@ fn project_temp_dir(root: &Path, label: &str) -> Result<PathBuf, CliError> {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let dir = root
-        .join(".sigil")
-        .join(format!("sigil-{label}-{unique}"));
+    let dir = root.join(".sigil").join(format!("sigil-{label}-{unique}"));
     fs::create_dir_all(&dir)?;
     Ok(dir)
 }

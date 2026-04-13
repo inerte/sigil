@@ -49,7 +49,11 @@ fn parse_replay_artifact(path: &Path) -> Value {
 #[test]
 fn test_trace_expr_requires_trace() {
     let dir = temp_dir("trace-expr-requires-trace");
-    let file = write_program(&dir, "tests/basic.sigil", "λmain()=>Unit=()\n\ntest \"basic\" {\n  true\n}\n");
+    let file = write_program(
+        &dir,
+        "tests/basic.sigil",
+        "λmain()=>Unit=()\n\ntest \"basic\" {\n  true\n}\n",
+    );
 
     let output = Command::new(sigil_bin())
         .current_dir(repo_root())
@@ -72,7 +76,11 @@ fn test_trace_expr_requires_trace() {
 #[test]
 fn test_replay_rejects_env() {
     let dir = temp_dir("replay-env");
-    let file = write_program(&dir, "tests/basic.sigil", "λmain()=>Unit=()\n\ntest \"basic\" {\n  true\n}\n");
+    let file = write_program(
+        &dir,
+        "tests/basic.sigil",
+        "λmain()=>Unit=()\n\ntest \"basic\" {\n  true\n}\n",
+    );
 
     let output = Command::new(sigil_bin())
         .current_dir(repo_root())

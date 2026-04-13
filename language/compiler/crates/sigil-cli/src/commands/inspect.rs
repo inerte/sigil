@@ -1,5 +1,5 @@
-pub use super::legacy::InspectMode;
 use super::legacy::CliError;
+pub use super::legacy::InspectMode;
 use std::path::{Path, PathBuf};
 
 pub fn inspect_command(

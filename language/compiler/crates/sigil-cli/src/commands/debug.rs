@@ -1,5 +1,5 @@
-pub use super::legacy::DebugControlAction;
 use super::legacy::CliError;
+pub use super::legacy::DebugControlAction;
 use std::path::Path;
 
 pub fn debug_run_start_command(

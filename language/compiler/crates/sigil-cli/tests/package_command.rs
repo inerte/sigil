@@ -239,16 +239,24 @@ fn package_commands_add_list_why_remove_and_block_transitive_imports() {
         "router",
         "2026-04-05T14-58-24Z",
         &[("helper", "2026-04-05T14-57-00Z")],
-        &[("src/package.lib.sigil", "λdouble(value:Int)=>Int=☴helper.double(value)\n")],
+        &[(
+            "src/package.lib.sigil",
+            "λdouble(value:Int)=>Int=☴helper.double(value)\n",
+        )],
     );
 
     let consumer_dir = temp_dir("consumer");
     write_consumer_project(&consumer_dir, "λmain()=>Int=☴router.double(21)\n", None);
     let transitive_probe = consumer_dir.join("src/transitive.sigil");
-    write_file(&consumer_dir, "src/transitive.sigil", "λmain()=>Int=☴helper.double(21)\n");
+    write_file(
+        &consumer_dir,
+        "src/transitive.sigil",
+        "λmain()=>Int=☴helper.double(21)\n",
+    );
 
     let mut add = Command::new(sigil_bin());
-    add.current_dir(&consumer_dir).args(["package", "add", "router"]);
+    add.current_dir(&consumer_dir)
+        .args(["package", "add", "router"]);
     npm_env(&mut add, &fake_npm_dir, &registry_dir);
     let add_output = add.output().unwrap();
     assert!(add_output.status.success(), "{:?}", add_output);
@@ -270,7 +278,8 @@ fn package_commands_add_list_why_remove_and_block_transitive_imports() {
     assert_eq!(list_json["data"]["dependencies"][0]["installed"], true);
 
     let mut why = Command::new(sigil_bin());
-    why.current_dir(&consumer_dir).args(["package", "why", "helper"]);
+    why.current_dir(&consumer_dir)
+        .args(["package", "why", "helper"]);
     npm_env(&mut why, &fake_npm_dir, &registry_dir);
     let why_output = why.output().unwrap();
     assert!(why_output.status.success(), "{:?}", why_output);
@@ -305,13 +314,16 @@ fn package_commands_add_list_why_remove_and_block_transitive_imports() {
     assert!(compile_transitive_stderr.contains("direct dependency `helper` is not declared"));
 
     let mut remove = Command::new(sigil_bin());
-    remove.current_dir(&consumer_dir).args(["package", "remove", "router"]);
+    remove
+        .current_dir(&consumer_dir)
+        .args(["package", "remove", "router"]);
     npm_env(&mut remove, &fake_npm_dir, &registry_dir);
     let remove_output = remove.output().unwrap();
     assert!(remove_output.status.success(), "{:?}", remove_output);
 
     let manifest: Value =
-        serde_json::from_str(&fs::read_to_string(consumer_dir.join("sigil.json")).unwrap()).unwrap();
+        serde_json::from_str(&fs::read_to_string(consumer_dir.join("sigil.json")).unwrap())
+            .unwrap();
     assert!(manifest.get("dependencies").is_none());
 }
 
@@ -342,7 +354,11 @@ fn package_update_rolls_back_when_tests_fail() {
         "sigil.json",
         "{\n  \"name\": \"consumerApp\",\n  \"version\": \"2026-04-05T14-58-24Z\",\n  \"dependencies\": {\n    \"router\": \"2026-04-05T14-00-00Z\"\n  }\n}\n",
     );
-    write_file(&consumer_dir, "src/main.sigil", "λmain()=>Int=☴router.value()\n");
+    write_file(
+        &consumer_dir,
+        "src/main.sigil",
+        "λmain()=>Int=☴router.value()\n",
+    );
     write_file(
         &consumer_dir,
         "tests/main.sigil",
@@ -350,7 +366,9 @@ fn package_update_rolls_back_when_tests_fail() {
     );
 
     let mut install = Command::new(sigil_bin());
-    install.current_dir(&consumer_dir).args(["package", "install"]);
+    install
+        .current_dir(&consumer_dir)
+        .args(["package", "install"]);
     npm_env(&mut install, &fake_npm_dir, &registry_dir);
     let install_output = install.output().unwrap();
     assert!(install_output.status.success(), "{:?}", install_output);
@@ -364,14 +382,13 @@ fn package_update_rolls_back_when_tests_fail() {
     assert!(!update_output.status.success());
 
     let manifest: Value =
-        serde_json::from_str(&fs::read_to_string(consumer_dir.join("sigil.json")).unwrap()).unwrap();
-    assert_eq!(
-        manifest["dependencies"]["router"],
-        "2026-04-05T14-00-00Z"
-    );
+        serde_json::from_str(&fs::read_to_string(consumer_dir.join("sigil.json")).unwrap())
+            .unwrap();
+    assert_eq!(manifest["dependencies"]["router"], "2026-04-05T14-00-00Z");
 
     let lockfile: Value =
-        serde_json::from_str(&fs::read_to_string(consumer_dir.join("sigil.lock")).unwrap()).unwrap();
+        serde_json::from_str(&fs::read_to_string(consumer_dir.join("sigil.lock")).unwrap())
+            .unwrap();
     assert!(lockfile["packages"]
         .as_object()
         .unwrap()
@@ -394,7 +411,11 @@ fn package_publish_uses_derived_npm_identity() {
         "sigil.json",
         "{\n  \"name\": \"router\",\n  \"version\": \"2026-04-05T14-58-24Z\",\n  \"publish\": {}\n}\n",
     );
-    write_file(&package_dir, "src/package.lib.sigil", "λdouble(value:Int)=>Int=value*2\n");
+    write_file(
+        &package_dir,
+        "src/package.lib.sigil",
+        "λdouble(value:Int)=>Int=value*2\n",
+    );
     write_file(
         &package_dir,
         "tests/main.sigil",
@@ -402,7 +423,9 @@ fn package_publish_uses_derived_npm_identity() {
     );
 
     let mut publish = Command::new(sigil_bin());
-    publish.current_dir(&package_dir).args(["package", "publish"]);
+    publish
+        .current_dir(&package_dir)
+        .args(["package", "publish"]);
     npm_env(&mut publish, &fake_npm_dir, &registry_dir);
     let publish_output = publish.output().unwrap();
     assert!(publish_output.status.success(), "{:?}", publish_output);
@@ -439,7 +462,9 @@ fn package_validate_smoke_tests_local_publishability() {
     );
 
     let mut validate = Command::new(sigil_bin());
-    validate.current_dir(&package_dir).args(["package", "validate"]);
+    validate
+        .current_dir(&package_dir)
+        .args(["package", "validate"]);
     npm_env(&mut validate, &fake_npm_dir, &registry_dir);
     let validate_output = validate.output().unwrap();
     assert!(validate_output.status.success(), "{:?}", validate_output);

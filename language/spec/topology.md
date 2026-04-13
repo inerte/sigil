@@ -23,6 +23,7 @@ config/<env>.lib.sigil
 
 `config/<env>.lib.sigil` is the canonical source of truth for:
 - one selected environment's runtime world
+- selected env declarations exposed to application code through `•config.<name>`
 
 `src/policies.lib.sigil` is the canonical source of truth for:
 - boundary rules over labelled data
@@ -117,6 +118,8 @@ For selected environment `<env>`:
 - every declared named boundary must appear in the matching `world` entry collection
 - no undeclared boundaries may appear in `world`
 - boundary names must be unique in topology
+- non-`world` top-level declarations in that config module are exposed through
+  the selected config root `•config.<name>`
 
 ## Execution Model
 
@@ -129,7 +132,7 @@ sigil test <path> --env <name>
 ```
 
 Sigil does not provide an implicit default environment for topology-aware
-projects.
+projects or for code that reads `•config.<name>`.
 
 ## Test-World Observation
 

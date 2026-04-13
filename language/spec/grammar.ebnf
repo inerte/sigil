@@ -9,7 +9,9 @@ Program = { TopLevelDecl } ;
 
 TopLevelDecl = TypeDecl
              | LabelDecl
+             | EffectDecl
              | ExternDecl
+             | FeatureFlagDecl
              | ConstDecl
              | TransformDecl
              | FunctionDecl
@@ -17,7 +19,7 @@ TopLevelDecl = TypeDecl
              | TestDecl ;
 
 (* Canonical declaration order is enforced separately:
-   label => t => e => c => transform => λ => rule => test *)
+   label => t => effect => e => featureFlag => c => transform => λ => rule => test *)
 
 ModulePath = RootedModulePath ;
 RootedModulePath = RootSigil , Identifier , { "::" , Identifier } ;
@@ -46,6 +48,8 @@ FieldList = Field , { "," , Field } ;
 Field = Identifier , ":" , Type ;
 TypeAlias = Type ;
 
+EffectDecl = "effect" , UpperIdentifier , "=" , Effects ;
+
 Type = PrimitiveType
      | ListType
      | MapType
@@ -66,6 +70,8 @@ ProjectTypeRef = "µ" , TypeName , [ "[" , TypeList , "]" ] ;
 TypeList = Type , { "," , Type } ;
 
 ConstDecl = "c" , Identifier , "=" , "(" , Expr , ":" , Type , ")" ;
+
+FeatureFlagDecl = "featureFlag" , UpperIdentifier , ":" , Type , "createdAt" , StringLiteral , "default" , Expr ;
 
 FunctionDecl = "λ" , Identifier , "(" , [ ParamList ] , ")" , "=>" , [ Effects ] , Type , FunctionBody ;
 TransformDecl = "transform" , FunctionDecl ;

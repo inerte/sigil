@@ -59,6 +59,8 @@ Module scope is declaration-only.
 Valid top-level forms:
 
 - `label`
+- `effect`
+- `featureFlag`
 - `rule`
 - `transform`
 - `t`
@@ -74,7 +76,7 @@ Invalid at top level:
 Canonical declaration ordering is:
 
 ```text
-label => t => e => c => transform => λ => rule => test
+label => t => effect => e => featureFlag => c => transform => λ => rule => test
 ```
 
 There is no `export` keyword in current Sigil. Visibility is file-based:
@@ -354,6 +356,55 @@ t BirthYear=Int where value>1800
 }
 ```
 
+## Feature Flags
+
+Projects and publishable packages may define first-class feature flags in:
+
+```text
+src/flags.lib.sigil
+```
+
+That file may contain only `featureFlag` declarations.
+
+Canonical declaration shape:
+
+```sigil module projects/featureFlagStorefrontFlags/src/flags.lib.sigil
+featureFlag NewCheckout:Bool
+  createdAt "2026-04-12T14-00-00Z"
+  default false
+```
+
+Variant-valued flags use named sum types:
+
+```sigil module
+t CheckoutColor=Citrus()|Control()|Ocean()
+
+featureFlag CheckoutColorChoice:CheckoutColor
+  createdAt "2026-04-12T14-00-00Z"
+  default Control()
+```
+
+Rules:
+
+- project/package feature flags must live in `src/flags.lib.sigil`
+- flag names are `UpperCamel`
+- `createdAt` is required and uses canonical UTC timestamp format `YYYY-MM-DDTHH-mm-ssZ`
+- `default` is required
+- `default` must be a pure expression of the declared flag type
+- current flag types are `Bool` and named sum types
+
+Project-local references use:
+
+```sigil expr
+•flags.NewCheckout
+```
+
+Package consumers use the nested public module path:
+
+```sigil expr
+☴featureFlagStorefrontFlags::flags.NewCheckout
+```
+
 ## Constants
 
 Constants require a value ascription:
@@ -436,6 +487,17 @@ Canonical module roots include:
 Project-defined named types and project sum constructors use:
 
 - `µ...`
+
+The selected environment config module also exposes a rooted project surface:
+
+- `•config.<name>` resolves a non-`world` top-level declaration from the selected `config/<env>.lib.sigil`
+- using `•config.<name>` requires `--env <name>` on `compile`, `run`, `test`, and `inspect`
+
+Example:
+
+```sigil expr
+•config.flags
+```
 
 There are no selective imports, import aliases, or separate import
 declarations.

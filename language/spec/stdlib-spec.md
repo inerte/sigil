@@ -178,6 +178,39 @@ Semantics:
 - `shuffle` returns a full permutation of the input list
 - runtime behavior comes from the active world's `random` entry
 
+## Feature Flags
+
+`§featureFlags` is the canonical stdlib surface for evaluating first-class
+`featureFlag` declarations.
+
+Current types:
+
+```sigil decl §featureFlags
+t Config[T,C]={key:Option[λ(C)=>Option[String]],overrides:{String↦T},rollout:Option[Rollout[T]],rules:[Rule[T,C]]}
+t Entry[C]
+t Flag[T]={createdAt:String,default:T,id:String}
+t Rollout[T]={percentage:Int,variants:[WeightedValue[T]]}
+t Rule[T,C]={predicate:λ(C)=>Bool,value:T}
+t Set[C]=[Entry[C]]
+t WeightedValue[T]={value:T,weight:Int}
+```
+
+Current functions:
+
+```sigil decl §featureFlags
+λentry[C,T](config:Config[T,C],flag:Flag[T])=>Entry[C]
+λget[C,T](context:C,flag:Flag[T],set:Set[C])=>T
+```
+
+Current `§featureFlags.get` semantics:
+
+1. resolve the configured key function, if any
+2. when a key exists and `overrides[key]` exists, return that value
+3. otherwise return the first matching `rules` value
+4. otherwise, when a key exists and `rollout` is present, hash `(flag.id,key)`
+   deterministically into the weighted rollout variants, gated by `percentage`
+5. otherwise return `flag.default`
+
 ## String Operations
 
 ```sigil decl §string

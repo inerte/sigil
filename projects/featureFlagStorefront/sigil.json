@@ -1,0 +1,7 @@
+{
+  "name": "featureFlagStorefront",
+  "version": "2026-04-12T14-30-00Z",
+  "dependencies": {
+    "featureFlagStorefrontFlags": "2026-04-12T14-00-00Z"
+  }
+}

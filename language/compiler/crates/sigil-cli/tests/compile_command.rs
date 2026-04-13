@@ -42,6 +42,35 @@ fn parse_json(text: &[u8]) -> Value {
     serde_json::from_slice(text).unwrap()
 }
 
+fn write_feature_flag_project(root: &Path) -> PathBuf {
+    write_program(
+        root,
+        "sigil.json",
+        "{\n  \"name\": \"flagSmoke\",\n  \"version\": \"2026-04-12T12-00-00Z\"\n}\n",
+    );
+    write_program(
+        root,
+        "src/main.sigil",
+        "λmain()=>Bool=§featureFlags.get(\n  {\n    internal:false,\n    userId:Some(\"dev-user\")\n  },\n  •flags.NewCheckout,\n  •config.flags\n)\n",
+    );
+    write_program(
+        root,
+        "src/flags.lib.sigil",
+        "featureFlag NewCheckout:Bool\n  createdAt \"2026-04-12T12-00-00Z\"\n  default false\n",
+    );
+    write_program(
+        root,
+        "src/types.lib.sigil",
+        "t FlagContext={\n  internal:Bool,\n  userId:Option[String]\n}\n",
+    );
+    write_program(
+        root,
+        "config/test.lib.sigil",
+        "c flags=([§featureFlags.entry(\n  {\n    key:Some(λ(context:µFlagContext)=>Option[String]=context.userId),\n    overrides:{\"dev-user\"↦true},\n    rollout:None(),\n    rules:[]\n  },\n  •flags.NewCheckout\n)]:§featureFlags.Set[µFlagContext])\n",
+    );
+    root.join("src/main.sigil")
+}
+
 #[test]
 fn compile_emits_root_span_map_for_single_file() {
     let dir = temp_dir("single");
@@ -170,4 +199,42 @@ fn compile_directory_reports_missing_project_main_once_per_project() {
             .len(),
         2
     );
+}
+
+#[test]
+fn compile_selected_config_requires_env() {
+    let dir = temp_dir("feature-flags-env-required");
+    let main = write_feature_flag_project(&dir);
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("compile")
+        .arg(&main)
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["ok"], false);
+    assert_eq!(json["error"]["code"], "SIGIL-CLI-CONFIG-ENV-REQUIRED");
+}
+
+#[test]
+fn compile_selected_config_with_env_succeeds() {
+    let dir = temp_dir("feature-flags-env-success");
+    let main = write_feature_flag_project(&dir);
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("compile")
+        .arg("--env")
+        .arg("test")
+        .arg(&main)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success(), "{}", String::from_utf8_lossy(&output.stdout));
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["ok"], true);
+    assert_eq!(json["phase"], "codegen");
 }

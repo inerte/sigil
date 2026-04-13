@@ -172,6 +172,28 @@ fn test_type_declaration_with_constraint() {
 }
 
 #[test]
+fn test_feature_flag_declaration() {
+    let source =
+        "featureFlag NewCheckout:Bool\n  createdAt \"2026-04-12T00-00-00Z\"\n  default false";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "src/flags.lib.sigil").unwrap();
+
+    match &program.declarations[0] {
+        Declaration::FeatureFlag(feature_flag_decl) => {
+            assert_eq!(feature_flag_decl.name, "NewCheckout");
+            assert_eq!(feature_flag_decl.created_at, "2026-04-12T00-00-00Z");
+            match &feature_flag_decl.flag_type {
+                Type::Primitive(primitive) => {
+                    assert_eq!(primitive.name, PrimitiveName::Bool);
+                }
+                other => panic!("Expected Bool feature flag type, got {:?}", other),
+            }
+        }
+        other => panic!("Expected feature flag declaration, got {:?}", other),
+    }
+}
+
+#[test]
 fn test_function_declaration_with_requires_and_ensures() {
     let source = "λnormalizeYear(raw:Int)=>Int\nrequires raw>0\nensures result>1800\nmatch raw>1800{true=>raw|false=>1900}";
     let tokens = tokenize(source).unwrap();
@@ -270,6 +292,24 @@ fn test_root_qualified_member_access() {
             other => panic!("Expected application, got {:?}", other),
         },
         _ => panic!("Expected function declaration"),
+    }
+}
+
+#[test]
+fn test_selected_config_member_access_uses_config_namespace() {
+    let source = "λmain()=>Bool=•config.flags";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    match &program.declarations[0] {
+        Declaration::Function(function) => match &function.body {
+            sigil_ast::Expr::MemberAccess(member) => {
+                assert_eq!(member.namespace, vec!["config".to_string()]);
+                assert_eq!(member.member, "flags");
+            }
+            other => panic!("expected member access, got {other:?}"),
+        },
+        other => panic!("expected function declaration, got {other:?}"),
     }
 }
 

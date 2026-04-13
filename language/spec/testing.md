@@ -90,6 +90,8 @@ Baseline world:
 
 - selected from `config/<env>.lib.sigil`
 - exported as `c world=(...:†runtime.World)`
+- the same config module may also expose selected env declarations through
+  `•config.<name>`, for example `•config.flags`
 
 Test-local derivation:
 
@@ -142,7 +144,8 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test -
 
 ```
 
-For runtime-world projects:
+For runtime-world projects, and for projects that read selected config
+declarations such as `•config.flags`:
 
 - `--env <name>` is required
 

@@ -2714,6 +2714,70 @@ impl TypeScriptGenerator {
         self.emit("function __sigil_map_entries(map) {");
         self.emit("  return map.__sigil_map.slice();");
         self.emit("}");
+        self.emit("function __sigil_feature_flag_hash(value) {");
+        self.emit("  let hash = 2166136261;");
+        self.emit("  const text = String(value ?? '');");
+        self.emit("  for (let index = 0; index < text.length; index += 1) {");
+        self.emit("    hash ^= text.charCodeAt(index);");
+        self.emit("    hash = Math.imul(hash, 16777619);");
+        self.emit("  }");
+        self.emit("  return hash >>> 0;");
+        self.emit("}");
+        self.emit("function __sigil_feature_flag_pick_rollout(values, hash) {");
+        self.emit("  let total = 0;");
+        self.emit("  const normalized = [];");
+        self.emit("  for (const item of Array.isArray(values) ? values : []) {");
+        self.emit("    const weight = Math.max(0, Math.trunc(Number(item?.weight ?? 0)));");
+        self.emit("    if (weight <= 0) continue;");
+        self.emit("    normalized.push({ value: item.value, weight });");
+        self.emit("    total += weight;");
+        self.emit("  }");
+        self.emit("  if (total <= 0) return { found: false, value: null };");
+        self.emit("  let slot = hash % total;");
+        self.emit("  for (const item of normalized) {");
+        self.emit("    if (slot < item.weight) return { found: true, value: item.value };");
+        self.emit("    slot -= item.weight;");
+        self.emit("  }");
+        self.emit("  return { found: false, value: null };");
+        self.emit("}");
+        self.emit("async function __sigil_feature_flag_get(context, flag, set) {");
+        self.emit("  let config = null;");
+        self.emit("  for (const entry of Array.isArray(set) ? set : []) {");
+        self.emit("    if (entry && entry.__sigil_feature_flag_id === flag?.id) {");
+        self.emit("      config = entry.config ?? null;");
+        self.emit("      break;");
+        self.emit("    }");
+        self.emit("  }");
+        self.emit("  if (!config || typeof config !== 'object') return flag?.default;");
+        self.emit("  const keyFn = __sigil_option_value(config.key);");
+        self.emit("  let key = null;");
+        self.emit("  if (typeof keyFn === 'function') {");
+        self.emit("    const keyOption = await Promise.resolve(keyFn(context));");
+        self.emit("    const keyValue = __sigil_option_value(keyOption);");
+        self.emit("    if (keyValue !== null && keyValue !== undefined) {");
+        self.emit("      key = String(keyValue);");
+        self.emit("    }");
+        self.emit("  }");
+        self.emit("  if (key !== null) {");
+        self.emit("    const override = __sigil_option_value(__sigil_map_get(config.overrides ?? __sigil_map_empty(), key));");
+        self.emit("    if (override !== null) return override;");
+        self.emit("  }");
+        self.emit("  for (const rule of Array.isArray(config.rules) ? config.rules : []) {");
+        self.emit("    if (await Promise.resolve(rule?.predicate?.(context))) return rule.value;");
+        self.emit("  }");
+        self.emit("  const rollout = __sigil_option_value(config.rollout);");
+        self.emit("  if (key !== null && rollout && typeof rollout === 'object') {");
+        self.emit("    const percentage = Math.max(0, Math.min(100, Math.trunc(Number(rollout.percentage ?? 0))));");
+        self.emit("    if (percentage > 0) {");
+        self.emit("      const rolloutHash = __sigil_feature_flag_hash(`${String(flag?.id ?? '')}:${key}`);");
+        self.emit("      if ((rolloutHash % 100) < percentage) {");
+        self.emit("        const picked = __sigil_feature_flag_pick_rollout(rollout.variants, __sigil_feature_flag_hash(`variant:${String(flag?.id ?? '')}:${key}`));");
+        self.emit("        if (picked.found) return picked.value;");
+        self.emit("      }");
+        self.emit("    }");
+        self.emit("  }");
+        self.emit("  return flag?.default;");
+        self.emit("}");
         self.emit("function __sigil_json_from_js(value) {");
         self.emit("  if (value === null) return { __tag: \"JsonNull\", __fields: [] };");
         self.emit("  if (Array.isArray(value)) return { __tag: \"JsonArray\", __fields: [value.map(__sigil_json_from_js)] };");
@@ -4350,19 +4414,26 @@ impl TypeScriptGenerator {
     fn emit_module_import(&mut self, module_id: &str) -> Result<(), CodegenError> {
         let module_path = module_id.split("::").collect::<Vec<_>>();
         let namespace = sanitize_js_identifier(&module_path.join("_"));
+        let target_module_id = remap_package_local_runtime_module_id(
+            self.module_id.as_deref(),
+            module_id,
+        )
+        .unwrap_or_else(|| module_id.to_string());
         let import_path = if let Some(ref output_file) = self.output_file {
             let output_path = Path::new(output_file);
             if let Some(local_root) = find_output_root(output_path) {
-                let target_abs = local_root.join(module_path.join("/")).with_extension("js");
+                let target_abs = local_root
+                    .join(target_module_id.replace("::", "/"))
+                    .with_extension("js");
                 relative_import_path(
                     output_path.parent().unwrap_or_else(|| Path::new(".")),
                     &target_abs,
                 )
             } else {
-                format!("./{}.js", module_path.join("/"))
+                format!("./{}.js", target_module_id.replace("::", "/"))
             }
         } else {
-            format!("./{}.js", module_path.join("/"))
+            format!("./{}.js", target_module_id.replace("::", "/"))
         };
 
         self.emit(&format!(
@@ -4739,6 +4810,9 @@ impl TypeScriptGenerator {
                 if module == "stdlib/random" {
                     return self.generate_random_intrinsic(call_expr, member, args);
                 }
+                if module == "stdlib/featureFlags" {
+                    return self.generate_feature_flags_intrinsic(call_expr, member, args);
+                }
                 if module == "stdlib/url" {
                     return self.generate_url_intrinsic(call_expr, member, args);
                 }
@@ -4838,6 +4912,13 @@ impl TypeScriptGenerator {
                     .is_some_and(|path| path.ends_with("language/stdlib/random.lib.sigil"))
                 {
                     return self.generate_random_intrinsic(call_expr, &name.name, args);
+                }
+                if self
+                    .source_file
+                    .as_deref()
+                    .is_some_and(|path| path.ends_with("language/stdlib/featureFlags.lib.sigil"))
+                {
+                    return self.generate_feature_flags_intrinsic(call_expr, &name.name, args);
                 }
                 if self
                     .source_file
@@ -5109,6 +5190,30 @@ impl TypeScriptGenerator {
             "stringify" if generated_args.len() == 1 => Ok(Some(format!(
                 "{}.then((__value) => __sigil_json_stringify_value(__value))",
                 generated_args[0]
+            ))),
+            _ => Ok(None),
+        }
+    }
+
+    fn generate_feature_flags_intrinsic(
+        &mut self,
+        _call_expr: &TypedExpr,
+        member: &str,
+        args: &[TypedExpr],
+    ) -> Result<Option<String>, CodegenError> {
+        let generated_args = args
+            .iter()
+            .map(|arg| self.generate_expression(arg))
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+
+        match member {
+            "entry" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__config, __flag]) => ({{ __sigil_feature_flag_id: String(__flag?.id ?? ''), config: __config }}))",
+                self.js_all(&generated_args)
+            ))),
+            "get" if generated_args.len() == 3 => Ok(Some(format!(
+                "{}.then(([__context, __flag, __set]) => __sigil_feature_flag_get(__context, __flag, __set))",
+                self.js_all(&generated_args)
             ))),
             _ => Ok(None),
         }
@@ -6345,6 +6450,13 @@ impl TypeScriptGenerator {
                 return Ok(intrinsic);
             }
         }
+        if call.namespace.join("/") == "stdlib/featureFlags" {
+            if let Some(intrinsic) =
+                self.generate_feature_flags_intrinsic(expr, &call.member, &call.args)?
+            {
+                return Ok(intrinsic);
+            }
+        }
         if call.namespace.join("/") == "stdlib/crypto" {
             if let Some(intrinsic) =
                 self.generate_crypto_intrinsic(expr, &call.member, &call.args)?
@@ -7217,6 +7329,48 @@ fn relative_import_path(from_dir: &Path, target_file: &Path) -> String {
     }
 }
 
+fn remap_package_local_runtime_module_id(
+    current_module_id: Option<&str>,
+    imported_module_id: &str,
+) -> Option<String> {
+    let current_module_id = current_module_id?;
+    let current_parts = current_module_id.split("::").collect::<Vec<_>>();
+    if current_parts.len() < 3 {
+        return None;
+    }
+
+    let package_name = current_parts[1];
+    let package_version = current_parts[2];
+
+    if imported_module_id == "config" {
+        return Some(format!("packageConfig::{package_name}::{package_version}"));
+    }
+
+    if let Some(rest) = imported_module_id.strip_prefix("config::") {
+        return Some(format!("packageConfig::{package_name}::{package_version}::{rest}"));
+    }
+
+    let Some(rest) = imported_module_id.strip_prefix("src::") else {
+        return None;
+    };
+
+    if rest == "package" {
+        return Some(format!("package::{package_name}::{package_version}"));
+    }
+
+    if let Some(package_rest) = rest.strip_prefix("package::") {
+        if package_rest.is_empty() {
+            return Some(format!("package::{package_name}::{package_version}"));
+        }
+        return Some(format!(
+            "package::{package_name}::{package_version}::{}",
+            package_rest
+        ));
+    }
+
+    Some(format!("package::{package_name}::{package_version}::{rest}"))
+}
+
 fn collect_runtime_module_ids(program: &TypedProgram) -> BTreeSet<String> {
     let mut modules = BTreeSet::new();
     for declaration in &program.declarations {
@@ -7385,6 +7539,7 @@ fn is_sigil_runtime_module(module_id: &str) -> bool {
         || module_id.starts_with("world::")
         || module_id.starts_with("test::")
         || module_id.starts_with("src::")
+        || module_id == "config"
         || module_id.starts_with("config::")
         || module_id.starts_with("package::")
         || module_id.starts_with("packageConfig::")
@@ -7401,7 +7556,8 @@ fn requires_world_runtime(program: &TypedProgram, runtime_modules: &BTreeSet<Str
 }
 
 fn requires_world_runtime_module(module_id: &str) -> bool {
-    module_id.starts_with("config::")
+    module_id == "config"
+        || module_id.starts_with("config::")
         || module_id.starts_with("packageConfig::")
         || module_id.starts_with("world::")
         || module_id.starts_with("test::")
@@ -7562,6 +7718,30 @@ mod tests {
         let result = gen.output.join("");
 
         assert!(result.contains("import * as stdlib_topology from '../stdlib/topology.js';"));
+    }
+
+    #[test]
+    fn test_generate_import_remaps_package_local_src_module_paths() {
+        let mut gen = TypeScriptGenerator::new(CodegenOptions {
+            module_id: Some("package::featureFlagStorefrontFlags::v20260412_140000::flags".to_string()),
+            source_file: Some(
+                "/repo/projects/app/.sigil/packages/featureFlagStorefrontFlags/2026-04-12T14-00-00Z/src/flags.lib.sigil"
+                    .to_string(),
+            ),
+            output_file: Some(
+                "/repo/projects/app/.local/package/featureFlagStorefrontFlags/v20260412_140000/flags.ts"
+                    .to_string(),
+            ),
+            trace: false,
+            breakpoints: false,
+            expression_debug: false,
+        });
+        gen.emit_module_import("src::types").unwrap();
+        let result = gen.output.join("");
+
+        assert!(result.contains(
+            "import * as src_types from './types.js';"
+        ));
     }
 
     #[test]

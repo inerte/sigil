@@ -262,8 +262,10 @@ For topology-aware projects:
 
 - topology declarations live in `src/topology.lib.sigil`
 - type labels live in `src/types.lib.sigil`
+- feature flags live in `src/flags.lib.sigil`
 - boundary rules and transforms live in `src/policies.lib.sigil`
 - selected environment bindings live in `config/<env>.lib.sigil`
+- selected config declarations are read through `•config.<name>`
 - `process.env` is only allowed in `config/*.lib.sigil`
 - application code must use topology dependency handles, not raw endpoints
 

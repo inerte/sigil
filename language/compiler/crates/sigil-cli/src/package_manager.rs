@@ -4,6 +4,7 @@ use crate::project::{
     get_project_config, is_lower_camel_name, sigil_name_to_npm_package_name,
     sigil_version_to_npm_version, write_project_manifest, ProjectConfig, ProjectManifest,
 };
+use ignore::WalkBuilder;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
@@ -539,7 +540,12 @@ fn unpack_package_archive(tarball_path: &Path, unpack_root: &Path) -> Result<(),
 fn validate_staged_package(root: &Path) -> Result<(), CliError> {
     let project = require_project(root)?;
     validate_public_package_modules(&project)?;
-    run_compile_in_project(root, "src/package.lib.sigil")?;
+    for file in collect_sigil_library_files(&root.join("src"))? {
+        let relative = file
+            .strip_prefix(root)
+            .map_err(|error| CliError::Validation(format!("invalid packaged module path: {error}")))?;
+        run_compile_in_project(root, relative.to_string_lossy().as_ref())?;
+    }
     Ok(())
 }
 
@@ -709,7 +715,7 @@ fn install_dependency_tree(
     fs::create_dir_all(install_root.parent().unwrap())?;
 
     let installed_package =
-        fetch_and_unpack_package(dependency_name, dependency_version, &install_root)?;
+        fetch_and_unpack_package(parent_root, dependency_name, dependency_version, &install_root)?;
     stack.push(cycle_key.clone());
     for (child_name, child_version) in &installed_package.project.dependencies {
         install_dependency_tree(&install_root, child_name, child_version, lockfile, stack)?;
@@ -728,12 +734,40 @@ fn install_dependency_tree(
 }
 
 fn fetch_and_unpack_package(
+    parent_root: &Path,
     dependency_name: &str,
     dependency_version: &str,
     install_root: &Path,
 ) -> Result<InstalledPackage, CliError> {
     let npm_name = npm_package_name(dependency_name)?;
     let npm_version = npm_transport_version(dependency_version)?;
+
+    if let Some(local_project) =
+        find_local_publishable_package(parent_root, dependency_name, dependency_version)?
+    {
+        let publish_dir = prepare_publish_dir(
+            &local_project,
+            &npm_name,
+            &npm_version,
+            "sigil-package-local-pack",
+        )?;
+        let tarball_path = pack_publish_dir(&publish_dir)?;
+        let integrity = sha256_hex(&tarball_path)?;
+        let project = install_archive_into_root(
+            &tarball_path,
+            install_root,
+            dependency_name,
+            dependency_version,
+        )?;
+
+        return Ok(InstalledPackage {
+            project,
+            npm_package: npm_name,
+            npm_version,
+            integrity,
+        });
+    }
+
     let pack_spec = format!("{npm_name}@{npm_version}");
     let pack_dir = temp_dir("sigil-package-pack")?;
 
@@ -757,20 +791,30 @@ fn fetch_and_unpack_package(
     })?;
 
     let tarball_path = pack_dir.join(&entry.filename);
+    let project =
+        install_archive_into_root(&tarball_path, install_root, dependency_name, dependency_version)?;
+
+    let integrity = match &entry.integrity {
+        Some(integrity) => integrity.clone(),
+        None => sha256_hex(&tarball_path)?,
+    };
+
+    Ok(InstalledPackage {
+        project,
+        npm_package: npm_name,
+        npm_version,
+        integrity,
+    })
+}
+
+fn install_archive_into_root(
+    tarball_path: &Path,
+    install_root: &Path,
+    dependency_name: &str,
+    dependency_version: &str,
+) -> Result<ProjectConfig, CliError> {
     let unpack_dir = temp_dir("sigil-package-unpack")?;
-    let tar_output = Command::new("tar")
-        .arg("-xzf")
-        .arg(&tarball_path)
-        .arg("-C")
-        .arg(&unpack_dir)
-        .output()
-        .map_err(|error| CliError::Runtime(format!("failed to extract npm package: {error}")))?;
-    if !tar_output.status.success() {
-        return Err(CliError::Runtime(format!(
-            "failed to extract npm package: {}",
-            combined_output(&tar_output.stdout, &tar_output.stderr)
-        )));
-    }
+    unpack_package_archive(tarball_path, &unpack_dir)?;
 
     let extracted_root = unpack_dir.join("package");
     copy_dir_recursive(&extracted_root, install_root)?;
@@ -792,18 +836,95 @@ fn fetch_and_unpack_package(
             dependency_version
         )));
     }
+    Ok(project)
+}
 
-    let integrity = match &entry.integrity {
-        Some(integrity) => integrity.clone(),
-        None => sha256_hex(&tarball_path)?,
+fn find_local_publishable_package(
+    start_root: &Path,
+    dependency_name: &str,
+    dependency_version: &str,
+) -> Result<Option<ProjectConfig>, CliError> {
+    let Some(workspace_root) = find_git_workspace_root(start_root) else {
+        return Ok(None);
     };
 
-    Ok(InstalledPackage {
-        project,
-        npm_package: npm_name,
-        npm_version,
-        integrity,
+    let mut matches = Vec::new();
+    let mut walker = WalkBuilder::new(&workspace_root);
+    walker.hidden(false);
+    walker.git_ignore(false);
+    walker.git_exclude(false);
+    walker.git_global(false);
+    let workspace_root_for_filter = workspace_root.clone();
+    walker.filter_entry(move |entry| {
+        !is_nested_git_workspace(entry.path(), &workspace_root_for_filter)
+    });
+    let walker = walker.build();
+
+    for entry in walker {
+        let entry = match entry {
+            Ok(entry) => entry,
+            Err(error) => {
+                return Err(CliError::Runtime(format!(
+                    "failed to scan local workspace packages: {error}"
+                )));
+            }
+        };
+        if entry.file_type().is_none_or(|file_type| !file_type.is_file()) {
+            continue;
+        }
+        if entry.file_name() != "sigil.json" {
+            continue;
+        }
+
+        let Some(project_root) = entry.path().parent() else {
+            continue;
+        };
+        if should_skip_local_package_candidate(project_root) {
+            continue;
+        }
+
+        let Some(project) = get_project_config(project_root)? else {
+            continue;
+        };
+        if !project.is_publishable_package() {
+            continue;
+        }
+        if project.name == dependency_name && project.version == dependency_version {
+            matches.push(project);
+        }
+    }
+
+    match matches.len() {
+        0 => Ok(None),
+        1 => Ok(matches.pop()),
+        _ => Err(CliError::Validation(format!(
+            "multiple local publishable packages match `{dependency_name}@{dependency_version}`: {}",
+            matches
+                .iter()
+                .map(|project| project.root.display().to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        ))),
+    }
+}
+
+fn should_skip_local_package_candidate(path: &Path) -> bool {
+    path.components().any(|component| {
+        let segment = component.as_os_str().to_string_lossy();
+        matches!(segment.as_ref(), ".git" | ".local" | ".sigil" | "node_modules" | "target")
     })
+}
+
+fn is_nested_git_workspace(path: &Path, workspace_root: &Path) -> bool {
+    path != workspace_root && path.is_dir() && path.join(".git").exists()
+}
+
+fn find_git_workspace_root(start_root: &Path) -> Option<PathBuf> {
+    let canonical = fs::canonicalize(start_root).ok()?;
+    canonical
+        .ancestors()
+        .find(|ancestor| ancestor.join(".git").exists())
+        .map(Path::to_path_buf)
 }
 
 fn latest_registry_version(dependency_name: &str) -> Result<String, CliError> {

@@ -1,0 +1,15 @@
+{
+  "formatVersion": 1,
+  "rootDependencies": {
+    "featureFlagStorefrontFlags": "2026-04-12T14-00-00Z"
+  },
+  "packages": {
+    "featureFlagStorefrontFlags@2026-04-12T14-00-00Z": {
+      "name": "featureFlagStorefrontFlags",
+      "sigilVersion": "2026-04-12T14-00-00Z",
+      "npmPackage": "feature-flag-storefront-flags",
+      "npmVersion": "20260412.140000.0",
+      "integrity": "sha256:8488173a58fea413125e4f8bda88545ae3d09a85bb790268ed17812bf9c3d988"
+    }
+  }
+}

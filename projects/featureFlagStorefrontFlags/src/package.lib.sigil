@@ -1,0 +1,17 @@
+λguest(site:µSite)=>µFlagContext={
+  internal:false,
+  site:site,
+  userId:None()
+}
+
+λinternalUser(site:µSite,userId:String)=>µFlagContext={
+  internal:true,
+  site:site,
+  userId:Some(userId)
+}
+
+λuser(site:µSite,userId:String)=>µFlagContext={
+  internal:false,
+  site:site,
+  userId:Some(userId)
+}

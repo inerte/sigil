@@ -35,6 +35,10 @@ Publishable packages additionally use:
 - `publish` in `sigil.json`
 - exact-only direct `dependencies` in `sigil.json`
 
+Feature-flag projects and packages additionally use:
+- `src/flags.lib.sigil`
+- `config/<env>.lib.sigil` declarations such as `flags`, read through `•config.<name>`
+
 When creating new projects, follow that layout unless there is a clear reason not to.
 
 Default runnable entrypoint:
@@ -94,6 +98,13 @@ Run project tests:
 ```bash
 cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests
 cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/todo-app/tests
+```
+
+If a project declares direct package dependencies in `sigil.json`, install them
+before compile/run/test on a fresh clone:
+
+```bash
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- package install projects/featureFlagStorefront
 ```
 
 ## Common Pitfalls in `projects/`

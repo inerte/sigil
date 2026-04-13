@@ -50,6 +50,28 @@
   suite.result
 )
 
+λfeatureFlagStorefrontRoot(root:String)=>String=§path.join(
+  §path.join(
+    root,
+    "projects"
+  ),
+  "featureFlagStorefront"
+)
+
+λfeatureFlagStorefrontSuite(root:String)=>µParallelSuite={
+  command:sigilCommandIn(
+    [
+      "test",
+      "tests",
+      "--env",
+      "test"
+    ],
+    featureFlagStorefrontRoot(root),
+    root
+  ),
+  label:"feature flag storefront suite"
+}
+
 λfinish(result:Result[
   Unit,
   String
@@ -153,9 +175,24 @@
   label:"multimodule integration"
 }
 
+λpackageInstallCommand(projectRoot:String,root:String)=>§process.Command=sigilCommandIn(
+  [
+    "package",
+    "install"
+  ],
+  projectRoot,
+  root
+)
+
+λpackageInstallCommands(root:String)=>[§process.Command]=[packageInstallCommand(
+  featureFlagStorefrontRoot(root),
+  root
+)]
+
 λparallelSuites(root:String)=>[µParallelSuite]=[
   algorithmsSuite(root),
   canonicalIntegrationSuite(root),
+  featureFlagStorefrontSuite(root),
   flashcardsSuite(root),
   game2048Suite(root),
   labelledBoundariesSuite(root),
@@ -398,6 +435,10 @@
       root
     )],
     label:"compiler tests"
+  }),
+  µSerial({
+    commands:packageInstallCommands(root),
+    label:"package installs"
   }),
   µSerial({
     commands:[

@@ -108,6 +108,7 @@ pub mod canonical {
 
     // Extern member ordering
     pub const EXTERN_MEMBER_ORDER: &str = "SIGIL-CANON-EXTERN-MEMBER-ORDER";
+    pub const FEATURE_FLAG_DECLARATION: &str = "SIGIL-CANON-FEATURE-FLAG-DECL";
 }
 
 /// Type checker error codes (SIGIL-TYPE-*)
@@ -137,6 +138,8 @@ pub mod cli {
     pub const INVALID_IMPORT: &str = "SIGIL-CLI-INVALID-IMPORT";
     pub const PROJECT_MAIN_REQUIRED: &str = "SIGIL-CLI-PROJECT-MAIN-REQUIRED";
     pub const PROJECT_ROOT_REQUIRED: &str = "SIGIL-CLI-PROJECT-ROOT-REQUIRED";
+    pub const CONFIG_ENV_REQUIRED: &str = "SIGIL-CLI-CONFIG-ENV-REQUIRED";
+    pub const CONFIG_MODULE_NOT_FOUND: &str = "SIGIL-CLI-CONFIG-MODULE-NOT-FOUND";
 }
 
 /// Topology error codes (SIGIL-TOPO-*)
@@ -249,6 +252,7 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     canonical::DECL_EXPORT_ORDER,
     canonical::DECL_ALPHABETICAL,
     canonical::EXTERN_MEMBER_ORDER,
+    canonical::FEATURE_FLAG_DECLARATION,
     // Typecheck codes
     typecheck::ERROR,
     typecheck::MODULE_NOT_EXPORTED,
@@ -269,6 +273,8 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     cli::INVALID_IMPORT,
     cli::PROJECT_MAIN_REQUIRED,
     cli::PROJECT_ROOT_REQUIRED,
+    cli::CONFIG_ENV_REQUIRED,
+    cli::CONFIG_MODULE_NOT_FOUND,
     // Topology (10 codes)
     topology::BINDING_KIND_MISMATCH,
     topology::CONSTRUCTOR_LOCATION,
@@ -324,8 +330,8 @@ mod tests {
         // Keep this in sync when adding or removing diagnostic codes.
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            113,
-            "Expected 113 error codes, found {}",
+            117,
+            "Expected 117 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

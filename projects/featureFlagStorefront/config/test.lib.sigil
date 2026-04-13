@@ -1,0 +1,56 @@
+c flags=([
+  §featureFlags.entry(
+    {
+      key:Some(userKey),
+      overrides:{"dev-user"↦true},
+      rollout:None(),
+      rules:[{
+        predicate:isBrazil,
+        value:true
+      }]
+    },
+    ☴featureFlagStorefrontFlags::flags.NewCheckout
+  ),
+  §featureFlags.entry(
+    {
+      key:Some(userKey),
+      overrides:{"dev-user"↦true},
+      rollout:None(),
+      rules:[{
+        predicate:isInternal,
+        value:true
+      }]
+    },
+    ☴featureFlagStorefrontFlags::flags.EnableQuickSupport
+  ),
+  §featureFlags.entry(
+    {
+      key:Some(userKey),
+      overrides:{"dev-user"↦☴featureFlagStorefrontFlags::types.Ocean()},
+      rollout:None(),
+      rules:[{
+        predicate:isInternal,
+        value:☴featureFlagStorefrontFlags::types.Citrus()
+      }]
+    },
+    ☴featureFlagStorefrontFlags::flags.CheckoutColorChoice
+  ),
+  §featureFlags.entry(
+    {
+      key:Some(userKey),
+      overrides:({↦}:{String↦☴featureFlagStorefrontFlags::types.RecommendationLayout}),
+      rollout:None(),
+      rules:[{
+        predicate:isBrazil,
+        value:☴featureFlagStorefrontFlags::types.Carousel()
+      }]
+    },
+    ☴featureFlagStorefrontFlags::flags.RecommendationLayoutChoice
+  )
+]:§featureFlags.Set[☴featureFlagStorefrontFlags::types.FlagContext])
+
+λisBrazil(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Bool=context.site=☴featureFlagStorefrontFlags::types.Br()
+
+λisInternal(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Bool=context.internal
+
+λuserKey(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Option[String]=context.userId

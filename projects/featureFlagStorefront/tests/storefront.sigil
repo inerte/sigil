@@ -1,0 +1,152 @@
+λisBrazil(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Bool=context.site=☴featureFlagStorefrontFlags::types.Br()
+
+λisInternal(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Bool=context.internal
+
+λmain()=>Unit=()
+
+λprodFlags()=>§featureFlags.Set[☴featureFlagStorefrontFlags::types.FlagContext]=[
+  §featureFlags.entry(
+    {
+      key:Some(λ(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Option[String]=context.userId),
+      overrides:({↦}:{String↦Bool}),
+      rollout:Some({
+        percentage:20,
+        variants:[{
+          value:true,
+          weight:100
+        }]
+      }),
+      rules:[{
+        predicate:isBrazil,
+        value:true
+      }]
+    },
+    ☴featureFlagStorefrontFlags::flags.NewCheckout
+  ),
+  §featureFlags.entry(
+    {
+      key:Some(λ(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Option[String]=context.userId),
+      overrides:{"dev-user"↦true},
+      rollout:None(),
+      rules:[{
+        predicate:isInternal,
+        value:true
+      }]
+    },
+    ☴featureFlagStorefrontFlags::flags.EnableQuickSupport
+  ),
+  §featureFlags.entry(
+    {
+      key:Some(λ(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Option[String]=context.userId),
+      overrides:{"dev-user"↦☴featureFlagStorefrontFlags::types.Ocean()},
+      rollout:Some({
+        percentage:30,
+        variants:[
+          {
+            value:☴featureFlagStorefrontFlags::types.Ocean(),
+            weight:70
+          },
+          {
+            value:☴featureFlagStorefrontFlags::types.Citrus(),
+            weight:30
+          }
+        ]
+      }),
+      rules:[{
+        predicate:isInternal,
+        value:☴featureFlagStorefrontFlags::types.Citrus()
+      }]
+    },
+    ☴featureFlagStorefrontFlags::flags.CheckoutColorChoice
+  ),
+  §featureFlags.entry(
+    {
+      key:Some(λ(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Option[String]=context.userId),
+      overrides:({↦}:{String↦☴featureFlagStorefrontFlags::types.RecommendationLayout}),
+      rollout:Some({
+        percentage:40,
+        variants:[
+          {
+            value:☴featureFlagStorefrontFlags::types.Carousel(),
+            weight:50
+          },
+          {
+            value:☴featureFlagStorefrontFlags::types.List(),
+            weight:50
+          }
+        ]
+      }),
+      rules:[{
+        predicate:isBrazil,
+        value:☴featureFlagStorefrontFlags::types.Carousel()
+      }]
+    },
+    ☴featureFlagStorefrontFlags::flags.RecommendationLayoutChoice
+  )
+]
+
+test "configured view gives dev user the explicit test overrides" {
+  •storefront.configuredView(☴featureFlagStorefrontFlags.user(
+    ☴featureFlagStorefrontFlags::types.Us(),
+    "dev-user"
+  ))={
+    checkoutColor:"ocean",
+    checkoutMode:"new",
+    quickSupport:true,
+    recommendationLayout:"grid"
+  }
+}
+
+test "configured view gives internal users quick support and citrus" {
+  •storefront.configuredView(☴featureFlagStorefrontFlags.internalUser(
+    ☴featureFlagStorefrontFlags::types.Us(),
+    "staff-user"
+  ))={
+    checkoutColor:"citrus",
+    checkoutMode:"classic",
+    quickSupport:true,
+    recommendationLayout:"grid"
+  }
+}
+
+test "configured view gives brazil guests the local site rollout" {
+  •storefront.configuredView(☴featureFlagStorefrontFlags.guest(☴featureFlagStorefrontFlags::types.Br()))={
+    checkoutColor:"control",
+    checkoutMode:"new",
+    quickSupport:false,
+    recommendationLayout:"carousel"
+  }
+}
+
+test "prod rollout stays deterministic for the same user" {
+  l context=(☴featureFlagStorefrontFlags.user(
+    ☴featureFlagStorefrontFlags::types.Us(),
+    "stable-user"
+  ):☴featureFlagStorefrontFlags::types.FlagContext);
+  •storefront.view(
+    context,
+    prodFlags()
+  )=•storefront.view(
+    context,
+    prodFlags()
+  )
+}
+
+test "prod rollout falls back to defaults when no key is available" {
+  •storefront.view(
+    ☴featureFlagStorefrontFlags.guest(☴featureFlagStorefrontFlags::types.Us()),
+    prodFlags()
+  )={
+    checkoutColor:"control",
+    checkoutMode:"classic",
+    quickSupport:false,
+    recommendationLayout:"grid"
+  }
+}
+
+test "render formats a configured storefront view" {
+  •storefront.render(•storefront.configuredView(☴featureFlagStorefrontFlags.user(
+    ☴featureFlagStorefrontFlags::types.Us(),
+    "dev-user"
+  )))="checkout=new; color=ocean; quickSupport=true; layout=grid"
+}

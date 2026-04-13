@@ -1,0 +1,4 @@
+λmain()=>String=•storefront.render(•storefront.configuredView(☴featureFlagStorefrontFlags.user(
+  ☴featureFlagStorefrontFlags::types.Us(),
+  "dev-user"
+)))

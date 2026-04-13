@@ -87,6 +87,11 @@ impl Parser {
             return self.effect_declaration();
         }
 
+        // Feature flag declaration: featureFlag NewCheckout:Bool createdAt "..." default false
+        if self.match_identifier("featureFlag") {
+            return self.feature_flag_declaration();
+        }
+
         // Const declaration: c name = value
         if self.match_token(TokenType::CONST) {
             return self.const_declaration();
@@ -104,8 +109,47 @@ impl Parser {
         }
 
         Err(self.error(
-            "Expected top-level declaration (label, rule, transform, t, effect, e, c, λ, or test)",
+            "Expected top-level declaration (label, rule, transform, t, effect, featureFlag, e, c, λ, or test)",
         ))
+    }
+
+    fn feature_flag_declaration(&mut self) -> Result<Declaration, ParseError> {
+        let start = self.previous();
+        let name = self
+            .consume(
+                TokenType::UpperIdentifier,
+                "Expected UpperCamel feature flag name after featureFlag",
+            )?
+            .value
+            .clone();
+        self.consume(TokenType::COLON, "Expected \":\" after feature flag name")?;
+        let flag_type = self.parse_type()?;
+        self.consume_identifier(
+            "createdAt",
+            "Expected createdAt clause after feature flag type (canonical form: featureFlag Name:Type createdAt \"...\" default value)",
+        )?;
+        let created_at = self
+            .consume(
+                TokenType::STRING,
+                "Expected string literal after createdAt (canonical form: createdAt \"YYYY-MM-DDTHH-mm-ssZ\")",
+            )?
+            .clone();
+        let created_at_value = created_at.value;
+        let created_at_location = created_at.location;
+        self.consume_identifier(
+            "default",
+            "Expected default clause after createdAt (canonical form: featureFlag Name:Type createdAt \"...\" default value)",
+        )?;
+        let default = self.expression()?;
+        let end = self.previous();
+        Ok(Declaration::FeatureFlag(FeatureFlagDecl {
+            name,
+            flag_type,
+            created_at: created_at_value,
+            created_at_location,
+            default,
+            location: self.make_location(start.location.start, end.location.end),
+        }))
     }
 
     fn function_declaration(&mut self) -> Result<Declaration, ParseError> {
@@ -1599,7 +1643,19 @@ impl Parser {
         // Root-qualified namespace member
         if let Some(root) = self.match_root_token() {
             let start = root;
-            let namespace = self.rooted_module_path(&start)?;
+            let namespace = if start.token_type == TokenType::SrcRoot
+                && self.check_identifier("config")
+            {
+                self.advance();
+                if self.check(TokenType::DOT) {
+                    vec!["config".to_string()]
+                } else {
+                    self.current = self.current.saturating_sub(1);
+                    self.rooted_module_path(&start)?
+                }
+            } else {
+                self.rooted_module_path(&start)?
+            };
             self.consume(TokenType::DOT, "Expected \".\" after namespace path")?;
             let member = if self.match_token(TokenType::IDENTIFIER)
                 || self.match_token(TokenType::UpperIdentifier)

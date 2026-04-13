@@ -83,11 +83,15 @@ impl CompileDirectoryIgnore {
     }
 
     fn should_ignore(&self, path: &Path, is_dir: bool) -> bool {
-        if path
-            .components()
-            .any(|component| component.as_os_str() == ".local")
-        {
-            return true;
+        if let Ok(relative) = path.strip_prefix(&self.root) {
+            if relative.components().any(|component| {
+                matches!(
+                    component.as_os_str().to_string_lossy().as_ref(),
+                    ".git" | ".local" | ".sigil" | "node_modules" | "target"
+                )
+            }) {
+                return true;
+            }
         }
 
         if self
@@ -308,8 +312,11 @@ pub(super) fn group_compile_targets(files: &[PathBuf]) -> Result<Vec<CompileBatc
     Ok(groups)
 }
 
-fn compile_group(group: &CompileBatchGroup) -> Result<CompileBatchOutputs, CliError> {
-    let graph = ModuleGraph::build_many(&group.files)?;
+fn compile_group(
+    group: &CompileBatchGroup,
+    selected_env: Option<&str>,
+) -> Result<CompileBatchOutputs, CliError> {
+    let graph = ModuleGraph::build_many_with_env(&group.files, selected_env)?;
     let compiled_modules = graph.topo_order.len();
     let entry_modules = group
         .files
@@ -373,8 +380,9 @@ fn compile_single_file_command(
     file: &Path,
     output: Option<&Path>,
     show_types: bool,
+    selected_env: Option<&str>,
 ) -> Result<(), CliError> {
-    let graph = match ModuleGraph::build(file) {
+    let graph = match ModuleGraph::build_with_env(file, selected_env) {
         Ok(graph) => graph,
         Err(ModuleGraphError::Validation(errors)) => {
             if let Some(first_error) = errors.first() {
@@ -404,7 +412,20 @@ fn compile_single_file_command(
             );
             return Err(ModuleGraphError::ProjectConfig(project_error).into());
         }
-        Err(error) => return Err(error.into()),
+        Err(error) => {
+            let message = error.to_string();
+            let error_code = extract_error_code(&message);
+            output_json_error(
+                "sigilc compile",
+                phase_for_code(&error_code),
+                &error_code,
+                &message,
+                json!({
+                    "file": file.to_string_lossy()
+                }),
+            );
+            return Err(error.into());
+        }
     };
 
     let entry_module_id = graph.topo_order.last().unwrap().clone();
@@ -491,6 +512,7 @@ fn compile_directory_command(
     path: &Path,
     ignore_paths: &[PathBuf],
     ignore_from: Option<&Path>,
+    selected_env: Option<&str>,
 ) -> Result<(), CliError> {
     let start_time = Instant::now();
     let files = collect_sigil_targets("compile", path, ignore_paths, ignore_from)?;
@@ -508,7 +530,7 @@ fn compile_directory_command(
 
     for group in groups {
         let first_file = group.files.first().cloned();
-        let batch = match compile_group(&group) {
+        let batch = match compile_group(&group, selected_env) {
             Ok(batch) => batch,
             Err(error) => {
                 match &error {
@@ -638,6 +660,7 @@ pub(super) fn compile_command(
     show_types: bool,
     ignore_paths: &[PathBuf],
     ignore_from: Option<&Path>,
+    selected_env: Option<&str>,
 ) -> Result<(), CliError> {
     if path.is_dir() {
         if output.is_some() {
@@ -645,9 +668,9 @@ pub(super) fn compile_command(
                 "compile -o is only valid when compiling a single file".to_string(),
             ));
         }
-        compile_directory_command(path, ignore_paths, ignore_from)
+        compile_directory_command(path, ignore_paths, ignore_from, selected_env)
     } else {
-        compile_single_file_command(path, output, show_types)
+        compile_single_file_command(path, output, show_types, selected_env)
     }
 }
 
@@ -947,6 +970,8 @@ pub(super) fn compile_module_graph(
         module_outputs.insert(module_id.clone(), generated_output.output_path);
         span_map_outputs.insert(module_id, generated_output.span_map_path);
     }
+    write_public_package_module_aliases(&graph, &module_outputs)?;
+    write_selected_config_aliases(&graph, &module_outputs)?;
 
     Ok(CompiledGraphOutputs {
         entry_output_path: generated.entry_output_path,
@@ -955,6 +980,76 @@ pub(super) fn compile_module_graph(
         span_map_outputs,
         coverage_targets: generated.coverage_targets,
     })
+}
+
+fn write_public_package_module_aliases(
+    graph: &ModuleGraph,
+    module_outputs: &HashMap<String, PathBuf>,
+) -> Result<(), CliError> {
+    for (module_id, module) in &graph.modules {
+        let Some(public_module_id) = public_package_module_id(module_id) else {
+            continue;
+        };
+        let Some(output_project) = module.output_project.as_ref() else {
+            continue;
+        };
+        let Some(target_output_path) = module_outputs.get(module_id) else {
+            continue;
+        };
+
+        let alias_output_path = output_project
+            .root
+            .join(&output_project.layout.out)
+            .join(format!("{}.ts", public_module_id.replace("::", "/")));
+        let alias_parent = alias_output_path
+            .parent()
+            .ok_or_else(|| CliError::Codegen("package alias output had no parent directory".to_string()))?;
+        fs::create_dir_all(alias_parent)?;
+        let import_path = relative_import_path(alias_parent, target_output_path);
+        let alias_source = format!("export * from '{}';\n", import_path);
+        write_atomic_file(&alias_output_path, alias_source.as_bytes())?;
+    }
+
+    Ok(())
+}
+
+fn write_selected_config_aliases(
+    graph: &ModuleGraph,
+    module_outputs: &HashMap<String, PathBuf>,
+) -> Result<(), CliError> {
+    for (module_id, module) in &graph.modules {
+        if !module_id.starts_with("config::") {
+            continue;
+        }
+
+        let output_project = module
+            .output_project
+            .as_ref()
+            .or(module.project.as_ref())
+            .ok_or_else(|| {
+                CliError::Codegen(format!(
+                    "selected config module '{}' had no owning project",
+                    module_id
+                ))
+            })?;
+        let Some(target_output_path) = module_outputs.get(module_id) else {
+            continue;
+        };
+
+        let alias_output_path = output_project
+            .root
+            .join(&output_project.layout.out)
+            .join("config.ts");
+        let alias_parent = alias_output_path.parent().ok_or_else(|| {
+            CliError::Codegen("config alias output had no parent directory".to_string())
+        })?;
+        fs::create_dir_all(alias_parent)?;
+        let import_path = relative_import_path(alias_parent, target_output_path);
+        let alias_source = format!("export * from '{}';\n", import_path);
+        write_atomic_file(&alias_output_path, alias_source.as_bytes())?;
+    }
+
+    Ok(())
 }
 
 fn span_map_output_path(output_path: &Path) -> PathBuf {
@@ -997,6 +1092,33 @@ fn write_atomic_file(path: &Path, bytes: &[u8]) -> Result<(), CliError> {
         CliError::Io(error)
     })?;
     Ok(())
+}
+
+fn relative_import_path(from_dir: &Path, target_file: &Path) -> String {
+    let from_components: Vec<_> = from_dir.components().collect();
+    let target_components: Vec<_> = target_file.components().collect();
+    let common_len = from_components
+        .iter()
+        .zip(target_components.iter())
+        .take_while(|(left, right)| left == right)
+        .count();
+
+    let mut relative = PathBuf::new();
+
+    for _ in common_len..from_components.len() {
+        relative.push("..");
+    }
+
+    for component in &target_components[common_len..] {
+        relative.push(component.as_os_str());
+    }
+
+    let relative_str = relative.to_string_lossy().replace('\\', "/");
+    if relative_str.starts_with("../") {
+        relative_str
+    } else {
+        format!("./{}", relative_str)
+    }
 }
 
 fn write_span_map_file(path: &Path, span_map: &ModuleSpanMap) -> Result<(), CliError> {
@@ -1193,17 +1315,13 @@ globalThis.__sigil_topology_exports = Object.fromEntries(
 
 fn project_root_and_runtime(
     path: &Path,
-    graph: &ModuleGraph,
-) -> Result<Option<(PathBuf, bool, bool)>, crate::project::ProjectConfigError> {
+    _graph: &ModuleGraph,
+) -> Result<Option<(PathBuf, bool)>, crate::project::ProjectConfigError> {
     let Some(project) = get_project_config(path)? else {
         return Ok(None);
     };
     let topology_present = topology_source_path(&project.root).exists();
-    let config_imported = graph
-        .modules
-        .keys()
-        .any(|module_id| module_id.starts_with("config::"));
-    Ok(Some((project.root, topology_present, config_imported)))
+    Ok(Some((project.root, topology_present)))
 }
 
 pub(super) fn runner_prelude(
@@ -1211,13 +1329,11 @@ pub(super) fn runner_prelude(
     graph: &ModuleGraph,
     selected_env: Option<&str>,
 ) -> Result<Option<String>, CliError> {
-    let Some((project_root, topology_present, config_imported)) =
-        project_root_and_runtime(path, graph)?
-    else {
+    let Some((project_root, topology_present)) = project_root_and_runtime(path, graph)? else {
         return Ok(None);
     };
 
-    if !topology_present && !config_imported {
+    if !topology_present {
         return Ok(None);
     }
 
@@ -1257,7 +1373,19 @@ fn build_imported_namespaces(
 
     for (source_module_id, resolved_module_id) in &module.source_imports {
         if let Some(namespace) = imported.get(resolved_module_id).cloned() {
-            imported.insert(source_module_id.clone(), namespace);
+            let aliased_namespace = if let (Some(public_package_root), Some(internal_package_root)) = (
+                public_package_root(source_module_id),
+                internal_package_root(resolved_module_id),
+            ) {
+                rewrite_public_package_inference_type(
+                    &namespace,
+                    &internal_package_root,
+                    &public_package_root,
+                )
+            } else {
+                namespace
+            };
+            imported.insert(source_module_id.clone(), aliased_namespace);
         }
     }
 
@@ -1350,7 +1478,35 @@ fn build_imported_type_registries(
     module: &LoadedModule,
     type_registries: &HashMap<String, HashMap<String, TypeInfo>>,
 ) -> HashMap<String, HashMap<String, TypeInfo>> {
-    build_imported_registry_map(module, type_registries)
+    let mut imported = type_registries.clone();
+
+    for (source_module_id, resolved_module_id) in &module.source_imports {
+        if let Some(registry) = type_registries.get(resolved_module_id) {
+            let aliased_registry = if let (Some(public_package_root), Some(internal_package_root)) = (
+                public_package_root(source_module_id),
+                internal_package_root(resolved_module_id),
+            ) {
+                registry
+                    .iter()
+                    .map(|(name, info)| {
+                        (
+                            name.clone(),
+                            rewrite_public_package_type_info(
+                                info,
+                                &internal_package_root,
+                                &public_package_root,
+                            ),
+                        )
+                    })
+                    .collect()
+            } else {
+                registry.clone()
+            };
+            imported.insert(source_module_id.clone(), aliased_registry);
+        }
+    }
+
+    imported
 }
 
 fn build_imported_label_registries(
@@ -1377,7 +1533,11 @@ fn build_imported_value_schemes(
                 .map(|(name, scheme)| {
                     (
                         name.clone(),
-                        qualify_scheme_for_module(resolved_module_id.as_str(), scheme),
+                        imported_value_scheme_for_module(
+                            source_module_id,
+                            resolved_module_id,
+                            scheme,
+                        ),
                     )
                 })
                 .collect(),
@@ -1392,6 +1552,303 @@ fn build_imported_value_meta(
     compiled_value_meta: &HashMap<String, HashMap<String, BindingMeta>>,
 ) -> HashMap<String, HashMap<String, BindingMeta>> {
     build_imported_registry_map(module, compiled_value_meta)
+}
+
+fn imported_value_scheme_for_module(
+    source_module_id: &str,
+    resolved_module_id: &str,
+    scheme: &TypeScheme,
+) -> TypeScheme {
+    let qualification_module_id =
+        imported_value_qualification_module_id(source_module_id, resolved_module_id);
+    let qualified = qualify_scheme_for_module(&qualification_module_id, scheme);
+
+    let Some(public_package_root) = public_package_root(source_module_id) else {
+        return qualified;
+    };
+    let Some(internal_package_root) = internal_package_root(resolved_module_id) else {
+        return qualified;
+    };
+
+    TypeScheme {
+        quantified_vars: qualified.quantified_vars,
+        typ: rewrite_public_package_inference_type(
+            &qualified.typ,
+            &internal_package_root,
+            &public_package_root,
+        ),
+    }
+}
+
+fn imported_value_qualification_module_id(
+    source_module_id: &str,
+    resolved_module_id: &str,
+) -> String {
+    if source_module_id.starts_with("package::") {
+        source_module_id.to_string()
+    } else {
+        resolved_module_id.to_string()
+    }
+}
+
+fn public_package_root(module_id: &str) -> Option<String> {
+    let parts = module_id.split("::").collect::<Vec<_>>();
+    if parts.len() < 2 || parts[0] != "package" {
+        return None;
+    }
+
+    Some(format!("{}::{}", parts[0], parts[1]))
+}
+
+fn internal_package_root(module_id: &str) -> Option<String> {
+    let parts = module_id.split("::").collect::<Vec<_>>();
+    if parts.len() < 3 || parts[0] != "package" {
+        return None;
+    }
+
+    Some(format!("{}::{}::{}", parts[0], parts[1], parts[2]))
+}
+
+fn public_package_module_id(module_id: &str) -> Option<String> {
+    let parts = module_id.split("::").collect::<Vec<_>>();
+    if parts.len() < 3 || parts[0] != "package" {
+        return None;
+    }
+
+    Some(
+        [vec![parts[0].to_string(), parts[1].to_string()], parts[3..].iter().map(|part| (*part).to_string()).collect()]
+            .concat()
+            .join("::"),
+    )
+}
+
+fn rewrite_public_package_name(name: &str, internal_root: &str, public_root: &str) -> String {
+    name.strip_prefix(internal_root)
+        .map(|suffix| format!("{public_root}{suffix}"))
+        .unwrap_or_else(|| name.to_string())
+}
+
+fn rewrite_public_package_inference_type(
+    typ: &sigil_typechecker::InferenceType,
+    internal_root: &str,
+    public_root: &str,
+) -> sigil_typechecker::InferenceType {
+    use sigil_typechecker::types::{TConstructor, TFunction, TList, TMap, TRecord, TTuple, TVar};
+    use sigil_typechecker::InferenceType;
+
+    match typ {
+        InferenceType::Primitive(_) | InferenceType::Any => typ.clone(),
+        InferenceType::Var(var) => InferenceType::Var(Box::new(TVar {
+            id: var.id,
+            name: var.name.clone(),
+            instance: var.instance.as_ref().map(|instance| {
+                rewrite_public_package_inference_type(instance, internal_root, public_root)
+            }),
+        })),
+        InferenceType::Function(function) => InferenceType::Function(Box::new(TFunction {
+            params: function
+                .params
+                .iter()
+                .map(|param| rewrite_public_package_inference_type(param, internal_root, public_root))
+                .collect(),
+            return_type: rewrite_public_package_inference_type(
+                &function.return_type,
+                internal_root,
+                public_root,
+            ),
+            effects: function.effects.clone(),
+        })),
+        InferenceType::List(list) => InferenceType::List(Box::new(TList {
+            element_type: rewrite_public_package_inference_type(
+                &list.element_type,
+                internal_root,
+                public_root,
+            ),
+        })),
+        InferenceType::Map(map) => InferenceType::Map(Box::new(TMap {
+            key_type: rewrite_public_package_inference_type(&map.key_type, internal_root, public_root),
+            value_type: rewrite_public_package_inference_type(
+                &map.value_type,
+                internal_root,
+                public_root,
+            ),
+        })),
+        InferenceType::Tuple(tuple) => InferenceType::Tuple(TTuple {
+            types: tuple
+                .types
+                .iter()
+                .map(|item| rewrite_public_package_inference_type(item, internal_root, public_root))
+                .collect(),
+        }),
+        InferenceType::Record(record) => InferenceType::Record(TRecord {
+            fields: record
+                .fields
+                .iter()
+                .map(|(name, field_type)| {
+                    (
+                        name.clone(),
+                        rewrite_public_package_inference_type(
+                            field_type,
+                            internal_root,
+                            public_root,
+                        ),
+                    )
+                })
+                .collect(),
+            name: record
+                .name
+                .as_ref()
+                .map(|name| rewrite_public_package_name(name, internal_root, public_root)),
+        }),
+        InferenceType::Constructor(constructor) => InferenceType::Constructor(TConstructor {
+            name: rewrite_public_package_name(&constructor.name, internal_root, public_root),
+            type_args: constructor
+                .type_args
+                .iter()
+                .map(|arg| rewrite_public_package_inference_type(arg, internal_root, public_root))
+                .collect(),
+        }),
+    }
+}
+
+fn rewrite_public_package_type_info(
+    info: &TypeInfo,
+    internal_root: &str,
+    public_root: &str,
+) -> TypeInfo {
+    TypeInfo {
+        type_params: info.type_params.clone(),
+        definition: rewrite_public_package_type_def(&info.definition, internal_root, public_root),
+        constraint: info.constraint.clone(),
+        labels: info
+            .labels
+            .iter()
+            .map(|label| rewrite_public_package_name(label, internal_root, public_root))
+            .collect(),
+    }
+}
+
+fn rewrite_public_package_type_def(
+    definition: &TypeDef,
+    internal_root: &str,
+    public_root: &str,
+) -> TypeDef {
+    match definition {
+        TypeDef::Sum(sum) => TypeDef::Sum(sigil_ast::SumType {
+            variants: sum
+                .variants
+                .iter()
+                .map(|variant| sigil_ast::Variant {
+                    name: variant.name.clone(),
+                    types: variant
+                        .types
+                        .iter()
+                        .map(|typ| rewrite_public_package_ast_type(typ, internal_root, public_root))
+                        .collect(),
+                    location: variant.location,
+                })
+                .collect(),
+            location: sum.location,
+        }),
+        TypeDef::Product(product) => TypeDef::Product(sigil_ast::ProductType {
+            fields: product
+                .fields
+                .iter()
+                .map(|field| sigil_ast::Field {
+                    name: field.name.clone(),
+                    field_type: rewrite_public_package_ast_type(
+                        &field.field_type,
+                        internal_root,
+                        public_root,
+                    ),
+                    location: field.location,
+                })
+                .collect(),
+            location: product.location,
+        }),
+        TypeDef::Alias(alias) => TypeDef::Alias(sigil_ast::TypeAlias {
+            aliased_type: rewrite_public_package_ast_type(
+                &alias.aliased_type,
+                internal_root,
+                public_root,
+            ),
+            location: alias.location,
+        }),
+    }
+}
+
+fn rewrite_public_package_ast_type(typ: &Type, internal_root: &str, public_root: &str) -> Type {
+    match typ {
+        Type::Primitive(_) | Type::Variable(_) => typ.clone(),
+        Type::List(list) => Type::List(Box::new(sigil_ast::ListType {
+            element_type: rewrite_public_package_ast_type(
+                &list.element_type,
+                internal_root,
+                public_root,
+            ),
+            location: list.location,
+        })),
+        Type::Map(map) => Type::Map(Box::new(sigil_ast::MapType {
+            key_type: rewrite_public_package_ast_type(&map.key_type, internal_root, public_root),
+            value_type: rewrite_public_package_ast_type(
+                &map.value_type,
+                internal_root,
+                public_root,
+            ),
+            location: map.location,
+        })),
+        Type::Function(function) => Type::Function(Box::new(sigil_ast::FunctionType {
+            param_types: function
+                .param_types
+                .iter()
+                .map(|param| rewrite_public_package_ast_type(param, internal_root, public_root))
+                .collect(),
+            effects: function.effects.clone(),
+            return_type: rewrite_public_package_ast_type(
+                &function.return_type,
+                internal_root,
+                public_root,
+            ),
+            location: function.location,
+        })),
+        Type::Constructor(constructor) => Type::Constructor(sigil_ast::TypeConstructor {
+            name: rewrite_public_package_name(&constructor.name, internal_root, public_root),
+            type_args: constructor
+                .type_args
+                .iter()
+                .map(|arg| rewrite_public_package_ast_type(arg, internal_root, public_root))
+                .collect(),
+            location: constructor.location,
+        }),
+        Type::Tuple(tuple) => Type::Tuple(sigil_ast::TupleType {
+            types: tuple
+                .types
+                .iter()
+                .map(|item| rewrite_public_package_ast_type(item, internal_root, public_root))
+                .collect(),
+            location: tuple.location,
+        }),
+        Type::Qualified(qualified) => {
+            let rewritten_module_id = rewrite_public_package_name(
+                &qualified.module_path.join("::"),
+                internal_root,
+                public_root,
+            );
+            Type::Qualified(sigil_ast::QualifiedType {
+                module_path: rewritten_module_id
+                    .split("::")
+                    .map(ToString::to_string)
+                    .collect(),
+                type_name: qualified.type_name.clone(),
+                type_args: qualified
+                    .type_args
+                    .iter()
+                    .map(|arg| rewrite_public_package_ast_type(arg, internal_root, public_root))
+                    .collect(),
+                location: qualified.location,
+            })
+        }
+    }
 }
 
 fn build_imported_boundary_rules(
@@ -1498,6 +1955,106 @@ fn qualify_scheme_for_module(module_id: &str, scheme: &TypeScheme) -> TypeScheme
     TypeScheme {
         quantified_vars: scheme.quantified_vars.clone(),
         typ: qualify_inference_type_for_module(module_id, &scheme.typ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use sigil_typechecker::errors::format_type;
+
+    fn repo_root() -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .ancestors()
+            .nth(4)
+            .unwrap()
+            .to_path_buf()
+    }
+
+    #[test]
+    fn imported_package_value_schemes_use_public_package_type_names() {
+        let config_path = repo_root().join("projects/featureFlagStorefront/config/test.lib.sigil");
+        let graph = ModuleGraph::build_with_env(&config_path, Some("test")).unwrap();
+        let mut compiled_modules = HashMap::new();
+        let mut compiled_schemes = HashMap::new();
+        let mut compiled_value_meta = HashMap::new();
+        let mut label_registries = HashMap::new();
+        let mut compiled_boundary_rules = Vec::new();
+        let mut type_registries = HashMap::new();
+
+        for module_id in &graph.topo_order {
+            let module = &graph.modules[module_id];
+            if module_id == "config::test" {
+                let imported_namespaces = build_imported_namespaces(module, &compiled_modules);
+                let imported_schemes = build_imported_value_schemes(module, &compiled_schemes);
+                let flag_namespace = imported_namespaces
+                    .get("package::featureFlagStorefrontFlags::flags")
+                    .unwrap();
+                let constructor_scheme = imported_schemes
+                    .get("package::featureFlagStorefrontFlags::types")
+                    .and_then(|schemes| schemes.get("Ocean"))
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "missing package constructor scheme; imported modules: {:?}",
+                            imported_schemes.keys().collect::<Vec<_>>()
+                        )
+                    });
+
+                assert_eq!(
+                    format_type(
+                        match flag_namespace {
+                            InferenceType::Record(record) => {
+                                record.fields.get("CheckoutColorChoice").unwrap()
+                            }
+                            _ => panic!("package flags namespace did not resolve to a record"),
+                        }
+                    ),
+                    "stdlib::featureFlags.Flag[package::featureFlagStorefrontFlags::types.CheckoutColor]"
+                );
+                assert_eq!(
+                    format_type(&constructor_scheme.typ),
+                    "() => package::featureFlagStorefrontFlags::types.CheckoutColor"
+                );
+                return;
+            }
+
+            let imported_namespaces = build_imported_namespaces(module, &compiled_modules);
+            let imported_type_regs = build_imported_type_registries(module, &type_registries);
+            let imported_label_regs = build_imported_label_registries(module, &label_registries);
+            let imported_value_schemes = build_imported_value_schemes(module, &compiled_schemes);
+            let imported_value_meta = build_imported_value_meta(module, &compiled_value_meta);
+            let imported_boundary_rules =
+                build_imported_boundary_rules(&module.ast, &compiled_boundary_rules);
+            let effect_catalog = load_project_effect_catalog_for(&module.file_path).unwrap();
+
+            let typecheck_result = type_check(
+                &module.ast,
+                &module.source,
+                Some(TypeCheckOptions {
+                    effect_catalog,
+                    imported_namespaces: Some(imported_namespaces),
+                    imported_type_registries: Some(imported_type_regs.clone()),
+                    imported_label_registries: Some(imported_label_regs),
+                    imported_value_schemes: Some(imported_value_schemes),
+                    imported_value_meta: Some(imported_value_meta),
+                    boundary_rules: Some(imported_boundary_rules),
+                    module_id: Some(module_id.clone()),
+                    source_file: Some(module.file_path.to_string_lossy().to_string()),
+                }),
+            )
+            .unwrap();
+
+            let extracted_type_registry =
+                extract_type_registry(&module.ast, &module.file_path, module_id);
+            compiled_schemes.insert(module_id.clone(), typecheck_result.declaration_schemes);
+            compiled_modules.insert(module_id.clone(), typecheck_result.declaration_types);
+            compiled_value_meta.insert(module_id.clone(), typecheck_result.declaration_meta);
+            label_registries.insert(module_id.clone(), typecheck_result.label_registry);
+            compiled_boundary_rules.extend(typecheck_result.boundary_rules);
+            type_registries.insert(module_id.clone(), extracted_type_registry);
+        }
+
+        panic!("config::test was not part of the featureFlagStorefront module graph");
     }
 }
 
@@ -1828,7 +2385,11 @@ fn get_module_output_path(module: &LoadedModule) -> PathBuf {
     use std::env;
     use std::fs;
 
-    if let Some(project) = module.project.clone() {
+    if let Some(project) = module
+        .output_project
+        .clone()
+        .or_else(|| module.project.clone())
+    {
         let path_str = module.id.replace("::", "/");
         return project
             .root

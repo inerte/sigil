@@ -301,6 +301,14 @@ impl TypeEnvironment {
             }
         }
 
+        if let Some(remapped_module_id) = self.remap_package_local_module_id(&module_id) {
+            if let Some(registry) = self.imported_type_registries.get(&remapped_module_id) {
+                if let Some(info) = registry.get(type_name) {
+                    return Some(info.clone());
+                }
+            }
+        }
+
         // Check parent scope
         self.parent
             .as_ref()?
@@ -316,6 +324,14 @@ impl TypeEnvironment {
         if let Some(registry) = self.imported_label_registries.get(&module_id) {
             if let Some(info) = registry.get(label_name) {
                 return Some(info.clone());
+            }
+        }
+
+        if let Some(remapped_module_id) = self.remap_package_local_module_id(&module_id) {
+            if let Some(registry) = self.imported_label_registries.get(&remapped_module_id) {
+                if let Some(info) = registry.get(label_name) {
+                    return Some(info.clone());
+                }
             }
         }
 
@@ -337,6 +353,14 @@ impl TypeEnvironment {
             }
         }
 
+        if let Some(remapped_module_id) = self.remap_package_local_module_id(&module_id) {
+            if let Some(registry) = self.imported_value_schemes.get(&remapped_module_id) {
+                if let Some(scheme) = registry.get(member_name) {
+                    return Some(instantiate_scheme(scheme));
+                }
+            }
+        }
+
         self.parent
             .as_ref()?
             .lookup_qualified_value(module_path, member_name)
@@ -351,31 +375,25 @@ impl TypeEnvironment {
         constructor_name: &str,
     ) -> Option<(String, Vec<String>, Variant, Vec<String>)> {
         let module_id = module_path.join("::");
+        let remapped_path = self
+            .remap_package_local_module_id(&module_id)
+            .map(|module_id| module_id.split("::").map(ToString::to_string).collect::<Vec<_>>());
+        let effective_path = remapped_path.as_deref().unwrap_or(module_path);
 
         if let Some(registry) = self.imported_type_registries.get(&module_id) {
-            let mut matches = Vec::new();
+            let matches = lookup_constructor_in_registry(registry, effective_path, constructor_name);
+            if !matches.is_empty() {
+                return (matches.len() == 1).then(|| matches.into_iter().next()).flatten();
+            }
+        }
 
-            for (type_name, info) in registry {
-                if let TypeDef::Sum(sum_type) = &info.definition {
-                    for variant in &sum_type.variants {
-                        if variant.name == constructor_name {
-                            matches.push((
-                                type_name.clone(),
-                                module_path.to_vec(),
-                                variant.clone(),
-                                info.type_params.clone(),
-                            ));
-                        }
-                    }
+        if let Some(remapped_module_id) = remapped_path.map(|path| path.join("::")) {
+            if let Some(registry) = self.imported_type_registries.get(&remapped_module_id) {
+                let matches =
+                    lookup_constructor_in_registry(registry, &remapped_module_id.split("::").map(ToString::to_string).collect::<Vec<_>>(), constructor_name);
+                if !matches.is_empty() {
+                    return (matches.len() == 1).then(|| matches.into_iter().next()).flatten();
                 }
-            }
-
-            if matches.len() == 1 {
-                return matches.into_iter().next();
-            }
-
-            if matches.len() > 1 {
-                return None;
             }
         }
 
@@ -395,6 +413,65 @@ impl TypeEnvironment {
         self.parent
             .as_ref()?
             .get_imported_module_type_names(module_id)
+    }
+
+    pub fn remap_package_local_module_id(&self, module_id: &str) -> Option<String> {
+        let current = self.module_id.as_deref()?;
+        let current_parts = current.split("::").collect::<Vec<_>>();
+        if current_parts.len() < 3 {
+            return None;
+        }
+
+        let package_name = current_parts[1];
+        let package_version = current_parts[2];
+        let parts = module_id.split("::").collect::<Vec<_>>();
+        if parts.is_empty() {
+            return None;
+        }
+
+        let remapped = match parts[0] {
+            "src" => {
+                if parts.len() == 2 && parts[1] == "package" {
+                    vec![
+                        "package".to_string(),
+                        package_name.to_string(),
+                        package_version.to_string(),
+                    ]
+                } else if parts.len() > 2 && parts[1] == "package" {
+                    [
+                        vec![
+                            "package".to_string(),
+                            package_name.to_string(),
+                            package_version.to_string(),
+                        ],
+                        parts[2..].iter().map(|segment| (*segment).to_string()).collect(),
+                    ]
+                    .concat()
+                } else {
+                    [
+                        vec![
+                            "package".to_string(),
+                            package_name.to_string(),
+                            package_version.to_string(),
+                        ],
+                        parts[1..].iter().map(|segment| (*segment).to_string()).collect(),
+                    ]
+                    .concat()
+                }
+            }
+            "config" => [
+                vec![
+                    "packageConfig".to_string(),
+                    package_name.to_string(),
+                    package_version.to_string(),
+                ],
+                parts[1..].iter().map(|segment| (*segment).to_string()).collect(),
+            ]
+            .concat(),
+            _ => return None,
+        };
+
+        Some(remapped.join("::"))
     }
 
     pub fn add_boundary_rule(&mut self, rule: BoundaryRule) {
@@ -684,6 +761,31 @@ pub fn collect_type_var_ids(typ: &InferenceType, ids: &mut HashSet<u32>) {
             }
         }
     }
+}
+
+fn lookup_constructor_in_registry(
+    registry: &HashMap<String, TypeInfo>,
+    module_path: &[String],
+    constructor_name: &str,
+) -> Vec<(String, Vec<String>, Variant, Vec<String>)> {
+    let mut matches = Vec::new();
+
+    for (type_name, info) in registry {
+        if let TypeDef::Sum(sum_type) = &info.definition {
+            for variant in &sum_type.variants {
+                if variant.name == constructor_name {
+                    matches.push((
+                        type_name.clone(),
+                        module_path.to_vec(),
+                        variant.clone(),
+                        info.type_params.clone(),
+                    ));
+                }
+            }
+        }
+    }
+
+    matches
 }
 
 impl Default for TypeEnvironment {

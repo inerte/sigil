@@ -41,10 +41,15 @@
     "/.sigil/"
   )
 
-λisManifestPath(path:String)=>Bool=(path="sigil.json" or §string.endsWith(
-  path,
-  "/sigil.json"
-)) and ¬isGeneratedPath(path)
+λisManifestPath(path:String)=>Bool=§string.startsWith(
+  "projects/",
+  path
+)
+  and §string.endsWith(
+    path,
+    "/sigil.json"
+  )
+  and ¬isGeneratedPath(path)
 
 λjsonObjectField(key:String,obj:{String↦§json.JsonValue})=>Option[{String↦§json.JsonValue}] match §json.getField(
   key,

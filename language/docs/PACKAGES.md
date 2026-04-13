@@ -28,6 +28,7 @@ Publishable packages require:
 Optional package files keep the existing canonical meanings:
 
 - `src/types.lib.sigil`
+- `src/flags.lib.sigil`
 - `src/effects.lib.sigil`
 - `src/topology.lib.sigil`
 - `tests/`
@@ -35,6 +36,19 @@ Optional package files keep the existing canonical meanings:
 
 `src/package.lib.sigil` is the package root API. Additional public modules are
 reached through nested package paths such as `☴router::matchers.segment`.
+That same nested public surface is how packages expose shared feature flags:
+
+```sigil expr
+§featureFlags.get(
+  context,
+  ☴featureFlagStorefrontFlags::flags.NewCheckout,
+  •config.flags
+)
+```
+
+`src/flags.lib.sigil` is therefore a natural place for internal shared flag
+contracts, while `src/package.lib.sigil` can still export helper constructors
+or context builders.
 
 ## Manifest Rules
 
@@ -83,7 +97,8 @@ default.
 - passing project tests before packaging
 - a valid public package surface
 - a successful local `npm pack`
-- a successful compile of the unpacked transport artifact
+- a successful compile of the unpacked transport artifact, including nested
+  public modules such as `flags`
 
 ## npm Transport
 
@@ -100,3 +115,8 @@ Sigil uses npm only as transport and publishing infrastructure.
 an ordered exact-path router with explicit `matched`, `methodNotAllowed`, and
 `notFound` outcomes. It exists to demonstrate package-tier design space, not to
 replace stdlib HTTP primitives.
+
+`projects/featureFlagStorefrontFlags/` is the first publishable example package whose main
+public surface is `src/flags.lib.sigil`. It demonstrates sharing typed
+`featureFlag` declarations across projects while letting each consuming app keep
+its own `config/<env>.lib.sigil` values.

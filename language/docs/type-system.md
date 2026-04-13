@@ -117,6 +117,33 @@ Compound forms:
 - functions: `λ(T1,T2,...)=>R`
 - named ADTs and aliases
 
+## Feature Flag Types
+
+First-class `featureFlag` declarations currently support:
+
+- `Bool`
+- named sum types
+
+Examples:
+
+```sigil module
+t CheckoutColor=Citrus()|Control()|Ocean()
+
+featureFlag NewCheckout:Bool
+  createdAt "2026-04-12T14-00-00Z"
+  default false
+
+featureFlag CheckoutColorChoice:CheckoutColor
+  createdAt "2026-04-12T14-00-00Z"
+  default Control()
+```
+
+Current rules:
+
+- the declared `default` must typecheck against the flag type
+- the default expression must be pure
+- flag descriptors are ordinary typed values and may be passed to `§featureFlags.get`
+
 ## Project Types
 
 In projects with `sigil.json`, project-defined named types live in

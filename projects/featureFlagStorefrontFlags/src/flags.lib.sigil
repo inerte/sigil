@@ -1,0 +1,15 @@
+featureFlag CheckoutColorChoice:µCheckoutColor
+  createdAt "2026-04-12T14-00-00Z"
+  default µControl()
+
+featureFlag EnableQuickSupport:Bool
+  createdAt "2026-04-12T14-00-00Z"
+  default false
+
+featureFlag NewCheckout:Bool
+  createdAt "2026-04-12T14-00-00Z"
+  default false
+
+featureFlag RecommendationLayoutChoice:µRecommendationLayout
+  createdAt "2026-04-12T14-00-00Z"
+  default µGrid()

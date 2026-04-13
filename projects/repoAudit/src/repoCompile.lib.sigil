@@ -30,6 +30,77 @@
   root
 )
 
+λcompilerCommandIgnoringProjects(ignoreProjectDirs:[String],root:String)=>§process.Command=§process.withCwd(
+  §process.command([
+    §path.join(
+      root,
+      "language/compiler/target/debug/sigil"
+    ),
+    "compile",
+    ".",
+    "--ignore",
+    ".git"
+  ]
+    ⧺§list.flatMap(
+      λ(projectDir:String)=>[String]=[
+        "--ignore",
+        projectDir
+      ],
+      ignoreProjectDirs
+    )
+    ⧺[
+      "--ignore-from",
+      ".gitignore"
+    ]),
+  root
+)
+
+λconfigProjectDirForConfig(path:String)=>String=§path.dirname(§path.dirname(path))
+
+λconfigProjectDirs(paths:[String])=>[String]=paths filter isTestConfigPath map configProjectDirForConfig
+
+λcontainsString(items:[String],value:String)=>Bool=§list.any(
+  λ(item:String)=>Bool=item=value,
+  items
+)
+
+λdependencyFieldPresent(path:String,root:String)=>!Fs Bool match §json.parse(§file.readText(§path.join(
+  root,
+  path
+))){
+  Ok(value)=>match §json.asObject(value){
+    Some(obj)=>match •packagePublishability.jsonObjectField(
+      "dependencies",
+      obj
+    ){
+      Some(deps)=>#deps>0|
+      None()=>false
+    }|
+    None()=>false
+  }|
+  Err(_)=>false
+}
+
+λdependencyProjectDirs(paths:[String],root:String)=>!Fs [String] match paths{
+  []=>[]|
+  [
+  head,
+  .tail
+]=>match dependencyFieldPresent(
+    head,
+    root
+  ){
+    true=>[•packagePublishability.projectDirForManifest(head)]⧺dependencyProjectDirs(
+      tail,
+      root
+    )|
+    false=>dependencyProjectDirs(
+      tail,
+      root
+    )
+  }
+}
+
 λfallbackCompileIssue(result:§process.ProcessResult)=>µRepoCompileIssue={
   message:"compile failed: "++processOutput(result),
   path:"."
@@ -50,6 +121,37 @@
   }
 }
 
+λinstallDependenciesCommand(projectDir:String,root:String)=>§process.Command=§process.withCwd(
+  §process.command([
+    §path.join(
+      root,
+      "language/compiler/target/debug/sigil"
+    ),
+    "package",
+    "install"
+  ]),
+  §path.join(
+    root,
+    projectDir
+  )
+)
+
+λisScratchPath(path:String)=>Bool=§string.startsWith(
+  "sigil-cli-package-",
+  path
+) or §string.startsWith(
+  "sigil-package-",
+  path
+)
+
+λisTestConfigPath(path:String)=>Bool=§string.startsWith(
+  "projects/",
+  path
+) and §string.endsWith(
+  path,
+  "/config/test.lib.sigil"
+)
+
 λjsonObjectField(key:String,obj:{String↦§json.JsonValue})=>Option[{String↦§json.JsonValue}] match §json.getField(
   key,
   obj
@@ -66,9 +168,34 @@
   None()=>None()
 }
 
+λmergeUnique(left:[String],right:[String])=>[String] match right{
+  []=>left|
+  [
+  head,
+  .tail
+]=>match containsString(
+    left,
+    head
+  ){
+    true=>mergeUnique(
+      left,
+      tail
+    )|
+    false=>mergeUnique(
+      left⧺[head],
+      tail
+    )
+  }
+}
+
 λoptionDefault(fallback:String,value:Option[String])=>String match value{
   Some(text)=>text|
   None()=>fallback
+}
+
+λpackageInstallIssue(projectDir:String,result:§process.ProcessResult)=>µRepoCompileIssue={
+  message:"package install failed: "++processOutput(result),
+  path:projectDir
 }
 
 λparseCompileIssue(output:String)=>Option[µRepoCompileIssue] match §json.parse(output){
@@ -102,16 +229,111 @@
   false=>§string.trim(result.stdout)
 }
 
+λprojectCompilerCommand(projectDir:String,root:String)=>§process.Command=§process.withCwd(
+  §process.command([
+    §path.join(
+      root,
+      "language/compiler/target/debug/sigil"
+    ),
+    "compile",
+    projectDir,
+    "--env",
+    "test"
+  ]),
+  root
+)
+
 λrunCheck()=>!AuditIo Result[
   [µRepoCompileIssue],
   String
 ] match gitTopLevel(){
-  Ok(root)=>{
-    l result=(§process.run(compilerCommand(root)):§process.ProcessResult);
-    match result.code=0{
-      true=>Ok([])|
-      false=>Ok([compileIssue(result)])
-    }
+  Ok(root)=>match •packagePublishability.gitTrackedFiles(){
+    Ok(paths)=>{
+      l configProjects=(configProjectDirs(paths):[String]);
+      l installIssues=(runDependencyInstalls(
+        dependencyProjectDirs(
+          •packagePublishability.manifestPaths(paths),
+          root
+        ),
+        root
+      ):[µRepoCompileIssue]);
+      match #installIssues=0{
+        true=>{
+          l result=(§process.run(compilerCommandIgnoringProjects(
+            (configProjects⧺scratchIgnoreDirs(paths):[String]),
+            root
+          )):§process.ProcessResult);
+          match result.code=0{
+            true=>Ok(runProjectCompiles(
+              configProjects,
+              root
+            ))|
+            false=>Ok([compileIssue(result)])
+          }
+        }|
+        false=>Ok(installIssues)
+      }
+    }|
+    Err(message)=>Err(message)
   }|
   Err(message)=>Err(message)
+}
+
+λrunDependencyInstalls(projectDirs:[String],root:String)=>!Process [µRepoCompileIssue] match projectDirs{
+  []=>[]|
+  [
+  head,
+  .tail
+]=>{
+    l result=(§process.run(installDependenciesCommand(
+      head,
+      root
+    )):§process.ProcessResult);
+    match result.code=0{
+      true=>runDependencyInstalls(
+        tail,
+        root
+      )|
+      false=>[packageInstallIssue(
+        head,
+        result
+      )]
+    }
+  }
+}
+
+λrunProjectCompiles(projectDirs:[String],root:String)=>!Process [µRepoCompileIssue] match projectDirs{
+  []=>[]|
+  [
+  head,
+  .tail
+]=>{
+    l result=(§process.run(projectCompilerCommand(
+      head,
+      root
+    )):§process.ProcessResult);
+    match result.code=0{
+      true=>runProjectCompiles(
+        tail,
+        root
+      )|
+      false=>[compileIssue(result)]
+    }
+  }
+}
+
+λscratchIgnoreDirs(paths:[String])=>[String]=mergeUnique(
+  [],
+  (paths filter isScratchPath map topLevelDir:[String])
+)
+
+λtopLevelDir(path:String)=>String match §string.split(
+  "/",
+  path
+){
+  []=>path|
+  [
+  head,
+  .tail
+]=>head
 }

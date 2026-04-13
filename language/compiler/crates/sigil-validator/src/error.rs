@@ -191,6 +191,12 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
+    #[error("SIGIL-CANON-FEATURE-FLAG-DECL: {message}")]
+    FeatureFlagDeclaration {
+        message: String,
+        location: SourceLocation,
+    },
+
     #[error("SIGIL-CANON-IDENTIFIER-FORM: value identifiers must be lowerCamelCase\n\nFound: {found}\nExpected form: lowerCamelCase{suggestion}")]
     IdentifierForm {
         found: String,
@@ -524,6 +530,7 @@ impl ValidationError {
             ValidationError::EffectDeclarationPlacement { location, .. } => *location,
             ValidationError::TypeDeclarationPlacement { location, .. } => *location,
             ValidationError::PolicyDeclarationPlacement { location, .. } => *location,
+            ValidationError::FeatureFlagDeclaration { location, .. } => *location,
             ValidationError::IdentifierForm { location, .. } => *location,
             ValidationError::TypeNameForm { location, .. } => *location,
             ValidationError::ConstructorNameForm { location, .. } => *location,
@@ -911,6 +918,13 @@ impl From<ValidationError> for Diagnostic {
 
             ValidationError::PolicyDeclarationPlacement { message, location } => Diagnostic::new(
                 codes::canonical::SOURCE_FORM,
+                SigilPhase::Canonical,
+                message,
+            )
+            .with_location(source_location_to_span(get_file(), location)),
+
+            ValidationError::FeatureFlagDeclaration { message, location } => Diagnostic::new(
+                codes::canonical::FEATURE_FLAG_DECLARATION,
                 SigilPhase::Canonical,
                 message,
             )

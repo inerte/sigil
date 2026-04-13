@@ -25,8 +25,11 @@ Without this split, runtime truth gets blurred together:
 Sigil prefers one explicit model:
 - `src/topology.lib.sigil` declares boundary handles and environment names
 - `src/policies.lib.sigil` declares boundary rules and trusted transforms for labelled data
-- `config/<env>.lib.sigil` exports the selected environment's `world`
+- `config/<env>.lib.sigil` exports the selected environment's `world` plus any
+  env-selected declarations such as `flags`
 - application code uses typed handles from `•topology`
+- application code may also read selected env declarations through
+  `•config.<name>`, for example `•config.flags`
 - only config modules may read `process.env`
 
 ## Canonical Project Shape
@@ -121,6 +124,16 @@ c world=(†runtime.world(
 ):†runtime.World)
 ```
 
+Config modules may also export selected env declarations for ordinary
+application code. These are reached through `•config.<name>` rather than
+through `•topology`.
+
+Canonical example:
+
+```sigil expr
+•config.flags
+```
+
 ## Application Code Uses Handles, Not Endpoints
 
 Canonical HTTP usage:
@@ -189,17 +202,20 @@ Example:
 
 ## `--env` Is Required
 
-Sigil does not guess a default environment for topology-aware work.
+Sigil does not guess a default environment for topology-aware or selected-config
+work.
 
 Use:
 
 ```bash
 sigil validate projects/topology-http --env test
 sigil run projects/topology-http/src/getClient.sigil --env test
+sigil run projects/featureFlagStorefront/src/main.sigil --env test
 sigil test projects/topology-http/tests --env test
 ```
 
-If topology is present and `--env` is missing, Sigil rejects the command.
+If topology is present, or if code reads `•config.<name>`, Sigil rejects the
+command when `--env` is missing.
 
 ## What Sigil Enforces
 
@@ -210,6 +226,7 @@ Compile-time:
 - label-aware filesystem, log, and process crossings use named `FsRoot`, `LogSink`, and `ProcessHandle` handles
 - raw endpoint usage is rejected
 - `process.env` is only allowed in `config/*.lib.sigil`
+- `•config.<name>` requires `--env <name>`
 
 Validate-time:
 - the selected environment must be declared in topology

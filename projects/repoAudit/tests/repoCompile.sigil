@@ -7,6 +7,14 @@
 
 test "compiler command uses repo relative output paths" {
   l command=(•repoCompile.compilerCommand("/repo"):§process.Command);
+  l installCommand=(•repoCompile.installDependenciesCommand(
+    "projects/featureFlagStorefront",
+    "/repo"
+  ):§process.Command);
+  l projectCommand=(•repoCompile.projectCompilerCommand(
+    "projects/featureFlagStorefront",
+    "/repo"
+  ):§process.Command);
   allOk([
     command.argv=[
       §path.join(
@@ -20,7 +28,50 @@ test "compiler command uses repo relative output paths" {
       "--ignore-from",
       ".gitignore"
     ],
+    •repoCompile.compilerCommandIgnoringProjects(
+      ["projects/featureFlagStorefront"],
+      "/repo"
+    ).argv=[
+      §path.join(
+        "/repo",
+        "language/compiler/target/debug/sigil"
+      ),
+      "compile",
+      ".",
+      "--ignore",
+      ".git",
+      "--ignore",
+      "projects/featureFlagStorefront",
+      "--ignore-from",
+      ".gitignore"
+    ],
     match command.cwd{
+      Some(cwd)=>cwd="/repo"|
+      None()=>false
+    },
+    installCommand.argv=[
+      §path.join(
+        "/repo",
+        "language/compiler/target/debug/sigil"
+      ),
+      "package",
+      "install"
+    ],
+    match installCommand.cwd{
+      Some(cwd)=>cwd="/repo/projects/featureFlagStorefront"|
+      None()=>false
+    },
+    projectCommand.argv=[
+      §path.join(
+        "/repo",
+        "language/compiler/target/debug/sigil"
+      ),
+      "compile",
+      "projects/featureFlagStorefront",
+      "--env",
+      "test"
+    ],
+    match projectCommand.cwd{
       Some(cwd)=>cwd="/repo"|
       None()=>false
     }
@@ -29,6 +80,17 @@ test "compiler command uses repo relative output paths" {
 
 test "process output prefers stderr then stdout" {
   allOk([
+    •repoCompile.isTestConfigPath("projects/featureFlagStorefront/config/test.lib.sigil"),
+    ¬•repoCompile.isTestConfigPath("projects/featureFlagStorefront/config/prod.lib.sigil"),
+    •repoCompile.scratchIgnoreDirs([
+      "sigil-cli-package-a/file.txt",
+      "sigil-cli-package-a/other.txt",
+      "sigil-package-b/out.txt",
+      "projects/demo/src/main.sigil"
+    ])=[
+      "sigil-cli-package-a",
+      "sigil-package-b"
+    ],
     •repoCompile.processOutput({
       code:1,
       stderr:" boom ",
@@ -84,8 +146,59 @@ test "fallback and helper none paths stay stable" {
     ){
       Some(_)=>false|
       None()=>true
+    },
+    •repoCompile.packageInstallIssue(
+      "projects/featureFlagStorefront",
+      {
+        code:1,
+        stderr:" boom ",
+        stdout:""
+      }
+    )={
+      message:"package install failed: boom",
+      path:"projects/featureFlagStorefront"
     }
   ])
+}
+
+test "dependency project detection reads non-empty dependency maps" =>!Fs world {
+  c fs=(†fs.sandbox(".local/repoCompile/dependencies"):†fs.FsEntry)
+} {
+  l _=(§file.makeDirs("projects/featureFlagStorefront"):Unit);
+  l _=(§file.makeDirs("projects/demo"):Unit);
+  l _=(§file.writeText(
+    "{
+  \"name\": \"featureFlagStorefront\",
+  \"version\": \"2026-04-12T14-30-00Z\",
+  \"dependencies\": {
+    \"featureFlagStorefrontFlags\": \"2026-04-12T14-00-00Z\"
+  }
+}
+",
+    "projects/featureFlagStorefront/sigil.json"
+  ):Unit);
+  l _=(§file.writeText(
+    "{
+  \"name\": \"demoApp\",
+  \"version\": \"2026-04-05T14-58-24Z\"
+}
+",
+    "projects/demo/sigil.json"
+  ):Unit);
+  •repoCompile.dependencyProjectDirs(
+    [
+      "projects/featureFlagStorefront/sigil.json",
+      "projects/demo/sigil.json"
+    ],
+    "."
+  )=["projects/featureFlagStorefront"] and •repoCompile.configProjectDirs([
+    "projects/featureFlagStorefront/config/test.lib.sigil",
+    "projects/featureFlagStorefront/config/prod.lib.sigil",
+    "projects/demo/config/test.lib.sigil"
+  ])=[
+    "projects/featureFlagStorefront",
+    "projects/demo"
+  ]
 }
 
 test "git top level surfaces process failure" =>!Process world {
@@ -147,6 +260,21 @@ test "run check succeeds under a controlled world" =>!AuditIo world {
     }
   ),
   †process.rule(
+    [
+      "git",
+      "ls-files",
+      "--cached",
+      "--others",
+      "--exclude-standard"
+    ],
+    None(),
+    {
+      code:0,
+      stderr:"",
+      stdout:""
+    }
+  ),
+  †process.rule(
     (•repoCompile.compilerCommand(".").argv:[String]),
     Some("."),
     {
@@ -180,6 +308,21 @@ test "run check reports compile failures from compiler json" =>!AuditIo world {
     }
   ),
   †process.rule(
+    [
+      "git",
+      "ls-files",
+      "--cached",
+      "--others",
+      "--exclude-standard"
+    ],
+    None(),
+    {
+      code:0,
+      stderr:"",
+      stdout:""
+    }
+  ),
+  †process.rule(
     (•repoCompile.compilerCommand(".").argv:[String]),
     Some("."),
     {
@@ -194,6 +337,234 @@ test "run check reports compile failures from compiler json" =>!AuditIo world {
     Ok(issues)=>issues=[{
       message:"compile failed: bad compile",
       path:"projects/demo/src/main.sigil"
+    }]|
+    Err(_)=>false
+  }
+}
+
+test "run check installs package dependencies before compiling" =>!AuditIo world {
+  c fs=(†fs.sandbox(".local/repoCompile/package-install"):†fs.FsEntry)
+  c process=(†process.fixture([
+  †process.rule(
+    [
+      "git",
+      "rev-parse",
+      "--show-toplevel"
+    ],
+    None(),
+    {
+      code:0,
+      stderr:"",
+      stdout:".
+"
+    }
+  ),
+  †process.rule(
+    [
+      "git",
+      "ls-files",
+      "--cached",
+      "--others",
+      "--exclude-standard"
+    ],
+    None(),
+    {
+      code:0,
+      stderr:"",
+      stdout:"projects/featureFlagStorefront/sigil.json
+projects/featureFlagStorefrontFlags/sigil.json
+"
+    }
+  ),
+  †process.rule(
+    (•repoCompile.installDependenciesCommand(
+      "projects/featureFlagStorefront",
+      "."
+    ).argv:[String]),
+    Some("projects/featureFlagStorefront"),
+    {
+      code:0,
+      stderr:"",
+      stdout:"{\"ok\":true}"
+    }
+  ),
+  †process.rule(
+    (•repoCompile.compilerCommand(".").argv:[String]),
+    Some("."),
+    {
+      code:0,
+      stderr:"",
+      stdout:""
+    }
+  )
+]):†process.ProcessEntry)
+} {
+  l _=(§file.makeDirs("projects/featureFlagStorefront"):Unit);
+  l _=(§file.makeDirs("projects/featureFlagStorefrontFlags"):Unit);
+  l _=(§file.writeText(
+    "{
+  \"name\": \"featureFlagStorefront\",
+  \"version\": \"2026-04-12T14-30-00Z\",
+  \"dependencies\": {
+    \"featureFlagStorefrontFlags\": \"2026-04-12T14-00-00Z\"
+  }
+}
+",
+    "projects/featureFlagStorefront/sigil.json"
+  ):Unit);
+  l _=(§file.writeText(
+    "{
+  \"name\": \"featureFlagStorefrontFlags\",
+  \"version\": \"2026-04-12T14-00-00Z\",
+  \"publish\": {}
+}
+",
+    "projects/featureFlagStorefrontFlags/sigil.json"
+  ):Unit);
+  match •repoCompile.runCheck(){
+    Ok(issues)=>issues=[]|
+    Err(_)=>false
+  }
+}
+
+test "run check compiles config aware projects with test env" =>!AuditIo world {
+  c fs=(†fs.sandbox(".local/repoCompile/config-aware"):†fs.FsEntry)
+  c process=(†process.fixture([
+  †process.rule(
+    [
+      "git",
+      "rev-parse",
+      "--show-toplevel"
+    ],
+    None(),
+    {
+      code:0,
+      stderr:"",
+      stdout:".
+"
+    }
+  ),
+  †process.rule(
+    [
+      "git",
+      "ls-files",
+      "--cached",
+      "--others",
+      "--exclude-standard"
+    ],
+    None(),
+    {
+      code:0,
+      stderr:"",
+      stdout:"projects/featureFlagStorefront/sigil.json
+projects/featureFlagStorefront/config/test.lib.sigil
+"
+    }
+  ),
+  †process.rule(
+    (•repoCompile.compilerCommandIgnoringProjects(
+      ["projects/featureFlagStorefront"],
+      "."
+    ).argv:[String]),
+    Some("."),
+    {
+      code:0,
+      stderr:"",
+      stdout:""
+    }
+  ),
+  †process.rule(
+    (•repoCompile.projectCompilerCommand(
+      "projects/featureFlagStorefront",
+      "."
+    ).argv:[String]),
+    Some("."),
+    {
+      code:0,
+      stderr:"",
+      stdout:""
+    }
+  )
+]):†process.ProcessEntry)
+} {
+  l _=(§file.makeDirs("projects/featureFlagStorefront"):Unit);
+  l _=(§file.writeText(
+    "{
+  \"name\": \"featureFlagStorefront\",
+  \"version\": \"2026-04-12T14-30-00Z\"
+}
+",
+    "projects/featureFlagStorefront/sigil.json"
+  ):Unit);
+  match •repoCompile.runCheck(){
+    Ok(issues)=>issues=[]|
+    Err(_)=>false
+  }
+}
+
+test "run check surfaces package install failures before compile" =>!AuditIo world {
+  c fs=(†fs.sandbox(".local/repoCompile/package-install-fail"):†fs.FsEntry)
+  c process=(†process.fixture([
+  †process.rule(
+    [
+      "git",
+      "rev-parse",
+      "--show-toplevel"
+    ],
+    None(),
+    {
+      code:0,
+      stderr:"",
+      stdout:".
+"
+    }
+  ),
+  †process.rule(
+    [
+      "git",
+      "ls-files",
+      "--cached",
+      "--others",
+      "--exclude-standard"
+    ],
+    None(),
+    {
+      code:0,
+      stderr:"",
+      stdout:"projects/featureFlagStorefront/sigil.json
+"
+    }
+  ),
+  †process.rule(
+    (•repoCompile.installDependenciesCommand(
+      "projects/featureFlagStorefront",
+      "."
+    ).argv:[String]),
+    Some("projects/featureFlagStorefront"),
+    {
+      code:1,
+      stderr:"install failed",
+      stdout:""
+    }
+  )
+]):†process.ProcessEntry)
+} {
+  l _=(§file.makeDirs("projects/featureFlagStorefront"):Unit);
+  l _=(§file.writeText(
+    "{
+  \"name\": \"featureFlagStorefront\",
+  \"version\": \"2026-04-12T14-30-00Z\",
+  \"dependencies\": {
+    \"featureFlagStorefrontFlags\": \"2026-04-12T14-00-00Z\"
+  }
+}
+",
+    "projects/featureFlagStorefront/sigil.json"
+  ):Unit);
+  match •repoCompile.runCheck(){
+    Ok(issues)=>issues=[{
+      message:"package install failed: install failed",
+      path:"projects/featureFlagStorefront"
     }]|
     Err(_)=>false
   }

@@ -10,6 +10,7 @@ Sigil CLI commands are machine-first. JSON is the default output mode for:
 - `sigilc inspect validate`
 - `sigilc inspect codegen`
 - `sigilc inspect world`
+- `sigil featureFlag audit`
 - `sigilc debug run`
 - `sigilc debug test`
 - `sigilc test`
@@ -74,6 +75,7 @@ Failures emit:
 
 `sigilc test` keeps a specialized top-level `summary` / `results` envelope.
 `sigilc inspect types`, `sigilc inspect proof`, `sigilc inspect validate`, `sigilc inspect codegen`, and `sigilc inspect world` use inspect-specific envelopes.
+`sigil featureFlag audit` uses a query-style envelope with `data.summary` and `data.flags`.
 `sigilc run` uses the `runEnvelope` schema in `--json` mode and for failure payloads.
 `sigilc debug run` and `sigilc debug test` use replay-backed debug envelopes with
 `data.session` and `data.snapshot`.
@@ -86,6 +88,7 @@ Use the current surfaces like this:
 - `sigil inspect types`: solved top-level declaration types plus named type inventory
 - `sigil inspect proof`: declared proof-bearing surfaces and branch gates
 - `sigil inspect world`: normalized runtime world for one project env
+- `sigil featureFlag audit`: first-class feature flag declarations, optionally filtered by age
 - `sigil inspect codegen`: generated TypeScript plus span-map summary
 - `sigil run --json`: one structured run success/failure envelope
 - `sigil run --json --trace [--trace-expr]`: bounded runtime trace
@@ -191,6 +194,37 @@ Each `sites[]` entry includes:
 - optional `patternSource` / `patternAst`
 
 This is currently a proof-surface inventory, not a full solver transcript.
+
+## Feature Flag Audit
+
+`sigil featureFlag audit [path]` reports first-class `featureFlag` declarations
+discovered under the target path.
+
+Current command-specific fields:
+
+- `data.input`
+- `data.summary`
+  - `discoveredFiles`
+  - `flags`
+  - `matched`
+  - `olderThanDays`
+- `data.flags`
+
+Each `data.flags[]` entry currently includes:
+
+- `name`
+- `type`
+- `createdAt`
+- `ageDays`
+- `file`
+- `line`
+
+Current filtering surface:
+
+- `sigil featureFlag audit`
+- `sigil featureFlag audit --older-than Nd`
+
+`Nd` uses a required `d` suffix such as `180d`.
 
 ## Run Failure Details
 

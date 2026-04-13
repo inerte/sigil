@@ -1,0 +1,70 @@
+λcheckoutColor(context:☴featureFlagStorefrontFlags::types.FlagContext,snapshot:§featureFlags.Set[☴featureFlagStorefrontFlags::types.FlagContext])=>String match §featureFlags.get(
+  context,
+  ☴featureFlagStorefrontFlags::flags.CheckoutColorChoice,
+  snapshot
+){
+  ☴featureFlagStorefrontFlags::types.Citrus()=>"citrus"|
+  ☴featureFlagStorefrontFlags::types.Control()=>"control"|
+  ☴featureFlagStorefrontFlags::types.Ocean()=>"ocean"
+}
+
+λcheckoutMode(context:☴featureFlagStorefrontFlags::types.FlagContext,snapshot:§featureFlags.Set[☴featureFlagStorefrontFlags::types.FlagContext])=>String match §featureFlags.get(
+  context,
+  ☴featureFlagStorefrontFlags::flags.NewCheckout,
+  snapshot
+){
+  true=>"new"|
+  false=>"classic"
+}
+
+λconfiguredView(context:☴featureFlagStorefrontFlags::types.FlagContext)=>µStorefrontView=view(
+  context,
+  •config.flags
+)
+
+λquickSupport(context:☴featureFlagStorefrontFlags::types.FlagContext,snapshot:§featureFlags.Set[☴featureFlagStorefrontFlags::types.FlagContext])=>Bool=§featureFlags.get(
+  context,
+  ☴featureFlagStorefrontFlags::flags.EnableQuickSupport,
+  snapshot
+)
+
+λrecommendationLayout(context:☴featureFlagStorefrontFlags::types.FlagContext,snapshot:§featureFlags.Set[☴featureFlagStorefrontFlags::types.FlagContext])=>String match §featureFlags.get(
+  context,
+  ☴featureFlagStorefrontFlags::flags.RecommendationLayoutChoice,
+  snapshot
+){
+  ☴featureFlagStorefrontFlags::types.Carousel()=>"carousel"|
+  ☴featureFlagStorefrontFlags::types.Grid()=>"grid"|
+  ☴featureFlagStorefrontFlags::types.List()=>"list"
+}
+
+λrender(page:µStorefrontView)=>String="checkout="
+  ++page.checkoutMode
+  ++"; color="
+  ++page.checkoutColor
+  ++"; quickSupport="
+  ++(match page.quickSupport{
+    true=>"true"|
+    false=>"false"
+  }:String)
+  ++"; layout="
+  ++page.recommendationLayout
+
+λview(context:☴featureFlagStorefrontFlags::types.FlagContext,snapshot:§featureFlags.Set[☴featureFlagStorefrontFlags::types.FlagContext])=>µStorefrontView={
+  checkoutColor:checkoutColor(
+    context,
+    snapshot
+  ),
+  checkoutMode:checkoutMode(
+    context,
+    snapshot
+  ),
+  quickSupport:quickSupport(
+    context,
+    snapshot
+  ),
+  recommendationLayout:recommendationLayout(
+    context,
+    snapshot
+  )
+}

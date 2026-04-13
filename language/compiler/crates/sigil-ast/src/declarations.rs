@@ -19,6 +19,8 @@ pub enum Declaration {
     Rule(RuleDecl),
     #[cfg_attr(feature = "serde", serde(rename = "EffectDecl"))]
     Effect(EffectDecl),
+    #[cfg_attr(feature = "serde", serde(rename = "FeatureFlagDecl"))]
+    FeatureFlag(FeatureFlagDecl),
     #[cfg_attr(feature = "serde", serde(rename = "ConstDecl"))]
     Const(ConstDecl),
     #[cfg_attr(feature = "serde", serde(rename = "TestDecl"))]
@@ -205,6 +207,21 @@ pub struct TypeAlias {
 pub struct EffectDecl {
     pub name: String,
     pub effects: Vec<String>,
+    pub location: SourceLocation,
+}
+
+/// Feature flag declaration: featureFlag NewCheckout:Bool createdAt "..." default false
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct FeatureFlagDecl {
+    pub name: String,
+    #[cfg_attr(feature = "serde", serde(rename = "flagType"))]
+    pub flag_type: Type,
+    #[cfg_attr(feature = "serde", serde(rename = "createdAt"))]
+    pub created_at: String,
+    #[cfg_attr(feature = "serde", serde(rename = "createdAtLocation"))]
+    pub created_at_location: SourceLocation,
+    pub default: Expr,
     pub location: SourceLocation,
 }
 

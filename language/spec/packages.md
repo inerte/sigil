@@ -20,6 +20,9 @@ This document specifies the current Sigil package model.
 - `src/package.lib.sigil` is the canonical package root module
 - `sigil.json.publish` is required if and only if `src/package.lib.sigil` exists
 - additional public modules are rooted beneath the package name, e.g. `☴router::matchers.segment`
+- `src/flags.lib.sigil` is the canonical project/package home for first-class
+  `featureFlag` declarations and may be consumed through nested public paths
+  such as `☴featureFlagStorefrontFlags::flags.NewCheckout`
 
 ## Commands
 
@@ -49,7 +52,8 @@ The package command family is:
 2. reject invalid public package imports
 3. require passing project tests before packaging
 4. produce a local npm transport archive
-5. unpack that archive and compile `src/package.lib.sigil`
+5. unpack that archive and compile the public package surface, including nested
+   public modules under `src/`
 
 ## Locking and Transport
 

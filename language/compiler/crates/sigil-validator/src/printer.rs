@@ -108,6 +108,9 @@ impl Printer {
             Declaration::Label(label_decl) => self.label_decl(label_decl, indent),
             Declaration::Rule(rule_decl) => self.rule_decl(rule_decl, indent),
             Declaration::Effect(effect_decl) => self.effect_decl(effect_decl, indent),
+            Declaration::FeatureFlag(feature_flag_decl) => {
+                self.feature_flag_decl(feature_flag_decl, indent)
+            }
             Declaration::Const(const_decl) => {
                 self.indent(indent);
                 self.push("c ");
@@ -221,6 +224,22 @@ impl Printer {
         if self.out.ends_with(' ') {
             self.out.pop();
         }
+    }
+
+    fn feature_flag_decl(&mut self, feature_flag_decl: &FeatureFlagDecl, indent: usize) {
+        self.indent(indent);
+        self.push("featureFlag ");
+        self.push(&feature_flag_decl.name);
+        self.push(":");
+        self.push(&self.type_text(&feature_flag_decl.flag_type));
+        self.newline();
+        self.indent(indent + 1);
+        self.push("createdAt ");
+        self.push(&string_literal(&feature_flag_decl.created_at));
+        self.newline();
+        self.indent(indent + 1);
+        self.push("default ");
+        self.push(&self.expr(&feature_flag_decl.default, indent + 1, 0));
     }
 
     fn label_decl(&mut self, label_decl: &LabelDecl, indent: usize) {
@@ -1108,6 +1127,9 @@ fn literal_text(literal: &LiteralExpr) -> String {
 fn module_path_text(module_path: &[String]) -> String {
     if module_path == ["src".to_string(), "types".to_string()] {
         return "µ".to_string();
+    }
+    if module_path == ["config".to_string()] {
+        return "•config".to_string();
     }
     if let Some((root, rest)) = module_path.split_first() {
         if let Some(sigl) = root_sigil(root) {

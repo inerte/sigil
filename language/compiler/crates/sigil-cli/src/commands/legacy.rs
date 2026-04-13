@@ -260,6 +260,7 @@ fn ast_declaration_summary(program: &Program) -> serde_json::Value {
     let mut types = 0usize;
     let mut effects = 0usize;
     let mut consts = 0usize;
+    let mut feature_flags = 0usize;
     let mut tests = 0usize;
     let mut externs = 0usize;
     let mut labels = 0usize;
@@ -272,6 +273,7 @@ fn ast_declaration_summary(program: &Program) -> serde_json::Value {
             Declaration::Type(_) => types += 1,
             Declaration::Effect(_) => effects += 1,
             Declaration::Const(_) => consts += 1,
+            Declaration::FeatureFlag(_) => feature_flags += 1,
             Declaration::Test(_) => tests += 1,
             Declaration::Extern(_) => externs += 1,
             Declaration::Label(_) => labels += 1,
@@ -286,6 +288,7 @@ fn ast_declaration_summary(program: &Program) -> serde_json::Value {
         "types": types,
         "effects": effects,
         "consts": consts,
+        "featureFlags": feature_flags,
         "tests": tests,
         "externs": externs,
         "labels": labels,
@@ -1256,6 +1259,15 @@ fn inspect_proof_sites(module: &AnalyzedModule) -> Vec<Value> {
                     &mut sites,
                 );
             }
+            Declaration::FeatureFlag(feature_flag_decl) => {
+                collect_expr_proof_sites(
+                    &feature_flag_decl.default,
+                    &source_file,
+                    "featureFlag",
+                    &feature_flag_decl.name,
+                    &mut sites,
+                );
+            }
             Declaration::Effect(_)
             | Declaration::Const(_)
             | Declaration::Extern(_)
@@ -1320,18 +1332,19 @@ fn inspect_proof_file_result(input: &Path, module: &AnalyzedModule) -> Value {
 
 fn inspect_proof_command(
     path: &Path,
+    selected_env: Option<&str>,
     ignore_paths: &[PathBuf],
     ignore_from: Option<&Path>,
 ) -> Result<(), CliError> {
     if path.is_dir() {
-        inspect_proof_directory_command(path, ignore_paths, ignore_from)
+        inspect_proof_directory_command(path, selected_env, ignore_paths, ignore_from)
     } else {
-        inspect_proof_single_file_command(path)
+        inspect_proof_single_file_command(path, selected_env)
     }
 }
 
-fn inspect_proof_single_file_command(file: &Path) -> Result<(), CliError> {
-    let graph = match ModuleGraph::build(file) {
+fn inspect_proof_single_file_command(file: &Path, selected_env: Option<&str>) -> Result<(), CliError> {
+    let graph = match ModuleGraph::build_with_env(file, selected_env) {
         Ok(graph) => graph,
         Err(error) => {
             output_inspect_error(
@@ -1387,6 +1400,7 @@ fn inspect_proof_single_file_command(file: &Path) -> Result<(), CliError> {
 
 fn inspect_proof_directory_command(
     path: &Path,
+    selected_env: Option<&str>,
     ignore_paths: &[PathBuf],
     ignore_from: Option<&Path>,
 ) -> Result<(), CliError> {
@@ -1433,7 +1447,7 @@ fn inspect_proof_directory_command(
             .first()
             .cloned()
             .unwrap_or_else(|| path.to_path_buf());
-        let graph = match ModuleGraph::build_many(&group.files) {
+        let graph = match ModuleGraph::build_many_with_env(&group.files, selected_env) {
             Ok(graph) => graph,
             Err(error) => {
                 let mut extra = serde_json::Map::new();
@@ -1702,10 +1716,14 @@ pub fn inspect_command(
     ignore_from: Option<&Path>,
 ) -> Result<(), CliError> {
     match mode {
-        InspectMode::Types => inspect_types_command(path, ignore_paths, ignore_from),
-        InspectMode::Proof => inspect_proof_command(path, ignore_paths, ignore_from),
-        InspectMode::Validate => inspect_validate_command(path, ignore_paths, ignore_from),
-        InspectMode::Codegen => inspect_codegen_command(path, ignore_paths, ignore_from),
+        InspectMode::Types => inspect_types_command(path, selected_env, ignore_paths, ignore_from),
+        InspectMode::Proof => inspect_proof_command(path, selected_env, ignore_paths, ignore_from),
+        InspectMode::Validate => {
+            inspect_validate_command(path, selected_env, ignore_paths, ignore_from)
+        }
+        InspectMode::Codegen => {
+            inspect_codegen_command(path, selected_env, ignore_paths, ignore_from)
+        }
         InspectMode::World => inspect_world_command(
             path,
             selected_env.expect("inspect world requires an environment"),
@@ -1715,18 +1733,19 @@ pub fn inspect_command(
 
 fn inspect_codegen_command(
     path: &Path,
+    selected_env: Option<&str>,
     ignore_paths: &[PathBuf],
     ignore_from: Option<&Path>,
 ) -> Result<(), CliError> {
     if path.is_dir() {
-        inspect_codegen_directory_command(path, ignore_paths, ignore_from)
+        inspect_codegen_directory_command(path, selected_env, ignore_paths, ignore_from)
     } else {
-        inspect_codegen_single_file_command(path)
+        inspect_codegen_single_file_command(path, selected_env)
     }
 }
 
-fn inspect_codegen_single_file_command(file: &Path) -> Result<(), CliError> {
-    let graph = match ModuleGraph::build(file) {
+fn inspect_codegen_single_file_command(file: &Path, selected_env: Option<&str>) -> Result<(), CliError> {
+    let graph = match ModuleGraph::build_with_env(file, selected_env) {
         Ok(graph) => graph,
         Err(error) => {
             output_inspect_error(
@@ -1788,6 +1807,7 @@ fn inspect_codegen_single_file_command(file: &Path) -> Result<(), CliError> {
 
 fn inspect_codegen_directory_command(
     path: &Path,
+    selected_env: Option<&str>,
     ignore_paths: &[PathBuf],
     ignore_from: Option<&Path>,
 ) -> Result<(), CliError> {
@@ -1834,7 +1854,7 @@ fn inspect_codegen_directory_command(
             .first()
             .cloned()
             .unwrap_or_else(|| path.to_path_buf());
-        let graph = match ModuleGraph::build_many(&group.files) {
+        let graph = match ModuleGraph::build_many_with_env(&group.files, selected_env) {
             Ok(graph) => graph,
             Err(error) => {
                 let mut extra = serde_json::Map::new();
@@ -1959,18 +1979,19 @@ fn inspect_codegen_directory_command(
 
 fn inspect_types_command(
     path: &Path,
+    selected_env: Option<&str>,
     ignore_paths: &[PathBuf],
     ignore_from: Option<&Path>,
 ) -> Result<(), CliError> {
     if path.is_dir() {
-        inspect_types_directory_command(path, ignore_paths, ignore_from)
+        inspect_types_directory_command(path, selected_env, ignore_paths, ignore_from)
     } else {
-        inspect_types_single_file_command(path)
+        inspect_types_single_file_command(path, selected_env)
     }
 }
 
-fn inspect_types_single_file_command(file: &Path) -> Result<(), CliError> {
-    let graph = match ModuleGraph::build(file) {
+fn inspect_types_single_file_command(file: &Path, selected_env: Option<&str>) -> Result<(), CliError> {
+    let graph = match ModuleGraph::build_with_env(file, selected_env) {
         Ok(graph) => graph,
         Err(error) => {
             output_inspect_error(
@@ -2026,6 +2047,7 @@ fn inspect_types_single_file_command(file: &Path) -> Result<(), CliError> {
 
 fn inspect_types_directory_command(
     path: &Path,
+    selected_env: Option<&str>,
     ignore_paths: &[PathBuf],
     ignore_from: Option<&Path>,
 ) -> Result<(), CliError> {
@@ -2072,7 +2094,7 @@ fn inspect_types_directory_command(
             .first()
             .cloned()
             .unwrap_or_else(|| path.to_path_buf());
-        let graph = match ModuleGraph::build_many(&group.files) {
+        let graph = match ModuleGraph::build_many_with_env(&group.files, selected_env) {
             Ok(graph) => graph,
             Err(error) => {
                 let mut extra = serde_json::Map::new();
@@ -2185,6 +2207,7 @@ fn inspect_types_directory_command(
 
 fn inspect_validate_command(
     path: &Path,
+    _selected_env: Option<&str>,
     ignore_paths: &[PathBuf],
     ignore_from: Option<&Path>,
 ) -> Result<(), CliError> {
@@ -3219,7 +3242,7 @@ fn build_run_target(
     replay_path: Option<&Path>,
     args: &[String],
 ) -> Result<RunTarget, CliError> {
-    let graph = ModuleGraph::build(file)?;
+    let graph = ModuleGraph::build_with_env(file, selected_env)?;
     let replay_mode = prepare_replay_mode(file, &graph, record_path, replay_path, args)?;
     let topology_prelude = if matches!(
         replay_mode.as_ref(),
@@ -4160,6 +4183,7 @@ fn build_test_replay_binding(
     path: &Path,
     test_files: &[PathBuf],
     match_filter: Option<&str>,
+    selected_env: Option<&str>,
 ) -> Result<(TestReplayArtifactRequest, ReplayArtifactBinding), CliError> {
     let requested_path = if path.exists() {
         canonicalize_existing_path(path)
@@ -4176,7 +4200,7 @@ fn build_test_replay_binding(
     let mut modules_by_id = BTreeMap::<String, ReplayArtifactModule>::new();
 
     for test_file in test_files {
-        let graph = ModuleGraph::build(test_file)?;
+        let graph = ModuleGraph::build_with_env(test_file, selected_env)?;
         for module in graph.modules.values() {
             let replay_module = ReplayArtifactModule {
                 module_id: module.id.clone(),
@@ -4302,10 +4326,12 @@ fn prepare_test_replay_mode(
     path: &Path,
     test_files: &[PathBuf],
     match_filter: Option<&str>,
+    selected_env: Option<&str>,
     record_path: Option<&Path>,
     replay_path: Option<&Path>,
 ) -> Result<Option<PreparedTestReplayMode>, CliError> {
-    let (request, binding) = build_test_replay_binding(path, test_files, match_filter)?;
+    let (request, binding) =
+        build_test_replay_binding(path, test_files, match_filter, selected_env)?;
 
     if let Some(record_path) = record_path {
         let artifact_file = resolve_run_artifact_path(record_path, true)?;
@@ -5231,7 +5257,7 @@ fn prepare_debug_test_execution(
     let artifact = read_test_replay_artifact(&artifact_file)?;
     let test_files = collect_sigil_files(path)?;
     let (request, binding) =
-        build_test_replay_binding(path, &test_files, artifact.request.match_filter.as_deref())?;
+        build_test_replay_binding(path, &test_files, artifact.request.match_filter.as_deref(), None)?;
     validate_test_replay_binding(path, &request, &binding, &artifact, &artifact_file)?;
     if !artifact.selected_test_ids.iter().any(|id| id == test_id) {
         return Err(CliError::Breakpoint {
@@ -5982,6 +6008,10 @@ fn output_run_error(file: &Path, error: &CliError, to_stderr: bool) {
             }),
             to_stderr,
         ),
+        CliError::ModuleGraph(ModuleGraphError::SelectedConfigEnvRequired)
+        | CliError::ModuleGraph(ModuleGraphError::SelectedConfigModuleNotFound { .. }) => {
+            output_run_message_error(file, &error.to_string(), to_stderr);
+        }
         CliError::ModuleGraph(ModuleGraphError::Lexer(message))
         | CliError::ModuleGraph(ModuleGraphError::Parser(message))
         | CliError::Lexer(message)
@@ -6131,6 +6161,10 @@ fn output_test_error(path: &Path, error: &CliError) {
                 .collect::<Vec<_>>()
                 .join("\n");
             output_test_message_error(path, &message);
+        }
+        CliError::ModuleGraph(ModuleGraphError::SelectedConfigEnvRequired)
+        | CliError::ModuleGraph(ModuleGraphError::SelectedConfigModuleNotFound { .. }) => {
+            output_test_message_error(path, &error.to_string());
         }
         CliError::ModuleGraph(ModuleGraphError::Lexer(message))
         | CliError::ModuleGraph(ModuleGraphError::Parser(message)) => {
@@ -6316,7 +6350,14 @@ pub fn test_command(
     // Collect all .sigil files in test directory
     let test_files = collect_sigil_files(path)?;
     let suite_replay_mode =
-        match prepare_test_replay_mode(path, &test_files, match_filter, record_path, replay_path) {
+        match prepare_test_replay_mode(
+            path,
+            &test_files,
+            match_filter,
+            selected_env,
+            record_path,
+            replay_path,
+        ) {
             Ok(mode) => mode,
             Err(error) => {
                 output_test_error(path, &error);
@@ -7465,7 +7506,7 @@ fn compile_and_run_tests(
     debug_options: &TestDebugOptions,
     suite_replay_mode: Option<&PreparedTestReplayMode>,
 ) -> Result<TestRunResult, CliError> {
-    let graph = ModuleGraph::build(file)?;
+    let graph = ModuleGraph::build_with_env(file, selected_env)?;
     let topology_prelude = if matches!(
         suite_replay_mode,
         Some(PreparedTestReplayMode::Replay { .. })

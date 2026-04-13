@@ -27,6 +27,7 @@ The Sigil standard library provides core utility functions and predicates for co
 - ✅ Time parsing/comparison/clock - `stdlib/time`
 - ✅ Terminal raw-mode input and cursor control - `stdlib/terminal`
 - ✅ URL parsing/query helpers - `stdlib/url`
+- ✅ Deterministic feature-flag evaluation - `stdlib/featureFlags`
 - ✅ Core prelude vocabulary (Option, Result) - `core/prelude` (implicit)
 - ✅ Length operator (`#`) - works on strings, lists, and maps
 
@@ -111,6 +112,46 @@ Sigil uses file-based visibility:
 - `.sigil` files are executable-oriented
 
 There is no `export` keyword.
+
+## Feature Flags
+
+`§featureFlags` is the canonical typed evaluation surface for first-class
+`featureFlag` declarations.
+
+Current public types:
+
+```sigil decl §featureFlags
+t Config[T,C]={key:Option[λ(C)=>Option[String]],overrides:{String↦T},rollout:Option[Rollout[T]],rules:[Rule[T,C]]}
+t Entry[C]
+t Flag[T]={createdAt:String,default:T,id:String}
+t Rollout[T]={percentage:Int,variants:[WeightedValue[T]]}
+t Rule[T,C]={predicate:λ(C)=>Bool,value:T}
+t Set[C]=[Entry[C]]
+t WeightedValue[T]={value:T,weight:Int}
+
+λentry[C,T](config:Config[T,C],flag:Flag[T])=>Entry[C]
+λget[C,T](context:C,flag:Flag[T],set:Set[C])=>T
+```
+
+Canonical usage:
+
+```sigil expr
+§featureFlags.get(
+  context,
+  ☴featureFlagStorefrontFlags::flags.NewCheckout,
+  •config.flags
+)
+```
+
+Current `§featureFlags.get` precedence is:
+
+1. explicit override for the resolved key
+2. first matching rule
+3. deterministic rollout for the resolved key
+4. declaration `default`
+
+`Entry[C]` and `Set[C]` let one config snapshot hold multiple flag value types
+while keeping the context type explicit.
 
 ## File, Path, Process, Random, JSON, Time, and URL
 

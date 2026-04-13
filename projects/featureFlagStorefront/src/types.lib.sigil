@@ -1,0 +1,6 @@
+t StorefrontView={
+  checkoutColor:String,
+  checkoutMode:String,
+  quickSupport:Bool,
+  recommendationLayout:String
+}

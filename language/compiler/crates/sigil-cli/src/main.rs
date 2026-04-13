@@ -14,8 +14,9 @@ mod project;
 
 use commands::{
     compile_command, debug_run_session_command, debug_run_start_command,
-    debug_test_session_command, debug_test_start_command, inspect_command, lex_command,
-    parse_command, run_command, test_command, validate_command, DebugControlAction,
+    debug_test_session_command, debug_test_start_command, feature_flag_audit_command,
+    inspect_command, lex_command, parse_command, run_command, test_command, validate_command,
+    DebugControlAction,
 };
 use package_manager::{
     package_add_command, package_install_command, package_list_command, package_publish_command,
@@ -74,6 +75,10 @@ enum Command {
         /// Load gitignore-style ignore rules from a file while compiling a directory
         #[arg(long = "ignore-from")]
         ignore_from: Option<PathBuf>,
+
+        /// Selected config environment for code that reads •config.<name>
+        #[arg(long)]
+        env: Option<String>,
     },
 
     /// Inspect compiler state for a Sigil file or directory
@@ -198,6 +203,13 @@ enum Command {
         env: String,
     },
 
+    /// Query first-class feature flag declarations
+    #[command(name = "featureFlag")]
+    FeatureFlag {
+        #[command(subcommand)]
+        command: FeatureFlagCommand,
+    },
+
     /// Manage Sigil packages
     Package {
         #[command(subcommand)]
@@ -225,6 +237,10 @@ enum InspectCommand {
         /// Load gitignore-style ignore rules from a file while inspecting a directory
         #[arg(long = "ignore-from")]
         ignore_from: Option<PathBuf>,
+
+        /// Selected config environment for code that reads •config.<name>
+        #[arg(long)]
+        env: Option<String>,
     },
 
     /// Inspect declared proof surfaces and branch facts
@@ -239,6 +255,10 @@ enum InspectCommand {
         /// Load gitignore-style ignore rules from a file while inspecting a directory
         #[arg(long = "ignore-from")]
         ignore_from: Option<PathBuf>,
+
+        /// Selected config environment for code that reads •config.<name>
+        #[arg(long)]
+        env: Option<String>,
     },
 
     /// Inspect canonical validation and printer output
@@ -253,6 +273,10 @@ enum InspectCommand {
         /// Load gitignore-style ignore rules from a file while inspecting a directory
         #[arg(long = "ignore-from")]
         ignore_from: Option<PathBuf>,
+
+        /// Selected config environment for code that reads •config.<name>
+        #[arg(long)]
+        env: Option<String>,
     },
 
     /// Inspect generated TypeScript and derived codegen outputs
@@ -267,6 +291,10 @@ enum InspectCommand {
         /// Load gitignore-style ignore rules from a file while inspecting a directory
         #[arg(long = "ignore-from")]
         ignore_from: Option<PathBuf>,
+
+        /// Selected config environment for code that reads •config.<name>
+        #[arg(long)]
+        env: Option<String>,
     },
 
     /// Inspect the resolved runtime world for one environment
@@ -337,6 +365,20 @@ enum PackageCommand {
 
     /// Validate the current package's local publishability
     Validate,
+}
+
+#[derive(Subcommand)]
+enum FeatureFlagCommand {
+    /// Audit feature flag declarations under one file or directory
+    Audit {
+        /// Input .sigil file or directory (default: current directory)
+        #[arg(default_value = ".")]
+        path: PathBuf,
+
+        /// Filter for flags older than Nd, for example 180d
+        #[arg(long = "older-than")]
+        older_than: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -485,22 +527,25 @@ fn main() {
             show_types,
             ignore,
             ignore_from,
+            env,
         } => compile_command(
             &path,
             output.as_deref(),
             show_types,
             &ignore,
             ignore_from.as_deref(),
+            env.as_deref(),
         ),
         Command::Inspect { command } => match command {
             InspectCommand::Types {
                 path,
                 ignore,
                 ignore_from,
+                env,
             } => inspect_command(
                 commands::InspectMode::Types,
                 &path,
-                None,
+                env.as_deref(),
                 &ignore,
                 ignore_from.as_deref(),
             ),
@@ -508,10 +553,11 @@ fn main() {
                 path,
                 ignore,
                 ignore_from,
+                env,
             } => inspect_command(
                 commands::InspectMode::Proof,
                 &path,
-                None,
+                env.as_deref(),
                 &ignore,
                 ignore_from.as_deref(),
             ),
@@ -519,10 +565,11 @@ fn main() {
                 path,
                 ignore,
                 ignore_from,
+                env,
             } => inspect_command(
                 commands::InspectMode::Validate,
                 &path,
-                None,
+                env.as_deref(),
                 &ignore,
                 ignore_from.as_deref(),
             ),
@@ -530,10 +577,11 @@ fn main() {
                 path,
                 ignore,
                 ignore_from,
+                env,
             } => inspect_command(
                 commands::InspectMode::Codegen,
                 &path,
-                None,
+                env.as_deref(),
                 &ignore,
                 ignore_from.as_deref(),
             ),
@@ -598,6 +646,11 @@ fn main() {
             replay.as_deref(),
         ),
         Command::Validate { path, env } => validate_command(&path, &env),
+        Command::FeatureFlag { command } => match command {
+            FeatureFlagCommand::Audit { path, older_than } => {
+                feature_flag_audit_command(&path, older_than.as_deref())
+            }
+        },
         Command::Package { command } => match command {
             PackageCommand::Add { name } => {
                 package_add_command(&std::env::current_dir().unwrap(), &name)

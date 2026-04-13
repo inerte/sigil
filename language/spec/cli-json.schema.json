@@ -13,6 +13,7 @@
     { "$ref": "#/$defs/inspectValidateEnvelope" },
     { "$ref": "#/$defs/inspectCodegenEnvelope" },
     { "$ref": "#/$defs/inspectWorldEnvelope" },
+    { "$ref": "#/$defs/featureFlagAuditEnvelope" },
     { "$ref": "#/$defs/runEnvelope" },
     { "$ref": "#/$defs/debugEnvelope" },
     { "$ref": "#/$defs/testEnvelope" }
@@ -932,6 +933,64 @@
           "properties": {
             "command": { "const": "sigilc inspect world" },
             "data": { "$ref": "#/$defs/inspectWorldData" }
+          },
+          "allOf": [
+            { "if": { "properties": { "ok": { "const": true } } }, "then": { "required": ["data"] } },
+            { "if": { "properties": { "ok": { "const": false } } }, "then": { "required": ["error"] } }
+          ]
+        }
+      ]
+    },
+    "featureFlagAuditFlag": {
+      "type": "object",
+      "required": ["name", "type", "createdAt", "ageDays", "file", "line"],
+      "properties": {
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "ageDays": { "type": "integer", "minimum": 0 },
+        "file": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "featureFlagAuditData": {
+      "type": "object",
+      "required": ["input", "summary", "flags"],
+      "properties": {
+        "input": { "type": "string" },
+        "summary": {
+          "type": "object",
+          "required": ["discoveredFiles", "flags", "matched", "olderThanDays"],
+          "properties": {
+            "discoveredFiles": { "type": "integer", "minimum": 0 },
+            "flags": { "type": "integer", "minimum": 0 },
+            "matched": { "type": "integer", "minimum": 0 },
+            "olderThanDays": {
+              "oneOf": [
+                { "type": "integer", "minimum": 1 },
+                { "type": "null" }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "flags": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/featureFlagAuditFlag" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "featureFlagAuditEnvelope": {
+      "allOf": [
+        { "$ref": "#/$defs/baseEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "command": { "const": "sigil featureFlag audit" },
+            "phase": { "const": "cli" },
+            "data": { "$ref": "#/$defs/featureFlagAuditData" }
           },
           "allOf": [
             { "if": { "properties": { "ok": { "const": true } } }, "then": { "required": ["data"] } },

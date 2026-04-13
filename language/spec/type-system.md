@@ -113,6 +113,34 @@ Constructed types:
 - `λ(T1,T2,...)=>R`
 - named ADTs and aliases
 
+## Feature Flag Types
+
+First-class `featureFlag` declarations currently allow:
+
+- `Bool`
+- named sum types
+
+Example:
+
+```sigil module
+t CheckoutColor=Citrus()|Control()|Ocean()
+
+featureFlag NewCheckout:Bool
+  createdAt "2026-04-12T14-00-00Z"
+  default false
+
+featureFlag CheckoutColorChoice:CheckoutColor
+  createdAt "2026-04-12T14-00-00Z"
+  default Control()
+```
+
+Rules:
+
+- the declared `default` must check against the flag type
+- the default expression must be pure
+- feature-flag declarations synthesize typed descriptor values usable through
+  `§featureFlags`
+
 ## Project-Defined Named Types
 
 In projects with `sigil.json`, project-defined named types live in

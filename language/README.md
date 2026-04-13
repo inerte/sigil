@@ -74,6 +74,8 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test -
 - Test bodies return `Bool`
 - Effectful tests declare effects explicitly
 - `config/<env>.lib.sigil` exports the baseline `world`
+- that same config module may also export selected env declarations such as
+  `flags`, available to app code as `•config.flags`
 - Tests may derive that world locally with `world { ... }`
 - `※observe` and `※check` inspect the active test world
 - `sigil test` enforces project `src/*.lib.sigil` surface coverage
@@ -152,6 +154,32 @@ transport and publish registry. The compiler derives the npm transport version
 canonically as `YYYYMMDD.HHMMSS.0`.
 
 See `docs/PACKAGES.md`.
+
+### Feature Flags
+
+Sigil now has first-class `featureFlag` declarations.
+
+Projects and publishable packages define them in `src/flags.lib.sigil`:
+
+```sigil module
+featureFlag NewCheckout:Bool
+  createdAt "2026-04-12T14-00-00Z"
+  default false
+```
+
+App code reads live values through `§featureFlags.get(...)` and an
+environment-selected config value such as `•config.flags`:
+
+```sigil expr
+§featureFlags.get(
+  context,
+  ☴featureFlagStorefrontFlags::flags.NewCheckout,
+  •config.flags
+)
+```
+
+The flag declaration is the shared typed contract. The selected
+`config/<env>.lib.sigil` decides the current rules, overrides, and rollout.
 
 Sigil also has a very small implicit core prelude:
 - `Option[T]`, `Result[T,E]`

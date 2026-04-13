@@ -1,0 +1,44 @@
+λmain()=>Unit=()
+
+test "feature flag defaults stay typed" {
+  •flags.NewCheckout.default=false
+    and •flags.EnableQuickSupport.default=false
+    and •flags.CheckoutColorChoice.default=µControl()
+    and •flags.RecommendationLayoutChoice.default=µGrid()
+}
+
+test "guest context keeps no user id" {
+  l guest=•package.guest(µUs());
+  guest.internal=false
+    and guest.site=µUs()
+    and (match guest.userId{
+      None()=>true|
+      Some(_)=>false
+    })
+}
+
+test "internal user marks context internal" {
+  l staff=•package.internalUser(
+    µBr(),
+    "staff-user"
+  );
+  staff.internal=true
+    and staff.site=µBr()
+    and (match staff.userId{
+      Some(id)=>id="staff-user"|
+      None()=>false
+    })
+}
+
+test "user keeps context non-internal" {
+  l shopper=•package.user(
+    µUs(),
+    "shopper"
+  );
+  shopper.internal=false
+    and shopper.site=µUs()
+    and (match shopper.userId{
+      Some(id)=>id="shopper"|
+      None()=>false
+    })
+}

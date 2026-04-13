@@ -252,6 +252,23 @@ pub(super) fn output_inspect_error(
                 extra_details,
             ),
         ),
+        CliError::ModuleGraph(ModuleGraphError::SelectedConfigEnvRequired)
+        | CliError::ModuleGraph(ModuleGraphError::SelectedConfigModuleNotFound { .. }) => {
+            let message = error.to_string();
+            let error_code = extract_error_code(&message);
+            output_json_error(
+                command,
+                phase_for_code(&error_code),
+                &error_code,
+                &message,
+                merge_json_details(
+                    json!({
+                        "file": file.to_string_lossy()
+                    }),
+                    extra_details,
+                ),
+            );
+        }
         CliError::ModuleGraph(ModuleGraphError::Lexer(message))
         | CliError::Lexer(message)
         | CliError::ModuleGraph(ModuleGraphError::Parser(message))

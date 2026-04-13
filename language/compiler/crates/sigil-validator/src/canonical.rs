@@ -883,6 +883,9 @@ fn validate_source_layout(
             Declaration::Const(const_decl) => {
                 validate_expr_layout(&const_decl.value, source, &mut errors);
             }
+            Declaration::FeatureFlag(feature_flag_decl) => {
+                validate_expr_layout(&feature_flag_decl.default, source, &mut errors);
+            }
             Declaration::Test(test_decl) => {
                 validate_expr_layout(&test_decl.body, source, &mut errors);
             }
@@ -946,6 +949,10 @@ pub fn validate_canonical_form_with_options(
     }
 
     if let Err(e) = validate_project_policy_declaration_placement(program, file_path) {
+        errors.extend(e);
+    }
+
+    if let Err(e) = validate_project_feature_flag_declaration_placement(program, file_path) {
         errors.extend(e);
     }
 
@@ -1821,6 +1828,9 @@ fn validate_record_field_ordering(program: &Program) -> Result<(), Vec<Validatio
             Declaration::Const(const_decl) => {
                 validate_expr_record_fields(&const_decl.value, &mut errors)
             }
+            Declaration::FeatureFlag(feature_flag_decl) => {
+                validate_expr_record_fields(&feature_flag_decl.default, &mut errors)
+            }
             Declaration::Test(test_decl) => {
                 validate_expr_record_fields(&test_decl.body, &mut errors)
             }
@@ -2143,6 +2153,10 @@ fn validate_no_shadowing(program: &Program) -> Result<(), Vec<ValidationError>> 
                 let mut scopes = Vec::new();
                 validate_expr_no_shadowing(&const_decl.value, &mut scopes, &mut errors);
             }
+            Declaration::FeatureFlag(feature_flag_decl) => {
+                let mut scopes = Vec::new();
+                validate_expr_no_shadowing(&feature_flag_decl.default, &mut scopes, &mut errors);
+            }
             Declaration::Test(test_decl) => {
                 let mut scopes = Vec::new();
                 validate_expr_no_shadowing(&test_decl.body, &mut scopes, &mut errors);
@@ -2170,6 +2184,7 @@ fn validate_no_duplicates(program: &Program) -> Result<(), Vec<ValidationError>>
     let mut type_names: HashMap<String, SourceLocation> = HashMap::new();
     let mut effect_names: HashMap<String, SourceLocation> = HashMap::new();
     let mut extern_names: HashMap<String, SourceLocation> = HashMap::new();
+    let mut feature_flag_names: HashMap<String, SourceLocation> = HashMap::new();
     let mut const_names: HashMap<String, SourceLocation> = HashMap::new();
     let mut function_names: HashMap<String, SourceLocation> = HashMap::new();
     let mut label_names: HashMap<String, SourceLocation> = HashMap::new();
@@ -2235,6 +2250,20 @@ fn validate_no_duplicates(program: &Program) -> Result<(), Vec<ValidationError>>
                     });
                 } else {
                     const_names.insert(name.clone(), *location);
+                }
+            }
+
+            Declaration::FeatureFlag(FeatureFlagDecl { name, location, .. }) => {
+                if let Some(first_loc) = feature_flag_names.get(name) {
+                    errors.push(ValidationError::DuplicateDeclaration {
+                        kind: "FEATURE-FLAG".to_string(),
+                        what: "feature flag".to_string(),
+                        name: name.clone(),
+                        location: *location,
+                        first_location: *first_loc,
+                    });
+                } else {
+                    feature_flag_names.insert(name.clone(), *location);
                 }
             }
 
@@ -2505,6 +2534,62 @@ fn validate_project_policy_declaration_placement(
                     errors.push(ValidationError::PolicyDeclarationPlacement {
                         message: "src/policies.lib.sigil may only contain rule and transform declarations"
                             .to_string(),
+                        location: *get_declaration_location(decl),
+                    });
+                }
+            }
+        }
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+fn validate_project_feature_flag_declaration_placement(
+    program: &Program,
+    file_path: Option<&str>,
+) -> Result<(), Vec<ValidationError>> {
+    let Some(path) = file_path else {
+        return Ok(());
+    };
+
+    if find_project_root(Path::new(path)).is_none() {
+        return Ok(());
+    }
+
+    let normalized_path = path.replace('\\', "/");
+    let is_flags_file = normalized_path.ends_with("/src/flags.lib.sigil");
+    let mut errors = Vec::new();
+
+    for decl in &program.declarations {
+        match decl {
+            Declaration::FeatureFlag(feature_flag_decl) => {
+                if !is_flags_file {
+                    errors.push(ValidationError::FeatureFlagDeclaration {
+                        message:
+                            "Project-defined feature flags must live in src/flags.lib.sigil"
+                                .to_string(),
+                        location: feature_flag_decl.location,
+                    });
+                } else if !is_canonical_timestamp(feature_flag_decl.created_at.as_str()) {
+                    errors.push(ValidationError::FeatureFlagDeclaration {
+                        message: format!(
+                            "featureFlag {} createdAt must use canonical UTC timestamp format YYYY-MM-DDTHH-mm-ssZ",
+                            feature_flag_decl.name
+                        ),
+                        location: feature_flag_decl.created_at_location,
+                    });
+                }
+            }
+            _ => {
+                if is_flags_file {
+                    errors.push(ValidationError::FeatureFlagDeclaration {
+                        message:
+                            "src/flags.lib.sigil may only contain featureFlag declarations"
+                                .to_string(),
                         location: *get_declaration_location(decl),
                     });
                 }
@@ -2827,6 +2912,7 @@ fn validate_no_unused_items(
         .filter_map(|decl| match decl {
             Declaration::Function(function_decl) => Some(function_decl.name.clone()),
             Declaration::Transform(transform_decl) => Some(transform_decl.function.name.clone()),
+            Declaration::FeatureFlag(feature_flag_decl) => Some(feature_flag_decl.name.clone()),
             Declaration::Const(const_decl) => Some(const_decl.name.clone()),
             _ => None,
         })
@@ -2936,6 +3022,31 @@ fn validate_no_unused_items(
                         location: const_decl.location,
                         summary: collect_const_usage_summary(
                             const_decl,
+                            &[],
+                            &top_level_values,
+                            &top_level_types,
+                            &top_level_effects,
+                            &constructor_to_type,
+                            &import_paths,
+                            &extern_paths,
+                        ),
+                    },
+                );
+            }
+            Declaration::FeatureFlag(feature_flag_decl) => {
+                let synthetic_const = ConstDecl {
+                    name: feature_flag_decl.name.clone(),
+                    type_annotation: Some(feature_flag_decl.flag_type.clone()),
+                    value: feature_flag_decl.default.clone(),
+                    location: feature_flag_decl.location,
+                };
+                values.insert(
+                    feature_flag_decl.name.clone(),
+                    NamedUsage {
+                        kind: "feature flag",
+                        location: feature_flag_decl.location,
+                        summary: collect_const_usage_summary(
+                            &synthetic_const,
                             &[],
                             &top_level_values,
                             &top_level_types,
@@ -4894,6 +5005,20 @@ fn validate_naming_forms(program: &Program, errors: &mut Vec<ValidationError>) {
                     });
                 }
             }
+            Declaration::FeatureFlag(feature_flag_decl) => {
+                if !is_upper_camel_case(&feature_flag_decl.name) {
+                    errors.push(ValidationError::TypeNameForm {
+                        found: feature_flag_decl.name.clone(),
+                        suggestion: suggestion_suffix(
+                            &feature_flag_decl.name,
+                            to_upper_camel_case(&feature_flag_decl.name),
+                        ),
+                        location: feature_flag_decl.location,
+                    });
+                }
+                validate_identifier_forms_in_type(&feature_flag_decl.flag_type, errors);
+                validate_identifier_forms_in_expr(&feature_flag_decl.default, errors);
+            }
             Declaration::Const(const_decl) => {
                 if !is_lower_camel_case(&const_decl.name) {
                     errors.push(ValidationError::IdentifierForm {
@@ -6072,6 +6197,9 @@ fn collect_filter_then_count_errors(program: &Program, errors: &mut Vec<Validati
             Declaration::Const(const_decl) => {
                 collect_filter_then_count_in_expr(&const_decl.value, errors)
             }
+            Declaration::FeatureFlag(feature_flag_decl) => {
+                collect_filter_then_count_in_expr(&feature_flag_decl.default, errors)
+            }
             Declaration::Test(test_decl) => {
                 collect_filter_then_count_in_expr(&test_decl.body, errors)
             }
@@ -6952,11 +7080,12 @@ fn validate_category_boundaries(declarations: &[Declaration]) -> Result<(), Vec<
             Declaration::Type(_) => 1,
             Declaration::Effect(_) => 2,
             Declaration::Extern(_) => 3,
-            Declaration::Const(_) => 4,
-            Declaration::Transform(_) => 5,
-            Declaration::Function(_) => 6,
-            Declaration::Rule(_) => 7,
-            Declaration::Test(_) => 8,
+            Declaration::FeatureFlag(_) => 4,
+            Declaration::Const(_) => 5,
+            Declaration::Transform(_) => 6,
+            Declaration::Function(_) => 7,
+            Declaration::Rule(_) => 8,
+            Declaration::Test(_) => 9,
         }
     };
 
@@ -6971,6 +7100,7 @@ fn validate_category_boundaries(declarations: &[Declaration]) -> Result<(), Vec<
                 "type",
                 "effect",
                 "extern",
+                "featureFlag",
                 "const",
                 "transform",
                 "function",
@@ -6982,6 +7112,7 @@ fn validate_category_boundaries(declarations: &[Declaration]) -> Result<(), Vec<
                 "t",
                 "effect",
                 "e",
+                "featureFlag",
                 "c",
                 "transform",
                 "λ",
@@ -6993,7 +7124,7 @@ fn validate_category_boundaries(declarations: &[Declaration]) -> Result<(), Vec<
                 message: format!(
                     "SIGIL-CANON-DECL-CATEGORY-ORDER: Wrong category position\n\
                      Found: {} ({}) at line {}\n\
-                     Category order: label => t => effect => e => c => transform => λ => rule => test",
+                     Category order: label => t => effect => e => featureFlag => c => transform => λ => rule => test",
                     category_symbols[current_index as usize],
                     category_names[current_index as usize],
                     get_declaration_location(decl).start.line
@@ -7075,9 +7206,32 @@ fn get_declaration_location(decl: &Declaration) -> &SourceLocation {
         Declaration::Rule(RuleDecl { location, .. }) => location,
         Declaration::Effect(EffectDecl { location, .. }) => location,
         Declaration::Extern(ExternDecl { location, .. }) => location,
+        Declaration::FeatureFlag(FeatureFlagDecl { location, .. }) => location,
         Declaration::Const(ConstDecl { location, .. }) => location,
         Declaration::Transform(TransformDecl { function, .. }) => &function.location,
         Declaration::Function(FunctionDecl { location, .. }) => location,
         Declaration::Test(TestDecl { location, .. }) => location,
     }
+}
+
+fn is_canonical_timestamp(value: &str) -> bool {
+    if value.len() != 20 {
+        return false;
+    }
+
+    let bytes = value.as_bytes();
+    const DIGIT_POSITIONS: [usize; 14] = [0, 1, 2, 3, 5, 6, 8, 9, 11, 12, 14, 15, 17, 18];
+    if !DIGIT_POSITIONS
+        .iter()
+        .all(|index| bytes[*index].is_ascii_digit())
+    {
+        return false;
+    }
+
+    bytes[4] == b'-'
+        && bytes[7] == b'-'
+        && bytes[10] == b'T'
+        && bytes[13] == b'-'
+        && bytes[16] == b'-'
+        && bytes[19] == b'Z'
 }

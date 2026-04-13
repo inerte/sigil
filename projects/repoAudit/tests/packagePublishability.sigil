@@ -11,7 +11,7 @@ test "helper surfaces stay stable" {
     "/repo"
   ):§process.Command);
   allOk([
-    •packagePublishability.isManifestPath("sigil.json"),
+    ¬•packagePublishability.isManifestPath("sigil.json"),
     ¬•packagePublishability.isManifestPath(".sigil/tmp/sigil.json"),
     ¬•packagePublishability.isManifestPath("projects/router/.sigil/tmp/package/sigil.json"),
     ¬•packagePublishability.isManifestPath(".local/tmp/sigil.json"),

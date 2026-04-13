@@ -6,6 +6,7 @@ use crate::project::{
     get_project_config, package_version_fragment, validate_project_default_entrypoint,
     ProjectConfig, ProjectConfigError,
 };
+use sigil_diagnostics::codes;
 use sigil_ast::{
     ConcurrentStep, Declaration, Expr, LabelRef, MemberRef, Pattern, Program, RecordPatternField,
     RuleAction, Type, TypeDef,
@@ -54,6 +55,18 @@ pub enum ModuleGraphError {
         expected_path: String,
     },
 
+    #[error(
+        "{}: selected config root `•config` requires --env <name>",
+        codes::cli::CONFIG_ENV_REQUIRED
+    )]
+    SelectedConfigEnvRequired,
+
+    #[error(
+        "{}: selected config root `•config` expected config/{env}.lib.sigil",
+        codes::cli::CONFIG_MODULE_NOT_FOUND
+    )]
+    SelectedConfigModuleNotFound { env: String, expected_path: String },
+
     #[error(transparent)]
     ProjectConfig(#[from] ProjectConfigError),
 }
@@ -81,7 +94,14 @@ pub struct PackageInstance {
 
 impl ModuleGraph {
     pub fn build(entry_file: &Path) -> Result<Self, ModuleGraphError> {
-        let mut builder = ModuleGraphBuilder::new();
+        Self::build_with_env(entry_file, None)
+    }
+
+    pub fn build_with_env(
+        entry_file: &Path,
+        selected_env: Option<&str>,
+    ) -> Result<Self, ModuleGraphError> {
+        let mut builder = ModuleGraphBuilder::new(selected_env);
         builder.visit(entry_file, None, None, None, None)?;
         Ok(ModuleGraph {
             modules: builder.modules,
@@ -90,7 +110,14 @@ impl ModuleGraph {
     }
 
     pub fn build_many(entry_files: &[PathBuf]) -> Result<Self, ModuleGraphError> {
-        let mut builder = ModuleGraphBuilder::new();
+        Self::build_many_with_env(entry_files, None)
+    }
+
+    pub fn build_many_with_env(
+        entry_files: &[PathBuf],
+        selected_env: Option<&str>,
+    ) -> Result<Self, ModuleGraphError> {
+        let mut builder = ModuleGraphBuilder::new(selected_env);
         let mut sorted_entries = entry_files.to_vec();
         sorted_entries.sort();
         for entry_file in sorted_entries {
@@ -116,16 +143,18 @@ struct ModuleGraphBuilder {
     visiting: HashSet<String>,
     visit_stack: Vec<String>,
     validated_projects: HashSet<PathBuf>,
+    selected_env: Option<String>,
 }
 
 impl ModuleGraphBuilder {
-    fn new() -> Self {
+    fn new(selected_env: Option<&str>) -> Self {
         Self {
             modules: HashMap::new(),
             topo_order: Vec::new(),
             visiting: HashSet::new(),
             visit_stack: Vec::new(),
             validated_projects: HashSet::new(),
+            selected_env: selected_env.map(ToString::to_string),
         }
     }
 
@@ -210,6 +239,7 @@ impl ModuleGraphBuilder {
                 project.as_ref(),
                 output_project.as_ref(),
                 inherited_package_instance.as_ref(),
+                self.selected_env.as_deref(),
                 "core::prelude",
             )?;
             if resolved.file_path.exists() {
@@ -236,6 +266,7 @@ impl ModuleGraphBuilder {
                 project.as_ref(),
                 output_project.as_ref(),
                 inherited_package_instance.as_ref(),
+                self.selected_env.as_deref(),
                 &module_id,
             )?;
 
@@ -297,6 +328,7 @@ fn is_sigil_import_path(module_path: &str) -> bool {
         || module_path.starts_with("test::")
         || module_path.starts_with("src::")
         || module_path.starts_with("config::")
+        || module_path == "config"
         || module_path.starts_with("package::")
 }
 
@@ -358,6 +390,11 @@ fn collect_declaration_modules(declaration: &Declaration, modules: &mut HashSet<
             }
         }
         Declaration::Effect(_) => {}
+        Declaration::FeatureFlag(feature_flag_decl) => {
+            modules.insert("stdlib::featureFlags".to_string());
+            collect_type_modules(&feature_flag_decl.flag_type, modules);
+            collect_expr_modules(&feature_flag_decl.default, modules);
+        }
         Declaration::Const(const_decl) => {
             if let Some(type_annotation) = &const_decl.type_annotation {
                 collect_type_modules(type_annotation, modules);
@@ -859,12 +896,39 @@ fn resolve_sigil_import(
     importer_project: Option<&ProjectConfig>,
     importer_output_project: Option<&ProjectConfig>,
     importer_package_instance: Option<&PackageInstance>,
+    selected_env: Option<&str>,
     module_id: &str,
 ) -> Result<ResolvedImport, ModuleGraphError> {
     // Convert module ID (with :: separators) to file path
     let file_path_str = module_id.replace("::", "/");
 
-    if module_id.starts_with("src::") || module_id.starts_with("config::") {
+    if module_id == "config" {
+        let project = importer_project.ok_or_else(|| ModuleGraphError::ImportNotFound {
+            module_id: module_id.to_string(),
+            expected_path: "project not found".to_string(),
+        })?;
+        let env = selected_env.ok_or(ModuleGraphError::SelectedConfigEnvRequired)?;
+        let file_path = project.root.join("config").join(format!("{env}.lib.sigil"));
+        if !file_path.exists() {
+            return Err(ModuleGraphError::SelectedConfigModuleNotFound {
+                env: env.to_string(),
+                expected_path: file_path.to_string_lossy().to_string(),
+            });
+        }
+        let resolved_module_id = if let Some(package_instance) = importer_package_instance {
+            internal_project_module_id(package_instance, &format!("config::{env}"))?
+        } else {
+            format!("config::{env}")
+        };
+
+        Ok(ResolvedImport {
+            module_id: resolved_module_id,
+            file_path,
+            project: Some(project.clone()),
+            output_project: importer_output_project.cloned(),
+            package_instance: importer_package_instance.cloned(),
+        })
+    } else if module_id.starts_with("src::") || module_id.starts_with("config::") {
         // Project module reference
         let project = importer_project.ok_or_else(|| ModuleGraphError::ImportNotFound {
             module_id: module_id.to_string(),

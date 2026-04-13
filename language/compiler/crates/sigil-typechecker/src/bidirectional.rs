@@ -32,9 +32,10 @@ use sigil_solver::{
     SolverOutcome, SymbolPath, SymbolPathStep,
 };
 use sigil_ast::{
-    BinaryOperator, Declaration, Expr, FunctionDecl, LabelRef, LiteralType, LiteralValue,
-    MemberRef, PrimitiveName, Program, RuleAction, RuleDecl, SourceLocation, TransformDecl, Type,
-    TypeDecl, TypeDef, UnaryOperator,
+    BinaryOperator, Declaration, Expr, FeatureFlagDecl, FunctionDecl, LabelRef, LiteralExpr,
+    LiteralType, LiteralValue, MemberRef, PrimitiveName, Program, QualifiedType, RecordExpr,
+    RecordField, RuleAction, RuleDecl, SourceLocation, TransformDecl, Type, TypeDecl, TypeDef,
+    UnaryOperator,
 };
 use sigil_diagnostics::codes;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
@@ -375,6 +376,26 @@ pub fn type_check(
                     types.insert(const_decl.name.clone(), const_type);
                 }
 
+                Declaration::FeatureFlag(feature_flag_decl) => {
+                    let flag_value_type =
+                        ast_type_to_inference_type_resolved(&env, None, &feature_flag_decl.flag_type)?;
+                    validate_feature_flag_value_type(
+                        &env,
+                        &feature_flag_decl.name,
+                        &flag_value_type,
+                        feature_flag_decl.location,
+                    )?;
+                    let flag_type = feature_flag_descriptor_type(&feature_flag_decl.flag_type);
+                    let inferred_flag_type =
+                        ast_type_to_inference_type_resolved(&env, None, &flag_type)?;
+                    env.bind_with_meta(
+                        feature_flag_decl.name.clone(),
+                        inferred_flag_type.clone(),
+                        BindingMeta::default(),
+                    );
+                    types.insert(feature_flag_decl.name.clone(), inferred_flag_type);
+                }
+
                 Declaration::Extern(extern_decl) => {
                     let namespace_name = extern_decl.module_path.join("::");
 
@@ -445,6 +466,10 @@ pub fn type_check(
                 typed_declarations.push(TypedDeclaration::Const(build_typed_const_decl(
                     &env, const_decl,
                 )?));
+            } else if let Declaration::FeatureFlag(feature_flag_decl) = decl {
+                typed_declarations.push(TypedDeclaration::Const(
+                    build_typed_feature_flag_decl(&env, feature_flag_decl)?,
+                ));
             } else if let Declaration::Type(type_decl) = decl {
                 typed_declarations.push(TypedDeclaration::Type(TypedTypeDecl {
                     ast: type_decl.clone(),
@@ -725,18 +750,25 @@ fn resolve_qualified_type(
     type_param_env: Option<&TypeParamEnv>,
     qualified: &sigil_ast::QualifiedType,
 ) -> Result<InferenceType, TypeError> {
-    let module_id = qualified.module_path.join("::");
-    let type_info = env.lookup_qualified_type(&qualified.module_path, &qualified.type_name);
+    let requested_module_id = qualified.module_path.join("::");
+    let resolved_module_id = env
+        .remap_package_local_module_id(&requested_module_id)
+        .unwrap_or_else(|| requested_module_id.clone());
+    let resolved_module_path = resolved_module_id
+        .split("::")
+        .map(ToString::to_string)
+        .collect::<Vec<_>>();
+    let type_info = env.lookup_qualified_type(&resolved_module_path, &qualified.type_name);
 
     let Some(type_info) = type_info else {
-        if let Some(available_types) = env.get_imported_module_type_names(&module_id) {
+        if let Some(available_types) = env.get_imported_module_type_names(&resolved_module_id) {
             if !available_types.is_empty() {
                 return Err(TypeError::new(
                     format!(
                         "Undefined type: {}.{}\n\nModule '{}' is referenced here, but it does not export a type named '{}'.\n\nAvailable exported types:\n{}",
-                        module_id,
+                        resolved_module_id,
                         qualified.type_name,
-                        module_id,
+                        resolved_module_id,
                         qualified.type_name,
                         available_types
                             .iter()
@@ -752,7 +784,7 @@ fn resolve_qualified_type(
         return Err(TypeError::new(
             format!(
                 "Module '{}' is unavailable or does not export any types.",
-                module_id
+                resolved_module_id
             ),
             Some(qualified.location),
         ));
@@ -781,7 +813,7 @@ fn resolve_qualified_type(
         ));
     }
 
-    let qualified_name = format!("{}.{}", module_id, qualified.type_name);
+    let qualified_name = format!("{}.{}", resolved_module_id, qualified.type_name);
     if type_info.type_params.is_empty() {
         if type_info.constraint.is_some() {
             return Ok(InferenceType::Constructor(TConstructor {
@@ -2604,6 +2636,10 @@ fn validate_declaration_surface_types(decl: &Declaration) -> Result<(), TypeErro
             }
         },
         Declaration::Effect(_) => Ok(()),
+        Declaration::FeatureFlag(feature_flag_decl) => {
+            validate_surface_type(&feature_flag_decl.flag_type)?;
+            validate_expr_surface_types(&feature_flag_decl.default)
+        }
         Declaration::Transform(transform_decl) => {
             validate_declaration_surface_types(&Declaration::Function(
                 transform_decl.function.clone(),
@@ -3460,6 +3496,172 @@ fn build_typed_const_decl(
         value,
         location: const_decl.location,
     })
+}
+
+fn build_typed_feature_flag_decl(
+    env: &TypeEnvironment,
+    feature_flag_decl: &FeatureFlagDecl,
+) -> Result<TypedConstDecl, TypeError> {
+    let expected_value_type =
+        ast_type_to_inference_type_resolved(env, None, &feature_flag_decl.flag_type)?;
+    check(env, &feature_flag_decl.default, &expected_value_type).map_err(|error| {
+        TypeError::new(
+            format!(
+                "featureFlag '{}' default value mismatch: {}",
+                feature_flag_decl.name, error.message
+            ),
+            error.location.or(Some(feature_flag_decl.location)),
+        )
+    })?;
+
+    let value = build_typed_expr(env, &feature_flag_decl.default)?;
+    if !value.effects.is_empty() {
+        return Err(TypeError::new(
+            format!(
+                "featureFlag '{}' default value must be pure",
+                feature_flag_decl.name
+            ),
+            Some(feature_flag_decl.location),
+        ));
+    }
+
+    let descriptor_type = feature_flag_descriptor_type(&feature_flag_decl.flag_type);
+    let synthetic_decl = sigil_ast::ConstDecl {
+        name: feature_flag_decl.name.clone(),
+        type_annotation: Some(descriptor_type),
+        value: synthetic_feature_flag_expr(env, feature_flag_decl),
+        location: feature_flag_decl.location,
+    };
+    build_typed_const_decl(env, &synthetic_decl)
+}
+
+fn synthetic_feature_flag_expr(env: &TypeEnvironment, feature_flag_decl: &FeatureFlagDecl) -> Expr {
+    let location = feature_flag_decl.location;
+    let id = feature_flag_runtime_id(env.module_id(), &feature_flag_decl.name);
+    Expr::Record(RecordExpr {
+        fields: vec![
+            RecordField {
+                name: "createdAt".to_string(),
+                value: Expr::Literal(LiteralExpr {
+                    value: LiteralValue::String(feature_flag_decl.created_at.clone()),
+                    literal_type: LiteralType::String,
+                    location: feature_flag_decl.created_at_location,
+                }),
+                location: feature_flag_decl.created_at_location,
+            },
+            RecordField {
+                name: "default".to_string(),
+                value: feature_flag_decl.default.clone(),
+                location: expr_location(&feature_flag_decl.default),
+            },
+            RecordField {
+                name: "id".to_string(),
+                value: Expr::Literal(LiteralExpr {
+                    value: LiteralValue::String(id),
+                    literal_type: LiteralType::String,
+                    location,
+                }),
+                location,
+            },
+        ],
+        location,
+    })
+}
+
+fn feature_flag_descriptor_type(flag_type: &Type) -> Type {
+    Type::Qualified(QualifiedType {
+        module_path: vec!["stdlib".to_string(), "featureFlags".to_string()],
+        type_name: "Flag".to_string(),
+        type_args: vec![flag_type.clone()],
+        location: type_location(flag_type),
+    })
+}
+
+fn validate_feature_flag_value_type(
+    env: &TypeEnvironment,
+    flag_name: &str,
+    typ: &InferenceType,
+    location: SourceLocation,
+) -> Result<(), TypeError> {
+    let normalized = env.normalize_type(typ);
+    let is_allowed = matches!(
+        normalized,
+        InferenceType::Primitive(TPrimitive {
+            name: PrimitiveName::Bool
+        })
+    ) || feature_flag_sum_type_name(env, &normalized).is_some();
+
+    if is_allowed {
+        Ok(())
+    } else {
+        Err(TypeError::new(
+            format!(
+                "featureFlag '{}' must use Bool or a named sum type, got {}",
+                flag_name,
+                format_type(&normalized)
+            ),
+            Some(location),
+        ))
+    }
+}
+
+fn feature_flag_sum_type_name(env: &TypeEnvironment, typ: &InferenceType) -> Option<String> {
+    let InferenceType::Constructor(constructor) = typ else {
+        return None;
+    };
+
+    if let Some((module_path, type_name)) =
+        feature_flag_split_qualified_type_name(&constructor.name)
+    {
+        return env
+            .lookup_qualified_type(&module_path, &type_name)
+            .and_then(|info| matches!(info.definition, TypeDef::Sum(_)).then_some(type_name));
+    }
+
+    env.lookup_type(&constructor.name)
+        .and_then(|info| matches!(info.definition, TypeDef::Sum(_)).then_some(constructor.name.clone()))
+}
+
+fn feature_flag_split_qualified_type_name(name: &str) -> Option<(Vec<String>, String)> {
+    let (module_id, type_name) = name.rsplit_once('.')?;
+    if module_id.is_empty() || type_name.is_empty() {
+        return None;
+    }
+    Some((
+        module_id.split("::").map(|segment| segment.to_string()).collect(),
+        type_name.to_string(),
+    ))
+}
+
+fn feature_flag_runtime_id(module_id: Option<&str>, flag_name: &str) -> String {
+    let Some(module_id) = module_id else {
+        return flag_name.to_string();
+    };
+    let parts = module_id.split("::").collect::<Vec<_>>();
+    let normalized_module = if parts.len() >= 3
+        && (parts[0] == "package" || parts[0] == "packageConfig")
+        && parts[2].starts_with('v')
+    {
+        let mut rebuilt = vec![parts[0], parts[1]];
+        rebuilt.extend(parts[3..].iter().copied());
+        rebuilt.join("::")
+    } else {
+        module_id.to_string()
+    };
+    format!("{normalized_module}.{flag_name}")
+}
+
+fn type_location(ty: &Type) -> SourceLocation {
+    match ty {
+        Type::Primitive(primitive) => primitive.location,
+        Type::List(list) => list.location,
+        Type::Map(map) => map.location,
+        Type::Function(function) => function.location,
+        Type::Constructor(constructor) => constructor.location,
+        Type::Variable(variable) => variable.location,
+        Type::Tuple(tuple) => tuple.location,
+        Type::Qualified(qualified) => qualified.location,
+    }
 }
 
 fn build_typed_test_decl(

@@ -29,6 +29,19 @@ fn temp_dir(label: &str) -> PathBuf {
     dir
 }
 
+fn external_temp_dir(label: &str) -> PathBuf {
+    let unique = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    let dir = repo_root().join(format!(
+        "sigil-cli-package-external-{label}-{}-{unique}",
+        std::process::id()
+    ));
+    fs::create_dir_all(&dir).unwrap();
+    dir
+}
+
 fn write_file(root: &Path, relative: &str, contents: &str) {
     let path = root.join(relative);
     if let Some(parent) = path.parent() {
@@ -245,7 +258,9 @@ fn package_commands_add_list_why_remove_and_block_transitive_imports() {
         )],
     );
 
-    let consumer_dir = temp_dir("consumer");
+    let workspace_root = external_temp_dir("consumer-workspace");
+    fs::create_dir_all(workspace_root.join(".git")).unwrap();
+    let consumer_dir = workspace_root.join("projects").join("consumer");
     write_consumer_project(&consumer_dir, "λmain()=>Int=☴router.double(21)\n", None);
     let transitive_probe = consumer_dir.join("src/transitive.sigil");
     write_file(
@@ -328,6 +343,53 @@ fn package_commands_add_list_why_remove_and_block_transitive_imports() {
 }
 
 #[test]
+fn package_add_ignores_publishable_packages_inside_nested_git_workspaces() {
+    let registry_dir = temp_dir("nested-workspace-registry");
+    let fake_npm_dir = temp_dir("nested-workspace-fake-npm");
+    write_fake_npm(&fake_npm_dir);
+
+    create_registry_package(
+        &registry_dir,
+        "router",
+        "2026-04-05T14-58-24Z",
+        &[],
+        &[("src/package.lib.sigil", "λdouble(value:Int)=>Int=value*2\n")],
+    );
+
+    let nested_workspace = repo_root().join(format!(
+        "sigil-cli-package-nested-workspace-{}-{}",
+        std::process::id(),
+        SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos()
+    ));
+    fs::create_dir_all(&nested_workspace).unwrap();
+    fs::create_dir_all(nested_workspace.join(".git")).unwrap();
+    let nested_router_dir = nested_workspace.join("projects").join("router");
+    write_file(
+        &nested_router_dir,
+        "sigil.json",
+        "{\n  \"name\": \"router\",\n  \"version\": \"2026-04-05T14-58-24Z\",\n  \"publish\": {}\n}\n",
+    );
+    write_file(
+        &nested_router_dir,
+        "src/package.lib.sigil",
+        "λdouble(value:Int)=>Int=999\n",
+    );
+
+    let consumer_dir = temp_dir("nested-workspace-consumer");
+    write_consumer_project(&consumer_dir, "λmain()=>Int=☴router.double(21)\n", None);
+
+    let mut add = Command::new(sigil_bin());
+    add.current_dir(&consumer_dir)
+        .args(["package", "add", "router"]);
+    npm_env(&mut add, &fake_npm_dir, &registry_dir);
+    let add_output = add.output().unwrap();
+    assert!(add_output.status.success(), "{:?}", add_output);
+}
+
+#[test]
 fn package_update_rolls_back_when_tests_fail() {
     let registry_dir = temp_dir("update-registry");
     let fake_npm_dir = temp_dir("update-fake-npm");
@@ -348,7 +410,9 @@ fn package_update_rolls_back_when_tests_fail() {
         &[("src/package.lib.sigil", "λvalue()=>Int=2\n")],
     );
 
-    let consumer_dir = temp_dir("update-consumer");
+    let workspace_root = external_temp_dir("update-workspace");
+    fs::create_dir_all(workspace_root.join(".git")).unwrap();
+    let consumer_dir = workspace_root.join("projects").join("consumer");
     write_file(
         &consumer_dir,
         "sigil.json",
@@ -476,4 +540,58 @@ fn package_validate_smoke_tests_local_publishability() {
     assert_eq!(validate_json["data"]["project"], "router");
     assert_eq!(validate_json["data"]["npmPackage"], "router");
     assert_eq!(validate_json["data"]["npmVersion"], "20260405.145824.0");
+}
+
+#[test]
+fn package_install_uses_local_workspace_publishable_package_before_registry() {
+    let registry_dir = temp_dir("local-workspace-registry");
+    let fake_npm_dir = temp_dir("local-workspace-fake-npm");
+    write_fake_npm(&fake_npm_dir);
+
+    let workspace_root = external_temp_dir("local-workspace-root");
+    fs::create_dir_all(workspace_root.join(".git")).unwrap();
+
+    let package_dir = workspace_root.join("projects").join("router");
+    write_file(
+        &package_dir,
+        "sigil.json",
+        "{\n  \"name\": \"router\",\n  \"version\": \"2026-04-05T14-58-24Z\",\n  \"publish\": {}\n}\n",
+    );
+    write_file(
+        &package_dir,
+        "src/package.lib.sigil",
+        "λdouble(value:Int)=>Int=value*2\n",
+    );
+
+    let consumer_dir = workspace_root.join("projects").join("consumer");
+    write_file(
+        &consumer_dir,
+        "sigil.json",
+        "{\n  \"name\": \"consumerApp\",\n  \"version\": \"2026-04-05T15-00-00Z\",\n  \"dependencies\": {\n    \"router\": \"2026-04-05T14-58-24Z\"\n  }\n}\n",
+    );
+    write_file(
+        &consumer_dir,
+        "src/main.sigil",
+        "λmain()=>Int=☴router.double(21)\n",
+    );
+
+    let mut install = Command::new(sigil_bin());
+    install
+        .current_dir(&consumer_dir)
+        .args(["package", "install"]);
+    npm_env(&mut install, &fake_npm_dir, &registry_dir);
+    let install_output = install.output().unwrap();
+    assert!(install_output.status.success(), "{:?}", install_output);
+
+    assert!(consumer_dir
+        .join(".sigil/packages/router/2026-04-05T14-58-24Z/src/package.lib.sigil")
+        .exists());
+
+    let mut compile = Command::new(sigil_bin());
+    compile
+        .current_dir(&consumer_dir)
+        .args(["compile", "src/main.sigil"]);
+    npm_env(&mut compile, &fake_npm_dir, &registry_dir);
+    let compile_output = compile.output().unwrap();
+    assert!(compile_output.status.success(), "{:?}", compile_output);
 }

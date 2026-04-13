@@ -203,6 +203,37 @@ fn test_printer_multiline_type_args_and_call_args() {
 }
 
 #[test]
+fn test_printer_feature_flag_declaration() {
+    let source =
+        "featureFlag NewCheckout:Bool\ncreatedAt \"2026-04-12T00-00-00Z\"\ndefault false\n";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "src/flags.lib.sigil").unwrap();
+
+    assert_eq!(
+        print_canonical_program(&program),
+        "featureFlag NewCheckout:Bool\n  createdAt \"2026-04-12T00-00-00Z\"\n  default false\n"
+    );
+}
+
+#[test]
+fn test_feature_flags_must_live_in_src_flags() {
+    let source =
+        "featureFlag NewCheckout:Bool\n  createdAt \"2026-04-12T00-00-00Z\"\n  default false\n";
+    let file_path = temp_project_path("src/main.sigil");
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, file_path.to_string_lossy().as_ref()).unwrap();
+    let result = validate_canonical_form(
+        &program,
+        Some(file_path.to_string_lossy().as_ref()),
+        Some(source),
+    );
+    assert!(result.is_err());
+    assert!(result.unwrap_err().iter().any(
+        |error| matches!(error, ValidationError::FeatureFlagDeclaration { .. })
+    ));
+}
+
+#[test]
 fn test_printer_keeps_single_item_delimited_forms_flat() {
     let source = "λmain()=>[Int]=sum([1])\n";
     let tokens = tokenize(source).unwrap();

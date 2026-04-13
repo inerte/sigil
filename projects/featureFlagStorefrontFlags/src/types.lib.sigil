@@ -1,0 +1,11 @@
+t CheckoutColor=Citrus()|Control()|Ocean()
+
+t FlagContext={
+  internal:Bool,
+  site:Site,
+  userId:Option[String]
+}
+
+t RecommendationLayout=Carousel()|Grid()|List()
+
+t Site=Br()|Us()

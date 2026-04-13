@@ -116,6 +116,8 @@ Sigil no longer treats tests as code plus ad hoc mocks.
 Instead:
 
 - `config/<env>.lib.sigil` exports the baseline `world`
+- that same config module may also export selected env declarations such as
+  `flags`, available to app code as `•config.flags`
 - each `test` may derive that world locally with `world { ... }`
 - `†...` builds world entries for `Clock`, `Fs`, `Http`, `Log`, `Process`, `Random`, `Tcp`, and `Timer`
 - `※observe::...` exposes raw traces from the active test world
@@ -224,7 +226,8 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- debug 
 
 ```
 
-For runtime-world projects, `--env <name>` is required.
+For runtime-world projects, and for projects that read selected config
+declarations such as `•config.flags`, `--env <name>` is required.
 `sigil test --replay` cannot be combined with `--env`; the replay artifact owns
 the resolved per-test world.
 

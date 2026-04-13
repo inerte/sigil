@@ -297,15 +297,15 @@ enum InspectCommand {
         env: Option<String>,
     },
 
-    /// Inspect the resolved runtime world for one environment
+    /// Inspect the resolved runtime world for one project env or one standalone file
     World {
-        /// Project path or file within the project (default: current directory)
+        /// Project path, file within the project, or standalone .sigil file (default: current directory)
         #[arg(default_value = ".")]
         path: PathBuf,
 
-        /// Runtime topology environment name
+        /// Runtime topology environment name for projects
         #[arg(long)]
-        env: String,
+        env: Option<String>,
     },
 }
 
@@ -586,7 +586,7 @@ fn main() {
                 ignore_from.as_deref(),
             ),
             InspectCommand::World { path, env } => {
-                inspect_command(commands::InspectMode::World, &path, Some(&env), &[], None)
+                inspect_command(commands::InspectMode::World, &path, env.as_deref(), &[], None)
             }
         },
         Command::Run {

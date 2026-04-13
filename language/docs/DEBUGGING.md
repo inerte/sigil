@@ -35,7 +35,7 @@ The important design choices are:
 | Did the compiler reject the source shape? | `sigil inspect validate <file-or-dir>` |
 | What top-level types did the checker solve? | `sigil inspect types <file-or-dir>` |
 | Which proof surfaces and branch gates exist here? | `sigil inspect proof <file-or-dir>` |
-| What runtime world will this env use? | `sigil inspect world <path> --env <name>` |
+| What runtime world will this env or standalone file use? | `sigil inspect world <path> [--env <name>]` |
 | What TypeScript did this compile to? | `sigil inspect codegen <file-or-dir>` |
 | Where did one run fail? | `sigil run --json <file>` |
 | How did execution flow? | `sigil run --json --trace <file>` |
@@ -119,6 +119,12 @@ Use this for topology/config/runtime-world questions.
 sigil inspect world projects/topology-http --env test
 ```
 
+Standalone files can also inspect a local top-level `c world` with no `--env`:
+
+```bash
+sigil inspect world path/to/file.sigil
+```
+
 This returns:
 
 - the selected environment
@@ -132,9 +138,10 @@ Use it when debugging:
 - HTTP/TCP dependency setup
 - random/timer/log/process/fs backend differences between environments
 
-`inspect world` is project-env scoped:
+`inspect world` has two scopes:
 
-- `--env` is required
+- project env inspection requires `--env`
+- standalone single-file inspection rejects `--env`
 - success output does not restate derivable canonical config/topology paths
 - test-local `world { ... }` overlays are not part of this surface
 

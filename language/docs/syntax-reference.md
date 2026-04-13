@@ -492,6 +492,7 @@ The selected environment config module also exposes a rooted project surface:
 
 - `•config.<name>` resolves a non-`world` top-level declaration from the selected `config/<env>.lib.sigil`
 - using `•config.<name>` requires `--env <name>` on `compile`, `run`, `test`, and `inspect`
+- `•config` is project-only; standalone files use ordinary local declarations instead
 
 Example:
 
@@ -828,9 +829,12 @@ plumbing:
 
 ## Tests
 
-Tests are top-level declarations and must live under `tests/`:
+Tests are top-level declarations.
 
-```sigil program language/tests/addsNumbers.sigil
+- in standalone files, they may live directly in the file
+- in projects, they live under `tests/`
+
+```sigil program language/examples/addsNumbers.sigil
 λmain()=>Unit=()
 
 test "adds numbers" {
@@ -851,7 +855,7 @@ test "writes log" =>!Log {
 
 Tests may also derive the active world locally:
 
-```sigil program language/tests/testWorld.sigil
+```sigil program language/examples/testWorld.sigil
 λmain()=>Unit=()
 
 test "captured log contains line" =>!Log world {
@@ -868,6 +872,7 @@ Rules:
 - world clauses are declaration-only and use `c` bindings
 - world bindings must be pure entry values from `†...`
 - `※observe` and `※check` are test-only roots for reading the active test world
+- project-local test files still live under `tests/`; standalone examples may embed tests directly
 
 ## Canonical References
 

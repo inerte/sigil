@@ -82,7 +82,7 @@ Language-shaped cases:
 For these published cases:
 
 - the algorithm Sigil source of truth lives in `projects/algorithms/src/`
-- the language-shaped Sigil source of truth lives in first-party examples, tests, and projects such as `language/examples/`, `language/tests/`, and `projects/topology-http/`
+- the language-shaped Sigil source of truth lives in first-party examples and projects such as `language/examples/` and `projects/topology-http/`
 - the Python and TypeScript baselines live under `language/benchmarks/tokens/algorithms/` and `language/benchmarks/tokens/cases/`
 - some cases point at executable `.sigil` files, some at canonical `.lib.sigil` modules, and some at config/test-world files
 

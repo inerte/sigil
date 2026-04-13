@@ -2399,7 +2399,15 @@ fn validate_effect_declaration_placement(
     program: &Program,
     file_path: Option<&str>,
 ) -> Result<(), Vec<ValidationError>> {
-    let normalized_path = file_path.map(|path| path.replace('\\', "/"));
+    let Some(path) = file_path else {
+        return Ok(());
+    };
+
+    if find_project_root(Path::new(path)).is_none() {
+        return Ok(());
+    }
+
+    let normalized_path = Some(path.replace('\\', "/"));
     let is_effects_file = normalized_path
         .as_deref()
         .is_some_and(|path| path.ends_with("/src/effects.lib.sigil"));
@@ -2885,8 +2893,36 @@ impl UsageSummary {
 #[derive(Debug, Clone)]
 struct NamedUsage {
     kind: &'static str,
+    exported_from_executable: bool,
     location: SourceLocation,
     summary: UsageSummary,
+}
+
+fn executable_runtime_export_type(typ: &Type) -> bool {
+    match typ {
+        Type::Qualified(qualified) => {
+            let module_id = qualified.module_path.join("::");
+            matches!(
+                (module_id.as_str(), qualified.type_name.as_str()),
+                ("world::runtime", "World")
+                    | ("stdlib::topology", "Environment")
+                    | ("stdlib::topology", "FsRoot")
+                    | ("stdlib::topology", "HttpServiceDependency")
+                    | ("stdlib::topology", "LogSink")
+                    | ("stdlib::topology", "ProcessHandle")
+                    | ("stdlib::topology", "TcpServiceDependency")
+            )
+        }
+        _ => false,
+    }
+}
+
+fn const_is_exported_from_executable(const_decl: &ConstDecl) -> bool {
+    const_decl.name == "world"
+        || const_decl
+            .type_annotation
+            .as_ref()
+            .is_some_and(executable_runtime_export_type)
 }
 
 fn validate_no_unused_items(
@@ -2968,6 +3004,7 @@ fn validate_no_unused_items(
                     path,
                     NamedUsage {
                         kind: "extern",
+                        exported_from_executable: false,
                         location: extern_decl.location,
                         summary: collect_extern_usage_summary(
                             extern_decl,
@@ -2982,6 +3019,7 @@ fn validate_no_unused_items(
                     function_decl.name.clone(),
                     NamedUsage {
                         kind: "function",
+                        exported_from_executable: false,
                         location: function_decl.location,
                         summary: collect_function_usage_summary(
                             function_decl,
@@ -3001,6 +3039,7 @@ fn validate_no_unused_items(
                     function_decl.name.clone(),
                     NamedUsage {
                         kind: "transform",
+                        exported_from_executable: false,
                         location: function_decl.location,
                         summary: collect_function_usage_summary(
                             function_decl,
@@ -3019,6 +3058,7 @@ fn validate_no_unused_items(
                     const_decl.name.clone(),
                     NamedUsage {
                         kind: "const",
+                        exported_from_executable: const_is_exported_from_executable(const_decl),
                         location: const_decl.location,
                         summary: collect_const_usage_summary(
                             const_decl,
@@ -3044,6 +3084,7 @@ fn validate_no_unused_items(
                     feature_flag_decl.name.clone(),
                     NamedUsage {
                         kind: "feature flag",
+                        exported_from_executable: false,
                         location: feature_flag_decl.location,
                         summary: collect_const_usage_summary(
                             &synthetic_const,
@@ -3063,6 +3104,7 @@ fn validate_no_unused_items(
                     type_decl.name.clone(),
                     NamedUsage {
                         kind: "type",
+                        exported_from_executable: false,
                         location: type_decl.location,
                         summary: collect_type_decl_usage_summary(
                             type_decl,
@@ -3078,6 +3120,7 @@ fn validate_no_unused_items(
                     effect_decl.name.clone(),
                     NamedUsage {
                         kind: "effect",
+                        exported_from_executable: false,
                         location: effect_decl.location,
                         summary: collect_effect_decl_usage_summary(effect_decl, &top_level_effects),
                     },
@@ -3088,6 +3131,7 @@ fn validate_no_unused_items(
                     label_decl.name.clone(),
                     NamedUsage {
                         kind: "label",
+                        exported_from_executable: false,
                         location: label_decl.location,
                         summary: collect_label_decl_usage_summary(label_decl, &top_level_types),
                     },
@@ -3134,7 +3178,10 @@ fn validate_no_unused_items(
 
     if !is_lib_file {
         for (name, value_usage) in &values {
-            if name != "main" && !reachability.values.contains(name) {
+            if name != "main"
+                && !value_usage.exported_from_executable
+                && !reachability.values.contains(name)
+            {
                 errors.push(ValidationError::UnusedDeclaration {
                     decl_kind: value_usage.kind.to_string(),
                     decl_name: name.clone(),
@@ -5077,7 +5124,7 @@ fn validate_naming_forms(program: &Program, errors: &mut Vec<ValidationError>) {
     }
 }
 
-/// Validate that test blocks only appear in tests/ directories
+/// Validate that project test blocks only appear in tests/ directories
 fn validate_test_location(program: &Program, file_path: &str) -> Result<(), Vec<ValidationError>> {
     let has_tests = program
         .declarations
@@ -5091,14 +5138,18 @@ fn validate_test_location(program: &Program, file_path: &str) -> Result<(), Vec<
     // Normalize path separators
     let normalized_path = file_path.replace('\\', "/");
 
+    if find_project_root(Path::new(file_path)).is_none() {
+        return Ok(());
+    }
+
     // Check if file is in a tests/ directory
     if !normalized_path.contains("/tests/") {
         return Err(vec![ValidationError::TestLocationInvalid {
             message: format!(
-                "test blocks can only appear in files under tests/ directories.\n\n\
-                This file contains test blocks but is not in a tests/ directory.\n\n\
+                "project test blocks can only appear in files under tests/ directories.\n\n\
+                This file belongs to a Sigil project and contains test blocks but is not in a tests/ directory.\n\n\
                 Move this file to a tests/ directory (e.g., tests/your-test.sigil).\n\n\
-                Sigil enforces ONE way: tests live in tests/ directories."
+                Standalone non-project files may keep tests inline, but project mode keeps tests in tests/ directories."
             ),
             file_path: normalized_path,
         }]);

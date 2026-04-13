@@ -383,7 +383,7 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
-    #[error("SIGIL-CANON-UNUSED-DECLARATION: Unused executable {decl_kind} '{decl_name}'\n\n.sigil files export nothing, so dead top-level declarations are non-canonical.\nRemove the {decl_kind} or make main/tests reach it.")]
+    #[error("SIGIL-CANON-UNUSED-DECLARATION: Unused executable {decl_kind} '{decl_name}'\n\nDead top-level executable declarations are non-canonical unless they are part of Sigil's runtime-facing surface.\nRemove the {decl_kind} or make main/tests reach it.")]
     UnusedDeclaration {
         decl_kind: String,
         decl_name: String,

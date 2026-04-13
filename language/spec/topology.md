@@ -8,6 +8,9 @@ boundaries for topology-aware projects.
 Topology is declaration only.
 Concrete environment worlds live in config modules.
 
+Outside projects, Sigil uses the same topology and world constructors directly
+in a single file with ordinary local names and a local top-level `c world`.
+
 ## Canonical Files
 
 A topology-aware project uses:
@@ -64,7 +67,8 @@ t World={clock:†clock.ClockEntry,fs:†fs.FsEntry,fsRoots:[†fs.FsRootEntry],
 
 ### Topology declaration location
 
-Calls to these constructors are only valid in `src/topology.lib.sigil`:
+In project mode, calls to these constructors are only valid in
+`src/topology.lib.sigil`:
 - `§topology.fsRoot`
 - `§topology.httpService`
 - `§topology.logSink`
@@ -74,14 +78,17 @@ Calls to these constructors are only valid in `src/topology.lib.sigil`:
 
 ### World entry location
 
-Calls to `†http.*`, `†fs.*Root`, `†log.*Sink`, and `†process.*Handle` entry constructors are only valid in:
+In project mode, calls to `†http.*`, `†fs.*Root`, `†log.*Sink`, and `†process.*Handle` entry constructors are only valid in:
 
 - `config/*.lib.sigil`
 - test-local `world { ... }` clauses
 
 ### Ambient env access
 
-`process.env` access is only valid in `config/*.lib.sigil`.
+In project mode, `process.env` access is only valid in `config/*.lib.sigil`.
+
+In standalone mode, `process.env` may be read directly because there is no
+separate config module.
 
 It is invalid in:
 - `src/topology.lib.sigil`
@@ -133,6 +140,8 @@ sigil test <path> --env <name>
 
 Sigil does not provide an implicit default environment for topology-aware
 projects or for code that reads `•config.<name>`.
+
+Standalone files with a local top-level `c world` do not require `--env`.
 
 ## Test-World Observation
 

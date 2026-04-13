@@ -39,6 +39,7 @@ use sigil_ast::{
 };
 use sigil_diagnostics::codes;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+use std::path::{Path, PathBuf};
 
 type TypeParamEnv = HashMap<String, InferenceType>;
 
@@ -703,9 +704,9 @@ fn resolve_member_ref(
 }
 
 fn resolve_boundary_rule(env: &TypeEnvironment, rule_decl: &RuleDecl) -> Result<BoundaryRule, TypeError> {
-    if rule_decl.boundary.module_path != ["src".to_string(), "topology".to_string()] {
+    if !member_ref_targets_named_topology_boundary(env, &rule_decl.boundary) {
         return Err(TypeError::new(
-            "Boundary rules must target •topology boundaries".to_string(),
+            "Boundary rules must target named topology boundaries".to_string(),
             Some(rule_decl.boundary.location),
         ));
     }
@@ -4654,6 +4655,29 @@ fn is_canonical_config_source(env: &TypeEnvironment) -> bool {
         .unwrap_or(false)
 }
 
+fn find_project_root_for_source(path: &str) -> Option<PathBuf> {
+    let start_path = Path::new(path);
+    let mut current = if start_path.is_file() {
+        start_path.parent()?.to_path_buf()
+    } else {
+        start_path.to_path_buf()
+    };
+
+    loop {
+        if current.join("sigil.json").exists() {
+            return Some(current);
+        }
+
+        current = current.parent()?.to_path_buf();
+    }
+}
+
+fn is_project_mode_source(env: &TypeEnvironment) -> bool {
+    env.source_file()
+        .and_then(find_project_root_for_source)
+        .is_some()
+}
+
 fn topology_call_member(expr: &Expr) -> Option<(&[String], &str)> {
     if let Expr::MemberAccess(member_access) = expr {
         return Some((&member_access.namespace, member_access.member.as_str()));
@@ -4715,14 +4739,27 @@ enum BoundaryPayload {
     },
 }
 
-fn direct_topology_boundary_name(expr: &Expr) -> Option<String> {
-    if let Expr::MemberAccess(member_access) = expr {
-        if member_access.namespace == ["src".to_string(), "topology".to_string()] {
-            return Some(format!("src::topology.{}", member_access.member));
+fn direct_topology_boundary_name(env: &TypeEnvironment, expr: &Expr) -> Option<String> {
+    match expr {
+        Expr::MemberAccess(member_access)
+            if member_access.namespace == ["src".to_string(), "topology".to_string()] =>
+        {
+            Some(format!("src::topology.{}", member_access.member))
         }
-    }
+        Expr::Identifier(identifier) => {
+            let typ = env.lookup(&identifier.name)?;
+            if !is_named_topology_boundary_type(&typ) {
+                return None;
+            }
 
-    None
+            Some(
+                env.module_id()
+                    .map(|module_id| format!("{}.{}", module_id, identifier.name))
+                    .unwrap_or_else(|| identifier.name.clone()),
+            )
+        }
+        _ => None,
+    }
 }
 
 fn resolve_transform_call_name(env: &TypeEnvironment, expr: &Expr) -> Option<String> {
@@ -4857,9 +4894,9 @@ fn enforce_boundary_payload(
         return Ok(());
     };
 
-    let Some(boundary_name) = direct_topology_boundary_name(boundary_expr) else {
+    let Some(boundary_name) = direct_topology_boundary_name(env, boundary_expr) else {
         return Err(TypeError::new(
-            "Labelled boundary crossings must use a direct •topology handle".to_string(),
+            "Labelled boundary crossings must use a direct named topology handle".to_string(),
             Some(location),
         ));
     };
@@ -4944,6 +4981,31 @@ fn is_tcp_dependency_type(typ: &InferenceType) -> bool {
     matches!(typ, InferenceType::Constructor(tcons) if tcons.name.ends_with(".TcpServiceDependency") || tcons.name == "TcpServiceDependency")
 }
 
+fn is_named_topology_boundary_type(typ: &InferenceType) -> bool {
+    is_http_dependency_type(typ)
+        || is_fs_root_type(typ)
+        || is_log_sink_type(typ)
+        || is_process_handle_type(typ)
+        || is_tcp_dependency_type(typ)
+}
+
+fn member_ref_targets_named_topology_boundary(
+    env: &TypeEnvironment,
+    member_ref: &MemberRef,
+) -> bool {
+    if member_ref.module_path == ["src".to_string(), "topology".to_string()] {
+        return true;
+    }
+
+    if member_ref.module_path.is_empty() {
+        return env
+            .lookup(&member_ref.member)
+            .is_some_and(|typ| is_named_topology_boundary_type(&typ));
+    }
+
+    false
+}
+
 fn validate_topology_application(
     env: &TypeEnvironment,
     app: &sigil_ast::ApplicationExpr,
@@ -4965,7 +5027,7 @@ fn validate_topology_application(
                 | "tcpService"
         );
 
-        if restricted && !is_canonical_topology_source(env) {
+        if restricted && is_project_mode_source(env) && !is_canonical_topology_source(env) {
             return Err(TypeError::new(
                 format!(
                     "{}: topology declarations must live in src::topology via src/topology.lib.sigil",
@@ -4984,7 +5046,7 @@ fn validate_topology_application(
             "bindings" | "bindHttp" | "bindHttpEnv" | "bindTcp" | "bindTcpEnv"
         );
 
-        if restricted && !is_canonical_config_source(env) {
+        if restricted && is_project_mode_source(env) && !is_canonical_config_source(env) {
             return Err(TypeError::new(
                 format!(
                     "{}: config helper constructors must live in config/*.lib.sigil",
@@ -5068,7 +5130,7 @@ fn validate_topology_application(
             };
             return Err(TypeError::new(
                 format!(
-                    "{}: stdlib::httpClient requires a HttpServiceDependency from src::topology as its first argument",
+                    "{}: stdlib::httpClient requires a named HttpServiceDependency as its first argument",
                     code
                 ),
                 Some(app.location),
@@ -5095,7 +5157,7 @@ fn validate_topology_application(
             };
             return Err(TypeError::new(
                 format!(
-                    "{}: stdlib::tcpClient requires a TcpServiceDependency from src::topology as its first argument",
+                    "{}: stdlib::tcpClient requires a named TcpServiceDependency as its first argument",
                     code
                 ),
                 Some(app.location),
@@ -5104,20 +5166,19 @@ fn validate_topology_application(
     }
     if fs_handle_arg_index.is_some() && !is_fs_root_type(&handle_type) {
         return Err(TypeError::new(
-            "stdlib::file.*At requires a FsRoot from src::topology".to_string(),
+            "stdlib::file.*At requires a named FsRoot".to_string(),
             Some(app.location),
         ));
     }
     if log_handle_arg_index.is_some() && !is_log_sink_type(&handle_type) {
         return Err(TypeError::new(
-            "stdlib::log.write requires a LogSink from src::topology".to_string(),
+            "stdlib::log.write requires a named LogSink".to_string(),
             Some(app.location),
         ));
     }
     if process_handle_arg_index.is_some() && !is_process_handle_type(&handle_type) {
         return Err(TypeError::new(
-            "stdlib::process.runAt/startAt requires a ProcessHandle from src::topology"
-                .to_string(),
+            "stdlib::process.runAt/startAt requires a named ProcessHandle".to_string(),
             Some(app.location),
         ));
     }
@@ -5427,7 +5488,10 @@ fn synthesize_field_access(
     env: &TypeEnvironment,
     field_access: &sigil_ast::FieldAccessExpr,
 ) -> Result<InferenceType, TypeError> {
-    if field_access_starts_with_process_env(field_access) && !is_canonical_config_source(env) {
+    if field_access_starts_with_process_env(field_access)
+        && is_project_mode_source(env)
+        && !is_canonical_config_source(env)
+    {
         return Err(TypeError::new(
             format!(
                 "{}: process.env access is only allowed in config/*.lib.sigil",
@@ -9909,6 +9973,16 @@ mod tests {
         let source = "e process\nλmain()=>String=(process.env.sigilSiteBasePath:String)";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "src/main.sigil").unwrap();
+        let temp_root = std::env::temp_dir().join(format!(
+            "sigil-typechecker-process-env-project-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(temp_root.join("src")).unwrap();
+        std::fs::write(
+            temp_root.join("sigil.json"),
+            "{\n  \"name\": \"processEnvFixture\",\n  \"version\": \"2026-04-13T00-00-00Z\"\n}\n",
+        )
+        .unwrap();
 
         let result = type_check(
             &program,
@@ -9918,7 +9992,12 @@ mod tests {
                 imported_namespaces: None,
                 imported_type_registries: None,
                 imported_value_schemes: None,
-                source_file: Some("/tmp/project/src/main.sigil".to_string()),
+                source_file: Some(
+                    temp_root
+                        .join("src/main.sigil")
+                        .to_string_lossy()
+                        .into_owned(),
+                ),
                 ..TypeCheckOptions::default()
             },
         );
@@ -9927,6 +10006,7 @@ mod tests {
             .unwrap_err()
             .message
             .contains("process.env access is only allowed in config/*.lib.sigil"));
+        let _ = std::fs::remove_dir_all(temp_root);
     }
 
     #[test]
@@ -9944,6 +10024,27 @@ mod tests {
                 imported_type_registries: None,
                 imported_value_schemes: None,
                 source_file: Some("/tmp/project/config/local.lib.sigil".to_string()),
+                ..TypeCheckOptions::default()
+            },
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_process_env_access_is_allowed_in_standalone_single_files() {
+        let source = "e process\nλmain()=>String=(process.env.sigilSiteBasePath:String)";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "singleFile.sigil").unwrap();
+
+        let result = type_check(
+            &program,
+            source,
+            TypeCheckOptions {
+                effect_catalog: None,
+                imported_namespaces: None,
+                imported_type_registries: None,
+                imported_value_schemes: None,
+                source_file: Some("/tmp/singleFile.sigil".to_string()),
                 ..TypeCheckOptions::default()
             },
         );

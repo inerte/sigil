@@ -24,7 +24,7 @@ design ideas such as TDAI, semantic maps, coverage mode, or generated tests.
 
 Canonical surface:
 
-```sigil program tests/sampleTest.sigil
+```sigil program language/examples/addsNumbers.sigil
 λmain()=>Unit=()
 
 test "adds numbers" {
@@ -45,7 +45,7 @@ test "writes log" =>!Log {
 
 World-derived test:
 
-```sigil program tests/worldTest.sigil
+```sigil program language/examples/testWorld.sigil
 λmain()=>Unit=()
 
 test "captured log contains line" =>!Log world {
@@ -69,7 +69,10 @@ Rules:
 
 ## Test Location
 
-`test` declarations are only valid in files under `tests/`.
+`sigil.json` is the mode switch for test placement.
+
+- in project mode, `test` declarations are only valid under `tests/`
+- in standalone mode, `test` declarations may live in any ordinary `.sigil` file
 
 Test files are ordinary `.sigil` files and may also declare:
 
@@ -80,7 +83,7 @@ Test files are ordinary `.sigil` files and may also declare:
 In projects with `sigil.json`, project-defined named types still live in
 `src/types.lib.sigil` and are referenced in tests through `µ...`.
 
-Test files are executable-oriented and must define `main`.
+Test-capable files are executable-oriented and must define `main`.
 
 ## Runtime Worlds
 
@@ -92,6 +95,7 @@ Baseline world:
 - exported as `c world=(...:†runtime.World)`
 - the same config module may also expose selected env declarations through
   `•config.<name>`, for example `•config.flags`
+- standalone files may instead provide a local top-level `c world=(...:†runtime.World)` with no selected env
 
 Test-local derivation:
 
@@ -133,8 +137,11 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
 Common modes:
 
 ```bash
-# all tests in current project tests/
+# all tests in the current project tests/ directory
 cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
+
+# the self-testing language examples
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test language/examples
 
 # one file or directory
 cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests
@@ -149,6 +156,9 @@ declarations such as `•config.flags`:
 
 - `--env <name>` is required
 
+For non-project directories, `sigil test <dir>` recursively finds `.sigil`
+files and runs any embedded `test` declarations it discovers.
+
 `sigil test` also enforces project source coverage:
 
 - every function in project `src/*.lib.sigil` must be executed by the suite
@@ -156,6 +166,7 @@ declarations such as `•config.flags`:
 - missing surface coverage is reported as ordinary failing test results
 - suite-style runs (`sigil test`, `sigil test path/to/tests/`) enforce this gate
 - focused single-file runs (`sigil test path/to/tests/file.sigil`) skip the project-wide coverage gate
+- standalone non-project runs do not have a project coverage gate
 
 ## JSON Output
 

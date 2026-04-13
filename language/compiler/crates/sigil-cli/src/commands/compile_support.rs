@@ -1313,10 +1313,78 @@ globalThis.__sigil_topology_exports = Object.fromEntries(
     ))
 }
 
-fn project_root_and_runtime(
-    path: &Path,
-    _graph: &ModuleGraph,
-) -> Result<Option<(PathBuf, bool)>, crate::project::ProjectConfigError> {
+fn standalone_world_runtime_setup_source(module_url: &str) -> String {
+    let module_url_json = serde_json::to_string(module_url).unwrap();
+    format!(
+        r#"
+async function __sigil_runtime_resolve_exports(moduleExports) {{
+  return Object.fromEntries(
+    await Promise.all(
+      Object.entries(moduleExports ?? {{}}).map(async ([key, value]) => [key, await Promise.resolve(value)])
+    )
+  );
+}}
+
+function __sigil_runtime_collect_local_topology(moduleExports) {{
+  const envs = new Set();
+  const fsRoots = new Set();
+  const http = new Set();
+  const logSinks = new Set();
+  const processHandles = new Set();
+  const tcp = new Set();
+  for (const value of Object.values(moduleExports ?? {{}})) {{
+    if (value?.__tag === 'Environment') {{
+      envs.add(String(value.__fields?.[0] ?? ''));
+    }} else if (value?.__tag === 'FsRoot') {{
+      fsRoots.add(String(value.__fields?.[0] ?? ''));
+    }} else if (value?.__tag === 'HttpServiceDependency') {{
+      http.add(String(value.__fields?.[0] ?? ''));
+    }} else if (value?.__tag === 'LogSink') {{
+      logSinks.add(String(value.__fields?.[0] ?? ''));
+    }} else if (value?.__tag === 'ProcessHandle') {{
+      processHandles.add(String(value.__fields?.[0] ?? ''));
+    }} else if (value?.__tag === 'TcpServiceDependency') {{
+      tcp.add(String(value.__fields?.[0] ?? ''));
+    }}
+  }}
+  return {{ envs, fsRoots, http, logSinks, processHandles, tcp }};
+}}
+
+function __sigil_runtime_local_topology_declared(topology) {{
+  return topology.envs.size > 0 ||
+    topology.fsRoots.size > 0 ||
+    topology.http.size > 0 ||
+    topology.logSinks.size > 0 ||
+    topology.processHandles.size > 0 ||
+    topology.tcp.size > 0;
+}}
+
+globalThis.__sigil_runtime_apply_program_world = async (moduleExports) => {{
+  const resolvedExports = await __sigil_runtime_resolve_exports(moduleExports);
+  const topology = __sigil_runtime_collect_local_topology(resolvedExports);
+  const hasWorld = !!resolvedExports && Object.prototype.hasOwnProperty.call(resolvedExports, 'world');
+  if (!hasWorld && __sigil_runtime_local_topology_declared(topology)) {{
+    const error = new Error("{local_world_required}: standalone topology programs must export c world");
+    error.sigilCode = "{local_world_required}";
+    throw error;
+  }}
+  globalThis.__sigil_program_exports = resolvedExports ?? null;
+  globalThis.__sigil_topology_exports = hasWorld ? (resolvedExports ?? null) : null;
+  globalThis.__sigil_world_env_name = null;
+  globalThis.__sigil_world_value = hasWorld ? resolvedExports.world : null;
+  globalThis.__sigil_world_template_cache = undefined;
+  globalThis.__sigil_world_current = undefined;
+}};
+
+const __sigil_program_module = await import({module_url_json});
+await globalThis.__sigil_runtime_apply_program_world(__sigil_program_module);
+"#,
+        local_world_required = codes::topology::LOCAL_WORLD_REQUIRED,
+        module_url_json = module_url_json
+    )
+}
+
+fn project_root_and_runtime(path: &Path) -> Result<Option<(PathBuf, bool)>, crate::project::ProjectConfigError> {
     let Some(project) = get_project_config(path)? else {
         return Ok(None);
     };
@@ -1326,11 +1394,12 @@ fn project_root_and_runtime(
 
 pub(super) fn runner_prelude(
     path: &Path,
-    graph: &ModuleGraph,
     selected_env: Option<&str>,
+    entry_output_path: &Path,
 ) -> Result<Option<String>, CliError> {
-    let Some((project_root, topology_present)) = project_root_and_runtime(path, graph)? else {
-        return Ok(None);
+    let Some((project_root, topology_present)) = project_root_and_runtime(path)? else {
+        let module_url = format!("file://{}", fs::canonicalize(entry_output_path)?.display());
+        return Ok(Some(standalone_world_runtime_setup_source(&module_url)));
     };
 
     if !topology_present {

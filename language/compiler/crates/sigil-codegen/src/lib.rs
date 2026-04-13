@@ -4396,15 +4396,22 @@ impl TypeScriptGenerator {
         let value = self.with_trace_owner("const_decl", const_decl.name.clone(), |generator| {
             generator.generate_expression(&const_decl.value)
         })?;
-        // Export consts from .lib.sigil files
-        let export_keyword = if self.should_export_from_lib() {
-            "export "
-        } else {
-            ""
-        };
+        let should_export = self.should_export_from_lib()
+            || const_decl.name == "world"
+            || matches!(
+                &const_decl.typ,
+                InferenceType::Constructor(tcons)
+                    if tcons.name == "World"
+                        || tcons.name.ends_with(".Environment")
+                        || tcons.name.ends_with(".FsRoot")
+                        || tcons.name.ends_with(".HttpServiceDependency")
+                        || tcons.name.ends_with(".LogSink")
+                        || tcons.name.ends_with(".ProcessHandle")
+                        || tcons.name.ends_with(".TcpServiceDependency")
+            );
         self.emit(&format!(
             "{}const {} = {};",
-            export_keyword,
+            if should_export { "export " } else { "" },
             sanitize_js_identifier(&const_decl.name),
             value
         ));

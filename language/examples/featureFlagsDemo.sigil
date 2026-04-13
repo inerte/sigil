@@ -105,6 +105,12 @@ featureFlag NewCheckout:Bool
   userId:Some("dev-user")
 }
 
+λinternalGuest()=>UserContext={
+  internal:true,
+  site:Us(),
+  userId:None()
+}
+
 λisBrazil(context:UserContext)=>Bool=context.site=Br()
 
 λisInternal(context:UserContext)=>Bool=context.internal
@@ -130,6 +136,12 @@ featureFlag NewCheckout:Bool
   ++"; color="
   ++checkoutView.checkoutColor
 
+λstableUser()=>UserContext={
+  internal:false,
+  site:Us(),
+  userId:Some("stable-user")
+}
+
 λview(context:UserContext,snapshot:§featureFlags.Set[UserContext])=>CheckoutView={
   checkoutColor:checkoutColor(
     context,
@@ -138,5 +150,56 @@ featureFlag NewCheckout:Bool
   checkoutMode:checkoutMode(
     context,
     snapshot
+  )
+}
+
+test "anonymous us guests fall back to defaults" {
+  view(
+    anonymousUs(),
+    demoFlags()
+  )={
+    checkoutColor:"control",
+    checkoutMode:"classic"
+  }
+}
+
+test "brazil guests get the site rule without a rollout key" {
+  view(
+    brazilGuest(),
+    demoFlags()
+  )={
+    checkoutColor:"control",
+    checkoutMode:"new"
+  }
+}
+
+test "dev user gets explicit overrides" {
+  view(
+    devUser(),
+    demoFlags()
+  )={
+    checkoutColor:"ocean",
+    checkoutMode:"new"
+  }
+}
+
+test "internal guests get the color rule and checkout default" {
+  view(
+    internalGuest(),
+    demoFlags()
+  )={
+    checkoutColor:"citrus",
+    checkoutMode:"classic"
+  }
+}
+
+test "rollout stays deterministic for the same user" {
+  l context=(stableUser():UserContext);
+  view(
+    context,
+    demoFlags()
+  )=view(
+    context,
+    demoFlags()
   )
 }

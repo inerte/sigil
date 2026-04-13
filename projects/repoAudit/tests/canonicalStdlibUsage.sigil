@@ -154,7 +154,7 @@ test "run check finds no canonical stdlib duplicates in repo" =>!AuditIo {
 
 test "same name with different shape is allowed" {
   •canonicalStdlibUsage.analyzeFile(
-    "language/tests/addsNumbers.sigil",
+    "language/examples/addsNumbers.sigil",
     compiledRules(),
     "λsum(acc:Int,x:Int)=>Int=acc+x
 "

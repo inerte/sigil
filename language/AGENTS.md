@@ -20,8 +20,8 @@ This file is the local authority for:
 `language/` contains:
 - `compiler/` — lexer, parser, validator, typechecker, codegen, CLI
 - `stdlib/` — canonical Sigil modules
-- `examples/` — runnable/demo Sigil snippets
-- `tests/` — language-level Sigil tests exercised by `sigil test`
+- `examples/` — runnable/demo Sigil snippets, including standalone self-testing files
+- `tests/` — additional Sigil test suites and fixtures exercised by `sigil test`
 - `docs/` and `spec/` — syntax/specification/reference docs
 
 ## Sigil Priorities (for language changes)
@@ -156,6 +156,9 @@ Current constructor and list invariants:
 - external package flag references use nested package module paths such as `☴featureFlagStorefrontFlags::flags.NewCheckout`
 - `featureFlag` declarations require `createdAt` and `default`
 - current `featureFlag` value types are `Bool` and named sum types
+- `sigil.json` is the single mode switch:
+  - with `sigil.json`, project/package placement rules apply
+  - without `sigil.json`, standalone files may use the full language surface directly
 - `src/types.lib.sigil` owns `t`, `label`, and `label ... combines ...` declarations
 - `src/policies.lib.sigil` owns `rule` and `transform` declarations
 - `src/types.lib.sigil` may reference only `§...` and `¶...` inside type definitions and constraints
@@ -171,8 +174,9 @@ Current constructor and list invariants:
   - selected config declarations are read through `•config.<name>` and also require `--env`
   - `config/<env>.lib.sigil` may export both `world` and selected env declarations such as `flags`
   - topology-aware application code must use `•topology` boundary handles for named HTTP/TCP/Fs/Log/Process crossings instead of raw endpoints or ad hoc boundary names
-  - `process.env` belongs only in `config/*.lib.sigil`, never in ordinary application code
-  - tests run in explicit worlds; prefer `config/<env>.lib.sigil` baseline worlds plus test-local `world { ... }` derivation over ad hoc rewiring
+  - in project mode, `process.env` belongs only in `config/*.lib.sigil`
+  - in standalone mode, use ordinary local names and a local top-level `c world=(...:†runtime.World)` instead of `•config` / `•topology` / `•flags`
+  - tests run in explicit worlds; prefer `config/<env>.lib.sigil` baseline worlds plus test-local `world { ... }` derivation in projects, or a local `c world` in standalone files
   - unused extern declarations are non-canonical in executable `.sigil` files; `.lib.sigil` files may expose extern-based API surface that is unused locally
   - rooted module references are written directly at use sites; there is no separate import declaration surface
   - external packages use the `☴...` root and must be declared as direct exact dependencies in `sigil.json`
@@ -325,23 +329,25 @@ Sigil enforces canonical filename format:
 - Export nothing directly
 - Used for programs, scripts, examples
 
-**`tests/*.sigil` files** (tests):
+**Test-capable `.sigil` files**:
 - Must have main()=>Unit=() function
 - Can have test blocks
-- Must be in tests/ directory
+- In project mode, must live in tests/ directory
+- In standalone mode, may live in any ordinary `.sigil` file
 - May reference `.lib.sigil` APIs directly and exercise executable behavior through `main`
 
 When creating new files:
 - Library? => Use `.lib.sigil`, all functions auto-visible
 - Executable? => Use `.sigil` and add main()
-- Test? => Create in tests/ directory with main()
+- Test? => In projects, create in tests/ with main(); in standalone files, embed `test` blocks directly
 
 ### Working with Tests
 
-Test files must:
-1. Live in `tests/` directories
-2. Have a `main()=>Unit=()` function (executable marker)
-3. Use `.sigil` extension (executables, not libraries)
+Test-capable files must:
+1. Have a `main()=>Unit=()` function (executable marker)
+2. Use `.sigil` extension (executables, not libraries)
+3. In project mode, live in `tests/` directories
+4. In standalone mode, use any ordinary `.sigil` file path
 
 Run tests:
 ```bash
@@ -353,8 +359,8 @@ Coverage gate behavior:
 - suite-style runs like `sigil test` or `sigil test path/to/tests/` enforce public-contract coverage and variant coverage for project source modules
 - focused single-file runs like `sigil test path/to/tests/file.sigil` skip the project-wide coverage gate so iteration stays local
 
-Create new test file:
-```sigil program tests/myFeature.sigil
+Create a new standalone self-testing file:
+```sigil program language/examples/myFeature.sigil
 λmain()=>Unit=()
 
 test "my feature works" {

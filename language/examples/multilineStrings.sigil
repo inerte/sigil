@@ -11,3 +11,18 @@ e console
 Sigil keeps the spaces
 ")
 }
+
+test "multiline
+test description works" {
+  §string.lines("alpha
+beta")=[
+    "alpha",
+    "beta"
+  ]
+}
+
+test "multiline strings preserve indentation spaces" {
+  "alpha
+  beta"="alpha
+  beta"
+}

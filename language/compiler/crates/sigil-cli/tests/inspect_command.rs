@@ -740,3 +740,75 @@ fn inspect_world_emits_json_error_when_config_module_is_missing() {
     assert_eq!(json["phase"], "topology");
     assert_eq!(json["error"]["code"], "SIGIL-TOPO-MISSING-CONFIG-MODULE");
 }
+
+#[test]
+fn inspect_world_supports_standalone_single_file_worlds() {
+    let dir = temp_dir("world-standalone");
+    let file = write_program(
+        &dir,
+        "standalone.sigil",
+        concat!(
+            "c auditLog=(§topology.logSink(\"auditLog\"):§topology.LogSink)\n\n",
+            "c world=(†runtime.withLogSinks(\n",
+            "  [†log.captureSink(auditLog)],\n",
+            "  †runtime.world(\n",
+            "    †clock.systemClock(),\n",
+            "    †fs.real(),\n",
+            "    [],\n",
+            "    †log.capture(),\n",
+            "    †process.real(),\n",
+            "    †random.seeded(7),\n",
+            "    [],\n",
+            "    †timer.virtual()\n",
+            "  )\n",
+            "):†runtime.World)\n\n",
+            "λmain()=>Unit=()\n",
+        ),
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("inspect")
+        .arg("world")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["command"], "sigilc inspect world");
+    assert_eq!(json["ok"], true);
+    assert_eq!(json["data"]["environment"], Value::Null);
+    assert_eq!(json["data"]["topology"]["present"], true);
+    assert_eq!(json["data"]["summary"]["logKind"], "capture");
+    assert_eq!(
+        json["data"]["normalizedWorld"]["logSinks"]["auditLog"]["kind"],
+        "capture"
+    );
+}
+
+#[test]
+fn inspect_world_rejects_env_for_standalone_files() {
+    let dir = temp_dir("world-standalone-env");
+    let file = write_program(&dir, "standalone.sigil", "λmain()=>Unit=()\n");
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("inspect")
+        .arg("world")
+        .arg(&file)
+        .arg("--env")
+        .arg("local")
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["command"], "sigilc inspect world");
+    assert_eq!(json["ok"], false);
+    assert_eq!(json["error"]["code"], "SIGIL-CLI-USAGE");
+}

@@ -174,12 +174,17 @@ function getValidationPlan(relPath, projectDir) {
       cmd: COMPILER_BINARY,
       args: ['run', relPath],
     });
+    plan.checks.push({
+      label: `Testing ${exampleName}`,
+      cmd: COMPILER_BINARY,
+      args: ['test', relPath],
+    });
     return plan;
   }
 
   if (relPath.startsWith('language/tests/') && relPath.endsWith('.sigil')) {
     const testName = path.basename(relPath, '.sigil');
-    plan.description = 'Language test updated';
+    plan.description = 'Language test suite updated';
     plan.checks.push({
       label: 'Building compiler',
       cmd: 'cargo',

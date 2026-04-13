@@ -74,6 +74,60 @@ fn test_trace_expr_requires_trace() {
 }
 
 #[test]
+fn test_directory_runs_inline_tests_in_standalone_files() {
+    let dir = temp_dir("inline-standalone-dir");
+    write_program(&dir, "alpha.sigil", "λmain()=>Int=1\n");
+    write_program(
+        &dir,
+        "beta.sigil",
+        concat!(
+            "c auditLog=(§topology.logSink(\"auditLog\"):§topology.LogSink)\n\n",
+            "c world=(†runtime.withLogSinks(\n",
+            "  [†log.captureSink(auditLog)],\n",
+            "  †runtime.world(\n",
+            "    †clock.systemClock(),\n",
+            "    †fs.real(),\n",
+            "    [],\n",
+            "    †log.capture(),\n",
+            "    †process.real(),\n",
+            "    †random.seeded(1337),\n",
+            "    [],\n",
+            "    †timer.virtual()\n",
+            "  )\n",
+            "):†runtime.World)\n\n",
+            "λmain()=>Unit=()\n\n",
+            "test \"inline log sink test\" =>!Log {\n",
+            "  l _=(§log.write(\n",
+            "    \"captured\",\n",
+            "    auditLog\n",
+            "  ):Unit);\n",
+            "  ※check::log.containsAt(\n",
+            "    \"captured\",\n",
+            "    auditLog\n",
+            "  )\n",
+            "}\n",
+        ),
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("test")
+        .arg(&dir)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["command"], "sigilc test");
+    assert_eq!(json["ok"], true);
+    assert_eq!(json["summary"]["files"], 2);
+    assert_eq!(json["summary"]["discovered"], 1);
+    assert_eq!(json["summary"]["passed"], 1);
+}
+
+#[test]
 fn test_replay_rejects_env() {
     let dir = temp_dir("replay-env");
     let file = write_program(

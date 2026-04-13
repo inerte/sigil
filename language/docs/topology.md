@@ -30,7 +30,14 @@ Sigil prefers one explicit model:
 - application code uses typed handles from `•topology`
 - application code may also read selected env declarations through
   `•config.<name>`, for example `•config.flags`
-- only config modules may read `process.env`
+- in projects, only config modules may read `process.env`
+
+Outside projects, Sigil uses the same constructors without the split:
+
+- standalone files may declare named topology handles directly
+- standalone files may build a local top-level `c world=(...:†runtime.World)`
+- standalone files use ordinary local names instead of `•topology` / `•config`
+- `--env` is only a project-mode concern
 
 ## Canonical Project Shape
 
@@ -217,15 +224,19 @@ sigil test projects/topology-http/tests --env test
 If topology is present, or if code reads `•config.<name>`, Sigil rejects the
 command when `--env` is missing.
 
+Standalone files with a local `c world` do not use `--env`.
+
 ## What Sigil Enforces
 
 Compile-time:
-- topology constructors only in `src/topology.lib.sigil`
-- world named-boundary entry constructors only in `config/*.lib.sigil` and test-local `world { ... }`
+- in project mode, topology constructors only in `src/topology.lib.sigil`
+- in project mode, world named-boundary entry constructors only in `config/*.lib.sigil` and test-local `world { ... }`
+- in standalone mode, the same constructors may appear directly in the file
 - topology-aware HTTP/TCP APIs require dependency handles
 - label-aware filesystem, log, and process crossings use named `FsRoot`, `LogSink`, and `ProcessHandle` handles
 - raw endpoint usage is rejected
-- `process.env` is only allowed in `config/*.lib.sigil`
+- in project mode, `process.env` is only allowed in `config/*.lib.sigil`
+- standalone files may read `process.env` directly because there is no separate config module
 - `•config.<name>` requires `--env <name>`
 
 Validate-time:

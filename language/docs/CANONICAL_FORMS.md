@@ -27,7 +27,8 @@ Current canonical rules include:
 
 - `.lib.sigil` files must not define `main`
 - non-test `.sigil` files must define `main`
-- `test` declarations are only allowed under `tests/`
+- in project mode, `test` declarations are only allowed under `tests/`
+- in standalone mode, `test` declarations may live in any ordinary `.sigil` file
 
 ## Filename Rules
 
@@ -268,6 +269,9 @@ For topology-aware projects:
 - selected config declarations are read through `•config.<name>`
 - `process.env` is only allowed in `config/*.lib.sigil`
 - application code must use topology dependency handles, not raw endpoints
+
+In standalone mode, the same topology/config constructors may live directly in
+one file with ordinary local names and a local top-level `c world`.
 
 Validation is currently per selected `--env`, not a whole-project scan across
 all declared environments.

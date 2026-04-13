@@ -87,7 +87,7 @@ Use the current surfaces like this:
 - `sigil inspect validate`: canonical source and validation result
 - `sigil inspect types`: solved top-level declaration types plus named type inventory
 - `sigil inspect proof`: declared proof-bearing surfaces and branch gates
-- `sigil inspect world`: normalized runtime world for one project env
+- `sigil inspect world`: normalized runtime world for one project env or one standalone file
 - `sigil featureFlag audit`: first-class feature flag declarations, optionally filtered by age
 - `sigil inspect codegen`: generated TypeScript plus span-map summary
 - `sigil run --json`: one structured run success/failure envelope
@@ -541,14 +541,17 @@ Nested segments only traverse record/object fields. Each watch result reports:
 
 ## Inspect World Details
 
-`sigil inspect world <path> --env <name>` is project-env scoped.
+`sigil inspect world` has two modes:
+
+- project mode: `sigil inspect world <path> --env <name>`
+- standalone mode: `sigil inspect world <file.sigil>`
 
 Successful output reports:
 
 - `input`
-- `project`
-- `projectRoot`
 - `environment`
+- optional `project`
+- optional `projectRoot`
 - `topology`
   - `present`
   - `declaredEnvs`
@@ -559,7 +562,7 @@ Successful output reports:
 - `normalizedWorld`
 
 `normalizedWorld` is the runtime-normalized template Sigil will use for that
-environment, not the raw exported Sigil `world` value.
+environment or standalone file, not the raw exported Sigil `world` value.
 
 ## Inspect Codegen Details
 
@@ -624,7 +627,7 @@ The current implementation uses:
 - `inspect types` now includes named type metadata, constraints, and equality mode for source-declared types; it still does not report nested expression types in v1
 - `inspect validate` returns canonical printer output even when `validation.ok` is `false`, as long as lexing and parsing succeeded
 - `inspect codegen` returns generated TypeScript inline for the requested file and only inventories imported modules
-- `inspect world` is project-level in v1; it does not batch over directories or include test-local `world { ... }` overlays
+- `inspect world` supports project env inspection and standalone single-file inspection; non-project directory batching and test-local `world { ... }` overlays are out of scope
 - `sigil test` now has a specialized result shape with `location: {line,column}`, optional per-test debug blocks, and a `stopped` status for stop-mode breakpoint hits
 
 If prose and runtime output disagree, the implementation and

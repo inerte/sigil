@@ -10,3 +10,80 @@
 }
 
 λmain()=>[String]=extractNumbers("price: $42, quantity: 3, discount: 10%")
+
+test "findAll captures group contents" {
+  match §regex.compile(
+    "",
+    "(\\w+)=(\\d+)"
+  ){
+    Ok(r)=>match §regex.findAll(
+      "a=1 b=22 c=333",
+      r
+    ){
+      []=>false|
+      [
+  first,
+  .rest
+]=>#first.captures=2 and first.captures=[
+        " a",
+        "1"
+      ] or first.captures=[
+        "a",
+        "1"
+      ]
+    }|
+    Err(_)=>false
+  }
+}
+
+test "findAll returns all non-overlapping matches" {
+  match §regex.compile(
+    "",
+    "\\d+"
+  ){
+    Ok(r)=>#§regex.findAll(
+      "foo 1 bar 2 baz 3",
+      r
+    )=3|
+    Err(_)=>false
+  }
+}
+
+test "findAll returns empty list when no matches" {
+  match §regex.compile(
+    "",
+    "\\d+"
+  ){
+    Ok(r)=>#§regex.findAll(
+      "no digits here",
+      r
+    )=0|
+    Err(_)=>false
+  }
+}
+
+test "findAll handles zero-width matches on unicode input" {
+  match §regex.compile(
+    "u",
+    "(?:)"
+  ){
+    Ok(r)=>#§regex.findAll(
+      "😀",
+      r
+    )>0|
+    Err(_)=>false
+  }
+}
+
+test "findAll works regardless of g flag on compile" {
+  match §regex.compile(
+    "",
+    "\\d+"
+  ){
+    Ok(r)=>#§regex.findAll(
+      "1 2 3",
+      r
+    )=3|
+    Err(_)=>false
+  }
+}

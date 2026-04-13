@@ -154,6 +154,7 @@ pub mod topology {
     pub const ENV_REQUIRED: &str = "SIGIL-TOPO-ENV-REQUIRED";
     pub const INVALID_CONFIG_MODULE: &str = "SIGIL-TOPO-INVALID-CONFIG-MODULE";
     pub const INVALID_HANDLE: &str = "SIGIL-TOPO-INVALID-HANDLE";
+    pub const LOCAL_WORLD_REQUIRED: &str = "SIGIL-TOPO-LOCAL-WORLD-REQUIRED";
     pub const MISSING_BINDING: &str = "SIGIL-TOPO-MISSING-BINDING";
     pub const MISSING_CONFIG_MODULE: &str = "SIGIL-TOPO-MISSING-CONFIG-MODULE";
     pub const MISSING_MODULE: &str = "SIGIL-TOPO-MISSING-MODULE";
@@ -286,6 +287,7 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     topology::ENV_REQUIRED,
     topology::INVALID_CONFIG_MODULE,
     topology::INVALID_HANDLE,
+    topology::LOCAL_WORLD_REQUIRED,
     topology::MISSING_BINDING,
     topology::MISSING_CONFIG_MODULE,
     topology::MISSING_MODULE,

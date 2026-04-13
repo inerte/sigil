@@ -12,13 +12,14 @@ machinery as project tests rather than through separate shell launchers.
 
 ## Canonical Layout
 
-- tests live under `tests/`
-- `test` declarations outside `tests/` are canonical errors
+- `sigil.json` is the mode switch
+- in project mode, tests live under `tests/`
+- in standalone mode, `test` declarations may live directly in ordinary `.sigil` files
 - test files are ordinary `.sigil` files
 - test files may include helpers alongside `test` declarations
 
-Application/library code should live under `src/` and be referenced from tests
-with rooted module syntax.
+Project application/library code should live under `src/` and be referenced
+from tests with rooted module syntax. Standalone files use local names instead.
 
 ## Referencing Real Modules
 
@@ -52,7 +53,7 @@ test "count completed todos" {
 
 ## Test Syntax
 
-```sigil program tests/basic.sigil
+```sigil program language/examples/addsNumbers.sigil
 λmain()=>Unit=()
 
 test "adds numbers" {
@@ -83,7 +84,7 @@ test "writes log" =>!Log {
 
 Tests may also derive a local world:
 
-```sigil program language/tests/testWorld.sigil
+```sigil program language/examples/testWorld.sigil
 λmain()=>Unit=()
 
 test "worlds capture logs" =>!Log world {
@@ -96,7 +97,7 @@ test "worlds capture logs" =>!Log world {
 
 Multiline descriptions use the same string syntax:
 
-```sigil program language/tests/multilineStrings.sigil
+```sigil program language/examples/multilineStrings.sigil
 λmain()=>Unit=()
 
 test "multiline
@@ -119,6 +120,7 @@ Instead:
 - that same config module may also export selected env declarations such as
   `flags`, available to app code as `•config.flags`
 - each `test` may derive that world locally with `world { ... }`
+- standalone files may instead provide a local top-level `c world=(...:†runtime.World)` with no `--env`
 - `†...` builds world entries for `Clock`, `Fs`, `Http`, `Log`, `Process`, `Random`, `Tcp`, and `Timer`
 - `※observe::...` exposes raw traces from the active test world
 - `※check::...` exposes Bool-returning helpers over those traces
@@ -136,7 +138,7 @@ Canonical note:
 
 Example:
 
-```sigil program language/tests/testWorld.sigil
+```sigil program language/examples/testWorld.sigil
 λmain()=>Unit=()
 
 test "captured log contains line" =>!Log world {
@@ -187,6 +189,7 @@ test "audit sink receives redacted ssn" =>!Fs!Log!Process world {
 - missing surface coverage is reported as ordinary failing test results
 - this coverage gate applies to suite-style runs such as `sigil test` or `sigil test path/to/tests/`
 - focused single-file runs such as `sigil test path/to/tests/file.sigil` skip the project-wide coverage gate
+- non-project directory runs such as `sigil test language/examples` recurse over `.sigil` files and run embedded tests without any project coverage gate
 
 Library tests may call `•...` exports directly. Executable tests exercise
 program behavior through `main`.
@@ -203,6 +206,9 @@ Examples:
 ```bash
 # Run all tests in the current project tests/ directory
 cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
+
+# Run the self-testing language examples
+cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test language/examples
 
 # Run a specific file or subdirectory
 cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests/basicTesting.sigil

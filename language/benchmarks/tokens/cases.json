@@ -116,7 +116,7 @@
   "world-log-test": {
     "category": "language-shaped",
     "python": "language/benchmarks/tokens/cases/world-log-test/world-log-test.py",
-    "sigil": "language/tests/testWorld.sigil",
+    "sigil": "language/examples/testWorld.sigil",
     "typescript": "language/benchmarks/tokens/cases/world-log-test/world-log-test.ts"
   }
 }

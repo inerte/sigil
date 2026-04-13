@@ -6,6 +6,9 @@ Use parent guides for broader context:
 - `../AGENTS.md` (repo-wide workflow)
 - `../language/AGENTS.md` (language/compiler development)
 
+This guide applies once `sigil.json` exists. Standalone non-project files use
+the full single-file language mode described in `language/AGENTS.md`.
+
 ## Scope
 
 `projects/` contains runnable/demo applications that use Sigil, such as:

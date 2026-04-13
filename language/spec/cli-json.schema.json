@@ -833,12 +833,27 @@
     },
     "inspectWorldData": {
       "type": "object",
-      "required": ["input", "project", "projectRoot", "environment", "topology", "summary", "normalizedWorld"],
+      "required": ["input", "environment", "topology", "summary", "normalizedWorld"],
       "properties": {
         "input": { "type": "string" },
-        "project": { "$ref": "#/$defs/projectInfo" },
-        "projectRoot": { "type": "string" },
-        "environment": { "type": "string" },
+        "project": {
+          "oneOf": [
+            { "$ref": "#/$defs/projectInfo" },
+            { "type": "null" }
+          ]
+        },
+        "projectRoot": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "environment": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
         "topology": { "$ref": "#/$defs/inspectWorldTopology" },
         "summary": { "$ref": "#/$defs/inspectWorldSummary" },
         "normalizedWorld": { "$ref": "#/$defs/inspectWorldNormalizedWorld" }

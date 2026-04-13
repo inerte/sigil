@@ -401,6 +401,24 @@ fn test_effect_annotations_valid() {
     assert!(validate_canonical_form(&program, Some("test.lib.sigil"), None).is_ok());
 }
 
+#[test]
+fn test_non_project_effect_declarations_can_live_in_single_files() {
+    let source = "effect CliIo=!Fs!Log!Process\n\nλmain()=>Unit=()";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "/tmp/effectDemo.sigil").unwrap();
+
+    assert!(validate_canonical_form(&program, Some("/tmp/effectDemo.sigil"), None).is_ok());
+}
+
+#[test]
+fn test_non_project_tests_can_live_in_single_files() {
+    let source = "λmain()=>Unit=()\n\ntest \"inline\" {\n  true\n}\n";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "/tmp/inlineTests.sigil").unwrap();
+
+    assert!(validate_canonical_form(&program, Some("/tmp/inlineTests.sigil"), None).is_ok());
+}
+
 // Note: Type checking tests belong in the typechecker crate.
 // This test validates that the parser/validator accept typed FFI declarations.
 #[test]

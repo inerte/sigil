@@ -78,6 +78,49 @@ fn run_streams_raw_stdout_by_default() {
 }
 
 #[test]
+fn run_uses_standalone_local_world_when_present() {
+    let dir = temp_dir("standalone-world");
+    let file = write_program(
+        &dir,
+        "main.sigil",
+        concat!(
+            "c auditLog=(§topology.logSink(\"auditLog\"):§topology.LogSink)\n\n",
+            "c world=(†runtime.withLogSinks(\n",
+            "  [†log.captureSink(auditLog)],\n",
+            "  †runtime.world(\n",
+            "    †clock.systemClock(),\n",
+            "    †fs.real(),\n",
+            "    [],\n",
+            "    †log.capture(),\n",
+            "    †process.real(),\n",
+            "    †random.seeded(7),\n",
+            "    [],\n",
+            "    †timer.virtual()\n",
+            "  )\n",
+            "):†runtime.World)\n\n",
+            "λmain()=>!Log String={\n",
+            "  l _=(§log.write(\n",
+            "    \"single-file\",\n",
+            "    auditLog\n",
+            "  ):Unit);\n",
+            "  \"done\"\n",
+            "}\n",
+        ),
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8_lossy(&output.stdout), "done\n");
+    assert!(output.stderr.is_empty());
+}
+
+#[test]
 fn run_json_preserves_success_envelope() {
     let dir = temp_dir("json-success");
     let file = write_program(

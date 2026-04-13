@@ -18,7 +18,7 @@
     "sigil:test:canonical-stdlib": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil run projects/repoAudit/src/main.sigil -- --check canonical-stdlib",
     "sigil:test:compiler": "cargo test --manifest-path language/compiler/Cargo.toml",
     "sigil:test:docs-drift": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil run projects/repoAudit/src/main.sigil -- --check docs-drift",
-    "sigil:test:language": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test language/tests",
+    "sigil:test:language": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test language/examples",
     "sigil:test:stdlib": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test language/stdlib-tests/tests",
     "sigil:test:homebrew": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && bash tools/checkHomebrewFormula.sh",
     "sigil:test:http": "cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli && language/compiler/target/debug/sigil test language/integrationTests/tests/httpClientServer.sigil",

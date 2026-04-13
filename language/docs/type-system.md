@@ -383,12 +383,14 @@ e console:{log:λ(String)=>!Log Unit}
 
 Tests can also declare effects:
 
-```sigil program tests/writesLog.sigil
+```sigil program language/examples/testWorld.sigil
 λmain()=>Unit=()
 
-test "writes log" =>!Log {
-  l _=(§io.println("x"):Unit);
-  true
+test "captured log contains line" =>!Log world {
+  c log=(†log.capture():†log.LogEntry)
+} {
+  l _=(§io.println("captured"):Unit);
+  ※check::log.contains("captured")
 }
 ```
 

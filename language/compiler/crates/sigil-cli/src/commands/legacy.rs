@@ -1724,10 +1724,7 @@ pub fn inspect_command(
         InspectMode::Codegen => {
             inspect_codegen_command(path, selected_env, ignore_paths, ignore_from)
         }
-        InspectMode::World => inspect_world_command(
-            path,
-            selected_env.expect("inspect world requires an environment"),
-        ),
+        InspectMode::World => inspect_world_command(path, selected_env),
     }
 }
 
@@ -2334,7 +2331,7 @@ fn inspect_validate_directory_command(
     Ok(())
 }
 
-pub fn inspect_world_command(path: &Path, env: &str) -> Result<(), CliError> {
+pub fn inspect_world_command(path: &Path, env: Option<&str>) -> Result<(), CliError> {
     let data = match inspect_world_result(path, env) {
         Ok(data) => data,
         Err(error) => {
@@ -2359,26 +2356,27 @@ pub fn inspect_world_command(path: &Path, env: &str) -> Result<(), CliError> {
     Ok(())
 }
 
-fn inspect_world_result(path: &Path, env: &str) -> Result<serde_json::Value, CliError> {
-    let project = get_project_config(path)?.ok_or_else(|| {
-        CliError::Validation(format!(
-            "{}: no Sigil project found while inspecting runtime world",
-            codes::topology::MISSING_MODULE
-        ))
-    })?;
-    let topology_file = topology_source_path(&project.root);
-    let topology_present = topology_file.exists();
+fn inspect_world_result(path: &Path, env: Option<&str>) -> Result<serde_json::Value, CliError> {
+    if let Some(project) = get_project_config(path)? {
+        let env = env.ok_or_else(|| {
+            CliError::Validation(format!(
+                "{}: inspect world requires --env <name> for Sigil projects",
+                codes::topology::ENV_REQUIRED
+            ))
+        })?;
+        let topology_file = topology_source_path(&project.root);
+        let topology_present = topology_file.exists();
 
-    let prelude = build_world_runtime_prelude(&project.root, env, topology_present)?;
-    let runner_path = unique_world_inspect_runner_path(&project.root);
-    if let Some(parent) = runner_path.parent() {
-        fs::create_dir_all(parent)?;
-    }
+        let prelude = build_world_runtime_prelude(&project.root, env, topology_present)?;
+        let runner_path = unique_world_inspect_runner_path(&project.root);
+        if let Some(parent) = runner_path.parent() {
+            fs::create_dir_all(parent)?;
+        }
 
-    fs::write(
-        &runner_path,
-        format!(
-            r#"{world_helpers}
+        fs::write(
+            &runner_path,
+            format!(
+                r#"{world_helpers}
 {prelude}
 const __sigil_inspect_topology = __sigil_world_collect_topology(globalThis.__sigil_topology_exports ?? null);
 const __sigil_inspect_world = __sigil_world_prepare_template(
@@ -2406,13 +2404,123 @@ console.log(JSON.stringify({{
   "normalizedWorld": __sigil_inspect_world
 }}));
 "#,
+                world_helpers = world_runtime_helpers_source(),
+                prelude = prelude
+            ),
+        )?;
+
+        let runner_json = run_world_inspect_runner(&runner_path, &project.root)?;
+
+        return Ok(serde_json::json!({
+            "input": path.to_string_lossy(),
+            "project": project_json(Some(&project)),
+            "projectRoot": project.root.to_string_lossy(),
+            "environment": env,
+            "topology": runner_json["topology"].clone(),
+            "summary": runner_json["summary"].clone(),
+            "normalizedWorld": runner_json["normalizedWorld"].clone()
+        }));
+    }
+
+    if path.is_dir() {
+        return Err(CliError::Validation(format!(
+            "{}: inspect world on non-project paths expects a single .sigil file",
+            codes::topology::MISSING_MODULE
+        )));
+    }
+
+    if env.is_some() {
+        return Err(CliError::Validation(format!(
+            "{}: --env is only valid for Sigil projects when inspecting runtime world",
+            codes::cli::USAGE
+        )));
+    }
+
+    let graph = ModuleGraph::build(path)?;
+    let compiled = compile_module_graph(graph, None, false, false, false)?;
+    let module_url = format!(
+        "file://{}",
+        fs::canonicalize(&compiled.entry_output_path)?.display()
+    );
+    let runner_path = unique_world_inspect_runner_path(path.parent().unwrap_or_else(|| Path::new(".")));
+    if let Some(parent) = runner_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    fs::write(
+        &runner_path,
+        format!(
+            r#"{world_helpers}
+const __sigil_module = await import("{module_url}");
+const __sigil_exports = Object.fromEntries(
+  await Promise.all(
+    Object.entries(__sigil_module).map(async ([key, value]) => [key, await Promise.resolve(value)])
+  )
+);
+const __sigil_inspect_topology = __sigil_world_collect_topology(__sigil_exports);
+const __sigil_has_world = Object.prototype.hasOwnProperty.call(__sigil_exports, "world");
+const __sigil_has_topology =
+  __sigil_inspect_topology.envs.size > 0 ||
+  __sigil_inspect_topology.fsRoots.size > 0 ||
+  __sigil_inspect_topology.http.size > 0 ||
+  __sigil_inspect_topology.logSinks.size > 0 ||
+  __sigil_inspect_topology.processHandles.size > 0 ||
+  __sigil_inspect_topology.tcp.size > 0;
+if (!__sigil_has_world && __sigil_has_topology) {{
+  const error = new Error("{local_world_required}: standalone topology programs must export c world");
+  error.sigilCode = "{local_world_required}";
+  throw error;
+}}
+const __sigil_inspect_world = __sigil_has_world
+  ? __sigil_world_prepare_template(__sigil_exports.world, __sigil_exports, null)
+  : __sigil_world_host_template();
+console.log(JSON.stringify({{
+  "topology": {{
+    "present": __sigil_has_world,
+    "declaredEnvs": Array.from(__sigil_inspect_topology.envs).sort(),
+    "httpDependencies": Array.from(__sigil_inspect_topology.http).sort(),
+    "tcpDependencies": Array.from(__sigil_inspect_topology.tcp).sort()
+  }},
+  "summary": {{
+    "clockKind": String(__sigil_inspect_world.clock?.kind ?? ""),
+    "fsKind": String(__sigil_inspect_world.fs?.kind ?? ""),
+    "logKind": String(__sigil_inspect_world.log?.kind ?? ""),
+    "processKind": String(__sigil_inspect_world.process?.kind ?? ""),
+    "randomKind": String(__sigil_inspect_world.random?.kind ?? ""),
+    "timerKind": String(__sigil_inspect_world.timer?.kind ?? ""),
+    "httpBindings": Object.keys(__sigil_inspect_world.http ?? {{}}).length,
+    "tcpBindings": Object.keys(__sigil_inspect_world.tcp ?? {{}}).length
+  }},
+  "normalizedWorld": __sigil_inspect_world
+}}));
+"#,
             world_helpers = world_runtime_helpers_source(),
-            prelude = prelude
+            module_url = module_url,
+            local_world_required = codes::topology::LOCAL_WORLD_REQUIRED
         ),
     )?;
 
-    let abs_runner = fs::canonicalize(&runner_path)?;
+    let runner_json = run_world_inspect_runner(
+        &runner_path,
+        path.parent().unwrap_or_else(|| Path::new(".")),
+    )?;
+
+    Ok(serde_json::json!({
+        "input": path.to_string_lossy(),
+        "environment": serde_json::Value::Null,
+        "topology": runner_json["topology"].clone(),
+        "summary": runner_json["summary"].clone(),
+        "normalizedWorld": runner_json["normalizedWorld"].clone()
+    }))
+}
+
+fn run_world_inspect_runner(
+    runner_path: &Path,
+    current_dir: &Path,
+) -> Result<serde_json::Value, CliError> {
+    let abs_runner = fs::canonicalize(runner_path)?;
     let output = Command::new("pnpm")
+        .current_dir(current_dir)
         .args(["exec", "node", "--import", "tsx"])
         .arg(&abs_runner)
         .stdout(Stdio::piped())
@@ -2439,23 +2547,12 @@ console.log(JSON.stringify({{
         }));
     }
 
-    let runner_json =
-        serde_json::from_slice::<serde_json::Value>(&output.stdout).map_err(|error| {
-            CliError::Runtime(format!(
-                "inspect world runner emitted invalid JSON: {}",
-                error
-            ))
-        })?;
-
-    Ok(serde_json::json!({
-        "input": path.to_string_lossy(),
-        "project": project_json(Some(&project)),
-        "projectRoot": project.root.to_string_lossy(),
-        "environment": env,
-        "topology": runner_json["topology"].clone(),
-        "summary": runner_json["summary"].clone(),
-        "normalizedWorld": runner_json["normalizedWorld"].clone()
-    }))
+    serde_json::from_slice::<serde_json::Value>(&output.stdout).map_err(|error| {
+        CliError::Runtime(format!(
+            "inspect world runner emitted invalid JSON: {}",
+            error
+        ))
+    })
 }
 
 /// Run command: compile and execute a Sigil file
@@ -3244,14 +3341,6 @@ fn build_run_target(
 ) -> Result<RunTarget, CliError> {
     let graph = ModuleGraph::build_with_env(file, selected_env)?;
     let replay_mode = prepare_replay_mode(file, &graph, record_path, replay_path, args)?;
-    let topology_prelude = if matches!(
-        replay_mode.as_ref(),
-        Some(PreparedReplayMode::Replay { .. })
-    ) {
-        String::new()
-    } else {
-        runner_prelude(file, &graph, selected_env)?.unwrap_or_default()
-    };
     let trace_runtime_enabled = trace_enabled || breakpoints_requested;
     let compiled = compile_module_graph(
         graph,
@@ -3261,6 +3350,15 @@ fn build_run_target(
         json_output || trace_expr_enabled || breakpoints_requested,
     )?;
     let module_debug_outputs = build_runtime_module_debug_outputs(&compiled)?;
+    let topology_prelude = if matches!(
+        replay_mode.as_ref(),
+        Some(PreparedReplayMode::Replay { .. })
+    ) {
+        String::new()
+    } else {
+        runner_prelude(file, selected_env, &compiled.entry_output_path)?
+            .unwrap_or_default()
+    };
     let breakpoint_config = resolve_breakpoint_config(
         file,
         &module_debug_outputs,
@@ -3596,7 +3694,7 @@ function __sigil_runtime_is_breakpoint_stop(error) {{
 try {{
 {topology_prelude}
 {replay_bootstrap_import}
-  const __sigil_module = await import({module_specifier_json});
+  const __sigil_module = globalThis.__sigil_program_exports ?? await import({module_specifier_json});
   const main = __sigil_module.main;
   if (typeof main !== 'function') {{
     {missing_main_replay}
@@ -5374,7 +5472,7 @@ function __sigil_debug_summary(value) {{
 }}
 
 try {{
-  const discoverMod = await import(moduleUrl);
+  const discoverMod = globalThis.__sigil_program_exports ?? await import(moduleUrl);
   const tests = Array.isArray(discoverMod.__sigil_tests) ? discoverMod.__sigil_tests : [];
   const selected = tests.find((candidate) => String(candidate.id) === selectedTestId);
   if (!selected) {{
@@ -5384,6 +5482,9 @@ try {{
   }}
   globalThis.__sigil_replay_config = {replay_config_json};
   const freshMod = await import(moduleUrl + '?sigil_debug=' + encodeURIComponent(String(selected.id)) + '&ts=' + Date.now() + '_' + Math.random());
+  if (typeof globalThis.__sigil_runtime_apply_program_world === 'function') {{
+    await globalThis.__sigil_runtime_apply_program_world(freshMod);
+  }}
   const freshTests = Array.isArray(freshMod.__sigil_tests) ? freshMod.__sigil_tests : [];
   const freshTest = freshTests.find((candidate) => String(candidate.id) === selectedTestId);
   if (!freshTest) {{
@@ -7507,14 +7608,6 @@ fn compile_and_run_tests(
     suite_replay_mode: Option<&PreparedTestReplayMode>,
 ) -> Result<TestRunResult, CliError> {
     let graph = ModuleGraph::build_with_env(file, selected_env)?;
-    let topology_prelude = if matches!(
-        suite_replay_mode,
-        Some(PreparedTestReplayMode::Replay { .. })
-    ) {
-        None
-    } else {
-        runner_prelude(file, &graph, selected_env)?
-    };
     let compiled = compile_module_graph(
         graph,
         None,
@@ -7522,6 +7615,14 @@ fn compile_and_run_tests(
         debug_options.breakpoints_requested(),
         true,
     )?;
+    let topology_prelude = if matches!(
+        suite_replay_mode,
+        Some(PreparedTestReplayMode::Replay { .. })
+    ) {
+        None
+    } else {
+        runner_prelude(file, selected_env, &compiled.entry_output_path)?
+    };
     let module_debug_outputs = build_runtime_module_debug_outputs(&compiled)?;
     let breakpoint_config = resolve_breakpoint_config(
         file,
@@ -7634,7 +7735,7 @@ fn run_test_module(
     let runner_code = format!(
         r#"{topology_prelude}
 const moduleUrl = "{module_url}";
-const discoverMod = await import(moduleUrl);
+const discoverMod = globalThis.__sigil_program_exports ?? await import(moduleUrl);
 const tests = Array.isArray(discoverMod.__sigil_tests) ? discoverMod.__sigil_tests : [];
 const matchText = {match_text_json};
 const selected = matchText ? tests.filter((t) => String(t.name).includes(matchText)) : tests;
@@ -7823,6 +7924,9 @@ for (const t of selected) {{
   try {{
     globalThis.__sigil_replay_config = __sigil_test_replay_config_for(t);
     const freshMod = await import(moduleUrl + '?sigil_test=' + encodeURIComponent(String(t.id)) + '&ts=' + Date.now() + '_' + Math.random());
+    if (typeof globalThis.__sigil_runtime_apply_program_world === 'function') {{
+      await globalThis.__sigil_runtime_apply_program_world(freshMod);
+    }}
     const freshTests = Array.isArray(freshMod.__sigil_tests) ? freshMod.__sigil_tests : [];
     const freshTest = freshTests.find((x) => x.id === t.id);
     if (!freshTest) {{ throw new Error('Test not found in isolated module reload: ' + String(t.id)); }}

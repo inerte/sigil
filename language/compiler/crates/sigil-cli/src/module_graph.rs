@@ -109,10 +109,6 @@ impl ModuleGraph {
         })
     }
 
-    pub fn build_many(entry_files: &[PathBuf]) -> Result<Self, ModuleGraphError> {
-        Self::build_many_with_env(entry_files, None)
-    }
-
     pub fn build_many_with_env(
         entry_files: &[PathBuf],
         selected_env: Option<&str>,

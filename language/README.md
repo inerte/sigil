@@ -179,7 +179,7 @@ environment-selected config value such as `•config.flags`:
 ```
 
 The flag declaration is the shared typed contract. The selected
-`config/<env>.lib.sigil` decides the current rules, overrides, and rollout.
+`config/<env>.lib.sigil` decides the current ordered rules and rollout actions.
 
 Sigil also has a very small implicit core prelude:
 - `Option[T]`, `Result[T,E]`

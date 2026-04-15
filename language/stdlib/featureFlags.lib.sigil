@@ -1,7 +1,5 @@
 t Config[T,C]={
   key:Option[λ(C)=>Option[String]],
-  overrides:{String↦T},
-  rollout:Option[Rollout[T]],
   rules:[Rule[
     T,
     C
@@ -17,14 +15,16 @@ t Flag[T]={
 }
 
 t Rule[T,C]={
-  predicate:λ(C)=>Bool,
-  value:T
+  action:RuleAction[T],
+  predicate:λ(C)=>Bool
 }
 
-t Rollout[T]={
+t RolloutPlan[T]={
   percentage:Int,
   variants:[WeightedValue[T]]
 }
+
+t RuleAction[T]=Rollout(RolloutPlan[T])|Value(T)
 
 t Set[C]=[Entry[C]]
 

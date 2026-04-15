@@ -66,7 +66,7 @@ fn write_feature_flag_project(root: &Path) -> PathBuf {
     write_program(
         root,
         "config/test.lib.sigil",
-        "c flags=([§featureFlags.entry(\n  {\n    key:Some(λ(context:µFlagContext)=>Option[String]=context.userId),\n    overrides:{\"dev-user\"↦true},\n    rollout:None(),\n    rules:[]\n  },\n  •flags.NewCheckout\n)]:§featureFlags.Set[µFlagContext])\n",
+        "c flags=([§featureFlags.entry(\n  {\n    key:Some(λ(context:µFlagContext)=>Option[String]=context.userId),\n    rules:[{\n      action:§featureFlags.Value(true),\n      predicate:λ(context:µFlagContext)=>Bool=context.userId=Some(\"dev-user\")\n    }]\n  },\n  •flags.NewCheckout\n)]:§featureFlags.Set[µFlagContext])\n",
     );
     root.join("src/main.sigil")
 }
@@ -237,4 +237,34 @@ fn compile_selected_config_with_env_succeeds() {
     let json = parse_json(&output.stdout);
     assert_eq!(json["ok"], true);
     assert_eq!(json["phase"], "codegen");
+}
+
+#[test]
+fn compile_selected_config_rejects_legacy_feature_flag_fields() {
+    let dir = temp_dir("feature-flags-env-legacy-fields");
+    let main = write_feature_flag_project(&dir);
+    write_program(
+        &dir,
+        "config/test.lib.sigil",
+        "c flags=([§featureFlags.entry(\n  {\n    key:Some(λ(context:µFlagContext)=>Option[String]=context.userId),\n    overrides:{\"dev-user\"↦true},\n    rollout:None(),\n    rules:[]\n  },\n  •flags.NewCheckout\n)]:§featureFlags.Set[µFlagContext])\n",
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("compile")
+        .arg("--env")
+        .arg("test")
+        .arg(&main)
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["ok"], false);
+    let message = json["error"]["message"].as_str().unwrap();
+    assert!(
+        message.contains("overrides") || message.contains("rollout"),
+        "{}",
+        message
+    );
 }

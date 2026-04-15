@@ -121,6 +121,116 @@ fn run_uses_standalone_local_world_when_present() {
 }
 
 #[test]
+fn run_feature_flag_rollout_requires_a_stable_key() {
+    let dir = temp_dir("feature-flag-missing-key");
+    let file = write_program(
+        &dir,
+        "main.sigil",
+        concat!(
+            "t Context={userId:Option[String]}\n\n",
+            "featureFlag NewCheckout:Bool\n",
+            "  createdAt \"2026-04-15T00-00-00Z\"\n",
+            "  default false\n\n",
+            "c flags=([§featureFlags.entry(\n",
+            "  {\n",
+            "    key:None(),\n",
+            "    rules:[{\n",
+            "      action:§featureFlags.Rollout({\n",
+            "        percentage:10,\n",
+            "        variants:[{\n",
+            "          value:true,\n",
+            "          weight:100\n",
+            "        }]\n",
+            "      }),\n",
+            "      predicate:λ(context:Context)=>Bool=true\n",
+            "    }]\n",
+            "  },\n",
+            "  NewCheckout\n",
+            ")]:§featureFlags.Set[Context])\n\n",
+            "λmain()=>Bool=§featureFlags.get(\n",
+            "  {userId:Some(\"demo\")},\n",
+            "  NewCheckout,\n",
+            "  flags\n",
+            ")\n",
+        ),
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg("--json")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["error"]["code"], "SIGIL-RUNTIME-FEATURE-FLAG");
+    assert!(json["error"]["details"]["runtime"]["stderr"]
+        .as_str()
+        .unwrap()
+        .contains("uses a rollout rule but no stable key was resolved"));
+}
+
+#[test]
+fn run_feature_flag_rollout_rejects_invalid_variant_weights() {
+    let dir = temp_dir("feature-flag-invalid-weights");
+    let file = write_program(
+        &dir,
+        "main.sigil",
+        concat!(
+            "t Context={userId:Option[String]}\n\n",
+            "featureFlag NewCheckout:Bool\n",
+            "  createdAt \"2026-04-15T00-00-00Z\"\n",
+            "  default false\n\n",
+            "c flags=([§featureFlags.entry(\n",
+            "  {\n",
+            "    key:Some(λ(context:Context)=>Option[String]=context.userId),\n",
+            "    rules:[{\n",
+            "      action:§featureFlags.Rollout({\n",
+            "        percentage:10,\n",
+            "        variants:[\n",
+            "          {\n",
+            "            value:true,\n",
+            "            weight:60\n",
+            "          },\n",
+            "          {\n",
+            "            value:false,\n",
+            "            weight:30\n",
+            "          }\n",
+            "        ]\n",
+            "      }),\n",
+            "      predicate:λ(context:Context)=>Bool=true\n",
+            "    }]\n",
+            "  },\n",
+            "  NewCheckout\n",
+            ")]:§featureFlags.Set[Context])\n\n",
+            "λmain()=>Bool=§featureFlags.get(\n",
+            "  {userId:Some(\"demo\")},\n",
+            "  NewCheckout,\n",
+            "  flags\n",
+            ")\n",
+        ),
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg("--json")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["error"]["code"], "SIGIL-RUNTIME-FEATURE-FLAG");
+    assert!(json["error"]["details"]["runtime"]["stderr"]
+        .as_str()
+        .unwrap()
+        .contains("rollout variant weights must sum to 100"));
+}
+
+#[test]
 fn run_json_preserves_success_envelope() {
     let dir = temp_dir("json-success");
     let file = write_program(

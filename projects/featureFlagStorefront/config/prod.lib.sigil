@@ -2,84 +2,111 @@ c flags=([
   §featureFlags.entry(
     {
       key:Some(userKey),
-      overrides:({↦}:{String↦Bool}),
-      rollout:Some({
-        percentage:20,
-        variants:[{
-          value:true,
-          weight:100
-        }]
-      }),
-      rules:[{
-        predicate:isBrazil,
-        value:true
-      }]
+      rules:[
+        {
+          action:§featureFlags.Value(true),
+          predicate:isBrazil
+        },
+        {
+          action:§featureFlags.Rollout({
+            percentage:20,
+            variants:[{
+              value:true,
+              weight:100
+            }]
+          }),
+          predicate:hasUserId
+        }
+      ]
     },
     ☴featureFlagStorefrontFlags::flags.NewCheckout
   ),
   §featureFlags.entry(
     {
       key:Some(userKey),
-      overrides:{"dev-user"↦true},
-      rollout:None(),
-      rules:[{
-        predicate:isInternal,
-        value:true
-      }]
+      rules:[
+        {
+          action:§featureFlags.Value(true),
+          predicate:isDevUser
+        },
+        {
+          action:§featureFlags.Value(true),
+          predicate:isInternal
+        }
+      ]
     },
     ☴featureFlagStorefrontFlags::flags.EnableQuickSupport
   ),
   §featureFlags.entry(
     {
       key:Some(userKey),
-      overrides:{"dev-user"↦☴featureFlagStorefrontFlags::types.Ocean()},
-      rollout:Some({
-        percentage:30,
-        variants:[
-          {
-            value:☴featureFlagStorefrontFlags::types.Ocean(),
-            weight:70
-          },
-          {
-            value:☴featureFlagStorefrontFlags::types.Citrus(),
-            weight:30
-          }
-        ]
-      }),
-      rules:[{
-        predicate:isInternal,
-        value:☴featureFlagStorefrontFlags::types.Citrus()
-      }]
+      rules:[
+        {
+          action:§featureFlags.Value(☴featureFlagStorefrontFlags::types.Ocean()),
+          predicate:isDevUser
+        },
+        {
+          action:§featureFlags.Value(☴featureFlagStorefrontFlags::types.Citrus()),
+          predicate:isInternal
+        },
+        {
+          action:§featureFlags.Rollout({
+            percentage:30,
+            variants:[
+              {
+                value:☴featureFlagStorefrontFlags::types.Ocean(),
+                weight:70
+              },
+              {
+                value:☴featureFlagStorefrontFlags::types.Citrus(),
+                weight:30
+              }
+            ]
+          }),
+          predicate:hasUserId
+        }
+      ]
     },
     ☴featureFlagStorefrontFlags::flags.CheckoutColorChoice
   ),
   §featureFlags.entry(
     {
       key:Some(userKey),
-      overrides:({↦}:{String↦☴featureFlagStorefrontFlags::types.RecommendationLayout}),
-      rollout:Some({
-        percentage:40,
-        variants:[
-          {
-            value:☴featureFlagStorefrontFlags::types.Carousel(),
-            weight:50
-          },
-          {
-            value:☴featureFlagStorefrontFlags::types.List(),
-            weight:50
-          }
-        ]
-      }),
-      rules:[{
-        predicate:isBrazil,
-        value:☴featureFlagStorefrontFlags::types.Carousel()
-      }]
+      rules:[
+        {
+          action:§featureFlags.Value(☴featureFlagStorefrontFlags::types.Carousel()),
+          predicate:isBrazil
+        },
+        {
+          action:§featureFlags.Rollout({
+            percentage:40,
+            variants:[
+              {
+                value:☴featureFlagStorefrontFlags::types.Carousel(),
+                weight:50
+              },
+              {
+                value:☴featureFlagStorefrontFlags::types.List(),
+                weight:50
+              }
+            ]
+          }),
+          predicate:hasUserId
+        }
+      ]
     },
     ☴featureFlagStorefrontFlags::flags.RecommendationLayoutChoice
   )
 ]:§featureFlags.Set[☴featureFlagStorefrontFlags::types.FlagContext])
 
+λhasUserId(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Bool match context.userId{
+  Some(_)=>true|
+  None()=>false
+}
+
 λisBrazil(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Bool=context.site=☴featureFlagStorefrontFlags::types.Br()
+
+λisDevUser(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Bool=context.userId=Some("dev-user")
 
 λisInternal(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Bool=context.internal
 

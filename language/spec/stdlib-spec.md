@@ -186,11 +186,12 @@ Semantics:
 Current types:
 
 ```sigil decl §featureFlags
-t Config[T,C]={key:Option[λ(C)=>Option[String]],overrides:{String↦T},rollout:Option[Rollout[T]],rules:[Rule[T,C]]}
+t Config[T,C]={key:Option[λ(C)=>Option[String]],rules:[Rule[T,C]]}
 t Entry[C]
 t Flag[T]={createdAt:String,default:T,id:String}
-t Rollout[T]={percentage:Int,variants:[WeightedValue[T]]}
-t Rule[T,C]={predicate:λ(C)=>Bool,value:T}
+t RolloutPlan[T]={percentage:Int,variants:[WeightedValue[T]]}
+t Rule[T,C]={action:RuleAction[T],predicate:λ(C)=>Bool}
+t RuleAction[T]=Rollout(RolloutPlan[T])|Value(T)
 t Set[C]=[Entry[C]]
 t WeightedValue[T]={value:T,weight:Int}
 ```
@@ -205,11 +206,11 @@ Current functions:
 Current `§featureFlags.get` semantics:
 
 1. resolve the configured key function, if any
-2. when a key exists and `overrides[key]` exists, return that value
-3. otherwise return the first matching `rules` value
-4. otherwise, when a key exists and `rollout` is present, hash `(flag.id,key)`
+2. otherwise evaluate rules in order and stop at the first matching predicate
+3. `Value(v)` returns `v`
+4. `Rollout(r)` requires a resolved key and hashes `(flag.id,key)`
    deterministically into the weighted rollout variants, gated by `percentage`
-5. otherwise return `flag.default`
+5. if no rule matches, return `flag.default`
 
 ## String Operations
 

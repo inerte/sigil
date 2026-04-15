@@ -165,12 +165,11 @@ First-class `featureFlag` declarations evaluate through `§featureFlags`.
 Current `§featureFlags.get(context,flag,set)` behavior is:
 
 1. resolve the configured key function, if any
-2. if a key exists and an explicit override exists for that key, return it
-3. otherwise return the first matching rule value
-4. otherwise, if a key exists and rollout is configured, hash `(flag.id,key)`
-   deterministically into the weighted rollout variants, gated by the rollout
-   percentage
-5. otherwise return the declaration default
+2. evaluate rules in order and stop at the first matching predicate
+3. `Value(v)` returns `v`
+4. `Rollout(r)` requires a resolved key and hashes `(flag.id,key)`
+   deterministically into the weighted rollout variants, gated by `percentage`
+5. if no rule matches, return the declaration default
 
 The selected environment provides the current flag set through
 `config/<env>.lib.sigil`, typically surfaced to application code as

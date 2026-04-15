@@ -2,47 +2,57 @@ c flags=([
   §featureFlags.entry(
     {
       key:Some(userKey),
-      overrides:{"dev-user"↦true},
-      rollout:None(),
-      rules:[{
-        predicate:isBrazil,
-        value:true
-      }]
+      rules:[
+        {
+          action:§featureFlags.Value(true),
+          predicate:isDevUser
+        },
+        {
+          action:§featureFlags.Value(true),
+          predicate:isBrazil
+        }
+      ]
     },
     ☴featureFlagStorefrontFlags::flags.NewCheckout
   ),
   §featureFlags.entry(
     {
       key:Some(userKey),
-      overrides:{"dev-user"↦true},
-      rollout:None(),
-      rules:[{
-        predicate:isInternal,
-        value:true
-      }]
+      rules:[
+        {
+          action:§featureFlags.Value(true),
+          predicate:isDevUser
+        },
+        {
+          action:§featureFlags.Value(true),
+          predicate:isInternal
+        }
+      ]
     },
     ☴featureFlagStorefrontFlags::flags.EnableQuickSupport
   ),
   §featureFlags.entry(
     {
       key:Some(userKey),
-      overrides:{"dev-user"↦☴featureFlagStorefrontFlags::types.Ocean()},
-      rollout:None(),
-      rules:[{
-        predicate:isInternal,
-        value:☴featureFlagStorefrontFlags::types.Citrus()
-      }]
+      rules:[
+        {
+          action:§featureFlags.Value(☴featureFlagStorefrontFlags::types.Ocean()),
+          predicate:isDevUser
+        },
+        {
+          action:§featureFlags.Value(☴featureFlagStorefrontFlags::types.Citrus()),
+          predicate:isInternal
+        }
+      ]
     },
     ☴featureFlagStorefrontFlags::flags.CheckoutColorChoice
   ),
   §featureFlags.entry(
     {
       key:Some(userKey),
-      overrides:({↦}:{String↦☴featureFlagStorefrontFlags::types.RecommendationLayout}),
-      rollout:None(),
       rules:[{
-        predicate:isBrazil,
-        value:☴featureFlagStorefrontFlags::types.Carousel()
+        action:§featureFlags.Value(☴featureFlagStorefrontFlags::types.Carousel()),
+        predicate:isBrazil
       }]
     },
     ☴featureFlagStorefrontFlags::flags.RecommendationLayoutChoice
@@ -50,6 +60,8 @@ c flags=([
 ]:§featureFlags.Set[☴featureFlagStorefrontFlags::types.FlagContext])
 
 λisBrazil(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Bool=context.site=☴featureFlagStorefrontFlags::types.Br()
+
+λisDevUser(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Bool=context.userId=Some("dev-user")
 
 λisInternal(context:☴featureFlagStorefrontFlags::types.FlagContext)=>Bool=context.internal
 

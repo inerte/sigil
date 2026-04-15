@@ -15,7 +15,7 @@ The answer is that the declaration and the current value are different things.
 
 The declaration is a shared typed contract. It says that a flag exists, what type it returns, when it was introduced, and what value is safe to use as the fallback.
 
-The current value is environment-specific runtime policy. It says which users should be forced into a variant, which contexts match special rules, and how a percentage rollout should behave in `test` or `prod`.
+The current value is environment-specific runtime policy. It says which contexts match special rules, which matching contexts should get a fixed value immediately, and how a percentage rollout should behave in `test` or `prod`.
 
 Those two concerns should not be stored in the same place.
 
@@ -58,7 +58,7 @@ Instead, the selected environment exports a `flags` value that application code 
 That keeps the split explicit:
 
 - `src/flags.lib.sigil` defines which flags exist
-- `config/<env>.lib.sigil` defines the current rules, overrides, and rollout
+- `config/<env>.lib.sigil` defines the current ordered rules and rollout actions
 
 The canonical evaluation surface is `§featureFlags`.
 
@@ -106,16 +106,16 @@ That policy lives in the environment-selected config set passed to
 
 Current evaluation order is:
 
-1. explicit override for the resolved key
-2. first matching rule
-3. deterministic rollout for that key
+1. first matching rule wins
+2. `Value(...)` returns immediately
+3. `Rollout(...)` deterministically buckets for that key
 4. declaration default
 
 This keeps the shared contract stable while letting each environment choose its own current behavior.
 
 The example storefront app uses all four patterns:
 
-- explicit override for `"dev-user"`
+- a first-match user-specific rule for `"dev-user"`
 - an internal-user rule
 - a Brazil-specific rule
 - deterministic percentage rollout by `userId`

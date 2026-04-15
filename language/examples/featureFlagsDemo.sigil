@@ -58,42 +58,58 @@ featureFlag NewCheckout:Bool
   §featureFlags.entry(
     {
       key:Some(λ(context:UserContext)=>Option[String]=context.userId),
-      overrides:{"dev-user"↦Ocean()},
-      rollout:Some({
-        percentage:50,
-        variants:[
-          {
-            value:Ocean(),
-            weight:70
-          },
-          {
-            value:Citrus(),
-            weight:30
-          }
-        ]
-      }),
-      rules:[{
-        predicate:isInternal,
-        value:Citrus()
-      }]
+      rules:[
+        {
+          action:§featureFlags.Value(Ocean()),
+          predicate:isDevUser
+        },
+        {
+          action:§featureFlags.Value(Citrus()),
+          predicate:isInternal
+        },
+        {
+          action:§featureFlags.Rollout({
+            percentage:50,
+            variants:[
+              {
+                value:Ocean(),
+                weight:70
+              },
+              {
+                value:Citrus(),
+                weight:30
+              }
+            ]
+          }),
+          predicate:hasUserId
+        }
+      ]
     },
     CheckoutColorChoice
   ),
   §featureFlags.entry(
     {
       key:Some(λ(context:UserContext)=>Option[String]=context.userId),
-      overrides:{"dev-user"↦true},
-      rollout:Some({
-        percentage:25,
-        variants:[{
-          value:true,
-          weight:100
-        }]
-      }),
-      rules:[{
-        predicate:isBrazil,
-        value:true
-      }]
+      rules:[
+        {
+          action:§featureFlags.Value(true),
+          predicate:isDevUser
+        },
+        {
+          action:§featureFlags.Value(true),
+          predicate:isBrazil
+        },
+        {
+          action:§featureFlags.Rollout({
+            percentage:25,
+            variants:[{
+              value:true,
+              weight:100
+            }]
+          }),
+          predicate:hasUserId
+        }
+      ]
     },
     NewCheckout
   )
@@ -105,6 +121,11 @@ featureFlag NewCheckout:Bool
   userId:Some("dev-user")
 }
 
+λhasUserId(context:UserContext)=>Bool match context.userId{
+  Some(_)=>true|
+  None()=>false
+}
+
 λinternalGuest()=>UserContext={
   internal:true,
   site:Us(),
@@ -112,6 +133,8 @@ featureFlag NewCheckout:Bool
 }
 
 λisBrazil(context:UserContext)=>Bool=context.site=Br()
+
+λisDevUser(context:UserContext)=>Bool=context.userId=Some("dev-user")
 
 λisInternal(context:UserContext)=>Bool=context.internal
 
@@ -173,7 +196,7 @@ test "brazil guests get the site rule without a rollout key" {
   }
 }
 
-test "dev user gets explicit overrides" {
+test "dev user gets the first matching value rule" {
   view(
     devUser(),
     demoFlags()

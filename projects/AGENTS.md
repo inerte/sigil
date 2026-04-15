@@ -33,6 +33,9 @@ Most Sigil projects in this repo use:
 - `tests/`
 - `.local/` (generated output)
 
+`sigil init [path]` scaffolds that common project root only. Runnable and
+publishable surfaces are added later.
+
 Publishable packages additionally use:
 - `src/package.lib.sigil`
 - `publish` in `sigil.json`

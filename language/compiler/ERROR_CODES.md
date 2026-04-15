@@ -435,6 +435,16 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Message:** "project module reference requires sigil project root"
 **How to fix:** Ensure project has proper structure
 
+### SIGIL-CLI-PROJECT-INIT-INVALID-NAME
+**Description:** Init target directory name cannot be converted into a canonical lowerCamel Sigil project name.
+**Message:** "target directory name `...` cannot be converted into a lowerCamel Sigil project name"
+**How to fix:** Rename the target directory so it derives to a lowerCamel ASCII name
+
+### SIGIL-CLI-PROJECT-INIT-CONFLICT
+**Description:** Init target already contains files or directories and is not safe to scaffold.
+**Message:** "target directory must be empty before initialization"
+**How to fix:** Use an empty directory or a new target path
+
 ## Runtime Errors (SIGIL-RUNTIME-*, SIGIL-RUN-*)
 
 ### SIGIL-RUNTIME-CHILD-EXIT
@@ -447,12 +457,12 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Message:** "runtime engine not available"
 **How to fix:** Install Node.js or Deno
 
-## Total Error Codes: 57
+## Total Error Codes: 59
 
 - Lexer: 9 codes
 - Parser: 5 codes
 - Canonical: 27 codes
 - Typecheck: 5 codes
 - Mutability: 1 code
-- CLI: 8 codes
+- CLI: 10 codes
 - Runtime: 2 codes

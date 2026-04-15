@@ -2,6 +2,7 @@ mod compile;
 mod compile_support;
 mod debug;
 mod feature_flag;
+mod init;
 mod inspect;
 mod legacy;
 mod lex_parse;
@@ -16,6 +17,7 @@ pub use debug::{
     debug_test_start_command, DebugControlAction,
 };
 pub use feature_flag::feature_flag_audit_command;
+pub use init::init_command;
 pub use inspect::{inspect_command, InspectMode};
 pub use legacy::CliError;
 pub use lex_parse::{lex_command, parse_command};

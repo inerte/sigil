@@ -14,7 +14,7 @@ mod project;
 
 use commands::{
     compile_command, debug_run_session_command, debug_run_start_command,
-    debug_test_session_command, debug_test_start_command, feature_flag_audit_command,
+    debug_test_session_command, debug_test_start_command, feature_flag_audit_command, init_command,
     inspect_command, lex_command, parse_command, run_command, test_command, validate_command,
     DebugControlAction,
 };
@@ -43,6 +43,12 @@ enum BreakModeArg {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Initialize a neutral Sigil project root
+    Init {
+        /// Target directory (default: current directory)
+        path: Option<PathBuf>,
+    },
+
     /// Tokenize a Sigil file
     Lex {
         /// Input .sigil file
@@ -519,6 +525,7 @@ fn main() {
     let cli = Cli::parse();
 
     let result = match cli.command {
+        Command::Init { path } => init_command(path.as_deref()),
         Command::Lex { file } => lex_command(&file),
         Command::Parse { file } => parse_command(&file),
         Command::Compile {
@@ -585,9 +592,13 @@ fn main() {
                 &ignore,
                 ignore_from.as_deref(),
             ),
-            InspectCommand::World { path, env } => {
-                inspect_command(commands::InspectMode::World, &path, env.as_deref(), &[], None)
-            }
+            InspectCommand::World { path, env } => inspect_command(
+                commands::InspectMode::World,
+                &path,
+                env.as_deref(),
+                &[],
+                None,
+            ),
         },
         Command::Run {
             file,

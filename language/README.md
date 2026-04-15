@@ -83,6 +83,25 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test -
 
 See `docs/TESTING.md`.
 
+## Project Initialization
+
+Create a new project root with:
+
+```bash
+sigil init hello-sigil
+```
+
+That creates the common project baseline:
+
+- `sigil.json`
+- `src/`
+- `tests/`
+- `.local/`
+
+`sigil init` does not choose app or package mode. Add `src/main.sigil` later when
+the project should expose a default runnable entrypoint. Add `src/package.lib.sigil`
+plus `publish` in `sigil.json` later when the project should be publishable.
+
 ## Repo Audit
 
 The repository also ships a first-party audit runner for checked docs/examples

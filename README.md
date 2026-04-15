@@ -46,6 +46,18 @@ Release versions use canonical UTC timestamps in the format `YYYY-MM-DDTHH-mm-ss
 
 Homebrew packaging is generated from those release artifacts in `projects/homebrewPackaging` and mirrored through a separate tap repo when configured. The generated formula declares `node` as a runtime dependency. The release tarballs remain the source of truth.
 
+Create a new standalone Sigil project with:
+
+```bash
+mkdir hello-sigil
+cd hello-sigil
+sigil init
+```
+
+`sigil init` creates a neutral project root with `sigil.json`, `src/`, `tests/`, and `.local/`.
+Add `src/main.sigil` later if the project should be runnable, or add `src/package.lib.sigil`
+plus `publish` later if it should be publishable as a package.
+
 If you are contributing to the compiler itself, build from source instead:
 
 ```bash
@@ -59,6 +71,7 @@ pnpm build
 - Root `pnpm` scripts are convenience wrappers around the Rust compiler.
 - `pnpm test` is for JS/workspace tests that exist; Sigil test runs are the explicit `sigil:test:*` scripts.
 - Sigil user projects use canonical `src/`, `tests/`, and `.local/`; `sigil.json` marks the project root and must declare a lowerCamel `name` plus a UTC timestamp `version` in `YYYY-MM-DDTHH-mm-ssZ`.
+- `sigil init [path]` scaffolds only that common project baseline; runnable and publishable surfaces are added later.
 - Direct package dependencies are exact-only in `sigil.json`; publishable packages also require `src/package.lib.sigil` plus `publish`.
 - Package workflows live under `sigil package ...`, with npm used only as the transport/publish registry.
 - This monorepo mixes language implementation and projects intentionally, but the user-facing layout is demonstrated under `projects/`

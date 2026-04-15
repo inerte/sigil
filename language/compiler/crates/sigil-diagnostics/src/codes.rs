@@ -138,6 +138,8 @@ pub mod cli {
     pub const INVALID_IMPORT: &str = "SIGIL-CLI-INVALID-IMPORT";
     pub const PROJECT_MAIN_REQUIRED: &str = "SIGIL-CLI-PROJECT-MAIN-REQUIRED";
     pub const PROJECT_ROOT_REQUIRED: &str = "SIGIL-CLI-PROJECT-ROOT-REQUIRED";
+    pub const PROJECT_INIT_INVALID_NAME: &str = "SIGIL-CLI-PROJECT-INIT-INVALID-NAME";
+    pub const PROJECT_INIT_CONFLICT: &str = "SIGIL-CLI-PROJECT-INIT-CONFLICT";
     pub const CONFIG_ENV_REQUIRED: &str = "SIGIL-CLI-CONFIG-ENV-REQUIRED";
     pub const CONFIG_MODULE_NOT_FOUND: &str = "SIGIL-CLI-CONFIG-MODULE-NOT-FOUND";
 }
@@ -274,6 +276,8 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     cli::INVALID_IMPORT,
     cli::PROJECT_MAIN_REQUIRED,
     cli::PROJECT_ROOT_REQUIRED,
+    cli::PROJECT_INIT_INVALID_NAME,
+    cli::PROJECT_INIT_CONFLICT,
     cli::CONFIG_ENV_REQUIRED,
     cli::CONFIG_MODULE_NOT_FOUND,
     // Topology (10 codes)
@@ -332,8 +336,8 @@ mod tests {
         // Keep this in sync when adding or removing diagnostic codes.
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            118,
-            "Expected 118 error codes, found {}",
+            120,
+            "Expected 120 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

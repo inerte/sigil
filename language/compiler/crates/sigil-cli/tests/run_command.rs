@@ -4,7 +4,9 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::thread;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -33,8 +35,72 @@ fn temp_dir(label: &str) -> PathBuf {
 
 fn write_program(dir: &Path, name: &str, source: &str) -> PathBuf {
     let file = dir.join(name);
+    if let Some(parent) = file.parent() {
+        fs::create_dir_all(parent).unwrap();
+    }
     fs::write(&file, source).unwrap();
     file
+}
+
+fn modified_time(path: &Path) -> SystemTime {
+    fs::metadata(path).unwrap().modified().unwrap()
+}
+
+fn collect_cached_module_outputs(dir: &Path, files: &mut Vec<PathBuf>) {
+    for entry in fs::read_dir(dir).unwrap() {
+        let entry = entry.unwrap();
+        let path = entry.path();
+        if path.is_dir() {
+            collect_cached_module_outputs(&path, files);
+            continue;
+        }
+        if path.extension().and_then(|ext| ext.to_str()) != Some("mjs") {
+            continue;
+        }
+        let file_name = path.file_name().and_then(|name| name.to_str()).unwrap_or("");
+        if file_name.ends_with(".run.mjs") {
+            continue;
+        }
+        files.push(path);
+    }
+}
+
+fn topology_cached_outputs(root: &Path) -> Vec<PathBuf> {
+    let local_dir = root.join(".local");
+    let mut files = Vec::new();
+    collect_cached_module_outputs(&local_dir, &mut files);
+    files.sort();
+    files
+}
+
+fn write_topology_project(root: &Path) -> PathBuf {
+    write_program(
+        root,
+        "sigil.json",
+        "{\n  \"name\": \"topologyCache\",\n  \"version\": \"2026-04-15T00-00-00Z\"\n}\n",
+    );
+    write_program(
+        root,
+        "src/topology.lib.sigil",
+        "c test=(§topology.environment(\"test\"):§topology.Environment)\n",
+    );
+    write_program(
+        root,
+        "config/test.lib.sigil",
+        concat!(
+            "c world=(†runtime.world(\n",
+            "  †clock.systemClock(),\n",
+            "  †fs.real(),\n",
+            "  [],\n",
+            "  †log.capture(),\n",
+            "  †process.real(),\n",
+            "  †random.seeded(7),\n",
+            "  [],\n",
+            "  †timer.virtual()\n",
+            "):†runtime.World)\n",
+        ),
+    );
+    write_program(root, "src/main.sigil", "λmain()=>String=\"cache ok\"\n")
 }
 
 fn parse_json(text: &[u8]) -> Value {
@@ -202,6 +268,53 @@ fn run_process_wait_does_not_hang_on_wrapper_exit_with_inherited_pipes() {
         "expected wrapper exit to finish quickly, took {:?}",
         elapsed
     );
+}
+
+#[test]
+fn run_project_reuses_cached_compile_outputs_when_inputs_are_unchanged() {
+    let dir = temp_dir("project-cache-hit");
+    let file = write_topology_project(&dir);
+
+    let first = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg("--env")
+        .arg("test")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(first.status.success(), "{}", String::from_utf8_lossy(&first.stdout));
+    assert_eq!(String::from_utf8_lossy(&first.stdout), "cache ok\n");
+
+    let cached_outputs = topology_cached_outputs(&dir);
+    assert!(!cached_outputs.is_empty());
+    let first_times = cached_outputs
+        .iter()
+        .map(|path| (path.clone(), modified_time(path)))
+        .collect::<Vec<_>>();
+
+    thread::sleep(Duration::from_millis(50));
+
+    let second = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg("--env")
+        .arg("test")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(
+        second.status.success(),
+        "{}",
+        String::from_utf8_lossy(&second.stdout)
+    );
+    assert_eq!(String::from_utf8_lossy(&second.stdout), "cache ok\n");
+
+    for (path, first_time) in first_times {
+        assert_eq!(modified_time(&path), first_time, "cached output changed: {}", path.display());
+    }
 }
 
 #[test]

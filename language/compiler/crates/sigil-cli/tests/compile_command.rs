@@ -2,7 +2,9 @@ use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::thread;
 use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -36,6 +38,10 @@ fn write_program(dir: &Path, name: &str, source: &str) -> PathBuf {
     }
     fs::write(&file, source).unwrap();
     file
+}
+
+fn modified_time(path: &Path) -> SystemTime {
+    fs::metadata(path).unwrap().modified().unwrap()
 }
 
 fn parse_json(text: &[u8]) -> Value {
@@ -267,4 +273,87 @@ fn compile_selected_config_rejects_legacy_feature_flag_fields() {
         "{}",
         message
     );
+}
+
+#[test]
+fn compile_project_reuses_cached_outputs_when_inputs_are_unchanged() {
+    let dir = temp_dir("project-cache-hit");
+    let main = write_feature_flag_project(&dir);
+
+    let first = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("compile")
+        .arg("--env")
+        .arg("test")
+        .arg(&main)
+        .output()
+        .unwrap();
+
+    assert!(first.status.success(), "{}", String::from_utf8_lossy(&first.stdout));
+    let first_json = parse_json(&first.stdout);
+    let root_ts = PathBuf::from(first_json["data"]["outputs"]["rootTs"].as_str().unwrap());
+    let cache_dir = dir.join(".sigil/cache/compiler/compile-v1");
+    assert!(cache_dir.exists());
+    let first_mtime = modified_time(&root_ts);
+
+    thread::sleep(Duration::from_millis(50));
+
+    let second = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("compile")
+        .arg("--env")
+        .arg("test")
+        .arg(&main)
+        .output()
+        .unwrap();
+
+    assert!(
+        second.status.success(),
+        "{}",
+        String::from_utf8_lossy(&second.stdout)
+    );
+    assert_eq!(modified_time(&root_ts), first_mtime);
+}
+
+#[test]
+fn compile_project_cache_misses_after_source_changes() {
+    let dir = temp_dir("project-cache-miss");
+    let main = write_feature_flag_project(&dir);
+
+    let first = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("compile")
+        .arg("--env")
+        .arg("test")
+        .arg(&main)
+        .output()
+        .unwrap();
+
+    assert!(first.status.success(), "{}", String::from_utf8_lossy(&first.stdout));
+    let first_json = parse_json(&first.stdout);
+    let root_ts = PathBuf::from(first_json["data"]["outputs"]["rootTs"].as_str().unwrap());
+    let first_mtime = modified_time(&root_ts);
+
+    thread::sleep(Duration::from_millis(50));
+    write_program(
+        &dir,
+        "src/main.sigil",
+        "λmain()=>Bool=§featureFlags.get(\n  {\n    internal:false,\n    userId:Some(\"other-user\")\n  },\n  •flags.NewCheckout,\n  •config.flags\n)\n",
+    );
+
+    let second = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("compile")
+        .arg("--env")
+        .arg("test")
+        .arg(&main)
+        .output()
+        .unwrap();
+
+    assert!(
+        second.status.success(),
+        "{}",
+        String::from_utf8_lossy(&second.stdout)
+    );
+    assert!(modified_time(&root_ts) > first_mtime);
 }

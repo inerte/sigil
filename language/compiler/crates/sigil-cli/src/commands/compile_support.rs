@@ -9,6 +9,7 @@ use crate::module_graph::{
 use crate::project::{get_project_config, ProjectConfig};
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use serde_json::json;
+use sha2::{Digest, Sha256};
 use sigil_ast::{Declaration, LabelRef, Program, Type, TypeDef};
 use sigil_codegen::{collect_module_span_map, CodegenOptions, ModuleSpanMap, TypeScriptGenerator};
 use sigil_diagnostics::codes;
@@ -24,6 +25,7 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::OnceLock;
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 struct CompileDirectoryIgnore {
@@ -146,7 +148,7 @@ pub(super) struct AnalyzedGraphOutputs {
     pub coverage_targets: Vec<CoverageTarget>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub(super) struct CoverageTarget {
     pub id: String,
     pub expected_variants: Vec<String>,
@@ -155,11 +157,16 @@ pub(super) struct CoverageTarget {
     pub location: SourcePoint,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub(super) struct CompiledGraphOutputs {
+    pub compiled_modules: usize,
     pub entry_output_path: PathBuf,
     pub entry_span_map_path: PathBuf,
+    pub module_order: Vec<String>,
+    pub module_sources: HashMap<String, PathBuf>,
     pub module_outputs: HashMap<String, PathBuf>,
     pub span_map_outputs: HashMap<String, PathBuf>,
+    pub auxiliary_outputs: Vec<PathBuf>,
     pub coverage_targets: Vec<CoverageTarget>,
 }
 
@@ -198,6 +205,422 @@ impl OutputFlavor {
             OutputFlavor::RuntimeEsm => "mjs",
         }
     }
+}
+
+const COMPILE_CACHE_SCHEMA_VERSION: u32 = 1;
+
+static COMPILER_BINARY_HASH: OnceLock<Result<String, String>> = OnceLock::new();
+
+#[derive(Debug, Clone)]
+enum CompileCacheOwner {
+    LanguageRoot(PathBuf),
+    ProjectRoot(PathBuf),
+}
+
+impl CompileCacheOwner {
+    fn root(&self) -> &Path {
+        match self {
+            CompileCacheOwner::LanguageRoot(root) | CompileCacheOwner::ProjectRoot(root) => {
+                root.as_path()
+            }
+        }
+    }
+
+    fn cache_dir(&self) -> PathBuf {
+        self.root()
+            .join(".sigil")
+            .join("cache")
+            .join("compiler")
+            .join("compile-v1")
+    }
+
+    fn normalized_path(&self, path: &Path) -> String {
+        let absolute = fs::canonicalize(path).unwrap_or_else(|_| path.to_path_buf());
+        absolute
+            .strip_prefix(self.root())
+            .unwrap_or(&absolute)
+            .to_string_lossy()
+            .replace('\\', "/")
+    }
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct CompileCacheMetadata {
+    entry_files: Vec<String>,
+    selected_env: Option<String>,
+    output_flavor: String,
+    trace: bool,
+    breakpoints: bool,
+    expression_debug: bool,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+struct CompileCacheEntry {
+    schema_version: u32,
+    cache_key: String,
+    metadata: CompileCacheMetadata,
+    compiled: CompiledGraphOutputs,
+}
+
+#[derive(Debug, Clone)]
+struct CompileCacheContext {
+    cache_key: String,
+    cache_path: PathBuf,
+    metadata: CompileCacheMetadata,
+}
+
+fn compiler_binary_hash() -> Result<String, CliError> {
+    COMPILER_BINARY_HASH
+        .get_or_init(|| {
+            let executable = std::env::current_exe()
+                .map_err(|error| format!("failed to resolve compiler executable path: {error}"))?;
+            let bytes = fs::read(&executable).map_err(|error| {
+                format!(
+                    "failed to read compiler executable '{}': {}",
+                    executable.display(),
+                    error
+                )
+            })?;
+            Ok(format!("{:x}", Sha256::digest(bytes)))
+        })
+        .clone()
+        .map_err(CliError::Codegen)
+}
+
+fn output_flavor_tag(output_flavor: OutputFlavor) -> &'static str {
+    match output_flavor {
+        OutputFlavor::TypeScript => "ts",
+        OutputFlavor::RuntimeEsm => "runtime-esm",
+    }
+}
+
+fn git_repo_root(path: &Path) -> Option<PathBuf> {
+    let canonical = fs::canonicalize(path).ok()?;
+    let mut current = if canonical.is_dir() {
+        canonical
+    } else {
+        canonical.parent()?.to_path_buf()
+    };
+
+    loop {
+        if current.join(".git").exists() {
+            return Some(current);
+        }
+        let parent = current.parent()?.to_path_buf();
+        current = parent;
+    }
+}
+
+fn compile_cache_owner(entry_files: &[PathBuf]) -> Result<Option<CompileCacheOwner>, CliError> {
+    if entry_files.is_empty() {
+        return Ok(None);
+    }
+
+    let mut project_root = None::<PathBuf>;
+    let mut all_project_owned = true;
+    for file in entry_files {
+        match get_project_config(file)? {
+            Some(project) => match project_root.as_ref() {
+                Some(root) if root != &project.root => {
+                    all_project_owned = false;
+                    break;
+                }
+                Some(_) => {}
+                None => project_root = Some(project.root),
+            },
+            None => {
+                all_project_owned = false;
+                break;
+            }
+        }
+    }
+    if all_project_owned {
+        return Ok(project_root.map(CompileCacheOwner::ProjectRoot));
+    }
+
+    let mut repo_root = None::<PathBuf>;
+    for file in entry_files {
+        let Some(root) = git_repo_root(file) else {
+            return Ok(None);
+        };
+        let canonical = fs::canonicalize(file).unwrap_or_else(|_| file.to_path_buf());
+        let relative = canonical.strip_prefix(&root).ok();
+        let under_language = relative.is_some_and(|relative| {
+            relative
+                .components()
+                .next()
+                .is_some_and(|component| component.as_os_str() == "language")
+        });
+        if !under_language {
+            return Ok(None);
+        }
+        match repo_root.as_ref() {
+            Some(existing) if existing != &root => return Ok(None),
+            Some(_) => {}
+            None => repo_root = Some(root),
+        }
+    }
+
+    Ok(repo_root.map(CompileCacheOwner::LanguageRoot))
+}
+
+fn should_skip_compile_fingerprint_dir(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|value| value.to_str())
+        .is_some_and(|name| matches!(name, ".git" | ".local" | "node_modules" | "target"))
+}
+
+fn collect_compile_fingerprint_files(
+    dir: &Path,
+    files: &mut Vec<PathBuf>,
+    include_manifests: bool,
+) -> Result<(), CliError> {
+    if !dir.exists() {
+        return Ok(());
+    }
+
+    let mut entries = fs::read_dir(dir)?
+        .collect::<Result<Vec<_>, std::io::Error>>()?
+        .into_iter()
+        .map(|entry| entry.path())
+        .collect::<Vec<_>>();
+    entries.sort();
+
+    for path in entries {
+        if path.is_dir() {
+            if should_skip_compile_fingerprint_dir(&path) {
+                continue;
+            }
+            collect_compile_fingerprint_files(&path, files, include_manifests)?;
+        } else if is_sigil_source_file(&path)
+            || (include_manifests
+                && path
+                    .file_name()
+                    .and_then(|value| value.to_str())
+                    .is_some_and(|name| name == "sigil.json"))
+        {
+            files.push(fs::canonicalize(&path).unwrap_or(path));
+        }
+    }
+
+    Ok(())
+}
+
+fn project_compile_fingerprint_files(project_root: &Path) -> Result<Vec<PathBuf>, CliError> {
+    let mut files = Vec::new();
+    for path in [project_root.join("sigil.json"), project_root.join("sigil.lock")] {
+        if path.exists() {
+            files.push(fs::canonicalize(&path).unwrap_or(path));
+        }
+    }
+    for dir in ["src", "config", "tests"] {
+        collect_compile_fingerprint_files(&project_root.join(dir), &mut files, false)?;
+    }
+    collect_compile_fingerprint_files(
+        &project_root.join(".sigil").join("packages"),
+        &mut files,
+        true,
+    )?;
+    files.sort();
+    files.dedup();
+    Ok(files)
+}
+
+fn language_compile_fingerprint_files(repo_root: &Path) -> Result<Vec<PathBuf>, CliError> {
+    let mut files = Vec::new();
+    collect_compile_fingerprint_files(&repo_root.join("language"), &mut files, false)?;
+    files.sort();
+    files.dedup();
+    Ok(files)
+}
+
+fn fingerprint_file_set(base: &Path, files: &[PathBuf]) -> Result<String, CliError> {
+    let mut hasher = Sha256::new();
+    for file in files {
+        let canonical = fs::canonicalize(file).unwrap_or_else(|_| file.to_path_buf());
+        let relative = canonical
+            .strip_prefix(base)
+            .unwrap_or(&canonical)
+            .to_string_lossy()
+            .replace('\\', "/");
+        hasher.update(relative.as_bytes());
+        hasher.update([0]);
+        hasher.update(
+            fs::read(&canonical).map_err(|error| {
+                CliError::Codegen(format!(
+                    "failed to read compile cache input '{}': {}",
+                    canonical.display(),
+                    error
+                ))
+            })?,
+        );
+        hasher.update([0]);
+    }
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+fn resolve_compile_cache_context(
+    entry_files: &[PathBuf],
+    output_override: Option<&Path>,
+    selected_env: Option<&str>,
+    trace: bool,
+    breakpoints: bool,
+    expression_debug: bool,
+    output_flavor: OutputFlavor,
+) -> Result<Option<CompileCacheContext>, CliError> {
+    if output_override.is_some() {
+        return Ok(None);
+    }
+
+    let Some(owner) = compile_cache_owner(entry_files)? else {
+        return Ok(None);
+    };
+    let input_fingerprint = match &owner {
+        CompileCacheOwner::ProjectRoot(root) => {
+            fingerprint_file_set(root, &project_compile_fingerprint_files(root)?)?
+        }
+        CompileCacheOwner::LanguageRoot(root) => {
+            fingerprint_file_set(root, &language_compile_fingerprint_files(root)?)?
+        }
+    };
+    let compiler_hash = compiler_binary_hash()?;
+    let mut normalized_entries = entry_files
+        .iter()
+        .map(|file| owner.normalized_path(file))
+        .collect::<Vec<_>>();
+    normalized_entries.sort();
+
+    let metadata = CompileCacheMetadata {
+        entry_files: normalized_entries.clone(),
+        selected_env: selected_env.map(str::to_string),
+        output_flavor: output_flavor_tag(output_flavor).to_string(),
+        trace,
+        breakpoints,
+        expression_debug,
+    };
+
+    let mut hasher = Sha256::new();
+    hasher.update(format!("compile-cache-v{COMPILE_CACHE_SCHEMA_VERSION}").as_bytes());
+    hasher.update([0]);
+    hasher.update(compiler_hash.as_bytes());
+    hasher.update([0]);
+    for entry in &normalized_entries {
+        hasher.update(entry.as_bytes());
+        hasher.update([0]);
+    }
+    if let Some(env) = selected_env {
+        hasher.update(env.as_bytes());
+    }
+    hasher.update([0]);
+    hasher.update(output_flavor_tag(output_flavor).as_bytes());
+    hasher.update([0]);
+    hasher.update([trace as u8, breakpoints as u8, expression_debug as u8]);
+    hasher.update(input_fingerprint.as_bytes());
+    let cache_key = format!("{:x}", hasher.finalize());
+
+    Ok(Some(CompileCacheContext {
+        cache_path: owner.cache_dir().join(format!("{cache_key}.json")),
+        cache_key,
+        metadata,
+    }))
+}
+
+fn compiled_artifacts_exist(compiled: &CompiledGraphOutputs) -> bool {
+    compiled.entry_output_path.exists()
+        && compiled.entry_span_map_path.exists()
+        && compiled.module_outputs.values().all(|path| path.exists())
+        && compiled.span_map_outputs.values().all(|path| path.exists())
+        && compiled.auxiliary_outputs.iter().all(|path| path.exists())
+}
+
+fn load_compile_cache_entry(
+    context: &CompileCacheContext,
+) -> Result<Option<CompiledGraphOutputs>, CliError> {
+    let text = match fs::read_to_string(&context.cache_path) {
+        Ok(text) => text,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(_) => return Ok(None),
+    };
+    let entry = match serde_json::from_str::<CompileCacheEntry>(&text) {
+        Ok(entry) => entry,
+        Err(_) => return Ok(None),
+    };
+    if entry.schema_version != COMPILE_CACHE_SCHEMA_VERSION || entry.cache_key != context.cache_key {
+        return Ok(None);
+    }
+    if !compiled_artifacts_exist(&entry.compiled) {
+        return Ok(None);
+    }
+    Ok(Some(entry.compiled))
+}
+
+fn store_compile_cache_entry(
+    context: &CompileCacheContext,
+    compiled: &CompiledGraphOutputs,
+) -> Result<(), CliError> {
+    let entry = CompileCacheEntry {
+        schema_version: COMPILE_CACHE_SCHEMA_VERSION,
+        cache_key: context.cache_key.clone(),
+        metadata: context.metadata.clone(),
+        compiled: compiled.clone(),
+    };
+    let serialized = serde_json::to_string(&entry)
+        .map_err(|error| CliError::Codegen(format!("failed to serialize compile cache entry: {error}")))?;
+    write_atomic_file(&context.cache_path, serialized.as_bytes())
+}
+
+fn build_module_graph_for_entries(
+    entry_files: &[PathBuf],
+    selected_env: Option<&str>,
+) -> Result<ModuleGraph, ModuleGraphError> {
+    if entry_files.len() == 1 {
+        ModuleGraph::build_with_env(&entry_files[0], selected_env)
+    } else {
+        ModuleGraph::build_many_with_env(entry_files, selected_env)
+    }
+}
+
+pub(super) fn compile_entry_files_with_cache(
+    entry_files: &[PathBuf],
+    existing_graph: Option<ModuleGraph>,
+    output_override: Option<&Path>,
+    selected_env: Option<&str>,
+    trace: bool,
+    breakpoints: bool,
+    expression_debug: bool,
+    output_flavor: OutputFlavor,
+) -> Result<CompiledGraphOutputs, CliError> {
+    let cache_context = resolve_compile_cache_context(
+        entry_files,
+        output_override,
+        selected_env,
+        trace,
+        breakpoints,
+        expression_debug,
+        output_flavor,
+    )?;
+    if let Some(context) = cache_context.as_ref() {
+        if let Some(compiled) = load_compile_cache_entry(context)? {
+            return Ok(compiled);
+        }
+    }
+
+    let graph = match existing_graph {
+        Some(graph) => graph,
+        None => build_module_graph_for_entries(entry_files, selected_env)?,
+    };
+    let compiled = compile_module_graph(
+        graph,
+        output_override,
+        trace,
+        breakpoints,
+        expression_debug,
+        output_flavor,
+    )?;
+    if let Some(context) = cache_context.as_ref() {
+        store_compile_cache_entry(context, &compiled)?;
+    }
+    Ok(compiled)
 }
 
 pub(super) fn project_json(project: Option<&ProjectConfig>) -> Option<serde_json::Value> {
@@ -338,38 +761,18 @@ fn compile_group(
     group: &CompileBatchGroup,
     selected_env: Option<&str>,
 ) -> Result<CompileBatchOutputs, CliError> {
-    let graph = ModuleGraph::build_many_with_env(&group.files, selected_env)?;
-    let compiled_modules = graph.topo_order.len();
-    let entry_modules = group
-        .files
-        .iter()
-        .map(|file| {
-            let module_key = entry_module_key(file)?;
-            let module = graph.modules.get(&module_key).ok_or_else(|| {
-                CliError::Codegen(format!(
-                    "batch compile could not resolve entry module '{}'",
-                    file.display()
-                ))
-            })?;
-            Ok((
-                file.clone(),
-                module_key,
-                module.project.as_ref().map(|project| project.root.clone()),
-            ))
-        })
-        .collect::<Result<Vec<_>, CliError>>()?;
-
-    let compiled = compile_module_graph(
-        graph,
+    let compiled = compile_entry_files_with_cache(
+        &group.files,
         None,
+        None,
+        selected_env,
         false,
         false,
         false,
         OutputFlavor::TypeScript,
     )?;
-    let entries = entry_modules
-        .into_iter()
-        .map(|(input, module_id, project_root)| {
+    let entries = group.files.iter().map(|input| {
+            let module_id = entry_module_key(input)?;
             let output = compiled
                 .module_outputs
                 .get(&module_id)
@@ -391,16 +794,16 @@ fn compile_group(
                     ))
                 })?;
             Ok(CompileEntryOutput {
-                input,
+                input: input.clone(),
                 output,
                 span_map,
-                project_root,
+                project_root: get_project_config(input)?.map(|project| project.root),
             })
         })
         .collect::<Result<Vec<_>, CliError>>()?;
 
     Ok(CompileBatchOutputs {
-        compiled_modules,
+        compiled_modules: compiled.compiled_modules,
         entries,
     })
 }
@@ -411,9 +814,20 @@ fn compile_single_file_command(
     show_types: bool,
     selected_env: Option<&str>,
 ) -> Result<(), CliError> {
-    let graph = match ModuleGraph::build_with_env(file, selected_env) {
-        Ok(graph) => graph,
-        Err(ModuleGraphError::Validation(errors)) => {
+    let project_json = project_json(get_project_config(file)?.as_ref());
+
+    let compiled = match compile_entry_files_with_cache(
+        &[file.to_path_buf()],
+        None,
+        output,
+        selected_env,
+        false,
+        false,
+        false,
+        OutputFlavor::TypeScript,
+    ) {
+        Ok(compiled) => compiled,
+        Err(CliError::ModuleGraph(ModuleGraphError::Validation(errors))) => {
             if let Some(first_error) = errors.first() {
                 let error_msg = first_error.to_string();
                 let error_code = extract_error_code(&error_msg);
@@ -429,9 +843,9 @@ fn compile_single_file_command(
                     }),
                 );
             }
-            return Err(ModuleGraphError::Validation(errors).into());
+            return Err(CliError::ModuleGraph(ModuleGraphError::Validation(errors)));
         }
-        Err(ModuleGraphError::ProjectConfig(project_error)) => {
+        Err(CliError::ModuleGraph(ModuleGraphError::ProjectConfig(project_error))) => {
             output_json_error(
                 "sigilc compile",
                 phase_for_code(project_error.code()),
@@ -439,7 +853,7 @@ fn compile_single_file_command(
                 &project_error.to_string(),
                 project_error_json_details(&project_error, "file", file, serde_json::Map::new()),
             );
-            return Err(ModuleGraphError::ProjectConfig(project_error).into());
+            return Err(CliError::ModuleGraph(ModuleGraphError::ProjectConfig(project_error)));
         }
         Err(error) => {
             let message = error.to_string();
@@ -453,61 +867,28 @@ fn compile_single_file_command(
                     "file": file.to_string_lossy()
                 }),
             );
-            return Err(error.into());
+            return Err(error);
         }
-    };
-
-    let entry_module_id = graph.topo_order.last().unwrap().clone();
-    let entry_module = graph.modules.get(&entry_module_id).unwrap();
-    let all_module_sources = graph
-        .topo_order
-        .iter()
-        .map(|module_id| {
-            (
-                module_id.clone(),
-                graph.modules[module_id]
-                    .file_path
-                    .to_string_lossy()
-                    .to_string(),
-            )
-        })
-        .collect::<Vec<_>>();
-    let project_json = project_json(entry_module.project.as_ref());
-
-    let compiled = match compile_module_graph(
-        graph,
-        output,
-        false,
-        false,
-        false,
-        OutputFlavor::TypeScript,
-    ) {
-        Ok(compiled) => compiled,
-        Err(CliError::Type(type_error)) => {
-            output_json_error(
-                "sigilc compile",
-                "typecheck",
-                &type_error.code,
-                &type_error.message,
-                type_error_json_details(&type_error),
-            );
-            return Err(CliError::Type(type_error));
-        }
-        Err(error) => return Err(error),
     };
     let entry_output = compiled.entry_output_path.clone();
 
-    let all_modules: Vec<serde_json::Value> = all_module_sources
-        .into_iter()
-        .map(|(module_id, source_file)| {
+    let all_modules: Vec<serde_json::Value> = compiled
+        .module_order
+        .iter()
+        .map(|module_id| {
+            let source_file = compiled
+                .module_sources
+                .get(module_id)
+                .map(|path| path.to_string_lossy().to_string())
+                .unwrap_or_default();
             let output_file = compiled
                 .module_outputs
-                .get(&module_id)
+                .get(module_id)
                 .map(|path| path.to_string_lossy().to_string())
                 .unwrap_or_default();
             let span_map_file = compiled
                 .span_map_outputs
-                .get(&module_id)
+                .get(module_id)
                 .map(|path| path.to_string_lossy().to_string())
                 .unwrap_or_default();
 
@@ -997,6 +1378,13 @@ pub(super) fn compile_module_graph(
         expression_debug,
         output_flavor,
     )?;
+    let compiled_modules = graph.topo_order.len();
+    let module_order = graph.topo_order.clone();
+    let module_sources = graph
+        .modules
+        .iter()
+        .map(|(module_id, module)| (module_id.clone(), module.file_path.clone()))
+        .collect::<HashMap<_, _>>();
     let mut module_outputs = HashMap::new();
     let mut span_map_outputs = HashMap::new();
     for (module_id, generated_output) in generated.module_outputs {
@@ -1011,14 +1399,23 @@ pub(super) fn compile_module_graph(
         module_outputs.insert(module_id.clone(), generated_output.output_path);
         span_map_outputs.insert(module_id, generated_output.span_map_path);
     }
-    write_public_package_module_aliases(&graph, &module_outputs, output_flavor)?;
-    write_selected_config_aliases(&graph, &module_outputs, output_flavor)?;
+    let mut auxiliary_outputs =
+        write_public_package_module_aliases(&graph, &module_outputs, output_flavor)?;
+    auxiliary_outputs.extend(write_selected_config_aliases(
+        &graph,
+        &module_outputs,
+        output_flavor,
+    )?);
 
     Ok(CompiledGraphOutputs {
+        compiled_modules,
         entry_output_path: generated.entry_output_path,
         entry_span_map_path: generated.entry_span_map_path,
+        module_order,
+        module_sources,
         module_outputs,
         span_map_outputs,
+        auxiliary_outputs,
         coverage_targets: generated.coverage_targets,
     })
 }
@@ -1027,7 +1424,8 @@ fn write_public_package_module_aliases(
     graph: &ModuleGraph,
     module_outputs: &HashMap<String, PathBuf>,
     output_flavor: OutputFlavor,
-) -> Result<(), CliError> {
+) -> Result<Vec<PathBuf>, CliError> {
+    let mut alias_outputs = Vec::new();
     for (module_id, module) in &graph.modules {
         let Some(public_module_id) = public_package_module_id(module_id) else {
             continue;
@@ -1054,16 +1452,18 @@ fn write_public_package_module_aliases(
         let import_path = relative_import_path(alias_parent, target_output_path);
         let alias_source = format!("export * from '{}';\n", import_path);
         write_atomic_file(&alias_output_path, alias_source.as_bytes())?;
+        alias_outputs.push(alias_output_path);
     }
 
-    Ok(())
+    Ok(alias_outputs)
 }
 
 fn write_selected_config_aliases(
     graph: &ModuleGraph,
     module_outputs: &HashMap<String, PathBuf>,
     output_flavor: OutputFlavor,
-) -> Result<(), CliError> {
+) -> Result<Vec<PathBuf>, CliError> {
+    let mut alias_outputs = Vec::new();
     for (module_id, module) in &graph.modules {
         if !module_id.starts_with("config::") {
             continue;
@@ -1094,9 +1494,10 @@ fn write_selected_config_aliases(
         let import_path = relative_import_path(alias_parent, target_output_path);
         let alias_source = format!("export * from '{}';\n", import_path);
         write_atomic_file(&alias_output_path, alias_source.as_bytes())?;
+        alias_outputs.push(alias_output_path);
     }
 
-    Ok(())
+    Ok(alias_outputs)
 }
 
 fn span_map_output_path(output_path: &Path) -> PathBuf {
@@ -1194,8 +1595,16 @@ fn compile_topology_module(project_root: &Path) -> Result<CompiledGraphOutputs, 
         )));
     }
 
-    let graph = ModuleGraph::build(&topology_source)?;
-    compile_module_graph(graph, None, false, false, false, OutputFlavor::RuntimeEsm)
+    compile_entry_files_with_cache(
+        &[topology_source],
+        None,
+        None,
+        None,
+        false,
+        false,
+        false,
+        OutputFlavor::RuntimeEsm,
+    )
 }
 
 fn compile_config_module(
@@ -1212,8 +1621,16 @@ fn compile_config_module(
         )));
     }
 
-    let graph = ModuleGraph::build(&config_source)?;
-    compile_module_graph(graph, None, false, false, false, OutputFlavor::RuntimeEsm)
+    compile_entry_files_with_cache(
+        &[config_source],
+        None,
+        None,
+        Some(env_name),
+        false,
+        false,
+        false,
+        OutputFlavor::RuntimeEsm,
+    )
 }
 
 pub(super) fn build_world_runtime_prelude(

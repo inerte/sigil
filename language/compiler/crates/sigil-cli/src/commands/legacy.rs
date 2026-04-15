@@ -1,9 +1,10 @@
 //! Command implementations for CLI
 
 use super::compile_support::{
-    analyze_module_graph, build_world_runtime_prelude, collect_sigil_targets, compile_module_graph,
-    generate_module_graph_outputs, group_compile_targets, runner_prelude, topology_source_path,
-    AnalyzedModule, CompiledGraphOutputs, CoverageTarget, GeneratedGraphOutputs, OutputFlavor,
+    analyze_module_graph, build_world_runtime_prelude, collect_sigil_targets,
+    compile_entry_files_with_cache, generate_module_graph_outputs, group_compile_targets,
+    runner_prelude, topology_source_path, AnalyzedModule,
+    CompiledGraphOutputs, CoverageTarget, GeneratedGraphOutputs, OutputFlavor,
 };
 use super::shared::{
     extract_error_code, format_validation_errors, output_inspect_error, output_json_error_to,
@@ -2450,10 +2451,11 @@ console.log(JSON.stringify({{
         )));
     }
 
-    let graph = ModuleGraph::build(path)?;
-    let compiled = compile_module_graph(
-        graph,
+    let compiled = compile_entry_files_with_cache(
+        &[path.to_path_buf()],
         None,
+        None,
+        env,
         false,
         false,
         false,
@@ -3362,9 +3364,11 @@ fn build_run_target(
     let graph = ModuleGraph::build_with_env(file, selected_env)?;
     let replay_mode = prepare_replay_mode(file, &graph, record_path, replay_path, args)?;
     let trace_runtime_enabled = trace_enabled || breakpoints_requested;
-    let compiled = compile_module_graph(
-        graph,
+    let compiled = compile_entry_files_with_cache(
+        &[file.to_path_buf()],
+        Some(graph),
         None,
+        selected_env,
         trace_enabled,
         breakpoints_requested,
         json_output || trace_expr_enabled || breakpoints_requested,
@@ -5239,8 +5243,10 @@ fn prepare_debug_run_execution(
     let (entry, binding) = build_replay_binding(file, &graph, &args)?;
     validate_replay_binding(file, &args, &entry, &binding, &artifact, &artifact_file)?;
 
-    let compiled = compile_module_graph(
-        graph,
+    let compiled = compile_entry_files_with_cache(
+        &[file.to_path_buf()],
+        Some(graph),
+        None,
         None,
         true,
         true,
@@ -5423,8 +5429,10 @@ fn prepare_debug_test_execution(
             })?;
     let test_file = canonicalize_existing_path(Path::new(&recorded_test.file));
     let graph = ModuleGraph::build(&test_file)?;
-    let compiled = compile_module_graph(
-        graph,
+    let compiled = compile_entry_files_with_cache(
+        &[test_file.clone()],
+        Some(graph),
+        None,
         None,
         true,
         true,
@@ -7675,9 +7683,11 @@ fn compile_and_run_tests(
     suite_replay_mode: Option<&PreparedTestReplayMode>,
 ) -> Result<TestRunResult, CliError> {
     let graph = ModuleGraph::build_with_env(file, selected_env)?;
-    let compiled = compile_module_graph(
-        graph,
+    let compiled = compile_entry_files_with_cache(
+        &[file.to_path_buf()],
+        Some(graph),
         None,
+        selected_env,
         debug_options.trace_enabled,
         debug_options.breakpoints_requested(),
         true,

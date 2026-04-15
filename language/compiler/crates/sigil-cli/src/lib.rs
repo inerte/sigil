@@ -1,6 +1,7 @@
 // Sigil CLI library
 
 pub mod commands;
+pub mod docs_support;
 pub mod module_graph;
 pub mod project;
 

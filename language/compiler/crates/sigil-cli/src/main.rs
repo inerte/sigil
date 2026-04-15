@@ -8,15 +8,17 @@ use std::path::PathBuf;
 use std::process;
 
 mod commands;
+mod docs_support;
 mod module_graph;
 mod package_manager;
 mod project;
 
 use commands::{
     compile_command, debug_run_session_command, debug_run_start_command,
-    debug_test_session_command, debug_test_start_command, feature_flag_audit_command, init_command,
-    inspect_command, lex_command, parse_command, run_command, test_command, validate_command,
-    DebugControlAction,
+    debug_test_session_command, debug_test_start_command, docs_context_command,
+    docs_list_command, docs_search_command, docs_show_command, feature_flag_audit_command,
+    init_command, inspect_command, lex_command, parse_command, run_command, test_command,
+    validate_command, DebugControlAction,
 };
 use package_manager::{
     package_add_command, package_install_command, package_list_command, package_publish_command,
@@ -27,6 +29,8 @@ const SIGIL_VERSION: &str = match option_env!("SIGIL_VERSION") {
     Some(version) => version,
     None => "dev",
 };
+
+const DOCS_HELP: &str = "Examples:\n  sigil docs list\n  sigil docs search \"feature flags\"\n  sigil docs show docs/syntax-reference --start-line 350 --end-line 390\n  sigil docs context --list\n  sigil docs context packages";
 
 #[derive(Parser)]
 #[command(name = "sigil", version = SIGIL_VERSION, about = "Sigil Compiler")]
@@ -47,6 +51,12 @@ enum Command {
     Init {
         /// Target directory (default: current directory)
         path: Option<PathBuf>,
+    },
+
+    /// Search embedded Sigil docs, specs, guides, and articles
+    Docs {
+        #[command(subcommand)]
+        command: DocsCommand,
     },
 
     /// Tokenize a Sigil file
@@ -226,6 +236,44 @@ enum Command {
     Debug {
         #[command(subcommand)]
         command: DebugCommand,
+    },
+}
+
+#[derive(Subcommand)]
+#[command(after_help = DOCS_HELP)]
+enum DocsCommand {
+    /// List the embedded Sigil corpus
+    List,
+
+    /// Search the embedded Sigil corpus
+    Search {
+        /// Search query
+        query: String,
+    },
+
+    /// Show one embedded document
+    Show {
+        /// Stable document id such as docs/syntax-reference
+        doc_id: String,
+
+        /// First line to include (1-based)
+        #[arg(long = "start-line")]
+        start_line: Option<usize>,
+
+        /// Last line to include (1-based, inclusive)
+        #[arg(long = "end-line")]
+        end_line: Option<usize>,
+    },
+
+    /// Return one curated docs bundle
+    Context {
+        /// List the available context ids
+        #[arg(long, conflicts_with = "id")]
+        list: bool,
+
+        /// Context id such as packages or syntax
+        #[arg(required_unless_present = "list")]
+        id: Option<String>,
     },
 }
 
@@ -526,6 +574,16 @@ fn main() {
 
     let result = match cli.command {
         Command::Init { path } => init_command(path.as_deref()),
+        Command::Docs { command } => match command {
+            DocsCommand::List => docs_list_command(),
+            DocsCommand::Search { query } => docs_search_command(&query),
+            DocsCommand::Show {
+                doc_id,
+                start_line,
+                end_line,
+            } => docs_show_command(&doc_id, start_line, end_line),
+            DocsCommand::Context { list, id } => docs_context_command(list, id.as_deref()),
+        },
         Command::Lex { file } => lex_command(&file),
         Command::Parse { file } => parse_command(&file),
         Command::Compile {

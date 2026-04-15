@@ -10,6 +10,10 @@ Sigil CLI commands are machine-first. JSON is the default output mode for:
 - `sigilc inspect validate`
 - `sigilc inspect codegen`
 - `sigilc inspect world`
+- `sigil docs list`
+- `sigil docs search`
+- `sigil docs show`
+- `sigil docs context`
 - `sigil featureFlag audit`
 - `sigilc debug run`
 - `sigilc debug test`
@@ -75,15 +79,117 @@ Failures emit:
 
 `sigilc test` keeps a specialized top-level `summary` / `results` envelope.
 `sigilc inspect types`, `sigilc inspect proof`, `sigilc inspect validate`, `sigilc inspect codegen`, and `sigilc inspect world` use inspect-specific envelopes.
+`sigil docs list`, `sigil docs search`, `sigil docs show`, and `sigil docs context` use docs-specific envelopes with `phase: "docs"` on success.
 `sigil featureFlag audit` uses a query-style envelope with `data.summary` and `data.flags`.
 `sigilc run` uses the `runEnvelope` schema in `--json` mode and for failure payloads.
 `sigilc debug run` and `sigilc debug test` use replay-backed debug envelopes with
 `data.session` and `data.snapshot`.
 
+## Docs Retrieval Surface
+
+`sigil docs ...` is the machine-first local knowledge surface for installed
+Sigil binaries.
+
+Use it when an assistant or human needs the language guides, syntax reference,
+stdlib ownership, package rules, or design rationale without depending on web
+search or model priors.
+
+Current commands:
+
+- `sigil docs list`
+- `sigil docs search <query>`
+- `sigil docs show <docId> [--start-line N] [--end-line N]`
+- `sigil docs context --list`
+- `sigil docs context <id>`
+
+### `sigil docs list`
+
+Returns:
+
+- `data.documents`
+
+Each `documents[]` entry includes:
+
+- `docId`
+- `kind`
+- `title`
+- `path`
+- `description`
+- `lineCount`
+
+### `sigil docs search`
+
+Returns:
+
+- `data.query`
+- `data.results`
+
+Each `results[]` entry includes:
+
+- `docId`
+- `kind`
+- `title`
+- `path`
+- `section`
+- `line`
+- `before`
+- `match`
+- `after`
+- `isExactPhrase`
+
+`before`, `match`, and `after` are numbered source-line windows over the
+embedded document.
+
+### `sigil docs show`
+
+Returns:
+
+- `data.document`
+- `data.range`
+
+`data.document` includes:
+
+- `docId`
+- `kind`
+- `title`
+- `path`
+- `description`
+- `lineCount`
+- `lines`
+
+Each `lines[]` entry includes:
+
+- `line`
+- `text`
+- `section`
+
+### `sigil docs context`
+
+`sigil docs context --list` returns:
+
+- `data.contexts`
+
+Each `contexts[]` entry includes:
+
+- `id`
+- `title`
+- `description`
+- `includedDocs`
+
+`sigil docs context <id>` returns:
+
+- `data.context`
+
+`data.context.includedDocs[]` uses the same document summary shape as
+`sigil docs list`.
+
 ## Debug Surface Index
 
 Use the current surfaces like this:
 
+- `sigil docs context --list`: discover the curated local knowledge bundles
+- `sigil docs search`: find the exact doc and line for a language question
+- `sigil docs show`: read the exact local source material by id and line range
 - `sigil inspect validate`: canonical source and validation result
 - `sigil inspect types`: solved top-level declaration types plus named type inventory
 - `sigil inspect proof`: declared proof-bearing surfaces and branch gates
@@ -225,6 +331,17 @@ Current filtering surface:
 - `sigil featureFlag audit --older-than Nd`
 
 `Nd` uses a required `d` suffix such as `180d`.
+
+## Docs Error Codes
+
+The docs retrieval surface currently introduces these explicit CLI codes:
+
+- `SIGIL-CLI-DOC-NOT-FOUND`
+- `SIGIL-CLI-DOC-CONTEXT-NOT-FOUND`
+- `SIGIL-CLI-DOC-INVALID-LINE-RANGE`
+
+Blank or otherwise invalid docs-command usage continues to use the normal CLI
+usage surface.
 
 ## Run Failure Details
 

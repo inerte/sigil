@@ -87,6 +87,12 @@ When you think about it, this makes perfect sense:
 
 The semantic maps were documentation frozen at compile time. Claude Code's explanations are generated on-demand from live source code.
 
+That still leaves one real requirement for a brand-new language: the assistant
+may not know the language surface yet. Sigil now solves that separately with
+`sigil docs ...`, which ships an embedded local corpus of guides, specs,
+articles, and grammar inside the binary itself. Source reading explains one
+program; embedded docs bootstrap the language.
+
 Which would you rather have?
 
 ## What We Kept: The Essentials
@@ -95,7 +101,7 @@ We didn't remove tooling indiscriminately. We kept everything Claude Code actual
 
 ### 1. Strong Compiler with Excellent Diagnostics
 
-The compiler CLI is 1,010 lines of TypeScript. It provides:
+The compiler CLI provides the machine surfaces Sigil actually relies on:
 
 - Detailed parse errors with location information
 - Type checking with bidirectional inference
@@ -356,7 +362,8 @@ Actually, this works **better** as codebases grow:
 True, but:
 1. This is the direction the industry is moving (GitHub Copilot, Cursor, etc.)
 2. Any AI assistant can use the compiler CLI - it's not Claude-specific
-3. Traditional workflows still work (you can read/write Sigil by hand)
+3. Any AI assistant can also query `sigil docs ...` locally instead of hoping the web has already indexed the right Sigil docs
+4. Traditional workflows still work (you can read/write Sigil by hand)
 
 The point is: **optimize for the common case** (AI-assisted development), not the edge case (hand-authoring without AI).
 

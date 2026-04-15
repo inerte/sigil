@@ -58,6 +58,20 @@ sigil init
 Add `src/main.sigil` later if the project should be runnable, or add `src/package.lib.sigil`
 plus `publish` later if it should be publishable as a package.
 
+If Claude Code, Codex, or another assistant is starting from a fresh Sigil install,
+bootstrap it from the binary itself:
+
+```bash
+sigil help
+sigil docs context --list
+sigil docs context overview
+sigil docs search "syntax reference"
+```
+
+`sigil docs ...` ships an embedded local corpus of guides, language docs, specs,
+grammar, and design articles. That gives assistants a version-matched Sigil
+knowledge surface immediately, without depending on web search or model priors.
+
 If you are contributing to the compiler itself, build from source instead:
 
 ```bash

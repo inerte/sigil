@@ -376,7 +376,14 @@ Natural language explanation on demand
 - Developer asks "What does this do?" => Claude Code explains
 - Developer asks "Add memoization" => Claude Code edits canonical syntax
 - Compiler CLI provides diagnostics => Claude Code interprets
+- `sigil docs ...` provides local language knowledge when the model does not already know Sigil
 - No IDE tooling needed => Claude Code is the interface
+
+This last point matters for any new language. A model can read a source file
+that is already in front of it, but it cannot be assumed to know Sigil syntax,
+stdlib ownership, or package rules from pretraining or search ranking alone.
+Embedding a version-matched docs corpus in the CLI makes the language bootstrap
+surface first-party and local.
 
 **Workflow:**
 ```

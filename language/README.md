@@ -102,6 +102,19 @@ That creates the common project baseline:
 the project should expose a default runnable entrypoint. Add `src/package.lib.sigil`
 plus `publish` in `sigil.json` later when the project should be publishable.
 
+On a fresh install, an assistant can bootstrap its Sigil knowledge locally:
+
+```bash
+sigil help
+sigil docs context --list
+sigil docs context overview
+sigil docs search "feature flags"
+```
+
+This matters because Sigil is new enough that model weights and web search
+should not be assumed to know the language yet. The installed binary carries a
+version-matched local docs corpus for that cold-start problem.
+
 ## Repo Audit
 
 The repository also ships a first-party audit runner for checked docs/examples
@@ -429,6 +442,7 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
 **No IDE tooling needed** - Claude Code uses the compiler CLI directly:
 - Reads source files
 - Invokes compiler for diagnostics
+- Uses `sigil docs ...` to bootstrap syntax, stdlib, and spec knowledge on a fresh install
 - Explains code in natural language
 - Writes/edits canonical Sigil code
 
@@ -480,6 +494,11 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
 # Extract the archive and move `sigil` onto your PATH
 sigil --version
 
+# Bootstrap a fresh assistant without web search
+sigil help
+sigil docs context --list
+sigil docs search "syntax reference"
+
 # Compile to TypeScript
 sigil compile src/main.sigil -o dist/main.ts
 
@@ -504,6 +523,7 @@ GitHub Releases are the canonical installation path.
 
 ## Documentation
 
+- [Embedded Docs](docs/EMBEDDED_DOCS.md) - Local JSON retrieval surface for assistants and humans
 - [Debugging](docs/DEBUGGING.md) - Workflow, flags, replay, stepping, and watches
 - [Philosophy](docs/philosophy.md) - Why machine-first?
 - [Syntax Reference](docs/syntax-reference.md) - Canonical syntax reference

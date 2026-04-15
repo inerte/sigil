@@ -475,6 +475,11 @@ whole suite in a live mode.
 The intended workflow is the same for a person and an LLM, but the machine
 surfaces mean the LLM can stay precise instead of guessing from prose.
 
+If the question is about the Sigil language surface itself rather than one
+execution, start with `sigil docs ...` instead of a debug command. Use
+`sigil docs context --list` to discover curated bundles, or `sigil docs search`
+to jump to a specific syntax, stdlib, or package topic.
+
 A good loop is:
 
 1. run one machine-readable command first

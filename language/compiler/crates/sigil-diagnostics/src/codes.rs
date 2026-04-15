@@ -140,6 +140,9 @@ pub mod cli {
     pub const PROJECT_ROOT_REQUIRED: &str = "SIGIL-CLI-PROJECT-ROOT-REQUIRED";
     pub const PROJECT_INIT_INVALID_NAME: &str = "SIGIL-CLI-PROJECT-INIT-INVALID-NAME";
     pub const PROJECT_INIT_CONFLICT: &str = "SIGIL-CLI-PROJECT-INIT-CONFLICT";
+    pub const DOC_NOT_FOUND: &str = "SIGIL-CLI-DOC-NOT-FOUND";
+    pub const DOC_CONTEXT_NOT_FOUND: &str = "SIGIL-CLI-DOC-CONTEXT-NOT-FOUND";
+    pub const DOC_INVALID_LINE_RANGE: &str = "SIGIL-CLI-DOC-INVALID-LINE-RANGE";
     pub const CONFIG_ENV_REQUIRED: &str = "SIGIL-CLI-CONFIG-ENV-REQUIRED";
     pub const CONFIG_MODULE_NOT_FOUND: &str = "SIGIL-CLI-CONFIG-MODULE-NOT-FOUND";
 }
@@ -278,6 +281,9 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     cli::PROJECT_ROOT_REQUIRED,
     cli::PROJECT_INIT_INVALID_NAME,
     cli::PROJECT_INIT_CONFLICT,
+    cli::DOC_NOT_FOUND,
+    cli::DOC_CONTEXT_NOT_FOUND,
+    cli::DOC_INVALID_LINE_RANGE,
     cli::CONFIG_ENV_REQUIRED,
     cli::CONFIG_MODULE_NOT_FOUND,
     // Topology (10 codes)
@@ -336,8 +342,8 @@ mod tests {
         // Keep this in sync when adding or removing diagnostic codes.
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            120,
-            "Expected 120 error codes, found {}",
+            123,
+            "Expected 123 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

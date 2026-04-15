@@ -13,6 +13,10 @@
     { "$ref": "#/$defs/inspectValidateEnvelope" },
     { "$ref": "#/$defs/inspectCodegenEnvelope" },
     { "$ref": "#/$defs/inspectWorldEnvelope" },
+    { "$ref": "#/$defs/docsListEnvelope" },
+    { "$ref": "#/$defs/docsSearchEnvelope" },
+    { "$ref": "#/$defs/docsShowEnvelope" },
+    { "$ref": "#/$defs/docsContextEnvelope" },
     { "$ref": "#/$defs/featureFlagAuditEnvelope" },
     { "$ref": "#/$defs/runEnvelope" },
     { "$ref": "#/$defs/debugEnvelope" },
@@ -21,7 +25,7 @@
   "$defs": {
     "phase": {
       "type": "string",
-      "enum": ["cli", "io", "surface", "lexer", "parser", "canonical", "typecheck", "mutability", "extern", "codegen", "proof", "runtime"]
+      "enum": ["cli", "io", "surface", "lexer", "parser", "canonical", "typecheck", "mutability", "extern", "codegen", "proof", "runtime", "docs"]
     },
     "sourcePoint": {
       "type": "object",
@@ -951,6 +955,249 @@
           },
           "allOf": [
             { "if": { "properties": { "ok": { "const": true } } }, "then": { "required": ["data"] } },
+            { "if": { "properties": { "ok": { "const": false } } }, "then": { "required": ["error"] } }
+          ]
+        }
+      ]
+    },
+    "docsKind": {
+      "type": "string",
+      "enum": ["guide", "docs", "spec", "article"]
+    },
+    "docsSummary": {
+      "type": "object",
+      "required": ["docId", "kind", "title", "path", "description", "lineCount"],
+      "properties": {
+        "docId": { "type": "string" },
+        "kind": { "$ref": "#/$defs/docsKind" },
+        "title": { "type": "string" },
+        "path": { "type": "string" },
+        "description": { "type": "string" },
+        "lineCount": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "docsWindowLine": {
+      "type": "object",
+      "required": ["line", "text"],
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "text": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "docsShowLine": {
+      "type": "object",
+      "required": ["line", "text", "section"],
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "text": { "type": "string" },
+        "section": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "docsSearchResult": {
+      "type": "object",
+      "required": ["docId", "kind", "title", "path", "section", "line", "before", "match", "after", "isExactPhrase"],
+      "properties": {
+        "docId": { "type": "string" },
+        "kind": { "$ref": "#/$defs/docsKind" },
+        "title": { "type": "string" },
+        "path": { "type": "string" },
+        "section": {
+          "oneOf": [
+            { "type": "string" },
+            { "type": "null" }
+          ]
+        },
+        "line": { "type": "integer", "minimum": 1 },
+        "before": { "type": "array", "items": { "$ref": "#/$defs/docsWindowLine" } },
+        "match": { "type": "array", "items": { "$ref": "#/$defs/docsWindowLine" }, "minItems": 1 },
+        "after": { "type": "array", "items": { "$ref": "#/$defs/docsWindowLine" } },
+        "isExactPhrase": { "type": "boolean" }
+      },
+      "additionalProperties": false
+    },
+    "docsShowDocument": {
+      "type": "object",
+      "required": ["docId", "kind", "title", "path", "description", "lineCount", "lines"],
+      "properties": {
+        "docId": { "type": "string" },
+        "kind": { "$ref": "#/$defs/docsKind" },
+        "title": { "type": "string" },
+        "path": { "type": "string" },
+        "description": { "type": "string" },
+        "lineCount": { "type": "integer", "minimum": 0 },
+        "lines": { "type": "array", "items": { "$ref": "#/$defs/docsShowLine" } }
+      },
+      "additionalProperties": false
+    },
+    "docsShowRange": {
+      "type": "object",
+      "required": ["startLine", "endLine"],
+      "properties": {
+        "startLine": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    },
+    "docsListData": {
+      "type": "object",
+      "required": ["documents"],
+      "properties": {
+        "documents": { "type": "array", "items": { "$ref": "#/$defs/docsSummary" } }
+      },
+      "additionalProperties": false
+    },
+    "docsSearchData": {
+      "type": "object",
+      "required": ["query", "results"],
+      "properties": {
+        "query": { "type": "string" },
+        "results": { "type": "array", "items": { "$ref": "#/$defs/docsSearchResult" } }
+      },
+      "additionalProperties": false
+    },
+    "docsShowData": {
+      "type": "object",
+      "required": ["document", "range"],
+      "properties": {
+        "document": { "$ref": "#/$defs/docsShowDocument" },
+        "range": { "$ref": "#/$defs/docsShowRange" }
+      },
+      "additionalProperties": false
+    },
+    "docsContextListItem": {
+      "type": "object",
+      "required": ["id", "title", "description", "includedDocs"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "includedDocs": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "docsContextListData": {
+      "type": "object",
+      "required": ["contexts"],
+      "properties": {
+        "contexts": { "type": "array", "items": { "$ref": "#/$defs/docsContextListItem" } }
+      },
+      "additionalProperties": false
+    },
+    "docsContextResolved": {
+      "type": "object",
+      "required": ["id", "title", "description", "includedDocs"],
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "includedDocs": { "type": "array", "items": { "$ref": "#/$defs/docsSummary" } }
+      },
+      "additionalProperties": false
+    },
+    "docsContextData": {
+      "type": "object",
+      "required": ["context"],
+      "properties": {
+        "context": { "$ref": "#/$defs/docsContextResolved" }
+      },
+      "additionalProperties": false
+    },
+    "docsListEnvelope": {
+      "allOf": [
+        { "$ref": "#/$defs/baseEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "command": { "const": "sigil docs list" },
+            "data": { "$ref": "#/$defs/docsListData" }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "ok": { "const": true } } },
+              "then": {
+                "required": ["phase", "data"],
+                "properties": { "phase": { "const": "docs" } }
+              }
+            },
+            { "if": { "properties": { "ok": { "const": false } } }, "then": { "required": ["error"] } }
+          ]
+        }
+      ]
+    },
+    "docsSearchEnvelope": {
+      "allOf": [
+        { "$ref": "#/$defs/baseEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "command": { "const": "sigil docs search" },
+            "data": { "$ref": "#/$defs/docsSearchData" }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "ok": { "const": true } } },
+              "then": {
+                "required": ["phase", "data"],
+                "properties": { "phase": { "const": "docs" } }
+              }
+            },
+            { "if": { "properties": { "ok": { "const": false } } }, "then": { "required": ["error"] } }
+          ]
+        }
+      ]
+    },
+    "docsShowEnvelope": {
+      "allOf": [
+        { "$ref": "#/$defs/baseEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "command": { "const": "sigil docs show" },
+            "data": { "$ref": "#/$defs/docsShowData" }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "ok": { "const": true } } },
+              "then": {
+                "required": ["phase", "data"],
+                "properties": { "phase": { "const": "docs" } }
+              }
+            },
+            { "if": { "properties": { "ok": { "const": false } } }, "then": { "required": ["error"] } }
+          ]
+        }
+      ]
+    },
+    "docsContextEnvelope": {
+      "allOf": [
+        { "$ref": "#/$defs/baseEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "command": { "const": "sigil docs context" },
+            "data": {
+              "oneOf": [
+                { "$ref": "#/$defs/docsContextListData" },
+                { "$ref": "#/$defs/docsContextData" }
+              ]
+            }
+          },
+          "allOf": [
+            {
+              "if": { "properties": { "ok": { "const": true } } },
+              "then": {
+                "required": ["phase", "data"],
+                "properties": { "phase": { "const": "docs" } }
+              }
+            },
             { "if": { "properties": { "ok": { "const": false } } }, "then": { "required": ["error"] } }
           ]
         }

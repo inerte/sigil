@@ -7,12 +7,15 @@ V1 owns four checks:
 
 1. `docs-drift` validates tracked Markdown Sigil fences and stdlib doc coverage
 2. `canonical-stdlib` rejects local wrappers around canonical stdlib helpers
-3. `repo-compile` batch-compiles non-ignored Sigil source across the repo
+3. `repo-compile` compiles tracked Sigil roots across the repo
 4. `package-publishability` validates each publishable package through `sigil package validate`
 
-`docs-drift` is also where `repoAudit` currently uses Sigil's named concurrent
-regions: tracked Markdown files are audited in parallel, but the merged issue
-order still follows the canonical path order.
+`repoAudit` currently uses Sigil's named concurrent regions in two places:
+
+- `docs-drift`: tracked Markdown files are audited in parallel
+- `repo-compile`: tracked compile roots are compiled in parallel
+
+In both cases, the merged issue order still follows the canonical path order.
 
 ## Running it
 

@@ -266,7 +266,11 @@ test "runner executes filtered checks under a controlled world" =>!AuditIo world
     }
   ),
   †process.rule(
-    (•repoCompile.compilerCommand(".").argv:[String]),
+    (•repoCompile.compileTargetCommand({
+      env:None(),
+      path:"language",
+      root:"."
+    }).argv:[String]),
     Some("."),
     {
       code:0,
@@ -286,7 +290,8 @@ test "runner executes filtered checks under a controlled world" =>!AuditIo world
     {
       code:0,
       stderr:"",
-      stdout:"projects/router/sigil.json
+      stdout:"language/examples/addsNumbers.sigil
+projects/router/sigil.json
 "
     }
   ),

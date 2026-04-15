@@ -14,50 +14,100 @@
   None()=>None()
 }
 
-λcompilerCommand(root:String)=>§process.Command=§process.withCwd(
+λcompileTargetCommand(task:µRepoCompileTask)=>§process.Command=§process.withCwd(
   §process.command([
     §path.join(
-      root,
+      task.root,
       "language/compiler/target/debug/sigil"
     ),
     "compile",
-    ".",
-    "--ignore",
-    ".git",
-    "--ignore-from",
-    ".gitignore"
-  ]),
-  root
+    task.path
+  ]⧺compileTargetEnvArgs(task.env)),
+  task.root
 )
 
-λcompilerCommandIgnoringProjects(ignoreProjectDirs:[String],root:String)=>§process.Command=§process.withCwd(
-  §process.command([
-    §path.join(
-      root,
-      "language/compiler/target/debug/sigil"
-    ),
-    "compile",
-    ".",
-    "--ignore",
-    ".git"
-  ]
-    ⧺§list.flatMap(
-      λ(projectDir:String)=>[String]=[
-        "--ignore",
-        projectDir
-      ],
-      ignoreProjectDirs
+λcompileTargetEnvArgs(env:Option[String])=>[String] match env{
+  Some(name)=>[
+    "--env",
+    name
+  ]|
+  None()=>[]
+}
+
+λcompileTargetForPath(path:String)=>Option[µRepoCompileTarget] match isTrackedSigilPath(path){
+  true=>match §string.startsWith(
+    "language/",
+    path
+  ){
+    true=>Some({
+      env:None(),
+      path:"language"
+    })|
+    false=>match projectRootForTrackedPath(path){
+      Some(root)=>Some({
+        env:match isTestConfigPath(path){
+          true=>Some("test")|
+          false=>None()
+        },
+        path:root
+      })|
+      None()=>None()
+    }
+  }|
+  false=>None()
+}
+
+λcompileTargetIssue(outcome:ConcurrentOutcome[
+  Unit,
+  µRepoCompileIssue
+],task:µRepoCompileTask)=>Option[µRepoCompileIssue] match outcome{
+  Success(_)=>None()|
+  Failure(issue)=>Some(issue)|
+  Aborted()=>Some({
+    message:"compile aborted",
+    path:task.path
+  })
+}
+
+λcompileTargets(paths:[String])=>[µRepoCompileTarget]=compileTargetsInner(
+  [],
+  paths
+)
+
+λcompileTargetsInner(acc:[µRepoCompileTarget],paths:[String])=>[µRepoCompileTarget] match paths{
+  []=>acc|
+  [
+  head,
+  .tail
+]=>match compileTargetForPath(head){
+    Some(target)=>compileTargetsInner(
+      mergeCompileTarget(
+        acc,
+        target
+      ),
+      tail
+    )|
+    None()=>compileTargetsInner(
+      acc,
+      tail
     )
-    ⧺[
-      "--ignore-from",
-      ".gitignore"
-    ]),
-  root
-)
+  }
+}
 
-λconfigProjectDirForConfig(path:String)=>String=§path.dirname(§path.dirname(path))
-
-λconfigProjectDirs(paths:[String])=>[String]=paths filter isTestConfigPath map configProjectDirForConfig
+λcompileTasks(root:String,targets:[µRepoCompileTarget])=>[µRepoCompileTask] match targets{
+  []=>[]|
+  [
+  head,
+  .tail
+]=>[{
+    env:head.env,
+    path:head.path,
+    root:root
+  }]⧺compileTasks(
+    root,
+    tail
+  )
+}
 
 λcontainsString(items:[String],value:String)=>Bool=§list.any(
   λ(item:String)=>Bool=item=value,
@@ -136,14 +186,6 @@
   )
 )
 
-λisScratchPath(path:String)=>Bool=§string.startsWith(
-  "sigil-cli-package-",
-  path
-) or §string.startsWith(
-  "sigil-package-",
-  path
-)
-
 λisTestConfigPath(path:String)=>Bool=§string.startsWith(
   "projects/",
   path
@@ -151,6 +193,11 @@
   path,
   "/config/test.lib.sigil"
 )
+
+λisTrackedSigilPath(path:String)=>Bool=§string.endsWith(
+  path,
+  ".sigil"
+) and ¬•packagePublishability.isGeneratedPath(path)
 
 λjsonObjectField(key:String,obj:{String↦§json.JsonValue})=>Option[{String↦§json.JsonValue}] match §json.getField(
   key,
@@ -168,22 +215,64 @@
   None()=>None()
 }
 
-λmergeUnique(left:[String],right:[String])=>[String] match right{
-  []=>left|
+λmergeCompileTarget(left:[µRepoCompileTarget],right:µRepoCompileTarget)=>[µRepoCompileTarget] match left{
+  []=>[right]|
   [
   head,
   .tail
-]=>match containsString(
-    left,
-    head
-  ){
-    true=>mergeUnique(
-      left,
-      tail
+]=>match head.path=right.path{
+    true=>[{
+      env:mergeCompileTargetEnv(
+        head.env,
+        right.env
+      ),
+      path:head.path
+    }]⧺tail|
+    false=>[head]⧺mergeCompileTarget(
+      tail,
+      right
+    )
+  }
+}
+
+λmergeCompileTargetEnv(left:Option[String],right:Option[String])=>Option[String] match left{
+  Some(name)=>Some(name)|
+  None()=>right
+}
+
+λmergeCompileTaskOutcomes(acc:[µRepoCompileIssue],outcomes:[ConcurrentOutcome[
+  Unit,
+  µRepoCompileIssue
+]],tasks:[µRepoCompileTask])=>[µRepoCompileIssue] match tasks{
+  []=>acc|
+  [
+  task,
+  .remainingTasks
+]=>match outcomes{
+    []=>mergeCompileTaskOutcomes(
+      match compileTargetIssue(
+        Aborted(),
+        task
+      ){
+        Some(issue)=>acc⧺[issue]|
+        None()=>acc
+      },
+      [],
+      remainingTasks
     )|
-    false=>mergeUnique(
-      left⧺[head],
-      tail
+    [
+  outcome,
+  .remainingOutcomes
+]=>mergeCompileTaskOutcomes(
+      match compileTargetIssue(
+        outcome,
+        task
+      ){
+        Some(issue)=>acc⧺[issue]|
+        None()=>acc
+      },
+      remainingOutcomes,
+      remainingTasks
     )
   }
 }
@@ -224,24 +313,32 @@
   Err(_)=>None()
 }
 
+λprocessCompileTask(task:µRepoCompileTask)=>!Process Result[
+  Unit,
+  µRepoCompileIssue
+]={
+  l result=(§process.run(compileTargetCommand(task)):§process.ProcessResult);
+  match result.code=0{
+    true=>Ok(())|
+    false=>Err(compileIssue(result))
+  }
+}
+
 λprocessOutput(result:§process.ProcessResult)=>String match #§string.trim(result.stderr)>0{
   true=>§string.trim(result.stderr)|
   false=>§string.trim(result.stdout)
 }
 
-λprojectCompilerCommand(projectDir:String,root:String)=>§process.Command=§process.withCwd(
-  §process.command([
-    §path.join(
-      root,
-      "language/compiler/target/debug/sigil"
-    ),
-    "compile",
-    projectDir,
-    "--env",
-    "test"
-  ]),
-  root
-)
+λprojectRootForTrackedPath(path:String)=>Option[String] match §string.startsWith(
+  "projects/",
+  path
+){
+  true=>match secondPathSegment(path){
+    Some(name)=>Some("projects/"++name)|
+    None()=>None()
+  }|
+  false=>None()
+}
 
 λrunCheck()=>!AuditIo Result[
   [µRepoCompileIssue],
@@ -249,7 +346,6 @@
 ] match gitTopLevel(){
   Ok(root)=>match •packagePublishability.gitTrackedFiles(){
     Ok(paths)=>{
-      l configProjects=(configProjectDirs(paths):[String]);
       l installIssues=(runDependencyInstalls(
         dependencyProjectDirs(
           •packagePublishability.manifestPaths(paths),
@@ -258,25 +354,33 @@
         root
       ):[µRepoCompileIssue]);
       match #installIssues=0{
-        true=>{
-          l result=(§process.run(compilerCommandIgnoringProjects(
-            (configProjects⧺scratchIgnoreDirs(paths):[String]),
-            root
-          )):§process.ProcessResult);
-          match result.code=0{
-            true=>Ok(runProjectCompiles(
-              configProjects,
-              root
-            ))|
-            false=>Ok([compileIssue(result)])
-          }
-        }|
+        true=>Ok(runCompileTargets(
+          root,
+          compileTargets(paths)
+        ))|
         false=>Ok(installIssues)
       }
     }|
     Err(message)=>Err(message)
   }|
   Err(message)=>Err(message)
+}
+
+λrunCompileTargets(root:String,targets:[µRepoCompileTarget])=>!Process [µRepoCompileIssue]={
+  l tasks=(compileTasks(
+    root,
+    targets
+  ):[µRepoCompileTask]);
+  mergeCompileTaskOutcomes(
+    [],
+    (concurrent repoCompile@3{
+      spawnEach tasks processCompileTask
+    }:[ConcurrentOutcome[
+  Unit,
+  µRepoCompileIssue
+]]),
+    tasks
+  )
 }
 
 λrunDependencyInstalls(projectDirs:[String],root:String)=>!Process [µRepoCompileIssue] match projectDirs{
@@ -302,38 +406,14 @@
   }
 }
 
-λrunProjectCompiles(projectDirs:[String],root:String)=>!Process [µRepoCompileIssue] match projectDirs{
-  []=>[]|
-  [
-  head,
-  .tail
-]=>{
-    l result=(§process.run(projectCompilerCommand(
-      head,
-      root
-    )):§process.ProcessResult);
-    match result.code=0{
-      true=>runProjectCompiles(
-        tail,
-        root
-      )|
-      false=>[compileIssue(result)]
-    }
-  }
-}
-
-λscratchIgnoreDirs(paths:[String])=>[String]=mergeUnique(
-  [],
-  (paths filter isScratchPath map topLevelDir:[String])
-)
-
-λtopLevelDir(path:String)=>String match §string.split(
+λsecondPathSegment(path:String)=>Option[String] match §string.split(
   "/",
   path
 ){
-  []=>path|
   [
-  head,
+  first,
+  second,
   .tail
-]=>head
+]=>Some(second)|
+  _=>None()
 }

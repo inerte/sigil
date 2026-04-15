@@ -56,6 +56,17 @@ t RepoCompileIssue={
   path:String
 }
 
+t RepoCompileTarget={
+  env:Option[String],
+  path:String
+}
+
+t RepoCompileTask={
+  env:Option[String],
+  path:String,
+  root:String
+}
+
 t PackagePublishabilityIssue={
   message:String,
   path:String

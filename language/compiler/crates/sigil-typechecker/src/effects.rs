@@ -2,8 +2,18 @@ use sigil_ast::{Declaration, EffectDecl, Program};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 pub const PRIMITIVE_EFFECTS: [&str; 12] = [
-    "Clock", "Fs", "Http", "Log", "Process", "Pty", "Random", "Stream", "Tcp", "Terminal",
-    "Timer", "WebSocket",
+    "Clock",
+    "Fs",
+    "Http",
+    "Log",
+    "Process",
+    "Pty",
+    "Random",
+    "Stream",
+    "Tcp",
+    "Terminal",
+    "Timer",
+    "WebSocket",
 ];
 
 #[cfg(test)]

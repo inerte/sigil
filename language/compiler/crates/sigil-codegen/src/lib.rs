@@ -3110,13 +3110,10 @@ impl TypeScriptGenerator {
             || self.source_file_is("language/stdlib/time.lib.sigil")
             || self.source_file_is("language/stdlib/websocket.lib.sigil")
             || self.source_file_is_test_observe_module()
-            || self
-                .source_file
-                .as_deref()
-                .is_some_and(|path| {
-                    path.ends_with("language/test/check/pty.lib.sigil")
-                        || path.ends_with("language/test/check/websocket.lib.sigil")
-                })
+            || self.source_file.as_deref().is_some_and(|path| {
+                path.ends_with("language/test/check/pty.lib.sigil")
+                    || path.ends_with("language/test/check/websocket.lib.sigil")
+            })
     }
 
     fn json_string_literal(&self, value: &str) -> Result<String, CodegenError> {
@@ -7850,8 +7847,7 @@ impl TypeScriptGenerator {
             }
         }
         if call.namespace.join("/") == "stdlib/pty" {
-            if let Some(intrinsic) = self.generate_pty_intrinsic(expr, &call.member, &call.args)?
-            {
+            if let Some(intrinsic) = self.generate_pty_intrinsic(expr, &call.member, &call.args)? {
                 return Ok(intrinsic);
             }
         }

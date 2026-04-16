@@ -5145,13 +5145,12 @@ fn validate_topology_application(
     } else {
         None
     };
-    let websocket_handle_arg_index = if module_id == "stdlib::websocket"
-        && matches!(member, "connections" | "route")
-    {
-        Some(0)
-    } else {
-        None
-    };
+    let websocket_handle_arg_index =
+        if module_id == "stdlib::websocket" && matches!(member, "connections" | "route") {
+            Some(0)
+        } else {
+            None
+        };
 
     if http_handle_arg_index.is_none()
         && tcp_handle_arg_index.is_none()

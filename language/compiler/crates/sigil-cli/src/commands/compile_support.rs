@@ -289,7 +289,9 @@ fn compiler_binary_hash() -> Result<String, CliError> {
 
 fn resolve_pty_runtime_helper_path() -> Result<PathBuf, CliError> {
     let executable = std::env::current_exe().map_err(|error| {
-        CliError::Codegen(format!("failed to resolve compiler executable path: {error}"))
+        CliError::Codegen(format!(
+            "failed to resolve compiler executable path: {error}"
+        ))
     })?;
     let executable_dir = executable.parent().ok_or_else(|| {
         CliError::Codegen(format!(
@@ -299,10 +301,19 @@ fn resolve_pty_runtime_helper_path() -> Result<PathBuf, CliError> {
     })?;
 
     let mut candidates = vec![
-        executable_dir.join("runtime").join("node").join("pty-runtime.mjs"),
+        executable_dir
+            .join("runtime")
+            .join("node")
+            .join("pty-runtime.mjs"),
         executable_dir
             .parent()
-            .map(|root| root.join("share").join("sigil").join("runtime").join("node").join("pty-runtime.mjs"))
+            .map(|root| {
+                root.join("share")
+                    .join("sigil")
+                    .join("runtime")
+                    .join("node")
+                    .join("pty-runtime.mjs")
+            })
             .unwrap_or_else(|| PathBuf::from("__missing__")),
     ];
 
@@ -319,7 +330,9 @@ fn resolve_pty_runtime_helper_path() -> Result<PathBuf, CliError> {
     for candidate in candidates {
         if candidate.exists() {
             return fs::canonicalize(candidate).map_err(|error| {
-                CliError::Codegen(format!("failed to canonicalize PTY runtime helper path: {error}"))
+                CliError::Codegen(format!(
+                    "failed to canonicalize PTY runtime helper path: {error}"
+                ))
             });
         }
     }
@@ -339,7 +352,9 @@ fn pty_runtime_import_specifier() -> Result<String, CliError> {
 
 fn resolve_websocket_runtime_helper_path() -> Result<PathBuf, CliError> {
     let executable = std::env::current_exe().map_err(|error| {
-        CliError::Codegen(format!("failed to resolve compiler executable path: {error}"))
+        CliError::Codegen(format!(
+            "failed to resolve compiler executable path: {error}"
+        ))
     })?;
     let executable_dir = executable.parent().ok_or_else(|| {
         CliError::Codegen(format!(

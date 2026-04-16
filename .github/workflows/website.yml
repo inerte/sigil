@@ -48,6 +48,8 @@ jobs:
       - uses: actions/checkout@v6
 
       - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: 1.94.1
 
       - name: Install system Z3
         run: |

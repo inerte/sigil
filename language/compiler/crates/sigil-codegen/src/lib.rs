@@ -1111,11 +1111,20 @@ async function __sigil_world_pty_spawn_from_entry(entry, handleName, command) {
       pid
     });
   }
-  if (!globalThis.__sigil_pty_runtime || typeof globalThis.__sigil_pty_runtime.spawnPty !== 'function') {
+  let ptyRuntime = null;
+  try {
+    ptyRuntime =
+      typeof globalThis.__sigil_load_pty_runtime === 'function'
+        ? await globalThis.__sigil_load_pty_runtime()
+        : null;
+  } catch (error) {
+    __sigil_world_error(`§pty runtime helper is unavailable: ${String(error?.message ?? error ?? '')}`);
+  }
+  if (!ptyRuntime || typeof ptyRuntime.spawnPty !== 'function') {
     __sigil_world_error('§pty runtime helper is unavailable');
   }
   const source = __sigil_world_stream_open();
-  const pty = await globalThis.__sigil_pty_runtime.spawnPty(command);
+  const pty = await ptyRuntime.spawnPty(command);
   let pid = Number(pty?.pid ?? Math.floor(Math.random() * 2147483647));
   if (!Number.isInteger(pid) || pid === 0 || world.ptySessions.has(pid)) {
     pid = Math.max(1, Number(world.ptyNextId ?? 1));
@@ -1380,13 +1389,19 @@ async function __sigil_world_websocket_listen(port, routes) {
   };
   world.websocketServers.set(serverId, serverState);
   if (realRoutes.length > 0) {
-    if (
-      !globalThis.__sigil_websocket_runtime ||
-      typeof globalThis.__sigil_websocket_runtime.listenServer !== 'function'
-    ) {
+    let websocketRuntime = null;
+    try {
+      websocketRuntime =
+        typeof globalThis.__sigil_load_websocket_runtime === 'function'
+          ? await globalThis.__sigil_load_websocket_runtime()
+          : null;
+    } catch (error) {
+      __sigil_world_error(`§websocket runtime helper is unavailable: ${String(error?.message ?? error ?? '')}`);
+    }
+    if (!websocketRuntime || typeof websocketRuntime.listenServer !== 'function') {
       __sigil_world_error('§websocket runtime helper is unavailable');
     }
-    const runtime = await globalThis.__sigil_websocket_runtime.listenServer(
+    const runtime = await websocketRuntime.listenServer(
       normalizedPort,
       realRoutes,
       (handleName, socket) => {
@@ -3526,16 +3541,15 @@ impl TypeScriptGenerator {
                     let specifier = self
                         .json_string_literal(specifier)
                         .unwrap_or_else(|_| "\"\"".to_string());
-                    self.emit(&format!(
-                        "globalThis.__sigil_pty_runtime = await import({specifier});"
-                    ));
+                    self.emit("globalThis.__sigil_pty_runtime = null;");
+                    self.emit(&format!("globalThis.__sigil_load_pty_runtime = async () => {{ if (!globalThis.__sigil_pty_runtime) {{ globalThis.__sigil_pty_runtime = await import({specifier}); }} return globalThis.__sigil_pty_runtime; }};"));
                 }
                 None => {
-                    self.emit("globalThis.__sigil_pty_runtime = {");
+                    self.emit("globalThis.__sigil_load_pty_runtime = async () => ({");
                     self.emit("  async spawnPty() {");
                     self.emit("    throw new Error('§pty runtime helper is unavailable');");
                     self.emit("  }");
-                    self.emit("};");
+                    self.emit("});");
                 }
             }
         }
@@ -3545,16 +3559,15 @@ impl TypeScriptGenerator {
                     let specifier = self
                         .json_string_literal(specifier)
                         .unwrap_or_else(|_| "\"\"".to_string());
-                    self.emit(&format!(
-                        "globalThis.__sigil_websocket_runtime = await import({specifier});"
-                    ));
+                    self.emit("globalThis.__sigil_websocket_runtime = null;");
+                    self.emit(&format!("globalThis.__sigil_load_websocket_runtime = async () => {{ if (!globalThis.__sigil_websocket_runtime) {{ globalThis.__sigil_websocket_runtime = await import({specifier}); }} return globalThis.__sigil_websocket_runtime; }};"));
                 }
                 None => {
-                    self.emit("globalThis.__sigil_websocket_runtime = {");
+                    self.emit("globalThis.__sigil_load_websocket_runtime = async () => ({");
                     self.emit("  async listenServer() {");
                     self.emit("    throw new Error('§websocket runtime helper is unavailable');");
                     self.emit("  }");
-                    self.emit("};");
+                    self.emit("});");
                 }
             }
         }

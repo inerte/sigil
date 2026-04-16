@@ -1,0 +1,77 @@
+c worktree=(§topology.fsRoot("worktree"):§topology.FsRoot)
+
+c world=(†runtime.withFsWatchRoots(
+  [†fsWatch.realRoot(worktree)],
+  †runtime.withFsRoots(
+    [†fs.realRoot(worktree)],
+    †runtime.world(
+      †clock.systemClock(),
+      †fs.real(),
+      †fsWatch.real(),
+      [],
+      †log.capture(),
+      †process.real(),
+      †pty.real(),
+      †random.seeded(1337),
+      †stream.live(),
+      [],
+      †timer.virtual(),
+      †websocket.real()
+    )
+  )
+):†runtime.World)
+
+λmain()=>Unit=()
+
+test "fsWatch fixture streams root-scoped events" =>!FsWatch!Stream world {
+  c fsWatchRoot=(†fsWatch.fixtureRoot(
+  worktree,
+  [†fsWatch.rule(
+    [
+      §fsWatch.Created("main.sigil"),
+      §fsWatch.Changed("notes/todo.txt")
+    ],
+    "src"
+  )]
+):†fsWatch.FsWatchRootEntry)
+} {
+  l watch=(§fsWatch.watchAt(
+    "src",
+    worktree
+  ):§fsWatch.Watch);
+  l events=(§fsWatch.events(watch):§stream.Source[§fsWatch.Event]);
+  l first=(§stream.next(events):§stream.Next[§fsWatch.Event]);
+  l second=(§stream.next(events):§stream.Next[§fsWatch.Event]);
+  l _=(§fsWatch.close(watch):Unit);
+  (match first{
+    §stream.Item(§fsWatch.Created(path))=>path="main.sigil"|
+    _=>false
+  })
+    and (match second{
+      §stream.Item(§fsWatch.Changed(path))=>path="notes/todo.txt"|
+      _=>false
+    })
+    and ※check::fsWatch.watchingAt(
+      "src",
+      worktree
+    )
+    and ※check::fsWatch.closedAt(worktree)
+}
+
+test "fsWatch ambient fixtures track watch paths" =>!FsWatch!Stream world {
+  c fsWatch=(†fsWatch.fixture([†fsWatch.rule(
+  [§fsWatch.Removed("tmp/cache.txt")],
+  "."
+)]):†fsWatch.FsWatchEntry)
+} {
+  l watch=(§fsWatch.watch("."):§fsWatch.Watch);
+  l events=(§fsWatch.events(watch):§stream.Source[§fsWatch.Event]);
+  l first=(§stream.next(events):§stream.Next[§fsWatch.Event]);
+  l _=(§fsWatch.close(watch):Unit);
+  (match first{
+    §stream.Item(§fsWatch.Removed(path))=>path="tmp/cache.txt"|
+    _=>false
+  })
+    and ※check::fsWatch.watching(".")
+    and ※check::fsWatch.closed()
+}

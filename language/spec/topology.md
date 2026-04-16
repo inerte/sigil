@@ -59,10 +59,11 @@ t WebSocketHandle=WebSocketHandle(String)
 `†runtime` and world entry roots define the canonical env surface:
 
 ```sigil decl †runtime
- t World={clock:†clock.ClockEntry,fs:†fs.FsEntry,fsRoots:[†fs.FsRootEntry],http:[†http.HttpEntry],log:†log.LogEntry,logSinks:[†log.LogSinkEntry],process:†process.ProcessEntry,processHandles:[†process.ProcessHandleEntry],pty:†pty.PtyEntry,ptyHandles:[†pty.PtyHandleEntry],random:†random.RandomEntry,stream:†stream.StreamEntry,tcp:[†tcp.TcpEntry],timer:†timer.TimerEntry,websocket:†websocket.WebSocketEntry,websocketHandles:[†websocket.WebSocketHandleEntry]}
+ t World={clock:†clock.ClockEntry,fs:†fs.FsEntry,fsRoots:[†fs.FsRootEntry],fsWatch:†fsWatch.FsWatchEntry,fsWatchRoots:[†fsWatch.FsWatchRootEntry],http:[†http.HttpEntry],log:†log.LogEntry,logSinks:[†log.LogSinkEntry],process:†process.ProcessEntry,processHandles:[†process.ProcessHandleEntry],pty:†pty.PtyEntry,ptyHandles:[†pty.PtyHandleEntry],random:†random.RandomEntry,stream:†stream.StreamEntry,tcp:[†tcp.TcpEntry],timer:†timer.TimerEntry,websocket:†websocket.WebSocketEntry,websocketHandles:[†websocket.WebSocketHandleEntry]}
 
-λworld(clock:†clock.ClockEntry,fs:†fs.FsEntry,http:[†http.HttpEntry],log:†log.LogEntry,process:†process.ProcessEntry,pty:†pty.PtyEntry,random:†random.RandomEntry,stream:†stream.StreamEntry,tcp:[†tcp.TcpEntry],timer:†timer.TimerEntry,websocket:†websocket.WebSocketEntry)=>World
+λworld(clock:†clock.ClockEntry,fs:†fs.FsEntry,fsWatch:†fsWatch.FsWatchEntry,http:[†http.HttpEntry],log:†log.LogEntry,process:†process.ProcessEntry,pty:†pty.PtyEntry,random:†random.RandomEntry,stream:†stream.StreamEntry,tcp:[†tcp.TcpEntry],timer:†timer.TimerEntry,websocket:†websocket.WebSocketEntry)=>World
 λwithFsRoots(fsRoots:[†fs.FsRootEntry],world:World)=>World
+λwithFsWatchRoots(fsWatchRoots:[†fsWatch.FsWatchRootEntry],world:World)=>World
 λwithLogSinks(logSinks:[†log.LogSinkEntry],world:World)=>World
 λwithProcessHandles(processHandles:[†process.ProcessHandleEntry],world:World)=>World
 λwithPtyHandles(ptyHandles:[†pty.PtyHandleEntry],world:World)=>World
@@ -86,7 +87,7 @@ In project mode, calls to these constructors are only valid in
 
 ### World entry location
 
-In project mode, calls to `†http.*`, `†fs.*Root`, `†log.*Sink`, `†process.*`, `†pty.*`, and `†websocket.*` world-entry constructors are only valid in:
+In project mode, calls to `†http.*`, `†fs.*Root`, `†fsWatch.*`, `†fsWatch.*Root`, `†log.*Sink`, `†process.*`, `†pty.*`, and `†websocket.*` world-entry constructors are only valid in:
 
 - `config/*.lib.sigil`
 - test-local `world { ... }` clauses
@@ -117,6 +118,7 @@ The compiler rejects:
 
 Label-aware boundary rules operate on exact named boundaries:
 - `§file.*At` requires `FsRoot`
+- `§fsWatch.watchAt` requires `FsRoot`
 - `§log.write` requires `LogSink`
 - `§process.runAt` / `§process.startAt` require `ProcessHandle`
 - `§pty.spawnAt` requires `PtyHandle`
@@ -132,7 +134,8 @@ For selected environment `<env>`:
 - `config/<env>.lib.sigil` must exist
 - `config/<env>.lib.sigil` must export `world`
 - `world` must provide all primitive effect entries
-- every declared named boundary must appear in the matching `world` entry collection
+- every declared `FsRoot` must appear in both `fsRoots` and `fsWatchRoots`
+- every other declared named boundary must appear in the matching `world` entry collection
 - no undeclared boundaries may appear in `world`
 - boundary names must be unique in topology
 - non-`world` top-level declarations in that config module are exposed through
@@ -159,7 +162,9 @@ Topology-aware tests assert exact named-boundary outcomes through the active
 test world. Canonical examples include:
 
 - `※check::file.existsAt(path,•topology.exportsDir)`
+- `※check::fsWatch.watchingAt(path,•topology.exportsDir)`
 - `※check::log.containsAt(message,•topology.auditLog)`
+- `※observe::fsWatch.watchesAt(•topology.exportsDir)`
 - `※observe::process.commandsAt(•topology.govBrCli)`
 - `※observe::pty.writesAt(•topology.assistantShell)`
 - `※check::pty.spawnedOnceAt(•topology.assistantShell)`

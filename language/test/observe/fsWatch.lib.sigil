@@ -1,0 +1,11 @@
+λcloseCount()=>Int=0
+
+λcloseCountAt(root:§topology.FsRoot)=>Int=0
+
+λevents()=>[§fsWatch.Event]=[]
+
+λeventsAt(root:§topology.FsRoot)=>[§fsWatch.Event]=[]
+
+λwatches()=>[String]=[]
+
+λwatchesAt(root:§topology.FsRoot)=>[String]=[]

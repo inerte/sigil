@@ -1,0 +1,11 @@
+t Event=Changed(String)|Created(String)|Removed(String)
+
+t Watch={id:String}
+
+λclose(watch:Watch)=>!FsWatch Unit=()
+
+λevents(watch:Watch)=>!FsWatch §stream.Source[Event]=(§stream.StreamSource(0):§stream.Source[Event])
+
+λwatch(path:String)=>!FsWatch Watch={id:path}
+
+λwatchAt(path:String,root:§topology.FsRoot)=>!FsWatch Watch={id:path}

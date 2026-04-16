@@ -94,6 +94,7 @@ fn write_topology_project(root: &Path) -> PathBuf {
             "c world=(†runtime.world(\n",
             "  †clock.systemClock(),\n",
             "  †fs.real(),\n",
+            "  †fsWatch.real(),\n",
             "  [],\n",
             "  †log.capture(),\n",
             "  †process.real(),\n",
@@ -250,6 +251,52 @@ fn run_real_pty_smoke_succeeds_when_runtime_bridge_is_available() {
 }
 
 #[test]
+fn run_real_fswatch_smoke_succeeds_when_recursive_watch_is_available() {
+    if !cfg!(target_os = "macos") {
+        return;
+    }
+
+    let dir = temp_dir("fswatch-smoke");
+    let file = write_program(
+        &dir,
+        "main.sigil",
+        concat!(
+            "λmain()=>!Fs!FsWatch!Stream!Timer Bool={\n",
+            "  l _=(§file.makeDirs(\"watched\"):Unit);\n",
+            "  l watch=(§fsWatch.watch(\"watched\"):§fsWatch.Watch);\n",
+            "  l _=(§time.sleepMs(100):Unit);\n",
+            "  l _=(§file.writeText(\n",
+            "    \"ready\",\n",
+            "    §path.join(\n",
+            "      \"watched\",\n",
+            "      \"fresh.txt\"\n",
+            "    )\n",
+            "  ):Unit);\n",
+            "  l events=(§fsWatch.events(watch):§stream.Source[§fsWatch.Event]);\n",
+            "  l first=(§stream.next(events):§stream.Next[§fsWatch.Event]);\n",
+            "  l _=(§fsWatch.close(watch):Unit);\n",
+            "  match first{\n",
+            "    §stream.Item(§fsWatch.Created(path))=>path=\"fresh.txt\"|\n",
+            "    §stream.Item(§fsWatch.Changed(path))=>path=\"fresh.txt\"|\n",
+            "    _=>false\n",
+            "  }\n",
+            "}\n",
+        ),
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("run")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8_lossy(&output.stdout), "true\n");
+    assert!(output.stderr.is_empty());
+}
+
+#[test]
 fn run_uses_standalone_local_world_when_present() {
     let dir = temp_dir("standalone-world");
     let file = write_program(
@@ -262,6 +309,7 @@ fn run_uses_standalone_local_world_when_present() {
             "  †runtime.world(\n",
             "    †clock.systemClock(),\n",
             "    †fs.real(),\n",
+            "    †fsWatch.real(),\n",
             "    [],\n",
             "    †log.capture(),\n",
             "    †process.real(),\n",
@@ -1293,6 +1341,7 @@ fn run_json_preserves_topology_codes_for_bootstrap_failures() {
             "c world=(†runtime.world(\n",
             "  †clock.systemClock(),\n",
             "  †fs.real(),\n",
+            "  †fsWatch.real(),\n",
             "  [],\n",
             "  †log.capture(),\n",
             "  †process.real(),\n",

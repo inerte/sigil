@@ -14,6 +14,7 @@ The Sigil standard library provides core utility functions and predicates for co
 - ✅ String operations (manipulation, searching) - `stdlib/string`
 - ✅ String predicates (prefix/suffix checking) - `stdlib/string`
 - ✅ File system operations - `stdlib/file`
+- ✅ Filesystem watch streams - `stdlib/fsWatch`
 - ✅ Process execution for harnesses and tooling - `stdlib/process`
 - ✅ PTY-backed interactive sessions - `stdlib/pty`
 - ✅ Random number generation and collection helpers - `stdlib/random`
@@ -154,7 +155,7 @@ Current `§featureFlags.get` precedence is:
 `Entry[C]` and `Set[C]` let one config snapshot hold multiple flag value types
 while keeping the context type explicit.
 
-## File, Path, Process, Pty, Stream, WebSocket, Random, JSON, Time, and URL
+## File, FsWatch, Path, Process, Pty, Stream, WebSocket, Random, JSON, Time, and URL
 
 `§file` exposes canonical UTF-8 filesystem helpers:
 
@@ -191,6 +192,26 @@ surface is:
 
 Those functions take a `§topology.FsRoot` handle so policies can target exact
 filesystem roots.
+
+`§fsWatch` exposes canonical advisory recursive filesystem watches backed by
+`§stream`:
+
+```sigil decl §fsWatch
+t Event=Changed(String)|Created(String)|Removed(String)
+t Watch={id:String}
+
+λclose(watch:Watch)=>!FsWatch Unit
+λevents(watch:Watch)=>!FsWatch §stream.Source[Event]
+λwatch(path:String)=>!FsWatch Watch
+λwatchAt(path:String,root:§topology.FsRoot)=>!FsWatch Watch
+```
+
+FsWatch rules:
+- watches are recursive in v1
+- emitted paths are relative to the watched directory
+- events are advisory; duplicate or coalesced delivery is allowed
+- `watchAt` is the named-boundary variant for topology-aware projects and takes a `§topology.FsRoot`
+- rename detection is not modeled separately in v1
 
 `§path` exposes canonical filesystem path operations:
 

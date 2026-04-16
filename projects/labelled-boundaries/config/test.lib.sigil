@@ -15,23 +15,27 @@ c world=(†runtime.withProcessHandles(
   )],
   †runtime.withLogSinks(
     [†log.captureSink(•topology.auditLog)],
-    †runtime.withFsRoots(
-      [†fs.sandboxRoot(
-        ".local",
-        •topology.exportsDir
-      )],
-      †runtime.world(
-        †clock.systemClock(),
-        †fs.real(),
-        [],
-        †log.capture(),
-        †process.deny(),
-        †pty.real(),
-        †random.seeded(1337),
-        †stream.live(),
-        [],
-        †timer.virtual(),
-        †websocket.real()
+    †runtime.withFsWatchRoots(
+      [†fsWatch.realRoot(•topology.exportsDir)],
+      †runtime.withFsRoots(
+        [†fs.sandboxRoot(
+          ".local",
+          •topology.exportsDir
+        )],
+        †runtime.world(
+          †clock.systemClock(),
+          †fs.real(),
+          †fsWatch.real(),
+          [],
+          †log.capture(),
+          †process.deny(),
+          †pty.real(),
+          †random.seeded(1337),
+          †stream.live(),
+          [],
+          †timer.virtual(),
+          †websocket.real()
+        )
       )
     )
   )

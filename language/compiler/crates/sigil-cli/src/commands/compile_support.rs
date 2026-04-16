@@ -350,6 +350,69 @@ fn pty_runtime_import_specifier() -> Result<String, CliError> {
     ))
 }
 
+fn resolve_fswatch_runtime_helper_path() -> Result<PathBuf, CliError> {
+    let executable = std::env::current_exe().map_err(|error| {
+        CliError::Codegen(format!(
+            "failed to resolve compiler executable path: {error}"
+        ))
+    })?;
+    let executable_dir = executable.parent().ok_or_else(|| {
+        CliError::Codegen(format!(
+            "failed to resolve compiler executable directory for '{}'",
+            executable.display()
+        ))
+    })?;
+
+    let mut candidates = vec![
+        executable_dir
+            .join("runtime")
+            .join("node")
+            .join("fswatch-runtime.mjs"),
+        executable_dir
+            .parent()
+            .map(|root| {
+                root.join("share")
+                    .join("sigil")
+                    .join("runtime")
+                    .join("node")
+                    .join("fswatch-runtime.mjs")
+            })
+            .unwrap_or_else(|| PathBuf::from("__missing__")),
+    ];
+
+    for ancestor in executable_dir.ancestors() {
+        candidates.push(
+            ancestor
+                .join("language")
+                .join("runtime")
+                .join("node")
+                .join("fswatch-runtime.mjs"),
+        );
+    }
+
+    for candidate in candidates {
+        if candidate.exists() {
+            return fs::canonicalize(candidate).map_err(|error| {
+                CliError::Codegen(format!(
+                    "failed to canonicalize fsWatch runtime helper path: {error}"
+                ))
+            });
+        }
+    }
+
+    Err(CliError::Codegen(format!(
+        "failed to locate bundled fsWatch runtime helper next to '{}'",
+        executable.display()
+    )))
+}
+
+fn fswatch_runtime_import_specifier() -> Result<String, CliError> {
+    Ok(format!(
+        "file://{}",
+        resolve_fswatch_runtime_helper_path()?.display()
+    ))
+}
+
 fn resolve_websocket_runtime_helper_path() -> Result<PathBuf, CliError> {
     let executable = std::env::current_exe().map_err(|error| {
         CliError::Codegen(format!(
@@ -1454,6 +1517,7 @@ pub(super) fn generate_module_graph_outputs(
             module_id: Some(module_id.clone()),
             source_file: Some(module.file_path.to_string_lossy().to_string()),
             output_file: Some(output_path.to_string_lossy().to_string()),
+            fswatch_runtime_import_specifier: fswatch_runtime_import_specifier().ok(),
             import_extension: output_flavor.import_extension().to_string(),
             pty_runtime_import_specifier: pty_runtime_import_specifier().ok(),
             websocket_runtime_import_specifier: websocket_runtime_import_specifier().ok(),
@@ -1855,7 +1919,7 @@ function __sigil_runtime_read_world(configExports) {{
   if (!world || typeof world !== 'object') {{
     __sigil_runtime_fail("{invalid_config}", "config module must export a 'world' value");
   }}
-  for (const field of ['clock', 'fs', 'http', 'log', 'pty', 'process', 'random', 'stream', 'tcp', 'timer', 'websocket']) {{
+  for (const field of ['clock', 'fs', 'fsWatch', 'http', 'log', 'pty', 'process', 'random', 'stream', 'tcp', 'timer', 'websocket']) {{
     if (!(field in world)) {{
       __sigil_runtime_fail("{invalid_config}", `world is missing '${{field}}'`);
     }}

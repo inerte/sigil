@@ -3,6 +3,7 @@ e process
 c world=(†runtime.world(
   †clock.systemClock(),
   †fs.real(),
+  †fsWatch.real(),
   [†http.proxy(
     mailerApiBaseUrl(),
     •topology.mailerApi

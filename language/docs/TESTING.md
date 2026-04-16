@@ -121,7 +121,7 @@ Instead:
   `flags`, available to app code as `•config.flags`
 - each `test` may derive that world locally with `world { ... }`
 - standalone files may instead provide a local top-level `c world=(...:†runtime.World)` with no `--env`
-- `†...` builds world entries for `Clock`, `Fs`, `Http`, `Log`, `Process`, `Pty`, `Random`, `Stream`, `Tcp`, `Timer`, and `WebSocket`
+- `†...` builds world entries for `Clock`, `Fs`, `FsWatch`, `Http`, `Log`, `Process`, `Pty`, `Random`, `Stream`, `Tcp`, `Timer`, and `WebSocket`
 - `※observe::...` exposes raw traces from the active test world
 - `※check::...` exposes Bool-returning helpers over those traces
 
@@ -152,6 +152,8 @@ test "captured log contains line" =>!Log world {
 Canonical named-boundary helpers include:
 
 - `※observe::file.readTextAt`
+- `※observe::fsWatch.eventsAt`
+- `※observe::fsWatch.watchesAt`
 - `※observe::log.entriesAt`
 - `※observe::pty.spawnsAt`
 - `※observe::pty.writesAt`
@@ -160,6 +162,8 @@ Canonical named-boundary helpers include:
 - `※observe::websocket.sentAt`
 - `※check::file.existsAt`
 - `※check::file.textEqualsAt`
+- `※check::fsWatch.closedAt`
+- `※check::fsWatch.watchingAt`
 - `※check::log.containsAt`
 - `※check::pty.closedAt`
 - `※check::pty.spawnedOnceAt`

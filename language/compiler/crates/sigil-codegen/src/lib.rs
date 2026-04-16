@@ -308,6 +308,8 @@ function __sigil_world_host_template() {
   return {
     clock: { kind: 'system' },
     fs: { kind: 'real' },
+    fsWatch: { kind: 'real', rules: [] },
+    fsWatchRoots: Object.create(null),
     fsRoots: Object.create(null),
     http: Object.create(null),
     log: { kind: 'stdout' },
@@ -383,6 +385,20 @@ function __sigil_world_parse_fs(value) {
   }
   __sigil_world_error('world.fs must be world::fs.FsEntry');
 }
+function __sigil_world_parse_fswatch(value) {
+  if (value?.__tag === 'DenyFsWatch') return { kind: 'deny', rules: [] };
+  if (value?.__tag === 'FixtureFsWatch') {
+    return {
+      kind: 'fixture',
+      rules: (value.__fields?.[0] ?? []).map((rule) => ({
+        events: Array.isArray(rule?.events) ? rule.events.slice() : [],
+        path: String(rule?.path ?? '')
+      }))
+    };
+  }
+  if (value?.__tag === 'RealFsWatch') return { kind: 'real', rules: [] };
+  __sigil_world_error('world.fsWatch must be world::fsWatch.FsWatchEntry');
+}
 function __sigil_world_parse_log(value) {
   if (value?.__tag === 'CaptureLog') return { kind: 'capture' };
   if (value?.__tag === 'StdoutLog') return { kind: 'stdout' };
@@ -447,6 +463,20 @@ function __sigil_world_parse_fs_root_entry(value) {
   return {
     rootName,
     ...__sigil_world_parse_fs(payload?.mode ?? null)
+  };
+}
+function __sigil_world_parse_fswatch_root_entry(value) {
+  if (value?.__tag !== 'FsWatchRootEntry') {
+    __sigil_world_error('FS watch root overrides must be world::fsWatch.FsWatchRootEntry');
+  }
+  const payload = value.__fields?.[0] ?? {};
+  const rootName = String(payload?.rootName ?? '');
+  if (!rootName) {
+    __sigil_world_error('world::fsWatch.FsWatchRootEntry rootName must be a non-empty string');
+  }
+  return {
+    rootName,
+    ...__sigil_world_parse_fswatch(payload?.mode ?? null)
   };
 }
 function __sigil_world_parse_log_sink_entry(value) {
@@ -665,6 +695,12 @@ function __sigil_world_prepare_template(worldValue, topologyExports, envName) {
   const template = __sigil_world_host_template();
   template.clock = __sigil_world_parse_clock(worldValue.clock);
   template.fs = __sigil_world_parse_fs(worldValue.fs);
+  template.fsWatch = __sigil_world_parse_fswatch(worldValue.fsWatch);
+  template.fsWatchRoots = Object.create(null);
+  for (const value of worldValue.fsWatchRoots ?? []) {
+    const entry = __sigil_world_parse_fswatch_root_entry(value);
+    template.fsWatchRoots[entry.rootName] = entry;
+  }
   template.fsRoots = Object.create(null);
   for (const value of worldValue.fsRoots ?? []) {
     const entry = __sigil_world_parse_fs_root_entry(value);
@@ -720,6 +756,16 @@ function __sigil_world_prepare_template(worldValue, topologyExports, envName) {
     }
   }
   if (topology.fsRoots.size > 0) {
+    for (const name of topology.fsRoots) {
+      if (!(name in template.fsWatchRoots)) {
+        __sigil_world_error(`missing fsWatch root world entry for '${name}' in environment '${envName ?? '<unknown>'}'`);
+      }
+    }
+    for (const name of Object.keys(template.fsWatchRoots)) {
+      if (!topology.fsRoots.has(name)) {
+        __sigil_world_error(`fsWatch root world entry references undeclared boundary '${name}'`);
+      }
+    }
     for (const name of topology.fsRoots) {
       if (!(name in template.fsRoots)) {
         __sigil_world_error(`missing FS root world entry for '${name}' in environment '${envName ?? '<unknown>'}'`);
@@ -819,6 +865,8 @@ function __sigil_world_base_template() {
 }
 function __sigil_world_fresh(template) {
   const world = __sigil_world_clone(template);
+  world.fsWatchNextId = 1;
+  world.fsWatches = new Map();
   world.ptyNextId = 1;
   world.ptySessions = new Map();
   world.websocketNextClientId = 1;
@@ -827,6 +875,7 @@ function __sigil_world_fresh(template) {
   world.websocketServers = new Map();
   world.traces = {
     http: Object.create(null),
+    fsWatch: [],
     log: [],
     pty: [],
     process: [],
@@ -861,6 +910,16 @@ function __sigil_world_apply_overrides(world, overrides) {
       case 'SandboxFs':
         world.fs = __sigil_world_parse_fs(value);
         break;
+      case 'DenyFsWatch':
+      case 'FixtureFsWatch':
+      case 'RealFsWatch':
+        world.fsWatch = __sigil_world_parse_fswatch(value);
+        break;
+      case 'FsWatchRootEntry': {
+        const entry = __sigil_world_parse_fswatch_root_entry(value);
+        world.fsWatchRoots[entry.rootName] = entry;
+        break;
+      }
       case 'FsRootEntry': {
         const entry = __sigil_world_parse_fs_root_entry(value);
         world.fsRoots[entry.rootName] = entry;
@@ -1497,6 +1556,141 @@ async function __sigil_world_websocket_close(client) {
 async function __sigil_world_websocket_wait(server) {
   const state = __sigil_world_websocket_server_state(server);
   await Promise.resolve(state.done);
+  return null;
+}
+function __sigil_world_fswatch_watch_from_state(watchId) {
+  return {
+    __sigil_fswatch_id: String(watchId),
+    id: String(watchId)
+  };
+}
+function __sigil_world_fswatch_watch_state(watch) {
+  const world = __sigil_current_world();
+  const watchId = String(watch?.__sigil_fswatch_id ?? watch?.id ?? '');
+  const state = world.fsWatches?.get(watchId) ?? null;
+  if (!state) {
+    __sigil_world_error(`unknown fsWatch '${watchId}' in current world`);
+  }
+  return state;
+}
+function __sigil_world_fswatch_trace(world, kind, rootName, payload) {
+  world.traces.fsWatch.push({
+    kind: String(kind),
+    rootName: rootName == null ? null : String(rootName),
+    ...__sigil_world_clone(payload ?? {})
+  });
+}
+function __sigil_world_named_fswatch_root(rootName) {
+  const world = __sigil_current_world();
+  const entry = world.fsWatchRoots?.[String(rootName)] ?? null;
+  if (!entry) {
+    __sigil_world_error(`FsRoot '${String(rootName)}' is not configured for fsWatch in the current world`);
+  }
+  return entry;
+}
+function __sigil_world_fswatch_normalize_path(pathValue) {
+  const value = String(pathValue ?? '');
+  return value === '' ? '.' : value;
+}
+function __sigil_world_fswatch_fixture_rule(entry, pathValue) {
+  const watchPath = __sigil_world_fswatch_normalize_path(pathValue);
+  for (const rule of entry?.rules ?? []) {
+    if (String(rule?.path ?? '') === watchPath) {
+      return __sigil_world_clone(rule);
+    }
+  }
+  __sigil_world_error(`no fsWatch fixture matched path '${watchPath}'`);
+}
+async function __sigil_world_fswatch_open(entry, rootName, pathValue, fsEntry) {
+  const world = __sigil_current_world();
+  const watchPath = __sigil_world_fswatch_normalize_path(pathValue);
+  if (entry.kind === 'deny') {
+    if (rootName == null) {
+      __sigil_world_error('FsWatch is denied by the current world');
+    }
+    __sigil_world_error(`FsWatch for FsRoot '${String(rootName)}' is denied by the current world`);
+  }
+  const request = await __sigil_world_file_request_path(
+    watchPath,
+    rootName == null ? null : { rootName: String(rootName) },
+    fsEntry ?? null
+  );
+  const source = __sigil_world_stream_open();
+  const watchId = `fswatch-${String(world.fsWatchNextId ?? 1)}`;
+  world.fsWatchNextId = Number(world.fsWatchNextId ?? 1) + 1;
+  const state = {
+    closed: false,
+    path: watchPath,
+    rootName: rootName == null ? null : String(rootName),
+    runtime: null,
+    source
+  };
+  world.fsWatches.set(watchId, state);
+  __sigil_world_fswatch_trace(world, 'watch', rootName, {
+    path: watchPath
+  });
+  if (entry.kind === 'fixture') {
+    const rule = __sigil_world_fswatch_fixture_rule(entry, watchPath);
+    for (const event of rule.events ?? []) {
+      __sigil_world_fswatch_trace(world, 'event', rootName, {
+        event
+      });
+      __sigil_world_stream_push(source, event);
+    }
+    __sigil_world_stream_finish(source);
+    return __sigil_world_fswatch_watch_from_state(watchId);
+  }
+  let fswatchRuntime = null;
+  try {
+    fswatchRuntime =
+      typeof globalThis.__sigil_load_fswatch_runtime === 'function'
+        ? await globalThis.__sigil_load_fswatch_runtime()
+        : null;
+  } catch (error) {
+    __sigil_world_error(`§fsWatch runtime helper is unavailable: ${String(error?.message ?? error ?? '')}`);
+  }
+  if (!fswatchRuntime || typeof fswatchRuntime.watchPath !== 'function') {
+    __sigil_world_error('§fsWatch runtime helper is unavailable');
+  }
+  state.runtime = await fswatchRuntime.watchPath(
+    String(request.resolvedPath ?? ''),
+    (event) => {
+      __sigil_world_fswatch_trace(world, 'event', rootName, {
+        event
+      });
+      __sigil_world_stream_push(source, event);
+    }
+  );
+  return __sigil_world_fswatch_watch_from_state(watchId);
+}
+async function __sigil_world_fswatch_watch(pathValue) {
+  return await __sigil_world_fswatch_open(__sigil_current_world().fsWatch, null, pathValue, null);
+}
+async function __sigil_world_fswatch_watch_at(rootName, pathValue) {
+  return await __sigil_world_fswatch_open(
+    __sigil_world_named_fswatch_root(rootName),
+    rootName,
+    pathValue,
+    __sigil_world_named_fs_entry(rootName)
+  );
+}
+async function __sigil_world_fswatch_events(watch) {
+  return __sigil_world_fswatch_watch_state(watch).source;
+}
+async function __sigil_world_fswatch_close(watch) {
+  const world = __sigil_current_world();
+  const state = __sigil_world_fswatch_watch_state(watch);
+  if (state.closed) {
+    return null;
+  }
+  state.closed = true;
+  __sigil_world_fswatch_trace(world, 'close', state.rootName, {
+    path: state.path
+  });
+  await __sigil_world_stream_close(state.source);
+  try {
+    state.runtime?.close?.();
+  } catch (_) {}
   return null;
 }
 function __sigil_world_now_ms(world) {
@@ -2653,6 +2847,36 @@ async function __sigil_test_file_read_text(pathValue) {
 async function __sigil_test_file_read_text_at(rootName, pathValue) {
   return await __sigil_world_file_readTextAt(rootName, pathValue);
 }
+function __sigil_test_fswatch_watches() {
+  return __sigil_current_world().traces.fsWatch
+    .filter((entry) => entry.kind === 'watch')
+    .map((entry) => String(entry.path ?? ''));
+}
+function __sigil_test_fswatch_watches_at(rootName) {
+  return __sigil_current_world().traces.fsWatch
+    .filter((entry) => entry.kind === 'watch' && entry.rootName === String(rootName))
+    .map((entry) => String(entry.path ?? ''));
+}
+function __sigil_test_fswatch_events() {
+  return __sigil_current_world().traces.fsWatch
+    .filter((entry) => entry.kind === 'event')
+    .map((entry) => __sigil_world_clone(entry.event));
+}
+function __sigil_test_fswatch_events_at(rootName) {
+  return __sigil_current_world().traces.fsWatch
+    .filter((entry) => entry.kind === 'event' && entry.rootName === String(rootName))
+    .map((entry) => __sigil_world_clone(entry.event));
+}
+function __sigil_test_fswatch_close_count() {
+  return __sigil_current_world().traces.fsWatch
+    .filter((entry) => entry.kind === 'close')
+    .length;
+}
+function __sigil_test_fswatch_close_count_at(rootName) {
+  return __sigil_current_world().traces.fsWatch
+    .filter((entry) => entry.kind === 'close' && entry.rootName === String(rootName))
+    .length;
+}
 function __sigil_test_log_entries() {
   return __sigil_current_world().traces.log.map((entry) => entry.message);
 }
@@ -2822,6 +3046,7 @@ pub struct CodegenOptions {
     pub source_file: Option<String>,
     pub output_file: Option<String>,
     pub import_extension: String,
+    pub fswatch_runtime_import_specifier: Option<String>,
     pub pty_runtime_import_specifier: Option<String>,
     pub websocket_runtime_import_specifier: Option<String>,
     pub lazy_extern_namespaces: bool,
@@ -2837,6 +3062,7 @@ impl Default for CodegenOptions {
             source_file: None,
             output_file: None,
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -2864,6 +3090,7 @@ pub struct TypeScriptGenerator {
     source_file: Option<String>,
     output_file: Option<String>,
     import_extension: String,
+    fswatch_runtime_import_specifier: Option<String>,
     pty_runtime_import_specifier: Option<String>,
     websocket_runtime_import_specifier: Option<String>,
     lazy_extern_namespaces: bool,
@@ -2887,6 +3114,7 @@ impl TypeScriptGenerator {
             source_file: options.source_file,
             output_file: options.output_file,
             import_extension: options.import_extension,
+            fswatch_runtime_import_specifier: options.fswatch_runtime_import_specifier,
             pty_runtime_import_specifier: options.pty_runtime_import_specifier,
             websocket_runtime_import_specifier: options.websocket_runtime_import_specifier,
             lazy_extern_namespaces: options.lazy_extern_namespaces,
@@ -3089,6 +3317,11 @@ impl TypeScriptGenerator {
             || self.source_file_is("language/stdlib/process.lib.sigil")
     }
 
+    fn requires_fswatch_runtime(&self, runtime_modules: &BTreeSet<String>) -> bool {
+        runtime_modules.contains("stdlib::fsWatch")
+            || self.source_file_is("language/stdlib/fsWatch.lib.sigil")
+    }
+
     fn requires_pty_runtime(&self, runtime_modules: &BTreeSet<String>) -> bool {
         runtime_modules.contains("stdlib::pty")
             || self.source_file_is("language/stdlib/pty.lib.sigil")
@@ -3111,6 +3344,7 @@ impl TypeScriptGenerator {
 
     fn requires_world_runtime_for_source(&self) -> bool {
         self.source_file_is("language/stdlib/file.lib.sigil")
+            || self.source_file_is("language/stdlib/fsWatch.lib.sigil")
             || self.source_file_is("language/stdlib/httpClient.lib.sigil")
             || self.source_file_is("language/stdlib/httpServer.lib.sigil")
             || self.source_file_is("language/stdlib/io.lib.sigil")
@@ -3126,7 +3360,8 @@ impl TypeScriptGenerator {
             || self.source_file_is("language/stdlib/websocket.lib.sigil")
             || self.source_file_is_test_observe_module()
             || self.source_file.as_deref().is_some_and(|path| {
-                path.ends_with("language/test/check/pty.lib.sigil")
+                path.ends_with("language/test/check/fsWatch.lib.sigil")
+                    || path.ends_with("language/test/check/pty.lib.sigil")
                     || path.ends_with("language/test/check/websocket.lib.sigil")
             })
     }
@@ -3442,6 +3677,7 @@ impl TypeScriptGenerator {
         include_world_runtime: bool,
     ) {
         let include_process_runtime = self.requires_process_runtime(runtime_modules);
+        let include_fswatch_runtime = self.requires_fswatch_runtime(runtime_modules);
         let include_pty_runtime = self.requires_pty_runtime(runtime_modules);
         let include_websocket_runtime = self.requires_websocket_runtime(runtime_modules);
         let include_http_server_runtime = self.requires_http_server_runtime(runtime_modules);
@@ -3534,6 +3770,24 @@ impl TypeScriptGenerator {
         self.emit_block(REPLAY_RUNTIME_HELPERS);
         if include_world_runtime {
             self.emit_block(WORLD_RUNTIME_HELPERS);
+        }
+        if include_fswatch_runtime {
+            match self.fswatch_runtime_import_specifier.as_deref() {
+                Some(specifier) => {
+                    let specifier = self
+                        .json_string_literal(specifier)
+                        .unwrap_or_else(|_| "\"\"".to_string());
+                    self.emit("globalThis.__sigil_fswatch_runtime = null;");
+                    self.emit(&format!("globalThis.__sigil_load_fswatch_runtime = async () => {{ if (!globalThis.__sigil_fswatch_runtime) {{ globalThis.__sigil_fswatch_runtime = await import({specifier}); }} return globalThis.__sigil_fswatch_runtime; }};"));
+                }
+                None => {
+                    self.emit("globalThis.__sigil_load_fswatch_runtime = async () => ({");
+                    self.emit("  async watchPath() {");
+                    self.emit("    throw new Error('§fsWatch runtime helper is unavailable');");
+                    self.emit("  }");
+                    self.emit("});");
+                }
+            }
         }
         if include_pty_runtime {
             match self.pty_runtime_import_specifier.as_deref() {
@@ -5861,6 +6115,9 @@ impl TypeScriptGenerator {
                 if module == "stdlib/file" {
                     return self.generate_file_intrinsic(call_expr, member, args);
                 }
+                if module == "stdlib/fsWatch" {
+                    return self.generate_fswatch_intrinsic(call_expr, member, args);
+                }
                 if module == "stdlib/log" {
                     return self.generate_log_intrinsic(call_expr, member, args);
                 }
@@ -5935,6 +6192,13 @@ impl TypeScriptGenerator {
                     .is_some_and(|path| path.ends_with("language/stdlib/file.lib.sigil"))
                 {
                     return self.generate_file_intrinsic(call_expr, &name.name, args);
+                }
+                if self
+                    .source_file
+                    .as_deref()
+                    .is_some_and(|path| path.ends_with("language/stdlib/fsWatch.lib.sigil"))
+                {
+                    return self.generate_fswatch_intrinsic(call_expr, &name.name, args);
                 }
                 if self
                     .source_file
@@ -6590,6 +6854,71 @@ impl TypeScriptGenerator {
         }
     }
 
+    fn generate_fswatch_intrinsic(
+        &mut self,
+        call_expr: &TypedExpr,
+        member: &str,
+        args: &[TypedExpr],
+    ) -> Result<Option<String>, CodegenError> {
+        let generated_args = args
+            .iter()
+            .map(|arg| self.generate_expression(arg))
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+        let span_id = self.span_id_for_expr(DebugSpanKind::ExprCall, call_expr.location);
+
+        match member {
+            "close" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__watch) => {})",
+                generated_args[0],
+                self.wrap_effect_trace(
+                    span_id,
+                    "fsWatch",
+                    "close",
+                    "[__watch]",
+                    "__sigil_world_fswatch_close(__watch)",
+                    None,
+                )?
+            ))),
+            "events" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__watch) => {})",
+                generated_args[0],
+                self.wrap_effect_trace(
+                    span_id,
+                    "fsWatch",
+                    "events",
+                    "[__watch]",
+                    "__sigil_world_fswatch_events(__watch)",
+                    None,
+                )?
+            ))),
+            "watch" if generated_args.len() == 1 => Ok(Some(format!(
+                "{}.then((__path) => {})",
+                generated_args[0],
+                self.wrap_effect_trace(
+                    span_id,
+                    "fsWatch",
+                    "watch",
+                    "[__path]",
+                    "__sigil_world_fswatch_watch(__path)",
+                    None,
+                )?
+            ))),
+            "watchAt" if generated_args.len() == 2 => Ok(Some(format!(
+                "{}.then(([__path, __root]) => {})",
+                self.js_all(&generated_args),
+                self.wrap_effect_trace(
+                    span_id,
+                    "fsWatch",
+                    "watchAt",
+                    "[__path, __root]",
+                    "__sigil_world_fswatch_watch_at(__root?.__fields?.[0] ?? '', __path)",
+                    None,
+                )?
+            ))),
+            _ => Ok(None),
+        }
+    }
+
     fn generate_log_intrinsic(
         &mut self,
         call_expr: &TypedExpr,
@@ -6732,6 +7061,27 @@ impl TypeScriptGenerator {
             ("test/observe/file", "readTextAt", 2) => Ok(Some(format!(
                 "Promise.all([{}, {}]).then(([__path, __root]) => __sigil_test_file_read_text_at(__root?.__fields?.[0] ?? '', __path))",
                 generated_args[0], generated_args[1]
+            ))),
+            ("test/observe/fsWatch", "closeCount", 0) => Ok(Some(
+                "__sigil_ready(__sigil_test_fswatch_close_count())".to_string(),
+            )),
+            ("test/observe/fsWatch", "closeCountAt", 1) => Ok(Some(format!(
+                "{}.then((__root) => __sigil_test_fswatch_close_count_at(__root?.__fields?.[0] ?? ''))",
+                generated_args[0]
+            ))),
+            ("test/observe/fsWatch", "events", 0) => Ok(Some(
+                "__sigil_ready(__sigil_test_fswatch_events())".to_string(),
+            )),
+            ("test/observe/fsWatch", "eventsAt", 1) => Ok(Some(format!(
+                "{}.then((__root) => __sigil_test_fswatch_events_at(__root?.__fields?.[0] ?? ''))",
+                generated_args[0]
+            ))),
+            ("test/observe/fsWatch", "watches", 0) => Ok(Some(
+                "__sigil_ready(__sigil_test_fswatch_watches())".to_string(),
+            )),
+            ("test/observe/fsWatch", "watchesAt", 1) => Ok(Some(format!(
+                "{}.then((__root) => __sigil_test_fswatch_watches_at(__root?.__fields?.[0] ?? ''))",
+                generated_args[0]
             ))),
             ("test/observe/http", "callCount", 1) => Ok(Some(format!(
                 "{}.then((__entry) => __sigil_test_http_requests(__entry).length)",
@@ -7813,6 +8163,13 @@ impl TypeScriptGenerator {
         }
         if call.namespace.join("/") == "stdlib/file" {
             if let Some(intrinsic) = self.generate_file_intrinsic(expr, &call.member, &call.args)? {
+                return Ok(intrinsic);
+            }
+        }
+        if call.namespace.join("/") == "stdlib/fsWatch" {
+            if let Some(intrinsic) =
+                self.generate_fswatch_intrinsic(expr, &call.member, &call.args)?
+            {
                 return Ok(intrinsic);
             }
         }
@@ -9003,6 +9360,7 @@ fn requires_world_runtime_module(module_id: &str) -> bool {
         || matches!(
             module_id,
             "stdlib::file"
+                | "stdlib::fsWatch"
                 | "stdlib::httpClient"
                 | "stdlib::httpServer"
                 | "stdlib::io"
@@ -9116,6 +9474,7 @@ mod tests {
             source_file: Some("projects/algorithms/tests/rot13Encoder.sigil".to_string()),
             output_file: Some("/tmp/projects/algorithms/.local/tests/rot13Encoder.ts".to_string()),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9138,6 +9497,7 @@ mod tests {
                 "/tmp/language/stdlib-tests/.local/tests/numericPredicates.ts".to_string(),
             ),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9158,6 +9518,7 @@ mod tests {
             source_file: Some("/repo/.local/temp-project/src/topology.lib.sigil".to_string()),
             output_file: Some("/repo/.local/temp-project/.local/src/topology.ts".to_string()),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9184,6 +9545,7 @@ mod tests {
                     .to_string(),
             ),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9286,6 +9648,7 @@ mod tests {
             source_file: Some("projects/algorithms/src/topologicalSort.sigil".to_string()),
             output_file: Some("/tmp/projects/algorithms/.local/src/topologicalSort.ts".to_string()),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9309,6 +9672,7 @@ mod tests {
             source_file: Some("tests/smoke.sigil".to_string()),
             output_file: Some("/tmp/tests/smoke.ts".to_string()),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9334,6 +9698,7 @@ mod tests {
             source_file: Some("test.sigil".to_string()),
             output_file: Some("/tmp/test.js".to_string()),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9368,6 +9733,7 @@ mod tests {
             source_file: Some("test.sigil".to_string()),
             output_file: Some("/tmp/test.js".to_string()),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9406,6 +9772,7 @@ mod tests {
             source_file: Some("test.sigil".to_string()),
             output_file: Some("/tmp/test.js".to_string()),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9431,6 +9798,7 @@ mod tests {
             source_file: Some("test.sigil".to_string()),
             output_file: Some("/tmp/test.js".to_string()),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9454,6 +9822,7 @@ mod tests {
             source_file: Some("test.sigil".to_string()),
             output_file: Some("/tmp/test.js".to_string()),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9479,6 +9848,7 @@ mod tests {
             source_file: Some("test.sigil".to_string()),
             output_file: Some("/tmp/test.js".to_string()),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9507,6 +9877,7 @@ mod tests {
             source_file: Some("test.sigil".to_string()),
             output_file: Some("/tmp/test.js".to_string()),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9532,6 +9903,7 @@ mod tests {
             source_file: Some("test.sigil".to_string()),
             output_file: Some("/tmp/test.js".to_string()),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9568,6 +9940,7 @@ mod tests {
             source_file: Some("test.lib.sigil".to_string()),
             output_file: Some("/tmp/test.js".to_string()),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9624,6 +9997,7 @@ mod tests {
             source_file: Some("test.sigil".to_string()),
             output_file: Some("/tmp/test.js".to_string()),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,
@@ -9688,6 +10062,7 @@ mod tests {
             source_file: Some("test.sigil".to_string()),
             output_file: Some("/tmp/test.js".to_string()),
             import_extension: "js".to_string(),
+            fswatch_runtime_import_specifier: None,
             pty_runtime_import_specifier: None,
             websocket_runtime_import_specifier: None,
             lazy_extern_namespaces: false,

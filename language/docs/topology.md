@@ -91,21 +91,37 @@ Each declared environment gets one config module exporting `world`:
 ```sigil module projects/topology-http/config/test.lib.sigil
 e process
 
-c world=(†runtime.world(
-  †clock.systemClock(),
-  †fs.real(),
-  [†http.proxy(
-    mailerApiBaseUrl(),
-    •topology.mailerApi
-  )],
-  †log.capture(),
-  †process.real(),
-  †pty.real(),
-  †random.seeded(1337),
-  †stream.live(),
-  [],
-  †timer.virtual(),
-  †websocket.real()
+c world=(†runtime.withFsWatchRoots(
+  [†fsWatch.realRoot(•topology.exportsDir)],
+  †runtime.withFsRoots(
+    [†fs.realRoot(•topology.exportsDir)],
+    †runtime.withLogSinks(
+      [†log.captureSink(•topology.auditLog)],
+      †runtime.withProcessHandles(
+        [†process.realHandle(•topology.mailerCli)],
+        †runtime.withPtyHandles(
+          [†pty.realHandle(•topology.assistantShell)],
+          †runtime.world(
+            †clock.systemClock(),
+            †fs.real(),
+            †fsWatch.real(),
+            [†http.proxy(
+              mailerApiBaseUrl(),
+              •topology.mailerApi
+            )],
+            †log.capture(),
+            †process.real(),
+            †pty.real(),
+            †random.seeded(1337),
+            †stream.live(),
+            [],
+            †timer.virtual(),
+            †websocket.real()
+          )
+        )
+      )
+    )
+  )
 ):†runtime.World)
 
 λmailerApiBaseUrl()=>String=mailerApiBaseUrlFromProperty(process.env.hasOwnProperty("sigilHttpTestBaseUrl"))
@@ -121,21 +137,37 @@ Production-style config can read env vars, but only there:
 ```sigil module projects/topology-http/config/prod.lib.sigil
 e process
 
-c world=(†runtime.world(
-  †clock.systemClock(),
-  †fs.real(),
-  [†http.proxy(
-    (process.env.mailerApiUrl:String),
-    •topology.mailerApi
-  )],
-  †log.stdout(),
-  †process.real(),
-  †pty.real(),
-  †random.real(),
-  †stream.live(),
-  [],
-  †timer.real(),
-  †websocket.real()
+c world=(†runtime.withFsWatchRoots(
+  [†fsWatch.realRoot(•topology.exportsDir)],
+  †runtime.withFsRoots(
+    [†fs.realRoot(•topology.exportsDir)],
+    †runtime.withLogSinks(
+      [†log.stdoutSink(•topology.auditLog)],
+      †runtime.withProcessHandles(
+        [†process.realHandle(•topology.mailerCli)],
+        †runtime.withPtyHandles(
+          [†pty.realHandle(•topology.assistantShell)],
+          †runtime.world(
+            †clock.systemClock(),
+            †fs.real(),
+            †fsWatch.real(),
+            [†http.proxy(
+              (process.env.mailerApiUrl:String),
+              •topology.mailerApi
+            )],
+            †log.stdout(),
+            †process.real(),
+            †pty.real(),
+            †random.real(),
+            †stream.live(),
+            [],
+            †timer.real(),
+            †websocket.real()
+          )
+        )
+      )
+    )
+  )
 ):†runtime.World)
 ```
 
@@ -191,6 +223,15 @@ Canonical PTY usage:
 )
 ```
 
+Canonical fsWatch usage:
+
+```sigil program language/examples/fsWatchBasics.sigil
+λmain()=>!FsWatch §fsWatch.Watch=§fsWatch.watchAt(
+  "src",
+  •topology.exportsDir
+)
+```
+
 Canonical WebSocket usage:
 
 ```sigil program language/examples/websocketBasics.sigil
@@ -217,8 +258,9 @@ process.env.mailerApiUrl
 ```
 
 For labelled boundary handling, projects use the handle-based `§file.*At`,
-`§log.write`, `§process.runAt` / `§process.startAt`, and `§pty.spawnAt`
-surfaces so policy rules can target exact `•topology...` boundaries.
+`§fsWatch.watchAt`, `§log.write`, `§process.runAt` / `§process.startAt`, and
+`§pty.spawnAt` surfaces so policy rules can target exact `•topology...`
+boundaries.
 
 Example:
 
@@ -271,7 +313,8 @@ Compile-time:
 - in project mode, world named-boundary entry constructors only in `config/*.lib.sigil` and test-local `world { ... }`
 - in standalone mode, the same constructors may appear directly in the file
 - topology-aware HTTP/TCP APIs require dependency handles
-- label-aware filesystem, log, process, and PTY crossings use named `FsRoot`, `LogSink`, `ProcessHandle`, and `PtyHandle` handles
+- label-aware filesystem and fsWatch crossings use named `FsRoot` handles
+- label-aware log, process, and PTY crossings use named `LogSink`, `ProcessHandle`, and `PtyHandle` handles
 - `§websocket.route` and `§websocket.connections` use named `WebSocketHandle` handles
 - raw endpoint usage is rejected
 - in project mode, `process.env` is only allowed in `config/*.lib.sigil`
@@ -283,7 +326,8 @@ Validate-time:
 - `config/<env>.lib.sigil` must exist
 - the config module must export `world`
 - `world` must include every primitive effect entry
-- every declared named boundary must appear in the matching `world` entry collection
+- every declared `FsRoot` must appear in both `fsRoots` and `fsWatchRoots`
+- every other declared named boundary must appear in the matching `world` entry collection
 - no undeclared boundary handles are allowed in `world`
 
 ## Tests Are Environments
@@ -303,7 +347,9 @@ For labelled boundaries, tests should assert the exact named-boundary outcome
 instead of relying on ambient global state. The canonical helpers are:
 
 - `※check::file.existsAt(path,•topology.exportsDir)`
+- `※check::fsWatch.watchingAt(path,•topology.exportsDir)`
 - `※check::log.containsAt(message,•topology.auditLog)`
+- `※observe::fsWatch.watchesAt(•topology.exportsDir)`
 - `※observe::process.commandsAt(•topology.govBrCli)`
 
 The canonical example shape is:

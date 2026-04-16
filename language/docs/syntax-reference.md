@@ -137,6 +137,7 @@ The built-in primitive effects are:
 
 - `Clock`
 - `Fs`
+- `FsWatch`
 - `Http`
 - `Log`
 - `Process`

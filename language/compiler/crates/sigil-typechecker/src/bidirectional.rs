@@ -5126,6 +5126,8 @@ fn validate_topology_application(
         };
     let fs_handle_arg_index = if module_id == "stdlib::file" {
         file_handle_arg_index(member)
+    } else if module_id == "stdlib::fsWatch" && matches!(member, "watchAt") {
+        Some(1)
     } else {
         None
     };
@@ -5231,7 +5233,11 @@ fn validate_topology_application(
     }
     if fs_handle_arg_index.is_some() && !is_fs_root_type(&handle_type) {
         return Err(TypeError::new(
-            "stdlib::file.*At requires a named FsRoot".to_string(),
+            if module_id == "stdlib::fsWatch" {
+                "stdlib::fsWatch.watchAt requires a named FsRoot".to_string()
+            } else {
+                "stdlib::file.*At requires a named FsRoot".to_string()
+            },
             Some(app.location),
         ));
     }

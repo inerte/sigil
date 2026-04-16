@@ -1,0 +1,13 @@
+λclosed()=>Bool=※observe::fsWatch.closeCount()>0
+
+λclosedAt(root:§topology.FsRoot)=>Bool=※observe::fsWatch.closeCountAt(root)>0
+
+λwatching(path:String)=>Bool=§list.any(
+  λ(entry:String)=>Bool=entry=path,
+  ※observe::fsWatch.watches()
+)
+
+λwatchingAt(path:String,root:§topology.FsRoot)=>Bool=§list.any(
+  λ(entry:String)=>Bool=entry=path,
+  ※observe::fsWatch.watchesAt(root)
+)

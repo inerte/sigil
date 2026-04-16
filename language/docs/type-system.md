@@ -350,6 +350,7 @@ effects:
 
 - `Clock`
 - `Fs`
+- `FsWatch`
 - `Http`
 - `Log`
 - `Process`

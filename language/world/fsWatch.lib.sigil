@@ -1,0 +1,45 @@
+t FsWatchEntry=DenyFsWatch()|FixtureFsWatch([FsWatchRule])|RealFsWatch()
+
+t FsWatchRootEntry=FsWatchRootEntry(FsWatchRootEntryValue)
+
+t FsWatchRootEntryValue={
+  mode:FsWatchEntry,
+  rootName:String
+}
+
+t FsWatchRule={
+  events:[§fsWatch.Event],
+  path:String
+}
+
+λdeny()=>FsWatchEntry=DenyFsWatch()
+
+λdenyRoot(root:§topology.FsRoot)=>FsWatchRootEntry match root{
+  §topology.FsRoot(rootName)=>FsWatchRootEntry({
+    mode:DenyFsWatch(),
+    rootName:rootName
+  })
+}
+
+λfixture(rules:[FsWatchRule])=>FsWatchEntry=FixtureFsWatch(rules)
+
+λfixtureRoot(root:§topology.FsRoot,rules:[FsWatchRule])=>FsWatchRootEntry match root{
+  §topology.FsRoot(rootName)=>FsWatchRootEntry({
+    mode:FixtureFsWatch(rules),
+    rootName:rootName
+  })
+}
+
+λreal()=>FsWatchEntry=RealFsWatch()
+
+λrealRoot(root:§topology.FsRoot)=>FsWatchRootEntry match root{
+  §topology.FsRoot(rootName)=>FsWatchRootEntry({
+    mode:RealFsWatch(),
+    rootName:rootName
+  })
+}
+
+λrule(events:[§fsWatch.Event],path:String)=>FsWatchRule={
+  events:events,
+  path:path
+}

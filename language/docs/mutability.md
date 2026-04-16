@@ -232,6 +232,7 @@ Current primitive effects are:
 
 - `Clock`
 - `Fs`
+- `FsWatch`
 - `Http`
 - `Log`
 - `Process`

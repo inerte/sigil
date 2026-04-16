@@ -10,6 +10,7 @@ c world=(†runtime.withWebSocketHandles(
   †runtime.world(
     †clock.systemClock(),
     †fs.real(),
+    †fsWatch.real(),
     [],
     †log.capture(),
     †process.real(),

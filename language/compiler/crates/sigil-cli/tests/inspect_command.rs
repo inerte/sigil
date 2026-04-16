@@ -460,6 +460,7 @@ fn validate_succeeds_when_pnpm_is_shadowed() {
             "c world=(†runtime.world(\n",
             "  †clock.systemClock(),\n",
             "  †fs.real(),\n",
+            "  †fsWatch.real(),\n",
             "  [],\n",
             "  †log.stdout(),\n",
             "  †process.real(),\n",
@@ -636,6 +637,7 @@ fn inspect_world_reports_normalized_runtime_world_for_topology_project() {
             "c world=(†runtime.world(\n",
             "  †clock.systemClock(),\n",
             "  †fs.real(),\n",
+            "  †fsWatch.real(),\n",
             "  [†http.proxy(\n",
             "    \"http://127.0.0.1:45110\",\n",
             "    •topology.mailerApi\n",
@@ -676,6 +678,7 @@ fn inspect_world_reports_normalized_runtime_world_for_topology_project() {
     assert_eq!(json["data"]["topology"]["httpDependencies"][0], "mailerApi");
     assert_eq!(json["data"]["summary"]["logKind"], "capture");
     assert_eq!(json["data"]["summary"]["randomKind"], "seeded");
+    assert_eq!(json["data"]["summary"]["fsWatchKind"], "real");
     assert_eq!(json["data"]["summary"]["streamKind"], "live");
     assert_eq!(json["data"]["summary"]["timerKind"], "virtual");
     assert_eq!(json["data"]["summary"]["httpBindings"], 1);
@@ -704,6 +707,7 @@ fn inspect_world_supports_config_only_projects_without_topology() {
             "c world=(†runtime.world(\n",
             "  †clock.systemClock(),\n",
             "  †fs.real(),\n",
+            "  †fsWatch.real(),\n",
             "  [],\n",
             "  †log.stdout(),\n",
             "  †process.real(),\n",
@@ -741,6 +745,7 @@ fn inspect_world_supports_config_only_projects_without_topology() {
     );
     assert_eq!(json["data"]["summary"]["httpBindings"], 0);
     assert_eq!(json["data"]["summary"]["tcpBindings"], 0);
+    assert_eq!(json["data"]["summary"]["fsWatchKind"], "real");
     assert_eq!(json["data"]["summary"]["streamKind"], "live");
     assert_eq!(json["data"]["normalizedWorld"]["random"]["kind"], "seeded");
     assert_eq!(json["data"]["normalizedWorld"]["timer"]["kind"], "real");
@@ -766,6 +771,7 @@ fn inspect_world_emits_json_error_when_env_is_undeclared() {
             "c world=(†runtime.world(\n",
             "  †clock.systemClock(),\n",
             "  †fs.real(),\n",
+            "  †fsWatch.real(),\n",
             "  [],\n",
             "  †log.stdout(),\n",
             "  †process.real(),\n",
@@ -846,6 +852,7 @@ fn inspect_world_supports_standalone_single_file_worlds() {
             "  †runtime.world(\n",
             "    †clock.systemClock(),\n",
             "    †fs.real(),\n",
+            "    †fsWatch.real(),\n",
             "    [],\n",
             "    †log.capture(),\n",
             "    †process.real(),\n",
@@ -878,6 +885,7 @@ fn inspect_world_supports_standalone_single_file_worlds() {
     assert_eq!(json["data"]["environment"], Value::Null);
     assert_eq!(json["data"]["topology"]["present"], true);
     assert_eq!(json["data"]["summary"]["logKind"], "capture");
+    assert_eq!(json["data"]["summary"]["fsWatchKind"], "real");
     assert_eq!(json["data"]["summary"]["ptyKind"], "real");
     assert_eq!(json["data"]["summary"]["streamKind"], "live");
     assert_eq!(json["data"]["summary"]["websocketKind"], "real");
@@ -900,6 +908,7 @@ fn inspect_world_succeeds_when_pnpm_is_shadowed() {
             "  †runtime.world(\n",
             "    †clock.systemClock(),\n",
             "    †fs.real(),\n",
+            "    †fsWatch.real(),\n",
             "    [],\n",
             "    †log.capture(),\n",
             "    †process.real(),\n",
@@ -930,6 +939,7 @@ fn inspect_world_succeeds_when_pnpm_is_shadowed() {
     let json = parse_json(&output.stdout);
     assert_eq!(json["command"], "sigilc inspect world");
     assert_eq!(json["ok"], true);
+    assert_eq!(json["data"]["summary"]["fsWatchKind"], "real");
     assert_eq!(json["data"]["summary"]["ptyKind"], "real");
     assert_eq!(json["data"]["summary"]["websocketKind"], "real");
 }

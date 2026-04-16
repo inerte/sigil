@@ -298,6 +298,25 @@ Process rules:
 - `runAt` and `startAt` are the named-boundary variants for topology-aware projects
 - `kill` is a normal termination request, not a timeout/escalation protocol
 
+### Implemented `§fsWatch` Types and Functions
+
+```sigil decl §fsWatch
+t Event=Changed(String)|Created(String)|Removed(String)
+t Watch={id:String}
+
+λclose(watch:Watch)=>!FsWatch Unit
+λevents(watch:Watch)=>!FsWatch §stream.Source[Event]
+λwatch(path:String)=>!FsWatch Watch
+λwatchAt(path:String,root:§topology.FsRoot)=>!FsWatch Watch
+```
+
+FsWatch rules:
+- watches are recursive in v1
+- emitted paths are relative to the watched directory
+- events are advisory; duplicate or coalesced delivery is allowed
+- `watchAt` is the topology-aware named-boundary variant and requires `§topology.FsRoot`
+- rename detection is not modeled separately in v1
+
 ### Implemented `§pty` Types and Functions
 
 ```sigil decl §pty
@@ -859,6 +878,7 @@ test` runner. There is no current `§test` module surface.
 Effects are tracked at type level:
 - `!Clock`
 - `!Fs`
+- `!FsWatch`
 - `!Http`
 - `!Log`
 - `!Process`

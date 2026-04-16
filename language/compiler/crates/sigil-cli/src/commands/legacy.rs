@@ -2418,6 +2418,7 @@ console.log(JSON.stringify({{
   "summary": {{
     "clockKind": String(__sigil_inspect_world.clock?.kind ?? ""),
     "fsKind": String(__sigil_inspect_world.fs?.kind ?? ""),
+    "fsWatchKind": String(__sigil_inspect_world.fsWatch?.kind ?? ""),
     "logKind": String(__sigil_inspect_world.log?.kind ?? ""),
     "ptyKind": String(__sigil_inspect_world.pty?.kind ?? ""),
     "processKind": String(__sigil_inspect_world.process?.kind ?? ""),
@@ -2522,6 +2523,7 @@ console.log(JSON.stringify({{
   "summary": {{
     "clockKind": String(__sigil_inspect_world.clock?.kind ?? ""),
     "fsKind": String(__sigil_inspect_world.fs?.kind ?? ""),
+    "fsWatchKind": String(__sigil_inspect_world.fsWatch?.kind ?? ""),
     "logKind": String(__sigil_inspect_world.log?.kind ?? ""),
     "ptyKind": String(__sigil_inspect_world.pty?.kind ?? ""),
     "processKind": String(__sigil_inspect_world.process?.kind ?? ""),

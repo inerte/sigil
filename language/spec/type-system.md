@@ -346,6 +346,7 @@ Sigil ships with primitive effects:
 
 - `Clock`
 - `Fs`
+- `FsWatch`
 - `Http`
 - `Log`
 - `Process`

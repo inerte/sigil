@@ -5,6 +5,7 @@ c world=(†runtime.withPtyHandles(
   †runtime.world(
     †clock.systemClock(),
     †fs.real(),
+    †fsWatch.real(),
     [],
     †log.capture(),
     †process.real(),

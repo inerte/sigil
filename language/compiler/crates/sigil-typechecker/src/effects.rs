@@ -1,9 +1,10 @@
 use sigil_ast::{Declaration, EffectDecl, Program};
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
-pub const PRIMITIVE_EFFECTS: [&str; 12] = [
+pub const PRIMITIVE_EFFECTS: [&str; 13] = [
     "Clock",
     "Fs",
+    "FsWatch",
     "Http",
     "Log",
     "Process",
@@ -23,6 +24,11 @@ mod tests {
     #[test]
     fn stream_is_a_primitive_effect() {
         assert!(EffectCatalog::is_primitive("Stream"));
+    }
+
+    #[test]
+    fn fswatch_is_a_primitive_effect() {
+        assert!(EffectCatalog::is_primitive("FsWatch"));
     }
 
     #[test]

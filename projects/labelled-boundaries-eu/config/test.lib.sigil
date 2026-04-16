@@ -3,6 +3,7 @@ e process
 c world=(†runtime.world(
   †clock.systemClock(),
   †fs.real(),
+  †fsWatch.real(),
   [
     †http.deny(•topology.euPayrollApi),
     †http.deny(•topology.usAnalyticsApi)

@@ -1,6 +1,7 @@
 c world=(†runtime.world(
   †clock.systemClock(),
   †fs.real(),
+  †fsWatch.real(),
   [†http.proxy(
     "http://127.0.0.1:45110",
     •topology.mailerApi

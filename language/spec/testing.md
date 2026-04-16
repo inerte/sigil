@@ -101,7 +101,7 @@ Test-local derivation:
 
 - `test ... world { ... } { ... }` overlays entries onto the selected env world
 - singleton entries such as `†clock.*`, `†log.*`, or `†random.*` replace that kind
-- topology-indexed entries such as `†http.*`, `†process.*Handle`, `†pty.*Handle`, `†tcp.*`, and `†websocket.*Handle` replace by named boundary handle
+- topology-indexed entries such as `†fs.*Root`, `†fsWatch.*Root`, `†http.*`, `†process.*Handle`, `†pty.*Handle`, `†tcp.*`, and `†websocket.*Handle` replace by named boundary handle
 
 Observation surface:
 
@@ -112,6 +112,8 @@ Canonical example helpers include:
 
 - `※observe::http.requests`
 - `※observe::file.readTextAt`
+- `※observe::fsWatch.eventsAt`
+- `※observe::fsWatch.watchesAt`
 - `※observe::log.entries`
 - `※observe::log.entriesAt`
 - `※observe::pty.spawnsAt`
@@ -122,6 +124,8 @@ Canonical example helpers include:
 - `※check::http.calledOnce`
 - `※check::file.existsAt`
 - `※check::file.textEqualsAt`
+- `※check::fsWatch.closedAt`
+- `※check::fsWatch.watchingAt`
 - `※check::log.contains`
 - `※check::log.containsAt`
 - `※check::pty.closedAt`

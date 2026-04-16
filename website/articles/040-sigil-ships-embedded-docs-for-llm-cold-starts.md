@@ -141,20 +141,3 @@ Even in that future, the local surface is still useful:
 
 The web remains useful for distribution and reading. It just should not be the
 first dependency for language bootstrap.
-
-## What This Does Not Try To Do Yet
-
-This first pass is intentionally narrow.
-
-It does not add:
-
-- semantic retrieval
-- a chat assistant inside `sigil`
-- remote doc fetching
-- multiple output modes for the retrieval commands
-
-It only makes one strong guarantee:
-
-the installed binary can teach the installed language.
-
-For Sigil, that is the right starting point.

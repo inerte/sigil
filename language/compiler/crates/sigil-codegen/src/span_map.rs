@@ -251,6 +251,10 @@ impl SpanCollector {
                 self.collect_expr(&let_expr.value, Some(span_id.clone()));
                 self.collect_expr(&let_expr.body, Some(span_id.clone()));
             }
+            TypedExprKind::Using(using_expr) => {
+                self.collect_expr(&using_expr.value, Some(span_id.clone()));
+                self.collect_expr(&using_expr.body, Some(span_id.clone()));
+            }
             TypedExprKind::If(if_expr) => {
                 self.collect_expr(&if_expr.condition, Some(span_id.clone()));
                 self.collect_expr(&if_expr.then_branch, Some(span_id.clone()));
@@ -383,6 +387,7 @@ fn expr_kind(kind: &TypedExprKind) -> DebugSpanKind {
         TypedExprKind::Unary(_) => DebugSpanKind::ExprUnary,
         TypedExprKind::Match(_) => DebugSpanKind::ExprMatch,
         TypedExprKind::Let(_) => DebugSpanKind::ExprLet,
+        TypedExprKind::Using(_) => DebugSpanKind::ExprLet,
         TypedExprKind::If(_) => DebugSpanKind::ExprIf,
         TypedExprKind::List(_) => DebugSpanKind::ExprList,
         TypedExprKind::Tuple(_) => DebugSpanKind::ExprTuple,

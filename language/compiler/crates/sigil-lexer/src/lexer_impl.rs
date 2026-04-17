@@ -739,6 +739,8 @@ impl Lexer {
             "requires" => TokenType::Requires,
             "ensures" => TokenType::Ensures,
             "concurrent" => TokenType::Concurrent,
+            "using" => TokenType::Using,
+            "subscribes" => TokenType::Subscribes,
             "spawn" => TokenType::Spawn,
             "spawnEach" => TokenType::SpawnEach,
             "and" => TokenType::AND,

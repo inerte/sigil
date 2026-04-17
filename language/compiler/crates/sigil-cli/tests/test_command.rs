@@ -124,6 +124,7 @@ fn test_directory_runs_inline_tests_in_standalone_files() {
             "    †pty.real(),\n",
             "    †random.seeded(1337),\n",
             "    †stream.live(),\n",
+            "    †task.real(),\n",
             "    [],\n",
             "    †timer.virtual(),\n",
             "    †websocket.real()\n",

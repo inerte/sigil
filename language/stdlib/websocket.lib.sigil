@@ -9,11 +9,11 @@ t Server={port:Int}
 
 λclose(client:Client)=>!WebSocket Unit=()
 
-λconnections(handle:§topology.WebSocketHandle,server:Server)=>!WebSocket §stream.Source[Client]=(§stream.StreamSource(0):§stream.Source[Client])
+λconnections(handle:§topology.WebSocketHandle,server:Server)=>!WebSocket Owned[§stream.Source[Client]]=((§stream.StreamSource(0):§stream.Source[Client]):Owned[§stream.Source[Client]])
 
-λlisten(port:Int,routes:[Route])=>!WebSocket Server={port:port}
+λlisten(port:Int,routes:[Route])=>!WebSocket Owned[Server]=({port:port}:Owned[Server])
 
-λmessages(client:Client)=>!WebSocket §stream.Source[String]=(§stream.StreamSource(0):§stream.Source[String])
+λmessages(client:Client)=>!WebSocket Owned[§stream.Source[String]]=((§stream.StreamSource(0):§stream.Source[String]):Owned[§stream.Source[String]])
 
 λport(server:Server)=>Int=server.port
 

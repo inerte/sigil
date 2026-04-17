@@ -1,0 +1,3 @@
+t TaskEntry=RealTask()
+
+λreal()=>TaskEntry=RealTask()

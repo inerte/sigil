@@ -24,7 +24,7 @@ use crate::typed_ir::{
 };
 use crate::types::{
     apply_subst, ast_type_to_inference_type_with_params, types_equal, unify, EffectSet,
-    InferenceType, TConstructor, TFunction, TMap, TPrimitive, TRecord,
+    InferenceType, TBorrowed, TConstructor, TFunction, TMap, TPrimitive, TRecord,
 };
 use crate::TypeCheckOptions;
 use sigil_ast::{
@@ -40,8 +40,11 @@ use sigil_solver::{
 };
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU32, Ordering};
 
 type TypeParamEnv = HashMap<String, InferenceType>;
+
+static NEXT_RESOURCE_SCOPE_ID: AtomicU32 = AtomicU32::new(1);
 
 /// Type check a Sigil program
 ///
@@ -408,12 +411,23 @@ pub fn type_check(
                     if let Some(members) = &extern_decl.members {
                         let mut fields = HashMap::new();
                         for member in members {
-                            let member_type = ast_type_to_inference_type_resolved(
-                                &env,
-                                None,
-                                &member.member_type,
-                            )?;
+                            let member_type =
+                                if matches!(member.kind, sigil_ast::ExternMemberKind::Subscription)
+                                {
+                                    extern_subscription_member_type(&env, member)?
+                                } else {
+                                    ast_type_to_inference_type_resolved(
+                                        &env,
+                                        None,
+                                        &member.member_type,
+                                    )?
+                                };
                             fields.insert(member.name.clone(), member_type);
+                            env.register_extern_member_kind(
+                                namespace_name.clone(),
+                                member.name.clone(),
+                                member.kind,
+                            );
                         }
                         env.bind_with_meta(
                             namespace_name,
@@ -663,6 +677,8 @@ fn labels_for_type(env: &TypeEnvironment, typ: &InferenceType) -> BTreeSet<Strin
             }
             label_closure(env, &labels)
         }
+        InferenceType::Owned(inner) => labels_for_type(env, inner),
+        InferenceType::Borrowed(borrowed) => labels_for_type(env, &borrowed.resource_type),
     }
 }
 
@@ -1042,14 +1058,27 @@ fn ast_type_to_inference_type_resolved(
 ) -> Result<InferenceType, TypeError> {
     match ast_type {
         Type::Qualified(qualified) => resolve_qualified_type(env, type_param_env, qualified),
-        Type::Constructor(constructor) => Ok(InferenceType::Constructor(TConstructor {
-            name: constructor.name.clone(),
-            type_args: constructor
+        Type::Constructor(constructor) => {
+            let type_args = constructor
                 .type_args
                 .iter()
                 .map(|arg| ast_type_to_inference_type_resolved(env, type_param_env, arg))
-                .collect::<Result<Vec<_>, _>>()?,
-        })),
+                .collect::<Result<Vec<_>, _>>()?;
+            if constructor.name == "Owned" {
+                if type_args.len() != 1 {
+                    return Err(TypeError::new(
+                        "Owned type constructor expects exactly one type argument".to_string(),
+                        Some(constructor.location),
+                    ));
+                }
+                Ok(InferenceType::Owned(Box::new(type_args[0].clone())))
+            } else {
+                Ok(InferenceType::Constructor(TConstructor {
+                    name: constructor.name.clone(),
+                    type_args,
+                }))
+            }
+        }
         Type::List(list_type) => Ok(InferenceType::List(Box::new(crate::types::TList {
             element_type: ast_type_to_inference_type_resolved(
                 env,
@@ -1091,6 +1120,36 @@ fn ast_type_to_inference_type_resolved(
             resolve_named_type(env, &inferred)
         }
     }
+}
+
+fn extern_subscription_member_type(
+    env: &TypeEnvironment,
+    member: &sigil_ast::ExternMember,
+) -> Result<InferenceType, TypeError> {
+    let Type::Function(function_type) = &member.member_type else {
+        return Err(TypeError::new(
+            "Subscription extern members must use function types".to_string(),
+            Some(member.location),
+        ));
+    };
+
+    let params = function_type
+        .param_types
+        .iter()
+        .map(|param| ast_type_to_inference_type_resolved(env, None, param))
+        .collect::<Result<Vec<_>, _>>()?;
+    let payload_type = ast_type_to_inference_type_resolved(env, None, &function_type.return_type)?;
+    let mut effects = HashSet::new();
+    effects.insert("Stream".to_string());
+
+    Ok(InferenceType::Function(Box::new(TFunction {
+        params,
+        return_type: InferenceType::Owned(Box::new(InferenceType::Constructor(TConstructor {
+            name: "stdlib::stream.Source".to_string(),
+            type_args: vec![payload_type],
+        }))),
+        effects: Some(effects),
+    })))
 }
 
 fn validate_surface_types(program: &Program) -> Result<(), TypeError> {
@@ -1177,6 +1236,7 @@ fn expr_location(expr: &Expr) -> sigil_lexer::SourceLocation {
         Expr::Unary(expr) => expr.location,
         Expr::Match(expr) => expr.location,
         Expr::Let(expr) => expr.location,
+        Expr::Using(expr) => expr.location,
         Expr::If(expr) => expr.location,
         Expr::List(expr) => expr.location,
         Expr::Record(expr) => expr.location,
@@ -1192,6 +1252,93 @@ fn expr_location(expr: &Expr) -> sigil_lexer::SourceLocation {
         Expr::MemberAccess(expr) => expr.location,
         Expr::TypeAscription(expr) => expr.location,
     }
+}
+
+fn fresh_resource_scope_id() -> u32 {
+    NEXT_RESOURCE_SCOPE_ID.fetch_add(1, Ordering::SeqCst)
+}
+
+fn borrowed_type(resource_type: InferenceType, scope_id: u32) -> InferenceType {
+    InferenceType::Borrowed(Box::new(TBorrowed {
+        resource_type,
+        scope_id,
+    }))
+}
+
+fn type_contains_owned(typ: &InferenceType) -> bool {
+    match typ {
+        InferenceType::Owned(_) => true,
+        InferenceType::Borrowed(borrowed) => type_contains_owned(&borrowed.resource_type),
+        InferenceType::Function(function) => {
+            function.params.iter().any(type_contains_owned)
+                || type_contains_owned(&function.return_type)
+        }
+        InferenceType::List(list) => type_contains_owned(&list.element_type),
+        InferenceType::Map(map) => {
+            type_contains_owned(&map.key_type) || type_contains_owned(&map.value_type)
+        }
+        InferenceType::Tuple(tuple) => tuple.types.iter().any(type_contains_owned),
+        InferenceType::Record(record) => record.fields.values().any(type_contains_owned),
+        InferenceType::Constructor(constructor) => {
+            constructor.type_args.iter().any(type_contains_owned)
+        }
+        InferenceType::Primitive(_) | InferenceType::Var(_) | InferenceType::Any => false,
+    }
+}
+
+fn type_contains_borrowed_scope(typ: &InferenceType, scope_id: u32) -> bool {
+    match typ {
+        InferenceType::Borrowed(borrowed) => {
+            borrowed.scope_id == scope_id
+                || type_contains_borrowed_scope(&borrowed.resource_type, scope_id)
+        }
+        InferenceType::Owned(inner) => type_contains_borrowed_scope(inner, scope_id),
+        InferenceType::Function(function) => {
+            function
+                .params
+                .iter()
+                .any(|param| type_contains_borrowed_scope(param, scope_id))
+                || type_contains_borrowed_scope(&function.return_type, scope_id)
+        }
+        InferenceType::List(list) => type_contains_borrowed_scope(&list.element_type, scope_id),
+        InferenceType::Map(map) => {
+            type_contains_borrowed_scope(&map.key_type, scope_id)
+                || type_contains_borrowed_scope(&map.value_type, scope_id)
+        }
+        InferenceType::Tuple(tuple) => tuple
+            .types
+            .iter()
+            .any(|item| type_contains_borrowed_scope(item, scope_id)),
+        InferenceType::Record(record) => record
+            .fields
+            .values()
+            .any(|field_type| type_contains_borrowed_scope(field_type, scope_id)),
+        InferenceType::Constructor(constructor) => constructor
+            .type_args
+            .iter()
+            .any(|arg| type_contains_borrowed_scope(arg, scope_id)),
+        InferenceType::Primitive(_) | InferenceType::Var(_) | InferenceType::Any => false,
+    }
+}
+
+fn reject_owned_aggregate_members(
+    kind: &str,
+    location: sigil_lexer::SourceLocation,
+    member_types: impl IntoIterator<Item = InferenceType>,
+) -> Result<(), TypeError> {
+    if member_types
+        .into_iter()
+        .any(|member_type| type_contains_owned(&member_type))
+    {
+        return Err(TypeError::new(
+            format!(
+                "{} values may not be stored inside {} literals",
+                "Owned", kind
+            ),
+            Some(location),
+        ));
+    }
+    Ok(())
 }
 
 fn lookup_constrained_type_info(
@@ -2759,6 +2906,10 @@ fn validate_expr_surface_types(expr: &Expr) -> Result<(), TypeError> {
             validate_expr_surface_types(&let_expr.value)?;
             validate_expr_surface_types(&let_expr.body)
         }
+        Expr::Using(using_expr) => {
+            validate_expr_surface_types(&using_expr.value)?;
+            validate_expr_surface_types(&using_expr.body)
+        }
         Expr::If(if_expr) => {
             validate_expr_surface_types(&if_expr.condition)?;
             validate_expr_surface_types(&if_expr.then_branch)?;
@@ -3914,6 +4065,35 @@ fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, Typ
                 let_expr.location,
             ))
         }
+        Expr::Using(using_expr) => {
+            let value = build_typed_expr(env, &using_expr.value)?;
+            let InferenceType::Owned(inner_type) = value.typ.clone() else {
+                return Err(TypeError::new(
+                    "using initializer must have type Owned[T]".to_string(),
+                    Some(using_expr.location),
+                ));
+            };
+            let scope_id = fresh_resource_scope_id();
+            let mut bindings = HashMap::new();
+            bindings.insert(
+                using_expr.name.clone(),
+                borrowed_type((*inner_type).clone(), scope_id),
+            );
+            let body_env = env.extend(Some(bindings));
+            let body = build_typed_expr(&body_env, &using_expr.body)?;
+            Ok(typed_expr(
+                TypedExprKind::Using(crate::typed_ir::TypedUsingExpr {
+                    body: Box::new(body.clone()),
+                    name: using_expr.name.clone(),
+                    scope_id,
+                    value: Box::new(value.clone()),
+                }),
+                typ,
+                merge_effects([value.effects, body.effects]),
+                StrictnessClass::Deferred,
+                using_expr.location,
+            ))
+        }
         Expr::Match(match_expr) => {
             let scrutinee = build_typed_expr(env, &match_expr.scrutinee)?;
             let mut arm_effects = vec![scrutinee.effects.clone()];
@@ -4260,6 +4440,9 @@ fn build_typed_application(
         if let InferenceType::Function(tfunc) = synthesize_member_access(env, member_access)? {
             effects.extend(effects_option_to_set(&tfunc.effects));
         }
+        let subscription = env
+            .lookup_extern_member_kind(&member_access.namespace, &member_access.member)
+            .is_some_and(|kind| matches!(kind, sigil_ast::ExternMemberKind::Subscription));
         return Ok(typed_expr(
             TypedExprKind::ExternCall(TypedExternCallExpr {
                 namespace: member_access.namespace.clone(),
@@ -4269,6 +4452,7 @@ fn build_typed_application(
                     member_access.namespace.join("/"),
                     member_access.member
                 ),
+                subscription,
                 args,
             }),
             typ,
@@ -4377,6 +4561,8 @@ fn synthesize(env: &TypeEnvironment, expr: &Expr) -> Result<InferenceType, TypeE
         Expr::If(if_expr) => synthesize_if(env, if_expr),
 
         Expr::Let(let_expr) => synthesize_let(env, let_expr),
+
+        Expr::Using(using_expr) => synthesize_using(env, using_expr),
 
         Expr::Match(match_expr) => synthesize_match(env, match_expr),
 
@@ -4488,6 +4674,18 @@ fn synthesize_binary(
 
         // Equality operators: T => T => Bool (polymorphic)
         BinaryOperator::Equal | BinaryOperator::NotEqual => {
+            if matches!(
+                left_type,
+                InferenceType::Owned(_) | InferenceType::Borrowed(_)
+            ) || matches!(
+                right_type,
+                InferenceType::Owned(_) | InferenceType::Borrowed(_)
+            ) {
+                return Err(TypeError::new(
+                    "Resource values may not be compared for equality".to_string(),
+                    Some(bin.location),
+                ));
+            }
             let (normalized_left, normalized_right) = canonical_pair(env, &left_type, &right_type);
             if !types_equal(&normalized_left, &normalized_right) {
                 return Err(TypeError::new(
@@ -4719,6 +4917,12 @@ fn is_project_mode_source(env: &TypeEnvironment) -> bool {
     env.source_file()
         .and_then(find_project_root_for_source)
         .is_some()
+}
+
+fn is_canonical_stdlib_source(env: &TypeEnvironment) -> bool {
+    env.source_file()
+        .map(|path| path.replace('\\', "/").contains("/language/stdlib/"))
+        .unwrap_or(false)
 }
 
 fn topology_call_member(expr: &Expr) -> Option<(&[String], &str)> {
@@ -5324,10 +5528,12 @@ fn synthesize_list(
 
     // Infer type from first element
     let first_type = synthesize(env, &list.elements[0])?;
+    reject_owned_aggregate_members("list", list.location, [first_type.clone()])?;
 
     // Check remaining elements match
     for elem in &list.elements[1..] {
         check(env, elem, &first_type)?;
+        reject_owned_aggregate_members("list", list.location, [synthesize(env, elem)?])?;
     }
 
     Ok(InferenceType::List(Box::new(crate::types::TList {
@@ -5393,6 +5599,12 @@ fn synthesize_let(
 
     // Synthesize binding value type
     let value_type = synthesize(env, &let_expr.value)?;
+    if matches!(value_type, InferenceType::Owned(_)) {
+        return Err(TypeError::new(
+            "Owned values must be introduced with using, not l".to_string(),
+            Some(let_expr.location),
+        ));
+    }
 
     // Let bindings currently support identifier and wildcard patterns only.
     // Match expressions handle the richer tuple/list/sum pattern surface.
@@ -5416,6 +5628,38 @@ fn synthesize_let(
     // Extend environment and synthesize body
     let body_env = env.extend(Some(bindings));
     synthesize(&body_env, &let_expr.body)
+}
+
+fn synthesize_using(
+    env: &TypeEnvironment,
+    using_expr: &sigil_ast::UsingExpr,
+) -> Result<InferenceType, TypeError> {
+    let value_type = synthesize(env, &using_expr.value)?;
+    let InferenceType::Owned(inner_type) = value_type else {
+        return Err(TypeError::new(
+            "using initializer must have type Owned[T]".to_string(),
+            Some(using_expr.location),
+        ));
+    };
+
+    let scope_id = fresh_resource_scope_id();
+    let mut bindings = HashMap::new();
+    bindings.insert(
+        using_expr.name.clone(),
+        borrowed_type((*inner_type).clone(), scope_id),
+    );
+    let body_env = env.extend(Some(bindings));
+    let body_type = synthesize(&body_env, &using_expr.body)?;
+    if type_contains_borrowed_scope(&body_type, scope_id) {
+        return Err(TypeError::new(
+            format!(
+                "Borrowed resource '{}' escapes its using scope",
+                using_expr.name
+            ),
+            Some(using_expr.location),
+        ));
+    }
+    Ok(body_type)
 }
 
 fn synthesize_match(
@@ -5516,13 +5760,14 @@ fn synthesize_tuple(
     env: &TypeEnvironment,
     tuple_expr: &sigil_ast::TupleExpr,
 ) -> Result<InferenceType, TypeError> {
-    let types: Result<Vec<_>, _> = tuple_expr
+    let types: Vec<_> = tuple_expr
         .elements
         .iter()
         .map(|elem| synthesize(env, elem))
-        .collect();
+        .collect::<Result<Vec<_>, _>>()?;
+    reject_owned_aggregate_members("tuple", tuple_expr.location, types.clone())?;
 
-    Ok(InferenceType::Tuple(crate::types::TTuple { types: types? }))
+    Ok(InferenceType::Tuple(crate::types::TTuple { types }))
 }
 
 fn synthesize_record(
@@ -5534,6 +5779,7 @@ fn synthesize_record(
         let field_type = synthesize(env, &field.value)?;
         fields.insert(field.name.clone(), field_type);
     }
+    reject_owned_aggregate_members("record", record_expr.location, fields.values().cloned())?;
 
     Ok(InferenceType::Record(crate::types::TRecord {
         fields,
@@ -5555,10 +5801,20 @@ fn synthesize_map_literal(
 
     let key_type = synthesize(env, &map_expr.entries[0].key)?;
     let value_type = synthesize(env, &map_expr.entries[0].value)?;
+    reject_owned_aggregate_members(
+        "map",
+        map_expr.location,
+        [key_type.clone(), value_type.clone()],
+    )?;
 
     for entry in map_expr.entries.iter().skip(1) {
         check(env, &entry.key, &key_type)?;
         check(env, &entry.value, &value_type)?;
+        reject_owned_aggregate_members(
+            "map",
+            map_expr.location,
+            [synthesize(env, &entry.key)?, synthesize(env, &entry.value)?],
+        )?;
     }
 
     Ok(InferenceType::Map(Box::new(TMap {
@@ -7240,7 +7496,9 @@ fn total_space_for_type_inner(
         InferenceType::Function(_)
         | InferenceType::Any
         | InferenceType::Var(_)
-        | InferenceType::Map(_) => Ok(MatchSpace::Opaque(format_type(&normalized))),
+        | InferenceType::Map(_)
+        | InferenceType::Owned(_)
+        | InferenceType::Borrowed(_) => Ok(MatchSpace::Opaque(format_type(&normalized))),
     };
 
     if let Some(key) = &recursion_key {
@@ -8784,6 +9042,12 @@ fn synthesize_type_ascription(
     type_asc: &sigil_ast::TypeAscriptionExpr,
 ) -> Result<InferenceType, TypeError> {
     let ascribed_type = ast_type_to_inference_type_resolved(env, None, &type_asc.ascribed_type)?;
+    if let InferenceType::Owned(inner_type) = &ascribed_type {
+        if is_canonical_stdlib_source(env) {
+            check(env, &type_asc.expr, inner_type)?;
+            return Ok(ascribed_type);
+        }
+    }
     check(env, &type_asc.expr, &ascribed_type)?;
     Ok(ascribed_type)
 }
@@ -8823,6 +9087,10 @@ fn check_with_context(
 
     if let Expr::Let(let_expr) = expr {
         return check_let(env, proof_context, let_expr, expected_type);
+    }
+
+    if let Expr::Using(using_expr) = expr {
+        return check_using(env, proof_context, using_expr, expected_type);
     }
 
     if let Expr::Match(match_expr) = expr {
@@ -9047,6 +9315,12 @@ fn check_let(
     use sigil_ast::Pattern;
 
     let value_type = synthesize(env, &let_expr.value)?;
+    if matches!(value_type, InferenceType::Owned(_)) {
+        return Err(TypeError::new(
+            "Owned values must be introduced with using, not l".to_string(),
+            Some(let_expr.location),
+        ));
+    }
     let mut bindings = HashMap::new();
     match &let_expr.pattern {
         Pattern::Identifier(id_pattern) => {
@@ -9070,6 +9344,43 @@ fn check_let(
         &value_type,
     );
     check_with_context(&body_env, &body_context, &let_expr.body, expected_type)
+}
+
+fn check_using(
+    env: &TypeEnvironment,
+    proof_context: &ProofContext,
+    using_expr: &sigil_ast::UsingExpr,
+    expected_type: &InferenceType,
+) -> Result<(), TypeError> {
+    let value_type = synthesize(env, &using_expr.value)?;
+    let InferenceType::Owned(inner_type) = value_type else {
+        return Err(TypeError::new(
+            "using initializer must have type Owned[T]".to_string(),
+            Some(using_expr.location),
+        ));
+    };
+
+    let scope_id = fresh_resource_scope_id();
+    let mut bindings = HashMap::new();
+    bindings.insert(
+        using_expr.name.clone(),
+        borrowed_type((*inner_type).clone(), scope_id),
+    );
+    let body_env = env.extend(Some(bindings));
+    check_with_context(&body_env, proof_context, &using_expr.body, expected_type)?;
+
+    let body_type = synthesize(&body_env, &using_expr.body)?;
+    if type_contains_borrowed_scope(&body_type, scope_id) {
+        return Err(TypeError::new(
+            format!(
+                "Borrowed resource '{}' escapes its using scope",
+                using_expr.name
+            ),
+            Some(using_expr.location),
+        ));
+    }
+
+    Ok(())
 }
 
 fn check_match(
@@ -9125,6 +9436,7 @@ fn check_list(
 ) -> Result<(), TypeError> {
     for element in &list_expr.elements {
         check(env, element, expected_element_type)?;
+        reject_owned_aggregate_members("list", list_expr.location, [synthesize(env, element)?])?;
     }
     Ok(())
 }
@@ -9148,6 +9460,15 @@ fn check_tuple(
     for (element, expected_type) in tuple_expr.elements.iter().zip(expected_types) {
         check(env, element, expected_type)?;
     }
+    reject_owned_aggregate_members(
+        "tuple",
+        tuple_expr.location,
+        tuple_expr
+            .elements
+            .iter()
+            .map(|element| synthesize(env, element))
+            .collect::<Result<Vec<_>, _>>()?,
+    )?;
 
     Ok(())
 }
@@ -9177,6 +9498,15 @@ fn check_record(
         };
         check(env, &field.value, expected_type)?;
     }
+    reject_owned_aggregate_members(
+        "record",
+        record_expr.location,
+        record_expr
+            .fields
+            .iter()
+            .map(|field| synthesize(env, &field.value))
+            .collect::<Result<Vec<_>, _>>()?,
+    )?;
 
     Ok(())
 }
@@ -9205,6 +9535,15 @@ fn check_map_literal(
         check(env, &entry.key, expected_key_type)?;
         check(env, &entry.value, expected_value_type)?;
     }
+    reject_owned_aggregate_members(
+        "map",
+        map_expr.location,
+        map_expr
+            .entries
+            .iter()
+            .flat_map(|entry| [synthesize(env, &entry.key), synthesize(env, &entry.value)])
+            .collect::<Result<Vec<_>, _>>()?,
+    )?;
 
     Ok(())
 }
@@ -10700,6 +11039,10 @@ mod tests {
                     assert_no_var_cycles(field_type, seen);
                 }
             }
+            InferenceType::Owned(inner) => assert_no_var_cycles(inner, seen),
+            InferenceType::Borrowed(borrowed) => {
+                assert_no_var_cycles(&borrowed.resource_type, seen);
+            }
             InferenceType::Constructor(constructor) => {
                 for arg in &constructor.type_args {
                     assert_no_var_cycles(arg, seen);
@@ -10785,6 +11128,50 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("stopOn parameter type"));
+    }
+
+    #[test]
+    fn test_extern_subscription_members_elaborate_to_owned_sources() {
+        let source = "e nodePty:{onData: subscribes λ(Int)=>String}\nλmain(session:Int)=>!Stream String=using source=nodePty.onData(session){\"ready\"}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_using_owned_resource_typechecks_when_body_consumes_borrowed_value() {
+        let source =
+            "e resources:{open:λ()=>Owned[Int]}\nλmain()=>Int=using value=resources.open(){value+1}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_using_rejects_borrowed_resource_escape() {
+        let source =
+            "e resources:{open:λ()=>Owned[Int]}\nλmain()=>Int=using value=resources.open(){value}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let error = type_check(&program, source, TypeCheckOptions::default()).unwrap_err();
+        assert!(error.to_string().contains("escapes its using scope"));
+    }
+
+    #[test]
+    fn test_let_binding_rejects_owned_values() {
+        let source = "e resources:{open:λ()=>Owned[Int]}\nλmain()=>Int=l value=(resources.open():Owned[Int]);0";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let error = type_check(&program, source, TypeCheckOptions::default()).unwrap_err();
+        assert!(error
+            .to_string()
+            .contains("Owned values must be introduced with using, not l"));
     }
 
     #[test]

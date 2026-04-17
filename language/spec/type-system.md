@@ -111,7 +111,17 @@ Constructed types:
 - `[T]`
 - `{K↦V}`
 - `λ(T1,T2,...)=>R`
+- `Owned[T]`
 - named ADTs and aliases
+
+`Owned[T]` is the compiler-known resource wrapper type.
+
+Current ownership rules:
+
+- stdlib resource creators and typed extern subscriptions may return `Owned[T]`
+- `Owned[T]` values are intended to be consumed by `using`
+- borrowed resource values introduced by `using` must not escape the scope
+- `Owned[T]` is affine rather than freely duplicable; ordinary `l` bindings of owned values are rejected, and owned values are rejected inside ordinary list/record/map literals
 
 ## Feature Flag Types
 

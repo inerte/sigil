@@ -8,6 +8,7 @@ c world=(†runtime.world(
   †pty.real(),
   †random.real(),
   †stream.live(),
+  †task.real(),
   [†tcp.proxy(
     •topology.eventStream,
     "127.0.0.1",

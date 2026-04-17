@@ -460,6 +460,10 @@ fn collect_expr_modules(expr: &Expr, modules: &mut HashSet<String>) {
             collect_expr_modules(&let_expr.value, modules);
             collect_expr_modules(&let_expr.body, modules);
         }
+        Expr::Using(using_expr) => {
+            collect_expr_modules(&using_expr.value, modules);
+            collect_expr_modules(&using_expr.body, modules);
+        }
         Expr::If(if_expr) => {
             collect_expr_modules(&if_expr.condition, modules);
             collect_expr_modules(&if_expr.then_branch, modules);

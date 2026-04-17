@@ -514,6 +514,7 @@ fn expr_location(expr: &Expr) -> SourceLocation {
         Expr::Unary(expr) => expr.location,
         Expr::Match(expr) => expr.location,
         Expr::Let(expr) => expr.location,
+        Expr::Using(expr) => expr.location,
         Expr::If(expr) => expr.location,
         Expr::List(expr) => expr.location,
         Expr::Record(expr) => expr.location,
@@ -718,6 +719,7 @@ fn validate_redundant_parens_in_body(
             | Expr::Unary(_)
             | Expr::Match(_)
             | Expr::Let(_)
+            | Expr::Using(_)
             | Expr::If(_)
             | Expr::List(_)
             | Expr::Record(_)
@@ -782,6 +784,10 @@ fn validate_expr_layout(expr: &Expr, source: &str, errors: &mut Vec<ValidationEr
         Expr::Let(let_expr) => {
             validate_expr_layout(&let_expr.value, source, errors);
             validate_expr_layout(&let_expr.body, source, errors);
+        }
+        Expr::Using(using_expr) => {
+            validate_expr_layout(&using_expr.value, source, errors);
+            validate_expr_layout(&using_expr.body, source, errors);
         }
         Expr::If(if_expr) => {
             validate_expr_layout(&if_expr.condition, source, errors);
@@ -1075,6 +1081,16 @@ fn collect_unused_named_bindings(expr: &TypedExpr, errors: &mut Vec<ValidationEr
             collect_unused_named_bindings(&let_expr.value, errors);
             collect_unused_named_bindings(&let_expr.body, errors);
         }
+        TypedExprKind::Using(using_expr) => {
+            if count_identifier_uses(&using_expr.body, &using_expr.name) == 0 {
+                errors.push(ValidationError::UnusedBinding {
+                    binding_name: using_expr.name.clone(),
+                    location: expr.location,
+                });
+            }
+            collect_unused_named_bindings(&using_expr.value, errors);
+            collect_unused_named_bindings(&using_expr.body, errors);
+        }
         TypedExprKind::Lambda(lambda) => {
             collect_unused_named_bindings(&lambda.body, errors);
         }
@@ -1211,6 +1227,10 @@ fn collect_single_use_pure_bindings(expr: &TypedExpr, errors: &mut Vec<Validatio
             collect_single_use_pure_bindings(&let_expr.value, errors);
             collect_single_use_pure_bindings(&let_expr.body, errors);
         }
+        TypedExprKind::Using(using_expr) => {
+            collect_single_use_pure_bindings(&using_expr.value, errors);
+            collect_single_use_pure_bindings(&using_expr.body, errors);
+        }
         TypedExprKind::Lambda(lambda) => {
             collect_single_use_pure_bindings(&lambda.body, errors);
         }
@@ -1346,6 +1366,10 @@ fn collect_dead_pure_discards(expr: &TypedExpr, errors: &mut Vec<ValidationError
 
             collect_dead_pure_discards(&let_expr.value, errors);
             collect_dead_pure_discards(&let_expr.body, errors);
+        }
+        TypedExprKind::Using(using_expr) => {
+            collect_dead_pure_discards(&using_expr.value, errors);
+            collect_dead_pure_discards(&using_expr.body, errors);
         }
         TypedExprKind::Lambda(lambda) => {
             collect_dead_pure_discards(&lambda.body, errors);
@@ -1521,6 +1545,10 @@ fn count_identifier_uses(expr: &TypedExpr, name: &str) -> usize {
         TypedExprKind::Let(let_expr) => {
             count_identifier_uses(&let_expr.value, name)
                 + count_identifier_uses(&let_expr.body, name)
+        }
+        TypedExprKind::Using(using_expr) => {
+            count_identifier_uses(&using_expr.value, name)
+                + count_identifier_uses(&using_expr.body, name)
         }
         TypedExprKind::If(if_expr) => {
             count_identifier_uses(&if_expr.condition, name)
@@ -1857,6 +1885,10 @@ fn validate_expr_record_fields(expr: &Expr, errors: &mut Vec<ValidationError>) {
             validate_expr_record_fields(&let_expr.value, errors);
             validate_expr_record_fields(&let_expr.body, errors);
         }
+        Expr::Using(using_expr) => {
+            validate_expr_record_fields(&using_expr.value, errors);
+            validate_expr_record_fields(&using_expr.body, errors);
+        }
         Expr::If(if_expr) => {
             validate_expr_record_fields(&if_expr.condition, errors);
             validate_expr_record_fields(&if_expr.then_branch, errors);
@@ -2187,6 +2219,21 @@ fn validate_expr_no_shadowing(
             }
             scopes.push(local);
             validate_expr_no_shadowing(&let_expr.body, scopes, errors);
+            scopes.pop();
+        }
+        Expr::Using(using_expr) => {
+            validate_expr_no_shadowing(&using_expr.value, scopes, errors);
+            let mut local = ScopeFrame::new();
+            try_bind_name(
+                &using_expr.name,
+                BindingKind::LocalBinding,
+                using_expr.location,
+                &mut local,
+                scopes,
+                errors,
+            );
+            scopes.push(local);
+            validate_expr_no_shadowing(&using_expr.body, scopes, errors);
             scopes.pop();
         }
         Expr::If(if_expr) => {
@@ -2873,6 +2920,10 @@ fn validate_types_file_expr_roots(expr: &Expr, errors: &mut Vec<ValidationError>
             validate_types_file_pattern_roots(&let_expr.pattern, errors);
             validate_types_file_expr_roots(&let_expr.value, errors);
             validate_types_file_expr_roots(&let_expr.body, errors);
+        }
+        Expr::Using(using_expr) => {
+            validate_types_file_expr_roots(&using_expr.value, errors);
+            validate_types_file_expr_roots(&using_expr.body, errors);
         }
         Expr::If(if_expr) => {
             validate_types_file_expr_roots(&if_expr.condition, errors);
@@ -4028,6 +4079,32 @@ fn collect_expr_usage(
                 extern_paths,
             );
         }
+        Expr::Using(using_expr) => {
+            collect_expr_usage(
+                &using_expr.value,
+                scopes,
+                summary,
+                top_level_values,
+                top_level_types,
+                top_level_effects,
+                constructor_to_type,
+                import_paths,
+                extern_paths,
+            );
+            let mut child_scopes = scopes.clone();
+            child_scopes.push(HashSet::from([using_expr.name.clone()]));
+            collect_expr_usage(
+                &using_expr.body,
+                &mut child_scopes,
+                summary,
+                top_level_values,
+                top_level_types,
+                top_level_effects,
+                constructor_to_type,
+                import_paths,
+                extern_paths,
+            );
+        }
         Expr::If(if_expr) => {
             collect_expr_usage(
                 &if_expr.condition,
@@ -4817,6 +4894,20 @@ fn validate_identifier_forms_in_expr(expr: &Expr, errors: &mut Vec<ValidationErr
             validate_identifier_forms_in_pattern(&let_expr.pattern, errors);
             validate_identifier_forms_in_expr(&let_expr.value, errors);
             validate_identifier_forms_in_expr(&let_expr.body, errors);
+        }
+        Expr::Using(using_expr) => {
+            if !is_lower_camel_case(&using_expr.name) {
+                errors.push(ValidationError::IdentifierForm {
+                    found: using_expr.name.clone(),
+                    suggestion: suggestion_suffix(
+                        &using_expr.name,
+                        to_lower_camel_case(&using_expr.name),
+                    ),
+                    location: using_expr.location,
+                });
+            }
+            validate_identifier_forms_in_expr(&using_expr.value, errors);
+            validate_identifier_forms_in_expr(&using_expr.body, errors);
         }
         Expr::If(if_expr) => {
             validate_identifier_forms_in_expr(&if_expr.condition, errors);
@@ -5617,6 +5708,10 @@ fn is_recursive(expr: &Expr, function_name: &str) -> bool {
         Expr::Let(l) => {
             is_recursive(&l.value, function_name) || is_recursive(&l.body, function_name)
         }
+        Expr::Using(using_expr) => {
+            is_recursive(&using_expr.value, function_name)
+                || is_recursive(&using_expr.body, function_name)
+        }
 
         Expr::If(i) => {
             is_recursive(&i.condition, function_name)
@@ -5882,6 +5977,10 @@ fn contains_recursive_append_result(expr: &Expr, function_name: &str) -> bool {
         Expr::Let(let_expr) => {
             contains_recursive_append_result(&let_expr.value, function_name)
                 || contains_recursive_append_result(&let_expr.body, function_name)
+        }
+        Expr::Using(using_expr) => {
+            contains_recursive_append_result(&using_expr.value, function_name)
+                || contains_recursive_append_result(&using_expr.body, function_name)
         }
         Expr::If(if_expr) => {
             contains_recursive_append_result(&if_expr.condition, function_name)
@@ -6190,6 +6289,10 @@ fn count_self_calls(expr: &Expr, function_name: &str) -> usize {
             count_self_calls(&let_expr.value, function_name)
                 + count_self_calls(&let_expr.body, function_name)
         }
+        Expr::Using(using_expr) => {
+            count_self_calls(&using_expr.value, function_name)
+                + count_self_calls(&using_expr.body, function_name)
+        }
         Expr::If(if_expr) => {
             count_self_calls(&if_expr.condition, function_name)
                 + count_self_calls(&if_expr.then_branch, function_name)
@@ -6289,6 +6392,10 @@ fn expr_contains_identifier(expr: &Expr, name: &str) -> bool {
         Expr::Let(let_expr) => {
             expr_contains_identifier(&let_expr.value, name)
                 || expr_contains_identifier(&let_expr.body, name)
+        }
+        Expr::Using(using_expr) => {
+            expr_contains_identifier(&using_expr.value, name)
+                || expr_contains_identifier(&using_expr.body, name)
         }
         Expr::If(if_expr) => {
             expr_contains_identifier(&if_expr.condition, name)
@@ -6451,6 +6558,10 @@ fn collect_filter_then_count_in_expr(expr: &Expr, errors: &mut Vec<ValidationErr
         Expr::Let(let_expr) => {
             collect_filter_then_count_in_expr(&let_expr.value, errors);
             collect_filter_then_count_in_expr(&let_expr.body, errors);
+        }
+        Expr::Using(using_expr) => {
+            collect_filter_then_count_in_expr(&using_expr.value, errors);
+            collect_filter_then_count_in_expr(&using_expr.body, errors);
         }
         Expr::If(if_expr) => {
             collect_filter_then_count_in_expr(&if_expr.condition, errors);

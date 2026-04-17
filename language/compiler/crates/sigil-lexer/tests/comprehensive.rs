@@ -426,7 +426,7 @@ fn test_dotdot_in_list() {
 
 #[test]
 fn test_effect_markers() {
-    let source = "!Fs !FsWatch !Http !Process !Stream !Timer !WebSocket";
+    let source = "!Fs !FsWatch !Http !Process !Stream !Task !Timer !WebSocket";
     let tokens = tokenize(source).unwrap();
 
     // Each !X should be BANG followed by UpperIdentifier

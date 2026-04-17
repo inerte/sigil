@@ -71,6 +71,10 @@ fn has_direct_branching_shape(expr: &Expr, function_name: &str) -> bool {
             has_direct_branching_shape(&let_expr.value, function_name)
                 || has_direct_branching_shape(&let_expr.body, function_name)
         }
+        Expr::Using(using_expr) => {
+            has_direct_branching_shape(&using_expr.value, function_name)
+                || has_direct_branching_shape(&using_expr.body, function_name)
+        }
         Expr::If(if_expr) => {
             has_direct_branching_shape(&if_expr.condition, function_name)
                 || has_direct_branching_shape(&if_expr.then_branch, function_name)
@@ -169,6 +173,10 @@ fn contains_nested_branching_shape(expr: &Expr, function_name: &str) -> bool {
         Expr::Let(let_expr) => {
             contains_nested_branching_shape(&let_expr.value, function_name)
                 || contains_nested_branching_shape(&let_expr.body, function_name)
+        }
+        Expr::Using(using_expr) => {
+            contains_nested_branching_shape(&using_expr.value, function_name)
+                || contains_nested_branching_shape(&using_expr.body, function_name)
         }
         Expr::If(if_expr) => {
             contains_nested_branching_shape(&if_expr.condition, function_name)

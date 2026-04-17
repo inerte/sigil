@@ -114,6 +114,7 @@ c world=(†runtime.withFsWatchRoots(
             †pty.real(),
             †random.seeded(1337),
             †stream.live(),
+            †task.real(),
             [],
             †timer.virtual(),
             †websocket.real()
@@ -160,6 +161,7 @@ c world=(†runtime.withFsWatchRoots(
             †pty.real(),
             †random.real(),
             †stream.live(),
+            †task.real(),
             [],
             †timer.real(),
             †websocket.real()
@@ -211,7 +213,7 @@ Canonical TCP usage:
 Canonical PTY usage:
 
 ```sigil program language/examples/ptyBasics.sigil
-λmain()=>!Pty §pty.Session=§pty.spawnAt(
+λmain()=>!Pty Owned[§pty.Session]=§pty.spawnAt(
   •topology.assistantShell,
   {
     argv:["codex"],
@@ -226,7 +228,7 @@ Canonical PTY usage:
 Canonical fsWatch usage:
 
 ```sigil program language/examples/fsWatchBasics.sigil
-λmain()=>!FsWatch §fsWatch.Watch=§fsWatch.watchAt(
+λmain()=>!FsWatch Owned[§fsWatch.Watch]=§fsWatch.watchAt(
   "src",
   •topology.exportsDir
 )
@@ -237,7 +239,7 @@ Canonical WebSocket usage:
 ```sigil program language/examples/websocketBasics.sigil
 c liveUpdates=(§topology.websocketHandle("liveUpdates"):§topology.WebSocketHandle)
 
-λmain()=>!WebSocket §websocket.Server=§websocket.listen(
+λmain()=>!WebSocket Owned[§websocket.Server]=§websocket.listen(
   8080,
   [§websocket.route(
     •topology.liveUpdates,

@@ -14,7 +14,11 @@
   "src/rawEndpointClient.sigil"
 )
 
-λrawClientSource()=>String="λmain()=>!Http String match §httpClient.get(\"http://127.0.0.1:45110\",§httpClient.emptyHeaders(),\"/health\"){
+λrawClientSource()=>String="λmain()=>!Http String match §httpClient.get(
+  \"http://127.0.0.1:45110\",
+  §httpClient.emptyHeaders(),
+  \"/health\"
+){
   Ok(response)=>response.body|
   Err(error)=>error.message
 }
@@ -34,7 +38,7 @@
 }
 
 λrunClientOutput(target:String)=>!Clock!Fs!Process!Timer String={
-  l server=(•support.startReadyServer(
+  l server=(•support.prepareReadyServer(
     httpCommand([
       "run",
       "src/httpRoundtripServer.sigil",
@@ -45,51 +49,58 @@
     "http-server-",
     "0"
   ):µReadyServer);
-  l result=match •support.waitForReadyPort(
-    50,
-    200,
-    server.readyFile
-  ){
-    Ok(port)=>{
-      l baseUrl=("http://127.0.0.1:"++§string.intToString(port):String);
-      l ready=(•support.retryRunStdoutContains(
+  {
+    using process=§process.start(server.command){
+      l result=match •support.waitForReadyPort(
         50,
-        •support.commandWithEnv(
-          httpCommand([
-            "run",
-            "src/getClient.sigil",
-            "--env",
-            "test"
-          ]),
-          (httpClientEnv(baseUrl):{String↦String})
-        ),
         200,
-        "200:healthy"
-      ):§process.ProcessResult);
-      match •support.runStdoutContains(
-        "200:healthy",
-        ready
+        server.readyFile
       ){
-        true=>(§process.run(•support.commandWithEnv(
-          httpCommand([
-            "run",
-            target,
-            "--env",
-            "test"
-          ]),
-          (httpClientEnv(baseUrl):{String↦String})
-        )):§process.ProcessResult)|
-        false=>ready
-      }
-    }|
-    Err(message)=>{
-      code:-1,
-      stderr:message,
-      stdout:""
+        Ok(port)=>{
+          l baseUrl=("http://127.0.0.1:"++§string.intToString(port):String);
+          l ready=(•support.retryRunStdoutContains(
+            50,
+            •support.commandWithEnv(
+              httpCommand([
+                "run",
+                "src/getClient.sigil",
+                "--env",
+                "test"
+              ]),
+              (httpClientEnv(baseUrl):{String↦String})
+            ),
+            200,
+            "200:healthy"
+          ):§process.ProcessResult);
+          match •support.runStdoutContains(
+            "200:healthy",
+            ready
+          ){
+            true=>(§process.run(•support.commandWithEnv(
+              httpCommand([
+                "run",
+                target,
+                "--env",
+                "test"
+              ]),
+              (httpClientEnv(baseUrl):{String↦String})
+            )):§process.ProcessResult)|
+            false=>ready
+          }
+        }|
+        Err(message)=>{
+          code:-1,
+          stderr:message,
+          stdout:""
+        }
+      };
+      l _=(•support.stopReadyServer(
+        process,
+        server
+      ):Unit);
+      •support.combinedOutput(result)
     }
-  };
-  l _=(•support.stopReadyServer(server):Unit);
-  •support.combinedOutput(result)
+  }
 }
 
 λvalidateResult()=>!Process §process.ProcessResult=§process.run(httpCommand([

@@ -13,6 +13,7 @@ c world=(†runtime.world(
   †pty.real(),
   †random.real(),
   †stream.live(),
+  †task.real(),
   [],
   †timer.real(),
   †websocket.real()

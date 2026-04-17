@@ -18,6 +18,25 @@ e process
 
 λfailedReadyPortMessage(path:String)=>String="timed out waiting for ready port file "++path
 
+λprepareReadyServer(command:§process.Command,prefix:String,requestedPort:String)=>!Clock!Fs µReadyServer={
+  l tempDir=(uniqueRepoTempDir(prefix):String);
+  l readyFile=(§path.join(
+    tempDir,
+    "ready.txt"
+  ):String);
+  {
+    command:commandWithArgs(
+      [
+        requestedPort,
+        readyFile
+      ],
+      command
+    ),
+    readyFile:readyFile,
+    tempDir:tempDir
+  }
+}
+
 λrepoPath(relative:String)=>String=§path.join(
   repoRoot(),
   relative
@@ -59,29 +78,9 @@ e process
   cwd
 )
 
-λstartReadyServer(command:§process.Command,prefix:String,requestedPort:String)=>!Clock!Fs!Process µReadyServer={
-  l tempDir=(uniqueRepoTempDir(prefix):String);
-  l readyFile=(§path.join(
-    tempDir,
-    "ready.txt"
-  ):String);
-  l process=(§process.start(commandWithArgs(
-    [
-      requestedPort,
-      readyFile
-    ],
-    command
-  )):§process.RunningProcess);
-  {
-    process:process,
-    readyFile:readyFile,
-    tempDir:tempDir
-  }
-}
-
-λstopReadyServer(server:µReadyServer)=>!Fs!Process Unit={
-  l _=(§process.kill(server.process):Unit);
-  l _=(§process.wait(server.process):§process.ProcessResult);
+λstopReadyServer(process:§process.RunningProcess,server:µReadyServer)=>!Fs!Process Unit={
+  l _=(§process.kill(process):Unit);
+  l _=(§process.wait(process):§process.ProcessResult);
   §file.removeTree(server.tempDir)
 }
 

@@ -556,6 +556,11 @@ impl Printer {
                 self.indent(indent);
                 self.push(&self.expr(body, indent, 0));
             }
+            Expr::Using(using_expr) => {
+                self.newline();
+                self.indent(indent);
+                self.push(&self.using_text(using_expr, indent));
+            }
             other => {
                 self.newline();
                 self.indent(indent);
@@ -605,6 +610,7 @@ impl Printer {
             ),
             Expr::Match(match_expr) => self.match_text(match_expr, indent),
             Expr::Let(let_expr) => self.let_text(let_expr, indent),
+            Expr::Using(using_expr) => self.using_text(using_expr, indent),
             Expr::If(if_expr) => {
                 let else_branch = if_expr
                     .else_branch
@@ -760,6 +766,7 @@ impl Printer {
         match &lambda.body {
             Expr::Match(match_expr) => format!("{} {}", head, self.match_text(match_expr, indent)),
             Expr::Let(let_expr) => format!("{}={}", head, self.let_text(let_expr, indent)),
+            Expr::Using(using_expr) => format!("{}={}", head, self.using_text(using_expr, indent)),
             body => format!("{}={}", head, self.expr(body, indent, 0)),
         }
     }
@@ -797,6 +804,7 @@ impl Printer {
         match body {
             Expr::Match(match_expr) => self.match_text(match_expr, indent),
             Expr::Let(let_expr) => self.let_text(let_expr, indent),
+            Expr::Using(using_expr) => self.using_text(using_expr, indent),
             other => self.expr(other, indent, 0),
         }
     }
@@ -820,6 +828,50 @@ impl Printer {
         out.push_str(&INDENT.repeat(indent));
         out.push('}');
         out
+    }
+
+    fn using_text(&self, using_expr: &UsingExpr, indent: usize) -> String {
+        let mut out = String::from("{");
+        out.push('\n');
+        out.push_str(&INDENT.repeat(indent + 1));
+        out.push_str("using ");
+        out.push_str(&using_expr.name);
+        out.push('=');
+        out.push_str(&self.expr(&using_expr.value, indent + 1, 0));
+        out.push('{');
+        self.push_using_body(&mut out, &using_expr.body, indent + 1);
+        out.push('\n');
+        out.push_str(&INDENT.repeat(indent + 1));
+        out.push('}');
+        out.push('\n');
+        out.push_str(&INDENT.repeat(indent));
+        out.push('}');
+        out
+    }
+
+    fn push_using_body(&self, out: &mut String, body: &Expr, indent: usize) {
+        match body {
+            Expr::Let(let_expr) => {
+                let (bindings, tail) = flatten_lets(let_expr);
+                for binding in bindings {
+                    out.push('\n');
+                    out.push_str(&INDENT.repeat(indent + 1));
+                    out.push_str("l ");
+                    out.push_str(&self.pattern_text(&binding.pattern));
+                    out.push('=');
+                    out.push_str(&self.expr(&binding.value, indent + 1, 0));
+                    out.push(';');
+                }
+                out.push('\n');
+                out.push_str(&INDENT.repeat(indent + 1));
+                out.push_str(&self.expr(tail, indent + 1, 0));
+            }
+            other => {
+                out.push('\n');
+                out.push_str(&INDENT.repeat(indent + 1));
+                out.push_str(&self.expr(other, indent + 1, 0));
+            }
+        }
     }
 
     fn concurrent_text(&self, concurrent: &ConcurrentExpr, indent: usize) -> String {
@@ -1142,7 +1194,12 @@ fn flatten_binary_chain<'a>(
 
 fn precedence(expr: &Expr) -> u8 {
     match expr {
-        Expr::Let(_) | Expr::Match(_) | Expr::If(_) | Expr::Lambda(_) | Expr::Concurrent(_) => 1,
+        Expr::Let(_)
+        | Expr::Using(_)
+        | Expr::Match(_)
+        | Expr::If(_)
+        | Expr::Lambda(_)
+        | Expr::Concurrent(_) => 1,
         Expr::Pipeline(_) | Expr::Map(_) | Expr::Filter(_) | Expr::Fold(_) => 2,
         Expr::Binary(binary) => match binary.operator {
             BinaryOperator::Pipe | BinaryOperator::ComposeFwd | BinaryOperator::ComposeBwd => 2,

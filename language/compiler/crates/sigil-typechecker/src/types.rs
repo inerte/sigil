@@ -27,6 +27,8 @@ pub enum InferenceType {
     Tuple(TTuple),
     Record(TRecord),
     Constructor(TConstructor),
+    Owned(Box<InferenceType>),
+    Borrowed(Box<TBorrowed>),
     Any, // For FFI namespaces - trust mode, validated at link-time
 }
 
@@ -75,6 +77,12 @@ pub struct TRecord {
 pub struct TConstructor {
     pub name: String,                  // e.g., "Option", "Result", "Maybe"
     pub type_args: Vec<InferenceType>, // Generic type arguments
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TBorrowed {
+    pub resource_type: InferenceType,
+    pub scope_id: u32,
 }
 
 // ============================================================================
@@ -194,6 +202,13 @@ pub fn apply_subst(subst: &Substitution, typ: &InferenceType) -> InferenceType {
                 .collect(),
         }),
 
+        InferenceType::Owned(inner) => InferenceType::Owned(Box::new(apply_subst(subst, inner))),
+
+        InferenceType::Borrowed(borrowed) => InferenceType::Borrowed(Box::new(TBorrowed {
+            resource_type: apply_subst(subst, &borrowed.resource_type),
+            scope_id: borrowed.scope_id,
+        })),
+
         InferenceType::Any => InferenceType::Any,
     }
 }
@@ -230,6 +245,11 @@ pub fn prune(typ: &InferenceType) -> InferenceType {
                 typ.clone()
             }
         }
+        InferenceType::Owned(inner) => InferenceType::Owned(Box::new(prune(inner))),
+        InferenceType::Borrowed(borrowed) => InferenceType::Borrowed(Box::new(TBorrowed {
+            resource_type: prune(&borrowed.resource_type),
+            scope_id: borrowed.scope_id,
+        })),
         _ => typ.clone(),
     }
 }
@@ -283,6 +303,8 @@ fn occurs_in(id: u32, typ: &InferenceType, subst: &Substitution) -> bool {
             .type_args
             .iter()
             .any(|arg| occurs_in(id, arg, subst)),
+        InferenceType::Owned(inner) => occurs_in(id, &inner, subst),
+        InferenceType::Borrowed(borrowed) => occurs_in(id, &borrowed.resource_type, subst),
     }
 }
 
@@ -335,6 +357,15 @@ fn unify_into(
                 unify_into(left_field, right_field, subst)?;
             }
             Ok(())
+        }
+        (InferenceType::Owned(inner1), InferenceType::Owned(inner2)) => {
+            unify_into(inner1, inner2, subst)
+        }
+        (InferenceType::Borrowed(borrowed), other) => {
+            unify_into(&borrowed.resource_type, other, subst)
+        }
+        (other, InferenceType::Borrowed(borrowed)) => {
+            unify_into(other, &borrowed.resource_type, subst)
         }
         (InferenceType::Constructor(c1), InferenceType::Constructor(c2))
             if c1.name == c2.name && c1.type_args.len() == c2.type_args.len() =>
@@ -409,6 +440,8 @@ fn format_inference_type(typ: &InferenceType) -> String {
                 )
             }
         }
+        InferenceType::Owned(inner) => format!("Owned[{}]", format_inference_type(inner)),
+        InferenceType::Borrowed(borrowed) => format_inference_type(&borrowed.resource_type),
         InferenceType::Any => "Any".to_string(),
     }
 }
@@ -462,6 +495,12 @@ pub fn types_equal(t1: &InferenceType, t2: &InferenceType) -> bool {
                         .map_or(false, |ty2| types_equal(ty1, ty2))
                 })
         }
+
+        (InferenceType::Owned(inner1), InferenceType::Owned(inner2)) => types_equal(inner1, inner2),
+
+        (InferenceType::Borrowed(borrowed), other) => types_equal(&borrowed.resource_type, other),
+
+        (other, InferenceType::Borrowed(borrowed)) => types_equal(other, &borrowed.resource_type),
 
         (InferenceType::Constructor(c1), InferenceType::Constructor(c2)) => {
             c1.name == c2.name
@@ -531,14 +570,21 @@ pub fn ast_type_to_inference_type_with_params(
             },
         })),
 
-        AstType::Constructor(tc) => InferenceType::Constructor(TConstructor {
-            name: tc.name.clone(),
-            type_args: tc
+        AstType::Constructor(tc) => {
+            let type_args = tc
                 .type_args
                 .iter()
                 .map(|item| ast_type_to_inference_type_with_params(item, type_params))
-                .collect(),
-        }),
+                .collect::<Vec<_>>();
+            if tc.name == "Owned" && type_args.len() == 1 {
+                InferenceType::Owned(Box::new(type_args[0].clone()))
+            } else {
+                InferenceType::Constructor(TConstructor {
+                    name: tc.name.clone(),
+                    type_args,
+                })
+            }
+        }
 
         AstType::Qualified(qualified) => InferenceType::Constructor(TConstructor {
             name: if qualified.module_path.is_empty() {

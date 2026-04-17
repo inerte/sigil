@@ -23,6 +23,8 @@ pub enum Expr {
     Match(Box<MatchExpr>),
     #[cfg_attr(feature = "serde", serde(rename = "LetExpr"))]
     Let(Box<LetExpr>),
+    #[cfg_attr(feature = "serde", serde(rename = "UsingExpr"))]
+    Using(Box<UsingExpr>),
     #[cfg_attr(feature = "serde", serde(rename = "IfExpr"))]
     If(Box<IfExpr>),
     #[cfg_attr(feature = "serde", serde(rename = "ListExpr"))]
@@ -358,6 +360,16 @@ pub struct MatchArm {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct LetExpr {
     pub pattern: Pattern,
+    pub value: Expr,
+    pub body: Expr,
+    pub location: SourceLocation,
+}
+
+/// Scoped owned-resource binding: using source = open() { ... }
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct UsingExpr {
+    pub name: String,
     pub value: Expr,
     pub body: Expr,
     pub location: SourceLocation,

@@ -23,7 +23,7 @@
 }
 
 λlistenAndServe(port:Int,readyFile:Option[String])=>!Fs!Http Unit={
-  l server=(§httpServer.listen(
+  l server=(§httpServer.listenWith(
     handleRequest,
     port
   ):§httpServer.Server);

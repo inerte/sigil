@@ -60,6 +60,12 @@ pub enum TokenType {
     #[token("concurrent", priority = 3)]
     Concurrent,
 
+    #[token("using", priority = 3)]
+    Using,
+
+    #[token("subscribes", priority = 3)]
+    Subscribes,
+
     #[token("spawn", priority = 3)]
     Spawn,
 

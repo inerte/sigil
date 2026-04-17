@@ -5,7 +5,7 @@
 
 use crate::effects::EffectCatalog;
 use crate::types::{apply_subst, fresh_type_var, InferenceType, Substitution, TMap, TypeScheme};
-use sigil_ast::{Expr, TypeDef, Variant};
+use sigil_ast::{Expr, ExternMemberKind, TypeDef, Variant};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 /// Type information for user-defined types
@@ -67,6 +67,7 @@ pub struct TypeEnvironment {
     imported_value_schemes: HashMap<String, HashMap<String, TypeScheme>>,
     imported_value_meta: HashMap<String, HashMap<String, BindingMeta>>,
     imported_label_registries: HashMap<String, HashMap<String, LabelInfo>>,
+    extern_member_kinds: HashMap<String, HashMap<String, ExternMemberKind>>,
     boundary_rules: Vec<BoundaryRule>,
     effect_catalog: EffectCatalog,
     module_id: Option<String>,
@@ -88,6 +89,7 @@ impl TypeEnvironment {
             imported_value_schemes: HashMap::new(),
             imported_value_meta: HashMap::new(),
             imported_label_registries: HashMap::new(),
+            extern_member_kinds: HashMap::new(),
             boundary_rules: Vec::new(),
             effect_catalog: EffectCatalog::empty(),
             module_id: None,
@@ -109,6 +111,7 @@ impl TypeEnvironment {
             imported_value_schemes: HashMap::new(),
             imported_value_meta: HashMap::new(),
             imported_label_registries: HashMap::new(),
+            extern_member_kinds: parent.extern_member_kinds.clone(),
             boundary_rules: parent.boundary_rules.clone(),
             effect_catalog: parent.effect_catalog.clone(),
             module_id: parent.module_id.clone(),
@@ -226,6 +229,34 @@ impl TypeEnvironment {
 
     pub fn register_function_contract(&mut self, name: String, contract: FunctionContract) {
         self.function_contracts.insert(name, contract);
+    }
+
+    pub fn register_extern_member_kind(
+        &mut self,
+        namespace: String,
+        member_name: String,
+        kind: ExternMemberKind,
+    ) {
+        self.extern_member_kinds
+            .entry(namespace)
+            .or_default()
+            .insert(member_name, kind);
+    }
+
+    pub fn lookup_extern_member_kind(
+        &self,
+        module_path: &[String],
+        member_name: &str,
+    ) -> Option<ExternMemberKind> {
+        let namespace = module_path.join("::");
+        if let Some(member_kinds) = self.extern_member_kinds.get(&namespace) {
+            if let Some(kind) = member_kinds.get(member_name) {
+                return Some(*kind);
+            }
+        }
+        self.parent
+            .as_ref()?
+            .lookup_extern_member_kind(module_path, member_name)
     }
 
     /// Look up a user-defined type
@@ -708,6 +739,15 @@ impl TypeEnvironment {
                     name: record.name.clone(),
                 })
             }
+            InferenceType::Owned(inner) => {
+                InferenceType::Owned(Box::new(self.normalize_type(inner)))
+            }
+            InferenceType::Borrowed(borrowed) => {
+                InferenceType::Borrowed(Box::new(crate::types::TBorrowed {
+                    resource_type: self.normalize_type(&borrowed.resource_type),
+                    scope_id: borrowed.scope_id,
+                }))
+            }
             // Other types don't need normalization
             _ => ty.clone(),
         }
@@ -784,6 +824,10 @@ pub fn collect_type_var_ids(typ: &InferenceType, ids: &mut HashSet<u32>) {
             for arg in &constructor.type_args {
                 collect_type_var_ids(arg, ids);
             }
+        }
+        InferenceType::Owned(inner) => collect_type_var_ids(inner, ids),
+        InferenceType::Borrowed(borrowed) => {
+            collect_type_var_ids(&borrowed.resource_type, ids);
         }
     }
 }

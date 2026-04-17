@@ -12,7 +12,10 @@
   "src/rawTcpClient.sigil"
 )
 
-λrawClientSource()=>String="λmain()=>!Tcp String match §tcpClient.send(\"ping\",\"127.0.0.1\"){
+λrawClientSource()=>String="λmain()=>!Tcp String match §tcpClient.send(
+  \"ping\",
+  \"127.0.0.1\"
+){
   Ok(response)=>response.message|
   Err(error)=>error.message
 }
@@ -32,7 +35,7 @@
 }
 
 λrunClientOutput(target:String)=>!Clock!Fs!Process!Timer String={
-  l server=(•support.startReadyServer(
+  l server=(•support.prepareReadyServer(
     tcpCommand([
       "run",
       "src/tcpRoundtripServer.sigil",
@@ -43,50 +46,57 @@
     "tcp-server-",
     "0"
   ):µReadyServer);
-  l result=match •support.waitForReadyPort(
-    50,
-    200,
-    server.readyFile
-  ){
-    Ok(port)=>{
-      l ready=(•support.retryRunStdoutContains(
+  {
+    using process=§process.start(server.command){
+      l result=match •support.waitForReadyPort(
         50,
-        •support.commandWithEnv(
-          tcpCommand([
-            "run",
-            "src/pingClient.sigil",
-            "--env",
-            "test"
-          ]),
-          (clientEnv(port):{String↦String})
-        ),
         200,
-        "pong"
-      ):§process.ProcessResult);
-      match •support.runStdoutContains(
-        "pong",
-        ready
+        server.readyFile
       ){
-        true=>(§process.run(•support.commandWithEnv(
-          tcpCommand([
-            "run",
-            target,
-            "--env",
-            "test"
-          ]),
-          (clientEnv(port):{String↦String})
-        )):§process.ProcessResult)|
-        false=>ready
-      }
-    }|
-    Err(message)=>{
-      code:-1,
-      stderr:message,
-      stdout:""
+        Ok(port)=>{
+          l ready=(•support.retryRunStdoutContains(
+            50,
+            •support.commandWithEnv(
+              tcpCommand([
+                "run",
+                "src/pingClient.sigil",
+                "--env",
+                "test"
+              ]),
+              (clientEnv(port):{String↦String})
+            ),
+            200,
+            "pong"
+          ):§process.ProcessResult);
+          match •support.runStdoutContains(
+            "pong",
+            ready
+          ){
+            true=>(§process.run(•support.commandWithEnv(
+              tcpCommand([
+                "run",
+                target,
+                "--env",
+                "test"
+              ]),
+              (clientEnv(port):{String↦String})
+            )):§process.ProcessResult)|
+            false=>ready
+          }
+        }|
+        Err(message)=>{
+          code:-1,
+          stderr:message,
+          stdout:""
+        }
+      };
+      l _=(•support.stopReadyServer(
+        process,
+        server
+      ):Unit);
+      •support.combinedOutput(result)
     }
-  };
-  l _=(•support.stopReadyServer(server):Unit);
-  •support.combinedOutput(result)
+  }
 }
 
 λtcpCommand(args:[String])=>§process.Command=•support.sigilIn(

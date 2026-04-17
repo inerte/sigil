@@ -343,6 +343,12 @@ fn collect_quantified_var_names(
                 collect_quantified_var_names(arg, quantified_vars, names);
             }
         }
+        InferenceType::Owned(inner) => {
+            collect_quantified_var_names(inner, quantified_vars, names);
+        }
+        InferenceType::Borrowed(borrowed) => {
+            collect_quantified_var_names(&borrowed.resource_type, quantified_vars, names);
+        }
     }
 }
 
@@ -678,6 +684,12 @@ fn inspect_expr_ast(expr: &Expr) -> Value {
             "pattern": inspect_pattern_ast(&let_expr.pattern),
             "value": inspect_expr_ast(&let_expr.value),
             "body": inspect_expr_ast(&let_expr.body)
+        }),
+        Expr::Using(using_expr) => json!({
+            "kind": "using",
+            "name": using_expr.name,
+            "value": inspect_expr_ast(&using_expr.value),
+            "body": inspect_expr_ast(&using_expr.body)
         }),
         Expr::If(if_expr) => json!({
             "kind": "if",
@@ -1101,6 +1113,10 @@ fn collect_expr_proof_sites(
         Expr::Let(let_expr) => {
             collect_expr_proof_sites(&let_expr.value, source_file, owner_kind, owner_name, out);
             collect_expr_proof_sites(&let_expr.body, source_file, owner_kind, owner_name, out);
+        }
+        Expr::Using(using_expr) => {
+            collect_expr_proof_sites(&using_expr.value, source_file, owner_kind, owner_name, out);
+            collect_expr_proof_sites(&using_expr.body, source_file, owner_kind, owner_name, out);
         }
         Expr::List(list) => {
             for item in &list.elements {

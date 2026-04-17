@@ -260,7 +260,17 @@ pub struct ExternDecl {
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct ExternMember {
     pub name: String,
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub kind: ExternMemberKind,
     #[cfg_attr(feature = "serde", serde(rename = "memberType"))]
     pub member_type: Type, // Function type or primitive type
     pub location: SourceLocation,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum ExternMemberKind {
+    #[default]
+    Value,
+    Subscription,
 }

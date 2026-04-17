@@ -16,9 +16,9 @@ t Spawn={
 
 λresize(cols:Int,rows:Int,session:Session)=>!Pty Unit=()
 
-λspawn(request:Spawn)=>!Pty Session={pid:-1}
+λspawn(request:Spawn)=>!Pty Owned[Session]=({pid:-1}:Owned[Session])
 
-λspawnAt(handle:§topology.PtyHandle,request:Spawn)=>!Pty Session={pid:-1}
+λspawnAt(handle:§topology.PtyHandle,request:Spawn)=>!Pty Owned[Session]=({pid:-1}:Owned[Session])
 
 λwait(session:Session)=>!Pty Int=-1
 

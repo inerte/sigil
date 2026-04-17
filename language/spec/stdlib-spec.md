@@ -277,13 +277,16 @@ The `*At` variants are the named-boundary surface for topology-aware projects.
 t Command={argv:[String],cwd:Option[String],env:{String↦String}}
 t RunningProcess={pid:Int}
 t ProcessResult={code:Int,stderr:String,stdout:String}
+t ProcessFailure={code:Int,stderr:String,stdout:String}
 
 λcommand(argv:[String])=>Command
 λexit(code:Int)=>!Process Unit
 λrun(command:Command)=>!Process ProcessResult
 λrunAt(command:Command,handle:§topology.ProcessHandle)=>!Process ProcessResult
-λstart(command:Command)=>!Process RunningProcess
-λstartAt(command:Command,handle:§topology.ProcessHandle)=>!Process RunningProcess
+λrunChecked(command:Command)=>!Process Result[ProcessResult,ProcessFailure]
+λrunJson(command:Command)=>!Process Result[§json.JsonValue,ProcessFailure]
+λstart(command:Command)=>!Process Owned[RunningProcess]
+λstartAt(command:Command,handle:§topology.ProcessHandle)=>!Process Owned[RunningProcess]
 λwithCwd(command:Command,cwd:String)=>Command
 λwithEnv(command:Command,env:{String↦String})=>Command
 λwait(process:RunningProcess)=>!Process ProcessResult
@@ -295,6 +298,9 @@ Process rules:
 - `withEnv` overlays explicit variables on top of the inherited environment
 - non-zero exit codes are reported in `ProcessResult.code`
 - `run` captures stdout and stderr in memory
+- `runChecked` converts non-zero exit into `Err(ProcessFailure)`
+- `runJson` requires zero exit and then parses stdout as JSON
+- `start` and `startAt` return owned process handles
 - `runAt` and `startAt` are the named-boundary variants for topology-aware projects
 - `kill` is a normal termination request, not a timeout/escalation protocol
 
@@ -306,14 +312,15 @@ t Watch={id:String}
 
 λclose(watch:Watch)=>!FsWatch Unit
 λevents(watch:Watch)=>!FsWatch §stream.Source[Event]
-λwatch(path:String)=>!FsWatch Watch
-λwatchAt(path:String,root:§topology.FsRoot)=>!FsWatch Watch
+λwatch(path:String)=>!FsWatch Owned[Watch]
+λwatchAt(path:String,root:§topology.FsRoot)=>!FsWatch Owned[Watch]
 ```
 
 FsWatch rules:
 - watches are recursive in v1
 - emitted paths are relative to the watched directory
 - events are advisory; duplicate or coalesced delivery is allowed
+- `watch` and `watchAt` return owned watch handles
 - `watchAt` is the topology-aware named-boundary variant and requires `§topology.FsRoot`
 - rename detection is not modeled separately in v1
 
@@ -327,8 +334,8 @@ t Spawn={argv:[String],cols:Int,cwd:Option[String],env:{String↦String},rows:In
 λclose(session:Session)=>!Pty Unit
 λevents(session:Session)=>!Pty §stream.Source[Event]
 λresize(cols:Int,rows:Int,session:Session)=>!Pty Unit
-λspawn(request:Spawn)=>!Pty Session
-λspawnAt(handle:§topology.PtyHandle,request:Spawn)=>!Pty Session
+λspawn(request:Spawn)=>!Pty Owned[Session]
+λspawnAt(handle:§topology.PtyHandle,request:Spawn)=>!Pty Owned[Session]
 λwait(session:Session)=>!Pty Int
 λwrite(input:String,session:Session)=>!Pty Unit
 ```
@@ -338,25 +345,33 @@ PTY rules:
 - `events` yields `Output(text)` chunks and then one `Exit(code)` when the session terminates normally
 - `wait` resolves to the final exit code for that session
 - `close` is a normal session shutdown request
+- `spawn` and `spawnAt` return owned session handles
 - `spawnAt` is the topology-aware named-boundary variant and requires `§topology.PtyHandle`
 
 ### Implemented `§stream` Types and Functions
 
 ```sigil decl §stream
+t Hub[T]=StreamHub(Int)
 t Next[T]=Done()|Item(T)
 t Source[T]=StreamSource(Int)
 
 λclose[T](source:Source[T])=>!Stream Unit
+λhub[T]()=>!Stream Owned[Hub[T]]
 λnext[T](source:Source[T])=>!Stream Next[T]
+λpublish[T](hub:Hub[T],value:T)=>!Stream Unit
+λsubscribe[T](hub:Hub[T])=>!Stream Owned[Source[T]]
 ```
 
 Stream rules:
 - `Source[T]` is the canonical handle returned by stream-backed runtime APIs
+- `Hub[T]` is the canonical fanout surface for long-running app event distribution
 - `next` yields `Item(value)` while values remain and `Done()` when the source is exhausted
 - `close` is idempotent
 - after `close`, subsequent `next` calls return `Done()`
+- `hub` and `subscribe` return owned handles
+- `publish` fanouts to current subscribers in send order
 - generic stream failure is not modeled in `§stream`; producer APIs own their error events
-- `§stream` intentionally omits public constructors and combinators in v1
+- `§stream` intentionally omits combinator-style operator families in v1
 
 ### Implemented `§websocket` Types and Functions
 
@@ -366,9 +381,9 @@ t Route={handle:§topology.WebSocketHandle,path:String}
 t Server={port:Int}
 
 λclose(client:Client)=>!WebSocket Unit
-λconnections(handle:§topology.WebSocketHandle,server:Server)=>!WebSocket §stream.Source[Client]
-λlisten(port:Int,routes:[Route])=>!WebSocket Server
-λmessages(client:Client)=>!WebSocket §stream.Source[String]
+λconnections(handle:§topology.WebSocketHandle,server:Server)=>!WebSocket Owned[§stream.Source[Client]]
+λlisten(port:Int,routes:[Route])=>!WebSocket Owned[Server]
+λmessages(client:Client)=>!WebSocket Owned[§stream.Source[String]]
 λport(server:Server)=>Int
 λroute(handle:§topology.WebSocketHandle,path:String)=>Route
 λsend(client:Client,text:String)=>!WebSocket Unit
@@ -381,6 +396,7 @@ WebSocket rules:
 - route handles must be unique within one server
 - `connections` yields accepted clients scoped to one exact `§topology.WebSocketHandle`
 - `messages` yields text frames for one client
+- `listen`, `connections`, and `messages` return owned handles
 - `send` writes one text frame to one client
 - `close` closes one client connection
 - v1 is server-only and does not expose binary frames, subprotocol negotiation, or a broadcast helper
@@ -482,6 +498,34 @@ Crypto rules:
 
 `sleepMs` is the canonical delay primitive for retry loops and harness
 orchestration.
+
+### Implemented `§timer` Types and Functions
+
+```sigil decl §timer
+λafterMs(ms:Int)=>!Timer Owned[§stream.Source[Unit]]
+λeveryMs(ms:Int)=>!Timer Owned[§stream.Source[Unit]]
+```
+
+Semantics:
+- `afterMs` yields one `()` tick and then finishes
+- `everyMs` yields repeated `()` ticks until the source is closed
+- both functions return owned stream sources
+
+### Implemented `§task` Types and Functions
+
+```sigil decl §task
+t Task[T]={id:Int}
+t TaskResult[T]=Cancelled()|Failed(String)|Succeeded(T)
+
+λcancel[T](task:Task[T])=>!Task Unit
+λspawn[T](work:λ()=>T)=>!Task Owned[Task[T]]
+λwait[T](task:Task[T])=>!Task TaskResult[T]
+```
+
+Semantics:
+- `spawn` returns an owned task handle
+- `cancel` requests cancellation
+- `wait` resolves to `Succeeded(value)`, `Cancelled()`, or `Failed(message)`
 
 ## Map Operations
 
@@ -783,17 +827,26 @@ Canonical request/response HTTP server.
 
 ```sigil decl §httpServer
 t Headers={String↦String}
+t HttpBodyError={message:String}
+t PendingRequest={request:Request,responder:Responder}
 t Request={body:String,headers:Headers,method:String,path:String}
+t Responder={id:String}
 t Response={body:String,headers:Headers,status:Int}
+t RouteMatch={params:{String↦String}}
 t Server={port:Int}
 
 λresponse(body:String,contentType:String,status:Int)=>Response
 λok(body:String)=>Response
 λjson(body:String,status:Int)=>Response
-λlisten(handler:λ(Request)=>Response,port:Int)=>!Http Server
+λjsonBody(request:Request)=>Result[§json.JsonValue,HttpBodyError]
+λlisten(port:Int)=>!Http Owned[Server]
+λlistenWith(handler:λ(Request)=>Response,port:Int)=>!Http Server
+λmatch(method:String,pathPattern:String,request:Request)=>Option[RouteMatch]
 λnotFound()=>Response
-λnotFoundMsg(message:String)=>Response
+λnotFoundMsg(path:String)=>Response
 λport(server:Server)=>Int
+λreply(responder:Responder,response:Response)=>!Http Unit
+λrequests(server:Server)=>!Http Owned[§stream.Source[PendingRequest]]
 λserverError(message:String)=>Response
 λlogRequest(request:Request)=>!Log Unit
 λserve(handler:λ(Request)=>Response,port:Int)=>!Http Unit
@@ -801,8 +854,10 @@ t Server={port:Int}
 ```
 
 Semantics:
-- `serve(handler,port)` is equivalent to blocking on a started server
-- `listen` returns a server handle that can be observed with `port` and awaited with `wait`
+- `listen(port)` returns an owned server handle for request-stream orchestration
+- `requests(server)` returns an owned stream of `PendingRequest` values
+- `reply` answers one pending request through its `Responder`
+- `listenWith(handler,port)` and `serve(handler,port)` remain available for simple pure-handler programs
 - passing `0` as the port asks the OS to choose any free ephemeral port
 - `port(server)` returns the actual bound port, including after a `0` bind
 - `serve` and `wait` are long-lived once listening succeeds

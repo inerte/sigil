@@ -530,9 +530,18 @@ Extern declarations use `e`:
 e console:{log:λ(String)=>!Log Unit}
 
 e axios:{get:λ(String)=>!Http String}
+
+e nodePty:{onData: subscribes λ(Session)=>String}
 ```
 
 Unused extern declarations are non-canonical.
+
+Typed extern member types may be either:
+
+- `λ(...)=>...` for ordinary foreign calls
+- `subscribes λ(...)=>...` for foreign subscription ingress
+
+`subscribes` is only valid inside typed extern member declarations.
 
 ## Local Bindings
 
@@ -561,6 +570,21 @@ When a binding exists only to sequence effects, use the wildcard pattern:
 ```
 
 Discarding a pure expression with `l _=(...)` is non-canonical and rejected.
+
+Owned resource scopes use `using`:
+
+```sigil expr
+using source=openSource(){
+  consume(source)
+}
+```
+
+`using` rules:
+
+- the initializer must have type `Owned[T]`
+- the bound name is available only inside the `using` body
+- leaving the scope disposes the owned resource
+- the borrowed resource value must not escape the `using` body
 
 ## Pattern Matching
 

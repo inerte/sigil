@@ -14,6 +14,7 @@ c world=(†runtime.withFsWatchRoots(
       †pty.real(),
       †random.seeded(1337),
       †stream.live(),
+      †task.real(),
       [],
       †timer.virtual(),
       †websocket.real()
@@ -35,27 +36,29 @@ test "fsWatch fixture streams root-scoped events" =>!FsWatch!Stream world {
   )]
 ):†fsWatch.FsWatchRootEntry)
 } {
-  l watch=(§fsWatch.watchAt(
-    "src",
-    worktree
-  ):§fsWatch.Watch);
-  l events=(§fsWatch.events(watch):§stream.Source[§fsWatch.Event]);
-  l first=(§stream.next(events):§stream.Next[§fsWatch.Event]);
-  l second=(§stream.next(events):§stream.Next[§fsWatch.Event]);
-  l _=(§fsWatch.close(watch):Unit);
-  (match first{
-    §stream.Item(§fsWatch.Created(path))=>path="main.sigil"|
-    _=>false
-  })
-    and (match second{
-      §stream.Item(§fsWatch.Changed(path))=>path="notes/todo.txt"|
-      _=>false
-    })
-    and ※check::fsWatch.watchingAt(
+  l observed={
+    using watch=§fsWatch.watchAt(
       "src",
       worktree
-    )
-    and ※check::fsWatch.closedAt(worktree)
+    ){
+      l events=(§fsWatch.events(watch):§stream.Source[§fsWatch.Event]);
+      l first=(§stream.next(events):§stream.Next[§fsWatch.Event]);
+      l second=(§stream.next(events):§stream.Next[§fsWatch.Event]);
+      (match first{
+        §stream.Item(§fsWatch.Created(path))=>path="main.sigil"|
+        _=>false
+      })
+        and (match second{
+          §stream.Item(§fsWatch.Changed(path))=>path="notes/todo.txt"|
+          _=>false
+        })
+        and ※check::fsWatch.watchingAt(
+          "src",
+          worktree
+        )
+    }
+  };
+  observed and ※check::fsWatch.closedAt(worktree)
 }
 
 test "fsWatch ambient fixtures track watch paths" =>!FsWatch!Stream world {
@@ -64,14 +67,15 @@ test "fsWatch ambient fixtures track watch paths" =>!FsWatch!Stream world {
   "."
 )]):†fsWatch.FsWatchEntry)
 } {
-  l watch=(§fsWatch.watch("."):§fsWatch.Watch);
-  l events=(§fsWatch.events(watch):§stream.Source[§fsWatch.Event]);
-  l first=(§stream.next(events):§stream.Next[§fsWatch.Event]);
-  l _=(§fsWatch.close(watch):Unit);
-  (match first{
-    §stream.Item(§fsWatch.Removed(path))=>path="tmp/cache.txt"|
-    _=>false
-  })
-    and ※check::fsWatch.watching(".")
-    and ※check::fsWatch.closed()
+  l observed={
+    using watch=§fsWatch.watch("."){
+      l events=(§fsWatch.events(watch):§stream.Source[§fsWatch.Event]);
+      l first=(§stream.next(events):§stream.Next[§fsWatch.Event]);
+      (match first{
+        §stream.Item(§fsWatch.Removed(path))=>path="tmp/cache.txt"|
+        _=>false
+      }) and ※check::fsWatch.watching(".")
+    }
+  };
+  observed and ※check::fsWatch.closed()
 }

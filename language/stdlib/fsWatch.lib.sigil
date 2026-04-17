@@ -6,6 +6,6 @@ t Watch={id:String}
 
 λevents(watch:Watch)=>!FsWatch §stream.Source[Event]=(§stream.StreamSource(0):§stream.Source[Event])
 
-λwatch(path:String)=>!FsWatch Watch={id:path}
+λwatch(path:String)=>!FsWatch Owned[Watch]=({id:path}:Owned[Watch])
 
-λwatchAt(path:String,root:§topology.FsRoot)=>!FsWatch Watch={id:path}
+λwatchAt(path:String,root:§topology.FsRoot)=>!FsWatch Owned[Watch]=({id:path}:Owned[Watch])

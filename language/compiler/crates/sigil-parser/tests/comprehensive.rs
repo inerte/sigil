@@ -352,6 +352,37 @@ fn test_local_let_expression_still_parses() {
 }
 
 #[test]
+fn test_using_expression_parses() {
+    let source = "λmain()=>Int=using handle=open(){1}";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    match &program.declarations[0] {
+        Declaration::Function(function) => match &function.body {
+            Expr::Using(using_expr) => {
+                assert_eq!(using_expr.name, "handle");
+                match &using_expr.value {
+                    Expr::Application(application) => match &application.func {
+                        Expr::Identifier(identifier) => assert_eq!(identifier.name, "open"),
+                        other => panic!("Expected open() callee, got {:?}", other),
+                    },
+                    other => panic!("Expected application initializer, got {:?}", other),
+                }
+                match &using_expr.body {
+                    Expr::Literal(literal) => {
+                        assert_eq!(literal.literal_type, LiteralType::Int);
+                        assert_eq!(literal.value, LiteralValue::Int(1));
+                    }
+                    other => panic!("Expected integer literal body, got {:?}", other),
+                }
+            }
+            other => panic!("Expected using expression, got {:?}", other),
+        },
+        _ => panic!("Expected function declaration"),
+    }
+}
+
+#[test]
 fn test_qualified_constructor_application_parses() {
     let source = "λmain()=>Unit=µOrdering([])";
     let tokens = tokenize(source).unwrap();
@@ -427,6 +458,35 @@ fn test_extern_declaration_basic() {
             assert_eq!(ext.module_path.len(), 2);
             assert_eq!(ext.module_path[0], "node");
             assert_eq!(ext.module_path[1], "fs");
+        }
+        _ => panic!("Expected extern declaration"),
+    }
+}
+
+#[test]
+fn test_extern_subscription_member_parses() {
+    let source = "e nodePty:{onData: subscribes λ(Session)=>String}";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    match &program.declarations[0] {
+        Declaration::Extern(ext) => {
+            let members = ext.members.as_ref().expect("expected typed extern members");
+            assert_eq!(members.len(), 1);
+            assert_eq!(members[0].name, "onData");
+            assert_eq!(members[0].kind, ExternMemberKind::Subscription);
+            match &members[0].member_type {
+                Type::Function(function_type) => {
+                    assert_eq!(function_type.param_types.len(), 1);
+                    match &function_type.return_type {
+                        Type::Primitive(primitive) => {
+                            assert_eq!(primitive.name, PrimitiveName::String);
+                        }
+                        other => panic!("Expected String return type, got {:?}", other),
+                    }
+                }
+                other => panic!("Expected function type, got {:?}", other),
+            }
         }
         _ => panic!("Expected extern declaration"),
     }

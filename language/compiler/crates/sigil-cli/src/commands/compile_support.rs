@@ -2221,6 +2221,18 @@ fn qualify_inference_type_in_context(typ: &InferenceType, module_id: &str) -> In
                 .map(|arg| qualify_inference_type_in_context(arg, module_id))
                 .collect(),
         }),
+        InferenceType::Owned(inner) => InferenceType::Owned(Box::new(
+            qualify_inference_type_in_context(inner, module_id),
+        )),
+        InferenceType::Borrowed(borrowed) => {
+            InferenceType::Borrowed(Box::new(sigil_typechecker::types::TBorrowed {
+                resource_type: qualify_inference_type_in_context(
+                    &borrowed.resource_type,
+                    module_id,
+                ),
+                scope_id: borrowed.scope_id,
+            }))
+        }
     }
 }
 
@@ -2467,6 +2479,19 @@ fn rewrite_public_package_inference_type(
                 .map(|arg| rewrite_public_package_inference_type(arg, internal_root, public_root))
                 .collect(),
         }),
+        InferenceType::Owned(inner) => InferenceType::Owned(Box::new(
+            rewrite_public_package_inference_type(inner, internal_root, public_root),
+        )),
+        InferenceType::Borrowed(borrowed) => {
+            InferenceType::Borrowed(Box::new(sigil_typechecker::types::TBorrowed {
+                resource_type: rewrite_public_package_inference_type(
+                    &borrowed.resource_type,
+                    internal_root,
+                    public_root,
+                ),
+                scope_id: borrowed.scope_id,
+            }))
+        }
     }
 }
 
@@ -2707,6 +2732,18 @@ fn qualify_inference_type_for_module(
                 .map(|arg| qualify_inference_type_for_module(module_id, arg))
                 .collect(),
         }),
+        InferenceType::Owned(inner) => InferenceType::Owned(Box::new(
+            qualify_inference_type_for_module(module_id, inner),
+        )),
+        InferenceType::Borrowed(borrowed) => {
+            InferenceType::Borrowed(Box::new(sigil_typechecker::types::TBorrowed {
+                resource_type: qualify_inference_type_for_module(
+                    module_id,
+                    &borrowed.resource_type,
+                ),
+                scope_id: borrowed.scope_id,
+            }))
+        }
     }
 }
 

@@ -202,14 +202,15 @@ t Watch={id:String}
 
 λclose(watch:Watch)=>!FsWatch Unit
 λevents(watch:Watch)=>!FsWatch §stream.Source[Event]
-λwatch(path:String)=>!FsWatch Watch
-λwatchAt(path:String,root:§topology.FsRoot)=>!FsWatch Watch
+λwatch(path:String)=>!FsWatch Owned[Watch]
+λwatchAt(path:String,root:§topology.FsRoot)=>!FsWatch Owned[Watch]
 ```
 
 FsWatch rules:
 - watches are recursive in v1
 - emitted paths are relative to the watched directory
 - events are advisory; duplicate or coalesced delivery is allowed
+- `watch` and `watchAt` return owned watch handles and are intended to be used with `using`
 - `watchAt` is the named-boundary variant for topology-aware projects and takes a `§topology.FsRoot`
 - rename detection is not modeled separately in v1
 
@@ -247,13 +248,22 @@ The canonical process surface is:
 - `withEnv`
 - `run`
 - `runAt`
+- `runChecked`
+- `runJson`
 - `start`
 - `startAt`
 - `wait`
 - `kill`
 
 Commands are argv-based only. Non-zero exit status is returned in
-`ProcessResult.code`; it is not a separate failure channel.
+`ProcessResult.code`; it is not a separate failure channel. When a caller wants
+checked failure semantics, use:
+
+- `runChecked(command)=>Result[ProcessResult,ProcessFailure]`
+- `runJson(command)=>Result[§json.JsonValue,ProcessFailure]`
+
+`start` and `startAt` return owned process handles and are intended to be used
+with `using`.
 
 `§pty` exposes canonical interactive PTY sessions backed by `§stream`:
 
@@ -265,8 +275,8 @@ t Spawn={argv:[String],cols:Int,cwd:Option[String],env:{String↦String},rows:In
 λclose(session:Session)=>!Pty Unit
 λevents(session:Session)=>!Pty §stream.Source[Event]
 λresize(cols:Int,rows:Int,session:Session)=>!Pty Unit
-λspawn(request:Spawn)=>!Pty Session
-λspawnAt(handle:§topology.PtyHandle,request:Spawn)=>!Pty Session
+λspawn(request:Spawn)=>!Pty Owned[Session]
+λspawnAt(handle:§topology.PtyHandle,request:Spawn)=>!Pty Owned[Session]
 λwait(session:Session)=>!Pty Int
 λwrite(input:String,session:Session)=>!Pty Unit
 ```
@@ -276,25 +286,33 @@ PTY rules:
 - `Output(text)` carries terminal chunks in arrival order
 - `Exit(code)` is emitted once when the session terminates
 - `wait` resolves to the same exit code reported by the session
+- `spawn` and `spawnAt` return owned session handles and are intended to be used with `using`
 - `spawnAt` is the named-boundary variant for topology-aware projects and takes a `§topology.PtyHandle`
 
 `§stream` exposes canonical pull-based runtime event sources:
 
 ```sigil decl §stream
+t Hub[T]=StreamHub(Int)
 t Next[T]=Done()|Item(T)
 t Source[T]=StreamSource(Int)
 
 λclose[T](source:Source[T])=>!Stream Unit
+λhub[T]()=>!Stream Owned[Hub[T]]
 λnext[T](source:Source[T])=>!Stream Next[T]
+λpublish[T](hub:Hub[T],value:T)=>!Stream Unit
+λsubscribe[T](hub:Hub[T])=>!Stream Owned[Source[T]]
 ```
 
 Stream rules:
 - `Source[T]` is the canonical handle returned by stream-backed runtime APIs
+- `Hub[T]` is the canonical fanout surface for long-running app event distribution
 - `next` yields `Item(value)` while values remain and `Done()` when the source is exhausted
 - `close` is idempotent
 - after `close`, subsequent `next` calls return `Done()`
+- `hub` and `subscribe` return owned handles and are intended to be used with `using`
+- `publish` fanouts to current subscribers in send order
 - generic stream failure is not modeled in `§stream`; producer APIs own their error events
-- `§stream` is intentionally small and does not expose public constructors or combinators
+- `§stream` is intentionally small and does not expose combinator-style operator families
 
 `§websocket` exposes canonical server-first WebSocket handling backed by
 `§stream`:
@@ -305,9 +323,9 @@ t Route={handle:§topology.WebSocketHandle,path:String}
 t Server={port:Int}
 
 λclose(client:Client)=>!WebSocket Unit
-λconnections(handle:§topology.WebSocketHandle,server:Server)=>!WebSocket §stream.Source[Client]
-λlisten(port:Int,routes:[Route])=>!WebSocket Server
-λmessages(client:Client)=>!WebSocket §stream.Source[String]
+λconnections(handle:§topology.WebSocketHandle,server:Server)=>!WebSocket Owned[§stream.Source[Client]]
+λlisten(port:Int,routes:[Route])=>!WebSocket Owned[Server]
+λmessages(client:Client)=>!WebSocket Owned[§stream.Source[String]]
 λport(server:Server)=>Int
 λroute(handle:§topology.WebSocketHandle,path:String)=>Route
 λsend(client:Client,text:String)=>!WebSocket Unit
@@ -320,6 +338,7 @@ WebSocket rules:
 - route handles must be unique within one server
 - `connections` yields accepted clients for one exact `§topology.WebSocketHandle`
 - `messages` yields text frames for one client
+- `listen`, `connections`, and `messages` return owned handles and are intended to be used with `using`
 - `send` writes one text frame to one client
 - `close` closes one client connection
 - v1 is server-only; there is no WebSocket client API, binary-frame surface, or broadcast helper
@@ -473,6 +492,34 @@ field. Sigil does not use open or partial records for this.
 Effectful code may also use `§time.sleepMs(ms)` for retry loops and
 process orchestration.
 
+`§timer` exposes event-source timers for long-running app workflows:
+
+```sigil decl §timer
+λafterMs(ms:Int)=>!Timer Owned[§stream.Source[Unit]]
+λeveryMs(ms:Int)=>!Timer Owned[§stream.Source[Unit]]
+```
+
+Timer rules:
+- `afterMs` yields one `()` tick and then finishes
+- `everyMs` yields repeated `()` ticks until the source is closed
+- both functions return owned stream sources and are intended to be used with `using`
+
+`§task` exposes cancellable background work:
+
+```sigil decl §task
+t Task[T]={id:Int}
+t TaskResult[T]=Cancelled()|Failed(String)|Succeeded(T)
+
+λcancel[T](task:Task[T])=>!Task Unit
+λspawn[T](work:λ()=>T)=>!Task Owned[Task[T]]
+λwait[T](task:Task[T])=>!Task TaskResult[T]
+```
+
+Task rules:
+- `spawn` returns an owned task handle and is intended to be used with `using`
+- `cancel` requests cancellation
+- `wait` resolves to `Succeeded(value)`, `Cancelled()`, or `Failed(message)`
+
 `§terminal` exposes a small raw-terminal surface for turn-based interactive
 programs:
 
@@ -540,30 +587,57 @@ The split is:
 `§topology` owns the dependency handles.
 `config/*.lib.sigil` now exports `world`, built through `†http`, `†tcp`, and `†runtime`.
 
-`§httpServer` is the canonical request/response server layer:
+`§httpServer` is the canonical request/response server layer. For simple
+programs, `serve` remains available. For real app/server orchestration, the
+canonical surface is request-stream based:
 
-```sigil program
-λhandle(request:§httpServer.Request)=>§httpServer.Response match request.path{
-  "/health"=>§httpServer.ok("healthy")|
-  _=>§httpServer.notFound()
-}
+```sigil decl §httpServer
+t Headers={String↦String}
+t HttpBodyError={message:String}
+t PendingRequest={request:Request,responder:Responder}
+t Request={body:String,headers:Headers,method:String,path:String}
+t Responder={id:String}
+t Response={body:String,headers:Headers,status:Int}
+t RouteMatch={params:{String↦String}}
+t Server={port:Int}
 
-λmain()=>!Http Unit=§httpServer.serve(
-  handle,
-  8080
-)
+λjson(body:String,status:Int)=>Response
+λjsonBody(request:Request)=>Result[§json.JsonValue,HttpBodyError]
+λlisten(port:Int)=>!Http Owned[Server]
+λlistenWith(handler:λ(Request)=>Response,port:Int)=>!Http Server
+λlogRequest(request:Request)=>!Log Unit
+λmatch(method:String,pathPattern:String,request:Request)=>Option[RouteMatch]
+λnotFound()=>Response
+λnotFoundMsg(path:String)=>Response
+λok(body:String)=>Response
+λport(server:Server)=>Int
+λreply(responder:Responder,response:Response)=>!Http Unit
+λrequests(server:Server)=>!Http Owned[§stream.Source[PendingRequest]]
+λresponse(body:String,contentType:String,status:Int)=>Response
+λserve(handler:λ(Request)=>Response,port:Int)=>!Http Unit
+λserverError(message:String)=>Response
+λwait(server:Server)=>!Http Unit
 ```
 
 The public server surface is:
 - `listen`
+- `requests`
+- `reply`
+- `jsonBody`
+- `match`
+- `listenWith`
 - `port`
 - `serve`
 - `wait`
 
-`serve` remains the canonical blocking entrypoint for normal programs. `listen`
-returns a `§httpServer.Server` handle, `port` reports the actual bound port, and
-`wait` blocks on that handle. This is mainly for harnesses and supervisors that
-need to bind first, observe the assigned port, and then keep the process open.
+`listen` returns an owned server handle. `requests(server)` opens an owned
+request stream of `PendingRequest` values, and `reply` answers one pending
+request through its `Responder`.
+
+`listenWith(handler,port)` and `serve(handler,port)` remain available for simple
+pure-handler programs. The request-stream surface is the canonical app/server
+surface for long-running Sigil apps because it composes with `using`, `§task`,
+and `§stream`.
 
 Passing `0` to `listen` or `serve` asks the OS for any free ephemeral port. Use
 `§httpServer.port(server)` after `listen` when the actual port matters.

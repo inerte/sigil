@@ -116,6 +116,7 @@ pub enum TypedExprKind {
     Unary(TypedUnaryExpr),
     Match(TypedMatchExpr),
     Let(TypedLetExpr),
+    Using(TypedUsingExpr),
     If(TypedIfExpr),
     List(TypedListExpr),
     Tuple(TypedTupleExpr),
@@ -156,6 +157,7 @@ pub struct TypedExternCallExpr {
     pub namespace: Vec<String>,
     pub member: String,
     pub mock_key: String,
+    pub subscription: bool,
     pub args: Vec<TypedExpr>,
 }
 
@@ -198,6 +200,14 @@ pub struct TypedLetExpr {
     pub pattern: Pattern,
     pub value: Box<TypedExpr>,
     pub body: Box<TypedExpr>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypedUsingExpr {
+    pub body: Box<TypedExpr>,
+    pub name: String,
+    pub scope_id: u32,
+    pub value: Box<TypedExpr>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

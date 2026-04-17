@@ -12,6 +12,12 @@ t ProcessResult={
   stdout:String
 }
 
+t ProcessFailure={
+  code:Int,
+  stderr:String,
+  stdout:String
+}
+
 λargv()=>!Process [String]=[]
 
 λcommand(argv:[String])=>Command={
@@ -36,9 +42,27 @@ t ProcessResult={
   stdout:""
 }
 
-λstart(command:Command)=>!Process RunningProcess={pid:-1}
+λrunChecked(command:Command)=>!Process Result[
+  ProcessResult,
+  ProcessFailure
+]=Err({
+  code:-1,
+  stderr:"process intrinsic unavailable",
+  stdout:""
+})
 
-λstartAt(command:Command,handle:§topology.ProcessHandle)=>!Process RunningProcess={pid:-1}
+λrunJson(command:Command)=>!Process Result[
+  §json.JsonValue,
+  ProcessFailure
+]=Err({
+  code:-1,
+  stderr:"process intrinsic unavailable",
+  stdout:""
+})
+
+λstart(command:Command)=>!Process Owned[RunningProcess]=({pid:-1}:Owned[RunningProcess])
+
+λstartAt(command:Command,handle:§topology.ProcessHandle)=>!Process Owned[RunningProcess]=({pid:-1}:Owned[RunningProcess])
 
 λwait(process:RunningProcess)=>!Process ProcessResult={
   code:-1,

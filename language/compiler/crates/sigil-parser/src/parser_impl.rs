@@ -829,11 +829,24 @@ impl Parser {
                     .value
                     .clone();
                 self.consume(TokenType::COLON, "Expected \":\" after member name")?;
+                let kind = if self.match_token(TokenType::Subscribes) {
+                    ExternMemberKind::Subscription
+                } else {
+                    ExternMemberKind::Value
+                };
                 let member_type = self.parse_type()?;
+                if matches!(kind, ExternMemberKind::Subscription)
+                    && !matches!(member_type, Type::Function(_))
+                {
+                    return Err(self.error(
+                        "Expected function type after \"subscribes\" in extern declaration",
+                    ));
+                }
 
                 let member_end = self.previous();
                 members_list.push(ExternMember {
                     name: member_name,
+                    kind,
                     member_type,
                     location: self
                         .make_location(member_start.location.start, member_end.location.end),
@@ -1734,6 +1747,10 @@ impl Parser {
             return self.let_expression();
         }
 
+        if self.match_token(TokenType::Using) {
+            return self.using_expression();
+        }
+
         // List literal: [1, 2, 3]
         if self.match_token(TokenType::LBRACKET) {
             return self.list_expression();
@@ -1889,6 +1906,33 @@ impl Parser {
         let end = self.previous();
         Ok(Expr::Let(Box::new(LetExpr {
             pattern,
+            value,
+            body,
+            location: self.make_location(start.location.start, end.location.end),
+        })))
+    }
+
+    fn using_expression(&mut self) -> Result<Expr, ParseError> {
+        let start = self.previous();
+        let name = self
+            .consume(
+                TokenType::IDENTIFIER,
+                "Expected owned resource binding name",
+            )?
+            .value
+            .clone();
+        self.consume(TokenType::EQUAL, "Expected \"=\"")?;
+        let value = self.expression()?;
+        self.consume(
+            TokenType::LBRACE,
+            "Expected \"{\" after owned resource initializer",
+        )?;
+        let body = self.expression()?;
+        self.consume(TokenType::RBRACE, "Expected \"}\" after using body")?;
+
+        let end = self.previous();
+        Ok(Expr::Using(Box::new(UsingExpr {
+            name,
             value,
             body,
             location: self.make_location(start.location.start, end.location.end),
@@ -2756,6 +2800,7 @@ impl HasLocation for Expr {
             Expr::Unary(e) => e.location,
             Expr::Match(e) => e.location,
             Expr::Let(e) => e.location,
+            Expr::Using(e) => e.location,
             Expr::If(e) => e.location,
             Expr::List(e) => e.location,
             Expr::Record(e) => e.location,

@@ -209,6 +209,10 @@ pub fn format_type(typ: &InferenceType) -> String {
             }
         }
 
+        InferenceType::Owned(inner) => format!("Owned[{}]", format_type(inner)),
+
+        InferenceType::Borrowed(borrowed) => format_type(&borrowed.resource_type),
+
         InferenceType::Any => "Any".to_string(),
     }
 }

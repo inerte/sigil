@@ -64,6 +64,22 @@ export async function listenServer(port, routes, onConnection) {
       : Number(port ?? 0);
 
   return {
+    close: async () => {
+      for (const websocketServer of routeTable.values()) {
+        try {
+          websocketServer.close();
+        } catch {
+          // best-effort cleanup
+        }
+      }
+      await new Promise((resolve) => {
+        try {
+          server.close(() => resolve(undefined));
+        } catch {
+          resolve(undefined);
+        }
+      });
+    },
     port: assignedPort,
     wait: () => done,
   };

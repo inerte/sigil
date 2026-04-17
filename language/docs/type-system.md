@@ -115,7 +115,17 @@ Compound forms:
 - lists: `[T]`
 - maps: `{K↦V}`
 - functions: `λ(T1,T2,...)=>R`
+- owned resources: `Owned[T]`
 - named ADTs and aliases
+
+`Owned[T]` is the compiler-known resource wrapper type.
+
+Current ownership rules:
+
+- `Owned[T]` values are introduced by stdlib resource creators and typed extern subscriptions
+- they are intended to be consumed with `using`
+- borrowed resource values inside `using` scopes must not escape the scope
+- `Owned[T]` is affine rather than freely duplicable; Sigil rejects ordinary `l` bindings of owned values and rejects storing them inside ordinary list/record/map literals
 
 ## Feature Flag Types
 

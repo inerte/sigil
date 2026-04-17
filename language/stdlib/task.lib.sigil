@@ -1,0 +1,9 @@
+t Task[T]={id:Int}
+
+t TaskResult[T]=Cancelled()|Failed(String)|Succeeded(T)
+
+λcancel[T](task:Task[T])=>!Task Unit=()
+
+λspawn[T](work:λ()=>T)=>!Task Owned[Task[T]]=({id:-1}:Owned[Task[T]])
+
+λwait[T](task:Task[T])=>!Task TaskResult[T]=Cancelled()

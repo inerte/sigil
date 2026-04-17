@@ -192,6 +192,34 @@ same explicit type meaning when validating the `mkdir` call. Constrained user-de
 types use refinement checking over their underlying type instead of plain structural
 equality. This is canonical semantic comparison, not type inference.
 
+### Foreign Subscriptions
+
+Typed extern members may also declare foreign event subscriptions:
+
+```sigil module
+e nodePty:{
+  onData: subscribes λ(Session)=>String,
+  onExit: subscribes λ(Session)=>ExitEvent
+}
+```
+
+`subscribes λ(A...)=>T` is the canonical typed-extern surface for foreign
+callback/listener ingress.
+
+It does **not** expose raw JavaScript callbacks to Sigil source. Instead, the
+member elaborates as if it had type:
+
+```sigil decl
+λ(A...)=>!Stream Owned[§stream.Source[T]]
+```
+
+This gives Sigil one canonical model for host events:
+- foreign adapters stay in JS/TS
+- Sigil receives owned `§stream.Source[...]` handles
+- callers use those handles with `using`
+
+Nullary foreign callbacks map to `Unit`.
+
 In project code, named user-defined types live in `src/types.lib.sigil` and are
 referenced elsewhere through `µ...`. The local same-file `t MkdirOptions=...`
 form shown here is still valid for standalone non-project snippets.
@@ -265,13 +293,18 @@ See [ASYNC.md](./ASYNC.md) for the full async runtime and concurrent-region mode
 
 ## Canonical Form
 
-FFI has exactly **TWO syntactic forms**:
+FFI has exactly **TWO declaration forms**:
 
 ✅ ONLY: `e module::path` (untyped)
-✅ ONLY: `e module::path : { member : λ(...) => ... }` (typed)
+✅ ONLY: `e module::path : { member : memberType }` (typed)
 ❌ NO: `extern module::path` (no full keyword)
 ❌ NO: `e module::path as alias` (no aliasing)
 ❌ NO: `e module::path{member1,member2}` (no destructuring)
+
+Within typed extern member lists, the canonical member type forms are:
+
+- `λ(...)=>...` for ordinary foreign calls
+- `subscribes λ(...)=>...` for foreign subscription ingress
 
 This ensures deterministic, unambiguous code generation for LLMs.
 

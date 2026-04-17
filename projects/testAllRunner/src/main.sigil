@@ -332,15 +332,10 @@
 λrunParallelBatch(suites:[µParallelSuite])=>!CliIo Result[
   Unit,
   String
-]={
-  l started=(startSuites(suites):[µStartedSuite]);
-  l results=(waitSuites(started):[µSuiteResult]);
-  l _=(printBatchResults(results):Unit);
-  match suiteFailure(results){
-    Some(message)=>Err(message)|
-    None()=>Ok(())
-  }
-}
+]=runStartedSuites(
+  suites,
+  []
+)
 
 λrunSerialStep(step:µSerialStep)=>!CliIo Result[
   Unit,
@@ -349,6 +344,35 @@
   l _=(§io.println(""):Unit);
   l _=(§io.println("==> "++step.label):Unit);
   runCommands(step.commands)
+}
+
+λrunStartedSuites(remaining:[µParallelSuite],started:[µStartedSuite])=>!CliIo Result[
+  Unit,
+  String
+] match remaining{
+  []=>{
+    l results=(waitSuites(started):[µSuiteResult]);
+    l _=(printBatchResults(results):Unit);
+    match suiteFailure(results){
+      Some(message)=>Err(message)|
+      None()=>Ok(())
+    }
+  }|
+  [
+  head,
+  .tail
+]=>{
+    using process=§process.start(head.command){
+      runStartedSuites(
+        tail,
+        [{
+          command:head.command,
+          label:head.label,
+          process:process
+        }]⧺started
+      )
+    }
+  }
 }
 
 λrunStep(step:µStep)=>!CliIo Result[
@@ -396,21 +420,6 @@
     root
   ),
   label:"ssg suite"
-}
-
-λstartSuites(suites:[µParallelSuite])=>!Process [µStartedSuite] match suites{
-  []=>[]|
-  [
-  head,
-  .tail
-]=>{
-    l process=(§process.start(head.command):§process.RunningProcess);
-    [{
-      command:head.command,
-      label:head.label,
-      process:process
-    }]⧺startSuites(tail)
-  }
 }
 
 λstdlibSuite(root:String)=>µParallelSuite={
@@ -527,3 +536,4 @@
     }]⧺waitSuites(tail)
   }
 }
+

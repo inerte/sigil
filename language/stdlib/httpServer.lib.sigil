@@ -7,11 +7,22 @@ t Request={
   path:String
 }
 
+t HttpBodyError={message:String}
+
+t PendingRequest={
+  request:Request,
+  responder:Responder
+}
+
 t Response={
   body:String,
   headers:Headers,
   status:Int
 }
+
+t Responder={id:String}
+
+t RouteMatch={params:{String↦String}}
 
 t Server={port:Int}
 
@@ -23,11 +34,20 @@ e console:{log:λ(String)=>Unit}
   status:status
 }
 
-λlisten(handler:λ(Request)=>Response,port:Int)=>!Http Server={port:port}
+λjsonBody(request:Request)=>Result[
+  §json.JsonValue,
+  HttpBodyError
+]=Err({message:"http json body intrinsic unavailable"})
+
+λlisten(port:Int)=>!Http Owned[Server]=({port:port}:Owned[Server])
+
+λlistenWith(handler:λ(Request)=>Response,port:Int)=>!Http Server={port:port}
 
 λlogRequest(req:Request)=>!Log Unit=console.log((req.method
   ++" "
   ++req.path:String))
+
+λmatch(method:String,pathPattern:String,request:Request)=>Option[RouteMatch]=None()
 
 λnotFound()=>Response={
   body:"<h1>404 Not Found</h1>",
@@ -50,6 +70,10 @@ e console:{log:λ(String)=>Unit}
 }
 
 λport(server:Server)=>Int=server.port
+
+λreply(responder:Responder,response:Response)=>!Http Unit=()
+
+λrequests(server:Server)=>!Http Owned[§stream.Source[PendingRequest]]=((§stream.StreamSource(0):§stream.Source[PendingRequest]):Owned[§stream.Source[PendingRequest]])
 
 λresponse(body:String,contentType:String,status:Int)=>Response={
   body:body,

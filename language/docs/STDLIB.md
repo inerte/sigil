@@ -265,6 +265,8 @@ checked failure semantics, use:
 `start` and `startAt` return owned process handles and are intended to be used
 with `using`.
 
+`exit(code)` terminates the current process and has type `!Process Never`.
+
 `§pty` exposes canonical interactive PTY sessions backed by `§stream`:
 
 ```sigil decl §pty

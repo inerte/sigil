@@ -280,7 +280,7 @@ t ProcessResult={code:Int,stderr:String,stdout:String}
 t ProcessFailure={code:Int,stderr:String,stdout:String}
 
 λcommand(argv:[String])=>Command
-λexit(code:Int)=>!Process Unit
+λexit(code:Int)=>!Process Never
 λrun(command:Command)=>!Process ProcessResult
 λrunAt(command:Command,handle:§topology.ProcessHandle)=>!Process ProcessResult
 λrunChecked(command:Command)=>!Process Result[ProcessResult,ProcessFailure]
@@ -303,6 +303,7 @@ Process rules:
 - `start` and `startAt` return owned process handles
 - `runAt` and `startAt` are the named-boundary variants for topology-aware projects
 - `kill` is a normal termination request, not a timeout/escalation protocol
+- `exit` terminates the current process and has result type `Never`
 
 ### Implemented `§fsWatch` Types and Functions
 

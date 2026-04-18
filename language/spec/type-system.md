@@ -106,6 +106,12 @@ Primitive types:
 - `Unit`
 - `Never`
 
+`Never` is the canonical terminating expression type:
+
+- an expression of type `Never` satisfies any expected result type during expression checking
+- this compatibility is one-way only; it is not a general subtyping relation
+- `Never` marks paths that do not continue, such as `§process.exit(...)`
+
 Constructed types:
 
 - `[T]`

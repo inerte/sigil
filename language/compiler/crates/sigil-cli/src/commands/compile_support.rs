@@ -1052,6 +1052,16 @@ fn compile_single_file_command(
                 project_error,
             )));
         }
+        Err(CliError::Type(type_error)) => {
+            output_json_error(
+                "sigilc compile",
+                "typecheck",
+                &type_error.code,
+                &type_error.message,
+                type_error_json_details(&type_error),
+            );
+            return Err(CliError::Type(type_error));
+        }
         Err(error) => {
             let message = error.to_string();
             let error_code = extract_error_code(&message);

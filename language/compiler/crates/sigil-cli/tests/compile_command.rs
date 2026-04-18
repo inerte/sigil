@@ -336,6 +336,36 @@ fn compile_rejects_dead_pure_wildcard_discard() {
 }
 
 #[test]
+fn compile_rejects_unreachable_code_after_process_exit() {
+    let dir = temp_dir("unreachable-after-exit");
+    let file = write_program(
+        &dir,
+        "main.sigil",
+        "λmain()=>!Process Unit={\n  l _=(§process.exit(1):Never);\n  ()\n}\n",
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("compile")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(!output.status.success());
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["ok"], false);
+    assert_eq!(json["error"]["code"], "SIGIL-TYPE-UNREACHABLE-CODE");
+    assert_eq!(json["error"]["details"]["unreachableKind"], "letBody");
+    assert_eq!(json["error"]["details"]["terminatorKind"], "processExit");
+    let message = json["error"]["message"].as_str().unwrap();
+    assert!(
+        message.contains("Unreachable code after terminating expression"),
+        "{}",
+        message
+    );
+}
+
+#[test]
 fn compile_project_reuses_cached_outputs_when_inputs_are_unchanged() {
     let dir = temp_dir("project-cache-hit");
     let main = write_feature_flag_project(&dir);

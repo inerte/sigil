@@ -210,6 +210,11 @@ Canonical note:
 - use `l _=(...)` when the binding exists only to sequence effects
 - source-level typed canonical validation rejects `l _=(...)` when the
   discarded expression is pure
+- code after a guaranteed-terminating local binding value in the same sequence is unreachable and rejected
+
+Owned resource scopes follow the same reachability rule:
+
+- code inside a `using` body is unreachable and rejected when the initializer is guaranteed to terminate before the resource is bound
 
 ## Pattern Matching
 

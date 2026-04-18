@@ -1378,6 +1378,14 @@ fn matches_expected_type(
     expected_type: &InferenceType,
 ) -> bool {
     let (normalized_actual, normalized_expected) = canonical_pair(env, actual_type, expected_type);
+    if matches!(
+        normalized_actual,
+        InferenceType::Primitive(TPrimitive {
+            name: PrimitiveName::Never
+        })
+    ) {
+        return true;
+    }
     if types_equal(&normalized_actual, &normalized_expected) {
         return true;
     }
@@ -1389,6 +1397,174 @@ fn matches_expected_type(
     }
 
     false
+}
+
+fn same_branch_type(
+    env: &TypeEnvironment,
+    left: &InferenceType,
+    right: &InferenceType,
+) -> Result<bool, TypeError> {
+    let (normalized_left, normalized_right) = canonical_pair(env, left, right);
+    if types_equal(&normalized_left, &normalized_right) {
+        return Ok(true);
+    }
+
+    if let Ok(subst) = unify(&normalized_left, &normalized_right) {
+        let unified_left = apply_subst(&subst, &normalized_left);
+        let unified_right = apply_subst(&subst, &normalized_right);
+        return Ok(types_equal(&unified_left, &unified_right));
+    }
+
+    Ok(false)
+}
+
+fn is_never_type(env: &TypeEnvironment, typ: &InferenceType) -> bool {
+    let normalized = env.normalize_type(typ);
+    matches!(
+        normalized,
+        InferenceType::Primitive(TPrimitive {
+            name: PrimitiveName::Never
+        })
+    )
+}
+
+fn type_join_with_never(
+    env: &TypeEnvironment,
+    left: &InferenceType,
+    right: &InferenceType,
+) -> Result<Option<InferenceType>, TypeError> {
+    let left_is_never = is_never_type(env, left);
+    let right_is_never = is_never_type(env, right);
+
+    if left_is_never && right_is_never {
+        return Ok(Some(never_type()));
+    }
+    if left_is_never {
+        return Ok(Some(right.clone()));
+    }
+    if right_is_never {
+        return Ok(Some(left.clone()));
+    }
+    if same_branch_type(env, left, right)? {
+        return Ok(Some(left.clone()));
+    }
+    Ok(None)
+}
+
+#[derive(Clone, Copy)]
+struct TerminatorInfo {
+    kind: &'static str,
+    location: SourceLocation,
+}
+
+fn process_exit_call(expr: &Expr) -> bool {
+    let expr = match expr {
+        Expr::TypeAscription(ascribed) => &ascribed.expr,
+        _ => expr,
+    };
+    let Expr::Application(app) = expr else {
+        return false;
+    };
+    match &app.func {
+        Expr::MemberAccess(member) => {
+            member
+                .namespace
+                .last()
+                .is_some_and(|segment| segment == "process")
+                && member.member == "exit"
+        }
+        Expr::FieldAccess(field_access) => {
+            field_access.field == "exit"
+                && matches!(
+                    &field_access.object,
+                    Expr::Identifier(identifier) if identifier.name == "process"
+                )
+        }
+        _ => false,
+    }
+}
+
+fn terminating_expr_info(
+    env: &TypeEnvironment,
+    expr: &Expr,
+) -> Result<Option<TerminatorInfo>, TypeError> {
+    let expr_type = synthesize(env, expr)?;
+    if !is_never_type(env, &expr_type) {
+        return Ok(None);
+    }
+
+    if process_exit_call(expr) {
+        return Ok(Some(TerminatorInfo {
+            kind: "processExit",
+            location: expr_location(expr),
+        }));
+    }
+
+    match expr {
+        Expr::If(if_expr) => {
+            if let Some(else_branch) = &if_expr.else_branch {
+                let then_terminates = terminating_expr_info(env, &if_expr.then_branch)?.is_some();
+                let else_terminates = terminating_expr_info(env, else_branch)?.is_some();
+                if then_terminates && else_terminates {
+                    return Ok(Some(TerminatorInfo {
+                        kind: "if",
+                        location: if_expr.location,
+                    }));
+                }
+            }
+        }
+        Expr::Match(match_expr) => {
+            let all_terminate = match_expr
+                .arms
+                .iter()
+                .try_fold(true, |all_terminating, arm| {
+                    terminating_expr_info(env, &arm.body)
+                        .map(|info| all_terminating && info.is_some())
+                })?;
+            if all_terminate {
+                return Ok(Some(TerminatorInfo {
+                    kind: "match",
+                    location: match_expr.location,
+                }));
+            }
+        }
+        _ => {}
+    }
+
+    Ok(Some(TerminatorInfo {
+        kind: "neverType",
+        location: expr_location(expr),
+    }))
+}
+
+fn unreachable_code_error(
+    body: &Expr,
+    terminator: TerminatorInfo,
+    unreachable_kind: &'static str,
+) -> TypeError {
+    TypeError::new(
+        "Unreachable code after terminating expression".to_string(),
+        Some(expr_location(body)),
+    )
+    .with_code(codes::typecheck::UNREACHABLE_CODE)
+    .with_detail("proofBasis", "syntactic/control-flow certainty only")
+    .with_detail("terminatorKind", terminator.kind)
+    .with_detail(
+        "terminatorLocation",
+        serde_json::json!({
+            "start": {
+                "line": terminator.location.start.line,
+                "column": terminator.location.start.column,
+                "offset": terminator.location.start.offset,
+            },
+            "end": {
+                "line": terminator.location.end.line,
+                "column": terminator.location.end.column,
+                "offset": terminator.location.end.offset,
+            },
+        }),
+    )
+    .with_detail("unreachableKind", unreachable_kind)
 }
 
 fn underlying_type_for_constrained_info(
@@ -3522,6 +3698,12 @@ fn unit_type() -> InferenceType {
     })
 }
 
+fn never_type() -> InferenceType {
+    InferenceType::Primitive(TPrimitive {
+        name: PrimitiveName::Never,
+    })
+}
+
 fn concurrent_outcome_type(
     success_type: InferenceType,
     error_type: InferenceType,
@@ -5564,11 +5746,9 @@ fn synthesize_if(
 
     // If no else branch, then branch must be Unit
     if if_expr.else_branch.is_none() {
-        let unit_type = InferenceType::Primitive(TPrimitive {
-            name: PrimitiveName::Unit,
-        });
-        let (normalized_then, normalized_unit) = canonical_pair(env, &then_type, &unit_type);
-        if !types_equal(&normalized_then, &normalized_unit) {
+        let unit = unit_type();
+        if !matches_expected_type(env, &then_type, &unit) {
+            let normalized_then = env.normalize_type(&then_type);
             return Err(TypeError::new(
                 format!(
                     "If expression without else must have Unit type, got {}",
@@ -5577,15 +5757,14 @@ fn synthesize_if(
                 Some(if_expr.location),
             ));
         }
-        return Ok(then_type);
+        return Ok(unit);
     }
 
     // Synthesize else branch
     let else_type = synthesize(env, if_expr.else_branch.as_ref().unwrap())?;
 
-    // Both branches must have same type
-    let (normalized_then, normalized_else) = canonical_pair(env, &then_type, &else_type);
-    if !types_equal(&normalized_then, &normalized_else) {
+    let Some(joined_type) = type_join_with_never(env, &then_type, &else_type)? else {
+        let (normalized_then, normalized_else) = canonical_pair(env, &then_type, &else_type);
         return Err(TypeError::new(
             format!(
                 "If branches have different types: then is {}, else is {}",
@@ -5594,9 +5773,9 @@ fn synthesize_if(
             ),
             Some(if_expr.location),
         ));
-    }
+    };
 
-    Ok(then_type)
+    Ok(joined_type)
 }
 
 fn synthesize_let(
@@ -5607,6 +5786,13 @@ fn synthesize_let(
 
     // Synthesize binding value type
     let value_type = synthesize(env, &let_expr.value)?;
+    if let Some(terminator) = terminating_expr_info(env, &let_expr.value)? {
+        return Err(unreachable_code_error(
+            &let_expr.body,
+            terminator,
+            "letBody",
+        ));
+    }
     if matches!(value_type, InferenceType::Owned(_)) {
         return Err(TypeError::new(
             "Owned values must be introduced with using, not l".to_string(),
@@ -5643,6 +5829,13 @@ fn synthesize_using(
     using_expr: &sigil_ast::UsingExpr,
 ) -> Result<InferenceType, TypeError> {
     let value_type = synthesize(env, &using_expr.value)?;
+    if let Some(terminator) = terminating_expr_info(env, &using_expr.value)? {
+        return Err(unreachable_code_error(
+            &using_expr.body,
+            terminator,
+            "usingBody",
+        ));
+    }
     let InferenceType::Owned(inner_type) = value_type else {
         return Err(TypeError::new(
             "using initializer must have type Owned[T]".to_string(),
@@ -5684,40 +5877,10 @@ fn synthesize_match(
         ));
     }
 
-    // Synthesize first arm to establish expected type
-    let first_arm = &match_expr.arms[0];
-    let mut first_bindings = HashMap::new();
-    check_pattern(
-        env,
-        &first_arm.pattern,
-        &scrutinee_type,
-        &mut first_bindings,
-    )?;
-    let first_arm_env = env.extend(Some(first_bindings));
-
-    // Check guard if present (must be boolean)
-    if let Some(ref guard) = first_arm.guard {
-        let guard_type = synthesize(&first_arm_env, guard)?;
-        let bool_type = InferenceType::Primitive(TPrimitive {
-            name: PrimitiveName::Bool,
-        });
-        let (normalized_guard, normalized_bool) = canonical_pair(env, &guard_type, &bool_type);
-        if !types_equal(&normalized_guard, &normalized_bool) {
-            return Err(TypeError::new(
-                format!(
-                    "Pattern guard must have type Bool, got {}",
-                    format_type(&normalized_guard)
-                ),
-                Some(match_expr.location),
-            ));
-        }
-    }
-
     let base_match_context =
         scrutinee_proof_context(env, &ProofContext::default(), &match_expr.scrutinee);
-    // Synthesize first arm body to get expected type
-    let expected_type = synthesize(&first_arm_env, &first_arm.body)?;
     let mut fallthrough_context = base_match_context.clone();
+    let mut joined_type: Option<InferenceType> = None;
 
     for arm in &match_expr.arms {
         let mut bindings = HashMap::new();
@@ -5751,7 +5914,25 @@ fn synthesize_match(
             check_with_context(&arm_env, &arm_context, guard, &bool_type)?;
         }
 
-        check_with_context(&arm_env, &arm_context, &arm.body, &expected_type)?;
+        let arm_body_type = synthesize(&arm_env, &arm.body)?;
+        joined_type = match joined_type {
+            None => Some(arm_body_type),
+            Some(current) => {
+                let Some(next) = type_join_with_never(env, &current, &arm_body_type)? else {
+                    let (normalized_current, normalized_arm) =
+                        canonical_pair(env, &current, &arm_body_type);
+                    return Err(TypeError::new(
+                        format!(
+                            "Match arms have different types: expected {}, got {}",
+                            format_type(&normalized_current),
+                            format_type(&normalized_arm)
+                        ),
+                        Some(expr_location(&arm.body)),
+                    ));
+                };
+                Some(next)
+            }
+        };
 
         if let Some(condition_formula) = arm_refinement.condition_formula {
             fallthrough_context =
@@ -5761,7 +5942,7 @@ fn synthesize_match(
 
     analyze_match_coverage(env, &ProofContext::default(), &scrutinee_type, match_expr)?;
 
-    Ok(expected_type)
+    Ok(joined_type.unwrap_or_else(never_type))
 }
 
 fn synthesize_tuple(
@@ -9323,6 +9504,13 @@ fn check_let(
     use sigil_ast::Pattern;
 
     let value_type = synthesize(env, &let_expr.value)?;
+    if let Some(terminator) = terminating_expr_info(env, &let_expr.value)? {
+        return Err(unreachable_code_error(
+            &let_expr.body,
+            terminator,
+            "letBody",
+        ));
+    }
     if matches!(value_type, InferenceType::Owned(_)) {
         return Err(TypeError::new(
             "Owned values must be introduced with using, not l".to_string(),
@@ -9361,6 +9549,13 @@ fn check_using(
     expected_type: &InferenceType,
 ) -> Result<(), TypeError> {
     let value_type = synthesize(env, &using_expr.value)?;
+    if let Some(terminator) = terminating_expr_info(env, &using_expr.value)? {
+        return Err(unreachable_code_error(
+            &using_expr.body,
+            terminator,
+            "usingBody",
+        ));
+    }
     let InferenceType::Owned(inner_type) = value_type else {
         return Err(TypeError::new(
             "using initializer must have type Owned[T]".to_string(),
@@ -11180,6 +11375,153 @@ mod tests {
         assert!(error
             .to_string()
             .contains("Owned values must be introduced with using, not l"));
+    }
+
+    #[test]
+    fn test_let_body_after_process_exit_is_rejected_as_unreachable() {
+        let source = "e process:{exit:λ(Int)=>!Process Never}\nλmain()=>!Process Unit={l _=(process.exit(1):Never);()}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let error = type_check(&program, source, TypeCheckOptions::default()).unwrap_err();
+        assert_eq!(error.code, codes::typecheck::UNREACHABLE_CODE);
+        let details = error.details.unwrap();
+        assert_eq!(details.get("unreachableKind").unwrap(), "letBody");
+        assert_eq!(details.get("terminatorKind").unwrap(), "processExit");
+    }
+
+    #[test]
+    fn test_using_body_after_process_exit_is_rejected_as_unreachable() {
+        let source = "e process:{exit:λ(Int)=>!Process Never}\nλmain()=>!Process Unit=using source=process.exit(1){()}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let error = type_check(&program, source, TypeCheckOptions::default()).unwrap_err();
+        assert_eq!(error.code, codes::typecheck::UNREACHABLE_CODE);
+        let details = error.details.unwrap();
+        assert_eq!(details.get("unreachableKind").unwrap(), "usingBody");
+        assert_eq!(details.get("terminatorKind").unwrap(), "processExit");
+    }
+
+    #[test]
+    fn test_exhaustively_terminating_match_makes_following_let_body_unreachable() {
+        let source = "e process:{exit:λ(Int)=>!Process Never}\nλmain(flag:Bool)=>!Process Unit={l _=(match flag{true=>process.exit(1)|false=>process.exit(2)});()}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let error = type_check(&program, source, TypeCheckOptions::default()).unwrap_err();
+        assert_eq!(error.code, codes::typecheck::UNREACHABLE_CODE);
+        let details = error.details.unwrap();
+        assert_eq!(details.get("terminatorKind").unwrap(), "match");
+    }
+
+    #[test]
+    fn test_exhaustively_terminating_if_makes_following_let_body_unreachable() {
+        let never_fn = InferenceType::Function(Box::new(TFunction {
+            params: vec![],
+            return_type: never_type(),
+            effects: None,
+        }));
+        let env =
+            TypeEnvironment::new().extend(Some(HashMap::from([("stop".to_string(), never_fn)])));
+        let stop_call = Expr::Application(Box::new(sigil_ast::ApplicationExpr {
+            func: Expr::Identifier(sigil_ast::IdentifierExpr {
+                name: "stop".to_string(),
+                location: synthetic_loc(),
+            }),
+            args: vec![],
+            location: synthetic_loc(),
+        }));
+        let expr = Expr::Let(Box::new(sigil_ast::LetExpr {
+            pattern: sigil_ast::Pattern::Wildcard(sigil_ast::WildcardPattern {
+                location: synthetic_loc(),
+            }),
+            value: Expr::If(Box::new(sigil_ast::IfExpr {
+                condition: Expr::Literal(LiteralExpr {
+                    value: LiteralValue::Bool(true),
+                    literal_type: LiteralType::Bool,
+                    location: synthetic_loc(),
+                }),
+                then_branch: stop_call.clone(),
+                else_branch: Some(stop_call),
+                location: synthetic_loc(),
+            })),
+            body: Expr::Literal(LiteralExpr {
+                value: LiteralValue::Unit,
+                literal_type: LiteralType::Unit,
+                location: synthetic_loc(),
+            }),
+            location: synthetic_loc(),
+        }));
+
+        let error = synthesize(&env, &expr).unwrap_err();
+        assert_eq!(error.code, codes::typecheck::UNREACHABLE_CODE);
+        let details = error.details.unwrap();
+        assert_eq!(details.get("terminatorKind").unwrap(), "if");
+    }
+
+    #[test]
+    fn test_if_without_else_after_terminating_branch_is_not_considered_unreachable() {
+        let never_fn = InferenceType::Function(Box::new(TFunction {
+            params: vec![],
+            return_type: never_type(),
+            effects: None,
+        }));
+        let env =
+            TypeEnvironment::new().extend(Some(HashMap::from([("stop".to_string(), never_fn)])));
+        let stop_call = Expr::Application(Box::new(sigil_ast::ApplicationExpr {
+            func: Expr::Identifier(sigil_ast::IdentifierExpr {
+                name: "stop".to_string(),
+                location: synthetic_loc(),
+            }),
+            args: vec![],
+            location: synthetic_loc(),
+        }));
+        let expr = Expr::Let(Box::new(sigil_ast::LetExpr {
+            pattern: sigil_ast::Pattern::Wildcard(sigil_ast::WildcardPattern {
+                location: synthetic_loc(),
+            }),
+            value: Expr::If(Box::new(sigil_ast::IfExpr {
+                condition: Expr::Literal(LiteralExpr {
+                    value: LiteralValue::Bool(true),
+                    literal_type: LiteralType::Bool,
+                    location: synthetic_loc(),
+                }),
+                then_branch: stop_call,
+                else_branch: None,
+                location: synthetic_loc(),
+            })),
+            body: Expr::Literal(LiteralExpr {
+                value: LiteralValue::Unit,
+                literal_type: LiteralType::Unit,
+                location: synthetic_loc(),
+            }),
+            location: synthetic_loc(),
+        }));
+
+        let result = synthesize(&env, &expr);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_match_branch_with_process_exit_and_value_typechecks() {
+        let source = "e process:{exit:λ(Int)=>!Process Never}\nλmain(flag:Bool)=>!Process Int match flag{true=>process.exit(1)|false=>1}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_process_exit_typechecks_against_unit_return() {
+        let source =
+            "e process:{exit:λ(Int)=>!Process Never}\nλmain()=>!Process Unit=process.exit(1)";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_ok());
     }
 
     #[test]

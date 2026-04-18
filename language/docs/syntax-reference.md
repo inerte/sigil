@@ -591,6 +591,11 @@ using source=openSource(){
 - the bound name is available only inside the `using` body
 - leaving the scope disposes the owned resource
 - the borrowed resource value must not escape the `using` body
+- code after a guaranteed-terminating initializer in the same `using` is unreachable and rejected
+
+Sequencing through `l ...; body` follows the same reachability rule:
+
+- if the bound expression is guaranteed to terminate, the following body is unreachable and rejected
 
 ## Pattern Matching
 

@@ -392,6 +392,11 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Message:** "Unreachable match arm"
 **How to fix:** Remove the dead arm or rewrite the earlier arms if the intended branching order was different
 
+### SIGIL-TYPE-UNREACHABLE-CODE
+**Description:** Code appears after an expression that is guaranteed to terminate in the same sequence.
+**Message:** "Unreachable code after terminating expression"
+**How to fix:** Remove the dead code, or rewrite the earlier expression so it can continue on that path
+
 ## Mutability Errors (SIGIL-MUTABILITY-*)
 
 ### SIGIL-MUTABILITY-INVALID

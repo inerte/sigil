@@ -119,6 +119,7 @@ pub mod typecheck {
     pub const MATCH_NON_EXHAUSTIVE: &str = "SIGIL-TYPE-MATCH-NON-EXHAUSTIVE";
     pub const MATCH_REDUNDANT_PATTERN: &str = "SIGIL-TYPE-MATCH-REDUNDANT-PATTERN";
     pub const MATCH_UNREACHABLE_ARM: &str = "SIGIL-TYPE-MATCH-UNREACHABLE-ARM";
+    pub const UNREACHABLE_CODE: &str = "SIGIL-TYPE-UNREACHABLE-CODE";
 }
 
 /// Mutability analysis error codes (SIGIL-MUTABILITY-*)
@@ -267,6 +268,7 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     typecheck::MATCH_NON_EXHAUSTIVE,
     typecheck::MATCH_REDUNDANT_PATTERN,
     typecheck::MATCH_UNREACHABLE_ARM,
+    typecheck::UNREACHABLE_CODE,
     // Mutability (1 code)
     mutability::INVALID,
     // CLI (10 codes)

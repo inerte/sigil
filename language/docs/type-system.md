@@ -110,6 +110,12 @@ Primitive types:
 - `Unit`
 - `Never`
 
+`Never` is Sigil's terminating expression type:
+
+- an expression of type `Never` may be used anywhere another result type is expected
+- this is one-way compatibility for expression checking, not a general subtyping feature
+- `Never` marks code paths that do not continue, such as `§process.exit(...)`
+
 Compound forms:
 
 - lists: `[T]`

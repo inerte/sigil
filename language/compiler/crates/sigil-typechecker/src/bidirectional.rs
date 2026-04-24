@@ -7,7 +7,7 @@
 //! This is simpler than Hindley-Milner because Sigil requires mandatory
 //! type annotations everywhere, making the inference burden much lighter.
 
-use crate::coverage::{analyze_match_coverage, expr_summary};
+use crate::coverage::{analyze_match_coverage, expr_summary, pattern_to_space, space_intersection, space_is_empty, total_space_for_type};
 use crate::effects::{
     declared_effects_cover_actual, effects_option_to_set, merge_effects, purity_from_effects,
     resolve_effect_names,

@@ -894,13 +894,7 @@ fn validate_source_layout(
             Declaration::Test(test_decl) => {
                 validate_expr_layout(&test_decl.body, source, &mut errors);
             }
-            Declaration::Type(_)
-            | Declaration::Protocol(_)
-            | Declaration::Effect(_)
-            | Declaration::Extern(_)
-            | Declaration::Transform(_)
-            | Declaration::Label(_)
-            | Declaration::Rule(_) => {}
+            _ => {}
         }
     }
 
@@ -2005,12 +1999,7 @@ fn validate_record_field_ordering(program: &Program) -> Result<(), Vec<Validatio
             Declaration::Test(test_decl) => {
                 validate_expr_record_fields(&test_decl.body, &mut errors)
             }
-            Declaration::Effect(_)
-            | Declaration::Extern(_)
-            | Declaration::Protocol(_)
-            | Declaration::Transform(_)
-            | Declaration::Label(_)
-            | Declaration::Rule(_) => {}
+            _ => {}
         }
     }
 
@@ -2348,13 +2337,7 @@ fn validate_no_shadowing(program: &Program) -> Result<(), Vec<ValidationError>> 
                 let mut scopes = Vec::new();
                 validate_expr_no_shadowing(&test_decl.body, &mut scopes, &mut errors);
             }
-            Declaration::Type(_)
-            | Declaration::Protocol(_)
-            | Declaration::Effect(_)
-            | Declaration::Extern(_)
-            | Declaration::Transform(_)
-            | Declaration::Label(_)
-            | Declaration::Rule(_) => {}
+            _ => {}
         }
     }
 
@@ -6562,13 +6545,7 @@ fn collect_filter_then_count_errors(program: &Program, errors: &mut Vec<Validati
             Declaration::Test(test_decl) => {
                 collect_filter_then_count_in_expr(&test_decl.body, errors)
             }
-            Declaration::Type(_)
-            | Declaration::Protocol(_)
-            | Declaration::Effect(_)
-            | Declaration::Extern(_)
-            | Declaration::Transform(_)
-            | Declaration::Label(_)
-            | Declaration::Rule(_) => {}
+            _ => {}
         }
     }
 }

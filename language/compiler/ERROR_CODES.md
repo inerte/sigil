@@ -468,7 +468,29 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Message:** "runtime engine not available"
 **How to fix:** Install Node.js or Deno
 
-## Total Error Codes: 59
+## Protocol Errors (SIGIL-PROTO-*)
+
+### SIGIL-PROTO-UNKNOWN-TYPE
+**Description:** A `protocol` declaration references a type that is not declared in the same file.
+**How to fix:** Declare the type with `t TypeName=...` before the protocol declaration.
+
+### SIGIL-PROTO-UNKNOWN-STATE
+**Description:** A state name used in a `requires`/`ensures` clause is not a valid state in the handle's protocol.
+**How to fix:** Check the protocol declaration for the type's valid state names.
+
+### SIGIL-PROTO-STATE-VIOLATION
+**Description:** A function call's `requires` state clause could not be proven — the handle may be in the wrong state.
+**How to fix:** Ensure the handle is in the required state before calling this function. The Z3 model in the error shows what state was inferred.
+
+### SIGIL-PROTO-MISSING-CONTRACT
+**Description:** A function listed in a protocol's `via` clause lacks matching `requires`/`ensures` state annotations.
+**How to fix:** Add `requires handle.state=StateA` and `ensures handle.state=StateB` to the function declaration.
+
+### SIGIL-PROTO-DUPLICATE
+**Description:** Two `protocol` declarations exist for the same type.
+**How to fix:** Keep only one `protocol` declaration per type.
+
+## Total Error Codes: 64
 
 - Lexer: 9 codes
 - Parser: 5 codes
@@ -477,3 +499,4 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 - Mutability: 1 code
 - CLI: 10 codes
 - Runtime: 2 codes
+- Protocol: 5 codes

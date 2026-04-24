@@ -43,6 +43,16 @@ pub struct FunctionContract {
     pub ensures: Option<Expr>,
 }
 
+/// Compile-time protocol specification for a handle type.
+/// States are sorted alphabetically; index in `states` is the Z3 integer encoding.
+#[derive(Debug, Clone)]
+pub struct ProtocolSpec {
+    pub states: Vec<String>,
+    pub transitions: HashMap<String, (String, String)>,
+    pub initial: String,
+    pub terminal: String,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct BindingMeta {
     pub is_extern_namespace: bool,
@@ -63,6 +73,7 @@ pub struct TypeEnvironment {
     type_registry: HashMap<String, TypeInfo>, // User-defined types
     label_registry: HashMap<String, LabelInfo>,
     function_contracts: HashMap<String, FunctionContract>,
+    protocol_registry: HashMap<String, ProtocolSpec>,
     imported_type_registries: HashMap<String, HashMap<String, TypeInfo>>, // Types from imported modules
     imported_value_schemes: HashMap<String, HashMap<String, TypeScheme>>,
     imported_value_meta: HashMap<String, HashMap<String, BindingMeta>>,
@@ -85,6 +96,7 @@ impl TypeEnvironment {
             type_registry: HashMap::new(),
             label_registry: HashMap::new(),
             function_contracts: HashMap::new(),
+            protocol_registry: HashMap::new(),
             imported_type_registries: HashMap::new(),
             imported_value_schemes: HashMap::new(),
             imported_value_meta: HashMap::new(),
@@ -107,6 +119,7 @@ impl TypeEnvironment {
             type_registry: HashMap::new(),
             label_registry: HashMap::new(),
             function_contracts: parent.function_contracts.clone(),
+            protocol_registry: parent.protocol_registry.clone(),
             imported_type_registries: HashMap::new(),
             imported_value_schemes: HashMap::new(),
             imported_value_meta: HashMap::new(),
@@ -229,6 +242,17 @@ impl TypeEnvironment {
 
     pub fn register_function_contract(&mut self, name: String, contract: FunctionContract) {
         self.function_contracts.insert(name, contract);
+    }
+
+    pub fn register_protocol(&mut self, type_name: String, spec: ProtocolSpec) {
+        self.protocol_registry.insert(type_name, spec);
+    }
+
+    pub fn lookup_protocol(&self, type_name: &str) -> Option<&ProtocolSpec> {
+        if let Some(spec) = self.protocol_registry.get(type_name) {
+            return Some(spec);
+        }
+        self.parent.as_ref()?.lookup_protocol(type_name)
     }
 
     pub fn register_extern_member_kind(
@@ -544,6 +568,10 @@ impl TypeEnvironment {
 
     pub fn label_registry_snapshot(&self) -> HashMap<String, LabelInfo> {
         self.label_registry.clone()
+    }
+
+    pub fn protocol_registry_snapshot(&self) -> &HashMap<String, ProtocolSpec> {
+        &self.protocol_registry
     }
 
     pub fn boundary_rules_snapshot(&self) -> Vec<BoundaryRule> {

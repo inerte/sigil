@@ -58,11 +58,45 @@ Current filename diagnostics:
 Top-level declarations must appear in this category order:
 
 ```text
-t => e => c => λ => test
+label => t => protocol => effect => e => featureFlag => c => transform => λ => rule => test
 ```
 
 Module scope is declaration-only.
 Top-level `l` is invalid.
+
+## Protocol Declarations
+
+A `protocol` declaration defines a compile-time state machine for a handle type. It must follow all `t` declarations in the same file and precede all `λ` declarations.
+
+```sigil module
+t Transaction={id:String}
+
+protocol Transaction
+  Open → Closed via commit, rollback
+  Open → Open via execDeleteIn, execInsertIn, execUpdateIn
+  initial = Open
+  terminal = Closed
+```
+
+Canonical form rules:
+- Protocol name and all state names must be UpperCamelCase (`SIGIL-CANON-TYPE-NAME-FORM`)
+- Transitions are sorted by `(from, to)` lexicographically
+- `via` function lists are sorted alphabetically
+- `initial` line comes before `terminal` line
+- Body lines use two-space indent
+- One protocol per type; duplicate protocols are rejected (`SIGIL-PROTO-DUPLICATE`)
+- The referenced type must exist in the same file (`SIGIL-PROTO-UNKNOWN-TYPE`)
+
+Functions listed in a `via` clause must declare matching `requires`/`ensures` state annotations (`SIGIL-PROTO-MISSING-CONTRACT`):
+
+```sigil module
+λcommit(transaction:Transaction)=>!Sql Result[Unit,SqlFailure]
+requires transaction.state=Open
+ensures transaction.state=Closed
+=Err({kind:Unsupported(),message:"sql intrinsic unavailable"})
+```
+
+State assertions in `requires`/`ensures` use the virtual `.state` field on protocol-typed values. The expression `handle.state=StateName` is a Bool that the Z3 solver tracks through the control-flow graph.
 
 ## No `export` Keyword
 

@@ -169,6 +169,14 @@ pub mod topology {
 }
 
 /// Runtime error codes (SIGIL-RUNTIME-*, SIGIL-RUN-*)
+pub mod protocol {
+    pub const UNKNOWN_TYPE: &str = "SIGIL-PROTO-UNKNOWN-TYPE";
+    pub const UNKNOWN_STATE: &str = "SIGIL-PROTO-UNKNOWN-STATE";
+    pub const STATE_VIOLATION: &str = "SIGIL-PROTO-STATE-VIOLATION";
+    pub const MISSING_CONTRACT: &str = "SIGIL-PROTO-MISSING-CONTRACT";
+    pub const DUPLICATE: &str = "SIGIL-PROTO-DUPLICATE";
+}
+
 pub mod runtime {
     pub const CHILD_EXIT: &str = "SIGIL-RUNTIME-CHILD-EXIT";
     pub const REPLAY_BINDING_MISMATCH: &str = "SIGIL-RUNTIME-REPLAY-BINDING-MISMATCH";
@@ -313,6 +321,12 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     runtime::REPLAY_INVALID_ARTIFACT,
     runtime::UNCAUGHT_EXCEPTION,
     runtime::ENGINE_NOT_FOUND,
+    // Protocol (5 codes)
+    protocol::UNKNOWN_TYPE,
+    protocol::UNKNOWN_STATE,
+    protocol::STATE_VIOLATION,
+    protocol::MISSING_CONTRACT,
+    protocol::DUPLICATE,
 ];
 
 #[cfg(test)]
@@ -346,8 +360,8 @@ mod tests {
         // Keep this in sync when adding or removing diagnostic codes.
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            125,
-            "Expected 125 error codes, found {}",
+            130,
+            "Expected 130 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

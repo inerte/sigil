@@ -191,6 +191,13 @@ pub enum Atom {
         path: SymbolPath,
         value: bool,
     },
+    /// Protocol state equality: handle is in the given state (encoded as integer index).
+    /// `state_index` is the 0-based index of the state in the protocol's sorted state list.
+    StateEq {
+        path: SymbolPath,
+        state_index: i64,
+        protocol: String,
+    },
 }
 
 impl Atom {
@@ -211,6 +218,15 @@ impl Atom {
             Self::BoolEq { path, value } => Self::BoolEq {
                 path: path.clone(),
                 value: !value,
+            },
+            Self::StateEq {
+                path,
+                state_index,
+                protocol: _,
+            } => Self::IntCmp {
+                form: LinearForm::from_path(path.clone()),
+                op: ComparisonOp::Ne,
+                rhs: *state_index,
             },
         }
     }
@@ -387,6 +403,9 @@ fn collect_atom_sorts(atom: &Atom, out: &mut BTreeMap<SymbolPath, SymbolSort>) {
                 out.insert(path.clone(), SymbolSort::Int);
             }
         }
+        Atom::StateEq { path, .. } => {
+            out.insert(path.clone(), SymbolSort::Int);
+        }
     }
 }
 
@@ -436,6 +455,11 @@ fn lower_atom(atom: &Atom, registry: &SymbolRegistry) -> z3::ast::Bool {
                 ComparisonOp::Gt => expr.gt(&rhs_expr),
                 ComparisonOp::Ge => expr.ge(&rhs_expr),
             }
+        }
+        Atom::StateEq { path, state_index, .. } => {
+            let expr = registry.int_const(path);
+            let rhs_expr = z3::ast::Int::from_i64(*state_index);
+            expr.eq(&rhs_expr)
         }
     }
 }

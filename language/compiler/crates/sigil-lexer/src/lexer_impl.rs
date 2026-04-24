@@ -497,6 +497,9 @@ impl Lexer {
             '☴' => self.add_token(tokens, TokenType::PackageRoot, "☴", start),
             'µ' => self.add_token(tokens, TokenType::ProjectTypeRoot, "µ", start),
 
+            // State transition arrow (protocol declarations)
+            '→' => self.add_token(tokens, TokenType::StateTransitionArrow, "→", start),
+
             // Unicode keywords
             'λ' => self.add_token(tokens, TokenType::LAMBDA, "λ", start),
 

@@ -82,6 +82,11 @@ impl Parser {
             return self.type_declaration();
         }
 
+        // Protocol declaration: protocol TypeName ...
+        if self.match_identifier("protocol") {
+            return self.protocol_declaration();
+        }
+
         // Effect declaration: effect AppIo=!Fs!Log!Process
         if self.match_token(TokenType::Effect) {
             return self.effect_declaration();
@@ -109,7 +114,7 @@ impl Parser {
         }
 
         Err(self.error(
-            "Expected top-level declaration (label, rule, transform, t, effect, featureFlag, e, c, λ, or test)",
+            "Expected top-level declaration (label, rule, transform, t, protocol, effect, featureFlag, e, c, λ, or test)",
         ))
     }
 
@@ -377,6 +382,136 @@ impl Parser {
             definition,
             constraint,
             labels,
+            location,
+        }))
+    }
+
+    fn protocol_declaration(&mut self) -> Result<Declaration, ParseError> {
+        let start = self.previous();
+        let name = self
+            .consume(
+                TokenType::UpperIdentifier,
+                "Expected type name after 'protocol' (canonical form: protocol TypeName)",
+            )?
+            .value
+            .clone();
+
+        let mut transitions: Vec<sigil_ast::ProtocolTransition> = Vec::new();
+        let mut initial: Option<String> = None;
+        let mut terminal: Option<String> = None;
+
+        loop {
+            if self.is_at_end() {
+                break;
+            }
+
+            // initial = StateName
+            if self.check_identifier("initial") {
+                let _clause_start = self.advance();
+                self.consume(TokenType::EQUAL, "Expected '=' after 'initial'")?;
+                let state = self
+                    .consume(
+                        TokenType::UpperIdentifier,
+                        "Expected state name after 'initial ='",
+                    )?
+                    .value
+                    .clone();
+                initial = Some(state);
+                continue;
+            }
+
+            // terminal = StateName
+            if self.check_identifier("terminal") {
+                let _clause_start = self.advance();
+                self.consume(TokenType::EQUAL, "Expected '=' after 'terminal'")?;
+                let state = self
+                    .consume(
+                        TokenType::UpperIdentifier,
+                        "Expected state name after 'terminal ='",
+                    )?
+                    .value
+                    .clone();
+                terminal = Some(state);
+                continue;
+            }
+
+            // State → State via fn1, fn2, ...
+            if self.check(TokenType::UpperIdentifier) {
+                let transition_start = self.peek().location;
+                let from = self.advance().value.clone();
+
+                if !self.check(TokenType::StateTransitionArrow) {
+                    // Not a transition — we've consumed an UpperIdentifier that isn't part of a
+                    // protocol body. This is likely a new top-level declaration starting with an
+                    // UpperIdentifier (e.g. a type). Back-tracking isn't possible, so error.
+                    return Err(self.error(
+                        "Expected '→' after state name in protocol transition (canonical form: State → State via fn1, fn2)",
+                    ));
+                }
+                self.advance(); // consume →
+
+                let to = self
+                    .consume(
+                        TokenType::UpperIdentifier,
+                        "Expected target state name after '→'",
+                    )?
+                    .value
+                    .clone();
+
+                self.consume_identifier(
+                    "via",
+                    "Expected 'via' after '→ State' in protocol transition",
+                )?;
+
+                let mut via: Vec<String> = Vec::new();
+                via.push(
+                    self.consume(
+                        TokenType::IDENTIFIER,
+                        "Expected function name after 'via'",
+                    )?
+                    .value
+                    .clone(),
+                );
+                while self.match_token(TokenType::COMMA) {
+                    via.push(
+                        self.consume(
+                            TokenType::IDENTIFIER,
+                            "Expected function name after ','",
+                        )?
+                        .value
+                        .clone(),
+                    );
+                }
+
+                let end = self.previous();
+                transitions.push(sigil_ast::ProtocolTransition {
+                    from,
+                    to,
+                    via,
+                    location: self.make_location(transition_start.start, end.location.end),
+                });
+                continue;
+            }
+
+            // Anything else ends the protocol body
+            break;
+        }
+
+        let initial = initial.ok_or_else(|| {
+            self.error("Protocol declaration requires 'initial = StateName'")
+        })?;
+        let terminal = terminal.ok_or_else(|| {
+            self.error("Protocol declaration requires 'terminal = StateName'")
+        })?;
+
+        let end = self.previous();
+        let location = self.make_location(start.location.start, end.location.end);
+
+        Ok(Declaration::Protocol(sigil_ast::ProtocolDecl {
+            name,
+            transitions,
+            initial,
+            terminal,
             location,
         }))
     }

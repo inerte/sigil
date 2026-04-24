@@ -184,6 +184,46 @@ pub fn type_check(
 
                 Declaration::Label(_) => {}
 
+                Declaration::Protocol(protocol_decl) => {
+                    if env.lookup_type(&protocol_decl.name).is_none() {
+                        return Err(TypeError::new(
+                            format!(
+                                "SIGIL-PROTO-UNKNOWN-TYPE: protocol '{}' references a type that is not declared in this file",
+                                protocol_decl.name
+                            ),
+                            Some(protocol_decl.location),
+                        ));
+                    }
+
+                    let mut all_states: std::collections::BTreeSet<String> =
+                        std::collections::BTreeSet::new();
+                    all_states.insert(protocol_decl.initial.clone());
+                    all_states.insert(protocol_decl.terminal.clone());
+                    for t in &protocol_decl.transitions {
+                        all_states.insert(t.from.clone());
+                        all_states.insert(t.to.clone());
+                    }
+                    let states: Vec<String> = all_states.into_iter().collect();
+
+                    let mut transitions: HashMap<String, (String, String)> = HashMap::new();
+                    for t in &protocol_decl.transitions {
+                        for fn_name in &t.via {
+                            transitions
+                                .insert(fn_name.clone(), (t.from.clone(), t.to.clone()));
+                        }
+                    }
+
+                    env.register_protocol(
+                        protocol_decl.name.clone(),
+                        crate::environment::ProtocolSpec {
+                            states,
+                            transitions,
+                            initial: protocol_decl.initial.clone(),
+                            terminal: protocol_decl.terminal.clone(),
+                        },
+                    );
+                }
+
                 Declaration::Effect(_) => {}
 
                 Declaration::Function(func_decl) => {
@@ -510,6 +550,8 @@ pub fn type_check(
                 )?));
             } else if let Declaration::Effect(_) = decl {
                 // Effect declarations are compile-time only and do not appear in typed IR.
+            } else if let Declaration::Protocol(_) = decl {
+                // Protocol declarations are compile-time only — consumed in first pass.
             }
         }
 
@@ -1226,6 +1268,44 @@ fn constraint_value_type_for_decl(
     }
 }
 
+/// Returns true if the expression is a protocol state assertion (involves `.state` field access).
+/// Such clauses are axiomatic — state transitions are declared, not proven from the body.
+fn ensures_is_state_assertion(expr: &Expr) -> bool {
+    match expr {
+        Expr::Binary(b) => {
+            matches!(b.operator, BinaryOperator::Equal | BinaryOperator::NotEqual)
+                && (expr_has_state_access(&b.left) || expr_has_state_access(&b.right))
+        }
+        Expr::Unary(u) => ensures_is_state_assertion(&u.operand),
+        _ => false,
+    }
+}
+
+fn expr_has_state_access(expr: &Expr) -> bool {
+    match expr {
+        Expr::FieldAccess(f) => f.field == "state",
+        _ => false,
+    }
+}
+
+/// Returns true if the expression contains an identifier with the given name anywhere.
+fn expr_mentions_identifier(expr: &Expr, name: &str) -> bool {
+    match expr {
+        Expr::Identifier(id) => id.name == name,
+        Expr::Binary(b) => {
+            expr_mentions_identifier(&b.left, name) || expr_mentions_identifier(&b.right, name)
+        }
+        Expr::Unary(u) => expr_mentions_identifier(&u.operand, name),
+        Expr::FieldAccess(f) => expr_mentions_identifier(&f.object, name),
+        Expr::TypeAscription(t) => expr_mentions_identifier(&t.expr, name),
+        Expr::Application(a) => {
+            expr_mentions_identifier(&a.func, name)
+                || a.args.iter().any(|arg| expr_mentions_identifier(arg, name))
+        }
+        _ => false,
+    }
+}
+
 fn expr_location(expr: &Expr) -> sigil_lexer::SourceLocation {
     match expr {
         Expr::Literal(expr) => expr.location,
@@ -1650,6 +1730,10 @@ enum SymbolicValue {
     Bool(Formula),
     Collection(SymbolicCollection),
     Record(SymbolicRecord),
+    /// The protocol state of a handle — produced by `handle.state` field access.
+    State { path: SymbolPath, protocol: String },
+    /// An UpperCamelCase state name literal on the RHS of a state equality check.
+    StateLabel(String),
 }
 
 #[derive(Debug, Clone)]
@@ -1735,6 +1819,16 @@ fn symbolic_value_for_type_path(
 ) -> Result<SymbolicValue, String> {
     if let Some(constrained) = resolve_constrained_type(env, typ).map_err(|err| err.message)? {
         return symbolic_value_for_type_path(env, &constrained.underlying_type, path);
+    }
+
+    // Protocol-typed handles get a State symbolic value keyed by the binding path.
+    // Named product types normalize to Record with a `name` field — check both shapes.
+    let normalized = env.normalize_type(typ);
+    if let Some(protocol_name) = resolve_protocol_type_name(&normalized, env) {
+        return Ok(SymbolicValue::State {
+            path: path.clone(),
+            protocol: protocol_name,
+        });
     }
 
     match env.normalize_type(typ) {
@@ -1831,6 +1925,19 @@ fn symbolic_value_from_expr(
                 return Ok(symbolic_binding);
             }
 
+            // UpperCamelCase identifiers not bound as values may be state labels.
+            // (Sum-type constructors are registered as regular bindings, so lookup catches them.)
+            if identifier
+                .name
+                .chars()
+                .next()
+                .map(|c| c.is_uppercase())
+                .unwrap_or(false)
+                && env.lookup(&identifier.name).is_none()
+            {
+                return Ok(SymbolicValue::StateLabel(identifier.name.clone()));
+            }
+
             collect_identifier_assumption(env, &identifier.name, collector)?;
             let Some(binding_type) = env.lookup(&identifier.name) else {
                 return Err(format!(
@@ -1838,7 +1945,34 @@ fn symbolic_value_from_expr(
                     identifier.name
                 ));
             };
-            symbolic_value_for_type_path(env, &binding_type, &SymbolPath::root(&identifier.name))
+            // Try the standard symbolic path first.
+            if let Ok(value) =
+                symbolic_value_for_type_path(env, &binding_type, &SymbolPath::root(&identifier.name))
+            {
+                return Ok(value);
+            }
+            // Fallback: if the proof context has a StateEq assumption about this binding,
+            // the identifier is a protocol-typed handle — recover the protocol name from it.
+            let path = SymbolPath::root(&identifier.name);
+            for assumption in &proof_context.assumptions {
+                if let Formula::Atom(Atom::StateEq {
+                    path: assumption_path,
+                    protocol,
+                    ..
+                }) = assumption
+                {
+                    if assumption_path == &path {
+                        return Ok(SymbolicValue::State {
+                            path,
+                            protocol: protocol.clone(),
+                        });
+                    }
+                }
+            }
+            Err(format!(
+                "values of type {} are not part of Sigil's canonical refinement proof fragment",
+                format_type(&binding_type)
+            ))
         }
         Expr::Unary(unary) => {
             if unary.operator == UnaryOperator::Length {
@@ -1902,6 +2036,30 @@ fn symbolic_value_from_expr(
                 value_binding,
                 collector,
             )?;
+            // Protocol state equality requires env for state index lookup — handle before
+            // falling into the generic symbolic_value_from_binary which has no env.
+            if matches!(
+                binary.operator,
+                BinaryOperator::Equal | BinaryOperator::NotEqual
+            ) {
+                let equals = binary.operator == BinaryOperator::Equal;
+                let state_result = match (&left, &right) {
+                    (
+                        SymbolicValue::State { path, protocol },
+                        SymbolicValue::StateLabel(state_name),
+                    )
+                    | (
+                        SymbolicValue::StateLabel(state_name),
+                        SymbolicValue::State { path, protocol },
+                    ) => Some(state_equality_formula(
+                        env, path, protocol, state_name, equals,
+                    )),
+                    _ => None,
+                };
+                if let Some(result) = state_result {
+                    return result;
+                }
+            }
             symbolic_value_from_binary(binary.operator, left, right)
         }
         Expr::List(list) => Ok(SymbolicValue::Collection(SymbolicCollection::KnownLength(
@@ -1917,35 +2075,98 @@ fn symbolic_value_from_expr(
                 .map(|field| (field.name.clone(), field.value.clone()))
                 .collect(),
         ))),
-        Expr::FieldAccess(field_access) => match symbolic_value_from_expr(
-            env,
-            proof_context,
-            &field_access.object,
-            value_binding,
-            collector,
-        )? {
-            SymbolicValue::Record(SymbolicRecord::Literal(fields)) => {
-                let Some(field_expr) = fields.get(&field_access.field) else {
-                    return Err(format!(
-                        "record literal is missing field '{}' in refinement proof",
-                        field_access.field
-                    ));
-                };
-                symbolic_value_from_expr(env, proof_context, field_expr, value_binding, collector)
+        Expr::FieldAccess(field_access) => {
+            // `.state` on a protocol-typed binding produces a State symbolic value.
+            if field_access.field == "state" {
+                // Try type synthesis first (works when the identifier is in scope normally).
+                if let Ok(base_type) = synthesize(env, &field_access.object) {
+                    if let Some(type_name) = resolve_protocol_type_name(&base_type, env) {
+                        let path = match &field_access.object {
+                            Expr::Identifier(ident) => SymbolPath::root(&ident.name),
+                            _ => SymbolPath::root("$handle"),
+                        };
+                        return Ok(SymbolicValue::State {
+                            path,
+                            protocol: type_name,
+                        });
+                    }
+                }
+                // Fallback: if the base is an identifier bound as a State in the proof context
+                // (e.g. `result` in `call_ensure_assumptions`), propagate it directly.
+                if let Expr::Identifier(ident) = &field_access.object {
+                    if let Some(SymbolicValue::State { path, protocol }) =
+                        proof_context.lookup_symbolic_binding(&ident.name)
+                    {
+                        return Ok(SymbolicValue::State { path, protocol });
+                    }
+                }
             }
-            SymbolicValue::Record(SymbolicRecord::Path { base, fields }) => {
-                let Some(field_type) = fields.get(&field_access.field) else {
-                    return Err(format!(
-                        "record type is missing field '{}' in refinement proof",
-                        field_access.field
-                    ));
-                };
-                symbolic_value_for_type_path(env, field_type, &base.field(&field_access.field))
+
+            match symbolic_value_from_expr(
+                env,
+                proof_context,
+                &field_access.object,
+                value_binding,
+                collector,
+            )? {
+                SymbolicValue::Record(SymbolicRecord::Literal(fields)) => {
+                    let Some(field_expr) = fields.get(&field_access.field) else {
+                        return Err(format!(
+                            "record literal is missing field '{}' in refinement proof",
+                            field_access.field
+                        ));
+                    };
+                    symbolic_value_from_expr(
+                        env,
+                        proof_context,
+                        field_expr,
+                        value_binding,
+                        collector,
+                    )
+                }
+                SymbolicValue::Record(SymbolicRecord::Path { base, fields }) => {
+                    let Some(field_type) = fields.get(&field_access.field) else {
+                        return Err(format!(
+                            "record type is missing field '{}' in refinement proof",
+                            field_access.field
+                        ));
+                    };
+                    symbolic_value_for_type_path(
+                        env,
+                        field_type,
+                        &base.field(&field_access.field),
+                    )
+                }
+                _ => Err(
+                    "field access in refinement proofs requires an exact record".to_string(),
+                ),
             }
-            _ => Err("field access in refinement proofs requires an exact record".to_string()),
-        },
+        }
         Expr::TypeAscription(type_asc) => {
-            symbolic_value_from_expr(env, proof_context, &type_asc.expr, value_binding, collector)
+            let inner =
+                symbolic_value_from_expr(env, proof_context, &type_asc.expr, value_binding, collector)?;
+            // If the ascribed type is protocol-registered, inject the initial state assumption so
+            // that inline protocol-typed values (e.g. `({id:"x"}:Ticket)`) can satisfy state requires.
+            if let Ok(ascribed_type) = synthesize(env, expr) {
+                let normalized = env.normalize_type(&ascribed_type);
+                if let Some(protocol_name) = resolve_protocol_type_name(&normalized, env) {
+                    if let Some(spec) = env.lookup_protocol(&protocol_name) {
+                        let state_index = spec
+                            .states
+                            .iter()
+                            .position(|s| s == &spec.initial)
+                            .unwrap_or(0) as i64;
+                        let path = SymbolPath::root("$inline_handle");
+                        collector.assumptions.push(Formula::Atom(Atom::StateEq {
+                            path: path.clone(),
+                            state_index,
+                            protocol: protocol_name.clone(),
+                        }));
+                        return Ok(SymbolicValue::State { path, protocol: protocol_name });
+                    }
+                }
+            }
+            Ok(inner)
         }
         Expr::Application(app) => {
             let Some(contract) = lookup_contract_for_call(env, &app.func) else {
@@ -1978,6 +2199,10 @@ fn symbolic_formula_from_expr(
 ) -> Result<Formula, String> {
     match symbolic_value_from_expr(env, proof_context, expr, value_binding, collector)? {
         SymbolicValue::Bool(formula) => Ok(formula),
+        SymbolicValue::State { .. } | SymbolicValue::StateLabel(_) => Err(
+            "protocol state access must appear inside an equality comparison (e.g. handle.state = StateName)"
+                .to_string(),
+        ),
         _ => Err("refinement expressions must evaluate to Bool".to_string()),
     }
 }
@@ -2063,6 +2288,65 @@ fn symbolic_equality_formula(
     }
 }
 
+/// Resolve the type name of a handle for protocol lookup, peeling `Owned[T]` wrappers.
+/// Named product types normalize to `Record` with a `name` field, so we check both shapes.
+fn resolve_protocol_type_name(ty: &InferenceType, env: &TypeEnvironment) -> Option<String> {
+    match ty {
+        InferenceType::Constructor(tcons) => {
+            if env.lookup_protocol(&tcons.name).is_some() {
+                Some(tcons.name.clone())
+            } else {
+                None
+            }
+        }
+        InferenceType::Record(record) => {
+            if let Some(name) = &record.name {
+                if env.lookup_protocol(name).is_some() {
+                    return Some(name.clone());
+                }
+            }
+            None
+        }
+        InferenceType::Owned(inner) => resolve_protocol_type_name(inner, env),
+        _ => None,
+    }
+}
+
+/// Build a protocol state equality formula: `handle.state = StateName`.
+fn state_equality_formula(
+    env: &TypeEnvironment,
+    path: &SymbolPath,
+    protocol: &str,
+    state_name: &str,
+    equals: bool,
+) -> Result<SymbolicValue, String> {
+    let spec = env
+        .lookup_protocol(protocol)
+        .ok_or_else(|| format!("unknown protocol '{}'", protocol))?;
+    let state_index = spec
+        .states
+        .iter()
+        .position(|s| s == state_name)
+        .ok_or_else(|| {
+            format!(
+                "'{}' is not a valid state in protocol '{}' (valid states: {})",
+                state_name,
+                protocol,
+                spec.states.join(", ")
+            )
+        })? as i64;
+    let formula = Formula::Atom(Atom::StateEq {
+        path: path.clone(),
+        state_index,
+        protocol: protocol.to_string(),
+    });
+    Ok(SymbolicValue::Bool(if equals {
+        formula
+    } else {
+        Formula::Not(Box::new(formula))
+    }))
+}
+
 fn symbolic_int_comparison(
     left: SymbolicValue,
     right: SymbolicValue,
@@ -2129,6 +2413,10 @@ enum ConstraintProofResult {
 impl ConstraintProofResult {
     fn proved(&self) -> bool {
         matches!(self, Self::Proved)
+    }
+
+    fn proved_trivially() -> Self {
+        Self::Proved
     }
 
     fn failed_check(&self) -> Option<&sigil_solver::ProofCheck> {
@@ -2372,6 +2660,24 @@ fn let_proof_context(
                     return proof_context.clone().with_assumptions(assumptions);
                 }
             }
+        }
+    }
+
+    // For protocol-typed bindings not coming from a function call (e.g. record literals or
+    // non-contracted functions), inject the protocol's initial state assumption automatically.
+    if let Some(protocol_name) = resolve_protocol_type_name(&env.normalize_type(value_type), env) {
+        if let Some(spec) = env.lookup_protocol(&protocol_name) {
+            let state_index = spec
+                .states
+                .iter()
+                .position(|s| s == &spec.initial)
+                .unwrap_or(0) as i64;
+            let assumption = Formula::Atom(Atom::StateEq {
+                path: SymbolPath::root(&id_pattern.name),
+                state_index,
+                protocol: protocol_name.clone(),
+            });
+            return proof_context.clone().with_assumption(assumption);
         }
     }
 
@@ -3041,6 +3347,7 @@ fn validate_declaration_surface_types(decl: &Declaration) -> Result<(), TypeErro
             Ok(())
         }
         Declaration::Test(test_decl) => validate_expr_surface_types(&test_decl.body),
+        Declaration::Protocol(_) => Ok(()),
     }
 }
 
@@ -3505,7 +3812,14 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
     )?;
 
     if let Some(ensures) = &func_decl.ensures {
-        let proof =
+        // Protocol state ensures clauses (e.g. `ensures handle.state = Closed`) are axiomatic —
+        // they declare state transitions enforced by the runtime, not proven from the Sigil body.
+        // Skip the body proof when the ensures clause is a state assertion (involves `.state`).
+        let is_state_only_ensures = ensures_is_state_assertion(ensures);
+
+        let proof = if is_state_only_ensures {
+            ConstraintProofResult::proved_trivially()
+        } else {
             prove_expr_satisfies_constraint(&func_env, &body_context, &func_decl.body, ensures)
                 .map_err(|reason| {
                     TypeError::new(
@@ -3515,7 +3829,8 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
                         ),
                         Some(expr_location(ensures)),
                     )
-                })?;
+                })?
+        };
         if !proof.proved() {
             let mut error = TypeError::new(
                 format!(
@@ -4728,9 +5043,27 @@ fn synthesize(env: &TypeEnvironment, expr: &Expr) -> Result<InferenceType, TypeE
     match expr {
         Expr::Literal(lit) => Ok(synthesize_literal(lit)),
 
-        Expr::Identifier(id) => env.lookup(&id.name).ok_or_else(|| {
-            TypeError::new(format!("Unbound variable: {}", id.name), Some(id.location))
-        }),
+        Expr::Identifier(id) => {
+            // Protocol state name labels (UpperCamelCase identifiers used as `handle.state = Label`)
+            // are not regular Sigil bindings. They synthesize as Bool because they only appear
+            // inside state equality comparisons which are Bool-typed.
+            if id.name.chars().next().map(|c| c.is_uppercase()).unwrap_or(false)
+                && env.lookup(&id.name).is_none()
+            {
+                let is_known_state = env
+                    .protocol_registry_snapshot()
+                    .values()
+                    .any(|spec| spec.states.contains(&id.name));
+                if is_known_state {
+                    return Ok(InferenceType::Primitive(TPrimitive {
+                        name: PrimitiveName::Bool,
+                    }));
+                }
+            }
+            env.lookup(&id.name).ok_or_else(|| {
+                TypeError::new(format!("Unbound variable: {}", id.name), Some(id.location))
+            })
+        }
 
         Expr::Binary(bin) => synthesize_binary(env, bin),
 
@@ -4987,7 +5320,6 @@ fn synthesize_application(
     app: &sigil_ast::ApplicationExpr,
 ) -> Result<InferenceType, TypeError> {
     validate_topology_application(env, app)?;
-    let call_contract = lookup_contract_for_call(env, &app.func);
 
     let raw_fn_type = synthesize(env, &app.func)?;
     let fn_type = env.normalize_type(&raw_fn_type);
@@ -5044,15 +5376,11 @@ fn synthesize_application(
                 ));
             }
 
-            if let Some(contract) = call_contract.as_ref() {
-                enforce_call_requires(
-                    env,
-                    &ProofContext::default(),
-                    contract,
-                    &app.args,
-                    app.location,
-                )?;
-            }
+            // Note: enforce_call_requires is intentionally NOT called here.
+            // synthesize_application is called from build_typed_expr after check_with_context
+            // has already enforced requires with the correct proof context. Calling it here
+            // with ProofContext::default() would incorrectly fail protocol state requires.
+            // The authoritative requires check happens in check_application (via check_with_context).
 
             Ok(apply_subst(&subst, &tfunc.return_type))
         }
@@ -6065,6 +6393,16 @@ fn synthesize_field_access(
     // Special case: field access on 'any' type (FFI namespace)
     if matches!(obj_type, InferenceType::Any) {
         return Ok(InferenceType::Any);
+    }
+
+    // Protocol state access: `handle.state` on a protocol-typed value synthesizes as Bool
+    // (it only makes sense inside a comparison like `handle.state = Open`).
+    if field_access.field == "state" {
+        if resolve_protocol_type_name(&obj_type, env).is_some() {
+            return Ok(InferenceType::Primitive(TPrimitive {
+                name: PrimitiveName::Bool,
+            }));
+        }
     }
 
     // Normalize the type to resolve type aliases (e.g., EmailParts -> {local:String,domain:String})
@@ -7597,6 +7935,7 @@ fn atom_to_space_subset(
             let constraint = int_constraint_space(coeff, *op, *rhs)?;
             refine_space_at_path(base_space, &value_path, &constraint)
         }
+        Atom::StateEq { .. } => None,
     }
 }
 
@@ -9535,6 +9874,26 @@ fn check_let(
     use sigil_ast::Pattern;
 
     let value_type = synthesize(env, &let_expr.value)?;
+
+    // Enforce requires clauses on the value expression with the correct proof context.
+    // synthesize alone uses an empty proof context; we need the ambient context here.
+    let value_app = match &let_expr.value {
+        Expr::Application(app) => Some(app.as_ref()),
+        Expr::TypeAscription(type_asc) => {
+            if let Expr::Application(app) = &type_asc.expr {
+                Some(app.as_ref())
+            } else {
+                None
+            }
+        }
+        _ => None,
+    };
+    if let Some(app) = value_app {
+        if let Some(contract) = lookup_contract_for_call(env, &app.func) {
+            enforce_call_requires(env, proof_context, &contract, &app.args, app.location)?;
+        }
+    }
+
     if let Some(terminator) = terminating_expr_info(env, &let_expr.value)? {
         return Err(unreachable_code_error(
             &let_expr.body,
@@ -11705,4 +12064,101 @@ mod tests {
 
     // Match coverage now has explicit tests for Bool, tuples, lists, sums, and
     // supported guard reasoning. Record patterns remain intentionally unsupported.
+
+    // ========================================================================
+    // Protocol type tests
+    // ========================================================================
+
+    #[test]
+    fn test_protocol_declaration_parses_and_registers() {
+        let source = concat!(
+            "t Handle={id:String}\n",
+            "protocol Handle\n",
+            "  Open → Closed via close\n",
+            "  initial = Open\n",
+            "  terminal = Closed\n",
+            "λclose(handle:Handle)=>Bool\n",
+            "requires handle.state = Open\n",
+            "ensures handle.state = Closed\n",
+            "=true\n",
+            "λmain()=>Bool={l h=({id:\"x\"}:Handle);close(h)}",
+        );
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_ok(), "Protocol declaration should parse and register: {result:?}");
+    }
+
+    #[test]
+    fn test_protocol_state_violation_rejected() {
+        // `close` requires Open state. After calling close, the proof context knows
+        // the handle is Closed. A second close call should fail the requires check.
+        let source = concat!(
+            "t Handle={id:String}\n",
+            "protocol Handle\n",
+            "  Open → Closed via close\n",
+            "  initial = Open\n",
+            "  terminal = Closed\n",
+            "λclose(handle:Handle)=>Bool\n",
+            "requires handle.state = Open\n",
+            "ensures handle.state = Closed\n",
+            "=true\n",
+            "λdoubleClose(h:Handle)=>Bool={l _=(close(h):Bool);close(h)}",
+        );
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_err(), "Second close on a Closed handle should fail");
+        let err = result.unwrap_err();
+        assert!(
+            err.message.contains("requires clause") || err.message.contains("requires"),
+            "Expected requires violation, got: {}",
+            err.message
+        );
+    }
+
+    #[test]
+    fn test_protocol_unknown_type_rejected() {
+        let source = concat!(
+            "protocol NonExistentType\n",
+            "  Open → Closed via foo\n",
+            "  initial = Open\n",
+            "  terminal = Closed\n",
+            "λmain()=>Bool=true",
+        );
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_err(), "Protocol on unknown type should fail");
+        assert!(
+            result.unwrap_err().message.contains("SIGIL-PROTO-UNKNOWN-TYPE"),
+            "Expected SIGIL-PROTO-UNKNOWN-TYPE error"
+        );
+    }
+
+    #[test]
+    fn test_protocol_state_contract_validates_correctly() {
+        // A function with a valid requires/ensures state contract should compile.
+        let source = concat!(
+            "t Conn={id:String}\n",
+            "protocol Conn\n",
+            "  Open → Open via send\n",
+            "  Open → Closed via close\n",
+            "  initial = Open\n",
+            "  terminal = Closed\n",
+            "λsend(conn:Conn,msg:String)=>Bool\n",
+            "requires conn.state = Open\n",
+            "ensures conn.state = Open\n",
+            "=true\n",
+            "λclose(conn:Conn)=>Bool\n",
+            "requires conn.state = Open\n",
+            "ensures conn.state = Closed\n",
+            "=true\n",
+            "λmain()=>Bool=true",
+        );
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let result = type_check(&program, source, TypeCheckOptions::default());
+        assert!(result.is_ok(), "Valid protocol contracts should typecheck: {result:?}");
+    }
 }

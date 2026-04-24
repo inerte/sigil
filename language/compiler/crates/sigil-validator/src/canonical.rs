@@ -895,6 +895,7 @@ fn validate_source_layout(
                 validate_expr_layout(&test_decl.body, source, &mut errors);
             }
             Declaration::Type(_)
+            | Declaration::Protocol(_)
             | Declaration::Effect(_)
             | Declaration::Extern(_)
             | Declaration::Transform(_)
@@ -2006,6 +2007,7 @@ fn validate_record_field_ordering(program: &Program) -> Result<(), Vec<Validatio
             }
             Declaration::Effect(_)
             | Declaration::Extern(_)
+            | Declaration::Protocol(_)
             | Declaration::Transform(_)
             | Declaration::Label(_)
             | Declaration::Rule(_) => {}
@@ -2347,6 +2349,7 @@ fn validate_no_shadowing(program: &Program) -> Result<(), Vec<ValidationError>> 
                 validate_expr_no_shadowing(&test_decl.body, &mut scopes, &mut errors);
             }
             Declaration::Type(_)
+            | Declaration::Protocol(_)
             | Declaration::Effect(_)
             | Declaration::Extern(_)
             | Declaration::Transform(_)
@@ -2367,6 +2370,7 @@ fn validate_no_duplicates(program: &Program) -> Result<(), Vec<ValidationError>>
     let mut errors = Vec::new();
 
     let mut type_names: HashMap<String, SourceLocation> = HashMap::new();
+    let mut protocol_names: HashMap<String, SourceLocation> = HashMap::new();
     let mut effect_names: HashMap<String, SourceLocation> = HashMap::new();
     let mut extern_names: HashMap<String, SourceLocation> = HashMap::new();
     let mut feature_flag_names: HashMap<String, SourceLocation> = HashMap::new();
@@ -2499,6 +2503,20 @@ fn validate_no_duplicates(program: &Program) -> Result<(), Vec<ValidationError>>
             }
 
             Declaration::Rule(_) => {}
+
+            Declaration::Protocol(ProtocolDecl { name, location, .. }) => {
+                if let Some(first_loc) = protocol_names.get(name) {
+                    errors.push(ValidationError::DuplicateDeclaration {
+                        kind: "PROTOCOL".to_string(),
+                        what: "protocol".to_string(),
+                        name: name.clone(),
+                        location: *location,
+                        first_location: *first_loc,
+                    });
+                } else {
+                    protocol_names.insert(name.clone(), *location);
+                }
+            }
 
             Declaration::Test(TestDecl {
                 description,
@@ -3347,6 +3365,7 @@ fn validate_no_unused_items(
                     &import_paths,
                 ));
             }
+            Declaration::Protocol(_) => {}
         }
     }
 
@@ -5356,6 +5375,35 @@ fn validate_naming_forms(program: &Program, errors: &mut Vec<ValidationError>) {
                     validate_identifier_forms_in_member_ref(transform, errors);
                 }
             }
+            Declaration::Protocol(protocol_decl) => {
+                if !is_upper_camel_case(&protocol_decl.name) {
+                    errors.push(ValidationError::TypeNameForm {
+                        found: protocol_decl.name.clone(),
+                        suggestion: suggestion_suffix(
+                            &protocol_decl.name,
+                            to_upper_camel_case(&protocol_decl.name),
+                        ),
+                        location: protocol_decl.location,
+                    });
+                }
+                for state in std::iter::once(&protocol_decl.initial)
+                    .chain(std::iter::once(&protocol_decl.terminal))
+                    .chain(
+                        protocol_decl
+                            .transitions
+                            .iter()
+                            .flat_map(|t| [&t.from, &t.to]),
+                    )
+                {
+                    if !is_upper_camel_case(state) {
+                        errors.push(ValidationError::TypeNameForm {
+                            found: state.clone(),
+                            suggestion: suggestion_suffix(state, to_upper_camel_case(state)),
+                            location: protocol_decl.location,
+                        });
+                    }
+                }
+            }
         }
     }
 }
@@ -6515,6 +6563,7 @@ fn collect_filter_then_count_errors(program: &Program, errors: &mut Vec<Validati
                 collect_filter_then_count_in_expr(&test_decl.body, errors)
             }
             Declaration::Type(_)
+            | Declaration::Protocol(_)
             | Declaration::Effect(_)
             | Declaration::Extern(_)
             | Declaration::Transform(_)
@@ -7431,14 +7480,15 @@ fn validate_category_boundaries(declarations: &[Declaration]) -> Result<(), Vec<
         match decl {
             Declaration::Label(_) => 0,
             Declaration::Type(_) => 1,
-            Declaration::Effect(_) => 2,
-            Declaration::Extern(_) => 3,
-            Declaration::FeatureFlag(_) => 4,
-            Declaration::Const(_) => 5,
-            Declaration::Transform(_) => 6,
-            Declaration::Function(_) => 7,
-            Declaration::Rule(_) => 8,
-            Declaration::Test(_) => 9,
+            Declaration::Protocol(_) => 2,
+            Declaration::Effect(_) => 3,
+            Declaration::Extern(_) => 4,
+            Declaration::FeatureFlag(_) => 5,
+            Declaration::Const(_) => 6,
+            Declaration::Transform(_) => 7,
+            Declaration::Function(_) => 8,
+            Declaration::Rule(_) => 9,
+            Declaration::Test(_) => 10,
         }
     };
 
@@ -7451,6 +7501,7 @@ fn validate_category_boundaries(declarations: &[Declaration]) -> Result<(), Vec<
             let category_names = [
                 "label",
                 "type",
+                "protocol",
                 "effect",
                 "extern",
                 "featureFlag",
@@ -7463,6 +7514,7 @@ fn validate_category_boundaries(declarations: &[Declaration]) -> Result<(), Vec<
             let category_symbols = [
                 "label",
                 "t",
+                "protocol",
                 "effect",
                 "e",
                 "featureFlag",
@@ -7477,7 +7529,7 @@ fn validate_category_boundaries(declarations: &[Declaration]) -> Result<(), Vec<
                 message: format!(
                     "SIGIL-CANON-DECL-CATEGORY-ORDER: Wrong category position\n\
                      Found: {} ({}) at line {}\n\
-                     Category order: label => t => effect => e => featureFlag => c => transform => λ => rule => test",
+                     Category order: label => t => protocol => effect => e => featureFlag => c => transform => λ => rule => test",
                     category_symbols[current_index as usize],
                     category_names[current_index as usize],
                     get_declaration_location(decl).start.line
@@ -7556,6 +7608,7 @@ fn get_declaration_location(decl: &Declaration) -> &SourceLocation {
     match decl {
         Declaration::Label(LabelDecl { location, .. }) => location,
         Declaration::Type(TypeDecl { location, .. }) => location,
+        Declaration::Protocol(ProtocolDecl { location, .. }) => location,
         Declaration::Rule(RuleDecl { location, .. }) => location,
         Declaration::Effect(EffectDecl { location, .. }) => location,
         Declaration::Extern(ExternDecl { location, .. }) => location,

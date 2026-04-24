@@ -7,13 +7,25 @@ t Route={
 
 t Server={port:Int}
 
-λclose(client:Client)=>!WebSocket Unit=()
+protocol Client
+  Open → Closed via close
+  Open → Open via messages, send
+  initial = Open
+  terminal = Closed
+
+λclose(client:Client)=>!WebSocket Unit
+requires client.state=Open
+ensures client.state=Closed
+=()
 
 λconnections(handle:§topology.WebSocketHandle,server:Server)=>!WebSocket Owned[§stream.Source[Client]]=((§stream.StreamSource(0):§stream.Source[Client]):Owned[§stream.Source[Client]])
 
 λlisten(port:Int,routes:[Route])=>!WebSocket Owned[Server]=({port:port}:Owned[Server])
 
-λmessages(client:Client)=>!WebSocket Owned[§stream.Source[String]]=((§stream.StreamSource(0):§stream.Source[String]):Owned[§stream.Source[String]])
+λmessages(client:Client)=>!WebSocket Owned[§stream.Source[String]]
+requires client.state=Open
+ensures client.state=Open
+=((§stream.StreamSource(0):§stream.Source[String]):Owned[§stream.Source[String]])
 
 λport(server:Server)=>Int=server.port
 
@@ -22,6 +34,9 @@ t Server={port:Int}
   path:path
 }
 
-λsend(client:Client,text:String)=>!WebSocket Unit=()
+λsend(client:Client,text:String)=>!WebSocket Unit
+requires client.state=Open
+ensures client.state=Open
+=()
 
 λwait(server:Server)=>!WebSocket Unit=()

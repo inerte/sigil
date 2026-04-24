@@ -105,6 +105,7 @@ impl Printer {
             Declaration::Function(function) => self.function_decl(function, indent),
             Declaration::Transform(transform_decl) => self.transform_decl(transform_decl, indent),
             Declaration::Type(type_decl) => self.type_decl(type_decl, indent),
+            Declaration::Protocol(protocol_decl) => self.protocol_decl(protocol_decl, indent),
             Declaration::Label(label_decl) => self.label_decl(label_decl, indent),
             Declaration::Rule(rule_decl) => self.rule_decl(rule_decl, indent),
             Declaration::Effect(effect_decl) => self.effect_decl(effect_decl, indent),
@@ -121,6 +122,38 @@ impl Printer {
             Declaration::Test(test_decl) => self.test_decl(test_decl, indent),
             Declaration::Extern(extern_decl) => self.extern_decl(extern_decl, indent),
         }
+    }
+
+    fn protocol_decl(&mut self, protocol: &ProtocolDecl, indent: usize) {
+        self.indent(indent);
+        self.push("protocol ");
+        self.push(&protocol.name);
+
+        // Sort transitions by (from, to) lexicographically; sort via lists alphabetically
+        let mut sorted_transitions = protocol.transitions.clone();
+        sorted_transitions.sort_by(|a, b| (&a.from, &a.to).cmp(&(&b.from, &b.to)));
+
+        for transition in &sorted_transitions {
+            self.newline();
+            self.push(INDENT);
+            self.push(&transition.from);
+            self.push(" → ");
+            self.push(&transition.to);
+            self.push(" via ");
+            let mut sorted_via = transition.via.clone();
+            sorted_via.sort();
+            self.push(&sorted_via.join(", "));
+        }
+
+        self.newline();
+        self.push(INDENT);
+        self.push("initial = ");
+        self.push(&protocol.initial);
+
+        self.newline();
+        self.push(INDENT);
+        self.push("terminal = ");
+        self.push(&protocol.terminal);
     }
 
     fn function_decl(&mut self, function: &FunctionDecl, indent: usize) {

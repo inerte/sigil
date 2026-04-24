@@ -53,6 +53,12 @@ t Update[Row]=SqlUpdate(
 
 t Value=BoolValue(Bool)|BytesValue(Bytes)|FloatValue(Float)|IntValue(Int)|NullValue()|TextValue(String)
 
+protocol Transaction
+  Open → Closed via commit, rollback
+  Open → Open via allIn, execDeleteIn, execInsertIn, execUpdateIn, oneIn, rawExecIn, rawQueryIn, rawQueryOneIn
+  initial = Open
+  terminal = Closed
+
 λall[Row](handle:§topology.SqlHandle,select:Select[Row])=>!Sql Result[
   [Row],
   SqlFailure
@@ -64,7 +70,10 @@ t Value=BoolValue(Bool)|BytesValue(Bytes)|FloatValue(Float)|IntValue(Int)|NullVa
 λallIn[Row](select:Select[Row],transaction:Transaction)=>!Sql Result[
   [Row],
   SqlFailure
-]=Err({
+]
+requires transaction.state=Open
+ensures transaction.state=Open
+=Err({
   kind:Unsupported(),
   message:"sql intrinsic unavailable"
 })
@@ -105,7 +114,10 @@ t Value=BoolValue(Bool)|BytesValue(Bytes)|FloatValue(Float)|IntValue(Int)|NullVa
 λcommit(transaction:Transaction)=>!Sql Result[
   Unit,
   SqlFailure
-]=Err({
+]
+requires transaction.state=Open
+ensures transaction.state=Closed
+=Err({
   kind:Unsupported(),
   message:"sql intrinsic unavailable"
 })
@@ -139,7 +151,10 @@ t Value=BoolValue(Bool)|BytesValue(Bytes)|FloatValue(Float)|IntValue(Int)|NullVa
 λexecDeleteIn[Row](statement:Delete[Row],transaction:Transaction)=>!Sql Result[
   Int,
   SqlFailure
-]=Err({
+]
+requires transaction.state=Open
+ensures transaction.state=Open
+=Err({
   kind:Unsupported(),
   message:"sql intrinsic unavailable"
 })
@@ -155,7 +170,10 @@ t Value=BoolValue(Bool)|BytesValue(Bytes)|FloatValue(Float)|IntValue(Int)|NullVa
 λexecInsertIn[Row](statement:Insert[Row],transaction:Transaction)=>!Sql Result[
   Int,
   SqlFailure
-]=Err({
+]
+requires transaction.state=Open
+ensures transaction.state=Open
+=Err({
   kind:Unsupported(),
   message:"sql intrinsic unavailable"
 })
@@ -171,7 +189,10 @@ t Value=BoolValue(Bool)|BytesValue(Bytes)|FloatValue(Float)|IntValue(Int)|NullVa
 λexecUpdateIn[Row](statement:Update[Row],transaction:Transaction)=>!Sql Result[
   Int,
   SqlFailure
-]=Err({
+]
+requires transaction.state=Open
+ensures transaction.state=Open
+=Err({
   kind:Unsupported(),
   message:"sql intrinsic unavailable"
 })
@@ -272,7 +293,10 @@ t Value=BoolValue(Bool)|BytesValue(Bytes)|FloatValue(Float)|IntValue(Int)|NullVa
 λoneIn[Row](select:Select[Row],transaction:Transaction)=>!Sql Result[
   Option[Row],
   SqlFailure
-]=Err({
+]
+requires transaction.state=Open
+ensures transaction.state=Open
+=Err({
   kind:Unsupported(),
   message:"sql intrinsic unavailable"
 })
@@ -303,7 +327,10 @@ t Value=BoolValue(Bool)|BytesValue(Bytes)|FloatValue(Float)|IntValue(Int)|NullVa
 λrawExecIn(statement:RawStatement,transaction:Transaction)=>!Sql Result[
   Int,
   SqlFailure
-]=Err({
+]
+requires transaction.state=Open
+ensures transaction.state=Open
+=Err({
   kind:Unsupported(),
   message:"sql intrinsic unavailable"
 })
@@ -319,7 +346,10 @@ t Value=BoolValue(Bool)|BytesValue(Bytes)|FloatValue(Float)|IntValue(Int)|NullVa
 λrawQueryIn(statement:RawStatement,transaction:Transaction)=>!Sql Result[
   [RawRow],
   SqlFailure
-]=Err({
+]
+requires transaction.state=Open
+ensures transaction.state=Open
+=Err({
   kind:Unsupported(),
   message:"sql intrinsic unavailable"
 })
@@ -335,7 +365,10 @@ t Value=BoolValue(Bool)|BytesValue(Bytes)|FloatValue(Float)|IntValue(Int)|NullVa
 λrawQueryOneIn(statement:RawStatement,transaction:Transaction)=>!Sql Result[
   Option[RawRow],
   SqlFailure
-]=Err({
+]
+requires transaction.state=Open
+ensures transaction.state=Open
+=Err({
   kind:Unsupported(),
   message:"sql intrinsic unavailable"
 })
@@ -343,7 +376,10 @@ t Value=BoolValue(Bool)|BytesValue(Bytes)|FloatValue(Float)|IntValue(Int)|NullVa
 λrollback(transaction:Transaction)=>!Sql Result[
   Unit,
   SqlFailure
-]=Err({
+]
+requires transaction.state=Open
+ensures transaction.state=Closed
+=Err({
   kind:Unsupported(),
   message:"sql intrinsic unavailable"
 })

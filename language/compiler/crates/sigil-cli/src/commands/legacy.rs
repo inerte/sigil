@@ -272,6 +272,7 @@ fn ast_declaration_summary(program: &Program) -> serde_json::Value {
         match declaration {
             Declaration::Function(_) => functions += 1,
             Declaration::Type(_) => types += 1,
+            Declaration::Protocol(_) => {}
             Declaration::Effect(_) => effects += 1,
             Declaration::Const(_) => consts += 1,
             Declaration::FeatureFlag(_) => feature_flags += 1,
@@ -1286,6 +1287,7 @@ fn inspect_proof_sites(module: &AnalyzedModule) -> Vec<Value> {
                 );
             }
             Declaration::Effect(_)
+            | Declaration::Protocol(_)
             | Declaration::Const(_)
             | Declaration::Extern(_)
             | Declaration::Transform(_)

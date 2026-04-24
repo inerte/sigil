@@ -407,6 +407,7 @@ fn collect_declaration_modules(declaration: &Declaration, modules: &mut HashSet<
             collect_expr_modules(&test_decl.body, modules);
         }
         Declaration::Extern(_) => {}
+        Declaration::Protocol(_) => {}
     }
 }
 

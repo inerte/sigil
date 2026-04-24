@@ -13,6 +13,8 @@ pub enum Declaration {
     Transform(TransformDecl),
     #[cfg_attr(feature = "serde", serde(rename = "TypeDecl"))]
     Type(TypeDecl),
+    #[cfg_attr(feature = "serde", serde(rename = "ProtocolDecl"))]
+    Protocol(ProtocolDecl),
     #[cfg_attr(feature = "serde", serde(rename = "LabelDecl"))]
     Label(LabelDecl),
     #[cfg_attr(feature = "serde", serde(rename = "RuleDecl"))]
@@ -27,6 +29,27 @@ pub enum Declaration {
     Test(TestDecl),
     #[cfg_attr(feature = "serde", serde(rename = "ExternDecl"))]
     Extern(ExternDecl),
+}
+
+/// Protocol declaration: compile-time state machine enforcement for a handle type
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ProtocolDecl {
+    pub name: String,
+    pub transitions: Vec<ProtocolTransition>,
+    pub initial: String,
+    pub terminal: String,
+    pub location: SourceLocation,
+}
+
+/// A single state transition in a protocol declaration
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct ProtocolTransition {
+    pub from: String,
+    pub to: String,
+    pub via: Vec<String>,
+    pub location: SourceLocation,
 }
 
 /// Function declaration

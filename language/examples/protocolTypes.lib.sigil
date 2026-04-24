@@ -1,0 +1,17 @@
+t Ticket={id:String}
+
+protocol Ticket
+  Open → Closed via resolve
+  Open → Open via annotate
+  initial = Open
+  terminal = Closed
+
+λannotate(note:String,ticket:Ticket)=>Ticket
+requires ticket.state=Open
+ensures result.state=Open
+={id:ticket.id}
+
+λresolve(ticket:Ticket)=>Bool
+requires ticket.state=Open
+ensures ticket.state=Closed
+=true

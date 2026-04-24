@@ -12,17 +12,32 @@ t Spawn={
   rows:Int
 }
 
+protocol SessionRef
+  Open → Closed via closeManaged, waitManaged
+  Open → Open via eventsManaged, resizeManaged, writeManaged
+  initial = Open
+  terminal = Closed
+
 λclose(session:Session)=>!Pty Unit=()
 
-λcloseManaged(session:SessionRef)=>!Pty Unit=()
+λcloseManaged(session:SessionRef)=>!Pty Unit
+requires session.state=Open
+ensures session.state=Closed
+=()
 
 λevents(session:Session)=>!Pty §stream.Source[Event]=(§stream.StreamSource(0):§stream.Source[Event])
 
-λeventsManaged(session:SessionRef)=>!Pty Owned[§stream.Source[Event]]=((§stream.StreamSource(0):§stream.Source[Event]):Owned[§stream.Source[Event]])
+λeventsManaged(session:SessionRef)=>!Pty Owned[§stream.Source[Event]]
+requires session.state=Open
+ensures session.state=Open
+=((§stream.StreamSource(0):§stream.Source[Event]):Owned[§stream.Source[Event]])
 
 λresize(cols:Int,rows:Int,session:Session)=>!Pty Unit=()
 
-λresizeManaged(cols:Int,rows:Int,session:SessionRef)=>!Pty Unit=()
+λresizeManaged(cols:Int,rows:Int,session:SessionRef)=>!Pty Unit
+requires session.state=Open
+ensures session.state=Open
+=()
 
 λspawn(request:Spawn)=>!Pty Owned[Session]=({pid:-1}:Owned[Session])
 
@@ -34,8 +49,14 @@ t Spawn={
 
 λwait(session:Session)=>!Pty Int=-1
 
-λwaitManaged(session:SessionRef)=>!Pty Int=-1
+λwaitManaged(session:SessionRef)=>!Pty Int
+requires session.state=Open
+ensures session.state=Closed
+=-1
 
 λwrite(input:String,session:Session)=>!Pty Unit=()
 
-λwriteManaged(input:String,session:SessionRef)=>!Pty Unit=()
+λwriteManaged(input:String,session:SessionRef)=>!Pty Unit
+requires session.state=Open
+ensures session.state=Open
+=()

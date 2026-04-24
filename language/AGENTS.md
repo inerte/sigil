@@ -54,13 +54,18 @@ If you change syntax, audit all impacted layers:
 - docs/spec examples
 - runnable examples/tests
 
+When changing protocol type definitions (adding/removing states or transitions):
+- update the `protocol` declaration in the relevant stdlib file (`sql.lib.sigil`, `websocket.lib.sigil`, `pty.lib.sigil`)
+- update the `requires`/`ensures` state annotations on all functions listed in `via`
+- update `language/examples/protocolTypes.lib.sigil` if demonstrating the new surface
+
 Current canonical boolean operators:
 - `and`
 - `or`
 - `¬`
 
 Module scope is declaration-only:
-- valid top-level forms: `label`, `effect`, `featureFlag`, `rule`, `transform`, `t`, `e`, `c`, `λ`, `test`
+- valid top-level forms: `label`, `protocol`, `effect`, `featureFlag`, `rule`, `transform`, `t`, `e`, `c`, `λ`, `test`
 - never generate top-level `l`
 - use `c` for immutable module-level values
 - move setup bindings inside `main()` or another function body
@@ -104,7 +109,8 @@ Current high-signal printer choices:
 - `match` is the branching surface; do not reintroduce a separate public `if` story
 - exhaustiveness and dead-arm checking currently cover `Bool`, `Unit`, tuples, list shapes, exact record patterns, and nominal sum constructors
 - coverage, contracts, and refinement narrowing share the same canonical proof fragment
-- supported proof facts include Bool/Int literals, rooted or pattern-bound values, `value`, `result`, field access, `#` over strings/lists/maps, `+`, `-`, comparisons, `and`, `or`, `not`, direct boolean local aliases of those supported facts, and pattern-shape facts from tuples, lists, exact records, and nominal sum constructors
+- supported proof facts include Bool/Int literals, rooted or pattern-bound values, `value`, `result`, field access, `#` over strings/lists/maps, `+`, `-`, comparisons, `and`, `or`, `not`, direct boolean local aliases of those supported facts, pattern-shape facts from tuples, lists, exact records, and nominal sum constructors, and `handle.state=StateName` for protocol-typed values (state assertions)
+- protocol state facts are injected automatically from `let` bindings and `ensures` propagation; state assertions in `requires`/`ensures` are axiomatic (not proven from the function body)
 - unsupported guards remain valid syntax but stay opaque to coverage and refinement narrowing
 - exact record patterns are part of the current supported checker surface and must mention all fields of the matched record type
 

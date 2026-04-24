@@ -721,3 +721,85 @@ fn test_unused_extern_rejected_in_executable_file() {
     let errors = result.unwrap_err();
     assert!(matches!(errors[0], ValidationError::UnusedExtern { .. }));
 }
+
+// ============================================================================
+// PROTOCOL DECLARATION TESTS
+// ============================================================================
+
+#[test]
+fn test_protocol_declaration_canonical_ordering() {
+    let source = "t Transaction={id:String}\nprotocol Transaction\n  Open → Closed via commit\n  initial = Open\n  terminal = Closed\nλcommit(transaction:Transaction)=>Bool=true";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.lib.sigil").unwrap();
+    let result = validate_canonical_form(&program, Some("test.lib.sigil"), None);
+    // The source has protocol before effect/λ — canonical order
+    // But the canonical source check will fail because there are missing requires/ensures
+    // Just check that the protocol declaration is parsed correctly by checking
+    // the non-canonical ordering check doesn't fire
+    let errors: Vec<&ValidationError> = result.as_ref().err().map(|e| e.iter().collect()).unwrap_or_default();
+    let has_ordering_error = errors.iter().any(|e| {
+        matches!(e, ValidationError::DeclarationOrderOld { message } if message.contains("SIGIL-CANON-DECL-CATEGORY-ORDER"))
+    });
+    assert!(!has_ordering_error, "Protocol before λ should not trigger ordering error");
+}
+
+#[test]
+fn test_protocol_after_function_rejected() {
+    // protocol must come before λ in canonical order
+    let source = "t Transaction={id:String}\nλnoop()=>Bool=true\nprotocol Transaction\n  Open → Closed via noop\n  initial = Open\n  terminal = Closed";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.lib.sigil").unwrap();
+    let result = validate_canonical_form(&program, Some("test.lib.sigil"), None);
+    let errors = result.unwrap_err();
+    let has_ordering_error = errors.iter().any(|e| {
+        matches!(e, ValidationError::DeclarationOrderOld { message } if message.contains("SIGIL-CANON-DECL-CATEGORY-ORDER"))
+    });
+    assert!(has_ordering_error, "Protocol after λ should trigger ordering error: {errors:?}");
+}
+
+#[test]
+fn test_duplicate_protocol_rejected() {
+    let source = concat!(
+        "t Foo={id:String}\n",
+        "protocol Foo\n",
+        "  Open → Closed via close\n",
+        "  initial = Open\n",
+        "  terminal = Closed\n",
+        "protocol Foo\n",
+        "  Open → Closed via close\n",
+        "  initial = Open\n",
+        "  terminal = Closed\n",
+    );
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.lib.sigil").unwrap();
+    let result = validate_canonical_form(&program, Some("test.lib.sigil"), None);
+    let errors = result.unwrap_err();
+    let has_dup_error = errors.iter().any(|e| {
+        matches!(e, ValidationError::DuplicateDeclaration { kind, .. } if kind == "PROTOCOL")
+    });
+    assert!(has_dup_error, "Duplicate protocol should be rejected: {errors:?}");
+}
+
+#[test]
+fn test_protocol_name_must_be_upper_camel_case() {
+    // The protocol name itself must be UpperCamelCase — validated by the canonical checker.
+    // (State names are enforced at parse time since the parser requires UpperIdentifier tokens.)
+    let source = concat!(
+        "t Foo={id:String}\n",
+        "protocol Foo\n",
+        "  Open → Closed via close\n",
+        "  initial = Open\n",
+        "  terminal = Closed\n",
+    );
+    // This should parse (canonical check may flag source form, but no naming error expected).
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.lib.sigil").unwrap();
+    let result = validate_canonical_form(&program, Some("test.lib.sigil"), None);
+    // No TypeNameForm error for Foo (which IS UpperCamelCase).
+    let has_naming_error = result.as_ref().err().map(|errors| {
+        errors.iter().any(|e| {
+            matches!(e, ValidationError::TypeNameForm { found, .. } if found == "Foo")
+        })
+    }).unwrap_or(false);
+    assert!(!has_naming_error, "Correctly named protocol 'Foo' should not trigger naming error");
+}

@@ -506,6 +506,7 @@ pub fn type_check(
         }
 
         validate_type_constraints(&env, program)?;
+        validate_protocol_contracts(&env, program)?;
 
         let mut typed_declarations = Vec::new();
 
@@ -1240,6 +1241,32 @@ fn validate_type_constraints(env: &TypeEnvironment, program: &Program) -> Result
         }
     }
 
+    Ok(())
+}
+
+fn validate_protocol_contracts(
+    env: &TypeEnvironment,
+    program: &Program,
+) -> Result<(), TypeError> {
+    for decl in &program.declarations {
+        let Declaration::Protocol(protocol_decl) = decl else {
+            continue;
+        };
+        let Some(spec) = env.lookup_protocol(&protocol_decl.name) else {
+            continue;
+        };
+        for fn_name in spec.transitions.keys() {
+            if env.lookup_function_contract(fn_name).is_none() {
+                return Err(TypeError::new(
+                    format!(
+                        "SIGIL-PROTO-MISSING-CONTRACT: function '{}' is listed in protocol '{}' via clause but has no requires/ensures state annotations",
+                        fn_name, protocol_decl.name
+                    ),
+                    Some(protocol_decl.location),
+                ));
+            }
+        }
+    }
     Ok(())
 }
 

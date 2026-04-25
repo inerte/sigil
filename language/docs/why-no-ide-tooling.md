@@ -82,7 +82,7 @@ Compiler provides diagnostics, AI interprets
 When you think about it, this makes perfect sense:
 
 - **Claude Code already knows how to read source files** - it doesn't need `.sigil.map` files
-- **Claude Code invokes the compiler directly** - `cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile`
+- **Claude Code invokes the compiler directly** - `cargo run -q -p sigil-cli --no-default-features -- compile`
 - **Claude Code provides better explanations** than static documentation - contextualized, interactive, always current
 
 The semantic maps were documentation frozen at compile time. Claude Code's explanations are generated on-demand from live source code.
@@ -138,7 +138,7 @@ There's only one valid token sequence. No ambiguity. No style debates. Claude Co
 The compiler has built-in test discovery and execution:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests
+cargo run -q -p sigil-cli --no-default-features -- test projects/algorithms/tests
 ```
 
 Claude Code uses this to verify correctness after generating code.
@@ -490,13 +490,13 @@ The Sigil compiler is open source. No LSP server. No VS Code extension. Just:
 
 ```bash
 # Compile Sigil code
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile fibonacci.sigil
+cargo run -q -p sigil-cli --no-default-features -- compile fibonacci.sigil
 
 # Run Sigil code
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run fibonacci.sigil
+cargo run -q -p sigil-cli --no-default-features -- run fibonacci.sigil
 
 # Run tests
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests
+cargo run -q -p sigil-cli --no-default-features -- test projects/algorithms/tests
 ```
 
 Use Claude Code (or your AI assistant of choice) to:

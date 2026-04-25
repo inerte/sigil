@@ -26,29 +26,33 @@ From the repo root:
 
 ```bash
 # Build the compiler
-cargo build --manifest-path language/compiler/Cargo.toml -p sigil-cli
+cargo build -p sigil-cli --no-default-features
 
 # Compile a file
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile projects/algorithms/src/fibonacci.sigil
+cargo run -q -p sigil-cli --no-default-features -- compile projects/algorithms/src/fibonacci.sigil
 
 # Compile a directory recursively
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile projects/algorithms --ignore .git --ignore-from .gitignore
+cargo run -q -p sigil-cli --no-default-features -- compile projects/algorithms --ignore .git --ignore-from .gitignore
 
 # Run a file
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run projects/algorithms/src/fibonacci.sigil
+cargo run -q -p sigil-cli --no-default-features -- run projects/algorithms/src/fibonacci.sigil
 
 # Run tests
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests
+cargo run -q -p sigil-cli --no-default-features -- test projects/algorithms/tests
 
 # Run a crate test suite
-cargo test --manifest-path language/compiler/Cargo.toml -p sigil-parser
+cargo test -p sigil-parser --no-default-features
 ```
 
-For automation after the build:
+CI and the root `pnpm` scripts use system Z3 with `--no-default-features`; install `z3` and `pkg-config` locally for that path. Omitting `--no-default-features` enables vendored Z3, which avoids a system dependency but makes a fresh build slower.
+
+The repo root has a Cargo workspace shim for worktree-friendly commands. The original workspace manifest remains at `language/compiler/Cargo.toml`, so existing commands with `--manifest-path language/compiler/Cargo.toml` still work.
+
+For automation, prefer `cargo run` or `pnpm sigil ...` so scripts continue to work when `CARGO_TARGET_DIR` is set. If you already built the default debug profile from the repo root and are not using a custom target directory, the binary is at:
 
 ```bash
-language/compiler/target/debug/sigil compile projects/algorithms/src/fibonacci.sigil
-language/compiler/target/debug/sigil compile . --ignore .git --ignore-from .gitignore
+target/debug/sigil compile projects/algorithms/src/fibonacci.sigil
+target/debug/sigil compile . --ignore .git --ignore-from .gitignore
 ```
 
 ## Notes

@@ -14,7 +14,7 @@
 ## Build
 
 ```bash
-language/compiler/target/debug/sigil run projects/ssg/src/main.sigil
+pnpm sigil run projects/ssg/src/main.sigil
 ```
 
 This produces HTML pages plus:
@@ -29,6 +29,6 @@ Generated output goes to `website/.local/site/`.
 ## Validate
 
 ```bash
-language/compiler/target/debug/sigil test projects/ssg/tests
-language/compiler/target/debug/sigil run projects/repoAudit/src/main.sigil -- --check repo-compile
+pnpm sigil test projects/ssg/tests
+pnpm sigil run projects/repoAudit/src/main.sigil -- --check repo-compile
 ```

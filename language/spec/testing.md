@@ -143,23 +143,23 @@ rather than inferring it from ambient global state.
 Current user-facing command shape:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
+cargo run -q -p sigil-cli --no-default-features -- test
 ```
 
 Common modes:
 
 ```bash
 # all tests in the current project tests/ directory
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
+cargo run -q -p sigil-cli --no-default-features -- test
 
 # the self-testing language examples
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test language/examples
+cargo run -q -p sigil-cli --no-default-features -- test language/examples
 
 # one file or directory
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests
+cargo run -q -p sigil-cli --no-default-features -- test projects/algorithms/tests
 
 # filter by name substring
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --match "cache"
+cargo run -q -p sigil-cli --no-default-features -- test --match "cache"
 
 ```
 

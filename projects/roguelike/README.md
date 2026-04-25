@@ -20,5 +20,5 @@ The player starts with a sword, bow, arrows, and one potion. Movement is on `w/a
 Run from repo root:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run projects/roguelike/src/main.sigil
+cargo run -q -p sigil-cli --no-default-features -- run projects/roguelike/src/main.sigil
 ```

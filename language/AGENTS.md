@@ -221,8 +221,8 @@ When adding or relying on stdlib functions:
 ### 5) Comments/docs can be stale; compiler/tests are source of truth
 
 Before assuming syntax is valid, verify with:
-- `cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile <file>`
-- `cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile <dir> --ignore .git --ignore-from .gitignore`
+- `cargo run -q -p sigil-cli --no-default-features -- compile <file>`
+- `cargo run -q -p sigil-cli --no-default-features -- compile <dir> --ignore .git --ignore-from .gitignore`
 - parser/validator/typechecker tests
 
 If docs disagree with implementation, either:
@@ -254,38 +254,38 @@ expected to catch compile drift across first-party Sigil sources.
 Build compiler:
 
 ```bash
-cargo build --manifest-path language/compiler/Cargo.toml -p sigil-cli
+cargo build -p sigil-cli --no-default-features
 ```
 
 Compile one Sigil file:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile language/examples/listOperations.sigil
+cargo run -q -p sigil-cli --no-default-features -- compile language/examples/listOperations.sigil
 ```
 
 Compile a directory recursively:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile language/examples --ignore .git --ignore-from .gitignore
+cargo run -q -p sigil-cli --no-default-features -- compile language/examples --ignore .git --ignore-from .gitignore
 ```
 
 Run one Sigil file:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run language/examples/listOperations.sigil
+cargo run -q -p sigil-cli --no-default-features -- run language/examples/listOperations.sigil
 ```
 
 Run project tests:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/todo-app/tests
+cargo run -q -p sigil-cli --no-default-features -- test projects/algorithms/tests
+cargo run -q -p sigil-cli --no-default-features -- test projects/todo-app/tests
 ```
 
 Run compiler tests:
 
 ```bash
-cargo test --manifest-path language/compiler/Cargo.toml
+cargo test --workspace --no-default-features
 ```
 
 ### File Naming Conventions
@@ -357,8 +357,8 @@ Test-capable files must:
 
 Run tests:
 ```bash
-cargo build --manifest-path language/compiler/Cargo.toml -p sigil-cli
-language/compiler/target/debug/sigil test projects/algorithms/tests
+cargo build -p sigil-cli --no-default-features
+cargo run -q -p sigil-cli --no-default-features -- test projects/algorithms/tests
 ```
 
 Coverage gate behavior:
@@ -459,7 +459,7 @@ Rust tests go in:
 
 Run compiler tests:
 ```bash
-cargo test --manifest-path language/compiler/Cargo.toml
+cargo test --workspace --no-default-features
 ```
 
 ## Directory-Specific Notes

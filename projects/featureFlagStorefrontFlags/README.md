@@ -12,5 +12,5 @@ their typed value surface.
 ## Validate
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- package validate projects/featureFlagStorefrontFlags
+cargo run -q -p sigil-cli --no-default-features -- package validate projects/featureFlagStorefrontFlags
 ```

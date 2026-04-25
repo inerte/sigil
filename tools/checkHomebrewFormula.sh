@@ -23,7 +23,11 @@ if [[ -z "$version" ]]; then
   exit 1
 fi
 
-sigil_bin="language/compiler/target/debug/sigil"
+if [[ -n "${SIGIL_BIN:-}" ]]; then
+  sigil_cmd=("$SIGIL_BIN")
+else
+  sigil_cmd=(cargo run -q -p sigil-cli --no-default-features --)
+fi
 
 npm install --prefix language/runtime/node --registry=https://registry.npmjs.org
 
@@ -40,13 +44,13 @@ tar -C "$archive_extract_dir" -xzf "$tmp_dir/$archive_base.tar.gz"
 cp -R "$archive_extract_dir/$archive_base/runtime" "$homebrew_prefix_dir/share/sigil/runtime"
 "$repo_root/tools/checkBundledNodeRuntime.sh" "$homebrew_prefix_dir"
 
-"$sigil_bin" test projects/homebrewPackaging/tests --env release
+"${sigil_cmd[@]}" test projects/homebrewPackaging/tests --env release
 
 sigilHomebrewVersion="$version" \
 sigilHomebrewRepo="inerte/sigil" \
 sigilHomebrewSha256SumsPath="$checksums_path" \
 sigilHomebrewOutputPath="$tmp_dir/sigil.rb" \
-  "$sigil_bin" run projects/homebrewPackaging/src/main.sigil --env release
+  "${sigil_cmd[@]}" run projects/homebrewPackaging/src/main.sigil --env release
 
 diff -u "$expected_path" "$tmp_dir/sigil.rb"
 

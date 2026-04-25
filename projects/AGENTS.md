@@ -89,28 +89,28 @@ If a fix requires compiler work, make the compiler change in `language/` and the
 Compile or run a single project file:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile projects/<project>/src/<file>.sigil
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run projects/<project>/src/<file>.sigil
+cargo run -q -p sigil-cli --no-default-features -- compile projects/<project>/src/<file>.sigil
+cargo run -q -p sigil-cli --no-default-features -- run projects/<project>/src/<file>.sigil
 ```
 
 Run the default project entrypoint when present:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run projects/<project>/src/main.sigil
+cargo run -q -p sigil-cli --no-default-features -- run projects/<project>/src/main.sigil
 ```
 
 Run project tests:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/todo-app/tests
+cargo run -q -p sigil-cli --no-default-features -- test projects/algorithms/tests
+cargo run -q -p sigil-cli --no-default-features -- test projects/todo-app/tests
 ```
 
 If a project declares direct package dependencies in `sigil.json`, install them
 before compile/run/test on a fresh clone:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- package install projects/featureFlagStorefront
+cargo run -q -p sigil-cli --no-default-features -- package install projects/featureFlagStorefront
 ```
 
 ## Common Pitfalls in `projects/`

@@ -26,7 +26,7 @@ Current status:
 cd projects/minesweep
 pnpm install
 pnpm dev
-cargo run -q -p sigil-cli --manifest-path ../../language/compiler/Cargo.toml -- test tests
+cargo run -q -p sigil-cli --no-default-features -- test tests
 ```
 
 `pnpm dev` regenerates `web/src/generated/minesweep-domain.ts` before starting Vite.
@@ -45,5 +45,5 @@ If you only want the textual board preview:
 
 ```bash
 cd projects/minesweep
-cargo run -q -p sigil-cli --manifest-path ../../language/compiler/Cargo.toml -- run src/main.sigil
+cargo run -q -p sigil-cli --no-default-features -- run src/main.sigil
 ```

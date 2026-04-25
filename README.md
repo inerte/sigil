@@ -19,8 +19,11 @@ This repo contains three distinct things:
 # Build the compiler
 pnpm build
 
+# Run the compiler test suite with the same Cargo feature flags used in CI
+pnpm sigil:test:compiler
+
 # Compile a file through the root convenience wrapper
-pnpm sigil -- compile projects/algorithms/src/fibonacci.sigil
+pnpm sigil compile projects/algorithms/src/fibonacci.sigil
 
 # Run Sigil tests in the algorithms example project
 pnpm sigil:test:algorithms
@@ -29,8 +32,41 @@ pnpm sigil:test:algorithms
 pnpm sigil:test:todo
 
 # Build the website into website/.local/site
-language/compiler/target/debug/sigil run projects/ssg/src/main.sigil
+pnpm sigil:build:website
 ```
+
+## Fresh Worktree Setup
+
+Fresh git worktrees do not share generated build artifacts with your main checkout unless you explicitly share a Cargo target directory. From a new worktree, use:
+
+```bash
+# Rust is pinned by rust-toolchain.toml.
+rustup show
+
+# Node 24 is pinned for humans and matches CI.
+corepack enable
+corepack prepare pnpm@10.0.0 --activate
+pnpm install --frozen-lockfile
+
+# CI-style compiler check.
+pnpm sigil:test:compiler
+```
+
+The repo root now has a Cargo workspace shim, so `cargo test -p sigil-typechecker` works from the repo root. The original compiler workspace at `language/compiler/Cargo.toml` still works for commands that use `--manifest-path`.
+
+CI and root `pnpm` scripts use system Z3 with Cargo `--no-default-features`. Install it locally before running those scripts:
+
+```bash
+# macOS
+brew install z3 pkg-config
+
+# Debian/Ubuntu
+sudo apt-get install libz3-dev pkg-config
+```
+
+If you do not have system Z3 installed, direct Cargo commands without `--no-default-features` use the vendored Z3 feature instead, but the first build is much slower.
+
+For multiple worktrees, you can share build outputs with `CARGO_TARGET_DIR=/path/to/shared/target`; otherwise each worktree gets its own cold `target/`.
 
 ## Installation
 
@@ -75,9 +111,11 @@ knowledge surface immediately, without depending on web search or model priors.
 If you are contributing to the compiler itself, build from source instead:
 
 ```bash
-pnpm install
+corepack enable
+corepack prepare pnpm@10.0.0 --activate
+pnpm install --frozen-lockfile
 pnpm build
-./language/compiler/target/debug/sigil --version
+pnpm sigil help
 ```
 
 ## Notes

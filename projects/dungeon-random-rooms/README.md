@@ -10,5 +10,5 @@ Current stage:
 Run from repo root:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run projects/dungeon-random-rooms/src/main.sigil
+cargo run -q -p sigil-cli --no-default-features -- run projects/dungeon-random-rooms/src/main.sigil
 ```

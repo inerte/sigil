@@ -217,30 +217,30 @@ Examples:
 
 ```bash
 # Run all tests in the current project tests/ directory
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
+cargo run -q -p sigil-cli --no-default-features -- test
 
 # Run the self-testing language examples
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test language/examples
+cargo run -q -p sigil-cli --no-default-features -- test language/examples
 
 # Run a specific file or subdirectory
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests/basicTesting.sigil
+cargo run -q -p sigil-cli --no-default-features -- test projects/algorithms/tests/basicTesting.sigil
 
 # Filter by test name substring
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --match "cache"
+cargo run -q -p sigil-cli --no-default-features -- test --match "cache"
 
 # Trace one test file
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --trace projects/algorithms/tests/basicTesting.sigil
+cargo run -q -p sigil-cli --no-default-features -- test --trace projects/algorithms/tests/basicTesting.sigil
 
 # Stop the current test when a function is reached
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --break-fn helper projects/algorithms/tests/basicTesting.sigil
+cargo run -q -p sigil-cli --no-default-features -- test --break-fn helper projects/algorithms/tests/basicTesting.sigil
 
 # Record and replay a test run
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --record .local/tests.replay.json projects/algorithms/tests/basicTesting.sigil
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --replay .local/tests.replay.json projects/algorithms/tests/basicTesting.sigil
+cargo run -q -p sigil-cli --no-default-features -- test --record .local/tests.replay.json projects/algorithms/tests/basicTesting.sigil
+cargo run -q -p sigil-cli --no-default-features -- test --replay .local/tests.replay.json projects/algorithms/tests/basicTesting.sigil
 
 # Start a replay-backed stepping session for one exact test id
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- debug test start --replay .local/tests.replay.json --test "projects/algorithms/tests/basicTesting.sigil::cache hit returns cached value" --watch result.value projects/algorithms/tests/basicTesting.sigil
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- debug test step-into .local/debug/<session>.json
+cargo run -q -p sigil-cli --no-default-features -- debug test start --replay .local/tests.replay.json --test "projects/algorithms/tests/basicTesting.sigil::cache hit returns cached value" --watch result.value projects/algorithms/tests/basicTesting.sigil
+cargo run -q -p sigil-cli --no-default-features -- debug test step-into .local/debug/<session>.json
 
 ```
 

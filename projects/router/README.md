@@ -13,11 +13,11 @@ The project exists to exercise the package system, not to be a full web framewor
 Run its tests from the repo root:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/router/tests
+cargo run -q -p sigil-cli --no-default-features -- test projects/router/tests
 ```
 
 Publish it with the new package command:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- package publish
+cargo run -q -p sigil-cli --no-default-features -- package publish
 ```

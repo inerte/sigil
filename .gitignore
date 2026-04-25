@@ -68,6 +68,7 @@ temp/
 # Rust
 target/
 Cargo.lock
+!/Cargo.lock
 *.rs.bk
 *.pdb
 

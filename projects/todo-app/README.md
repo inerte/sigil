@@ -26,7 +26,7 @@ React stays idiomatic in TypeScript/JSX for UI rendering, list updates, hooks, e
 cd projects/todo-app
 pnpm install
 pnpm dev
-cargo run -q -p sigil-cli --manifest-path ../../language/compiler/Cargo.toml -- test tests
+cargo run -q -p sigil-cli --no-default-features -- test tests
 ```
 
 `pnpm dev` regenerates `web/src/generated/todo-domain.ts` before starting Vite.

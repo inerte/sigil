@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "sigil:compile": "cargo build --quiet --manifest-path ../../language/compiler/Cargo.toml -p sigil-cli && ../../language/compiler/target/debug/sigil compile src/flashcardsDomain.lib.sigil -o web/src/generated/flashcards-domain.ts && mkdir -p web/src/generated/core && cp .local/core/prelude.ts web/src/generated/core/prelude.ts",
+    "sigil:compile": "cargo run -q -p sigil-cli --no-default-features -- compile src/flashcardsDomain.lib.sigil -o web/src/generated/flashcards-domain.ts && mkdir -p web/src/generated/core && cp .local/core/prelude.ts web/src/generated/core/prelude.ts",
     "predev": "pnpm sigil:compile",
     "dev": "vite",
     "prebuild": "pnpm sigil:compile",

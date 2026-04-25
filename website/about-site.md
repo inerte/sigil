@@ -18,7 +18,7 @@ The static site generator is <a href="https://github.com/inerte/sigil/tree/main/
 ## Build
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run projects/ssg/src/main.sigil
+cargo run -q -p sigil-cli --no-default-features -- run projects/ssg/src/main.sigil
 ```
 
 Generated output goes to `website/.local/site/`.

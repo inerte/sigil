@@ -64,10 +64,10 @@ Sigil includes first-class `test` declarations and a built-in test runner:
 
 ```bash
 # JSON output by default (machine-readable)
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
+cargo run -q -p sigil-cli --no-default-features -- test
 
 # Run a subset by description substring
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test --match "toggle"
+cargo run -q -p sigil-cli --no-default-features -- test --match "toggle"
 ```
 
 - Tests must live under `./tests`
@@ -124,7 +124,7 @@ The repository also ships a first-party audit runner for checked docs/examples
 and other repo invariants:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run projects/repoAudit/src/main.sigil
+cargo run -q -p sigil-cli --no-default-features -- run projects/repoAudit/src/main.sigil
 ```
 
 Use repeated `--check <id>` flags to run a subset such as `docs-drift`,
@@ -434,7 +434,7 @@ Git: Commits .sigil file
 
 ```bash
 # Compile code (machine-readable JSON output)
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile src/main.sigil
+cargo run -q -p sigil-cli --no-default-features -- compile src/main.sigil
 
 # Ask Claude Code to explain any code
 "Claude, what does this function do?"
@@ -442,7 +442,7 @@ cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compil
 "Claude, add error logging to main.sigil"
 
 # Run tests
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
+cargo run -q -p sigil-cli --no-default-features -- test
 ```
 
 **No IDE tooling needed** - Claude Code uses the compiler CLI directly:

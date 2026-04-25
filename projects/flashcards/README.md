@@ -29,7 +29,7 @@ Project structure:
 cd projects/flashcards
 pnpm install
 pnpm dev
-cargo run -q -p sigil-cli --manifest-path ../../language/compiler/Cargo.toml -- test tests
+cargo run -q -p sigil-cli --no-default-features -- test tests
 ```
 
 `pnpm dev` regenerates `web/src/generated/flashcards-domain.ts` before starting Vite.

@@ -3,7 +3,10 @@ name: website
 on:
   pull_request:
     paths:
+      - ".node-version"
       - ".github/workflows/website.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
       - "package.json"
       - "pnpm-lock.yaml"
       - "language/compiler/**"
@@ -19,7 +22,10 @@ on:
     branches:
       - main
     paths:
+      - ".node-version"
       - ".github/workflows/website.yml"
+      - "Cargo.toml"
+      - "Cargo.lock"
       - "package.json"
       - "pnpm-lock.yaml"
       - "language/compiler/**"
@@ -69,8 +75,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            language/compiler/target
-          key: ${{ runner.os }}-website-system-z3-${{ hashFiles('language/compiler/Cargo.lock') }}
+            target
+          key: ${{ runner.os }}-website-system-z3-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-website-system-z3-
 
@@ -84,23 +90,23 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Sigil CLI
-        run: cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli --no-default-features
+        run: cargo build --quiet -p sigil-cli --no-default-features
 
       - name: Test SSG helpers
-        run: language/compiler/target/debug/sigil test projects/ssg/tests
+        run: cargo run -q -p sigil-cli --no-default-features -- test projects/ssg/tests
 
       - name: Build React demos
         env:
           sigilSiteBasePath: /${{ github.event.repository.name }}/
         shell: bash
         run: |
-          language/compiler/target/debug/sigil compile projects/todo-app/src/todoDomain.lib.sigil -o projects/todo-app/web/src/generated/todo-domain.ts
+          cargo run -q -p sigil-cli --no-default-features -- compile projects/todo-app/src/todoDomain.lib.sigil -o projects/todo-app/web/src/generated/todo-domain.ts
           (
             cd projects/todo-app
             SIGIL_TODO_BASE=${sigilSiteBasePath:-/}projects/sigil-todo/demo/ pnpm exec vite build
           )
 
-          language/compiler/target/debug/sigil compile projects/minesweep/src/minesweepDomain.lib.sigil -o projects/minesweep/web/src/generated/minesweep-domain.ts
+          cargo run -q -p sigil-cli --no-default-features -- compile projects/minesweep/src/minesweepDomain.lib.sigil -o projects/minesweep/web/src/generated/minesweep-domain.ts
           mkdir -p projects/minesweep/web/src/generated/core
           cp projects/minesweep/.local/core/prelude.ts projects/minesweep/web/src/generated/core/prelude.ts
           (
@@ -108,7 +114,7 @@ jobs:
             SIGIL_MINESWEEP_BASE=${sigilSiteBasePath:-/}projects/sigil-minesweep/demo/ pnpm exec vite build
           )
 
-          language/compiler/target/debug/sigil compile projects/game-2048/src/game2048.lib.sigil -o projects/game-2048/web/src/generated/game-2048.ts
+          cargo run -q -p sigil-cli --no-default-features -- compile projects/game-2048/src/game2048.lib.sigil -o projects/game-2048/web/src/generated/game-2048.ts
           mkdir -p projects/game-2048/web/src/generated/core
           cp projects/game-2048/.local/core/prelude.ts projects/game-2048/web/src/generated/core/prelude.ts
           (
@@ -116,7 +122,7 @@ jobs:
             SIGIL_2048_BASE=${sigilSiteBasePath:-/}projects/sigil-2048/demo/ pnpm exec vite build
           )
 
-          language/compiler/target/debug/sigil compile projects/flashcards/src/flashcardsDomain.lib.sigil -o projects/flashcards/web/src/generated/flashcards-domain.ts
+          cargo run -q -p sigil-cli --no-default-features -- compile projects/flashcards/src/flashcardsDomain.lib.sigil -o projects/flashcards/web/src/generated/flashcards-domain.ts
           mkdir -p projects/flashcards/web/src/generated/core
           cp projects/flashcards/.local/core/prelude.ts projects/flashcards/web/src/generated/core/prelude.ts
           (
@@ -128,7 +134,7 @@ jobs:
         env:
           sigilSiteBasePath: /${{ github.event.repository.name }}/
           sigilSiteRepoUrl: https://github.com/${{ github.repository }}
-        run: language/compiler/target/debug/sigil run projects/ssg/src/main.sigil --env site
+        run: cargo run -q -p sigil-cli --no-default-features -- run projects/ssg/src/main.sigil --env site
 
       - name: Verify site output
         run: |

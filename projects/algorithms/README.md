@@ -30,9 +30,9 @@ Standalone algorithm/demo entrypoints:
 Commands (from repo root):
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run projects/algorithms/src/main.sigil
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- compile projects/algorithms/src/collatzConjecture.sigil
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/algorithms/tests
+cargo run -q -p sigil-cli --no-default-features -- run projects/algorithms/src/main.sigil
+cargo run -q -p sigil-cli --no-default-features -- compile projects/algorithms/src/collatzConjecture.sigil
+cargo run -q -p sigil-cli --no-default-features -- test projects/algorithms/tests
 ```
 
 `src/main.sigil` is the default project entrypoint and prints the available

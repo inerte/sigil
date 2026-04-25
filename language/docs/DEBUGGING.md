@@ -8,7 +8,7 @@ Examples below use the installed `sigil` CLI. When working from a source build,
 the equivalent form is:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- <args...>
+cargo run -q -p sigil-cli --no-default-features -- <args...>
 ```
 
 ## The Model

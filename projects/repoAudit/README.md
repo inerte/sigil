@@ -37,9 +37,9 @@ the decision to skip the subprocess when a root fingerprint still matches.
 From the repo root:
 
 - full audit:
-  `language/compiler/target/debug/sigil run projects/repoAudit/src/main.sigil`
+  `pnpm sigil run projects/repoAudit/src/main.sigil`
 - one check:
-  `language/compiler/target/debug/sigil run projects/repoAudit/src/main.sigil -- --check docs-drift`
+  `pnpm sigil run projects/repoAudit/src/main.sigil -- --check docs-drift`
 
 The runner always prints one JSON object to stdout and exits with:
 

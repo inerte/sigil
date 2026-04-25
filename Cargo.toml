@@ -1,0 +1,41 @@
+[workspace]
+resolver = "2"
+
+members = [
+    "language/compiler/crates/sigil-solver",
+    "language/compiler/crates/sigil-ast",
+    "language/compiler/crates/sigil-lexer",
+    "language/compiler/crates/sigil-parser",
+    "language/compiler/crates/sigil-validator",
+    "language/compiler/crates/sigil-typechecker",
+    "language/compiler/crates/sigil-codegen",
+    "language/compiler/crates/sigil-diagnostics",
+    "language/compiler/crates/sigil-cli",
+]
+
+[workspace.dependencies]
+thiserror = "2.0"
+anyhow = "1.0"
+clap = { version = "4.4", features = ["derive"] }
+tokio = { version = "1.35", features = ["full"] }
+codespan-reporting = "0.11"
+termcolor = "1.2"
+logos = "0.13"
+im = "15.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }
+sha2 = "0.10"
+z3 = "0.20"
+indoc = "2.0"
+pretty_assertions = "1.4"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.dist]
+inherits = "release"
+lto = "thin"
+codegen-units = 16

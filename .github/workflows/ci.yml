@@ -44,8 +44,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            language/compiler/target
-          key: ${{ runner.os }}-cargo-system-z3-${{ hashFiles('language/compiler/Cargo.lock') }}
+            target
+          key: ${{ runner.os }}-cargo-system-z3-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-system-z3-
 
@@ -59,13 +59,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check Rust formatting
-        run: cargo fmt --all --check --manifest-path language/compiler/Cargo.toml
+        run: cargo fmt --all --check
 
       - name: Run compiler tests
-        run: cargo test --manifest-path language/compiler/Cargo.toml --workspace --no-default-features
+        run: cargo test --workspace --no-default-features
 
       - name: Build Sigil CLI for packaging checks
-        run: cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli --no-default-features
+        run: cargo build --quiet -p sigil-cli --no-default-features
 
       - name: Check Homebrew packaging inputs
         run: tools/checkHomebrewFormula.sh
@@ -95,8 +95,8 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            language/compiler/target
-          key: ${{ runner.os }}-cargo-system-z3-${{ hashFiles('language/compiler/Cargo.lock') }}
+            target
+          key: ${{ runner.os }}-cargo-system-z3-${{ hashFiles('Cargo.lock') }}
           restore-keys: |
             ${{ runner.os }}-cargo-system-z3-
 
@@ -110,13 +110,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Sigil CLI
-        run: cargo build --quiet --manifest-path language/compiler/Cargo.toml -p sigil-cli --no-default-features
+        run: cargo build --quiet -p sigil-cli --no-default-features
 
       - name: Run Sigil todo tests
-        run: language/compiler/target/debug/sigil test projects/todo-app/tests
+        run: cargo run -q -p sigil-cli --no-default-features -- test projects/todo-app/tests
 
       - name: Generate React todo bindings
-        run: language/compiler/target/debug/sigil compile projects/todo-app/src/todoDomain.lib.sigil -o projects/todo-app/web/src/generated/todo-domain.ts
+        run: cargo run -q -p sigil-cli --no-default-features -- compile projects/todo-app/src/todoDomain.lib.sigil -o projects/todo-app/web/src/generated/todo-domain.ts
 
       - name: Build React todo app
         run: |

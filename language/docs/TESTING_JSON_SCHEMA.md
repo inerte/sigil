@@ -3,7 +3,7 @@
 This document describes the current machine-readable JSON emitted by:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test
+cargo run -q -p sigil-cli --no-default-features -- test
 ```
 
 JSON is the default output mode for Sigil tests.

@@ -27,7 +27,7 @@ Current status:
 cd projects/game-2048
 pnpm install
 pnpm dev
-cargo run -q -p sigil-cli --manifest-path ../../language/compiler/Cargo.toml -- test tests
+cargo run -q -p sigil-cli --no-default-features -- test tests
 ```
 
 `pnpm dev` regenerates `web/src/generated/game-2048.ts` before starting Vite.

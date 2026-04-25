@@ -8,17 +8,17 @@ package and resolves live values from `config/<env>.lib.sigil`.
 Install local package dependencies first:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- package install projects/featureFlagStorefront
+cargo run -q -p sigil-cli --no-default-features -- package install projects/featureFlagStorefront
 ```
 
 Run the configured storefront:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- run projects/featureFlagStorefront/src/main.sigil --env test
+cargo run -q -p sigil-cli --no-default-features -- run projects/featureFlagStorefront/src/main.sigil --env test
 ```
 
 Run tests:
 
 ```bash
-cargo run -q -p sigil-cli --manifest-path language/compiler/Cargo.toml -- test projects/featureFlagStorefront/tests --env test
+cargo run -q -p sigil-cli --no-default-features -- test projects/featureFlagStorefront/tests --env test
 ```

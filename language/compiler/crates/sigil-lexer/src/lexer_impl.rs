@@ -741,6 +741,7 @@ impl Lexer {
             "match" => TokenType::MATCH,
             "requires" => TokenType::Requires,
             "ensures" => TokenType::Ensures,
+            "decreases" => TokenType::Decreases,
             "concurrent" => TokenType::Concurrent,
             "using" => TokenType::Using,
             "subscribes" => TokenType::Subscribes,

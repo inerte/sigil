@@ -12547,6 +12547,7 @@ mod tests {
                 return_type: InferenceType::Any,
                 effects: None,
                 requires: None,
+                decreases: None,
                 ensures: None,
                 body: TypedExpr {
                     kind: TypedExprKind::ConstructorCall(TypedConstructorCallExpr {
@@ -12907,6 +12908,7 @@ mod tests {
                 return_type: InferenceType::Any,
                 effects: None,
                 requires: None,
+                decreases: None,
                 ensures: None,
                 body: TypedExpr {
                     kind: TypedExprKind::Call(TypedCallExpr {
@@ -12963,6 +12965,7 @@ mod tests {
                 return_type: InferenceType::Any,
                 effects: None,
                 requires: None,
+                decreases: None,
                 ensures: None,
                 body: TypedExpr {
                     kind: TypedExprKind::Call(TypedCallExpr {

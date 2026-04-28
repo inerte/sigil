@@ -4,7 +4,10 @@
   xs
 )
 
-λlinearSearchFrom(idx:Int,target:Int,xs:[Int])=>Int match xs{
+λlinearSearchFrom(idx:Int,target:Int,xs:[Int])=>Int
+requires #xs≥0
+decreases #xs
+match xs{
   []=>-1|
   [
   head,

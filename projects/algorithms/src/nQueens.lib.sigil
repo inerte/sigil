@@ -1,23 +1,55 @@
 λnQueens(size:Int)=>[[Int]] match size≤0{
   true=>[]|
-  false=>placeQueens(
+  false=>nQueensSearch(
+    0,
     [],
     0,
     size
   )
 }
 
-λplaceQueens(placedRev:[Int],row:Int,size:Int)=>[[Int]] match row=size{
+λnQueensAppend(prefix:[[Int]],suffix:[[Int]])=>[[Int]]=prefix⧺suffix
+
+λnQueensSearch(col:Int,placedRev:[Int],row:Int,size:Int)=>[[Int]]
+requires 0≤size+-row and 0≤size+-col
+decreases (size+-row, size+-col)
+match row=size{
   true=>wrapSolution(§list.reverse(placedRev))|
-  false=>tryColumns(
-    0,
-    placedRev,
-    row,
-    size
-  )
+  false=>match col≥size{
+    true=>[]|
+    false=>match safeAgainst(
+      col,
+      1,
+      placedRev
+    ){
+      true=>nQueensAppend(
+        nQueensSearch(
+          0,
+          [col]⧺placedRev,
+          row+1,
+          size
+        ),
+        nQueensSearch(
+          col+1,
+          placedRev,
+          row,
+          size
+        )
+      )|
+      false=>nQueensSearch(
+        col+1,
+        placedRev,
+        row,
+        size
+      )
+    }
+  }
 }
 
-λsafeAgainst(col:Int,distance:Int,placedRev:[Int])=>Bool match placedRev{
+λsafeAgainst(col:Int,distance:Int,placedRev:[Int])=>Bool
+requires 0≤#placedRev
+decreases #placedRev
+match placedRev{
   []=>true|
   [
   placedCol,
@@ -34,33 +66,10 @@
   }
 }
 
-λtryColumns(col:Int,placedRev:[Int],row:Int,size:Int)=>[[Int]] match col≥size{
-  true=>[]|
-  false=>match safeAgainst(
-    col,
-    1,
-    placedRev
-  ){
-    true=>placeQueens(
-      [col]⧺placedRev,
-      row+1,
-      size
-    )⧺tryColumns(
-      col+1,
-      placedRev,
-      row,
-      size
-    )|
-    false=>tryColumns(
-      col+1,
-      placedRev,
-      row,
-      size
-    )
-  }
-}
-
-λwrapAll(cols:[Int],partials:[[Int]])=>[[Int]] match cols{
+λwrapAll(cols:[Int],partials:[[Int]])=>[[Int]]
+requires #cols≥0
+decreases #cols
+match cols{
   []=>partials|
   [
   head,
@@ -74,7 +83,10 @@
   )
 }
 
-λwrapHead(head:Int,partials:[[Int]])=>[[Int]] match partials{
+λwrapHead(head:Int,partials:[[Int]])=>[[Int]]
+requires #partials≥0
+decreases #partials
+match partials{
   []=>[]|
   [
   partial,

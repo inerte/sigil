@@ -1,6 +1,20 @@
-λcollatz(n:Int)=>[Int] match n{
+λcollatz(n:Int)=>[Int]=collatzR(
+  n,
+  1000000
+)
+
+λcollatzR(n:Int,remaining:Int)=>[Int]
+requires 0≤remaining
+decreases remaining
+match n{
   1=>[1]|
-  value=>[value]⧺collatz(nextCollatz(value))
+  value=>match remaining=0{
+    true=>[value]|
+    false=>[value]⧺collatzR(
+      nextCollatz(value),
+      remaining+-1
+    )
+  }
 }
 
 λmain()=>[Int]=collatz(13)

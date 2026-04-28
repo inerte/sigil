@@ -19,8 +19,6 @@ t User={
   name:String
 }
 
-e console
-
 λclassifyNumber(n:Int)=>String match n{
   x when x>1000=>"huge"|
   x when x>100=>"large"|
@@ -70,7 +68,9 @@ e console
   Blue()=>"#0000FF"
 }
 
-λfindFirstPositive(list:[Int])=>String match list{
+λfindFirstPositive(list:[Int])=>String
+decreases #list
+match list{
   []=>"empty list"|
   [
   x,
@@ -82,98 +82,89 @@ e console
 ]=>findFirstPositive(xs)
 }
 
-λmain()=>Int={
-  l _=(console.log("=== Range Checking ==="):Unit);
-  l _=(console.log(classifyNumber(5000)):Unit);
-  l _=(console.log(classifyNumber(50)):Unit);
-  l _=(console.log(classifyNumber(5)):Unit);
-  l _=(console.log(classifyNumber(-5)):Unit);
-  l _=(console.log("
-=== User Validation ==="):Unit);
-  l _=(console.log(validateUser({
+λmain()=>!Log Unit={
+  l _=(§io.println("=== Range Checking ==="):Unit);
+  l _=(§io.println(classifyNumber(5000)):Unit);
+  l _=(§io.println(classifyNumber(50)):Unit);
+  l _=(§io.println(classifyNumber(5)):Unit);
+  l _=(§io.println(classifyNumber(-5)):Unit);
+  l _=(§io.println("=== User Validation ==="):Unit);
+  l _=(§io.println(validateUser({
     age:30,
     name:"Alice"
   })):Unit);
-  l _=(console.log(validateUser({
+  l _=(§io.println(validateUser({
     age:25,
     name:""
   })):Unit);
-  l _=(console.log(validateUser({
+  l _=(§io.println(validateUser({
     age:-5,
     name:"Bob"
   })):Unit);
-  l _=(console.log("
-=== Result Processing ==="):Unit);
-  l _=(console.log(processResult(Ok(150))):Unit);
-  l _=(console.log(processResult(Ok(5))):Unit);
-  l _=(console.log(processResult(Err("timeout"))):Unit);
-  l _=(console.log("
-=== Priority Tasks ==="):Unit);
-  l _=(console.log(prioritizeTask(
+  l _=(§io.println("=== Result Processing ==="):Unit);
+  l _=(§io.println(processResult(Ok(150))):Unit);
+  l _=(§io.println(processResult(Ok(5))):Unit);
+  l _=(§io.println(processResult(Err("timeout"))):Unit);
+  l _=(§io.println("=== Priority Tasks ==="):Unit);
+  l _=(§io.println(prioritizeTask(
     5,
     true
   )):Unit);
-  l _=(console.log(prioritizeTask(
+  l _=(§io.println(prioritizeTask(
     5,
     false
   )):Unit);
-  l _=(console.log(prioritizeTask(
+  l _=(§io.println(prioritizeTask(
     9,
     false
   )):Unit);
-  l _=(console.log("
-=== Point Classification ==="):Unit);
-  l _=(console.log(classifyPoint({
+  l _=(§io.println("=== Point Classification ==="):Unit);
+  l _=(§io.println(classifyPoint({
     x:0,
     y:0
   })):Unit);
-  l _=(console.log(classifyPoint({
+  l _=(§io.println(classifyPoint({
     x:5,
     y:5
   })):Unit);
-  l _=(console.log(classifyPoint({
+  l _=(§io.println(classifyPoint({
     x:3,
     y:7
   })):Unit);
-  l _=(console.log("
-=== Color Conversion ==="):Unit);
-  l _=(console.log(colorToHex(Red())):Unit);
-  l _=(console.log("
-=== Tuple Coverage ==="):Unit);
-  l _=(console.log(classifyPair(
+  l _=(§io.println("=== Color Conversion ==="):Unit);
+  l _=(§io.println(colorToHex(Red())):Unit);
+  l _=(§io.println("=== Tuple Coverage ==="):Unit);
+  l _=(§io.println(classifyPair(
     true,
     false
   )):Unit);
-  l _=(console.log(classifyPair(
+  l _=(§io.println(classifyPair(
     false,
     false
   )):Unit);
-  l _=(console.log("
-=== State Transition ==="):Unit);
-  l _=(console.log(stateToString(stateTransition(
+  l _=(§io.println("=== State Transition ==="):Unit);
+  l _=(§io.println(stateToString(stateTransition(
     Increment(),
     {
       count:99,
       mode:"normal"
     }
   ))):Unit);
-  l _=(console.log(stateToString(stateTransition(
+  l _=(§io.println(stateToString(stateTransition(
     Reset(),
     {
       count:5,
       mode:"busy"
     }
   ))):Unit);
-  l _=(console.log("
-=== First Positive ==="):Unit);
-  l _=(console.log(findFirstPositive([
+  l _=(§io.println("=== First Positive ==="):Unit);
+  l _=(§io.println(findFirstPositive([
     -3,
     -1,
     4,
     8
   ])):Unit);
-  l _=(console.log(findFirstPositive(([]:[Int]))):Unit);
-  0
+  §io.println(findFirstPositive(([]:[Int])))
 }
 
 λprioritizeTask(priority:Int,urgent:Bool)=>String match priority{

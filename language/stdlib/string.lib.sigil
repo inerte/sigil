@@ -24,7 +24,10 @@
   s
 )
 
-λrepeat(count:Int,s:String)=>String match count≤0{
+λrepeat(count:Int,s:String)=>String
+requires count≥0
+decreases count
+match count≤0{
   true=>""|
   false=>s++repeat(
     count-1,

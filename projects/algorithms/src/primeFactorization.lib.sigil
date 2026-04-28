@@ -3,7 +3,10 @@
   n
 ) filter (λ(divisor:Int)=>Bool=n%divisor=0)
 
-λprimeFactors(n:Int)=>[Int] match n≤1{
+λprimeFactors(n:Int)=>[Int]
+requires 0≤n
+decreases n
+match n≤1{
   true=>[]|
   false=>{
     l divisor=(smallestDivisor(n):Int);

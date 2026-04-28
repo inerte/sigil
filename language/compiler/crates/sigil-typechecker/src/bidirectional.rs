@@ -2420,6 +2420,37 @@ fn symbolic_value_from_expr(
         Expr::MapLiteral(map) => Ok(SymbolicValue::Collection(SymbolicCollection::KnownLength(
             LinearExpr::int(map.entries.len() as i64),
         ))),
+        Expr::Filter(f) => {
+            // Filter never increases list length. This is required for `decreases` proofs when
+            // a recursive call passes `(xs filter …)` in place of a list-typed parameter.
+            let list_sym = symbolic_value_from_expr(
+                env,
+                proof_context,
+                &f.list,
+                value_binding,
+                collector,
+            )?;
+            let SymbolicValue::Collection(sc) = list_sym else {
+                return Err(
+                    "filter: list did not lower to a collection in refinement proof".to_string(),
+                );
+            };
+            let p_in = match sc {
+                SymbolicCollection::Path(p) => p,
+                SymbolicCollection::KnownLength(_) => {
+                    return Err(
+                        "filter: need a path-backed list to relate output length in proofs"
+                            .to_string(),
+                    );
+                }
+            };
+            let p_out = SymbolPath::root("$filter_result");
+            let len_in = LinearExpr::from_path(p_in.length());
+            let len_out = LinearExpr::from_path(p_out.length());
+            let ax = linear_compare(len_out, ComparisonOp::Le, len_in);
+            collector.assumptions.push(ax);
+            Ok(SymbolicValue::Collection(SymbolicCollection::Path(p_out)))
+        }
         Expr::Record(record) => Ok(SymbolicValue::Record(SymbolicRecord::Literal(
             record
                 .fields
@@ -2876,6 +2907,18 @@ pub(crate) fn match_scrutinee_symbolic_root() -> SymbolPath {
     SymbolPath::root(MATCH_SCRUTINEE_BINDING)
 }
 
+/// When the `match` scrutinee is a simple parameter (or other identifier), use
+/// that binding as the path root for list-pattern refinements (length, `tail` =
+/// `#scrutinee - n`, etc.) so the proof lines up with measures like
+/// `decreases #nodes` that use `Identifier(nodes)::__len`. Otherwise fall back to
+/// the synthetic `$match_scrutinee` root.
+fn scrutinee_path_for_match_refinement(scrutinee: &Expr) -> SymbolPath {
+    match scrutinee {
+        Expr::Identifier(id) => SymbolPath::root(&id.name),
+        _ => match_scrutinee_symbolic_root(),
+    }
+}
+
 pub(crate) fn scrutinee_proof_context(
     env: &TypeEnvironment,
     proof_context: &ProofContext,
@@ -3104,6 +3147,7 @@ fn pattern_refinement_formula(
                 return None;
             };
 
+            let head_count = list_pattern.patterns.len() as i64;
             let mut parts = Vec::new();
             let length_expr = LinearExpr::from_path(path.length());
             parts.push(Formula::Atom(Atom::IntCmp {
@@ -3113,8 +3157,19 @@ fn pattern_refinement_formula(
                 } else {
                     ComparisonOp::Eq
                 },
-                rhs: list_pattern.patterns.len() as i64,
+                rhs: head_count,
             }));
+            // With a rest (`.tail`) binding, the tail list is exactly `n` `listTail` steps from the
+            // scrutinee; length of that tail is `#scrutinee - n`. This is required for list
+            // recursive measures (`decreases #xs`) to prove #tail < #xs in the cons arm.
+            if list_pattern.rest.is_some() && head_count > 0 {
+                let n_heads = list_pattern.patterns.len();
+                let tail_path = (0..n_heads).fold(path.clone(), |p, _| p.list_tail());
+                let tail_len = LinearExpr::from_path(tail_path.length());
+                let scr_len = LinearExpr::from_path(path.length());
+                let expect = scr_len.subtract(&LinearExpr::int(head_count));
+                parts.push(linear_compare(tail_len, ComparisonOp::Eq, expect));
+            }
 
             for (index, item_pattern) in list_pattern.patterns.iter().enumerate() {
                 let item_path = list_pattern_path(path, index).list_head();
@@ -3357,11 +3412,12 @@ pub(crate) fn match_arm_refinement(
     let scrutinee_symbolic =
         scrutinee_symbolic_value(env, proof_context, scrutinee, scrutinee_type);
     let mut symbolic_bindings = HashMap::new();
+    let match_path = scrutinee_path_for_match_refinement(scrutinee);
     collect_pattern_symbolic_bindings(
         env,
         &arm.pattern,
         scrutinee_type,
-        &match_scrutinee_symbolic_root(),
+        &match_path,
         scrutinee_symbolic.as_ref(),
         &mut symbolic_bindings,
     )?;
@@ -3369,7 +3425,7 @@ pub(crate) fn match_arm_refinement(
     let pattern_formula = pattern_refinement_formula(
         env,
         scrutinee_type,
-        &match_scrutinee_symbolic_root(),
+        &match_path,
         scrutinee_symbolic.as_ref(),
         &arm.pattern,
     );
@@ -3947,15 +4003,1119 @@ fn validate_contract_clause(
     Ok(())
 }
 
+/// Validate a decreases clause: must be Int (single measure) or a tuple of
+/// Int expressions (lexicographic measure), pure, and lowerable to the
+/// canonical proof fragment.
+///
+/// Returns the components of the measure as a Vec of Exprs (one for single,
+/// many for lex).
+fn validate_decreases_clause<'expr>(
+    env: &TypeEnvironment,
+    function_name: &str,
+    expr: &'expr Expr,
+) -> Result<Vec<&'expr Expr>, TypeError> {
+    let components: Vec<&Expr> = match expr {
+        Expr::Tuple(tuple) => {
+            if tuple.elements.is_empty() {
+                return Err(TypeError::new(
+                    format!(
+                        "Function '{}' decreases clause cannot be an empty tuple",
+                        function_name
+                    ),
+                    Some(expr_location(expr)),
+                )
+                .with_code(sigil_diagnostics::codes::proof::MEASURE_NOT_IN_FRAGMENT));
+            }
+            tuple.elements.iter().collect()
+        }
+        _ => vec![expr],
+    };
+
+    for (index, component) in components.iter().enumerate() {
+        let component_type = synthesize(env, component)?;
+        if !same_type(env, &component_type, &int_type()) {
+            return Err(TypeError::new(
+                format!(
+                    "Function '{}' decreases clause component {} must have type Int, got {}",
+                    function_name,
+                    index + 1,
+                    format_type(&component_type)
+                ),
+                Some(expr_location(component)),
+            )
+            .with_code(sigil_diagnostics::codes::proof::MEASURE_NOT_IN_FRAGMENT));
+        }
+
+        let typed = build_typed_expr(env, component)?;
+        if !typed.effects.is_empty() {
+            return Err(TypeError::new(
+                format!(
+                    "Function '{}' decreases clause must be pure",
+                    function_name
+                ),
+                Some(expr_location(component)),
+            )
+            .with_code(sigil_diagnostics::codes::proof::MEASURE_NOT_IN_FRAGMENT));
+        }
+
+        // Each component must lower to a SymbolicValue::Int in the canonical
+        // proof fragment. We lower into a fresh proof context (no extra
+        // bindings) just to validate fragment admissibility here. The full
+        // proof obligations are discharged in prove_measure_well_founded with
+        // the actual function body context.
+        let (value, _) =
+            lower_symbolic_value(env, &ProofContext::default(), component, None).map_err(|reason| {
+                TypeError::new(
+                    format!(
+                        "Function '{}' decreases clause component {} is not in the canonical proof fragment: {}",
+                        function_name,
+                        index + 1,
+                        reason
+                    ),
+                    Some(expr_location(component)),
+                )
+                .with_code(sigil_diagnostics::codes::proof::MEASURE_NOT_IN_FRAGMENT)
+            })?;
+        if !matches!(value, SymbolicValue::Int(_)) {
+            return Err(TypeError::new(
+                format!(
+                    "Function '{}' decreases clause component {} did not lower to an Int measure",
+                    function_name,
+                    index + 1
+                ),
+                Some(expr_location(component)),
+            )
+            .with_code(sigil_diagnostics::codes::proof::MEASURE_NOT_IN_FRAGMENT));
+        }
+    }
+
+    Ok(components)
+}
+
+/// A list-typed function parameter is treated as having non-negative length for
+/// termination: `#param` (length) is a valid well-founded Int measure, without
+/// requiring a separate `requires #param≥0` (which is often unprovable at
+/// call sites, e.g. for `item:T` in polymorphic `contains`/`fold` callbacks).
+/// Also, for record-typed parameters, each field of list type (e.g. `graph.nodes`)
+/// is treated as having non-negative length so measures like
+/// `decreases (#graph.nodes+(-#visited), #queue)` are bounded below in the entry
+/// pass without a separate `requires`.
+fn list_param_length_nonneg_assumptions(
+    env: &TypeEnvironment,
+    params: &[sigil_ast::Param],
+) -> Vec<Formula> {
+    let mut out = Vec::new();
+    for p in params {
+        let Some(ty) = env.lookup(&p.name) else {
+            continue;
+        };
+        out.extend(param_list_length_nonneg_for_measure(env, &p.name, &ty));
+    }
+    out
+}
+
+/// Emit `0 ≤` length formulas for a parameter: direct list params and every
+/// list-typed field of a record/constructor-wrapped product param.
+fn param_list_length_nonneg_for_measure(
+    env: &TypeEnvironment,
+    param_name: &str,
+    ty: &InferenceType,
+) -> Vec<Formula> {
+    let mut out = Vec::new();
+    let nty = env.normalize_type(ty);
+    let nty: &InferenceType = match &nty {
+        InferenceType::Owned(inner) => inner.as_ref(),
+        InferenceType::Borrowed(b) => &b.resource_type,
+        other => other,
+    };
+    match nty {
+        InferenceType::List(_)
+        | InferenceType::Primitive(TPrimitive {
+            name: PrimitiveName::String,
+        }) => {
+            let len = LinearExpr::from_path(SymbolPath::root(param_name).length());
+            out.push(linear_compare(
+                len,
+                ComparisonOp::Ge,
+                LinearExpr::int(0),
+            ));
+        }
+        InferenceType::Record(rec) => {
+            for (field, fty) in sorted_record_field_types(rec) {
+                if !matches!(env.normalize_type(&fty), InferenceType::List(_)) {
+                    continue;
+                }
+                let plen = LinearExpr::from_path(
+                    SymbolPath::root(param_name)
+                        .field(field.as_str())
+                        .length(),
+                );
+                out.push(linear_compare(
+                    plen,
+                    ComparisonOp::Ge,
+                    LinearExpr::int(0),
+                ));
+            }
+        }
+        _ => {}
+    }
+    out
+}
+
+/// A bare `Int` function parameter used as a single-Int `decreases` measure
+/// (e.g. `decreases fuel`) is treated as taking values in **ℕ** for the
+/// "bounded below by 0" check, matching how list measures use non-negative
+/// length without a redundant `requires`. Callers should pass non-negative
+/// `fuel` when it is a termination measure; see language docs for the proof
+/// fragment.
+fn int_param_id_nonneg_assumptions_for_decreases(
+    env: &TypeEnvironment,
+    params: &[sigil_ast::Param],
+    measure_components: &[&Expr],
+) -> Vec<Formula> {
+    use std::collections::HashSet;
+    let param_names: HashSet<&str> = params.iter().map(|p| p.name.as_str()).collect();
+    let mut out = Vec::new();
+    for component in measure_components {
+        let Expr::Identifier(id) = *component else {
+            continue;
+        };
+        if !param_names.contains(id.name.as_str()) {
+            continue;
+        };
+        let Some(pty) = env.lookup(&id.name) else {
+            continue;
+        };
+        let t = env.normalize_type(&pty);
+        if !matches!(
+            t,
+            InferenceType::Primitive(TPrimitive {
+                name: PrimitiveName::Int,
+            })
+        ) {
+            continue;
+        }
+        let p = LinearExpr::from_path(SymbolPath::root(&id.name));
+        out.push(linear_compare(
+            p,
+            ComparisonOp::Ge,
+            LinearExpr::int(0),
+        ));
+    }
+    out
+}
+
+/// Returns `true` if a parameter name is referenced in one of the decreases
+/// components. Used to relax self-call argument lowering: parameters that do
+/// not appear in the measure (e.g. `item:T` when the measure is `#xs` only) do
+/// not need to be lowered for lexicographic decrease checks.
+fn decreases_components_use_param(components: &[&Expr], param_name: &str) -> bool {
+    for component in components {
+        if expr_mentions_param(component, param_name) {
+            return true;
+        }
+    }
+    false
+}
+
+fn expr_mentions_param(expr: &Expr, name: &str) -> bool {
+    match expr {
+        Expr::Identifier(i) => i.name == name,
+        Expr::Unary(u) => expr_mentions_param(&u.operand, name),
+        Expr::Binary(b) => {
+            expr_mentions_param(&b.left, name) || expr_mentions_param(&b.right, name)
+        }
+        Expr::TypeAscription(asc) => expr_mentions_param(&asc.expr, name),
+        Expr::Tuple(t) => t
+            .elements
+            .iter()
+            .any(|e| expr_mentions_param(e, name)),
+        Expr::Application(a) => {
+            expr_mentions_param(&a.func, name) || a.args.iter().any(|a| expr_mentions_param(a, name))
+        }
+        Expr::FieldAccess(f) => expr_mentions_param(&f.object, name),
+        Expr::Index(i) => {
+            expr_mentions_param(&i.object, name) || expr_mentions_param(&i.index, name)
+        }
+        Expr::MemberAccess(_) => false,
+        Expr::If(i) => {
+            expr_mentions_param(&i.condition, name)
+                || expr_mentions_param(&i.then_branch, name)
+                || i.else_branch
+                    .as_ref()
+                    .map_or(false, |b| expr_mentions_param(b, name))
+        }
+        Expr::Let(l) => {
+            expr_mentions_param(&l.value, name) || expr_mentions_param(&l.body, name)
+        }
+        Expr::Match(m) => {
+            expr_mentions_param(&m.scrutinee, name)
+                || m.arms
+                    .iter()
+                    .any(|arm| expr_mentions_param(&arm.body, name))
+        }
+        // Literals, lists, lambdas, etc. don’t need full handling for
+        // function-parameter references in a decreases clause in practice.
+        _ => false,
+    }
+}
+
+/// Walk `body` and discharge the termination obligations for `decreases`:
+///   1. Every measure component is bounded below by 0 under the function's
+///      preconditions.
+///   2. At every recursive call to `function_name` reached during the walk,
+///      the substituted measure is strictly smaller than the entry measure
+///      (lexicographically for tuple measures).
+///
+/// The proof context is threaded through match-arms, if/else, let-bindings,
+/// and using-bindings so each self-call site is discharged under the exact
+/// assumptions accumulated at that site.
+fn prove_measure_well_founded(
+    env: &TypeEnvironment,
+    func_decl: &FunctionDecl,
+    measure_components: &[&Expr],
+    entry_context: &ProofContext,
+) -> Result<(), TypeError> {
+    let function_name = &func_decl.name;
+    let location = expr_location(
+        func_decl
+            .decreases
+            .as_ref()
+            .expect("prove_measure_well_founded called without decreases clause"),
+    );
+    let list_param_nonneg: Vec<Formula> = list_param_length_nonneg_assumptions(env, &func_decl.params);
+    let int_param_id_nonneg: Vec<Formula> = int_param_id_nonneg_assumptions_for_decreases(
+        env,
+        &func_decl.params,
+        measure_components,
+    );
+
+    // Bound check: each entry-component is >= 0 under the function's requires.
+    for (index, component) in measure_components.iter().enumerate() {
+        let (value, extra_assumptions) =
+            lower_symbolic_value(env, entry_context, component, None).map_err(|reason| {
+                TypeError::new(
+                    format!(
+                        "Function '{}' decreases clause component {} could not be lowered: {}",
+                        function_name,
+                        index + 1,
+                        reason
+                    ),
+                    Some(location),
+                )
+                .with_code(sigil_diagnostics::codes::proof::MEASURE_UNBOUNDED_BELOW)
+            })?;
+        let SymbolicValue::Int(linear) = value else {
+            return Err(TypeError::new(
+                format!(
+                    "Function '{}' decreases clause component {} did not lower to an Int measure",
+                    function_name,
+                    index + 1
+                ),
+                Some(location),
+            )
+            .with_code(sigil_diagnostics::codes::proof::MEASURE_NOT_IN_FRAGMENT));
+        };
+
+        let goal = linear_compare(linear, ComparisonOp::Ge, LinearExpr::int(0));
+        let mut all_assumptions = entry_context.assumptions.clone();
+        all_assumptions.extend(list_param_nonneg.iter().cloned());
+        all_assumptions.extend(int_param_id_nonneg.iter().cloned());
+        all_assumptions.extend(extra_assumptions);
+        let check = sigil_solver::prove_formula(&all_assumptions, &goal);
+        if !matches!(check.outcome, SolverOutcome::Proved) {
+            return Err(TypeError::new(
+                format!(
+                    "Function '{}' decreases clause component {} could not be proven >= 0",
+                    function_name,
+                    index + 1
+                ),
+                Some(location),
+            )
+            .with_code(sigil_diagnostics::codes::proof::MEASURE_UNBOUNDED_BELOW));
+        }
+    }
+
+    // Strict-decrease check: walk the body, at each self-call substitute the
+    // arguments for parameters and prove `next < entry` lexicographically.
+    let entry_values = measure_components
+        .iter()
+        .map(|component| lower_symbolic_value(env, entry_context, component, None))
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|reason| {
+            TypeError::new(
+                format!(
+                    "Function '{}' decreases clause could not be lowered for the entry measure: {}",
+                    function_name, reason
+                ),
+                Some(location),
+            )
+            .with_code(sigil_diagnostics::codes::proof::MEASURE_NOT_IN_FRAGMENT)
+        })?;
+
+    let mut entry_linears = Vec::with_capacity(entry_values.len());
+    let mut entry_extras = Vec::new();
+    for (value, extras) in entry_values {
+        let SymbolicValue::Int(linear) = value else {
+            return Err(TypeError::new(
+                format!(
+                    "Function '{}' decreases clause did not lower to Int measures",
+                    function_name
+                ),
+                Some(location),
+            )
+            .with_code(sigil_diagnostics::codes::proof::MEASURE_NOT_IN_FRAGMENT));
+        };
+        entry_linears.push(linear);
+        entry_extras.extend(extras);
+    }
+
+    let walker_context = entry_context.with_assumptions_replacing_state(entry_extras);
+
+    walk_for_decreases(
+        env,
+        &walker_context,
+        &func_decl.body,
+        function_name,
+        &func_decl.params,
+        measure_components,
+        &entry_linears,
+        location,
+        0,
+    )
+}
+
+const MAX_WALK_FOR_DECREASES_DEPTH: u32 = 4096;
+
+/// Recursively walk an expression, threading proof context, and discharge a
+/// strict-decrease obligation at each self-call to `function_name`.
+#[allow(clippy::too_many_arguments)]
+fn walk_for_decreases(
+    env: &TypeEnvironment,
+    proof_context: &ProofContext,
+    expr: &Expr,
+    function_name: &str,
+    params: &[sigil_ast::Param],
+    measure_components: &[&Expr],
+    entry_linears: &[LinearExpr],
+    decreases_location: sigil_lexer::SourceLocation,
+    rec_depth: u32,
+) -> Result<(), TypeError> {
+    if rec_depth > MAX_WALK_FOR_DECREASES_DEPTH {
+        return Err(
+            TypeError::new(
+                "termination measure walk exceeded an internal depth limit; simplify nested `match`/`if` in the function body, or file a bug with a small reproducer".to_string(),
+                Some(decreases_location),
+            )
+            .with_code(sigil_diagnostics::codes::proof::MEASURE_NOT_IN_FRAGMENT),
+        );
+    }
+    let child_depth = rec_depth + 1;
+    match expr {
+        Expr::Application(app) => {
+            // Recurse into func and args first to find nested self-calls.
+            walk_for_decreases(
+                env,
+                proof_context,
+                &app.func,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )?;
+            for arg in &app.args {
+                walk_for_decreases(
+                    env,
+                    proof_context,
+                    arg,
+                    function_name,
+                    params,
+                    measure_components,
+                    entry_linears,
+                    decreases_location,
+                    child_depth,
+                )?;
+            }
+
+            // Self-call detection.
+            let is_self_call = matches!(
+                &app.func,
+                Expr::Identifier(sigil_ast::IdentifierExpr { name, .. }) if name == function_name
+            );
+            if !is_self_call || app.args.len() != params.len() {
+                return Ok(());
+            }
+
+            // Build the substituted-argument context: parameters bound to the
+            // symbolic values of the call's arguments.
+            let mut call_bindings = HashMap::new();
+            let mut extra_assumptions = Vec::new();
+            for (param, arg) in params.iter().zip(&app.args) {
+                let used = decreases_components_use_param(measure_components, &param.name);
+                let (value, extras) = match lower_symbolic_value(env, proof_context, arg, None) {
+                    Ok(v) => v,
+                    Err(_) if !used => {
+                        // Measure does not reference this parameter; omit binding (e.g. `item:T`
+                        // in `λcontains(x,xs) decreases #xs` — only `xs` is substituted for tail).
+                        continue;
+                    }
+                    Err(_) => {
+                        return Err(TypeError::new(
+                            format!(
+                                "Function '{}' could not lower self-call argument for '{}' to the canonical proof fragment; refactor the call site or the measure",
+                                function_name, param.name
+                            ),
+                            Some(expr_location(arg)),
+                        )
+                        .with_code(sigil_diagnostics::codes::proof::MEASURE_NOT_DECREASING));
+                    }
+                };
+                call_bindings.insert(param.name.clone(), value);
+                extra_assumptions.extend(extras);
+            }
+
+            let call_context = proof_context
+                .with_symbolic_bindings(call_bindings)
+                .with_assumptions_replacing_state(extra_assumptions);
+
+            // Compute the next-measure components under call context.
+            let mut next_linears = Vec::with_capacity(measure_components.len());
+            let mut next_extras = Vec::new();
+            for (index, component) in measure_components.iter().enumerate() {
+                let (value, extras) =
+                    lower_symbolic_value(env, &call_context, component, None).map_err(|reason| {
+                        TypeError::new(
+                            format!(
+                                "Function '{}' could not lower decreases component {} at recursive call: {}",
+                                function_name,
+                                index + 1,
+                                reason
+                            ),
+                            Some(app.location),
+                        )
+                        .with_code(sigil_diagnostics::codes::proof::MEASURE_NOT_DECREASING)
+                    })?;
+                let SymbolicValue::Int(linear) = value else {
+                    return Err(TypeError::new(
+                        format!(
+                            "Function '{}' decreases component {} did not lower to Int at self-call",
+                            function_name,
+                            index + 1
+                        ),
+                        Some(app.location),
+                    )
+                    .with_code(sigil_diagnostics::codes::proof::MEASURE_NOT_IN_FRAGMENT));
+                };
+                next_linears.push(linear);
+                next_extras.extend(extras);
+            }
+
+            // Build the strict-decrease formula. For lex measures of length n:
+            //   (n[0] < e[0]) OR (n[0] = e[0] AND n[1] < e[1]) OR ...
+            //   OR (n[0] = e[0] AND ... AND n[n-1] < e[n-1])
+            // For single measure: n[0] < e[0].
+            let goal = build_lex_decrease_formula(&next_linears, entry_linears);
+
+            let mut all_assumptions = proof_context.assumptions.clone();
+            all_assumptions.extend(call_context.assumptions.iter().cloned());
+            all_assumptions.extend(next_extras);
+            let check = sigil_solver::prove_formula(&all_assumptions, &goal);
+            if !matches!(check.outcome, SolverOutcome::Proved) {
+                let mut error = TypeError::new(
+                    format!(
+                        "Function '{}' decreases measure could not be proven strictly decreasing at this recursive call",
+                        function_name
+                    ),
+                    Some(app.location),
+                )
+                .with_code(sigil_diagnostics::codes::proof::MEASURE_NOT_DECREASING);
+                error = error.with_detail("decreasesAt", format!("{:?}", decreases_location));
+                return Err(error);
+            }
+
+            Ok(())
+        }
+        Expr::Identifier(_) | Expr::Literal(_) | Expr::MemberAccess(_) => Ok(()),
+        Expr::Lambda(lambda) => walk_for_decreases(
+            env,
+            proof_context,
+            &lambda.body,
+            function_name,
+            params,
+            measure_components,
+            entry_linears,
+            decreases_location,
+            child_depth,
+        ),
+        Expr::Binary(bin) => {
+            walk_for_decreases(
+                env,
+                proof_context,
+                &bin.left,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )?;
+            walk_for_decreases(
+                env,
+                proof_context,
+                &bin.right,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )
+        }
+        Expr::Unary(un) => walk_for_decreases(
+            env,
+            proof_context,
+            &un.operand,
+            function_name,
+            params,
+            measure_components,
+            entry_linears,
+            decreases_location,
+            child_depth,
+        ),
+        Expr::Match(m) => {
+            walk_for_decreases(
+                env,
+                proof_context,
+                &m.scrutinee,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )?;
+            // Use the existing match-arm-refinement infrastructure so each
+            // arm body is walked under the proof context that contains:
+            //   - pattern bindings as symbolic values
+            //   - the pattern's refinement formula as an assumption
+            //   - the arm's guard (if supported) as an assumption
+            // This is what makes a self-call inside `match n { value => self(value-1) }`
+            // discharge with `value` known to equal `n`.
+            let scrutinee_type = match synthesize(env, &m.scrutinee) {
+                Ok(t) => t,
+                Err(_) => {
+                    for arm in &m.arms {
+                        walk_for_decreases(
+                            env,
+                            proof_context,
+                            &arm.body,
+                            function_name,
+                            params,
+                            measure_components,
+                            entry_linears,
+                            decreases_location,
+                            child_depth,
+                        )?;
+                    }
+                    return Ok(());
+                }
+            };
+            let base_match_context = scrutinee_proof_context(env, proof_context, &m.scrutinee);
+            for arm in &m.arms {
+                let mut bindings = HashMap::new();
+                let arm_env = match check_pattern(env, &arm.pattern, &scrutinee_type, &mut bindings)
+                {
+                    Ok(_) => env.extend(Some(bindings)),
+                    Err(_) => env.extend(None),
+                };
+                let arm_context = match match_arm_refinement(
+                    env,
+                    &base_match_context,
+                    &m.scrutinee,
+                    &scrutinee_type,
+                    arm,
+                ) {
+                    Ok(refinement) => refinement.body_context,
+                    Err(_) => base_match_context.clone(),
+                };
+                walk_for_decreases(
+                    &arm_env,
+                    &arm_context,
+                    &arm.body,
+                    function_name,
+                    params,
+                    measure_components,
+                    entry_linears,
+                    decreases_location,
+                    child_depth,
+                )?;
+            }
+            Ok(())
+        }
+        Expr::Let(l) => {
+            walk_for_decreases(
+                env,
+                proof_context,
+                &l.value,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )?;
+            let body_context = if let sigil_ast::Pattern::Identifier(id) = &l.pattern {
+                if let Ok((value, extras)) = lower_symbolic_value(env, proof_context, &l.value, None) {
+                    proof_context
+                        .clone()
+                        .with_assumptions_replacing_state(extras)
+                        .with_symbolic_bindings([(id.name.clone(), value)])
+                } else {
+                    // Full lowering can fail (e.g. `filter` under match-bound locals) while
+                    // `synthesize` also fails: the let-body env is not the root `TypeEnvironment`
+                    // during this walk, so we cannot re-typecheck the initializer.  If the
+                    // binding is explicitly type-annotated, use that surface type for a path
+                    // symbolic value (enough for `decreases` on `#x`).
+                    let from_ascription = if let Expr::TypeAscription(asc) = &l.value {
+                        ast_type_to_inference_type_resolved(env, None, &asc.ascribed_type).ok()
+                    } else {
+                        None
+                    };
+                    let value_t = from_ascription
+                        .or_else(|| synthesize(env, &l.value).ok());
+                    if let Some(value_t) = value_t {
+                        if let Ok(sv) = symbolic_value_for_type_path(
+                            env,
+                            &value_t,
+                            &SymbolPath::root(&id.name),
+                        ) {
+                            proof_context
+                                .clone()
+                                .with_symbolic_bindings([(id.name.clone(), sv)])
+                        } else {
+                            proof_context.clone()
+                        }
+                    } else {
+                        proof_context.clone()
+                    }
+                }
+            } else {
+                proof_context.clone()
+            };
+            walk_for_decreases(
+                env,
+                &body_context,
+                &l.body,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )
+        }
+        Expr::Using(u) => {
+            walk_for_decreases(
+                env,
+                proof_context,
+                &u.value,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )?;
+            walk_for_decreases(
+                env,
+                proof_context,
+                &u.body,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )
+        }
+        Expr::If(i) => {
+            walk_for_decreases(
+                env,
+                proof_context,
+                &i.condition,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )?;
+            // Thread condition assumption into each branch.
+            let then_context = match lower_symbolic_formula(env, proof_context, &i.condition, None)
+            {
+                Ok((formula, assumptions)) => proof_context
+                    .with_assumptions_replacing_state(assumptions.clone())
+                    .with_assumption(formula),
+                Err(_) => proof_context.clone(),
+            };
+            walk_for_decreases(
+                env,
+                &then_context,
+                &i.then_branch,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )?;
+            if let Some(else_branch) = &i.else_branch {
+                let else_context = match lower_symbolic_formula(
+                    env,
+                    proof_context,
+                    &i.condition,
+                    None,
+                ) {
+                    Ok((formula, assumptions)) => proof_context
+                        .with_assumptions_replacing_state(assumptions)
+                        .with_assumption(Formula::Not(Box::new(formula))),
+                    Err(_) => proof_context.clone(),
+                };
+                walk_for_decreases(
+                    env,
+                    &else_context,
+                    else_branch,
+                    function_name,
+                    params,
+                    measure_components,
+                    entry_linears,
+                    decreases_location,
+                    child_depth,
+                )?;
+            }
+            Ok(())
+        }
+        Expr::List(list) => {
+            for element in &list.elements {
+                walk_for_decreases(
+                    env,
+                    proof_context,
+                    element,
+                    function_name,
+                    params,
+                    measure_components,
+                    entry_linears,
+                    decreases_location,
+                    child_depth,
+                )?;
+            }
+            Ok(())
+        }
+        Expr::Record(record) => {
+            for field in &record.fields {
+                walk_for_decreases(
+                    env,
+                    proof_context,
+                    &field.value,
+                    function_name,
+                    params,
+                    measure_components,
+                    entry_linears,
+                    decreases_location,
+                    child_depth,
+                )?;
+            }
+            Ok(())
+        }
+        Expr::MapLiteral(map) => {
+            for entry in &map.entries {
+                walk_for_decreases(
+                    env,
+                    proof_context,
+                    &entry.key,
+                    function_name,
+                    params,
+                    measure_components,
+                    entry_linears,
+                    decreases_location,
+                    child_depth,
+                )?;
+                walk_for_decreases(
+                    env,
+                    proof_context,
+                    &entry.value,
+                    function_name,
+                    params,
+                    measure_components,
+                    entry_linears,
+                    decreases_location,
+                    child_depth,
+                )?;
+            }
+            Ok(())
+        }
+        Expr::Tuple(tuple) => {
+            for element in &tuple.elements {
+                walk_for_decreases(
+                    env,
+                    proof_context,
+                    element,
+                    function_name,
+                    params,
+                    measure_components,
+                    entry_linears,
+                    decreases_location,
+                    child_depth,
+                )?;
+            }
+            Ok(())
+        }
+        Expr::FieldAccess(field_access) => walk_for_decreases(
+            env,
+            proof_context,
+            &field_access.object,
+            function_name,
+            params,
+            measure_components,
+            entry_linears,
+            decreases_location,
+            child_depth,
+        ),
+        Expr::Index(index) => {
+            walk_for_decreases(
+                env,
+                proof_context,
+                &index.object,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )?;
+            walk_for_decreases(
+                env,
+                proof_context,
+                &index.index,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )
+        }
+        Expr::Pipeline(pipeline) => {
+            walk_for_decreases(
+                env,
+                proof_context,
+                &pipeline.left,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )?;
+            walk_for_decreases(
+                env,
+                proof_context,
+                &pipeline.right,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )
+        }
+        Expr::Map(m) => {
+            walk_for_decreases(
+                env,
+                proof_context,
+                &m.list,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )?;
+            walk_for_decreases(
+                env,
+                proof_context,
+                &m.func,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )
+        }
+        Expr::Filter(f) => {
+            walk_for_decreases(
+                env,
+                proof_context,
+                &f.list,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )?;
+            walk_for_decreases(
+                env,
+                proof_context,
+                &f.predicate,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )
+        }
+        Expr::Fold(f) => {
+            walk_for_decreases(
+                env,
+                proof_context,
+                &f.list,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )?;
+            walk_for_decreases(
+                env,
+                proof_context,
+                &f.init,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )?;
+            walk_for_decreases(
+                env,
+                proof_context,
+                &f.func,
+                function_name,
+                params,
+                measure_components,
+                entry_linears,
+                decreases_location,
+                child_depth,
+            )
+        }
+        Expr::Concurrent(concurrent) => {
+            for step in &concurrent.steps {
+                match step {
+                    sigil_ast::ConcurrentStep::Spawn(spawn) => {
+                        walk_for_decreases(
+                            env,
+                            proof_context,
+                            &spawn.expr,
+                            function_name,
+                            params,
+                            measure_components,
+                            entry_linears,
+                            decreases_location,
+                            child_depth,
+                        )?;
+                    }
+                    sigil_ast::ConcurrentStep::SpawnEach(spawn_each) => {
+                        walk_for_decreases(
+                            env,
+                            proof_context,
+                            &spawn_each.list,
+                            function_name,
+                            params,
+                            measure_components,
+                            entry_linears,
+                            decreases_location,
+                            child_depth,
+                        )?;
+                        walk_for_decreases(
+                            env,
+                            proof_context,
+                            &spawn_each.func,
+                            function_name,
+                            params,
+                            measure_components,
+                            entry_linears,
+                            decreases_location,
+                            child_depth,
+                        )?;
+                    }
+                }
+            }
+            Ok(())
+        }
+        Expr::TypeAscription(type_ascription) => walk_for_decreases(
+            env,
+            proof_context,
+            &type_ascription.expr,
+            function_name,
+            params,
+            measure_components,
+            entry_linears,
+            decreases_location,
+            child_depth,
+        ),
+    }
+}
+
+/// Build the strict lexicographic-decrease formula for a measure of any length:
+///   (n[0] < e[0]) OR (n[0] = e[0] AND n[1] < e[1]) OR ...
+fn build_lex_decrease_formula(next: &[LinearExpr], entry: &[LinearExpr]) -> Formula {
+    debug_assert_eq!(next.len(), entry.len());
+    let mut clauses: Vec<Formula> = Vec::with_capacity(next.len());
+    for (i, (next_i, entry_i)) in next.iter().zip(entry.iter()).enumerate() {
+        let mut clause_parts: Vec<Formula> = Vec::with_capacity(i + 1);
+        for j in 0..i {
+            clause_parts.push(linear_compare(next[j].clone(), ComparisonOp::Eq, entry[j].clone()));
+        }
+        clause_parts.push(linear_compare(next_i.clone(), ComparisonOp::Lt, entry_i.clone()));
+        clauses.push(formula_and(clause_parts));
+    }
+    formula_or(clauses)
+}
+
+/// Build a comparison formula `lhs op rhs` from two LinearExprs by lowering to
+/// the canonical `LinearForm op rhs_constant` shape the solver expects.
+fn linear_compare(lhs: LinearExpr, op: ComparisonOp, rhs: LinearExpr) -> Formula {
+    let diff = lhs.subtract(&rhs);
+    Formula::Atom(Atom::IntCmp {
+        form: diff.form,
+        op,
+        rhs: -diff.constant,
+    })
+}
+
+/// Build call-site bindings for a function contract, only for parameters
+/// that appear in `clause` (a `requires` or `ensures` expression). This avoids
+/// having to lower arguments that the clause does not name (e.g. `⧺`-built
+/// list accumulators) while still discharging `requires n≥0`-style facts.
 fn contract_context_for_call(
     env: &TypeEnvironment,
     proof_context: &ProofContext,
     contract: &FunctionContract,
     args: &[Expr],
+    clause: &Expr,
 ) -> Result<ProofContext, String> {
     let mut next = proof_context.clone();
 
     for (param_name, arg) in contract.params.iter().zip(args) {
+        if !expr_mentions_param(clause, param_name) {
+            continue;
+        }
         let (symbolic_arg, assumptions) = lower_symbolic_value(env, proof_context, arg, None)?;
         next = next
             .with_assumptions_replacing_state(assumptions)
@@ -4005,7 +5165,7 @@ fn call_ensure_assumptions(
         return Ok(Vec::new());
     };
 
-    let call_context = contract_context_for_call(env, proof_context, contract, args)?
+    let call_context = contract_context_for_call(env, proof_context, contract, args, ensures)?
         .with_symbolic_bindings([("result".to_string(), result_value)]);
     let (formula, assumptions) = lower_symbolic_formula(env, &call_context, ensures, None)?;
     let mut combined = assumptions;
@@ -4024,8 +5184,8 @@ fn enforce_call_requires(
         return Ok(());
     };
 
-    let call_context =
-        contract_context_for_call(env, proof_context, contract, args).map_err(|reason| {
+    let call_context = contract_context_for_call(env, proof_context, contract, args, requires)
+        .map_err(|reason| {
             TypeError::new(
                 format!("Call requires unsupported proof inputs: {}", reason),
                 Some(location),
@@ -4112,6 +5272,12 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
         validate_contract_clause(&func_env, &func_decl.name, "requires", requires)?;
     }
 
+    let measure_components = if let Some(decreases) = &func_decl.decreases {
+        Some(validate_decreases_clause(&func_env, &func_decl.name, decreases)?)
+    } else {
+        None
+    };
+
     if let Some(ensures) = &func_decl.ensures {
         let mut ensures_bindings = HashMap::new();
         ensures_bindings.insert("result".to_string(), expected_return_type.clone());
@@ -4120,6 +5286,7 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
     }
 
     // Type check body
+    let param_nonneg = list_param_length_nonneg_assumptions(&func_env, &func_decl.params);
     let body_context = if let Some(requires) = &func_decl.requires {
         let (formula, assumptions) =
             lower_symbolic_formula(&func_env, &ProofContext::default(), requires, None).map_err(
@@ -4136,8 +5303,9 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
         ProofContext::default()
             .with_assumptions_replacing_state(assumptions)
             .with_assumption(formula)
+            .with_assumptions(param_nonneg)
     } else {
-        ProofContext::default()
+        ProofContext::default().with_assumptions(param_nonneg)
     };
 
     check_with_context(
@@ -4211,6 +5379,19 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
         ));
     }
 
+    // Termination proof: if a `decreases` clause is present, walk the body
+    // and discharge the bound + strict-decrease obligations. The validator
+    // already requires `decreases` on every self-recursive function; this
+    // pass proves the measure works.
+    if let Some(measure_components) = measure_components {
+        prove_measure_well_founded(
+            &func_env,
+            func_decl,
+            &measure_components,
+            &body_context,
+        )?;
+    }
+
     Ok(())
 }
 
@@ -4236,6 +5417,23 @@ fn check_transform_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resu
         .transpose()?
         .unwrap_or(InferenceType::Any);
 
+    if let Some(requires) = &func_decl.requires {
+        validate_contract_clause(&func_env, &func_decl.name, "requires", requires)?;
+    }
+
+    let measure_components = if let Some(decreases) = &func_decl.decreases {
+        Some(validate_decreases_clause(&func_env, &func_decl.name, decreases)?)
+    } else {
+        None
+    };
+
+    if let Some(ensures) = &func_decl.ensures {
+        let mut ensures_bindings = HashMap::new();
+        ensures_bindings.insert("result".to_string(), expected_return_type.clone());
+        let ensures_env = func_env.extend(Some(ensures_bindings));
+        validate_contract_clause(&ensures_env, &func_decl.name, "ensures", ensures)?;
+    }
+
     check(&func_env, &func_decl.body, &expected_return_type)?;
 
     let typed_body = build_typed_expr(&func_env, &func_decl.body)?;
@@ -4246,6 +5444,33 @@ fn check_transform_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resu
         func_decl.location,
         &format!("Transform '{}'", func_decl.name),
     )?;
+
+    if let Some(measure_components) = measure_components {
+        let body_context = if let Some(requires) = &func_decl.requires {
+            let (formula, assumptions) =
+                lower_symbolic_formula(&func_env, &ProofContext::default(), requires, None)
+                    .map_err(|reason| {
+                        TypeError::new(
+                            format!(
+                                "Transform '{}' requires clause could not be lowered: {}",
+                                func_decl.name, reason
+                            ),
+                            Some(expr_location(requires)),
+                        )
+                    })?;
+            ProofContext::default()
+                .with_assumptions_replacing_state(assumptions)
+                .with_assumption(formula)
+        } else {
+            ProofContext::default()
+        };
+        prove_measure_well_founded(
+            &func_env,
+            func_decl,
+            &measure_components,
+            &body_context,
+        )?;
+    }
 
     Ok(())
 }
@@ -4432,6 +5657,7 @@ fn build_typed_function_decl(
             )?)
         },
         requires: func_decl.requires.clone(),
+        decreases: func_decl.decreases.clone(),
         ensures: func_decl.ensures.clone(),
         body,
         location: func_decl.location,
@@ -8242,6 +9468,7 @@ fn check_map_literal(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::coverage::{pattern_to_space, space_intersection, space_is_empty, total_space_for_type};
     use sigil_lexer::tokenize;
     use sigil_parser::parse;
     use std::collections::HashMap;

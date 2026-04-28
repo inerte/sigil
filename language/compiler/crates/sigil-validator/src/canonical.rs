@@ -995,6 +995,11 @@ pub fn validate_canonical_form_with_options(
         errors.extend(e);
     }
 
+    // Rule 6d: No mutual recursion (per-file scope)
+    if let Err(e) = validate_mutual_recursion(program) {
+        errors.extend(e);
+    }
+
     // Rule 7: Parameter and effect ordering - alphabetical
     if let Err(e) = validate_function_signature_ordering(program) {
         errors.extend(e);
@@ -5601,93 +5606,113 @@ fn validate_recursive_functions(program: &Program) -> Result<(), Vec<ValidationE
     let mut errors = Vec::new();
 
     for decl in &program.declarations {
-        if let Declaration::Function(func) = decl {
-            // Check if function is recursive
-            if !is_recursive(&func.body, &func.name) {
-                continue;
+        let func = match decl {
+            Declaration::Function(func) => func,
+            Declaration::Transform(transform) => &transform.function,
+            _ => continue,
+        };
+
+        // Check if function is recursive
+        if !is_recursive(&func.body, &func.name) {
+            continue;
+        }
+
+        // Every self-recursive function must declare a termination measure,
+        // EXCEPT functions whose return type is Never. A Never-returning
+        // function intentionally does not return normally (it diverges,
+        // throws, or hands off to the runtime), so the decreases obligation
+        // does not apply.
+        let returns_never = matches!(
+            &func.return_type,
+            Some(Type::Primitive(PrimitiveType { name: PrimitiveName::Never, .. }))
+        );
+        if !returns_never && func.decreases.is_none() {
+            errors.push(ValidationError::RecursionMissingDecreases {
+                function_name: func.name.clone(),
+                location: func.location,
+            });
+        }
+
+        // Check 1: Function with multiple parameters might be using accumulator pattern
+        if func.params.len() > 1 {
+            // Simplified check: Look for parameters that appear to grow
+            // Full implementation would analyze parameter roles (STRUCTURAL vs ACCUMULATOR)
+            let suspicious_params = detect_accumulator_params(func);
+
+            if !suspicious_params.is_empty() {
+                errors.push(ValidationError::AccumulatorParameter {
+                    function_name: func.name.clone(),
+                    params: suspicious_params.join(", "),
+                    location: func.location,
+                });
             }
+        }
 
-            // Check 1: Function with multiple parameters might be using accumulator pattern
-            if func.params.len() > 1 {
-                // Simplified check: Look for parameters that appear to grow
-                // Full implementation would analyze parameter roles (STRUCTURAL vs ACCUMULATOR)
-                let suspicious_params = detect_accumulator_params(func);
+        // Check 2: Return type cannot be a function (blocks CPS)
+        if let Some(Type::Function(_)) = &func.return_type {
+            errors.push(ValidationError::ContinuationPassingStyle {
+                function_name: func.name.clone(),
+                location: func.location,
+            });
+        }
 
-                if !suspicious_params.is_empty() {
-                    errors.push(ValidationError::AccumulatorParameter {
+        if detect_exact_recursive_reverse_clone(func) {
+            errors.push(ValidationError::RecursiveReverseClone {
+                function_name: func.name.clone(),
+                location: func.location,
+            });
+        } else if detect_exact_recursive_all_clone(func) {
+            errors.push(ValidationError::RecursiveAllClone {
+                function_name: func.name.clone(),
+                location: func.location,
+            });
+        } else if detect_exact_recursive_any_clone(func) {
+            errors.push(ValidationError::RecursiveAnyClone {
+                function_name: func.name.clone(),
+                location: func.location,
+            });
+        } else if detect_exact_recursive_map_clone(func) {
+            errors.push(ValidationError::RecursiveMapClone {
+                function_name: func.name.clone(),
+                location: func.location,
+            });
+        } else if detect_exact_recursive_filter_clone(func) {
+            errors.push(ValidationError::RecursiveFilterClone {
+                function_name: func.name.clone(),
+                location: func.location,
+            });
+        } else if detect_exact_recursive_find_clone(func) {
+            errors.push(ValidationError::RecursiveFindClone {
+                function_name: func.name.clone(),
+                location: func.location,
+            });
+        } else if detect_exact_recursive_flat_map_clone(func) {
+            errors.push(ValidationError::RecursiveFlatMapClone {
+                function_name: func.name.clone(),
+                location: func.location,
+            });
+        } else if detect_exact_recursive_fold_clone(func) {
+            errors.push(ValidationError::RecursiveFoldClone {
+                function_name: func.name.clone(),
+                location: func.location,
+            });
+        } else if contains_recursive_append_result(&func.body, &func.name) {
+            errors.push(ValidationError::RecursiveAppendResult {
+                function_name: func.name.clone(),
+                location: func.location,
+            });
+        }
+
+        // Check 3: Collection parameters must use structural recursion
+        // Simplified: just check that collection params are destructured in patterns
+        if func.params.len() == 1 {
+            if let Some(Type::List(_)) = func.params[0].type_annotation.as_ref() {
+                if !uses_structural_recursion(&func.body) {
+                    errors.push(ValidationError::NonStructuralRecursion {
                         function_name: func.name.clone(),
-                        params: suspicious_params.join(", "),
+                        param_name: func.params[0].name.clone(),
                         location: func.location,
                     });
-                }
-            }
-
-            // Check 2: Return type cannot be a function (blocks CPS)
-            if let Some(Type::Function(_)) = &func.return_type {
-                errors.push(ValidationError::ContinuationPassingStyle {
-                    function_name: func.name.clone(),
-                    location: func.location,
-                });
-            }
-
-            if detect_exact_recursive_reverse_clone(func) {
-                errors.push(ValidationError::RecursiveReverseClone {
-                    function_name: func.name.clone(),
-                    location: func.location,
-                });
-            } else if detect_exact_recursive_all_clone(func) {
-                errors.push(ValidationError::RecursiveAllClone {
-                    function_name: func.name.clone(),
-                    location: func.location,
-                });
-            } else if detect_exact_recursive_any_clone(func) {
-                errors.push(ValidationError::RecursiveAnyClone {
-                    function_name: func.name.clone(),
-                    location: func.location,
-                });
-            } else if detect_exact_recursive_map_clone(func) {
-                errors.push(ValidationError::RecursiveMapClone {
-                    function_name: func.name.clone(),
-                    location: func.location,
-                });
-            } else if detect_exact_recursive_filter_clone(func) {
-                errors.push(ValidationError::RecursiveFilterClone {
-                    function_name: func.name.clone(),
-                    location: func.location,
-                });
-            } else if detect_exact_recursive_find_clone(func) {
-                errors.push(ValidationError::RecursiveFindClone {
-                    function_name: func.name.clone(),
-                    location: func.location,
-                });
-            } else if detect_exact_recursive_flat_map_clone(func) {
-                errors.push(ValidationError::RecursiveFlatMapClone {
-                    function_name: func.name.clone(),
-                    location: func.location,
-                });
-            } else if detect_exact_recursive_fold_clone(func) {
-                errors.push(ValidationError::RecursiveFoldClone {
-                    function_name: func.name.clone(),
-                    location: func.location,
-                });
-            } else if contains_recursive_append_result(&func.body, &func.name) {
-                errors.push(ValidationError::RecursiveAppendResult {
-                    function_name: func.name.clone(),
-                    location: func.location,
-                });
-            }
-
-            // Check 3: Collection parameters must use structural recursion
-            // Simplified: just check that collection params are destructured in patterns
-            if func.params.len() == 1 {
-                if let Some(Type::List(_)) = func.params[0].type_annotation.as_ref() {
-                    if !uses_structural_recursion(&func.body) {
-                        errors.push(ValidationError::NonStructuralRecursion {
-                            function_name: func.name.clone(),
-                            param_name: func.params[0].name.clone(),
-                            location: func.location,
-                        });
-                    }
                 }
             }
         }
@@ -5700,6 +5725,270 @@ fn validate_recursive_functions(program: &Program) -> Result<(), Vec<ValidationE
     } else {
         Err(errors)
     }
+}
+
+/// Reject mutual recursion between top-level functions in the same file/module.
+///
+/// Cross-module cycles can't exist in Sigil today: rooted module references like
+/// `•other.bar` use a different name space, and module cycles are already
+/// rejected by an earlier pass. So a name-only call graph over local top-level
+/// function declarations is sufficient given Sigil's no-shadowing invariant.
+///
+/// Self-recursion (size-1 SCC) is allowed and handled by the missing-decreases
+/// check; this pass only rejects SCCs of size >= 2.
+fn validate_mutual_recursion(program: &Program) -> Result<(), Vec<ValidationError>> {
+    use std::collections::{BTreeMap, HashMap};
+
+    let mut errors = Vec::new();
+
+    // Map of top-level function name to its declaration location and body.
+    let mut local_functions: BTreeMap<String, (SourceLocation, &Expr)> = BTreeMap::new();
+    for decl in &program.declarations {
+        let func = match decl {
+            Declaration::Function(func) => func,
+            Declaration::Transform(transform) => &transform.function,
+            _ => continue,
+        };
+        local_functions.insert(func.name.clone(), (func.location, &func.body));
+    }
+
+    // Build the call graph: for each function, the set of other local functions
+    // it calls (excluding itself; self-edges are handled by missing-decreases).
+    let mut call_graph: HashMap<String, Vec<String>> = HashMap::new();
+    for (name, (_, body)) in &local_functions {
+        let mut callees = Vec::new();
+        collect_local_callees(body, name, &local_functions, &mut callees);
+        callees.sort();
+        callees.dedup();
+        call_graph.insert(name.clone(), callees);
+    }
+
+    // Find SCCs via Tarjan's algorithm.
+    let sccs = strongly_connected_components(&call_graph);
+
+    for scc in sccs {
+        if scc.len() < 2 {
+            continue;
+        }
+        // Sort cycle members alphabetically for deterministic error text.
+        let mut cycle_names = scc.clone();
+        cycle_names.sort();
+        // Report the error at the location of the alphabetically-first function.
+        let location = cycle_names
+            .iter()
+            .filter_map(|name| local_functions.get(name).map(|(loc, _)| *loc))
+            .next()
+            .unwrap_or_else(|| SourceLocation {
+                start: sigil_lexer::Position::new(1, 1, 0),
+                end: sigil_lexer::Position::new(1, 1, 0),
+            });
+        errors.push(ValidationError::MutualRecursion {
+            cycle: cycle_names.join(", "),
+            location,
+        });
+    }
+
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+/// Collect identifier-shaped calls in `expr` whose callee is a known local
+/// top-level function (excluding `self_name`, which is the function whose
+/// body we're walking; self-edges are excluded so SCC analysis only flags
+/// cycles of size >= 2).
+fn collect_local_callees(
+    expr: &Expr,
+    self_name: &str,
+    local_functions: &std::collections::BTreeMap<String, (SourceLocation, &Expr)>,
+    out: &mut Vec<String>,
+) {
+    match expr {
+        Expr::Application(app) => {
+            if let Expr::Identifier(ident) = &app.func {
+                if ident.name != self_name && local_functions.contains_key(&ident.name) {
+                    out.push(ident.name.clone());
+                }
+            }
+            collect_local_callees(&app.func, self_name, local_functions, out);
+            for arg in &app.args {
+                collect_local_callees(arg, self_name, local_functions, out);
+            }
+        }
+        Expr::Identifier(_) | Expr::Literal(_) | Expr::MemberAccess(_) => {}
+        Expr::Lambda(lambda) => {
+            collect_local_callees(&lambda.body, self_name, local_functions, out);
+        }
+        Expr::Binary(bin) => {
+            collect_local_callees(&bin.left, self_name, local_functions, out);
+            collect_local_callees(&bin.right, self_name, local_functions, out);
+        }
+        Expr::Unary(un) => collect_local_callees(&un.operand, self_name, local_functions, out),
+        Expr::Match(m) => {
+            collect_local_callees(&m.scrutinee, self_name, local_functions, out);
+            for arm in &m.arms {
+                if let Some(g) = &arm.guard {
+                    collect_local_callees(g, self_name, local_functions, out);
+                }
+                collect_local_callees(&arm.body, self_name, local_functions, out);
+            }
+        }
+        Expr::Let(l) => {
+            collect_local_callees(&l.value, self_name, local_functions, out);
+            collect_local_callees(&l.body, self_name, local_functions, out);
+        }
+        Expr::Using(using_expr) => {
+            collect_local_callees(&using_expr.value, self_name, local_functions, out);
+            collect_local_callees(&using_expr.body, self_name, local_functions, out);
+        }
+        Expr::If(i) => {
+            collect_local_callees(&i.condition, self_name, local_functions, out);
+            collect_local_callees(&i.then_branch, self_name, local_functions, out);
+            if let Some(else_branch) = &i.else_branch {
+                collect_local_callees(else_branch, self_name, local_functions, out);
+            }
+        }
+        Expr::List(list) => {
+            for element in &list.elements {
+                collect_local_callees(element, self_name, local_functions, out);
+            }
+        }
+        Expr::Record(record) => {
+            for field in &record.fields {
+                collect_local_callees(&field.value, self_name, local_functions, out);
+            }
+        }
+        Expr::MapLiteral(map) => {
+            for entry in &map.entries {
+                collect_local_callees(&entry.key, self_name, local_functions, out);
+                collect_local_callees(&entry.value, self_name, local_functions, out);
+            }
+        }
+        Expr::Tuple(tuple) => {
+            for element in &tuple.elements {
+                collect_local_callees(element, self_name, local_functions, out);
+            }
+        }
+        Expr::FieldAccess(field_access) => {
+            collect_local_callees(&field_access.object, self_name, local_functions, out);
+        }
+        Expr::Index(index) => {
+            collect_local_callees(&index.object, self_name, local_functions, out);
+            collect_local_callees(&index.index, self_name, local_functions, out);
+        }
+        Expr::Pipeline(pipeline) => {
+            collect_local_callees(&pipeline.left, self_name, local_functions, out);
+            collect_local_callees(&pipeline.right, self_name, local_functions, out);
+        }
+        Expr::Map(m) => {
+            collect_local_callees(&m.list, self_name, local_functions, out);
+            collect_local_callees(&m.func, self_name, local_functions, out);
+        }
+        Expr::Filter(f) => {
+            collect_local_callees(&f.list, self_name, local_functions, out);
+            collect_local_callees(&f.predicate, self_name, local_functions, out);
+        }
+        Expr::Fold(f) => {
+            collect_local_callees(&f.list, self_name, local_functions, out);
+            collect_local_callees(&f.init, self_name, local_functions, out);
+            collect_local_callees(&f.func, self_name, local_functions, out);
+        }
+        Expr::Concurrent(concurrent) => {
+            for step in &concurrent.steps {
+                match step {
+                    sigil_ast::ConcurrentStep::Spawn(spawn) => {
+                        collect_local_callees(&spawn.expr, self_name, local_functions, out);
+                    }
+                    sigil_ast::ConcurrentStep::SpawnEach(spawn_each) => {
+                        collect_local_callees(&spawn_each.list, self_name, local_functions, out);
+                        collect_local_callees(&spawn_each.func, self_name, local_functions, out);
+                    }
+                }
+            }
+        }
+        Expr::TypeAscription(type_ascription) => {
+            collect_local_callees(&type_ascription.expr, self_name, local_functions, out);
+        }
+    }
+}
+
+/// Tarjan's strongly-connected components algorithm.
+fn strongly_connected_components(
+    graph: &std::collections::HashMap<String, Vec<String>>,
+) -> Vec<Vec<String>> {
+    use std::collections::HashMap;
+
+    struct State<'a> {
+        graph: &'a HashMap<String, Vec<String>>,
+        index_counter: usize,
+        stack: Vec<String>,
+        on_stack: HashMap<String, bool>,
+        index: HashMap<String, usize>,
+        lowlink: HashMap<String, usize>,
+        sccs: Vec<Vec<String>>,
+    }
+
+    fn strong_connect(state: &mut State, node: &str) {
+        state.index.insert(node.to_string(), state.index_counter);
+        state.lowlink.insert(node.to_string(), state.index_counter);
+        state.index_counter += 1;
+        state.stack.push(node.to_string());
+        state.on_stack.insert(node.to_string(), true);
+
+        if let Some(neighbors) = state.graph.get(node) {
+            for neighbor in neighbors.clone() {
+                if !state.index.contains_key(&neighbor) {
+                    strong_connect(state, &neighbor);
+                    let neighbor_low = state.lowlink[&neighbor];
+                    let node_low = state.lowlink[node];
+                    state
+                        .lowlink
+                        .insert(node.to_string(), node_low.min(neighbor_low));
+                } else if *state.on_stack.get(&neighbor).unwrap_or(&false) {
+                    let neighbor_index = state.index[&neighbor];
+                    let node_low = state.lowlink[node];
+                    state
+                        .lowlink
+                        .insert(node.to_string(), node_low.min(neighbor_index));
+                }
+            }
+        }
+
+        if state.lowlink[node] == state.index[node] {
+            let mut scc = Vec::new();
+            while let Some(member) = state.stack.pop() {
+                state.on_stack.insert(member.clone(), false);
+                let is_root = member == node;
+                scc.push(member);
+                if is_root {
+                    break;
+                }
+            }
+            state.sccs.push(scc);
+        }
+    }
+
+    let mut state = State {
+        graph,
+        index_counter: 0,
+        stack: Vec::new(),
+        on_stack: HashMap::new(),
+        index: HashMap::new(),
+        lowlink: HashMap::new(),
+        sccs: Vec::new(),
+    };
+
+    let mut nodes: Vec<&String> = graph.keys().collect();
+    nodes.sort();
+    for node in nodes {
+        if !state.index.contains_key(node) {
+            strong_connect(&mut state, node);
+        }
+    }
+
+    state.sccs
 }
 
 /// Check if an expression contains a recursive call to the given function
@@ -6707,7 +6996,7 @@ mod tests {
     #[test]
     fn test_simple_recursion_allowed() {
         // This stays minimal because the test is about recursion validation, not match coverage.
-        let source = "λfactorial(n:Int)=>Int=factorial(n-1)\n";
+        let source = "λfactorial(n:Int)=>Int\nrequires n≥0\ndecreases n\n=factorial(n-1)\n";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.lib.sigil").unwrap();
 
@@ -6939,9 +7228,12 @@ mod tests {
 
     #[test]
     fn test_direct_match_body_canonical_layout_allowed() {
-        let source = r#"λcountdown(n:Int)=>Int match n{
+        let source = r#"λcountdown(n:Int)=>Int
+requires n≥0
+decreases n
+match n{
   0=>0|
-  value=>countdown(value-1)
+  value=>countdown(value+-1)
 }
 
 λmain()=>Int=countdown(5)

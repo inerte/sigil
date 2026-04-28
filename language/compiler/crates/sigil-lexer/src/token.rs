@@ -57,6 +57,9 @@ pub enum TokenType {
     #[token("ensures", priority = 3)]
     Ensures,
 
+    #[token("decreases", priority = 3)]
+    Decreases,
+
     #[token("concurrent", priority = 3)]
     Concurrent,
 

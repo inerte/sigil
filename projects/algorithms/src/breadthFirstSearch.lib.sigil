@@ -1,25 +1,33 @@
-λbfsLoop(graph:µGraph,queue:[Int],visited:[Int])=>[Int] match queue{
+λbfsLoop(fuel:Int,graph:µGraph,queue:[Int],visited:[Int])=>[Int]
+requires 0≤fuel
+decreases fuel
+match queue{
   []=>visited|
   [
   head,
   .tail
-]=>match §list.contains(
-    head,
-    visited
-  ){
-    true=>bfsLoop(
-      graph,
-      tail,
+]=>match fuel=0{
+    true=>visited|
+    false=>match §list.contains(
+      head,
       visited
-    )|
-    false=>bfsLoop(
-      graph,
-      tail⧺•graphHelpers.neighborsOf(
+    ){
+      true=>bfsLoop(
+        fuel+-1,
         graph,
-        head
-      ),
-      visited⧺[head]
-    )
+        tail,
+        visited
+      )|
+      false=>bfsLoop(
+        fuel+-1,
+        graph,
+        tail⧺•graphHelpers.neighborsOf(
+          graph,
+          head
+        ),
+        visited⧺[head]
+      )
+    }
   }
 }
 
@@ -28,6 +36,7 @@
   start
 ){
   true=>bfsLoop(
+    100000,
     graph,
     [start],
     []

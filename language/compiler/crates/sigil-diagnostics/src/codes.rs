@@ -84,6 +84,8 @@ pub mod canonical {
     pub const BRANCHING_SELF_RECURSION: &str = "SIGIL-CANON-BRANCHING-SELF-RECURSION";
     pub const TRAVERSAL_FILTER_COUNT: &str = "SIGIL-CANON-TRAVERSAL-FILTER-COUNT";
     pub const HELPER_DIRECT_WRAPPER: &str = "SIGIL-CANON-HELPER-DIRECT-WRAPPER";
+    pub const RECURSION_MISSING_DECREASES: &str = "SIGIL-CANON-RECURSION-MISSING-DECREASES";
+    pub const MUTUAL_RECURSION: &str = "SIGIL-CANON-MUTUAL-RECURSION";
 
     // Parameter and effect ordering
     pub const PARAM_ORDER: &str = "SIGIL-CANON-PARAM-ORDER";
@@ -177,6 +179,13 @@ pub mod protocol {
     pub const DUPLICATE: &str = "SIGIL-PROTO-DUPLICATE";
 }
 
+/// Proof obligation error codes (SIGIL-PROOF-*)
+pub mod proof {
+    pub const MEASURE_NOT_IN_FRAGMENT: &str = "SIGIL-PROOF-MEASURE-NOT-IN-FRAGMENT";
+    pub const MEASURE_NOT_DECREASING: &str = "SIGIL-PROOF-MEASURE-NOT-DECREASING";
+    pub const MEASURE_UNBOUNDED_BELOW: &str = "SIGIL-PROOF-MEASURE-UNBOUNDED-BELOW";
+}
+
 pub mod runtime {
     pub const CHILD_EXIT: &str = "SIGIL-RUNTIME-CHILD-EXIT";
     pub const REPLAY_BINDING_MISMATCH: &str = "SIGIL-RUNTIME-REPLAY-BINDING-MISMATCH";
@@ -252,6 +261,8 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     canonical::BRANCHING_SELF_RECURSION,
     canonical::TRAVERSAL_FILTER_COUNT,
     canonical::HELPER_DIRECT_WRAPPER,
+    canonical::RECURSION_MISSING_DECREASES,
+    canonical::MUTUAL_RECURSION,
     canonical::PARAM_ORDER,
     canonical::EFFECT_ORDER,
     canonical::RECORD_TYPE_FIELD_ORDER,
@@ -327,6 +338,10 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     protocol::STATE_VIOLATION,
     protocol::MISSING_CONTRACT,
     protocol::DUPLICATE,
+    // Proof (3 codes)
+    proof::MEASURE_NOT_IN_FRAGMENT,
+    proof::MEASURE_NOT_DECREASING,
+    proof::MEASURE_UNBOUNDED_BELOW,
 ];
 
 #[cfg(test)]
@@ -360,8 +375,8 @@ mod tests {
         // Keep this in sync when adding or removing diagnostic codes.
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            130,
-            "Expected 130 error codes, found {}",
+            135,
+            "Expected 135 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

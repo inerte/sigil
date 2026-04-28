@@ -1,4 +1,7 @@
-λmodPow(base:Int,exponent:Int,modulus:Int)=>Int match modulus=1{
+λmodPow(base:Int,exponent:Int,modulus:Int)=>Int
+requires 0≤exponent
+decreases exponent
+match modulus=1{
   true=>0|
   false=>match exponent=0{
     true=>1%modulus|
@@ -13,7 +16,7 @@
       }|
       false=>base%modulus*modPow(
         base,
-        exponent-1,
+        exponent+-1,
         modulus
       )%modulus
     }

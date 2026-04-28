@@ -6,7 +6,10 @@
   )
 }
 
-λquickSelectInRange(k:Int,xs:[Int])=>Option[Int] match xs{
+λquickSelectInRange(k:Int,xs:[Int])=>Option[Int]
+requires #xs≥0
+decreases #xs
+match xs{
   []=>None()|
   [
   pivot,

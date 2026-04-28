@@ -1,4 +1,7 @@
-λlength(lst:[Int])=>Int match lst{
+λlength(lst:[Int])=>Int
+requires #lst≥0
+decreases #lst
+match lst{
   []=>0|
   [
   _,

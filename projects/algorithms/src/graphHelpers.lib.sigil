@@ -3,7 +3,9 @@
   vertex
 )
 
-λhasVertexNodes(nodes:[µNodeNeighbors],vertex:Int)=>Bool match nodes{
+λhasVertexNodes(nodes:[µNodeNeighbors],vertex:Int)=>Bool
+decreases #nodes
+match nodes{
   []=>false|
   [
   node,
@@ -17,7 +19,9 @@
   }
 }
 
-λneighborsFromNodes(nodes:[µNodeNeighbors],vertex:Int)=>[Int] match nodes{
+λneighborsFromNodes(nodes:[µNodeNeighbors],vertex:Int)=>[Int]
+decreases #nodes
+match nodes{
   []=>[]|
   [
   node,

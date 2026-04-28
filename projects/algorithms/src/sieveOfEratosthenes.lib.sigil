@@ -8,7 +8,10 @@
   ))
 }
 
-λsieveCandidates(candidates:[Int])=>[Int] match candidates{
+λsieveCandidates(candidates:[Int])=>[Int]
+requires #candidates≥0
+decreases #candidates
+match candidates{
   []=>[]|
   [
   head,

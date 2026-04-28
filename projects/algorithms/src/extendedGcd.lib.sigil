@@ -1,35 +1,69 @@
-λextendedGcd(a:Int,b:Int)=>µExtendedGcd match (
-  b=0,
-  a<0
-){
-  (
+λegK(a:Int,b:Int,fuel:Int)=>µExtendedGcd
+decreases fuel
+match fuel=0{
+  true=>{
+    gcd:0,
+    x:0,
+    y:0
+  }|
+  false=>match (
+    b=0,
+    a<0
+  ){
+    (
   true,
   true
 )=>{
-    gcd:-a,
-    x:-1,
-    y:0
-  }|
-  (
+      gcd:-a,
+      x:-1,
+      y:0
+    }|
+    (
   true,
   false
 )=>{
-    gcd:a,
-    x:1,
-    y:0
-  }|
-  (
+      gcd:a,
+      x:1,
+      y:0
+    }|
+    (
+  false,
+  _
+) when 0<fuel=>{
+      l recursiveResult=(egK(
+        b,
+        a%b,
+        fuel+-1
+      ):µExtendedGcd);
+      {
+        gcd:recursiveResult.gcd,
+        x:recursiveResult.y,
+        y:recursiveResult.x-((a-a%b)/b:Int)*recursiveResult.y
+      }
+    }|
+    (
   false,
   _
 )=>{
-    l recursiveResult=(extendedGcd(
-      b,
-      a%b
-    ):µExtendedGcd);
-    {
-      gcd:recursiveResult.gcd,
-      x:recursiveResult.y,
-      y:recursiveResult.x-((a-a%b)/b:Int)*recursiveResult.y
+      gcd:0,
+      x:0,
+      y:0
     }
   }
 }
+
+λegR(a:Int,b:Int,fuel:Int)=>µExtendedGcd
+requires 0≤fuel
+=egK(
+  a,
+  b,
+  fuel
+)
+
+λextendedGcd(a:Int,b:Int)=>µExtendedGcd
+requires 0≤b
+=egR(
+  a,
+  b,
+  100000
+)

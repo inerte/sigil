@@ -7,7 +7,10 @@
   xs
 )
 
-λquickSortInto(acc:[Int],xs:[Int])=>[Int] match xs{
+λquickSortInto(acc:[Int],xs:[Int])=>[Int]
+requires #xs≥0
+decreases #xs
+match xs{
   []=>acc|
   [
   pivot,

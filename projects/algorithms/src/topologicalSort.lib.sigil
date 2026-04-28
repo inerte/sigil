@@ -22,7 +22,10 @@
   sources
 )
 
-λpickZeroCandidate(candidates:[Int],graph:µGraph,remaining:[Int])=>Int match candidates{
+λpickZeroCandidate(candidates:[Int],graph:µGraph,remaining:[Int])=>Int
+requires #candidates≥0
+decreases #candidates
+match candidates{
   []=>-1|
   [
   vertex,
@@ -47,7 +50,10 @@
   remaining
 )
 
-λtopologicalLoop(graph:µGraph,ordered:[Int],remaining:[Int])=>µTopologicalSortResult match remaining{
+λtopologicalLoop(graph:µGraph,ordered:[Int],remaining:[Int])=>µTopologicalSortResult
+requires #remaining≥0
+decreases #remaining
+match remaining{
   []=>µOrdering(ordered)|
   _=>match pickZeroIndegree(
     graph,

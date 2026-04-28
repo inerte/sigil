@@ -1,10 +1,19 @@
+λbuildZeroList(k:Int)=>[Int]
+decreases k
+match k{
+  0=>[]|
+  count=>[0]⧺buildZeroList(count+-1)
+}
+
 λfib01BasicRecursive(n:Int)=>Int=fib01BasicRecursiveHelper(
   0,
   1,
   n
 )
 
-λfib01BasicRecursiveHelper(a:Int,b:Int,n:Int)=>Int match n{
+λfib01BasicRecursiveHelper(a:Int,b:Int,n:Int)=>Int
+decreases n
+match n{
   0=>a|
   count=>fib01BasicRecursiveHelper(
     b,
@@ -19,7 +28,9 @@
   n
 )
 
-λfib02WithGuardsHelper(a:Int,b:Int,n:Int)=>Int match n≤1{
+λfib02WithGuardsHelper(a:Int,b:Int,n:Int)=>Int
+decreases n
+match n≤1{
   true=>match n{
     0=>a|
     other=>b
@@ -37,7 +48,9 @@
   n
 )
 
-λfib03NestedMatchesHelper(a:Int,b:Int,n:Int)=>Int match n{
+λfib03NestedMatchesHelper(a:Int,b:Int,n:Int)=>Int
+decreases n
+match n{
   0=>a|
   value=>match value{
     1=>b|
@@ -49,7 +62,9 @@
   }
 }
 
-λfib04TupleHelper(a:Int,b:Int,n:Int)=>Int match n{
+λfib04TupleHelper(a:Int,b:Int,n:Int)=>Int
+decreases n
+match n{
   0=>a|
   count=>fib04TupleHelper(
     b,
@@ -64,7 +79,9 @@
   n
 )
 
-λfib05SequenceBuilder(n:Int)=>Int match §list.last(fibSequence(n)){
+λfib05SequenceBuilder(n:Int)=>Int
+requires n≥0
+match §list.last(fibSequence(n)){
   Some(x)=>x|
   None()=>0
 }
@@ -75,7 +92,9 @@
   n
 )
 
-λfib06ListSumHelper(a:Int,b:Int,n:Int)=>Int match n{
+λfib06ListSumHelper(a:Int,b:Int,n:Int)=>Int
+decreases n
+match n{
   0=>a|
   count=>fib06ListSumHelper(
     b,
@@ -96,7 +115,9 @@
   None()=>-1
 }:Int)
 
-λfib07WithOptionHelper(a:Int,b:Int,n:Int)=>Option[Int] match n{
+λfib07WithOptionHelper(a:Int,b:Int,n:Int)=>Option[Int]
+decreases n
+match n{
   0=>Some(a)|
   1=>Some(b)|
   count=>fib07WithOptionHelper(
@@ -112,7 +133,9 @@
   n
 )
 
-λfib08ModHelper(a:Int,b:Int,n:Int)=>Int match n{
+λfib08ModHelper(a:Int,b:Int,n:Int)=>Int
+decreases n
+match n{
   0=>a|
   count=>fib08ModHelper(
     b,
@@ -130,7 +153,9 @@
   n
 )
 
-λfib09MinMaxHelper(a:Int,b:Int,n:Int)=>Int match n{
+λfib09MinMaxHelper(a:Int,b:Int,n:Int)=>Int
+decreases n
+match n{
   0=>a|
   count=>fib09MinMaxHelper(
     b,
@@ -151,7 +176,9 @@
   n
 )
 
-λfib10AbsSumHelper(a:Int,b:Int,n:Int)=>Int match n{
+λfib10AbsSumHelper(a:Int,b:Int,n:Int)=>Int
+decreases n
+match n{
   0=>a|
   count=>fib10AbsSumHelper(
     b,
@@ -168,7 +195,9 @@
   n
 )
 
-λfib12ComparisonHelper(a:Int,b:Int,n:Int)=>Int match n{
+λfib12ComparisonHelper(a:Int,b:Int,n:Int)=>Int
+decreases n
+match n{
   0=>a|
   count=>match a>b{
     true=>fib12ComparisonHelper(
@@ -184,24 +213,11 @@
   }
 }
 
-λfibAsLength(n:Int)=>[Int]=fibAsLengthHelper(
-  [],
-  n
-)
+λfibAsLength(n:Int)=>[Int]=buildZeroList(fib01BasicRecursive(n))
 
-λfibAsLengthHelper(acc:[Int],n:Int)=>[Int] match n{
-  0=>acc|
-  1=>([1]:[Int])⧺acc|
-  value=>fibAsLengthHelper(
-    fibAsLengthHelper(
-      acc,
-      value-2
-    ),
-    value-1
-  )
-}
-
-λfibSequence(n:Int)=>[Int] match n{
+λfibSequence(n:Int)=>[Int]
+requires n≥0
+match n{
   0=>[0]|
   1=>[
     0,
@@ -217,7 +233,12 @@
   )
 }
 
-λfibSequenceHelper(acc:[Int],current:Int,n:Int)=>[Int] match current>n{
+λfibSequenceHelper(acc:[Int],current:Int,n:Int)=>[Int]
+requires 0≤current
+  and n≥0
+  and current≤n+1
+decreases n+1+-current
+match current>n{
   true=>acc|
   false=>fibSequenceHelper(
     acc⧺[sumLastTwo(acc)],

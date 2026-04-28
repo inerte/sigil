@@ -236,7 +236,9 @@
 λrunSelectionInner(issues:[µAuditIssue],remaining:[String],reports:[µAuditCheckResult],selectedChecks:[String])=>!AuditIo Result[
   µAuditData,
   String
-] match remaining{
+]
+decreases #remaining
+match remaining{
   []=>Ok({
     checks:reports,
     issues:issues,
@@ -285,7 +287,9 @@
   }
 }
 
-λselectedCheckIdsInner(remaining:[String],requested:[String])=>[String] match remaining{
+λselectedCheckIdsInner(remaining:[String],requested:[String])=>[String]
+decreases #remaining
+match remaining{
   []=>[]|
   [
   checkId,
@@ -313,7 +317,9 @@
   false=>validateRequestedChecks(requested)
 }
 
-λunknownCheck(requested:[String])=>Option[String] match requested{
+λunknownCheck(requested:[String])=>Option[String]
+decreases #requested
+match requested{
   []=>None()|
   [
   checkId,

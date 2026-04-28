@@ -1,4 +1,7 @@
-λinsertSorted(item:Int,xs:[Int])=>[Int] match xs{
+λinsertSorted(item:Int,xs:[Int])=>[Int]
+requires #xs≥0
+decreases #xs
+match xs{
   []=>[item]|
   [
   head,
@@ -15,7 +18,10 @@
   }
 }
 
-λinsertionSort(xs:[Int])=>[Int] match xs{
+λinsertionSort(xs:[Int])=>[Int]
+requires #xs≥0
+decreases #xs
+match xs{
   []=>[]|
   [
   head,

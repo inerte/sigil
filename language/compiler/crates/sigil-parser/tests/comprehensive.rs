@@ -209,6 +209,45 @@ fn test_function_declaration_with_requires_and_ensures() {
 }
 
 #[test]
+fn test_function_declaration_with_requires_decreases_ensures() {
+    let source = "λcount(n:Int)=>Int\nrequires n≥0\ndecreases n\nensures result≥0\nmatch n{0=>0|v=>1+count(v+(-1))}";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    match &program.declarations[0] {
+        Declaration::Function(function) => {
+            assert!(function.requires.is_some());
+            assert!(function.decreases.is_some());
+            assert!(function.ensures.is_some());
+        }
+        _ => panic!("Expected function declaration"),
+    }
+}
+
+#[test]
+fn test_function_declaration_decreases_lexicographic_tuple() {
+    let source = "λstep(n:Int,m:Int)=>Int\ndecreases (n,m)\nmatch n=0{true=>0|false=>step( n+(-1),m)}";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    match &program.declarations[0] {
+        Declaration::Function(function) => {
+            let dec = function.decreases.as_ref().unwrap();
+            assert!(matches!(dec, Expr::Tuple(_)), "expected tuple measure");
+        }
+        _ => panic!("Expected function declaration"),
+    }
+}
+
+#[test]
+fn test_function_contract_wrong_order_is_parse_error() {
+    let source = "λbad()=>Int\ndecreases 1\nrequires 1=1\n=0";
+    let tokens = tokenize(source).unwrap();
+    let err = parse(tokens, "test.sigil");
+    assert!(err.is_err(), "out-of-order requires after decreases must fail");
+}
+
+#[test]
 fn test_project_type_root_parses_as_src_types() {
     let source = "λrender(meta:µArticleMeta)=>String=meta.slug";
     let tokens = tokenize(source).unwrap();

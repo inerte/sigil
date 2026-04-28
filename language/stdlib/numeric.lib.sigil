@@ -29,12 +29,26 @@ t DivMod={
   ):Int)
 }
 
-λgcd(a:Int,b:Int)=>Int match b{
-  0=>a|
-  divisor=>gcd(
-    divisor,
-    a%divisor
-  )
+λgcd(a:Int,b:Int)=>Int
+requires b≥0
+=gcdLoop(
+  a,
+  b,
+  100000
+)
+
+λgcdLoop(a:Int,b:Int,fuel:Int)=>Int
+decreases fuel
+match fuel=0{
+  true=>0|
+  false=>match b{
+    0=>a|
+    divisor=>gcdLoop(
+      divisor,
+      a%divisor,
+      fuel+-1
+    )
+  }
 }
 
 λinRange(max:Int,min:Int,x:Int)=>Bool=inRangeHelper(
@@ -58,7 +72,9 @@ t DivMod={
 
 λisPositive(x:Int)=>Bool=x>0
 
-λisPrime(n:Int)=>Bool match n{
+λisPrime(n:Int)=>Bool
+requires n≥0
+match n{
   0=>false|
   1=>false|
   value=>isPrimeHelper(
@@ -67,7 +83,10 @@ t DivMod={
   )
 }
 
-λisPrimeHelper(divisor:Int,n:Int)=>Bool match divisor*divisor>n{
+λisPrimeHelper(divisor:Int,n:Int)=>Bool
+requires 2≤divisor and divisor≤n
+decreases n+-divisor
+match divisor*divisor>n{
   true=>true|
   false=>match n%divisor≠0{
     true=>isPrimeHelper(
@@ -101,7 +120,10 @@ t DivMod={
   false=>(a%b:Int)
 }
 
-λpow(base:Int,exp:Int)=>Int match exp{
+λpow(base:Int,exp:Int)=>Int
+requires exp≥0
+decreases exp
+match exp{
   0=>1|
   remainingExp=>base*pow(
     base,
@@ -111,7 +133,18 @@ t DivMod={
 
 λrange(start:Int,stop:Int)=>[Int] match start>stop{
   true=>[]|
-  false=>[start]⧺range(
+  false=>rangeAsc(
+    start,
+    stop
+  )
+}
+
+λrangeAsc(start:Int,stop:Int)=>[Int]
+requires start≤stop
+decreases stop-start
+match start=stop{
+  true=>[start]|
+  false=>[start]⧺rangeAsc(
     start+1,
     stop
   )

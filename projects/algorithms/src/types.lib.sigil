@@ -3,6 +3,12 @@ t Bucket={
   value:Int
 }
 
+t DfsNbrsTag={remaining:[Int]}
+
+t DfsVertexTag={v:Int}
+
+t DfsMode=DfsNbrsRest(DfsNbrsTag)|DfsVertex(DfsVertexTag)
+
 t ExtendedGcd={
   gcd:Int,
   x:Int,

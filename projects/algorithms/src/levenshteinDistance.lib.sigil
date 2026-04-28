@@ -5,7 +5,10 @@
   0
 )
 
-λlevenshteinFrom(left:String,leftIdx:Int,right:String,rightIdx:Int)=>Int match leftIdx=#left{
+λlevenshteinFrom(left:String,leftIdx:Int,right:String,rightIdx:Int)=>Int
+requires 0≤#left+-leftIdx and 0≤#right+-rightIdx
+decreases (#left+-leftIdx, #right+-rightIdx)
+match leftIdx=#left{
   true=>#right-rightIdx|
   false=>match rightIdx=#right{
     true=>#left-leftIdx|

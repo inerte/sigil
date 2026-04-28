@@ -1,0 +1,32 @@
+λcountdown(n:Int)=>Int
+requires n≥0
+decreases n
+match n{
+  0=>0|
+  value=>countdown(value+-1)
+}
+
+λlexDecrease(m:Int,n:Int)=>Int
+requires m≥0 and n≥0
+decreases (m, n)
+match m=0{
+  true=>n|
+  false=>lexDecrease(
+    m+-1,
+    n
+  )
+}
+
+λmain()=>Unit=()
+
+test "single and lexicographic measures compile" {
+  countdown(2)=0
+    and lexDecrease(
+      0,
+      3
+    )=3
+    and lexDecrease(
+      2,
+      0
+    )=0
+}

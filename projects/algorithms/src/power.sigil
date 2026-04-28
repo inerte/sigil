@@ -3,10 +3,13 @@
   10
 )
 
-λpower(base:Int,exp:Int)=>Int match exp{
+λpower(base:Int,exp:Int)=>Int
+requires 0≤exp
+decreases exp
+match exp{
   0=>1|
   remainingExp=>base*power(
     base,
-    remainingExp-1
+    remainingExp+-1
   )
 }

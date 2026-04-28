@@ -3,7 +3,10 @@
   n
 )
 
-λblockSizeFrom(candidate:Int,n:Int)=>Int match (candidate+1)*(candidate+1)>n{
+λblockSizeFrom(candidate:Int,n:Int)=>Int
+requires 0≤n+-candidate
+decreases n+-candidate
+match (candidate+1)*(candidate+1)>n{
   true=>candidate|
   false=>blockSizeFrom(
     candidate+1,
@@ -65,7 +68,10 @@
   None()=>-1
 }
 
-λlinearSearchBlock(end:Int,start:Int,target:Int,xs:[Int])=>Int match start>end{
+λlinearSearchBlock(end:Int,start:Int,target:Int,xs:[Int])=>Int
+requires 0≤end+-start
+decreases end+-start
+match start>end{
   true=>-1|
   false=>match indexValue(
     start,

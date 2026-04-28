@@ -94,7 +94,7 @@ Canonical source is now printer-first:
 Current high-signal printer choices:
 - delimited aggregate forms stay flat with `0` or `1` item and print multiline with `2+` items
 - repeated `++`, `⧺`, `and`, and `or` chains print vertically one continued operand per line
-- `requires` / `ensures` print on following lines before the body
+- `requires` / `decreases` / `ensures` (when present) print on following lines in that order before the body
 - direct `match` bodies begin on that same line
 - direct `match` bodies stay `match ...` with no `=` even after contract lines
 - multi-arm `match` is always multiline
@@ -149,7 +149,7 @@ Current constructor and list invariants:
   - supported proof facts include Bool/Int literals, rooted or pattern-bound values, `value`, `result`, field access, `#` over strings/lists/maps, `+`, `-`, comparisons, `and`, `or`, `not`, direct boolean local aliases of those supported facts, and pattern-shape facts from tuples, lists, exact records, and nominal sum constructors
   - unsupported guards remain valid syntax but stay opaque to coverage and refinement narrowing
   - `where` on a type declaration defines a pure, world-independent refinement over an alias or named product type; compile-time promotion into that type requires proof in Sigil's canonical solver-backed refinement fragment, and `match` / internal branching propagate supported branch facts into that proof context
-  - `requires` and `ensures` are the canonical function-contract surface; `requires` may reference parameters, `ensures` may reference parameters plus `result`, and both stay pure and world-independent
+  - `requires`, `decreases`, and `ensures` are the canonical function-contract surface: `requires` on parameters, `decreases` a pure `Int` or `Int` tuple measure for self-recursive functions (plus solver proof), `ensures` on `result`; effectful `decreases` proves only syntactic call-chain termination; mutual top-level cycles in a module are rejected; see `language/AGENTS.md` and `language/compiler/ERROR_CODES.md`
   - direct boolean local aliases of supported facts participate in that same flow-sensitive refinement and coverage model
   - `where`, `requires`, and `ensures` do not imply runtime validation
   - prefer early boundary conversion with `§decode` instead of carrying raw `JsonValue` deep into business logic
@@ -378,7 +378,10 @@ Canonical example:
   n
 )
 
-λfibHelper(a:Int,b:Int,n:Int)=>Int match n{
+λfibHelper(a:Int,b:Int,n:Int)=>Int
+requires n≥0
+decreases n
+match n{
   0=>a|
   count=>fibHelper(
     b,
@@ -393,6 +396,8 @@ This rule is intentionally narrow:
 - recursion in different control-flow branches is allowed
 - recursive calls with different non-reduced arguments are allowed
 - Sigil does not attempt general complexity proofs or general exponential-recursion detection
+
+**Termination** (orthogonal to branching): self-recursive functions (except `Never` returns) need a provable `decreases` measure; see `language/compiler/ERROR_CODES.md` and `language/AGENTS.md`.
 
 ### Testing Invalid Code Patterns
 

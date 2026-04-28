@@ -119,7 +119,9 @@
   Err(_)=>false
 }
 
-λpublishableProjectDirs(paths:[String],root:String)=>!Fs [String] match paths{
+λpublishableProjectDirs(paths:[String],root:String)=>!Fs [String]
+decreases #paths
+match paths{
   []=>[]|
   [
   head,
@@ -156,7 +158,9 @@
   Err(message)=>Err(message)
 }
 
-λrunChecks(projectDirs:[String],root:String)=>!Process [µPackagePublishabilityIssue] match projectDirs{
+λrunChecks(projectDirs:[String],root:String)=>!Process [µPackagePublishabilityIssue]
+decreases #projectDirs
+match projectDirs{
   []=>[]|
   [
   head,

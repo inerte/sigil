@@ -73,6 +73,7 @@ test "coverage helpers parse refs exports and identifiers" {
         ],
         •coverage.functionNamesFromTokens(
           false,
+          100000,
           [],
           tokenPattern,
           parseJson

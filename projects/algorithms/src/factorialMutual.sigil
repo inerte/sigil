@@ -1,13 +1,14 @@
-λfactA(n:Int)=>Int match n{
+λfactA(n:Int)=>Int
+requires 0≤n
+decreases n
+match n{
   0=>1|
   1=>1|
-  value=>value*factB(value-1)
+  value=>value*factA(value+-1)
 }
 
-λfactB(n:Int)=>Int match n{
-  0=>1|
-  1=>1|
-  value=>value*factA(value-1)
-}
+λfactB(n:Int)=>Int
+requires 0≤n
+=factA(n)
 
-λmain()=>Int=factA(5)
+λmain()=>Int=factB(5)

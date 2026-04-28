@@ -1,7 +1,10 @@
-λfactorial(n:Int)=>Int match n{
+λfactorial(n:Int)=>Int
+requires 0≤n
+decreases n
+match n{
   0=>1|
   1=>1|
-  value=>value*factorial(value-1)
+  value=>value*factorial(value+-1)
 }
 
 λmain()=>String="factorial(5) = "+factorial(5)

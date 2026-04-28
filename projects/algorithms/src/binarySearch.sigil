@@ -1,23 +1,31 @@
 λbinarySearch(high:Int,low:Int,target:Int,xs:[Int])=>Int match high<low{
   true=>-1|
-  false=>{
-    l mid=((low+high-(low+high)%2)/2:Int);
-    match xs[mid]=target{
-      true=>mid|
-      false=>match xs[mid]<target{
-        true=>binarySearch(
+  false=>binarySearchR(
+    high,
+    low,
+    target,
+    xs
+  )
+}
+
+λbinarySearchR(high:Int,low:Int,target:Int,xs:[Int])=>Int
+requires 0≤1+high+-low
+decreases 1+high+-low
+match high<low{
+  true=>-1|
+  false=>match xs[low]=target{
+    true=>low|
+    false=>match xs[low]<target{
+      true=>match low+1≤high{
+        true=>binarySearchR(
           high,
-          mid+1,
+          low+1,
           target,
           xs
         )|
-        false=>binarySearch(
-          mid-1,
-          low,
-          target,
-          xs
-        )
-      }
+        false=>-1
+      }|
+      false=>-1
     }
   }
 }

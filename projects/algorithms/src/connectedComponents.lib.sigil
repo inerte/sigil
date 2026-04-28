@@ -6,35 +6,45 @@
   false=>acc⧺[value]
 }
 
-λcomponentMembers(frontier:[Int],graph:µGraph,seen:[Int])=>[Int] match frontier{
+λcomponentMembersF(frontier:[Int],fuel:Int,graph:µGraph,seen:[Int])=>[Int]
+requires 0≤fuel
+decreases fuel
+match frontier{
   []=>seen|
-  _=>{
-    l nextSeen=(frontier reduce addUnique from seen:[Int]);
-    componentMembers(
-      (uniqueInts((§list.flatMap(
-        λ(vertex:Int)=>[Int]=•graphHelpers.neighborsOf(
-          graph,
-          vertex
-        ),
-        frontier
-      ):[Int]) filter (λ(vertex:Int)=>Bool=¬§list.contains(
-        vertex,
+  _=>match fuel=0{
+    true=>seen|
+    false=>{
+      l nextSeen=(frontier reduce addUnique from seen:[Int]);
+      componentMembersF(
+        (uniqueInts((§list.flatMap(
+          λ(vertex:Int)=>[Int]=•graphHelpers.neighborsOf(
+            graph,
+            vertex
+          ),
+          frontier
+        ):[Int]) filter (λ(vertex:Int)=>Bool=¬§list.contains(
+          vertex,
+          nextSeen
+        ))):[Int]),
+        fuel+-1,
+        graph,
         nextSeen
-      ))):[Int]),
-      graph,
-      nextSeen
-    )
+      )
+    }
   }
 }
 
-λcomponentsFrom(acc:[[Int]],graph:µGraph,remaining:[Int])=>[[Int]] match remaining{
+λcomponentsFrom(acc:[[Int]],graph:µGraph,remaining:[Int])=>[[Int]]
+decreases #remaining
+match remaining{
   []=>acc|
   [
   vertex,
   .tail
 ]=>{
-    l component=(componentMembers(
+    l component=(componentMembersF(
       [vertex],
+      100000,
       graph,
       []
     ):[Int]);

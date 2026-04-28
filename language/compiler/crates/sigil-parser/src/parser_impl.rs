@@ -199,15 +199,23 @@ impl Parser {
         } else {
             None
         };
+        let decreases = if self.match_token(TokenType::Decreases) {
+            Some(self.contract_clause_expression("decreases")?)
+        } else {
+            None
+        };
         let ensures = if self.match_token(TokenType::Ensures) {
             Some(self.contract_clause_expression("ensures")?)
         } else {
             None
         };
 
-        if self.check(TokenType::Requires) || self.check(TokenType::Ensures) {
+        if self.check(TokenType::Requires)
+            || self.check(TokenType::Decreases)
+            || self.check(TokenType::Ensures)
+        {
             return Err(self.error(
-                "Function contracts use at most one requires and one ensures clause, in that order",
+                "Function contracts use at most one of each clause in the canonical order: requires, decreases, ensures",
             ));
         }
 
@@ -237,6 +245,7 @@ impl Parser {
             effects,
             return_type,
             requires,
+            decreases,
             ensures,
             body,
             location,
@@ -259,6 +268,34 @@ impl Parser {
             end_index += 1;
         }
 
+        // Canonical printer breaks `and`-chains across lines with each continuation line starting
+        // with `and`. Merge those into one clause (same as if written on a single line).
+        while end_index < self.tokens.len() {
+            let t = &self.tokens[end_index];
+            if t.token_type != TokenType::AND {
+                break;
+            }
+            if end_index > start_index {
+                let prev = &self.tokens[end_index - 1];
+                if prev.location.start.line == t.location.start.line {
+                    break;
+                }
+            } else {
+                break;
+            }
+            let and_line = t.location.start.line;
+            while end_index < self.tokens.len() {
+                let t2 = &self.tokens[end_index];
+                if t2.location.start.line != and_line {
+                    break;
+                }
+                if t2.token_type == TokenType::EOF {
+                    break;
+                }
+                end_index += 1;
+            }
+        }
+
         if end_index == start_index {
             return Err(self.error(&format!("Expected expression after {} clause", clause_name)));
         }
@@ -278,7 +315,7 @@ impl Parser {
         let expr = subparser.expression()?;
         if !subparser.is_at_end() {
             return Err(self.error(&format!(
-                "{} clause must stay on one canonical line",
+                "{} clause expression has extra tokens (check parentheses and line breaks)",
                 clause_name
             )));
         }

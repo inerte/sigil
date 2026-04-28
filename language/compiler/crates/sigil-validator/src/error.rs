@@ -89,6 +89,18 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
+    #[error("SIGIL-CANON-RECURSION-MISSING-DECREASES: Self-recursive function '{function_name}' is missing a `decreases` clause.\n\nSigil requires every self-recursive function to declare a termination measure with `decreases <expr>`. The measure must lower to the canonical proof fragment (an Int expression or a tuple of Int expressions) and must strictly decrease at every recursive call while staying bounded below.\n\nAdd a `decreases` clause between `requires` and `ensures` (canonical clause order: requires => decreases => ensures), e.g. `decreases n` for an integer counter or `decreases #xs` for a shrinking list.")]
+    RecursionMissingDecreases {
+        function_name: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-MUTUAL-RECURSION: Functions [{cycle}] form a mutual-recursion cycle.\n\nSigil rejects mutual recursion. Refactor the cycle into a single self-recursive function with a sum-typed mode parameter (e.g. `t Mode=A()|B()` plus one helper that pattern-matches on the mode).\n\nMutual recursion's termination measures are too rich for Sigil's canonical proof fragment, so the canonical answer is to collapse the cycle.")]
+    MutualRecursion {
+        cycle: String,
+        location: SourceLocation,
+    },
+
     #[error("SIGIL-CANON-TRAVERSAL-FILTER-COUNT: Expression uses filter then length for counting.\n\nSigil rejects the exact shape #(xs filter pred) when a canonical one-pass counting path exists.\n\nUse stdlib::list.countIf(pred,xs) instead.")]
     FilterThenCount { location: SourceLocation },
 
@@ -566,6 +578,8 @@ impl ValidationError {
             ValidationError::UnusedDeclaration { location, .. } => *location,
             ValidationError::DeclCategoryOrder { location, .. } => *location,
             ValidationError::DeclAlphabetical { location, .. } => *location,
+            ValidationError::RecursionMissingDecreases { location, .. } => *location,
+            ValidationError::MutualRecursion { location, .. } => *location,
         }
     }
 }

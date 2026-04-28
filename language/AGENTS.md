@@ -99,7 +99,7 @@ Canonical source is now printer-first:
 Current high-signal printer choices:
 - delimited aggregate forms stay flat with `0` or `1` item and print multiline with `2+` items
 - repeated `++`, `⧺`, `and`, and `or` chains print vertically one continued operand per line
-- `requires` / `ensures` print on following lines before the body
+- `requires` / `decreases` / `ensures` (when present) print on following lines in that order before the body
 - direct `match` bodies begin on that same line
 - direct `match` bodies stay `match ...` with no `=` even after contract lines
 - multi-arm `match` is always multiline
@@ -170,7 +170,8 @@ Current constructor and list invariants:
 - `src/types.lib.sigil` may reference only `§...` and `¶...` inside type definitions and constraints
   - `label` is the type-classification surface; boundary handling belongs in `src/policies.lib.sigil`
   - `where` on a type declaration defines a pure, world-independent refinement over an alias or named product type; compile-time promotion into that type requires proof in Sigil's canonical solver-backed refinement fragment, and `match` / internal branching propagate supported branch facts into that proof context
-  - `requires` and `ensures` are the canonical function-contract surface; `requires` may reference parameters, `ensures` may reference parameters plus `result`, and both stay pure and world-independent
+  - `requires`, `decreases`, and `ensures` are the canonical function-contract surface: `requires` may reference parameters; `decreases` gives a pure `Int` (or `Int` tuple for lexicographic) measure for self-recursive **pure** functions, proved by the solver; `ensures` may reference parameters plus `result`; all stay pure and world-independent. For effectful self-recursive functions, `decreases` still proves syntactic termination of recursive call chains; full runtime termination also depends on the effect implementation.
+  - mutual recursion among top-level functions in one module is rejected (`SIGIL-CANON-MUTUAL-RECURSION`); only self-loops with a `decreases` proof are allowed
   - direct boolean local aliases of supported facts participate in that same flow-sensitive refinement and coverage model
   - `where`, `requires`, and `ensures` do not imply runtime validation
   - prefer early boundary conversion with `§decode` instead of carrying raw `JsonValue` deep into business logic
@@ -413,7 +414,10 @@ Canonical example:
   n
 )
 
-λfibHelper(a:Int,b:Int,n:Int)=>Int match n{
+λfibHelper(a:Int,b:Int,n:Int)=>Int
+requires n≥0
+decreases n
+match n{
   0=>a|
   count=>fibHelper(
     b,
@@ -428,6 +432,8 @@ This rule is intentionally narrow:
 - recursion in different control-flow branches is allowed
 - recursive calls with different non-reduced arguments are allowed
 - Sigil does not attempt general complexity proofs or general exponential-recursion detection
+
+**Termination** (orthogonal to the branching check): every self-recursive function (except those returning `Never` only) must declare a provable `decreases` measure. Branching and missing-`decreases` are separate diagnostics. See `SIGIL-CANON-RECURSION-MISSING-DECREASES` and `SIGIL-PROOF-MEASURE-*` in `language/compiler/ERROR_CODES.md`. If a valid measure is not expressible in the proof fragment, use a caller-provided `maxIterations` (or similar) parameter that strictly decreases on each self-call.
 
 ### Testing Invalid Code Patterns
 

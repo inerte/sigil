@@ -364,7 +364,10 @@ t ParsingResult={
   emptyState()
 )
 
-λparseLinesHelper(blocks:[Block],lines:[String],state:ParserState)=>[Block] match lines{
+λparseLinesHelper(blocks:[Block],lines:[String],state:ParserState)=>[Block]
+requires #lines≥0
+decreases #lines
+match lines{
   []=>blocks
     ⧺flushCodeBlock(state)
     ⧺flushList(state)
@@ -413,7 +416,10 @@ t ParsingResult={
 
 λprocessInlineLinks(text:String)=>String=text
 
-λreplacePairedDelimiters(closeTag:String,delimiter:String,openTag:String,result:String,text:String)=>String match §string.indexOf(
+λreplacePairedDelimiters(closeTag:String,delimiter:String,openTag:String,result:String,text:String)=>String
+requires #text≥0
+decreases #text
+match §string.indexOf(
   text,
   delimiter
 ){

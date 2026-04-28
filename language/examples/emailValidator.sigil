@@ -5,8 +5,6 @@ t EmailParts={
 
 t ValidationResult=Valid()|Invalid(String)
 
-e console
-
 λcountChar(char:String,str:String)=>Int=countHelper(
   0,
   char,
@@ -14,7 +12,10 @@ e console
   str
 )
 
-λcountHelper(acc:Int,char:String,idx:Int,str:String)=>Int match idx<#str{
+λcountHelper(acc:Int,char:String,idx:Int,str:String)=>Int
+requires 0≤idx and idx≤#str
+decreases #str+-idx
+match idx<#str{
   true=>countHelper(
     acc+(match §string.charAt(
       idx,
@@ -63,60 +64,58 @@ e console
 }
 
 λmain()=>!Log Unit={
-  l _=(console.log("=== Email Validator ===
-"):Unit);
-  l _=(console.log("Valid examples:"):Unit);
-  l _=(console.log(formatResult(
+  l _=(§io.println("=== Email Validator ==="):Unit);
+  l _=(§io.println("Valid examples:"):Unit);
+  l _=(§io.println(formatResult(
     "user@example.com",
     validateEmail("user@example.com")
   )):Unit);
-  l _=(console.log(formatResult(
+  l _=(§io.println(formatResult(
     "alice.bob@mail.co.uk",
     validateEmail("alice.bob@mail.co.uk")
   )):Unit);
-  l _=(console.log(formatResult(
+  l _=(§io.println(formatResult(
     "test123@domain.org",
     validateEmail("test123@domain.org")
   )):Unit);
-  l _=(console.log("
-Invalid examples:"):Unit);
-  l _=(console.log(formatResult(
+  l _=(§io.println("Invalid examples:"):Unit);
+  l _=(§io.println(formatResult(
     "userexample.com",
     validateEmail("userexample.com")
   )):Unit);
-  l _=(console.log(formatResult(
+  l _=(§io.println(formatResult(
     "user@@example.com",
     validateEmail("user@@example.com")
   )):Unit);
-  l _=(console.log(formatResult(
+  l _=(§io.println(formatResult(
     "@example.com",
     validateEmail("@example.com")
   )):Unit);
-  l _=(console.log(formatResult(
+  l _=(§io.println(formatResult(
     "user@",
     validateEmail("user@")
   )):Unit);
-  l _=(console.log(formatResult(
+  l _=(§io.println(formatResult(
     "user@domain",
     validateEmail("user@domain")
   )):Unit);
-  l _=(console.log(formatResult(
+  l _=(§io.println(formatResult(
     "user@.example.com",
     validateEmail("user@.example.com")
   )):Unit);
-  l _=(console.log(formatResult(
+  l _=(§io.println(formatResult(
     "user@example.com.",
     validateEmail("user@example.com.")
   )):Unit);
-  l _=(console.log(formatResult(
+  l _=(§io.println(formatResult(
     ".user@example.com",
     validateEmail(".user@example.com")
   )):Unit);
-  l _=(console.log(formatResult(
+  l _=(§io.println(formatResult(
     "user..name@example.com",
     validateEmail("user..name@example.com")
   )):Unit);
-  console.log(formatResult(
+  §io.println(formatResult(
     "",
     validateEmail("")
   ))

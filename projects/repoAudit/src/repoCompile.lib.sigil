@@ -30,23 +30,26 @@
 
 λcomparePathText(left:String,right:String)=>Bool=comparePathTextInner(
   0,
-  §string.toLower(left),
-  §string.toLower(right)
+  left,
+  right
 )
 
-λcomparePathTextInner(idx:Int,left:String,right:String)=>Bool match idx≥#left{
+λcomparePathTextInner(idx:Int,left:String,right:String)=>Bool
+requires idx≤#left and idx≤#right
+decreases #left+-idx
+match idx≥#left{
   true=>idx<#right|
   false=>match idx≥#right{
     true=>false|
     false=>{
-      l leftRank=(sortCharRank(§string.charAt(
+      l leftRank=(sortCharRank(§string.toLower(§string.charAt(
         idx,
         left
-      )):Int);
-      l rightRank=(sortCharRank(§string.charAt(
+      ))):Int);
+      l rightRank=(sortCharRank(§string.toLower(§string.charAt(
         idx,
         right
-      )):Int);
+      ))):Int);
       match leftRank=rightRank{
         true=>comparePathTextInner(
           idx+1,
@@ -135,7 +138,9 @@
   paths
 )
 
-λcompileTargetsInner(acc:[µRepoCompileTarget],paths:[String])=>[µRepoCompileTarget] match paths{
+λcompileTargetsInner(acc:[µRepoCompileTarget],paths:[String])=>[µRepoCompileTarget]
+decreases #paths
+match paths{
   []=>acc|
   [
   head,
@@ -183,7 +188,9 @@
 λcompileTaskStates(compilerHash:String,paths:[String],tasks:[µRepoCompileTask])=>!AuditIo Result[
   [µRepoCompileTaskState],
   String
-] match tasks{
+]
+decreases #tasks
+match tasks{
   []=>Ok([])|
   [
   head,
@@ -205,7 +212,9 @@
   }
 }
 
-λcompileTasks(root:String,targets:[µRepoCompileTarget])=>[µRepoCompileTask] match targets{
+λcompileTasks(root:String,targets:[µRepoCompileTarget])=>[µRepoCompileTask]
+decreases #targets
+match targets{
   []=>[]|
   [
   head,
@@ -264,7 +273,9 @@
   Err(_)=>false
 }
 
-λdependencyProjectDirs(paths:[String],root:String)=>!Fs [String] match paths{
+λdependencyProjectDirs(paths:[String],root:String)=>!Fs [String]
+decreases #paths
+match paths{
   []=>[]|
   [
   head,
@@ -326,7 +337,9 @@
   root
 )
 
-λfingerprintChunks(paths:[String],root:String)=>!Fs [String] match paths{
+λfingerprintChunks(paths:[String],root:String)=>!Fs [String]
+decreases #paths
+match paths{
   []=>[]|
   [
   head,
@@ -355,7 +368,9 @@
   }
 }
 
-λinsertSortedPath(path:String,paths:[String])=>[String] match paths{
+λinsertSortedPath(path:String,paths:[String])=>[String]
+decreases #paths
+match paths{
   []=>[path]|
   [
   head,
@@ -443,7 +458,9 @@
   None()=>None()
 }
 
-λmergeCompileTarget(left:[µRepoCompileTarget],right:µRepoCompileTarget)=>[µRepoCompileTarget] match left{
+λmergeCompileTarget(left:[µRepoCompileTarget],right:µRepoCompileTarget)=>[µRepoCompileTarget]
+decreases #left
+match left{
   []=>[right]|
   [
   head,
@@ -471,7 +488,9 @@
 λmergeCompileTaskOutcomes(acc:[µRepoCompileIssue],outcomes:[ConcurrentOutcome[
   Unit,
   µRepoCompileIssue
-]],tasks:[µRepoCompileTask])=>[µRepoCompileIssue] match tasks{
+]],tasks:[µRepoCompileTask])=>[µRepoCompileIssue]
+decreases #tasks
+match tasks{
   []=>acc|
   [
   task,
@@ -514,7 +533,9 @@
 ]],states:[µRepoCompileTaskState])=>[ConcurrentOutcome[
   Unit,
   µRepoCompileIssue
-]] match states{
+]]
+decreases #states
+match states{
   []=>acc|
   [
   head,
@@ -779,7 +800,9 @@
   }
 }
 
-λrunDependencyInstalls(projectDirs:[String],root:String)=>!Process [µRepoCompileIssue] match projectDirs{
+λrunDependencyInstalls(projectDirs:[String],root:String)=>!Process [µRepoCompileIssue]
+decreases #projectDirs
+match projectDirs{
   []=>[]|
   [
   head,
@@ -858,7 +881,9 @@
   _=>90
 }
 
-λsortPaths(paths:[String])=>[String] match paths{
+λsortPaths(paths:[String])=>[String]
+decreases #paths
+match paths{
   []=>[]|
   [
   head,

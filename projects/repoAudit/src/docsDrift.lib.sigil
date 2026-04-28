@@ -1,4 +1,6 @@
-λallLinesSatisfy(lines:[String],predicate:λ(String)=>Bool)=>Bool match lines{
+λallLinesSatisfy(lines:[String],predicate:λ(String)=>Bool)=>Bool
+decreases #lines
+match lines{
   []=>true|
   [
   head,
@@ -31,7 +33,9 @@
   )
 }
 
-λcollectMarkdownAuditRefsFromSnippets(snippets:[µSnippet],state:µMarkdownAudit)=>µMarkdownAudit match snippets{
+λcollectMarkdownAuditRefsFromSnippets(snippets:[µSnippet],state:µMarkdownAudit)=>µMarkdownAudit
+decreases #snippets
+match snippets{
   []=>state|
   [
   head,
@@ -130,7 +134,9 @@
   §string.lines(source)
 )
 
-λdeclSnippetIssuesInner(filePath:String,line:Int,lines:[String])=>[µIssue] match lines{
+λdeclSnippetIssuesInner(filePath:String,line:Int,lines:[String])=>[µIssue]
+decreases #lines
+match lines{
   []=>[]|
   [
   head,
@@ -247,23 +253,31 @@
 )
 
 λfreshRepoTempDir(label:String,root:String)=>!Fs String=freshRepoTempDirInner(
+  1000,
   1,
   label,
   root
 )
 
-λfreshRepoTempDirInner(index:Int,label:String,root:String)=>!Fs String={
+λfreshRepoTempDirInner(fuel:Int,index:Int,label:String,root:String)=>!Fs String
+requires fuel≥0
+decreases fuel
+={
   l candidate=(repoTempPath(
     index,
     label,
     root
   ):String);
   match §file.exists(candidate){
-    true=>freshRepoTempDirInner(
-      index+1,
-      label,
-      root
-    )|
+    true=>match fuel=0{
+      true=>candidate|
+      false=>freshRepoTempDirInner(
+        fuel-1,
+        index+1,
+        label,
+        root
+      )
+    }|
     false=>{
       l _=(§file.makeDirs(candidate):Unit);
       candidate
@@ -322,7 +336,9 @@
   "language/stdlib-tests/tests/*.sigil"
 ])))
 
-λhasTopLevelPrefix(lines:[String],prefix:String)=>Bool match lines{
+λhasTopLevelPrefix(lines:[String],prefix:String)=>Bool
+decreases #lines
+match lines{
   []=>false|
   [
   head,
@@ -443,7 +459,9 @@
   tempDir
 )
 
-λmarkdownTasksInner(index:Int,paths:[String],root:String,tempDir:String)=>[µMarkdownTask] match paths{
+λmarkdownTasksInner(index:Int,paths:[String],root:String,tempDir:String)=>[µMarkdownTask]
+decreases #paths
+match paths{
   []=>[]|
   [
   head,
@@ -463,7 +481,9 @@
   )
 }
 
-λmergeIssueLists(left:[µIssue],right:[µIssue])=>[µIssue] match right{
+λmergeIssueLists(left:[µIssue],right:[µIssue])=>[µIssue]
+decreases #right
+match right{
   []=>left|
   [
   head,
@@ -521,7 +541,9 @@
 λmergeMarkdownTaskOutcomes(acc:µMarkdownAudit,outcomes:[ConcurrentOutcome[
   µMarkdownAudit,
   String
-]],tasks:[µMarkdownTask])=>µMarkdownAudit match tasks{
+]],tasks:[µMarkdownTask])=>µMarkdownAudit
+decreases #tasks
+match tasks{
   []=>acc|
   [
   task,
@@ -551,7 +573,9 @@
   }
 }
 
-λmergeUnique(left:[String],right:[String])=>[String] match right{
+λmergeUnique(left:[String],right:[String])=>[String]
+decreases #right
+match right{
   []=>left|
   [
   head,
@@ -593,7 +617,9 @@
 
 λnormalizedSnippetLines(source:String)=>[String]=normalizedSnippetLinesInner(§string.lines(source))
 
-λnormalizedSnippetLinesInner(lines:[String])=>[String] match lines{
+λnormalizedSnippetLinesInner(lines:[String])=>[String]
+decreases #lines
+match lines{
   []=>[]|
   [
   head,
@@ -652,7 +678,9 @@
   None()=>[]
 }
 
-λprintIssues(issues:[µIssue])=>!Log Unit match issues{
+λprintIssues(issues:[µIssue])=>!Log Unit
+decreases #issues
+match issues{
   []=>()|
   [
   head,
@@ -725,7 +753,9 @@
   false=>§string.trim(result.stdout)
 }
 
-λprocessSnippets(failFast:Bool,filePath:String,ordinal:Int,root:String,snippets:[µSnippet],state:µMarkdownAudit,tempDir:String)=>!AuditIo µMarkdownAudit match snippets{
+λprocessSnippets(failFast:Bool,filePath:String,ordinal:Int,root:String,snippets:[µSnippet],state:µMarkdownAudit,tempDir:String)=>!AuditIo µMarkdownAudit
+decreases #snippets
+match snippets{
   []=>state|
   [
   head,
@@ -794,23 +824,31 @@
 
 λprojectRootFromDocPath(filePath:String,root:String)=>!Fs Option[String]=projectRootFromDocPathDir(
   §path.dirname(filePath),
+  #filePath,
   root
 )
 
-λprojectRootFromDocPathDir(current:String,root:String)=>!Fs Option[String] match §file.exists(§path.join(
-  root,
-  §path.join(
-    current,
-    "sigil.json"
-  )
-)){
-  true=>Some(current)|
-  false=>match current="" or current="."{
-    true=>None()|
-    false=>projectRootFromDocPathDir(
-      §path.dirname(current),
-      root
+λprojectRootFromDocPathDir(current:String,fuel:Int,root:String)=>!Fs Option[String]
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>None()|
+  false=>match §file.exists(§path.join(
+    root,
+    §path.join(
+      current,
+      "sigil.json"
     )
+  )){
+    true=>Some(current)|
+    false=>match current="" or current="."{
+      true=>None()|
+      false=>projectRootFromDocPathDir(
+        §path.dirname(current),
+        fuel-1,
+        root
+      )
+    }
   }
 }
 
@@ -889,7 +927,9 @@
   root
 )
 
-λreadCoverageRefsInner(acc:[String],paths:[String],root:String)=>!Fs [String] match paths{
+λreadCoverageRefsInner(acc:[String],paths:[String],root:String)=>!Fs [String]
+decreases #paths
+match paths{
   []=>acc|
   [
   head,
@@ -932,7 +972,9 @@
 λreadStdlibExportsInner(acc:[String],paths:[String],root:String)=>!AuditIo Result[
   [String],
   String
-] match paths{
+]
+decreases #paths
+match paths{
   []=>Ok(acc)|
   [
   head,
@@ -1186,7 +1228,9 @@
   )
 }
 
-λrunMarkdownAuditInner(acc:µMarkdownAudit,failFast:Bool,paths:[String],root:String,tempDir:String)=>!AuditIo µMarkdownAudit match paths{
+λrunMarkdownAuditInner(acc:µMarkdownAudit,failFast:Bool,paths:[String],root:String,tempDir:String)=>!AuditIo µMarkdownAudit
+decreases #paths
+match paths{
   []=>acc|
   _ when failFast and #acc.issues>0=>acc|
   [
@@ -1240,7 +1284,9 @@
   root
 )
 
-λrunMarkdownCoverageAuditInner(acc:µMarkdownAudit,paths:[String],root:String)=>!Fs µMarkdownAudit match paths{
+λrunMarkdownCoverageAuditInner(acc:µMarkdownAudit,paths:[String],root:String)=>!Fs µMarkdownAudit
+decreases #paths
+match paths{
   []=>acc|
   [
   head,
@@ -1281,7 +1327,9 @@
   }
 }
 
-λrunReferenceIssues(actualExports:[String],issues:[µIssue],refs:[String])=>[µIssue] match refs{
+λrunReferenceIssues(actualExports:[String],issues:[µIssue],refs:[String])=>[µIssue]
+decreases #refs
+match refs{
   []=>issues|
   [
   head,
@@ -1408,7 +1456,9 @@
   Err(message)=>Err(message)
 }
 
-λrunStdlibExportsForPathsInner(acc:[String],paths:[String],root:String)=>!Fs [String] match paths{
+λrunStdlibExportsForPathsInner(acc:[String],paths:[String],root:String)=>!Fs [String]
+decreases #paths
+match paths{
   []=>acc|
   [
   head,
@@ -1446,7 +1496,9 @@
   }
 }
 
-λrunUncoveredDocumentedIssues(coverageRefs:[String],documentedRefs:[String],issues:[µIssue])=>[µIssue] match documentedRefs{
+λrunUncoveredDocumentedIssues(coverageRefs:[String],documentedRefs:[String],issues:[µIssue])=>[µIssue]
+decreases #documentedRefs
+match documentedRefs{
   []=>issues|
   [
   head,
@@ -1662,7 +1714,9 @@
   }
 }
 
-λwrapExprLines(idx:Int,lines:[String],prefix:String,suffix:String)=>String match lines{
+λwrapExprLines(idx:Int,lines:[String],prefix:String,suffix:String)=>String
+decreases #lines
+match lines{
   []=>prefix
     ++"
   ()

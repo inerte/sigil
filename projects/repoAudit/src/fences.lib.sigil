@@ -236,7 +236,9 @@
     ++" fences must use a .sigil virtual path")
 }
 
-λscanLines(filePath:String,lines:[String],state:µScanState)=>µScanState match lines{
+λscanLines(filePath:String,lines:[String],state:µScanState)=>µScanState
+decreases #lines
+match lines{
   []=>state|
   [
   line,

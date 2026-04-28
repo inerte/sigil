@@ -1,9 +1,15 @@
-λfactHelper(n:Int)=>Int match n{
+λfactHelper(n:Int)=>Int
+requires 0≤n
+decreases n
+match n{
   0=>1|
   1=>1|
-  value=>value*factHelper(value-1)
+  k when 1<k=>k*factHelper(k+-1)|
+  _=>0
 }
 
-λfactorial(n:Int)=>Int=factHelper(n)
+λfactorial(n:Int)=>Int
+requires 0≤n
+=factHelper(n)
 
 λmain()=>Int=factorial(5)

@@ -173,24 +173,33 @@ impl Printer {
             self.newline();
             self.indent(indent);
             self.push("requires ");
-            self.push(&self.expr(requires, indent, 0));
+            self.push(&self.contract_clause_expr(requires, indent));
+        }
+
+        if let Some(decreases) = &function.decreases {
+            self.newline();
+            self.indent(indent);
+            self.push("decreases ");
+            self.push(&self.contract_clause_expr(decreases, indent));
         }
 
         if let Some(ensures) = &function.ensures {
             self.newline();
             self.indent(indent);
             self.push("ensures ");
-            self.push(&self.expr(ensures, indent, 0));
+            self.push(&self.contract_clause_expr(ensures, indent));
         }
 
-        if function.requires.is_some() || function.ensures.is_some() {
+        let has_contract_clause =
+            function.requires.is_some() || function.decreases.is_some() || function.ensures.is_some();
+        if has_contract_clause {
             self.newline();
             self.indent(indent);
         }
 
         match &function.body {
             Expr::Match(match_expr) => {
-                if function.requires.is_none() && function.ensures.is_none() {
+                if !has_contract_clause {
                     self.push(" ");
                 }
                 self.match_expr(match_expr, indent);
@@ -602,6 +611,23 @@ impl Printer {
                 self.indent(indent);
                 self.push(&self.expr(other, indent, 0));
             }
+        }
+    }
+
+    /// `requires` / `decreases` / `ensures` are parsed as a single source line; tuple measures must
+    /// not use the default multiline tuple printer or canonical round-trip and parse disagree.
+    fn contract_clause_expr(&self, expr: &Expr, indent: usize) -> String {
+        match expr {
+            Expr::Tuple(t) if t.elements.len() > 1 => {
+                let inside = t
+                    .elements
+                    .iter()
+                    .map(|e| self.expr(e, indent, 0))
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!("({inside})")
+            }
+            _ => self.expr(expr, indent, 0),
         }
     }
 

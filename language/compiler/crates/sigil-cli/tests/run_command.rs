@@ -1280,7 +1280,7 @@ fn run_json_breakpoint_collect_mode_truncates_hit_window() {
     let file = write_program(
         &dir,
         "main.sigil",
-        "λloop(n:Int)=>Int match n=0{\n  true=>0|\n  false=>loop(n-1)\n}\n\nλmain()=>Int=loop(5)\n",
+        "λloop(n:Int)=>Int\ndecreases n\nmatch n=0{\n  true=>0|\n  false=>loop(n-1)\n}\n\nλmain()=>Int=loop(5)\n",
     );
 
     let output = Command::new(sigil_bin())
@@ -1777,7 +1777,7 @@ fn run_json_trace_truncates_large_event_streams() {
     let file = write_program(
         &dir,
         "main.sigil",
-        "λloop(n:Int)=>Int match n=0{\n  true=>0|\n  false=>loop(n-1)\n}\n\nλmain()=>Int=loop(400)\n",
+        "λloop(n:Int)=>Int\ndecreases n\nmatch n=0{\n  true=>0|\n  false=>loop(n-1)\n}\n\nλmain()=>Int=loop(400)\n",
     );
 
     let output = Command::new(sigil_bin())

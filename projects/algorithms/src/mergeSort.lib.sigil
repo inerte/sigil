@@ -9,7 +9,10 @@
   }
 }
 
-λmerge(left:[Int],right:[Int])=>[Int] match left{
+λmerge(left:[Int],right:[Int])=>[Int]
+requires 0≤#left and 0≤#right
+decreases (#left, #right)
+match left{
   []=>right|
   [
   leftHead,
@@ -37,7 +40,10 @@
   runs
 )
 
-λmergeAllRunsCount(runCount:Int,runs:[[Int]])=>[Int] match runCount≤1{
+λmergeAllRunsCount(runCount:Int,runs:[[Int]])=>[Int]
+requires 0≤runCount
+decreases runCount
+match runCount≤1{
   true=>firstRun(runs)|
   false=>mergeAllRunsCount(
     nextRunCount(runCount),
@@ -45,7 +51,10 @@
   )
 }
 
-λmergePairs(runs:[[Int]])=>[[Int]] match runs{
+λmergePairs(runs:[[Int]])=>[[Int]]
+requires #runs≥0
+decreases #runs
+match runs{
   []=>[]|
   [
   head,
@@ -64,15 +73,21 @@
 
 λmergeSort(xs:[Int])=>[Int]=mergeAllRuns(singletons(xs))
 
-λnextRunCount(runCount:Int)=>Int match runCount{
+λnextRunCount(runCount:Int)=>Int
+requires 0≤runCount
+decreases runCount
+match runCount{
   0=>0|
   1=>1|
-  _=>1+nextRunCount(runCount-2)
+  _=>1+nextRunCount(runCount+-2)
 }
 
 λsingletons(xs:[Int])=>[[Int]]=xs map (λ(head:Int)=>[Int]=[head])
 
-λwrapAll(partials:[[Int]],values:[Int])=>[[Int]] match values{
+λwrapAll(partials:[[Int]],values:[Int])=>[[Int]]
+requires #values≥0
+decreases #values
+match values{
   []=>partials|
   [
   head,
@@ -86,7 +101,10 @@
   )
 }
 
-λwrapHead(head:Int,partials:[[Int]])=>[[Int]] match partials{
+λwrapHead(head:Int,partials:[[Int]])=>[[Int]]
+requires #partials≥0
+decreases #partials
+match partials{
   []=>[]|
   [
   partial,

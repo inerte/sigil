@@ -113,7 +113,9 @@
   false=>Err("git ls-files failed: "++result.stderr)
 }
 
-λprintIssues(issues:[µCanonicalIssue])=>!Log Unit match issues{
+λprintIssues(issues:[µCanonicalIssue])=>!Log Unit
+decreases #issues
+match issues{
   []=>()|
   [
   head,
@@ -124,7 +126,9 @@
   }
 }
 
-λreadIssues(paths:[String],root:String,rules:[µCanonicalRule])=>!Fs [µCanonicalIssue] match paths{
+λreadIssues(paths:[String],root:String,rules:[µCanonicalRule])=>!Fs [µCanonicalIssue]
+decreases #paths
+match paths{
   []=>[]|
   [
   path,

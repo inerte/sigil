@@ -1,15 +1,20 @@
-λfibonacci(n:Int)=>Int=fibonacciHelper(
+λfibonacci(n:Int)=>Int
+requires 0≤n
+=fibonacciHelper(
   0,
   1,
   n
 )
 
-λfibonacciHelper(a:Int,b:Int,n:Int)=>Int match n{
+λfibonacciHelper(a:Int,b:Int,n:Int)=>Int
+requires 0≤n
+decreases n
+match n{
   0=>a|
   count=>fibonacciHelper(
     b,
     a+b,
-    count-1
+    count+-1
   )
 }
 

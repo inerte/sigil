@@ -40,6 +40,7 @@ pub struct TypedFunctionDecl {
     pub return_type: InferenceType,
     pub effects: Option<EffectSet>,
     pub requires: Option<sigil_ast::Expr>,
+    pub decreases: Option<sigil_ast::Expr>,
     pub ensures: Option<sigil_ast::Expr>,
     pub body: TypedExpr,
     pub location: SourceLocation,

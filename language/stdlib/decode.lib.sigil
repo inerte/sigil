@@ -174,7 +174,10 @@ t Decoder[T]=λ(§json.JsonValue)=>Result[
 λintFromTextInner(acc:Int,idx:Int,text:String)=>Result[
   Int,
   DecodeError
-] match idx≥#text{
+]
+requires idx≤#text
+decreases #text+-idx
+match idx≥#text{
   true=>Ok(acc)|
   false=>match (digitValue(§string.charAt(
     idx,
@@ -213,7 +216,9 @@ t Decoder[T]=λ(§json.JsonValue)=>Result[
 λlistInner[T](decoder:Decoder[T],idx:Int,values:[§json.JsonValue])=>Result[
   [T],
   DecodeError
-] match values{
+]
+decreases #values
+match values{
   []=>Ok([])|
   [
   head,

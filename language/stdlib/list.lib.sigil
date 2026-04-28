@@ -12,7 +12,9 @@
   xs
 )
 
-λcontains[T](item:T,xs:[T])=>Bool match xs{
+λcontains[T](item:T,xs:[T])=>Bool
+decreases #xs
+match xs{
   []=>false|
   [
   x,
@@ -26,7 +28,9 @@
   }
 }
 
-λcount[T](item:T,xs:[T])=>Int match xs{
+λcount[T](item:T,xs:[T])=>Int
+decreases #xs
+match xs{
   []=>0|
   [
   x,
@@ -52,7 +56,10 @@
   xs
 )
 
-λdrop[T](n:Int,xs:[T])=>[T] match n≤0{
+λdrop[T](n:Int,xs:[T])=>[T]
+requires n≥0
+decreases n+#xs
+match n≤0{
   true=>xs|
   false=>match xs{
     []=>[]|
@@ -84,7 +91,9 @@
   xs
 ))
 
-λflatMapHelper[T,U](acc:[U],fn:λ(T)=>[U],xs:[T])=>[U] match xs{
+λflatMapHelper[T,U](acc:[U],fn:λ(T)=>[U],xs:[T])=>[U]
+decreases #xs
+match xs{
   []=>acc|
   [
   x,
@@ -99,7 +108,9 @@
   )
 }
 
-λfold[T,U](acc:U,fn:λ(U,T)=>U,xs:[T])=>U match xs{
+λfold[T,U](acc:U,fn:λ(U,T)=>U,xs:[T])=>U
+decreases #xs
+match xs{
   []=>acc|
   [
   x,
@@ -121,7 +132,9 @@
   xs
 )
 
-λlastHelper[T](result:Option[T],xs:[T])=>Option[T] match xs{
+λlastHelper[T](result:Option[T],xs:[T])=>Option[T]
+decreases #xs
+match xs{
   []=>result|
   [
   x,
@@ -137,7 +150,9 @@
   xs
 )
 
-λmaxHelper(current:Option[Int],xs:[Int])=>Option[Int] match xs{
+λmaxHelper(current:Option[Int],xs:[Int])=>Option[Int]
+decreases #xs
+match xs{
   []=>current|
   [
   x,
@@ -165,7 +180,9 @@
   xs
 )
 
-λminHelper(current:Option[Int],xs:[Int])=>Option[Int] match xs{
+λminHelper(current:Option[Int],xs:[Int])=>Option[Int]
+decreases #xs
+match xs{
   []=>current|
   [
   x,
@@ -190,7 +207,10 @@
 
 λmultiplyInt(acc:Int,x:Int)=>Int=acc*x
 
-λnth[T](idx:Int,xs:[T])=>Option[T] match idx<0{
+λnth[T](idx:Int,xs:[T])=>Option[T]
+requires idx≥0
+decreases idx+#xs
+match idx<0{
   true=>None()|
   false=>match xs{
     []=>None()|
@@ -225,7 +245,9 @@
   xs
 ))
 
-λremoveFirstHelper[T](acc:[T],item:T,xs:[T])=>[T] match xs{
+λremoveFirstHelper[T](acc:[T],item:T,xs:[T])=>[T]
+decreases #xs
+match xs{
   []=>acc|
   [
   x,
@@ -245,7 +267,9 @@
   xs
 )
 
-λreverseHelper[T](acc:[T],xs:[T])=>[T] match xs{
+λreverseHelper[T](acc:[T],xs:[T])=>[T]
+decreases #xs
+match xs{
   []=>acc|
   [
   x,
@@ -267,7 +291,9 @@
   )
 }
 
-λsortedAscHelper(previous:Int,xs:[Int])=>Bool match xs{
+λsortedAscHelper(previous:Int,xs:[Int])=>Bool
+decreases #xs
+match xs{
   []=>true|
   [
   x,
@@ -289,7 +315,9 @@
   )
 }
 
-λsortedDescHelper(previous:Int,xs:[Int])=>Bool match xs{
+λsortedDescHelper(previous:Int,xs:[Int])=>Bool
+decreases #xs
+match xs{
   []=>true|
   [
   x,
@@ -312,7 +340,10 @@
   xs
 ))
 
-λtakeHelper[T](acc:[T],n:Int,xs:[T])=>[T] match n≤0{
+λtakeHelper[T](acc:[T],n:Int,xs:[T])=>[T]
+requires n≥0
+decreases n+#xs
+match n≤0{
   true=>acc|
   false=>match xs{
     []=>acc|

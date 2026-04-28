@@ -1,10 +1,15 @@
-λcombinations(k:Int,xs:[Int])=>[[Int]]=combinationsInto(
+λcombinations(k:Int,xs:[Int])=>[[Int]]
+requires 0≤k and 0≤#xs
+=combinationsInto(
   [],
   k,
   xs
 )
 
-λcombinationsInto(acc:[[Int]],k:Int,xs:[Int])=>[[Int]] match k{
+λcombinationsInto(acc:[[Int]],k:Int,xs:[Int])=>[[Int]]
+requires 0≤k and 0≤#xs
+decreases (k, #xs)
+match k{
   0=>[[]]⧺acc|
   _=>match xs{
     []=>acc|

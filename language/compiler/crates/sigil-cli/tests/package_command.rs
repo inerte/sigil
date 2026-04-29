@@ -1,8 +1,40 @@
 use serde_json::Value;
 use std::fs;
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
+
+struct TestDir {
+    path: PathBuf,
+}
+
+impl TestDir {
+    fn new(path: PathBuf) -> Self {
+        fs::create_dir_all(&path).unwrap();
+        Self { path }
+    }
+}
+
+impl AsRef<Path> for TestDir {
+    fn as_ref(&self) -> &Path {
+        self.path.as_path()
+    }
+}
+
+impl Deref for TestDir {
+    type Target = Path;
+
+    fn deref(&self) -> &Self::Target {
+        self.path.as_path()
+    }
+}
+
+impl Drop for TestDir {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.path);
+    }
+}
 
 fn repo_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -29,17 +61,18 @@ fn temp_dir(label: &str) -> PathBuf {
     dir
 }
 
-fn external_temp_dir(label: &str) -> PathBuf {
+fn external_temp_dir(label: &str) -> TestDir {
     let unique = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_nanos();
-    let dir = repo_root().join(format!(
-        "sigil-cli-package-external-{label}-{}-{unique}",
+    let parent = repo_root().join("tmp").join("sigil-cli-tests");
+    fs::create_dir_all(&parent).unwrap();
+    let dir = parent.join(format!(
+        "package-external-{label}-{}-{unique}",
         std::process::id()
     ));
-    fs::create_dir_all(&dir).unwrap();
-    dir
+    TestDir::new(dir)
 }
 
 fn write_file(root: &Path, relative: &str, contents: &str) {
@@ -356,14 +389,7 @@ fn package_add_ignores_publishable_packages_inside_nested_git_workspaces() {
         &[("src/package.lib.sigil", "λdouble(value:Int)=>Int=value*2\n")],
     );
 
-    let nested_workspace = repo_root().join(format!(
-        "sigil-cli-package-nested-workspace-{}-{}",
-        std::process::id(),
-        SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_nanos()
-    ));
+    let nested_workspace = external_temp_dir("nested-workspace");
     fs::create_dir_all(&nested_workspace).unwrap();
     fs::create_dir_all(nested_workspace.join(".git")).unwrap();
     let nested_router_dir = nested_workspace.join("projects").join("router");

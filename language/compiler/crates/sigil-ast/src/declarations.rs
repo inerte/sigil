@@ -2,6 +2,23 @@
 
 use crate::{Expr, SourceLocation, Type};
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub enum FunctionMode {
+    #[default]
+    Ordinary,
+    Total,
+}
+
+impl FunctionMode {
+    pub fn keyword(self) -> &'static str {
+        match self {
+            Self::Ordinary => "ordinary",
+            Self::Total => "total",
+        }
+    }
+}
+
 /// Top-level declarations in a Sigil program
 #[derive(Debug, Clone, PartialEq)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
@@ -59,6 +76,8 @@ pub struct FunctionDecl {
     pub name: String,
     #[cfg_attr(feature = "serde", serde(rename = "typeParams"))]
     pub type_params: Vec<String>,
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub mode: FunctionMode,
     pub params: Vec<Param>,
     pub effects: Vec<String>, // Effect annotations: ['IO', 'Network', 'Error', 'Mut']
     #[cfg_attr(feature = "serde", serde(rename = "returnType"))]

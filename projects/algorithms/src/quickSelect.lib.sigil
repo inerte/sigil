@@ -1,3 +1,5 @@
+mode total
+
 λquickSelect(k:Int,xs:[Int])=>Option[Int] match k<0 or k≥#xs{
   true=>None()|
   false=>quickSelectInRange(
@@ -7,7 +9,6 @@
 }
 
 λquickSelectInRange(k:Int,xs:[Int])=>Option[Int]
-requires #xs≥0
 decreases #xs
 match xs{
   []=>None()|

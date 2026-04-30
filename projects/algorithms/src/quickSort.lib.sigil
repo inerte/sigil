@@ -1,3 +1,5 @@
+mode total
+
 λgreaterOrEqual(pivot:Int,xs:[Int])=>[Int]=xs filter (λ(value:Int)=>Bool=value≥pivot)
 
 λlessThan(pivot:Int,xs:[Int])=>[Int]=xs filter (λ(value:Int)=>Bool=value<pivot)
@@ -7,25 +9,36 @@
   xs
 )
 
-λquickSortInto(acc:[Int],xs:[Int])=>[Int]
-requires #xs≥0
-decreases #xs
-match xs{
-  []=>acc|
-  [
+λquickSortInto(acc:[Int],xs:[Int])=>[Int]=quickSortIntoInner(
+  acc,
+  #xs,
+  xs
+)
+
+λquickSortIntoInner(acc:[Int],fuel:Int,xs:[Int])=>[Int]
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>acc|
+  false=>match xs{
+    []=>acc|
+    [
   pivot,
   .tail
-]=>quickSortInto(
-    [pivot]⧺(quickSortInto(
-      acc,
-      greaterOrEqual(
+]=>quickSortIntoInner(
+      [pivot]⧺(quickSortIntoInner(
+        acc,
+        fuel-1,
+        greaterOrEqual(
+          pivot,
+          tail
+        )
+      ):[Int]),
+      fuel-1,
+      lessThan(
         pivot,
         tail
       )
-    ):[Int]),
-    lessThan(
-      pivot,
-      tail
     )
-  )
+  }
 }

@@ -1,3 +1,5 @@
+mode total
+
 λanalyzeFile(path:String,rules:[µCanonicalRule],source:String)=>[µCanonicalIssue]=§list.reverse((§list.fold(
   {
     issues:[],

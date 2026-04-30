@@ -1,18 +1,31 @@
-λpermutations(xs:[Int])=>[[Int]]
-requires #xs≥0
-decreases #xs
+mode total
+
+λpermutations(xs:[Int])=>[[Int]]=permutationsInner(
+  #xs,
+  xs
+)
+
+λpermutationsInner(fuel:Int,xs:[Int])=>[[Int]]
+requires fuel≥0
+decreases fuel
 match xs{
   []=>[[]]|
   [
   head,
   .tail
-]=>§list.flatMap(
-    λ(choice:µSelection)=>[[Int]]=prependAll(
-      choice.chosen,
-      permutations(choice.rest)
-    ),
-    selections(xs)
-  )
+]=>match fuel=0{
+    true=>[]|
+    false=>§list.flatMap(
+      λ(choice:µSelection)=>[[Int]]=prependAll(
+        choice.chosen,
+        permutationsInner(
+          fuel-1,
+          choice.rest
+        )
+      ),
+      selections(xs)
+    )
+  }
 }
 
 λprependAll(item:Int,xss:[[Int]])=>[[Int]]=xss map (λ(head:[Int])=>[Int]=[item]⧺head)
@@ -23,7 +36,6 @@ match xs{
 })
 
 λselections(xs:[Int])=>[µSelection]
-requires #xs≥0
 decreases #xs
 match xs{
   []=>[]|

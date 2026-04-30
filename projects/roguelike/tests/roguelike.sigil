@@ -362,6 +362,10 @@ test "spear move command lunges two tiles in a direction" {
   }
 }
 
+test "melee direction distance limits cover sword and spear" {
+  •roguelike.meleeDirectionDistanceLimit(µSword())=1 and •roguelike.meleeDirectionDistanceLimit(µSpear())=2
+}
+
 test "shoot command hits the nearest visible enemy in a direction" {
   match •roguelike.advance(
     µShoot(µEast()),

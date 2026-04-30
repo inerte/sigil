@@ -1,33 +1,31 @@
-e console
-
 λmain()=>!Log Unit={
-  l _=(console.log("Text: "++("Hello, Sigil!":String)):Unit);
-  l _=(console.log("Length: "++§string.intToString(#("Hello, Sigil!":String))):Unit);
-  l _=(console.log("Upper: "++(§string.toUpper("hello"):String)):Unit);
-  l _=(console.log("Lower: "++(§string.toLower("WORLD"):String)):Unit);
-  l _=(console.log("Has prefix Hello: "++(match (§string.startsWith(
+  l _=(§io.println("Text: "++("Hello, Sigil!":String)):Unit);
+  l _=(§io.println("Length: "++§string.intToString(#("Hello, Sigil!":String))):Unit);
+  l _=(§io.println("Upper: "++(§string.toUpper("hello"):String)):Unit);
+  l _=(§io.println("Lower: "++(§string.toLower("WORLD"):String)):Unit);
+  l _=(§io.println("Has prefix Hello: "++(match (§string.startsWith(
     "Hello World",
     "Hello"
   ):Bool){
     true=>"true"|
     false=>"false"
   }:String)):Unit);
-  l _=(console.log("Has suffix .sigil: "++(match (§string.endsWith(
+  l _=(§io.println("Has suffix .sigil: "++(match (§string.endsWith(
     "test.sigil",
     ".sigil"
   ):Bool){
     true=>"true"|
     false=>"false"
   }:String)):Unit);
-  l _=(console.log("Split length: "++§string.intToString(#(§string.split(
+  l _=(§io.println("Split length: "++§string.intToString(#(§string.split(
     "a,b,c",
     ","
   ):[String]))):Unit);
-  l _=(console.log("Take 3: "++(§string.take(
+  l _=(§io.println("Take 3: "++(§string.take(
     3,
     ("abcdefgh":String)
   ):String)):Unit);
-  console.log("Drop 3: "++(§string.drop(
+  §io.println("Drop 3: "++(§string.drop(
     3,
     ("abcdefgh":String)
   ):String))

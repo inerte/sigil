@@ -39,7 +39,10 @@ Examples:
 ```sigil module
 c pi=(3.14:Float)
 
-λfactorial(n:Int)=>Int match n{
+total λfactorial(n:Int)=>Int
+requires n≥0
+decreases n
+match n{
   0=>1|
   1=>1|
   value=>value*factorial(value-1)
@@ -51,6 +54,20 @@ c pi=(3.14:Float)
 ```
 
 Missing parameter or return type annotations are parse errors.
+
+## Function Modes
+
+Top-level functions are ordinary by default.
+
+A file may place `mode total` once at the top to make total the default for
+later function declarations. Any individual declaration may override that
+default with `total λname...` or `ordinary λname...`.
+
+Rules:
+
+- only total self-recursive functions may declare `decreases`
+- ordinary self-recursive functions may recurse without a termination proof
+- total functions may not call declarations marked `ordinary`
 
 ## Type Ascription
 

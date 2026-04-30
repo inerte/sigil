@@ -1,24 +1,44 @@
-λmodPow(base:Int,exponent:Int,modulus:Int)=>Int
-requires 0≤exponent
-decreases exponent
-match modulus=1{
-  true=>0|
-  false=>match exponent=0{
-    true=>1%modulus|
-    false=>match exponent%2=0{
-      true=>{
-        l half=(modPow(
+mode total
+
+λmodPow(base:Int,exponent:Int,modulus:Int)=>Int match exponent≤0{
+  true=>match modulus=1{
+    true=>0|
+    false=>1%modulus
+  }|
+  false=>modPowInner(
+    base,
+    exponent,
+    exponent,
+    modulus
+  )
+}
+
+λmodPowInner(base:Int,exponent:Int,fuel:Int,modulus:Int)=>Int
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>1%modulus|
+  false=>match modulus=1{
+    true=>0|
+    false=>match exponent=0{
+      true=>1%modulus|
+      false=>match exponent%2=0{
+        true=>{
+          l half=(modPowInner(
+            base,
+            exponent/2,
+            fuel-1,
+            modulus
+          ):Int);
+          half*half%modulus
+        }|
+        false=>base%modulus*modPowInner(
           base,
-          exponent/2,
+          exponent-1,
+          fuel-1,
           modulus
-        ):Int);
-        half*half%modulus
-      }|
-      false=>base%modulus*modPow(
-        base,
-        exponent+-1,
-        modulus
-      )%modulus
+        )%modulus
+      }
     }
   }
 }

@@ -1,4 +1,4 @@
-λlength(lst:[Int])=>Int
+total λlength(lst:[Int])=>Int
 requires #lst≥0
 decreases #lst
 match lst{

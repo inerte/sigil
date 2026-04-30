@@ -32,6 +32,8 @@ pub struct Program {
     #[cfg_attr(feature = "serde", serde(default = "program_type_default"))]
     #[cfg_attr(feature = "serde", serde(skip_deserializing))]
     r#type: String,
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub default_function_mode: FunctionMode,
     pub declarations: Vec<Declaration>,
     pub location: SourceLocation,
 }
@@ -41,9 +43,14 @@ fn program_type_default() -> String {
 }
 
 impl Program {
-    pub fn new(declarations: Vec<Declaration>, location: SourceLocation) -> Self {
+    pub fn new(
+        declarations: Vec<Declaration>,
+        location: SourceLocation,
+        default_function_mode: FunctionMode,
+    ) -> Self {
         Self {
             r#type: "Program".to_string(),
+            default_function_mode,
             declarations,
             location,
         }

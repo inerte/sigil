@@ -6,7 +6,7 @@ requires 0≤n
   n
 )
 
-λfibonacciHelper(a:Int,b:Int,n:Int)=>Int
+total λfibonacciHelper(a:Int,b:Int,n:Int)=>Int
 requires 0≤n
 decreases n
 match n{

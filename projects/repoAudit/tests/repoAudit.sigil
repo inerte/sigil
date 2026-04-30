@@ -176,6 +176,30 @@ test "audit and mapping helpers keep stable shapes" {
   ])
 }
 
+test "audit program and insert unique helpers execute" {
+  l program=(•repoAudit.auditProgram():§cli.Program[µAuditInvocation]);
+  allOk([
+    program=program,
+    •repoAudit.insertUnique(
+      "docs-drift",
+      ["repo-compile"]
+    )=[
+      "repo-compile",
+      "docs-drift"
+    ],
+    •repoAudit.insertUnique(
+      "docs-drift",
+      [
+        "docs-drift",
+        "repo-compile"
+      ]
+    )=[
+      "docs-drift",
+      "repo-compile"
+    ]
+  ])
+}
+
 test "docs drift messages map to stable codes" {
   allOk([
     •repoAudit.mapDocsDriftIssueCode("compiler check failed: boom")="docs-drift/snippet-check",

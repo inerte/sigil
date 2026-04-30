@@ -1,3 +1,5 @@
+mode total
+
 t Block=Header(
   Int,
   String
@@ -365,7 +367,6 @@ t ParsingResult={
 )
 
 λparseLinesHelper(blocks:[Block],lines:[String],state:ParserState)=>[Block]
-requires #lines≥0
 decreases #lines
 match lines{
   []=>blocks
@@ -416,44 +417,57 @@ match lines{
 
 λprocessInlineLinks(text:String)=>String=text
 
-λreplacePairedDelimiters(closeTag:String,delimiter:String,openTag:String,result:String,text:String)=>String
-requires #text≥0
-decreases #text
-match §string.indexOf(
-  text,
-  delimiter
-){
-  idx when idx≥0=>{
-    l afterFirst=(§string.substring(
-      #text,
-      text,
-      idx+#delimiter
-    ):String);
-    match §string.indexOf(
-      afterFirst,
-      delimiter
-    ){
-      idx2 when idx2≥0=>replacePairedDelimiters(
-        closeTag,
-        delimiter,
-        openTag,
-        result+§string.substring(
-          idx,
-          text,
-          0
-        )+openTag+§string.substring(
-          idx2,
-          afterFirst,
-          0
-        )+closeTag,
-        §string.substring(
-          #afterFirst,
-          afterFirst,
-          idx2+#delimiter
-        )
-      )|
-      _=>result+text
-    }
-  }|
-  _=>result+text
+λreplacePairedDelimiters(closeTag:String,delimiter:String,openTag:String,result:String,text:String)=>String=replacePairedDelimitersInner(
+  closeTag,
+  delimiter,
+  100000,
+  openTag,
+  result,
+  text
+)
+
+λreplacePairedDelimitersInner(closeTag:String,delimiter:String,fuel:Int,openTag:String,result:String,text:String)=>String
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>result+text|
+  false=>match §string.indexOf(
+    text,
+    delimiter
+  ){
+    idx when idx≥0=>{
+      l afterFirst=(§string.substring(
+        #text,
+        text,
+        idx+#delimiter
+      ):String);
+      match §string.indexOf(
+        afterFirst,
+        delimiter
+      ){
+        idx2 when idx2≥0=>replacePairedDelimitersInner(
+          closeTag,
+          delimiter,
+          fuel-1,
+          openTag,
+          result+§string.substring(
+            idx,
+            text,
+            0
+          )+openTag+§string.substring(
+            idx2,
+            afterFirst,
+            0
+          )+closeTag,
+          §string.substring(
+            #afterFirst,
+            afterFirst,
+            idx2+#delimiter
+          )
+        )|
+        _=>result+text
+      }
+    }|
+    _=>result+text
+  }
 }

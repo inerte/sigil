@@ -5,7 +5,7 @@
 
 use crate::effects::EffectCatalog;
 use crate::types::{apply_subst, fresh_type_var, InferenceType, Substitution, TMap, TypeScheme};
-use sigil_ast::{Expr, ExternMemberKind, TypeDef, Variant};
+use sigil_ast::{Expr, ExternMemberKind, FunctionMode, TypeDef, Variant};
 use std::collections::{BTreeSet, HashMap, HashSet};
 
 /// Type information for user-defined types
@@ -57,6 +57,7 @@ pub struct ProtocolSpec {
 pub struct BindingMeta {
     pub is_extern_namespace: bool,
     pub is_transform: bool,
+    pub function_mode: Option<FunctionMode>,
     pub labels: BTreeSet<String>,
     pub return_labels: BTreeSet<String>,
 }
@@ -85,6 +86,7 @@ pub struct TypeEnvironment {
     effect_catalog: EffectCatalog,
     module_id: Option<String>,
     source_file: Option<String>,
+    current_function_mode: FunctionMode,
     parent: Option<Box<TypeEnvironment>>,
 }
 
@@ -110,6 +112,7 @@ impl TypeEnvironment {
             effect_catalog: EffectCatalog::empty(),
             module_id: None,
             source_file: None,
+            current_function_mode: FunctionMode::Ordinary,
             parent: None,
         }
     }
@@ -135,6 +138,7 @@ impl TypeEnvironment {
             effect_catalog: parent.effect_catalog.clone(),
             module_id: parent.module_id.clone(),
             source_file: parent.source_file.clone(),
+            current_function_mode: parent.current_function_mode,
             parent: Some(Box::new(parent)),
         }
     }
@@ -145,6 +149,14 @@ impl TypeEnvironment {
 
     pub fn source_file(&self) -> Option<&str> {
         self.source_file.as_deref()
+    }
+
+    pub fn set_current_function_mode(&mut self, mode: FunctionMode) {
+        self.current_function_mode = mode;
+    }
+
+    pub fn current_function_mode(&self) -> FunctionMode {
+        self.current_function_mode
     }
 
     pub fn set_module_id(&mut self, module_id: Option<String>) {
@@ -205,6 +217,10 @@ impl TypeEnvironment {
 
     /// Look up binding metadata
     pub fn lookup_meta(&self, name: &str) -> Option<BindingMeta> {
+        if self.bindings.contains_key(name) || self.schemes.contains_key(name) {
+            return self.binding_meta.get(name).cloned();
+        }
+
         if let Some(meta) = self.binding_meta.get(name) {
             return Some(meta.clone());
         }
@@ -326,6 +342,13 @@ impl TypeEnvironment {
     }
 
     pub fn lookup_function_contract(&self, name: &str) -> Option<FunctionContract> {
+        if self.bindings.contains_key(name) || self.schemes.contains_key(name) {
+            if self.binding_meta.contains_key(name) {
+                return self.function_contracts.get(name).cloned();
+            }
+            return None;
+        }
+
         if let Some(contract) = self.function_contracts.get(name) {
             return Some(contract.clone());
         }

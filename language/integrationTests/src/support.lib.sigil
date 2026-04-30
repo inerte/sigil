@@ -1,3 +1,5 @@
+mode total
+
 e process
 
 λcombinedOutput(result:§process.ProcessResult)=>String=result.stdout++result.stderr
@@ -44,7 +46,10 @@ e process
 
 λrepoRoot()=>String=process.cwd()
 
-λretryRunStdoutContains(attempts:Int,command:§process.Command,delayMs:Int,expected:String)=>!Process!Timer §process.ProcessResult={
+λretryRunStdoutContains(attempts:Int,command:§process.Command,delayMs:Int,expected:String)=>!Process!Timer §process.ProcessResult
+requires attempts≥0
+decreases attempts
+={
   l result=(§process.run(command):§process.ProcessResult);
   match runStdoutContains(
     expected,
@@ -98,43 +103,49 @@ e process
 λwaitForReadyPort(attempts:Int,delayMs:Int,readyFile:String)=>!Fs!Timer Result[
   Int,
   String
-] match §file.exists(readyFile){
+]
+requires attempts≥0
+decreases attempts
+match §file.exists(readyFile){
   true=>{
     l text=(§string.trim(§file.readText(readyFile)):String);
     match #text=0{
-      true=>waitForReadyPortRetry(
-        attempts,
-        delayMs,
-        readyFile
-      )|
+      true=>match attempts≤1{
+        true=>Err(failedReadyPortMessage(readyFile))|
+        false=>{
+          l _=(§time.sleepMs(delayMs):Unit);
+          waitForReadyPort(
+            attempts-1,
+            delayMs,
+            readyFile
+          )
+        }
+      }|
       false=>match §decode.intFromText(text){
         Ok(port)=>Ok(port)|
-        Err(_)=>waitForReadyPortRetry(
-          attempts,
-          delayMs,
-          readyFile
-        )
+        Err(_)=>match attempts≤1{
+          true=>Err(failedReadyPortMessage(readyFile))|
+          false=>{
+            l _=(§time.sleepMs(delayMs):Unit);
+            waitForReadyPort(
+              attempts-1,
+              delayMs,
+              readyFile
+            )
+          }
+        }
       }
     }
   }|
-  false=>waitForReadyPortRetry(
-    attempts,
-    delayMs,
-    readyFile
-  )
-}
-
-λwaitForReadyPortRetry(attempts:Int,delayMs:Int,readyFile:String)=>!Fs!Timer Result[
-  Int,
-  String
-] match attempts≤1{
-  true=>Err(failedReadyPortMessage(readyFile))|
-  false=>{
-    l _=(§time.sleepMs(delayMs):Unit);
-    waitForReadyPort(
-      attempts-1,
-      delayMs,
-      readyFile
-    )
+  false=>match attempts≤1{
+    true=>Err(failedReadyPortMessage(readyFile))|
+    false=>{
+      l _=(§time.sleepMs(delayMs):Unit);
+      waitForReadyPort(
+        attempts-1,
+        delayMs,
+        readyFile
+      )
+    }
   }
 }

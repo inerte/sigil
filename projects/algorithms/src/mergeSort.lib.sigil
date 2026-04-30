@@ -1,3 +1,5 @@
+mode total
+
 λfirstRun(runs:[[Int]])=>[Int] match runs{
   []=>[]|
   [
@@ -40,34 +42,58 @@ match left{
   runs
 )
 
-λmergeAllRunsCount(runCount:Int,runs:[[Int]])=>[Int]
-requires 0≤runCount
-decreases runCount
-match runCount≤1{
+λmergeAllRunsCount(runCount:Int,runs:[[Int]])=>[Int] match runCount≤1{
   true=>firstRun(runs)|
-  false=>mergeAllRunsCount(
-    nextRunCount(runCount),
-    mergePairs(runs)
+  false=>mergeAllRunsCountInner(
+    runCount,
+    runCount,
+    runs
   )
 }
 
-λmergePairs(runs:[[Int]])=>[[Int]]
-requires #runs≥0
-decreases #runs
-match runs{
-  []=>[]|
-  [
+λmergeAllRunsCountInner(fuel:Int,runCount:Int,runs:[[Int]])=>[Int]
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>firstRun(runs)|
+  false=>match runCount≤1{
+    true=>firstRun(runs)|
+    false=>mergeAllRunsCountInner(
+      fuel-1,
+      nextRunCount(runCount),
+      mergePairs(runs)
+    )
+  }
+}
+
+λmergePairs(runs:[[Int]])=>[[Int]]=mergePairsInner(
+  #runs,
+  runs
+)
+
+λmergePairsInner(fuel:Int,runs:[[Int]])=>[[Int]]
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>[]|
+  false=>match runs{
+    []=>[]|
+    [
   head,
   .tail
 ]=>match tail{
-    []=>wrapRun(head)|
-    [
+      []=>wrapRun(head)|
+      [
   right,
   .rest
 ]=>wrapRun(merge(
-      head,
-      right
-    ))⧺mergePairs(rest)
+        head,
+        right
+      ))⧺mergePairsInner(
+        fuel-1,
+        rest
+      )
+    }
   }
 }
 
@@ -76,6 +102,7 @@ match runs{
 λnextRunCount(runCount:Int)=>Int
 requires 0≤runCount
 decreases runCount
+ensures result≥0
 match runCount{
   0=>0|
   1=>1|

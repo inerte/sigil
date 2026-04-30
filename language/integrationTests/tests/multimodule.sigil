@@ -85,14 +85,17 @@ test "multimodule multiple imports run" =>!Clock!Fs!Process {
     root
   ):Unit);
   l _=(writeProjectFile(
-    "λmain()=>Int=•math.add(•utils.double(10),•utils.triple(5))
+    "λmain()=>Int=•math.add(
+  •utils.double(10),
+  •utils.triple(5)
+)
 ",
-    "src/calc.sigil",
+    "src/main.sigil",
     root
   ):Unit);
   l output=(runProject(
     root,
-    "src/calc.sigil"
+    "src/main.sigil"
   ):String);
   l _=(§file.removeTree(root):Unit);
   §string.contains(

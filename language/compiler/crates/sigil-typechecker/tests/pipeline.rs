@@ -71,6 +71,47 @@ fn pipeline_requires_ensures() {
 }
 
 #[test]
+fn pipeline_total_function_cannot_call_ordinary_function() {
+    let r = typecheck_only("mode total\n\nordinary λhelper()=>Int=1\n\nλmain()=>Int=helper()");
+    let e = r.unwrap_err();
+    assert!(
+        e.message
+            .contains("Total functions cannot call ordinary function"),
+        "Expected total-to-ordinary call rejection: {}",
+        e.message
+    );
+    assert_eq!(
+        e.details
+            .as_ref()
+            .and_then(|d| d.get("functionMode"))
+            .and_then(|v| v.as_str()),
+        Some("total")
+    );
+}
+
+#[test]
+fn pipeline_total_function_allows_shadowed_local_function_value() {
+    let r = typecheck_only(
+        "mode total\n\nordinary λhelper()=>Int=1\n\nλcall(helper:λ()=>Int)=>Int=helper()",
+    );
+    assert!(
+        r.is_ok(),
+        "Shadowed local function values should not inherit top-level mode: {r:?}"
+    );
+}
+
+#[test]
+fn pipeline_transform_uses_requires_context_with_decreases() {
+    let r = typecheck_only(
+        "total λhead(xs:[Int])=>Int\nrequires #xs>0\n=0\n\ntransform total λuse(xs:[Int])=>Int\nrequires #xs>0\ndecreases #xs\n=head(xs)",
+    );
+    assert!(
+        r.is_ok(),
+        "Transforms should typecheck under their requires context even when they carry decreases: {r:?}"
+    );
+}
+
+#[test]
 fn pipeline_match_exhaustiveness() {
     let r = typecheck_only("λtoggle(b:Bool)=>Bool match b{true=>false|false=>true}");
     assert!(r.is_ok(), "{r:?}");

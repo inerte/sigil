@@ -19,11 +19,38 @@ fn test_function_declaration_simple() {
     match &program.declarations[0] {
         Declaration::Function(f) => {
             assert_eq!(f.name, "add");
+            assert_eq!(f.mode, FunctionMode::Ordinary);
             assert_eq!(f.params.len(), 2);
             assert_eq!(f.params[0].name, "x");
             assert_eq!(f.params[1].name, "y");
             assert!(f.return_type.is_some());
         }
+        _ => panic!("Expected function declaration"),
+    }
+}
+
+#[test]
+fn test_program_mode_total_sets_function_default() {
+    let source = "mode total\n\nλcount(n:Int)=>Int\ndecreases n\n=count(n-1)";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    assert_eq!(program.default_function_mode, FunctionMode::Total);
+    match &program.declarations[0] {
+        Declaration::Function(f) => assert_eq!(f.mode, FunctionMode::Total),
+        _ => panic!("Expected function declaration"),
+    }
+}
+
+#[test]
+fn test_function_mode_override_ordinary_in_total_program() {
+    let source = "mode total\n\nordinary λloop()=>Int=loop()";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+
+    assert_eq!(program.default_function_mode, FunctionMode::Total);
+    match &program.declarations[0] {
+        Declaration::Function(f) => assert_eq!(f.mode, FunctionMode::Ordinary),
         _ => panic!("Expected function declaration"),
     }
 }
@@ -226,7 +253,8 @@ fn test_function_declaration_with_requires_decreases_ensures() {
 
 #[test]
 fn test_function_declaration_decreases_lexicographic_tuple() {
-    let source = "λstep(n:Int,m:Int)=>Int\ndecreases (n,m)\nmatch n=0{true=>0|false=>step( n+(-1),m)}";
+    let source =
+        "λstep(n:Int,m:Int)=>Int\ndecreases (n,m)\nmatch n=0{true=>0|false=>step( n+(-1),m)}";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
@@ -244,7 +272,10 @@ fn test_function_contract_wrong_order_is_parse_error() {
     let source = "λbad()=>Int\ndecreases 1\nrequires 1=1\n=0";
     let tokens = tokenize(source).unwrap();
     let err = parse(tokens, "test.sigil");
-    assert!(err.is_err(), "out-of-order requires after decreases must fail");
+    assert!(
+        err.is_err(),
+        "out-of-order requires after decreases must fail"
+    );
 }
 
 #[test]

@@ -1,3 +1,5 @@
+mode total
+
 λcharAt(idx:Int,s:String)=>String=""
 
 λcontains(s:String,search:String)=>Bool=false

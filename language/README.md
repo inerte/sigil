@@ -26,13 +26,18 @@ Sigil is optimized for:
 
 ### What's Written (Dense, Canonical Format)
 ```sigil module
-λfibonacci(n:Int)=>Int=fibonacciHelper(
+λfibonacci(n:Int)=>Int
+requires n≥0
+=fibonacciHelper(
   0,
   1,
   n
 )
 
-λfibonacciHelper(a:Int,b:Int,n:Int)=>Int match n{
+total λfibonacciHelper(a:Int,b:Int,n:Int)=>Int
+requires n≥0
+decreases n
+match n{
   0=>a|
   count=>fibonacciHelper(
     b,
@@ -326,7 +331,10 @@ Compact canonical syntax for model-facing efficiency:
 
 ### Pattern Matching
 ```sigil module
-λfactorial(n:Int)=>Int match n{
+total λfactorial(n:Int)=>Int
+requires n≥0
+decreases n
+match n{
   0=>1|
   1=>1|
   value=>value*factorial(value-1)

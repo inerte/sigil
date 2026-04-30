@@ -489,6 +489,7 @@ PTY rules:
 - `spawn` and `spawnAt` return owned session handles
 - `spawnManaged` and `spawnManagedAt` return storable runtime-managed session refs
 - `eventsManaged` returns an owned subscription stream for one managed session ref
+- `waitManaged` returns the exit code but leaves the managed ref open until `closeManaged`
 - `closeManaged` is idempotent
 - `spawnAt` is the topology-aware named-boundary variant and requires `§topology.PtyHandle`
 - `spawnManagedAt` is the topology-aware managed-ref variant and requires `§topology.PtyHandle`

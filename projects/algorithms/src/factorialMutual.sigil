@@ -1,4 +1,4 @@
-λfactA(n:Int)=>Int
+total λfactA(n:Int)=>Int
 requires 0≤n
 decreases n
 match n{

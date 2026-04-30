@@ -1,3 +1,5 @@
+mode total
+
 λlinearSearch(target:Int,xs:[Int])=>Int=linearSearchFrom(
   0,
   target,

@@ -73,10 +73,15 @@ The environment contract is now explicit and uniform:
 c world=(†runtime.world(
   †clock.systemClock(),
   †fs.real(),
+  †fsWatch.real(),
   [],
   †log.stdout(),
   †process.real(),
+  †pty.real(),
   †random.real(),
+  †sql.deny(),
+  †stream.live(),
+  †task.real(),
   [],
   †timer.real(),
   †websocket.real()

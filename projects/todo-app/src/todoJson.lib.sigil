@@ -1,3 +1,5 @@
+mode total
+
 λdecodeNextTodoId(value:§json.JsonValue)=>Result[
   µNextTodoId,
   §decode.DecodeError
@@ -54,7 +56,9 @@
   "text"↦§json.JsonString(todo.text)
 })
 
-λencodeTodos(todos:[µTodo])=>§json.JsonValue match todos{
+λencodeTodos(todos:[µTodo])=>§json.JsonValue
+decreases #todos
+match todos{
   []=>§json.JsonArray([])|
   [
   todo,

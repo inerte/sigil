@@ -1,3 +1,5 @@
+mode total
+
 λallDocsSection(config:µSiteBuildConfig,docs:[µSitePage])=>String="<section class=\"listing\"><h2>Docs</h2><ul class=\"page-list\">"
   ++pageCards(
     config,
@@ -253,7 +255,9 @@
   false=>""
 }
 
-λpageCards(config:µSiteBuildConfig,pages:[µSitePage])=>String match pages{
+λpageCards(config:µSiteBuildConfig,pages:[µSitePage])=>String
+decreases #pages
+match pages{
   []=>""|
   [
   page,

@@ -1,3 +1,5 @@
+mode total
+
 λgitTopLevel()=>!Process Result[
   String,
   String

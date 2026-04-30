@@ -1,24 +1,26 @@
-λboardFromValues(values:[Int],x:Int,y:Int)=>[µCell] match values{
+total λboardFromValues(values:[Int],x:Int,y:Int)=>[µCell]
+decreases #values
+match values{
   []=>[]|
   [
   value,
   .rest
-]=>match x=4{
+]=>[{
+    value:value,
+    x:x,
+    y:y
+  }]⧺(match x+1=4{
     true=>boardFromValues(
-      values,
+      rest,
       0,
       y+1
     )|
-    false=>[{
-      value:value,
-      x:x,
-      y:y
-    }]⧺boardFromValues(
+    false=>boardFromValues(
       rest,
       x+1,
       y
     )
-  }
+  })
 }
 
 λgameFromValues(score:Int,values:[Int])=>µGame={
@@ -40,7 +42,9 @@
   y:y
 }
 
-λvalueAt(board:[µCell],targetX:Int,targetY:Int)=>Int match board{
+total λvalueAt(board:[µCell],targetX:Int,targetY:Int)=>Int
+decreases #board
+match board{
   []=>0|
   [
   cell,

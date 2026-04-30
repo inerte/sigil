@@ -1,3 +1,5 @@
+mode total
+
 λflatten(tree:µIntTree)=>[Int] match tree{
   µEmpty()=>[]|
   µNode(

@@ -1,3 +1,5 @@
+mode total
+
 λfilterMultiples(prime:Int,xs:[Int])=>[Int]=xs filter (λ(head:Int)=>Bool=head%prime≠0)
 
 λsieve(limit:Int)=>[Int] match limit<2{
@@ -8,16 +10,27 @@
   ))
 }
 
-λsieveCandidates(candidates:[Int])=>[Int]
-requires #candidates≥0
-decreases #candidates
-match candidates{
-  []=>[]|
-  [
+λsieveCandidates(candidates:[Int])=>[Int]=sieveCandidatesInner(
+  candidates,
+  #candidates
+)
+
+λsieveCandidatesInner(candidates:[Int],fuel:Int)=>[Int]
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>[]|
+  false=>match candidates{
+    []=>[]|
+    [
   head,
   .tail
-]=>[head]⧺sieveCandidates(filterMultiples(
-    head,
-    tail
-  ))
+]=>[head]⧺sieveCandidatesInner(
+      filterMultiples(
+        head,
+        tail
+      ),
+      fuel-1
+    )
+  }
 }

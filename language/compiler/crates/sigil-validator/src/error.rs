@@ -89,8 +89,14 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
-    #[error("SIGIL-CANON-RECURSION-MISSING-DECREASES: Self-recursive function '{function_name}' is missing a `decreases` clause.\n\nSigil requires every self-recursive function to declare a termination measure with `decreases <expr>`. The measure must lower to the canonical proof fragment (an Int expression or a tuple of Int expressions) and must strictly decrease at every recursive call while staying bounded below.\n\nAdd a `decreases` clause between `requires` and `ensures` (canonical clause order: requires => decreases => ensures), e.g. `decreases n` for an integer counter or `decreases #xs` for a shrinking list.")]
+    #[error("SIGIL-CANON-RECURSION-MISSING-DECREASES: Total self-recursive function '{function_name}' is missing a `decreases` clause.\n\nSigil requires total self-recursive functions to declare a termination measure with `decreases <expr>`. Ordinary executable functions may recurse without a termination proof, but ordinary functions may not declare `decreases`. The measure must lower to the canonical proof fragment (an Int expression or a tuple of Int expressions) and must strictly decrease at every recursive call while staying bounded below.\n\nIf this function should stay ordinary, keep it `ordinary` (or add an `ordinary` override / remove `mode total`). Otherwise add a `decreases` clause between `requires` and `ensures` (canonical clause order: requires => decreases => ensures), e.g. `decreases n` for an integer counter or `decreases #xs` for a shrinking list.")]
     RecursionMissingDecreases {
+        function_name: String,
+        location: SourceLocation,
+    },
+
+    #[error("SIGIL-CANON-ORDINARY-DECREASES: Ordinary function '{function_name}' declares `decreases`.\n\n`decreases` is reserved for total functions. Ordinary executable functions may recurse without a termination proof.\n\nEither mark the function `total` or remove the `decreases` clause.")]
+    OrdinaryFunctionDecreases {
         function_name: String,
         location: SourceLocation,
     },
@@ -579,6 +585,7 @@ impl ValidationError {
             ValidationError::DeclCategoryOrder { location, .. } => *location,
             ValidationError::DeclAlphabetical { location, .. } => *location,
             ValidationError::RecursionMissingDecreases { location, .. } => *location,
+            ValidationError::OrdinaryFunctionDecreases { location, .. } => *location,
             ValidationError::MutualRecursion { location, .. } => *location,
         }
     }
@@ -919,6 +926,22 @@ impl From<ValidationError> for Diagnostic {
                     format!("Let binding '{}' must have type ascription", binding_name),
                 )
                 .with_location(source_location_to_span(get_file(), location))
+            }
+
+            ValidationError::OrdinaryFunctionDecreases { function_name, location } => {
+                Diagnostic::new(
+                    "SIGIL-CANON-ORDINARY-DECREASES",
+                    SigilPhase::Canonical,
+                    format!(
+                        "Ordinary function '{}' cannot declare `decreases`",
+                        function_name
+                    ),
+                )
+                .with_location(source_location_to_span(get_file(), location))
+                .with_details(
+                    "guidance",
+                    "Mark the function total or remove the decreases clause.",
+                )
             }
 
             ValidationError::SourceForm { canonical_source, location } => {

@@ -1,3 +1,5 @@
+mode total
+
 λcombinations(k:Int,xs:[Int])=>[[Int]]
 requires 0≤k and 0≤#xs
 =combinationsInto(

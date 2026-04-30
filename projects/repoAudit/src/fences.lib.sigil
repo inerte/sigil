@@ -1,3 +1,5 @@
+mode total
+
 λappendContent(current:µOpenSnippet,line:String)=>µOpenSnippet={
   content:current.content⧺[line],
   filePath:current.filePath,

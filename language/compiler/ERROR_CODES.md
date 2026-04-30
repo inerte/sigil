@@ -287,14 +287,19 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Message:** "Recursive function 'name' uses non-canonical branching self-recursion"
 **Example:** `fib(n-1)+fib(n-2)`
 **Why it is rejected:** This exact shape duplicates work instead of following one canonical recursion path.
-**How to fix:** Use a wrapper plus helper accumulator/state-threading function, or another canonical helper shape that performs one recursive step at a time.
+**How to fix:** Use a wrapper plus helper accumulator/state-threading function, or another canonical helper shape that performs one recursive step at a time. If the helper carries a `decreases` proof, mark that helper `total`.
 
-**Related (termination, separate diagnostics):** `SIGIL-CANON-RECURSION-MISSING-DECREASES` and `SIGIL-PROOF-MEASURE-*` fire when a self-recursive function lacks a provable `decreases` measure, but branching recursion (above) is a purely structural / canonical-form rejection.
+**Related (termination, separate diagnostics):** `SIGIL-CANON-RECURSION-MISSING-DECREASES`, `SIGIL-CANON-ORDINARY-DECREASES`, and `SIGIL-PROOF-MEASURE-*` fire when a total self-recursive function lacks a provable `decreases` measure or an ordinary function declares one, but branching recursion (above) is a purely structural / canonical-form rejection.
 
 ### SIGIL-CANON-RECURSION-MISSING-DECREASES
-**Description:** A self-recursive function has no `decreases` clause, or returns a non-`Never` type and still omits a measure.
-**Message:** (validator) "Self-recursive function 'name' must declare `decreases`…"
-**How to fix:** Add a `decreases` measure (single `Int`, or a lexicographic tuple of `Int` components) in canonical clause order: `requires` → `decreases` → `ensures`, and ensure the typechecker can prove it decreases at every self-call and is bounded below (see `SIGIL-PROOF-MEASURE-*`).
+**Description:** A total self-recursive function has no `decreases` clause, or returns a non-`Never` type and still omits a measure.
+**Message:** (validator) "Total self-recursive function 'name' must declare `decreases`…"
+**How to fix:** If the function should stay ordinary executable code, keep it ordinary (or add an `ordinary` override / remove `mode total`) and omit `decreases`. If it must be total, add a `decreases` measure (single `Int`, or a lexicographic tuple of `Int` components) in canonical clause order: `requires` → `decreases` → `ensures`, and ensure the typechecker can prove it decreases at every self-call and is bounded below (see `SIGIL-PROOF-MEASURE-*`).
+
+### SIGIL-CANON-ORDINARY-DECREASES
+**Description:** An ordinary function declares `decreases`.
+**Message:** (validator) "Ordinary function 'name' cannot declare `decreases`"
+**How to fix:** Mark the function `total` (or place it under `mode total`) if the termination proof is intentional. Otherwise remove the `decreases` clause and keep the function ordinary.
 
 ### SIGIL-CANON-MUTUAL-RECURSION
 **Description:** A strongly connected component of size `≥ 2` among top-level function declarations in the same module.
@@ -304,17 +309,17 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 ### SIGIL-PROOF-MEASURE-NOT-IN-FRAGMENT
 **Description:** A `decreases` component is not expressible in the proof fragment, is effectful, or is not a pure `Int`-lowerable linear expression.
 **Message:** (typechecker) "…decreases clause… not in the canonical proof fragment"
-**How to fix:** Simplify the measure to literals, `+`, comparisons feeding guards, length `#`, `result`, parameters, and tuple/lex form; or refactor with a caller-supplied `maxIterations: Int` “fuel” parameter that decreases each step.
+**How to fix:** Simplify the measure to literals, `+`, comparisons feeding guards, length `#`, `result`, parameters, and tuple/lex form. If total reasoning is not required, keep the function ordinary and remove `decreases`. Otherwise refactor with a caller-supplied `maxIterations: Int` “fuel” parameter that decreases each step.
 
 ### SIGIL-PROOF-MEASURE-NOT-DECREASING
 **Description:** The solver could not prove the measure is strictly smaller (lexicographically, if a tuple) at a self-recursive call site under the active proof context.
 **Message:** (typechecker) "…could not be proven strictly decreasing at this recursive call"
-**How to fix:** Tighten `requires`, restructure the recursion so a simpler measure works, or use lexicographic `(m₁, m₂, …)`.
+**How to fix:** Tighten `requires`, restructure the recursion so a simpler measure works, or use lexicographic `(m₁, m₂, …)`. If total reasoning is not required, keep the function ordinary and remove `decreases`.
 
 ### SIGIL-PROOF-MEASURE-UNBOUNDED-BELOW
 **Description:** A `decreases` component could not be proved `≥ 0` (or each component, for a tuple) under the function’s `requires`.
 **Message:** (typechecker) "…could not be proven >= 0"
-**How to fix:** Add a `requires` (or stronger guard) that establishes a lower bound, or use a different measure (e.g. add an explicit fuel parameter).
+**How to fix:** Add a `requires` (or stronger guard) that establishes a lower bound, or use a different measure (e.g. add an explicit fuel parameter). If total reasoning is not required, keep the function ordinary and remove `decreases`.
 
 ### SIGIL-CANON-TRAVERSAL-FILTER-COUNT
 **Description:** Filter followed by length is a non-canonical counting shape.

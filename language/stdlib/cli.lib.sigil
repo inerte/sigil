@@ -1,3 +1,5 @@
+mode total
+
 t Arg[A]=CliArg(Int)
 
 t Command[T]=CliCommand(Int)

@@ -1,3 +1,5 @@
+mode total
+
 λegK(a:Int,b:Int,fuel:Int)=>µExtendedGcd
 decreases fuel
 match fuel=0{

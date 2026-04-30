@@ -1,3 +1,5 @@
+mode total
+
 t Regex={
   flags:String,
   pattern:String

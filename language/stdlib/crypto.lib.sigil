@@ -1,3 +1,5 @@
+mode total
+
 t CryptoError={message:String}
 
 λbase64Decode(input:String)=>Result[

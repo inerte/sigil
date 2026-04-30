@@ -96,7 +96,9 @@ Still allowed:
 ```
 
 ```sigil module
-λgo(acc:Int,xs:[Int])=>Int match xs{
+total λgo(acc:Int,xs:[Int])=>Int
+decreases #xs
+match xs{
   []=>acc|
   [
   x,
@@ -112,6 +114,9 @@ Still allowed:
   xs
 )
 ```
+
+If the helper carries a termination proof, mark that helper `total`. The public
+wrapper can stay ordinary unless it also needs total reasoning.
 
 Those may still be undesirable for other reasons, but they are no longer exact
 wrappers. The compiler does not try to prove that arbitrary helper code is

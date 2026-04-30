@@ -1,3 +1,5 @@
+mode total
+
 e console:{log:λ(String)=>!Log Unit}
 
 λcontrols(mode:µInputMode)=>String match mode{
@@ -33,46 +35,61 @@ e console:{log:λ(String)=>!Log Unit}
   }
 }
 
-λplayLoop(mode:µInputMode,state:µGameState)=>!Log!Random!Terminal µLoopResult={
-  l _=(showFrame(
-    •roguelike.renderFrame(state),
-    mode
-  ):Unit);
-  l action=(resolveKey(
-    (§terminal.readKey():§terminal.Key),
-    mode
-  ):µLoopAction);
-  match action{
-    µCommit(
+λplayLoop(mode:µInputMode,state:µGameState)=>!Log!Random!Terminal µLoopResult=playLoopInner(
+  100000,
+  mode,
+  state
+)
+
+λplayLoopInner(fuel:Int,mode:µInputMode,state:µGameState)=>!Log!Random!Terminal µLoopResult
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>µQuit()|
+  false=>{
+    l _=(showFrame(
+      •roguelike.renderFrame(state),
+      mode
+    ):Unit);
+    l action=(resolveKey(
+      (§terminal.readKey():§terminal.Key),
+      mode
+    ):µLoopAction);
+    match action{
+      µCommit(
   command,
   nextMode
 )=>match •roguelike.advance(
-      command,
-      state
-    ){
-      Some(step)=>match step.outcome{
-        Some(outcome)=>{
-          l _=(showFrame(
-            step.frame,
-            nextMode
-          ):Unit);
-          µEnded(outcome)
+        command,
+        state
+      ){
+        Some(step)=>match step.outcome{
+          Some(outcome)=>{
+            l _=(showFrame(
+              step.frame,
+              nextMode
+            ):Unit);
+            µEnded(outcome)
+          }|
+          None()=>playLoopInner(
+            fuel-1,
+            nextMode,
+            step.state
+          )
         }|
-        None()=>playLoop(
-          nextMode,
-          step.state
+        None()=>playLoopInner(
+          fuel-1,
+          mode,
+          state
         )
       }|
-      None()=>playLoop(
-        mode,
+      µQuitGame()=>µQuit()|
+      µStay(nextMode)=>playLoopInner(
+        fuel-1,
+        nextMode,
         state
       )
-    }|
-    µQuitGame()=>µQuit()|
-    µStay(nextMode)=>playLoop(
-      nextMode,
-      state
-    )
+    }
   }
 }
 

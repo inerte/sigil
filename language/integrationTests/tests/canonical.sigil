@@ -18,11 +18,24 @@ match n{0=>0}
   file
 ]))
 
-λgoodFibSource()=>String="λfib(n:Int)=>Int=fibHelper(0,1,n)
+λgoodFibSource()=>String="λfib(n:Int)=>Int
+requires n≥0
+=fibHelper(
+  0,
+  1,
+  n
+)
 
-λfibHelper(a:Int,b:Int,n:Int)=>Int match n{
+total λfibHelper(a:Int,b:Int,n:Int)=>Int
+requires n≥0
+decreases n
+match n{
   0=>a|
-  value=>fibHelper(b,a+b,value-1)
+  value=>fibHelper(
+    b,
+    a+b,
+    value-1
+  )
 }
 
 λmain()=>Int=fib(5)

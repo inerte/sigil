@@ -5614,6 +5614,12 @@ fn validate_recursive_functions(program: &Program) -> Result<(), Vec<ValidationE
 
         // Check if function is recursive
         if !is_recursive(&func.body, &func.name) {
+            if func.mode == FunctionMode::Ordinary && func.decreases.is_some() {
+                errors.push(ValidationError::OrdinaryFunctionDecreases {
+                    function_name: func.name.clone(),
+                    location: func.location,
+                });
+            }
             continue;
         }
 
@@ -5624,9 +5630,19 @@ fn validate_recursive_functions(program: &Program) -> Result<(), Vec<ValidationE
         // does not apply.
         let returns_never = matches!(
             &func.return_type,
-            Some(Type::Primitive(PrimitiveType { name: PrimitiveName::Never, .. }))
+            Some(Type::Primitive(PrimitiveType {
+                name: PrimitiveName::Never,
+                ..
+            }))
         );
-        if !returns_never && func.decreases.is_none() {
+        if func.mode == FunctionMode::Ordinary {
+            if func.decreases.is_some() {
+                errors.push(ValidationError::OrdinaryFunctionDecreases {
+                    function_name: func.name.clone(),
+                    location: func.location,
+                });
+            }
+        } else if !returns_never && func.decreases.is_none() {
             errors.push(ValidationError::RecursionMissingDecreases {
                 function_name: func.name.clone(),
                 location: func.location,
@@ -6996,7 +7012,7 @@ mod tests {
     #[test]
     fn test_simple_recursion_allowed() {
         // This stays minimal because the test is about recursion validation, not match coverage.
-        let source = "λfactorial(n:Int)=>Int\nrequires n≥0\ndecreases n\n=factorial(n-1)\n";
+        let source = "total λfactorial(n:Int)=>Int\nrequires n≥0\ndecreases n\n=factorial(n-1)\n";
         let tokens = tokenize(source).unwrap();
         let program = parse(tokens, "test.lib.sigil").unwrap();
 
@@ -7228,7 +7244,7 @@ mod tests {
 
     #[test]
     fn test_direct_match_body_canonical_layout_allowed() {
-        let source = r#"λcountdown(n:Int)=>Int
+        let source = r#"total λcountdown(n:Int)=>Int
 requires n≥0
 decreases n
 match n{

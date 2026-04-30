@@ -1,8 +1,11 @@
 e console:{log:λ(String)=>!Log Unit}
 
-λallPoints(height:Int,width:Int,y:Int)=>[µPoint] match height-y{
-  0=>[]|
-  _=>allPointsRow(
+total λallPoints(height:Int,width:Int,y:Int)=>[µPoint]
+requires 0≤width and y≤height
+decreases height+-y
+match y≥height{
+  true=>[]|
+  false=>allPointsRow(
     width,
     0,
     y
@@ -13,9 +16,12 @@ e console:{log:λ(String)=>!Log Unit}
   )
 }
 
-λallPointsRow(width:Int,x:Int,y:Int)=>[µPoint] match width-x{
-  0=>[]|
-  _=>[point(
+total λallPointsRow(width:Int,x:Int,y:Int)=>[µPoint]
+requires x≤width
+decreases width+-x
+match x≥width{
+  true=>[]|
+  false=>[point(
     x,
     y
   )]⧺allPointsRow(
@@ -25,7 +31,7 @@ e console:{log:λ(String)=>!Log Unit}
   )
 }
 
-λcellLabel(cell:µCell)=>String match cell.revealed{
+total λcellLabel(cell:µCell)=>String match cell.revealed{
   true=>match cell.bomb{
     true=>"*"|
     false=>match cell.adjacent=0{
@@ -39,7 +45,9 @@ e console:{log:λ(String)=>!Log Unit}
   }
 }
 
-λjoinCells(cells:[µCell])=>String match cells{
+total λjoinCells(cells:[µCell])=>String
+decreases #cells
+match cells{
   []=>""|
   [cell]=>cellLabel(cell)|
   [
@@ -66,7 +74,7 @@ e console:{log:λ(String)=>!Log Unit}
 Open the website demo to play the interactive version.")
 }
 
-λpoint(x:Int,y:Int)=>µPoint={
+total λpoint(x:Int,y:Int)=>µPoint={
   x:x,
   y:y
 }
@@ -80,7 +88,9 @@ Open the website demo to play the interactive version.")
   )):[µPoint])
 )
 
-λrenderRow(board:[µCell],width:Int,x:Int,y:Int)=>[µCell] match board{
+total λrenderRow(board:[µCell],width:Int,x:Int,y:Int)=>[µCell]
+decreases #board
+match board{
   []=>[]|
   [
   cell,
@@ -103,9 +113,12 @@ Open the website demo to play the interactive version.")
   }
 }
 
-λrenderRows(board:[µCell],height:Int,width:Int,y:Int)=>String match height-y{
-  0=>""|
-  _=>joinCells(renderRow(
+total λrenderRows(board:[µCell],height:Int,width:Int,y:Int)=>String
+requires y≤height
+decreases height+-y
+match y≥height{
+  true=>""|
+  false=>joinCells(renderRow(
     board,
     width,
     0,
@@ -121,9 +134,11 @@ Open the website demo to play the interactive version.")
     )
 }
 
-λtakePoints(count:Int,points:[µPoint])=>[µPoint] match count{
-  0=>[]|
-  _=>match points{
+total λtakePoints(count:Int,points:[µPoint])=>[µPoint]
+decreases count
+match count≤0{
+  true=>[]|
+  false=>match points{
     []=>[]|
     [
   head,

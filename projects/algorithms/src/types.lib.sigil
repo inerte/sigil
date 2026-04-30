@@ -1,3 +1,5 @@
+mode total
+
 t Bucket={
   count:Int,
   value:Int

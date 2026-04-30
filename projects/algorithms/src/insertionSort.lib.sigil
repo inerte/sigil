@@ -1,5 +1,6 @@
+mode total
+
 λinsertSorted(item:Int,xs:[Int])=>[Int]
-requires #xs≥0
 decreases #xs
 match xs{
   []=>[item]|
@@ -19,7 +20,6 @@ match xs{
 }
 
 λinsertionSort(xs:[Int])=>[Int]
-requires #xs≥0
 decreases #xs
 match xs{
   []=>[]|

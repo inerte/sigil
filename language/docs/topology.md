@@ -93,45 +93,24 @@ Each declared environment gets one config module exporting `world`:
 ```sigil module projects/topology-http/config/test.lib.sigil
 e process
 
-c world=(†runtime.withFsWatchRoots(
-  [†fsWatch.realRoot(•topology.exportsDir)],
-  †runtime.withFsRoots(
-    [†fs.realRoot(•topology.exportsDir)],
-    †runtime.withLogSinks(
-      [†log.captureSink(•topology.auditLog)],
-      †runtime.withProcessHandles(
-        [†process.realHandle(•topology.mailerCli)],
-        †runtime.withPtyHandles(
-          [†pty.realHandle(•topology.assistantShell)],
-          †runtime.withSqlHandles(
-            [†sql.sqliteHandle(
-              •topology.appDb,
-              ".local/app.sqlite"
-            )],
-            †runtime.world(
-              †clock.systemClock(),
-              †fs.real(),
-              †fsWatch.real(),
-              [†http.proxy(
-                mailerApiBaseUrl(),
-                •topology.mailerApi
-              )],
-              †log.capture(),
-              †process.real(),
-              †pty.real(),
-              †random.seeded(1337),
-              †sql.deny(),
-              †stream.live(),
-              †task.real(),
-              [],
-              †timer.virtual(),
-              †websocket.real()
-            )
-          )
-        )
-      )
-    )
-  )
+c world=(†runtime.world(
+  †clock.systemClock(),
+  †fs.real(),
+  †fsWatch.real(),
+  [†http.proxy(
+    mailerApiBaseUrl(),
+    •topology.mailerApi
+  )],
+  †log.capture(),
+  †process.real(),
+  †pty.real(),
+  †random.seeded(1337),
+  †sql.deny(),
+  †stream.live(),
+  †task.real(),
+  [],
+  †timer.virtual(),
+  †websocket.real()
 ):†runtime.World)
 
 λmailerApiBaseUrl()=>String=mailerApiBaseUrlFromProperty(process.env.hasOwnProperty("sigilHttpTestBaseUrl"))
@@ -147,46 +126,32 @@ Production-style config can read env vars, but only there:
 ```sigil module projects/topology-http/config/prod.lib.sigil
 e process
 
-c world=(†runtime.withFsWatchRoots(
-  [†fsWatch.realRoot(•topology.exportsDir)],
-  †runtime.withFsRoots(
-    [†fs.realRoot(•topology.exportsDir)],
-    †runtime.withLogSinks(
-      [†log.stdoutSink(•topology.auditLog)],
-      †runtime.withProcessHandles(
-        [†process.realHandle(•topology.mailerCli)],
-        †runtime.withPtyHandles(
-          [†pty.realHandle(•topology.assistantShell)],
-          †runtime.withSqlHandles(
-            [†sql.postgresHandle(
-              (process.env.appDbUrl:String),
-              •topology.appDb
-            )],
-            †runtime.world(
-              †clock.systemClock(),
-              †fs.real(),
-              †fsWatch.real(),
-              [†http.proxy(
-                (process.env.mailerApiUrl:String),
-                •topology.mailerApi
-              )],
-              †log.stdout(),
-              †process.real(),
-              †pty.real(),
-              †random.real(),
-              †sql.deny(),
-              †stream.live(),
-              †task.real(),
-              [],
-              †timer.real(),
-              †websocket.real()
-            )
-          )
-        )
-      )
-    )
-  )
+c world=(†runtime.world(
+  †clock.systemClock(),
+  †fs.real(),
+  †fsWatch.real(),
+  [†http.proxy(
+    mailerApiBaseUrl(),
+    •topology.mailerApi
+  )],
+  †log.stdout(),
+  †process.real(),
+  †pty.real(),
+  †random.real(),
+  †sql.deny(),
+  †stream.live(),
+  †task.real(),
+  [],
+  †timer.real(),
+  †websocket.real()
 ):†runtime.World)
+
+λmailerApiBaseUrl()=>String=mailerApiBaseUrlFromProperty(process.env.hasOwnProperty("mailerApiUrl"))
+
+λmailerApiBaseUrlFromProperty(hasValue:Bool)=>String match hasValue{
+  true=>(process.env.mailerApiUrl:String)|
+  false=>""
+}
 ```
 
 Config modules may also export selected env declarations for ordinary
@@ -229,13 +194,15 @@ Canonical TCP usage:
 Canonical PTY usage:
 
 ```sigil program language/examples/ptyBasics.sigil
+c assistantShell=(§topology.ptyHandle("assistantShell"):§topology.PtyHandle)
+
 λmain()=>!Pty Owned[§pty.Session]=§pty.spawnAt(
-  •topology.assistantShell,
+  assistantShell,
   {
     argv:["codex"],
     cols:120,
     cwd:Some("."),
-    env:{↦},
+    env:({↦}:{String↦String}),
     rows:40
   }
 )
@@ -244,27 +211,20 @@ Canonical PTY usage:
 Canonical SQL usage:
 
 ```sigil program projects/topology-sql/src/main.sigil
-λmain()=>!Sql Result[
-  Option[µTodo],
-  §sql.SqlFailure
-]=§sql.one(
-  •topology.appDb,
-  §sql.where(
-    §sql.eq(
-      •sqlRoundtripApp.columnId,
-      1
-    ),
-    §sql.select(•sqlRoundtripApp.tableTodos)
-  )
-)
+λmain()=>!Process!Sql String match •sqlRoundtripApp.run(){
+  Ok(text)=>text|
+  Err(failure)=>failure.message
+}
 ```
 
 Canonical fsWatch usage:
 
 ```sigil program language/examples/fsWatchBasics.sigil
+c worktree=(§topology.fsRoot("worktree"):§topology.FsRoot)
+
 λmain()=>!FsWatch Owned[§fsWatch.Watch]=§fsWatch.watchAt(
   "src",
-  •topology.exportsDir
+  worktree
 )
 ```
 
@@ -276,7 +236,7 @@ c liveUpdates=(§topology.websocketHandle("liveUpdates"):§topology.WebSocketHan
 λmain()=>!WebSocket Owned[§websocket.Server]=§websocket.listen(
   8080,
   [§websocket.route(
-    •topology.liveUpdates,
+    liveUpdates,
     "/sessions"
   )]
 )

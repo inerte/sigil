@@ -1,3 +1,5 @@
+mode total
+
 λbuckets(histogram:{Int↦Int})=>[µBucket]=¶map.entries(histogram) map (λ(entry:¶map.Entry[
   Int,
   Int

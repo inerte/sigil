@@ -544,7 +544,9 @@
   }
 ]
 
-λhasTopic(target:String,topics:[String])=>Bool match topics{
+total λhasTopic(target:String,topics:[String])=>Bool
+decreases #topics
+match topics{
   []=>false|
   [
   topic,
@@ -590,7 +592,9 @@ ensures result.revealed
   topics:session.topics
 }
 
-λselectCards(cards:[µCard],selectedTopic:String)=>[µCard] match cards{
+total λselectCards(cards:[µCard],selectedTopic:String)=>[µCard]
+decreases #cards
+match cards{
   []=>[]|
   [
   card,

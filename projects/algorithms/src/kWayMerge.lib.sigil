@@ -1,5 +1,6 @@
+mode total
+
 λadvanceOne(changed:Bool,minHead:Int,runs:[[Int]])=>[[Int]]
-requires #runs≥0
 decreases #runs
 match runs{
   []=>[]|
@@ -47,23 +48,36 @@ match runs{
   runs
 )
 
-λkWayMergeCount(remaining:Int,runs:[[Int]])=>[Int]
-requires 0≤remaining
-decreases remaining
-match remaining{
-  0=>[]|
-  _=>match runs filter nonEmpty{
-    []=>[]|
-    active=>{
-      l minHead=(smallestHead(active):Int);
-      [minHead]⧺kWayMergeCount(
-        remaining+-1,
-        advanceOne(
-          false,
-          minHead,
-          active
+λkWayMergeCount(remaining:Int,runs:[[Int]])=>[Int] match remaining≤0{
+  true=>[]|
+  false=>kWayMergeCountInner(
+    remaining,
+    remaining,
+    runs
+  )
+}
+
+λkWayMergeCountInner(fuel:Int,remaining:Int,runs:[[Int]])=>[Int]
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>[]|
+  false=>match remaining≤0{
+    true=>[]|
+    false=>match runs filter nonEmpty{
+      []=>[]|
+      active=>{
+        l minHead=(smallestHead(active):Int);
+        [minHead]⧺kWayMergeCountInner(
+          fuel-1,
+          remaining-1,
+          advanceOne(
+            false,
+            minHead,
+            active
+          )
         )
-      )
+      }
     }
   }
 }

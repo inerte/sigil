@@ -1,17 +1,35 @@
-λblockSize(n:Int)=>Int=blockSizeFrom(
-  1,
-  n
-)
+mode total
 
-λblockSizeFrom(candidate:Int,n:Int)=>Int
-requires 0≤n+-candidate
-decreases n+-candidate
-match (candidate+1)*(candidate+1)>n{
-  true=>candidate|
-  false=>blockSizeFrom(
-    candidate+1,
+λblockSize(n:Int)=>Int match n≤1{
+  true=>1|
+  _=>blockSizeFrom(
+    1,
     n
   )
+}
+
+λblockSizeFrom(candidate:Int,n:Int)=>Int match n≤0{
+  true=>candidate|
+  _=>blockSizeFromInner(
+    candidate,
+    n,
+    n
+  )
+}
+
+λblockSizeFromInner(candidate:Int,fuel:Int,n:Int)=>Int
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>candidate|
+  false=>match (candidate+1)*(candidate+1)>n{
+    true=>candidate|
+    false=>blockSizeFromInner(
+      candidate+1,
+      fuel-1,
+      n
+    )
+  }
 }
 
 λblockStarts(block:Int,xs:[Int])=>[Int]=§numeric.range(
@@ -68,9 +86,19 @@ match (candidate+1)*(candidate+1)>n{
   None()=>-1
 }
 
-λlinearSearchBlock(end:Int,start:Int,target:Int,xs:[Int])=>Int
-requires 0≤end+-start
-decreases end+-start
+λlinearSearchBlock(end:Int,start:Int,target:Int,xs:[Int])=>Int match start>end{
+  true=>-1|
+  _=>linearSearchBlockInner(
+    end,
+    start,
+    target,
+    xs
+  )
+}
+
+λlinearSearchBlockInner(end:Int,start:Int,target:Int,xs:[Int])=>Int
+requires start≤end+1
+decreases end+1+-start
 match start>end{
   true=>-1|
   false=>match indexValue(
@@ -78,7 +106,7 @@ match start>end{
     xs
   )=target{
     true=>start|
-    false=>linearSearchBlock(
+    false=>linearSearchBlockInner(
       end,
       start+1,
       target,

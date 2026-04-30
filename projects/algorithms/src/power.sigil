@@ -3,7 +3,7 @@
   10
 )
 
-λpower(base:Int,exp:Int)=>Int
+total λpower(base:Int,exp:Int)=>Int
 requires 0≤exp
 decreases exp
 match exp{

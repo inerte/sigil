@@ -104,7 +104,10 @@ Regular expression body:
 Match body:
 
 ```sigil module
-λfactorial(n:Int)=>Int match n{
+total λfactorial(n:Int)=>Int
+requires n≥0
+decreases n
+match n{
   0=>1|
   1=>1|
   value=>value*factorial(value-1)
@@ -117,6 +120,14 @@ For function declarations:
 - `=` is forbidden before a `match` body
 - delimited aggregate forms stay flat with `0` or `1` item and print multiline with `2+` items, including type arguments inside signatures
 - a direct `match` body begins on that same line
+
+Function mode rules:
+
+- functions are ordinary by default
+- `mode total` may appear once at the top of a file to make `total` the default for later function declarations
+- `total λname...` or `ordinary λname...` overrides the file default for one declaration
+- only total self-recursive functions may declare `decreases`
+- functions declared `total` may not call declarations marked `ordinary`
 
 Effects, when present, appear between `=>` and the return type:
 
@@ -579,9 +590,11 @@ Discarding a pure expression with `l _=(...)` is non-canonical and rejected.
 
 Owned resource scopes use `using`:
 
-```sigil expr
-using source=openSource(){
-  consume(source)
+```text
+λmain()=>Unit={
+  using source=openSource(){
+    consume(source)
+  }
 }
 ```
 

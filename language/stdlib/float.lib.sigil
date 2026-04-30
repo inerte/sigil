@@ -1,3 +1,5 @@
+mode total
+
 λabs(x:Float)=>Float=0.0
 
 λceil(x:Float)=>Int=0

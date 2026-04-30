@@ -1,12 +1,10 @@
-e console
-
 λmain()=>!Log Unit={
-  l _=(console.log("# Heading
+  l _=(§io.println("# Heading
 
 - one
 - two
 "):Unit);
-  console.log("Roses are red
+  §io.println("Roses are red
   violets stay indented
 Sigil keeps the spaces
 ")

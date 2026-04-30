@@ -13,8 +13,8 @@ t Spawn={
 }
 
 protocol SessionRef
-  Open → Closed via closeManaged, waitManaged
-  Open → Open via eventsManaged, resizeManaged, writeManaged
+  Open → Closed via closeManaged
+  Open → Open via eventsManaged, resizeManaged, waitManaged, writeManaged
   initial = Open
   terminal = Closed
 
@@ -51,7 +51,7 @@ ensures session.state=Open
 
 λwaitManaged(session:SessionRef)=>!Pty Int
 requires session.state=Open
-ensures session.state=Closed
+ensures session.state=Open
 =-1
 
 λwrite(input:String,session:Session)=>!Pty Unit=()

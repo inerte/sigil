@@ -1,3 +1,5 @@
+mode total
+
 λarchiveName(platform:String,version:String)=>String="sigil-"
   ++version
   ++"-"
@@ -36,7 +38,9 @@
   None()=>None()
 }
 
-λfindChecksum(archive:String,entries:[µChecksumEntry])=>Option[String] match entries{
+λfindChecksum(archive:String,entries:[µChecksumEntry])=>Option[String]
+decreases #entries
+match entries{
   []=>None()|
   [
   first,
@@ -129,7 +133,9 @@
 ])++"
 "
 
-λparseChecksumLines(lines:[String])=>[µChecksumEntry] match lines{
+λparseChecksumLines(lines:[String])=>[µChecksumEntry]
+decreases #lines
+match lines{
   []=>[]|
   [
   first,

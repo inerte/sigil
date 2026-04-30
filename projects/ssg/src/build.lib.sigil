@@ -1,3 +1,5 @@
+mode total
+
 e fs::promises
 
 λarticleNav(config:µSiteBuildConfig,nextCard:String,previousCard:String)=>String match nextCard++previousCard{
@@ -143,7 +145,9 @@ e fs::promises
   "specCount"↦§json.JsonString(§string.intToString(#data.spec))
 })
 
-λcopyAssetFiles(assetNames:[String],assetSourceDir:String,assetTargetDir:String)=>!Fs Unit match assetNames{
+λcopyAssetFiles(assetNames:[String],assetSourceDir:String,assetTargetDir:String)=>!Fs Unit
+decreases #assetNames
+match assetNames{
   []=>()|
   [
   asset,
@@ -201,7 +205,9 @@ e fs::promises
   false=>()
 }
 
-λcopyProjectDemos(config:µSiteBuildConfig,pages:[µSitePage])=>!Fs Unit match pages{
+λcopyProjectDemos(config:µSiteBuildConfig,pages:[µSitePage])=>!Fs Unit
+decreases #pages
+match pages{
   []=>()|
   [
   page,
@@ -306,7 +312,9 @@ e fs::promises
   )
 }
 
-λloadPagesFromFiles(config:µSiteBuildConfig,dir:String,files:[String],section:µSection)=>!Fs [µSitePage] match files{
+λloadPagesFromFiles(config:µSiteBuildConfig,dir:String,files:[String],section:µSection)=>!Fs [µSitePage]
+decreases #files
+match files{
   []=>[]|
   [
   file,
@@ -347,7 +355,9 @@ e fs::promises
   }
 }
 
-λloadProjects(config:µSiteBuildConfig,projects:[µCuratedProject])=>!Fs [µSitePage] match projects{
+λloadProjects(config:µSiteBuildConfig,projects:[µCuratedProject])=>!Fs [µSitePage]
+decreases #projects
+match projects{
   []=>[]|
   [
   project,
@@ -478,7 +488,9 @@ e fs::promises
 
 λremoveIntroPage(pages:[µSitePage])=>[µSitePage]=pages filter (λ(page:µSitePage)=>Bool=page.sourcePath≠"website/articles/README.md")
 
-λrenderPages(aliasRoutes:[µAliasRoute],basePath:String,pages:[µSitePage])=>[µSitePage] match pages{
+λrenderPages(aliasRoutes:[µAliasRoute],basePath:String,pages:[µSitePage])=>[µSitePage]
+decreases #pages
+match pages{
   []=>[]|
   [
   page,
@@ -543,11 +555,12 @@ e fs::promises
   None()
 )
 
-λwriteArticlePagesInner(config:µSiteBuildConfig,pages:[µSitePage],previousPage:Option[µSitePage])=>!Fs Unit match pages{
+λwriteArticlePagesInner(config:µSiteBuildConfig,pages:[µSitePage],previousPage:Option[µSitePage])=>!Fs Unit
+decreases #pages
+match pages{
   []=>()|
   [
   page,
-  nextPage,
   .rest
 ]=>{
     l _=(writePage(
@@ -556,11 +569,17 @@ e fs::promises
         config,
         articleNav(
           config,
-          articleNavCard(
-            config,
-            "Next article",
-            nextPage
-          ),
+          match rest{
+            []=>""|
+            [
+  nextPage,
+  .nextRest
+]=>articleNavCard(
+              config,
+              "Next article",
+              nextPage
+            )
+          },
           articlePreviousCard(
             config,
             previousPage
@@ -572,26 +591,10 @@ e fs::promises
     ):Unit);
     writeArticlePagesInner(
       config,
-      [nextPage]⧺rest,
+      rest,
       Some(page)
     )
-  }|
-  [page]=>writePage(
-    config,
-    •templates.articlePage(
-      config,
-      articleNav(
-        config,
-        "",
-        articlePreviousCard(
-          config,
-          previousPage
-        )
-      ),
-      page
-    ),
-    page
-  )
+  }
 }
 
 λwriteFeed(config:µSiteBuildConfig,data:µSiteData)=>!Fs Unit=§file.writeText(
@@ -641,7 +644,9 @@ e fs::promises
   )
 }
 
-λwritePages(config:µSiteBuildConfig,pages:[µSitePage])=>!Fs Unit match pages{
+λwritePages(config:µSiteBuildConfig,pages:[µSitePage])=>!Fs Unit
+decreases #pages
+match pages{
   []=>()|
   [
   page,
@@ -663,7 +668,9 @@ e fs::promises
   }
 }
 
-λwriteProjectPages(config:µSiteBuildConfig,pages:[µSitePage])=>!Fs Unit match pages{
+λwriteProjectPages(config:µSiteBuildConfig,pages:[µSitePage])=>!Fs Unit
+decreases #pages
+match pages{
   []=>()|
   [
   page,

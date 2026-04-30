@@ -65,7 +65,7 @@ e bridge::subscriptionProbe:{tick: subscribes λ()=>String}
   using source=bridge::subscriptionProbe.tick(){
     match §stream.next(source){
       §stream.Item(text)=>text|
-      §stream.Done()=>\"done\"
+      §stream.Done()=>"done"
     }
   }
 }
@@ -223,10 +223,7 @@ equality. This is canonical semantic comparison, not type inference.
 Typed extern members may also declare foreign event subscriptions:
 
 ```sigil module
-e nodePty:{
-  onData: subscribes λ(Session)=>String,
-  onExit: subscribes λ(Session)=>ExitEvent
-}
+e nodePty:{onData: subscribes λ(Session)=>String,onExit: subscribes λ(Session)=>ExitEvent}
 ```
 
 `subscribes λ(A...)=>T` is the canonical typed-extern surface for foreign
@@ -235,7 +232,7 @@ callback/listener ingress.
 It does **not** expose raw JavaScript callbacks to Sigil source. Instead, the
 member elaborates as if it had type:
 
-```sigil decl
+```text
 λ(A...)=>!Stream Owned[§stream.Source[T]]
 ```
 
@@ -372,14 +369,9 @@ Use functional APIs or wrapper functions.
 ```sigil program
 e console
 
-λerror(msg:String)=>Unit=console.error(msg)
-
 λlog(msg:String)=>Unit=console.log(msg)
 
-λmain()=>Unit={
-  l _=(error("Error message"):Unit);
-  log("Info message")
-}
+λmain()=>Unit=log("Info message")
 ```
 
 ### 2. Use Semantic Names

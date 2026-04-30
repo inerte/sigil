@@ -1,3 +1,5 @@
+mode total
+
 c boardSize=(4:Int)
 
 λapplyMove(direction:String,game:µGame)=>µGame
@@ -40,17 +42,23 @@ match game.status{
   _=>game
 }
 
-λbuildBoard(y:Int)=>[µCell] match boardSize-y{
-  0=>[]|
-  _=>buildRow(
+λbuildBoard(y:Int)=>[µCell]
+requires y≤4
+decreases 4+-y
+match y≥4{
+  true=>[]|
+  false=>buildRow(
     0,
     y
   )⧺buildBoard(y+1)
 }
 
-λbuildRow(x:Int,y:Int)=>[µCell] match boardSize-x{
-  0=>[]|
-  _=>[{
+λbuildRow(x:Int,y:Int)=>[µCell]
+requires x≤4
+decreases 4+-x
+match x≥4{
+  true=>[]|
+  false=>[{
     value:0,
     x:x,
     y:y
@@ -60,7 +68,9 @@ match game.status{
   )
 }
 
-λcellAt(board:[µCell],targetX:Int,targetY:Int)=>Option[µCell] match board{
+λcellAt(board:[µCell],targetX:Int,targetY:Int)=>Option[µCell]
+decreases #board
+match board{
   []=>None()|
   [
   head,
@@ -75,9 +85,12 @@ match game.status{
   }
 }
 
-λcolumnValues(board:[µCell],x:Int,y:Int)=>[Int] match boardSize-y{
-  0=>[]|
-  _=>[valueAt(
+λcolumnValues(board:[µCell],x:Int,y:Int)=>[Int]
+requires y≤4
+decreases 4+-y
+match y≥4{
+  true=>[]|
+  false=>[valueAt(
     board,
     x,
     y
@@ -105,7 +118,9 @@ ensures result.score=0 and result.size=boardSize
 
 λhasLegalMove(board:[µCell])=>Bool=hasEmptyCell(board) or hasMergeNeighbor(board)
 
-λhasMergeNeighbor(board:[µCell])=>Bool match board{
+λhasMergeNeighbor(board:[µCell])=>Bool
+decreases #board
+match board{
   []=>false|
   [
   cell,
@@ -134,43 +149,66 @@ ensures result.score=0 and result.size=boardSize
   false=>false
 }
 
-λmergeCompressed(values:[Int])=>µLineOutcome match values{
-  []=>{
+λmergeCompressed(values:[Int])=>µLineOutcome=mergeCompressedInner(
+  100000,
+  values
+)
+
+λmergeCompressedInner(fuel:Int,values:[Int])=>µLineOutcome
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>{
     scoreGain:0,
-    values:[]
+    values:values
   }|
-  [head]=>{
-    scoreGain:0,
-    values:[head]
-  }|
-  [
+  false=>match values{
+    []=>{
+      scoreGain:0,
+      values:[]
+    }|
+    [head]=>{
+      scoreGain:0,
+      values:[head]
+    }|
+    [
   head,
   next,
   .rest
 ]=>match head=next{
-    true=>{
-      l tail=(mergeCompressed(rest):µLineOutcome);
-      {
-        scoreGain:(head+next+tail.scoreGain:Int),
-        values:[head+next]⧺tail.values
-      }
-    }|
-    false=>{
-      l tail=(mergeCompressed([next]⧺rest):µLineOutcome);
-      {
-        scoreGain:tail.scoreGain,
-        values:[head]⧺tail.values
+      true=>{
+        l tail=(mergeCompressedInner(
+          fuel-1,
+          rest
+        ):µLineOutcome);
+        {
+          scoreGain:(head+next+tail.scoreGain:Int),
+          values:[head+next]⧺tail.values
+        }
+      }|
+      false=>{
+        l tail=(mergeCompressedInner(
+          fuel-1,
+          [next]⧺rest
+        ):µLineOutcome);
+        {
+          scoreGain:tail.scoreGain,
+          values:[head]⧺tail.values
+        }
       }
     }
   }
 }
 
-λmoveColumnsDown(board:[µCell],scoreGain:Int,x:Int)=>µMoveOutcome match boardSize-x{
-  0=>{
+λmoveColumnsDown(board:[µCell],scoreGain:Int,x:Int)=>µMoveOutcome
+requires x≤4
+decreases 4+-x
+match x≥4{
+  true=>{
     board:board,
     scoreGain:scoreGain
   }|
-  _=>{
+  false=>{
     l line=(normalizeLine((reverseInts(columnValues(
       board,
       x,
@@ -189,12 +227,15 @@ ensures result.score=0 and result.size=boardSize
   }
 }
 
-λmoveColumnsUp(board:[µCell],scoreGain:Int,x:Int)=>µMoveOutcome match boardSize-x{
-  0=>{
+λmoveColumnsUp(board:[µCell],scoreGain:Int,x:Int)=>µMoveOutcome
+requires x≤4
+decreases 4+-x
+match x≥4{
+  true=>{
     board:board,
     scoreGain:scoreGain
   }|
-  _=>{
+  false=>{
     l line=(normalizeLine(columnValues(
       board,
       x,
@@ -213,12 +254,15 @@ ensures result.score=0 and result.size=boardSize
   }
 }
 
-λmoveRowsLeft(board:[µCell],scoreGain:Int,y:Int)=>µMoveOutcome match boardSize-y{
-  0=>{
+λmoveRowsLeft(board:[µCell],scoreGain:Int,y:Int)=>µMoveOutcome
+requires y≤4
+decreases 4+-y
+match y≥4{
+  true=>{
     board:board,
     scoreGain:scoreGain
   }|
-  _=>{
+  false=>{
     l line=(normalizeLine(rowValues(
       board,
       0,
@@ -237,12 +281,15 @@ ensures result.score=0 and result.size=boardSize
   }
 }
 
-λmoveRowsRight(board:[µCell],scoreGain:Int,y:Int)=>µMoveOutcome match boardSize-y{
-  0=>{
+λmoveRowsRight(board:[µCell],scoreGain:Int,y:Int)=>µMoveOutcome
+requires y≤4
+decreases 4+-y
+match y≥4{
+  true=>{
     board:board,
     scoreGain:scoreGain
   }|
-  _=>{
+  false=>{
     l line=(normalizeLine((reverseInts(rowValues(
       board,
       0,
@@ -276,9 +323,12 @@ ensures result.score=0 and result.size=boardSize
 
 λreverseInts(values:[Int])=>[Int]=values reduce (λ(acc:[Int],value:Int)=>[Int]=[value]⧺acc) from ([]:[Int])
 
-λrowValues(board:[µCell],x:Int,y:Int)=>[Int] match boardSize-x{
-  0=>[]|
-  _=>[valueAt(
+λrowValues(board:[µCell],x:Int,y:Int)=>[Int]
+requires x≤4
+decreases 4+-x
+match x≥4{
+  true=>[]|
+  false=>[valueAt(
     board,
     x,
     y
@@ -329,7 +379,9 @@ ensures result.score=0 and result.size=boardSize
   _=>game
 }
 
-λspawnTiles(game:µGame,spawns:[µSpawn])=>µGame match spawns{
+λspawnTiles(game:µGame,spawns:[µSpawn])=>µGame
+decreases #spawns
+match spawns{
   []=>game|
   [
   tileSpawn,
@@ -369,7 +421,9 @@ ensures result.score=0 and result.size=boardSize
   false=>false
 }
 
-λwriteColumn(board:[µCell],values:[Int],x:Int,y:Int)=>[µCell] match values{
+λwriteColumn(board:[µCell],values:[Int],x:Int,y:Int)=>[µCell]
+decreases #values
+match values{
   []=>board|
   [
   value,
@@ -387,7 +441,9 @@ ensures result.score=0 and result.size=boardSize
   )
 }
 
-λwriteRow(board:[µCell],values:[Int],x:Int,y:Int)=>[µCell] match values{
+λwriteRow(board:[µCell],values:[Int],x:Int,y:Int)=>[µCell]
+decreases #values
+match values{
   []=>board|
   [
   value,
@@ -405,7 +461,9 @@ ensures result.score=0 and result.size=boardSize
   )
 }
 
-λzeroes(count:Int)=>[Int] match count{
-  0=>[]|
-  _=>[0]⧺zeroes(count-1)
+λzeroes(count:Int)=>[Int]
+decreases count
+match count≤0{
+  true=>[]|
+  false=>[0]⧺zeroes(count-1)
 }

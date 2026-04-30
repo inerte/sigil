@@ -34,6 +34,7 @@ test "coverage helpers parse refs exports and identifiers" {
     ){
       Ok(refPattern)=>allOk([
         •coverage.collectQualifiedRefsLine(
+          100000,
           refPattern,
           [],
           "§list.sum(xs) and §list.sum(ys)"
@@ -86,6 +87,7 @@ test "coverage helpers parse refs exports and identifiers" {
         ],
         •coverage.dropUntilBoundary(
           "",
+          100000,
           "trim):String"
         )="trim",
         match •coverage.extractFunctionName("λtrim(s:String)=>String"){
@@ -98,6 +100,7 @@ test "coverage helpers parse refs exports and identifiers" {
         },
         •coverage.extractFunctionNameInner(
           "",
+          100000,
           "split(text:String)=>[String]"
         )="split",
         •coverage.insertUnique(

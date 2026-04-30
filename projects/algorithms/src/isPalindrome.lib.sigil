@@ -1,1 +1,3 @@
+mode total
+
 λisPalindrome(s:String)=>Bool=s=§string.reverse(s)

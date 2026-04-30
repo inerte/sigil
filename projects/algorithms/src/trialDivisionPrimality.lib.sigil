@@ -1,3 +1,5 @@
+mode total
+
 λcandidateDivisors(n:Int)=>[Int]=§numeric.range(
   2,
   n-1

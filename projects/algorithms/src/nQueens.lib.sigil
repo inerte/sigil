@@ -1,3 +1,5 @@
+mode total
+
 λnQueens(size:Int)=>[[Int]] match size≤0{
   true=>[]|
   false=>nQueensSearch(

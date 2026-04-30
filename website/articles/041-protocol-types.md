@@ -40,10 +40,23 @@ t Transaction={id:String}
 
 protocol Transaction
   Open → Closed via commit, rollback
-  Open → Open via allIn, execDeleteIn, execInsertIn, execUpdateIn, oneIn, rawExecIn, rawQueryIn, rawQueryOneIn
   initial = Open
   terminal = Closed
+
+λcommit(transaction:Transaction)=>Bool
+requires transaction.state=Open
+ensures transaction.state=Closed
+=true
+
+λrollback(transaction:Transaction)=>Bool
+requires transaction.state=Open
+ensures transaction.state=Closed
+=true
 ```
+
+This is a complete minimal module. Real transaction APIs usually add more
+`Open → Open` operations such as `execInsertIn`, `execUpdateIn`, and
+`execDeleteIn`, but the core shape is already visible here.
 
 This is a first-class declaration: it names the type it describes, lists the
 valid state transitions, identifies which functions cause each transition, and
@@ -60,15 +73,35 @@ annotations. These are the same `requires`/`ensures` clauses that exist for
 value contracts — they extend naturally to state:
 
 ```sigil module
-λcommit(transaction:Transaction)=>!Sql Result[Unit,SqlFailure]
+t Transaction={id:String}
+
+protocol Transaction
+  Open → Closed via commit
+  Open → Open via execInsertIn
+  initial = Open
+  terminal = Closed
+
+λcommit(transaction:Transaction)=>!Sql Result[
+  Unit,
+  §sql.SqlFailure
+]
 requires transaction.state=Open
 ensures transaction.state=Closed
-=Err({kind:Unsupported(),message:"sql intrinsic unavailable"})
+=Err({
+  kind:§sql.Unsupported(),
+  message:"sql intrinsic unavailable"
+})
 
-λexecInsertIn[Row](statement:Insert[Row],transaction:Transaction)=>!Sql Result[Int,SqlFailure]
+λexecInsertIn(statement:String,transaction:Transaction)=>!Sql Result[
+  Int,
+  §sql.SqlFailure
+]
 requires transaction.state=Open
 ensures transaction.state=Open
-=Err({kind:Unsupported(),message:"sql intrinsic unavailable"})
+=Err({
+  kind:§sql.Unsupported(),
+  message:"sql intrinsic unavailable"
+})
 ```
 
 `handle.state` is a virtual field on protocol-typed values. It only exists in
@@ -88,10 +121,25 @@ Protocol state works the same way, but with a new kind of solver atom:
 alphabetically), and `StateEq` is just an integer equality constraint. Z3 can
 prove or refute it like any other constraint.
 
-When a handle is bound:
+When a protocol-typed handle is bound inside a function:
 
-```sigil expr
-l tx = begin(handle)
+```sigil module
+t Transaction={id:String}
+
+protocol Transaction
+  Open → Closed via commit
+  initial = Open
+  terminal = Closed
+
+λcommit(transaction:Transaction)=>Bool
+requires transaction.state=Open
+ensures transaction.state=Closed
+=true
+
+λworkflow(id:String)=>Bool={
+  l tx=({id:id}:Transaction);
+  tx.id=id and commit(tx)
+}
 ```
 
 the proof context gains `tx.state = Open` as an assumption — injected
@@ -120,7 +168,7 @@ The `Client` protocol marks `close` as `Open → Closed`, so any subsequent
 **Wrong-order PTY operations.** `writeManaged` requires `Open` state on a
 `SessionRef`. The PTY protocol marks `eventsManaged` and `writeManaged` as
 `Open → Open` transitions. Calling `writeManaged` on a newly created
-`SessionRef` works; calling it after `waitManaged` (which transitions to
+`SessionRef` works; calling it after `closeManaged` (which transitions to
 `Closed`) fails.
 
 ## What It Replaces

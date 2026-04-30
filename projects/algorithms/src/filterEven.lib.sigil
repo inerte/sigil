@@ -1,1 +1,3 @@
+mode total
+
 λfilterEven(xs:[Int])=>[Int]=xs filter §numeric.isEven

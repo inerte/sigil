@@ -1,3 +1,5 @@
+mode total
+
 λdebug(msg:String)=>!Log Unit=()
 
 λeprintln(msg:String)=>!Log Unit=()

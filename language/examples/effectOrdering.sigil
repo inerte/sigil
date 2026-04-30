@@ -3,10 +3,8 @@ t Pair={
   b:String
 }
 
-e console
-
 λfirst()=>!Log String={
-  l _=(console.log("first"):Unit);
+  l _=(§io.println("first"):Unit);
   "first"
 }
 
@@ -16,6 +14,6 @@ e console
 }
 
 λsecond()=>!Log String={
-  l _=(console.log("second"):Unit);
+  l _=(§io.println("second"):Unit);
   "second"
 }

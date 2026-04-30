@@ -1,3 +1,5 @@
+mode total
+
 λallPages(data:µSiteData)=>[µSitePage]=[
   data.home,
   data.articlesIntro,

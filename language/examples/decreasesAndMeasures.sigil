@@ -1,4 +1,4 @@
-λcountdown(n:Int)=>Int
+total λcountdown(n:Int)=>Int
 requires n≥0
 decreases n
 match n{
@@ -6,7 +6,7 @@ match n{
   value=>countdown(value+-1)
 }
 
-λlexDecrease(m:Int,n:Int)=>Int
+total λlexDecrease(m:Int,n:Int)=>Int
 requires m≥0 and n≥0
 decreases (m, n)
 match m=0{

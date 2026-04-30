@@ -1,3 +1,5 @@
+mode total
+
 t JsonError={message:String}
 
 t JsonValue=JsonArray([JsonValue])|JsonBool(Bool)|JsonNull()|JsonNumber(Float)|JsonObject({String↦JsonValue})|JsonString(String)

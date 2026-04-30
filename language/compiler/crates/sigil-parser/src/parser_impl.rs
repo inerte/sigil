@@ -12,6 +12,7 @@ pub struct Parser {
     tokens: Vec<Token>,
     current: usize,
     filename: String,
+    default_function_mode: FunctionMode,
 }
 
 impl Parser {
@@ -27,6 +28,7 @@ impl Parser {
             tokens,
             current: 0,
             filename: filename.into(),
+            default_function_mode: FunctionMode::Ordinary,
         }
     }
 
@@ -34,15 +36,30 @@ impl Parser {
     pub fn parse(&mut self) -> Result<Program, ParseError> {
         let start = self.peek();
         let mut declarations = Vec::new();
+        let mut saw_mode_directive = false;
 
         while !self.is_at_end() {
+            if self.match_identifier("mode") {
+                if saw_mode_directive || !declarations.is_empty() {
+                    return Err(self.error(
+                        "Expected `mode total` only once at the top of the file before declarations",
+                    ));
+                }
+                self.parse_function_mode_directive()?;
+                saw_mode_directive = true;
+                continue;
+            }
             declarations.push(self.declaration()?);
         }
 
         let end = self.previous();
         let location = self.make_location(start.location.start, end.location.end);
 
-        Ok(Program::new(declarations, location))
+        Ok(Program::new(
+            declarations,
+            location,
+            self.default_function_mode,
+        ))
     }
 
     // ========================================================================
@@ -50,6 +67,26 @@ impl Parser {
     // ========================================================================
 
     fn declaration(&mut self) -> Result<Declaration, ParseError> {
+        let function_mode_override = if self.match_identifier("total") {
+            Some(FunctionMode::Total)
+        } else if self.match_identifier("ordinary") {
+            Some(FunctionMode::Ordinary)
+        } else {
+            None
+        };
+
+        if let Some(mode) = function_mode_override {
+            self.consume(
+                TokenType::LAMBDA,
+                &format!(
+                    "Expected \"λ\" after {} (canonical form: {} λname(...))",
+                    mode.keyword(),
+                    mode.keyword()
+                ),
+            )?;
+            return self.function_declaration(mode);
+        }
+
         // Label declaration: label Pii combines [Brazil,Paraguay]
         if self.match_identifier("label") {
             return self.label_declaration();
@@ -62,11 +99,18 @@ impl Parser {
 
         // Transform declaration: transform λredact(...)
         if self.match_identifier("transform") {
+            let mode = if self.match_identifier("total") {
+                FunctionMode::Total
+            } else if self.match_identifier("ordinary") {
+                FunctionMode::Ordinary
+            } else {
+                self.default_function_mode
+            };
             self.consume(
                 TokenType::LAMBDA,
                 "Expected \"λ\" after transform (canonical form: transform λname(...))",
             )?;
-            let Declaration::Function(function) = self.function_declaration()? else {
+            let Declaration::Function(function) = self.function_declaration(mode)? else {
                 unreachable!("function_declaration must return Declaration::Function");
             };
             return Ok(Declaration::Transform(TransformDecl { function }));
@@ -74,7 +118,7 @@ impl Parser {
 
         // Function declaration: λ identifier(params)...
         if self.match_token(TokenType::LAMBDA) {
-            return self.function_declaration();
+            return self.function_declaration(self.default_function_mode);
         }
 
         // Type declaration: t TypeName = ...
@@ -114,8 +158,22 @@ impl Parser {
         }
 
         Err(self.error(
-            "Expected top-level declaration (label, rule, transform, t, protocol, effect, featureFlag, e, c, λ, or test)",
+            "Expected top-level declaration (mode, label, rule, transform, t, protocol, effect, featureFlag, e, c, λ, total λ, ordinary λ, or test)",
         ))
+    }
+
+    fn parse_function_mode_directive(&mut self) -> Result<(), ParseError> {
+        self.default_function_mode = if self.match_identifier("total") {
+            FunctionMode::Total
+        } else if self.match_identifier("ordinary") {
+            FunctionMode::Ordinary
+        } else {
+            return Err(self.error(
+                "Expected `total` or `ordinary` after `mode` (canonical form: mode total)",
+            ));
+        };
+
+        Ok(())
     }
 
     fn feature_flag_declaration(&mut self) -> Result<Declaration, ParseError> {
@@ -157,7 +215,7 @@ impl Parser {
         }))
     }
 
-    fn function_declaration(&mut self) -> Result<Declaration, ParseError> {
+    fn function_declaration(&mut self, mode: FunctionMode) -> Result<Declaration, ParseError> {
         let start = self.previous();
         let name = self.consume_name_like("Expected function name")?.value;
 
@@ -241,6 +299,7 @@ impl Parser {
         Ok(Declaration::Function(FunctionDecl {
             name,
             type_params,
+            mode,
             params,
             effects,
             return_type,
@@ -311,6 +370,7 @@ impl Parser {
             tokens: clause_tokens,
             current: 0,
             filename: self.filename.clone(),
+            default_function_mode: FunctionMode::Ordinary,
         };
         let expr = subparser.expression()?;
         if !subparser.is_at_end() {

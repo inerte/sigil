@@ -1,5 +1,4 @@
-λallUnique(cols:[Int])=>Bool
-requires #cols≥0
+total λallUnique(cols:[Int])=>Bool
 decreases #cols
 match cols{
   []=>true|
@@ -15,8 +14,7 @@ match cols{
   }
 }
 
-λdiagonalSafe(col:Int,distance:Int,nextCols:[Int])=>Bool
-requires #nextCols≥0
+total λdiagonalSafe(col:Int,distance:Int,nextCols:[Int])=>Bool
 decreases #nextCols
 match nextCols{
   []=>true|
@@ -35,8 +33,7 @@ match nextCols{
 
 λmain()=>Unit=()
 
-λnoDiagonalConflicts(cols:[Int])=>Bool
-requires #cols≥0
+total λnoDiagonalConflicts(cols:[Int])=>Bool
 decreases #cols
 match cols{
   []=>true|

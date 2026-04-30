@@ -1,3 +1,5 @@
+mode total
+
 t Instant={epochMillis:Int}
 
 t TimeError={message:String}

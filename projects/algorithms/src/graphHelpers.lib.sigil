@@ -1,3 +1,5 @@
+mode total
+
 λhasVertex(graph:µGraph,vertex:Int)=>Bool=hasVertexNodes(
   graph.nodes,
   vertex

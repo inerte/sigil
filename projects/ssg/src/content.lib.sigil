@@ -1,3 +1,5 @@
+mode total
+
 λaddArticleAliases(page:µSitePage,routes:[µAliasRoute])=>[µAliasRoute]={
   l bareSlug=(stripNumericPrefix(page.meta.slug):String);
   match bareSlug=page.meta.slug{
@@ -143,34 +145,42 @@
 }
 
 λcompareText(left:String,right:String)=>Bool=compareTextInner(
+  100000,
   0,
   §string.toLower(left),
   §string.toLower(right)
 )
 
-λcompareTextInner(idx:Int,left:String,right:String)=>Bool match idx≥#left{
-  true=>idx<#right|
-  false=>match idx≥#right{
-    true=>false|
-    false=>match (sortCharRank(§string.charAt(
-      idx,
-      left
-    )):Int)=(sortCharRank(§string.charAt(
-      idx,
-      right
-    )):Int){
-      true=>compareTextInner(
-        idx+1,
-        left,
-        right
-      )|
-      false=>(sortCharRank(§string.charAt(
+λcompareTextInner(fuel:Int,idx:Int,left:String,right:String)=>Bool
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>false|
+  false=>match idx≥#left{
+    true=>idx<#right|
+    false=>match idx≥#right{
+      true=>false|
+      false=>match (sortCharRank(§string.charAt(
         idx,
         left
-      )):Int)<(sortCharRank(§string.charAt(
+      )):Int)=(sortCharRank(§string.charAt(
         idx,
         right
-      )):Int)
+      )):Int){
+        true=>compareTextInner(
+          fuel-1,
+          idx+1,
+          left,
+          right
+        )|
+        false=>(sortCharRank(§string.charAt(
+          idx,
+          left
+        )):Int)<(sortCharRank(§string.charAt(
+          idx,
+          right
+        )):Int)
+      }
     }
   }
 }
@@ -185,7 +195,9 @@
   Err(_)=>0
 }
 
-λdropLast(parts:[String])=>[String] match parts{
+λdropLast(parts:[String])=>[String]
+decreases #parts
+match parts{
   []=>[]|
   [
   part,
@@ -239,7 +251,9 @@
   or target.protocol="https"
   or target.protocol="mailto"
 
-λlookupAlias(alias:String,aliasRoutes:[µAliasRoute])=>String match aliasRoutes{
+λlookupAlias(alias:String,aliasRoutes:[µAliasRoute])=>String
+decreases #aliasRoutes
+match aliasRoutes{
   []=>""|
   [
   route,
@@ -264,7 +278,9 @@
   )
 )
 
-λnormalizeSegments(parts:[String],stack:[String])=>[String] match parts{
+λnormalizeSegments(parts:[String],stack:[String])=>[String]
+decreases #parts
+match parts{
   []=>stack|
   [
   part,
@@ -356,57 +372,72 @@
   }
 }
 
-λrewriteInternalLinks(aliasRoutes:[µAliasRoute],basePath:String,markdown:String,sourcePath:String)=>String={
-  l openIdx=(§string.indexOf(
-    markdown,
-    "]("
-  ):Int);
-  match openIdx<0{
-    true=>markdown|
-    false=>match findLinkClose(§string.substring(
-      #markdown,
+λrewriteInternalLinks(aliasRoutes:[µAliasRoute],basePath:String,markdown:String,sourcePath:String)=>String=rewriteInternalLinksInner(
+  aliasRoutes,
+  basePath,
+  100000,
+  markdown,
+  sourcePath
+)
+
+λrewriteInternalLinksInner(aliasRoutes:[µAliasRoute],basePath:String,fuel:Int,markdown:String,sourcePath:String)=>String
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>markdown|
+  false=>{
+    l openIdx=(§string.indexOf(
       markdown,
-      openIdx+2
-    )){
-      closeIdx when closeIdx<0=>markdown|
-      closeIdx=>§string.substring(
-        openIdx+2,
+      "]("
+    ):Int);
+    match openIdx<0{
+      true=>markdown|
+      false=>match findLinkClose(§string.substring(
+        #markdown,
         markdown,
-        0
-      )
-        ++rewriteLinkTarget(
-          aliasRoutes,
-          basePath,
-          sourcePath,
-          §string.substring(
-            closeIdx,
+        openIdx+2
+      )){
+        closeIdx when closeIdx<0=>markdown|
+        closeIdx=>§string.substring(
+          openIdx+2,
+          markdown,
+          0
+        )
+          ++rewriteLinkTarget(
+            aliasRoutes,
+            basePath,
+            sourcePath,
             §string.substring(
-              #markdown,
-              markdown,
-              openIdx+2
-            ),
-            0
+              closeIdx,
+              §string.substring(
+                #markdown,
+                markdown,
+                openIdx+2
+              ),
+              0
+            )
           )
-        )
-        ++")"
-        ++rewriteInternalLinks(
-          aliasRoutes,
-          basePath,
-          §string.substring(
-            #§string.substring(
-              #markdown,
-              markdown,
-              openIdx+2
-            ),
+          ++")"
+          ++rewriteInternalLinksInner(
+            aliasRoutes,
+            basePath,
+            fuel-1,
             §string.substring(
-              #markdown,
-              markdown,
-              openIdx+2
+              #§string.substring(
+                #markdown,
+                markdown,
+                openIdx+2
+              ),
+              §string.substring(
+                #markdown,
+                markdown,
+                openIdx+2
+              ),
+              closeIdx+1
             ),
-            closeIdx+1
-          ),
-          sourcePath
-        )
+            sourcePath
+          )
+      }
     }
   }
 }
@@ -508,7 +539,9 @@
   _=>90
 }
 
-λsortInsert(compare:λ(µSitePage,µSitePage)=>Bool,page:µSitePage,pages:[µSitePage])=>[µSitePage] match pages{
+λsortInsert(compare:λ(µSitePage,µSitePage)=>Bool,page:µSitePage,pages:[µSitePage])=>[µSitePage]
+decreases #pages
+match pages{
   []=>[page]|
   [
   head,
@@ -529,7 +562,9 @@
   }
 }
 
-λsortPagesInner(compare:λ(µSitePage,µSitePage)=>Bool,pages:[µSitePage])=>[µSitePage] match pages{
+λsortPagesInner(compare:λ(µSitePage,µSitePage)=>Bool,pages:[µSitePage])=>[µSitePage]
+decreases #pages
+match pages{
   []=>[]|
   [
   page,
@@ -546,7 +581,9 @@
 
 λstripNumericPrefix(slug:String)=>String=dropNumericPrefix(slug)
 
-λtakeFirst(count:Int,pages:[µSitePage])=>[µSitePage] match count≤0{
+λtakeFirst(count:Int,pages:[µSitePage])=>[µSitePage]
+decreases count
+match count≤0{
   true=>[]|
   false=>match pages{
     []=>[]|

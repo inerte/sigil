@@ -71,7 +71,7 @@ fn test_non_recursive_function() {
 
 #[test]
 fn test_recursive_single_param() {
-    let source = "λcountdown(n:Int)=>Int=countdown(n-1)";
+    let source = "total λcountdown(n:Int)=>Int\ndecreases n\n=countdown(n-1)";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.lib.sigil").unwrap();
 
@@ -80,10 +80,61 @@ fn test_recursive_single_param() {
 }
 
 #[test]
+fn test_ordinary_recursive_function_no_longer_needs_decreases() {
+    let source = "λloop()=>Int=loop()";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.lib.sigil").unwrap();
+
+    assert!(validate_canonical_form(&program, Some("test.lib.sigil"), None).is_ok());
+}
+
+#[test]
+fn test_total_recursive_function_still_needs_decreases() {
+    let source = "mode total\n\nλloop()=>Int=loop()";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.lib.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("test.lib.sigil"), None);
+    assert!(result.is_err());
+    assert!(result
+        .unwrap_err()
+        .iter()
+        .any(|error| matches!(error, ValidationError::RecursionMissingDecreases { .. })));
+}
+
+#[test]
+fn test_ordinary_function_decreases_is_rejected() {
+    let source = "λcountdown(n:Int)=>Int\ndecreases n\n=countdown(n-1)";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.lib.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("test.lib.sigil"), None);
+    assert!(result.is_err());
+    assert!(result
+        .unwrap_err()
+        .iter()
+        .any(|error| matches!(error, ValidationError::OrdinaryFunctionDecreases { .. })));
+}
+
+#[test]
+fn test_mutual_recursion_is_rejected() {
+    let source = "λeven(n:Int)=>Int=odd(n)\nλodd(n:Int)=>Int=even(n)";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.lib.sigil").unwrap();
+
+    let result = validate_canonical_form(&program, Some("test.lib.sigil"), None);
+    assert!(result.is_err());
+    assert!(result
+        .unwrap_err()
+        .iter()
+        .any(|error| matches!(error, ValidationError::MutualRecursion { .. })));
+}
+
+#[test]
 fn test_accumulator_blocked() {
     // Current validator heuristic does not yet reject accumulator-style recursion.
     let source =
-        "λfactorial(acc:Int,n:Int)=>Int match n{0=>acc|value=>factorial(acc*value,value-1)}";
+        "total λfactorial(acc:Int,n:Int)=>Int\ndecreases n\n match n{0=>acc|value=>factorial(acc*value,value-1)}";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.lib.sigil").unwrap();
 
@@ -93,7 +144,7 @@ fn test_accumulator_blocked() {
 #[test]
 fn test_tailrec_factorial_blocked() {
     // Current validator heuristic does not yet reject accumulator-style recursion.
-    let source = "λfactorial(acc:Int,n:Int)=>Int match n{0=>acc|value=>factorial(acc*value,value-1)}\nλmain()=>Int=factorial(1,5)";
+    let source = "total λfactorial(acc:Int,n:Int)=>Int\ndecreases n\n match n{0=>acc|value=>factorial(acc*value,value-1)}\nλmain()=>Int=factorial(1,5)";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
@@ -103,7 +154,7 @@ fn test_tailrec_factorial_blocked() {
 #[test]
 fn test_invalid_helper_pattern_blocked() {
     // Current validator heuristic does not yet reject accumulator-style recursion.
-    let source = "λfactorial(n:Int)=>Int=helper(1,n)\nλhelper(acc:Int,n:Int)=>Int match n{0=>acc|value=>helper(acc*value,value-1)}\nλmain()=>Int=factorial(5)";
+    let source = "λfactorial(n:Int)=>Int=helper(1,n)\ntotal λhelper(acc:Int,n:Int)=>Int\ndecreases n\n match n{0=>acc|value=>helper(acc*value,value-1)}\nλmain()=>Int=factorial(5)";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
 
@@ -216,6 +267,15 @@ fn test_printer_feature_flag_declaration() {
 }
 
 #[test]
+fn test_printer_emits_total_module_default_and_ordinary_override() {
+    let source = "mode total\n\nordinary λloop()=>Int=loop()\n\nλcount(n:Int)=>Int\ndecreases n\n=count(n-1)\n";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.lib.sigil").unwrap();
+
+    assert_eq!(print_canonical_program(&program), source);
+}
+
+#[test]
 fn test_printer_preserves_subscription_extern_members() {
     let source = "e nodePty:{onData: subscribes λ(Session)=>String}\n";
     let tokens = tokenize(source).unwrap();
@@ -270,7 +330,8 @@ fn test_printer_verticalizes_boolean_chains() {
 
 #[test]
 fn test_valid_program_both_validators() {
-    let source = "λcountdown(n:Int)=>Int match n{0=>0|value=>countdown(value-1)}";
+    let source =
+        "total λcountdown(n:Int)=>Int\ndecreases n\n match n{0=>0|value=>countdown(value-1)}";
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.lib.sigil").unwrap();
 

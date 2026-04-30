@@ -1,3 +1,5 @@
+mode total
+
 λfrequency(lines:[String])=>{String↦Int}=normalizedWords(lines) reduce increment from (¶map.empty():{String↦Int})
 
 λincrement(histogram:{String↦Int},word:String)=>{String↦Int} match ¶map.get(

@@ -59,6 +59,7 @@ pub fn print_canonical_expr_with_effects(
 struct Printer {
     out: String,
     effect_catalog: Option<EffectCatalog>,
+    default_function_mode: FunctionMode,
 }
 
 impl Printer {
@@ -66,6 +67,7 @@ impl Printer {
         Self {
             out: String::new(),
             effect_catalog: None,
+            default_function_mode: FunctionMode::Ordinary,
         }
     }
 
@@ -91,6 +93,14 @@ impl Printer {
     }
 
     fn program(&mut self, program: &Program) {
+        self.default_function_mode = program.default_function_mode;
+        if program.default_function_mode == FunctionMode::Total {
+            self.push("mode total");
+            if !program.declarations.is_empty() {
+                self.newline();
+                self.newline();
+            }
+        }
         for (index, declaration) in program.declarations.iter().enumerate() {
             if index > 0 {
                 self.newline();
@@ -158,6 +168,10 @@ impl Printer {
 
     fn function_decl(&mut self, function: &FunctionDecl, indent: usize) {
         self.indent(indent);
+        if function.mode != self.default_function_mode {
+            self.push(function.mode.keyword());
+            self.push(" ");
+        }
         self.push("λ");
         self.push(&function.name);
         self.type_params(&function.type_params);
@@ -190,8 +204,9 @@ impl Printer {
             self.push(&self.contract_clause_expr(ensures, indent));
         }
 
-        let has_contract_clause =
-            function.requires.is_some() || function.decreases.is_some() || function.ensures.is_some();
+        let has_contract_clause = function.requires.is_some()
+            || function.decreases.is_some()
+            || function.ensures.is_some();
         if has_contract_clause {
             self.newline();
             self.indent(indent);
@@ -218,10 +233,65 @@ impl Printer {
     fn transform_decl(&mut self, transform_decl: &TransformDecl, indent: usize) {
         self.indent(indent);
         self.push("transform ");
-        let before = self.out.len();
-        self.function_decl(&transform_decl.function, 0);
-        if self.out.len() == before {
-            self.function_decl(&transform_decl.function, indent);
+        if transform_decl.function.mode != self.default_function_mode {
+            self.push(transform_decl.function.mode.keyword());
+            self.push(" ");
+        }
+        self.push("λ");
+        self.push(&transform_decl.function.name);
+        self.type_params(&transform_decl.function.type_params);
+        self.push("(");
+        self.params(&transform_decl.function.params);
+        self.push(")=>");
+        self.effects(&transform_decl.function.effects, None);
+        if let Some(return_type) = &transform_decl.function.return_type {
+            self.push(&self.type_text(return_type));
+        }
+
+        if let Some(requires) = &transform_decl.function.requires {
+            self.newline();
+            self.indent(indent);
+            self.push("requires ");
+            self.push(&self.contract_clause_expr(requires, indent));
+        }
+
+        if let Some(decreases) = &transform_decl.function.decreases {
+            self.newline();
+            self.indent(indent);
+            self.push("decreases ");
+            self.push(&self.contract_clause_expr(decreases, indent));
+        }
+
+        if let Some(ensures) = &transform_decl.function.ensures {
+            self.newline();
+            self.indent(indent);
+            self.push("ensures ");
+            self.push(&self.contract_clause_expr(ensures, indent));
+        }
+
+        let has_contract_clause = transform_decl.function.requires.is_some()
+            || transform_decl.function.decreases.is_some()
+            || transform_decl.function.ensures.is_some();
+        if has_contract_clause {
+            self.newline();
+            self.indent(indent);
+        }
+
+        match &transform_decl.function.body {
+            Expr::Match(match_expr) => {
+                if !has_contract_clause {
+                    self.push(" ");
+                }
+                self.match_expr(match_expr, indent);
+            }
+            Expr::Let(let_expr) => {
+                self.push("=");
+                self.block_expr(let_expr, indent);
+            }
+            body => {
+                self.push("=");
+                self.push(&self.expr(body, indent, 0));
+            }
         }
     }
 

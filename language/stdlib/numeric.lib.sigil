@@ -1,3 +1,5 @@
+mode total
+
 t DivMod={
   quotient:Int,
   remainder:Int

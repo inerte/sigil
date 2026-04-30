@@ -13,8 +13,6 @@ t UserContext={
   userId:Option[String]
 }
 
-e console
-
 featureFlag CheckoutColorChoice:CheckoutColor
   createdAt "2026-04-13T09-00-00Z"
   default Control()
@@ -138,16 +136,16 @@ featureFlag NewCheckout:Bool
 
 λisInternal(context:UserContext)=>Bool=context.internal
 
-λmain()=>Int={
-  l _=(console.log(render(view(
+λmain()=>!Log Int={
+  l _=(§io.println(render(view(
     devUser(),
     demoFlags()
   ))):Unit);
-  l _=(console.log(render(view(
+  l _=(§io.println(render(view(
     brazilGuest(),
     demoFlags()
   ))):Unit);
-  l _=(console.log(render(view(
+  l _=(§io.println(render(view(
     anonymousUs(),
     demoFlags()
   ))):Unit);

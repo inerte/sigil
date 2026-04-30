@@ -1,3 +1,5 @@
+mode total
+
 λaddInt(acc:Int,x:Int)=>Int=acc+x
 
 λall[T](pred:λ(T)=>Bool,xs:[T])=>Bool=fold(
@@ -56,7 +58,15 @@ match xs{
   xs
 )
 
-λdrop[T](n:Int,xs:[T])=>[T]
+λdrop[T](n:Int,xs:[T])=>[T] match n<0{
+  true=>xs|
+  false=>dropHelper(
+    n,
+    xs
+  )
+}
+
+λdropHelper[T](n:Int,xs:[T])=>[T]
 requires n≥0
 decreases n+#xs
 match n≤0{
@@ -66,7 +76,7 @@ match n≤0{
     [
   x,
   .rest
-]=>drop(
+]=>dropHelper(
       n-1,
       rest
     )
@@ -207,23 +217,28 @@ match xs{
 
 λmultiplyInt(acc:Int,x:Int)=>Int=acc*x
 
-λnth[T](idx:Int,xs:[T])=>Option[T]
+λnth[T](idx:Int,xs:[T])=>Option[T] match idx<0{
+  true=>None()|
+  false=>nthHelper(
+    idx,
+    xs
+  )
+}
+
+λnthHelper[T](idx:Int,xs:[T])=>Option[T]
 requires idx≥0
 decreases idx+#xs
-match idx<0{
-  true=>None()|
-  false=>match xs{
-    []=>None()|
-    [
+match xs{
+  []=>None()|
+  [
   x,
   .rest
 ]=>match idx=0{
-      true=>Some(x)|
-      false=>nth(
-        idx-1,
-        rest
-      )
-    }
+    true=>Some(x)|
+    false=>nthHelper(
+      idx-1,
+      rest
+    )
   }
 }
 
@@ -334,11 +349,14 @@ match xs{
   xs
 )
 
-λtake[T](n:Int,xs:[T])=>[T]=reverse(takeHelper(
-  [],
-  n,
-  xs
-))
+λtake[T](n:Int,xs:[T])=>[T] match n<0{
+  true=>[]|
+  false=>reverse(takeHelper(
+    [],
+    n,
+    xs
+  ))
+}
 
 λtakeHelper[T](acc:[T],n:Int,xs:[T])=>[T]
 requires n≥0

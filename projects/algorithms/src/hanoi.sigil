@@ -1,4 +1,4 @@
-λhanoi(aux:String,from:String,n:Int,to:String)=>String
+total λhanoi(aux:String,from:String,n:Int,to:String)=>String
 requires 0<n
 decreases n
 match n{

@@ -1,4 +1,6 @@
-λboardLength(board:[µCell])=>Int match board{
+total λboardLength(board:[µCell])=>Int
+decreases #board
+match board{
   []=>0|
   [
   _,
@@ -6,7 +8,9 @@
 ]=>1+boardLength(rest)
 }
 
-λbombCount(board:[µCell])=>Int match board{
+total λbombCount(board:[µCell])=>Int
+decreases #board
+match board{
   []=>0|
   [
   cell,
@@ -17,7 +21,9 @@
   }
 }
 
-λcellFlagged(board:[µCell],targetX:Int,targetY:Int)=>Bool match board{
+total λcellFlagged(board:[µCell],targetX:Int,targetY:Int)=>Bool
+decreases #board
+match board{
   []=>false|
   [
   cell,
@@ -32,7 +38,9 @@
   }
 }
 
-λcellRevealed(board:[µCell],targetX:Int,targetY:Int)=>Bool match board{
+total λcellRevealed(board:[µCell],targetX:Int,targetY:Int)=>Bool
+decreases #board
+match board{
   []=>false|
   [
   cell,

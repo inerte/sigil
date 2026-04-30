@@ -1,4 +1,4 @@
-λfactorial(n:Int)=>Int
+total λfactorial(n:Int)=>Int
 requires n≥0
 decreases n
 match n{

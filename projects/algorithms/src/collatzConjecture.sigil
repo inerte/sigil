@@ -3,7 +3,7 @@
   1000000
 )
 
-λcollatzR(n:Int,remaining:Int)=>[Int]
+total λcollatzR(n:Int,remaining:Int)=>[Int]
 requires 0≤remaining
 decreases remaining
 match n{
@@ -19,7 +19,7 @@ match n{
 
 λmain()=>[Int]=collatz(13)
 
-λnextCollatz(n:Int)=>Int match n%2{
+total λnextCollatz(n:Int)=>Int match n%2{
   0=>n/2|
   _=>3*n+1
 }

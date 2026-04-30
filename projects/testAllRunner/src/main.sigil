@@ -1,3 +1,5 @@
+mode total
+
 λalgorithmsSuite(root:String)=>µParallelSuite={
   command:sigilCommand(
     [
@@ -210,7 +212,9 @@
   root
 )
 
-λprintBatchResults(results:[µSuiteResult])=>!CliIo Unit match results{
+λprintBatchResults(results:[µSuiteResult])=>!CliIo Unit
+decreases #results
+match results{
   []=>()|
   [
   head,
@@ -249,7 +253,9 @@
   )
 }
 
-λrenderCommandRest(acc:String,args:[String])=>String match args{
+λrenderCommandRest(acc:String,args:[String])=>String
+decreases #args
+match args{
   []=>acc|
   [
   head,
@@ -311,7 +317,9 @@
 λrunCommands(commands:[§process.Command])=>!CliIo Result[
   Unit,
   String
-] match commands{
+]
+decreases #commands
+match commands{
   []=>Ok(())|
   [
   command,
@@ -349,7 +357,9 @@
 λrunStartedSuites(remaining:[µParallelSuite],started:[µStartedSuite])=>!CliIo Result[
   Unit,
   String
-] match remaining{
+]
+decreases #remaining
+match remaining{
   []=>{
     l results=(waitSuites(started):[µSuiteResult]);
     l _=(printBatchResults(results):Unit);
@@ -390,7 +400,9 @@
 λrunSteps(all:[µStep])=>!CliIo Result[
   Unit,
   String
-] match all{
+]
+decreases #all
+match all{
   []=>Ok(())|
   [
   step,
@@ -439,7 +451,9 @@
       [
         "test",
         "--manifest-path",
-        "language/compiler/Cargo.toml"
+        "language/compiler/Cargo.toml",
+        "--workspace",
+        "--no-default-features"
       ],
       root
     )],
@@ -492,7 +506,9 @@
   })
 ]
 
-λsuiteFailure(results:[µSuiteResult])=>Option[String] match results{
+λsuiteFailure(results:[µSuiteResult])=>Option[String]
+decreases #results
+match results{
   []=>None()|
   [
   head,
@@ -522,7 +538,9 @@
   label:"todo app suite"
 }
 
-λwaitSuites(started:[µStartedSuite])=>!Process [µSuiteResult] match started{
+λwaitSuites(started:[µStartedSuite])=>!Process [µSuiteResult]
+decreases #started
+match started{
   []=>[]|
   [
   head,
@@ -536,4 +554,3 @@
     }]⧺waitSuites(tail)
   }
 }
-

@@ -225,6 +225,70 @@ fn let_initial_state_is_available_inside_binary_expression() {
 }
 
 #[test]
+fn nested_record_field_keeps_initial_protocol_state() {
+    let source = format!(
+        concat!(
+            "{}",
+            "λworkflow(id:String)=>Bool={{",
+            "l registry={{ticket:({{id:id}}:Ticket)}};",
+            "resolve(registry.ticket)",
+            "}}"
+        ),
+        TICKET_PROTOCOL
+    );
+    let r = typecheck(&source);
+    assert!(
+        r.is_ok(),
+        "Protocol state should remain available through record fields: {r:?}"
+    );
+}
+
+#[test]
+fn match_bound_protocol_value_keeps_initial_state() {
+    let source = format!(
+        concat!(
+            "{}",
+            "t TicketNext=Item(Ticket)|Done()\n",
+            "λworkflow(next:TicketNext)=>Bool match next{{",
+            "Item(ticket)=>resolve(ticket)|",
+            "Done()=>true",
+            "}}"
+        ),
+        TICKET_PROTOCOL
+    );
+    let r = typecheck(&source);
+    assert!(
+        r.is_ok(),
+        "Match-bound protocol values should keep their initial state: {r:?}"
+    );
+}
+
+#[test]
+fn let_alias_copies_existing_protocol_state() {
+    let source = format!(
+        concat!(
+            "{}",
+            "λbad(ticket:Ticket)=>Bool\n",
+            "requires ticket.state=Open\n",
+            "ensures ticket.state=Closed\n",
+            "={{",
+            "l _=(resolve(ticket):Bool);",
+            "l alias=ticket;",
+            "addNote(\"late note\",alias)",
+            "}}"
+        ),
+        TICKET_PROTOCOL
+    );
+    let r = typecheck(&source);
+    let e = r.unwrap_err();
+    assert!(
+        e.message.contains("Call does not satisfy requires clause"),
+        "Expected aliased Closed state to stay Closed, got: {}",
+        e.message
+    );
+}
+
+#[test]
 fn binary_expression_carries_left_state_transition_to_right_operand() {
     let source = format!(
         concat!(
@@ -400,5 +464,302 @@ fn imported_protocol_member_contracts_are_enforced() {
         e.message.contains("Call does not satisfy requires clause"),
         "Expected imported protocol requires violation, got: {}",
         e.message
+    );
+}
+
+#[test]
+fn imported_protocol_initial_state_flows_through_nested_record_field() {
+    let provider_source = format!(
+        concat!(
+            "{}",
+            "λfresh(id:String)=>Ticket={{id:id}}\n",
+            "λmain()=>Bool=true"
+        ),
+        TICKET_PROTOCOL
+    );
+    let provider_tokens = tokenize(&provider_source).unwrap();
+    let provider_program = parse(provider_tokens, "provider.sigil").unwrap();
+    let provider_result = type_check(&provider_program, &provider_source, None).unwrap();
+    let ticket_type_info = provider_program
+        .declarations
+        .iter()
+        .find_map(|decl| match decl {
+            sigil_ast::Declaration::Type(type_decl) if type_decl.name == "Ticket" => {
+                Some(TypeInfo {
+                    type_params: type_decl.type_params.clone(),
+                    definition: type_decl.definition.clone(),
+                    constraint: type_decl.constraint.clone(),
+                    labels: Default::default(),
+                })
+            }
+            _ => None,
+        })
+        .unwrap();
+
+    let string_type = InferenceType::Primitive(TPrimitive {
+        name: sigil_ast::PrimitiveName::String,
+    });
+    let bool_type = InferenceType::Primitive(TPrimitive {
+        name: sigil_ast::PrimitiveName::Bool,
+    });
+    let ticket_type = InferenceType::Record(TRecord {
+        fields: HashMap::from([("id".to_string(), string_type.clone())]),
+        name: Some("stdlib::ticket.Ticket".to_string()),
+    });
+    let resolve_type = InferenceType::Function(Box::new(TFunction {
+        params: vec![ticket_type.clone()],
+        return_type: bool_type.clone(),
+        effects: None,
+    }));
+    let fresh_type = InferenceType::Function(Box::new(TFunction {
+        params: vec![string_type],
+        return_type: ticket_type.clone(),
+        effects: None,
+    }));
+    let ticket_namespace = InferenceType::Record(TRecord {
+        fields: HashMap::from([
+            ("fresh".to_string(), fresh_type),
+            ("resolve".to_string(), resolve_type),
+        ]),
+        name: Some("stdlib::ticket".to_string()),
+    });
+
+    let options = TypeCheckOptions {
+        imported_namespaces: Some(HashMap::from([(
+            "stdlib::ticket".to_string(),
+            ticket_namespace,
+        )])),
+        imported_type_registries: Some(HashMap::from([(
+            "stdlib::ticket".to_string(),
+            HashMap::from([("Ticket".to_string(), ticket_type_info)]),
+        )])),
+        imported_function_contracts: Some(HashMap::from([(
+            "stdlib::ticket".to_string(),
+            provider_result.function_contracts,
+        )])),
+        imported_protocol_registries: Some(HashMap::from([(
+            "stdlib::ticket".to_string(),
+            provider_result.protocol_registry,
+        )])),
+        ..TypeCheckOptions::default()
+    };
+
+    let source = concat!(
+        "λok(id:String)=>Bool={{",
+        "l registry={{ticket:(§ticket.fresh(id):§ticket.Ticket)}};",
+        "§ticket.resolve(registry.ticket)",
+        "}}"
+    );
+    let r = typecheck_with_options(source, options);
+    assert!(
+        r.is_ok(),
+        "Imported protocol state should flow through nested record fields: {r:?}"
+    );
+}
+
+#[test]
+fn imported_protocol_initial_state_flows_through_match_binding() {
+    let provider_source = format!("{}λmain()=>Bool=true", TICKET_PROTOCOL);
+    let provider_tokens = tokenize(&provider_source).unwrap();
+    let provider_program = parse(provider_tokens, "provider.sigil").unwrap();
+    let provider_result = type_check(&provider_program, &provider_source, None).unwrap();
+    let ticket_type_info = provider_program
+        .declarations
+        .iter()
+        .find_map(|decl| match decl {
+            sigil_ast::Declaration::Type(type_decl) if type_decl.name == "Ticket" => {
+                Some(TypeInfo {
+                    type_params: type_decl.type_params.clone(),
+                    definition: type_decl.definition.clone(),
+                    constraint: type_decl.constraint.clone(),
+                    labels: Default::default(),
+                })
+            }
+            _ => None,
+        })
+        .unwrap();
+
+    let string_type = InferenceType::Primitive(TPrimitive {
+        name: sigil_ast::PrimitiveName::String,
+    });
+    let bool_type = InferenceType::Primitive(TPrimitive {
+        name: sigil_ast::PrimitiveName::Bool,
+    });
+    let ticket_type = InferenceType::Record(TRecord {
+        fields: HashMap::from([("id".to_string(), string_type)]),
+        name: Some("stdlib::ticket.Ticket".to_string()),
+    });
+    let resolve_type = InferenceType::Function(Box::new(TFunction {
+        params: vec![ticket_type.clone()],
+        return_type: bool_type,
+        effects: None,
+    }));
+    let ticket_namespace = InferenceType::Record(TRecord {
+        fields: HashMap::from([("resolve".to_string(), resolve_type)]),
+        name: Some("stdlib::ticket".to_string()),
+    });
+
+    let options = TypeCheckOptions {
+        imported_namespaces: Some(HashMap::from([(
+            "stdlib::ticket".to_string(),
+            ticket_namespace,
+        )])),
+        imported_type_registries: Some(HashMap::from([(
+            "stdlib::ticket".to_string(),
+            HashMap::from([("Ticket".to_string(), ticket_type_info)]),
+        )])),
+        imported_function_contracts: Some(HashMap::from([(
+            "stdlib::ticket".to_string(),
+            provider_result.function_contracts,
+        )])),
+        imported_protocol_registries: Some(HashMap::from([(
+            "stdlib::ticket".to_string(),
+            provider_result.protocol_registry,
+        )])),
+        ..TypeCheckOptions::default()
+    };
+
+    let source = concat!(
+        "t TicketNext=Item(§ticket.Ticket)|Done()\n",
+        "λok(next:TicketNext)=>Bool match next{",
+        "Item(ticket)=>§ticket.resolve(ticket)|",
+        "Done()=>true",
+        "}"
+    );
+    let r = typecheck_with_options(source, options);
+    assert!(
+        r.is_ok(),
+        "Imported protocol state should flow through match bindings: {r:?}"
+    );
+}
+
+#[test]
+fn imported_protocol_state_survives_namespaced_using_initializer() {
+    let provider_source = concat!(
+        "t Ticket={id:String}\n",
+        "protocol Ticket\n",
+        "  Open → Closed via resolve\n",
+        "  Open → Open via hold\n",
+        "  initial = Open\n",
+        "  terminal = Closed\n",
+        "λhold(ticket:Ticket)=>Owned[Int]\n",
+        "requires ticket.state=Open\n",
+        "ensures ticket.state=Open\n",
+        "=((0:Int):Owned[Int])\n",
+        "λresolve(ticket:Ticket)=>Bool\n",
+        "requires ticket.state=Open\n",
+        "ensures ticket.state=Closed\n",
+        "=true\n",
+        "λmain()=>Bool=true"
+    );
+    let provider_tokens = tokenize(provider_source).unwrap();
+    let provider_program = parse(provider_tokens, "provider.sigil").unwrap();
+    let provider_result = type_check(
+        &provider_program,
+        provider_source,
+        Some(TypeCheckOptions {
+            module_id: Some("stdlib::ticket".to_string()),
+            source_file: Some("/tmp/language/stdlib/ticket.lib.sigil".to_string()),
+            ..TypeCheckOptions::default()
+        }),
+    )
+    .unwrap();
+    let ticket_type_info = provider_program
+        .declarations
+        .iter()
+        .find_map(|decl| match decl {
+            sigil_ast::Declaration::Type(type_decl) if type_decl.name == "Ticket" => {
+                Some(TypeInfo {
+                    type_params: type_decl.type_params.clone(),
+                    definition: type_decl.definition.clone(),
+                    constraint: type_decl.constraint.clone(),
+                    labels: Default::default(),
+                })
+            }
+            _ => None,
+        })
+        .unwrap();
+
+    let string_type = InferenceType::Primitive(TPrimitive {
+        name: sigil_ast::PrimitiveName::String,
+    });
+    let int_type = InferenceType::Primitive(TPrimitive {
+        name: sigil_ast::PrimitiveName::Int,
+    });
+    let bool_type = InferenceType::Primitive(TPrimitive {
+        name: sigil_ast::PrimitiveName::Bool,
+    });
+    let ticket_type = InferenceType::Record(TRecord {
+        fields: HashMap::from([("id".to_string(), string_type)]),
+        name: Some("stdlib::ticket.Ticket".to_string()),
+    });
+    let hold_type = InferenceType::Function(Box::new(TFunction {
+        params: vec![ticket_type.clone()],
+        return_type: InferenceType::Owned(Box::new(int_type)),
+        effects: None,
+    }));
+    let resolve_type = InferenceType::Function(Box::new(TFunction {
+        params: vec![ticket_type.clone()],
+        return_type: bool_type,
+        effects: None,
+    }));
+    let ticket_namespace = InferenceType::Record(TRecord {
+        fields: HashMap::from([
+            ("hold".to_string(), hold_type),
+            ("resolve".to_string(), resolve_type),
+        ]),
+        name: Some("stdlib::ticket".to_string()),
+    });
+
+    let options = TypeCheckOptions {
+        imported_namespaces: Some(HashMap::from([(
+            "stdlib::ticket".to_string(),
+            ticket_namespace,
+        )])),
+        imported_type_registries: Some(HashMap::from([(
+            "stdlib::ticket".to_string(),
+            HashMap::from([("Ticket".to_string(), ticket_type_info)]),
+        )])),
+        imported_function_contracts: Some(HashMap::from([(
+            "stdlib::ticket".to_string(),
+            provider_result.function_contracts,
+        )])),
+        imported_protocol_registries: Some(HashMap::from([(
+            "stdlib::ticket".to_string(),
+            provider_result.protocol_registry,
+        )])),
+        ..TypeCheckOptions::default()
+    };
+    let source = concat!(
+        "test \"imported using keeps protocol state\" {",
+        "l registry={ticket:({id:\"T-1\"}:§ticket.Ticket)};",
+        "using handle=§ticket.hold(registry.ticket){",
+        "§ticket.resolve(registry.ticket)",
+        "}",
+        "}"
+    );
+    let r = typecheck_with_options(source, options);
+    assert!(
+        r.is_ok(),
+        "Imported protocol state should survive namespaced using initializers: {r:?}"
+    );
+}
+
+#[test]
+fn local_protocol_state_flows_inside_test_declaration() {
+    let source = format!(
+        concat!(
+            "{}",
+            "test \"nested record in test\" {{",
+            "l registry={{ticket:({{id:\"T-1\"}}:Ticket)}};",
+            "resolve(registry.ticket)",
+            "}}"
+        ),
+        TICKET_PROTOCOL
+    );
+    let r = typecheck(&source);
+    assert!(
+        r.is_ok(),
+        "Local protocol state should flow inside test declarations: {r:?}"
     );
 }

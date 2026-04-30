@@ -3,12 +3,12 @@ t RelativeState={
   right:[String]
 }
 
-λbasename(value:String)=>String match §list.last(splitNonempty(normalize(value))){
+total λbasename(value:String)=>String match §list.last(splitNonempty(normalize(value))){
   Some(segment)=>segment|
   None()=>normalize(value)
 }
 
-λdirname(value:String)=>String=dirnameFromSegments(
+total λdirname(value:String)=>String=dirnameFromSegments(
   §string.startsWith(
     "/",
     (normalize(value):String)
@@ -16,7 +16,7 @@ t RelativeState={
   splitNonempty((normalize(value):String))
 )
 
-λdirnameFromSegments(isAbsolute:Bool,segments:[String])=>String match #segments≤1{
+total λdirnameFromSegments(isAbsolute:Bool,segments:[String])=>String match #segments≤1{
   true=>rootOrCurrent(isAbsolute)|
   false=>pathFromSegments(
     isAbsolute,
@@ -27,7 +27,7 @@ t RelativeState={
   )
 }
 
-λextname(value:String)=>String=extnameFromParts(
+total λextname(value:String)=>String=extnameFromParts(
   (basename(value):String),
   §string.split(
     ".",
@@ -35,7 +35,7 @@ t RelativeState={
   )
 )
 
-λextnameFromParts(name:String,parts:[String])=>String match #parts≤1{
+total λextnameFromParts(name:String,parts:[String])=>String match #parts≤1{
   true=>""|
   false=>match §string.startsWith(
     ".",
@@ -49,7 +49,7 @@ t RelativeState={
   }
 }
 
-λfilterEmpty(segments:[String])=>[String]
+total λfilterEmpty(segments:[String])=>[String]
 decreases #segments
 match segments{
   []=>[]|
@@ -62,7 +62,7 @@ match segments{
   }
 }
 
-λjoin(left:String,right:String)=>String match #left=0{
+total λjoin(left:String,right:String)=>String match #left=0{
   true=>normalize(right)|
   false=>match #right=0{
     true=>normalize(left)|
@@ -72,7 +72,7 @@ match segments{
   }
 }
 
-λnormalize(value:String)=>String={
+total λnormalize(value:String)=>String={
   l isAbsolute=(§string.startsWith(
     "/",
     value
@@ -90,7 +90,7 @@ match segments{
   )
 }
 
-λnormalizeSegments(acc:[String],isAbsolute:Bool,segments:[String])=>[String]
+total λnormalizeSegments(acc:[String],isAbsolute:Bool,segments:[String])=>[String]
 decreases #segments
 match segments{
   []=>§list.reverse(acc)|
@@ -142,7 +142,7 @@ match segments{
   }
 }
 
-λpathFromSegments(isAbsolute:Bool,segments:[String])=>String match isAbsolute{
+total λpathFromSegments(isAbsolute:Bool,segments:[String])=>String match isAbsolute{
   true=>match #(§string.join(
     "/",
     segments
@@ -165,7 +165,7 @@ match segments{
   }
 }
 
-λrelative(from:String,to:String)=>String={
+total λrelative(from:String,to:String)=>String={
   l state=(relativeDropCommon(
     (splitNonempty(normalize(from)):[String]),
     splitNonempty(normalize(to))
@@ -179,7 +179,7 @@ match segments{
   )
 }
 
-λrelativeDropCommon(left:[String],right:[String])=>RelativeState
+total λrelativeDropCommon(left:[String],right:[String])=>RelativeState
 decreases (#left, #right)
 match left{
   []=>{
@@ -210,7 +210,7 @@ match left{
   }
 }
 
-λrepeatSegment(count:Int,segment:String)=>[String]
+total λrepeatSegment(count:Int,segment:String)=>[String]
 decreases count
 match count≤0{
   true=>[]|
@@ -220,12 +220,12 @@ match count≤0{
   )
 }
 
-λrootOrCurrent(isAbsolute:Bool)=>String match isAbsolute{
+total λrootOrCurrent(isAbsolute:Bool)=>String match isAbsolute{
   true=>"/"|
   false=>"."
 }
 
-λsplitNonempty(value:String)=>[String]=filterEmpty(§string.split(
+total λsplitNonempty(value:String)=>[String]=filterEmpty(§string.split(
   "/",
   value
 ))

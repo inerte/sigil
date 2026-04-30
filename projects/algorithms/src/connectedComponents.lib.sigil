@@ -1,3 +1,5 @@
+mode total
+
 λaddUnique(acc:[Int],value:Int)=>[Int] match §list.contains(
   value,
   acc

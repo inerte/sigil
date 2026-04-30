@@ -12,7 +12,7 @@ t ValidationResult=Valid()|Invalid(String)
   str
 )
 
-λcountHelper(acc:Int,char:String,idx:Int,str:String)=>Int
+total λcountHelper(acc:Int,char:String,idx:Int,str:String)=>Int
 requires 0≤idx and idx≤#str
 decreases #str+-idx
 match idx<#str{

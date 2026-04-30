@@ -1,3 +1,5 @@
+mode total
+
 λcountEdgesToVertex(neighbors:[Int],target:Int)=>Int=§list.count(
   target,
   neighbors
@@ -23,7 +25,6 @@
 )
 
 λpickZeroCandidate(candidates:[Int],graph:µGraph,remaining:[Int])=>Int
-requires #candidates≥0
 decreases #candidates
 match candidates{
   []=>-1|
@@ -50,24 +51,35 @@ match candidates{
   remaining
 )
 
-λtopologicalLoop(graph:µGraph,ordered:[Int],remaining:[Int])=>µTopologicalSortResult
-requires #remaining≥0
-decreases #remaining
+λtopologicalLoop(graph:µGraph,ordered:[Int],remaining:[Int])=>µTopologicalSortResult=topologicalLoopInner(
+  #remaining,
+  graph,
+  ordered,
+  remaining
+)
+
+λtopologicalLoopInner(fuel:Int,graph:µGraph,ordered:[Int],remaining:[Int])=>µTopologicalSortResult
+requires fuel≥0
+decreases fuel
 match remaining{
   []=>µOrdering(ordered)|
-  _=>match pickZeroIndegree(
-    graph,
-    remaining
-  ){
-    value when value=-1=>µCycleDetected()|
-    nextVertex=>topologicalLoop(
+  _=>match fuel=0{
+    true=>µCycleDetected()|
+    false=>match pickZeroIndegree(
       graph,
-      ordered⧺[nextVertex],
-      §list.removeFirst(
-        nextVertex,
-        remaining
+      remaining
+    ){
+      value when value=-1=>µCycleDetected()|
+      nextVertex=>topologicalLoopInner(
+        fuel-1,
+        graph,
+        ordered⧺[nextVertex],
+        §list.removeFirst(
+          nextVertex,
+          remaining
+        )
       )
-    )
+    }
   }
 }
 

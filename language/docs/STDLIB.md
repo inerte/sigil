@@ -244,16 +244,16 @@ t Arg[A]
 λroot2[A,B,T](arg1:Arg[A],arg2:Arg[B],build:λ(A,B)=>T,description:String)=>RootCommand[T]
 λroot3[A,B,C,T](arg1:Arg[A],arg2:Arg[B],arg3:Arg[C],build:λ(A,B,C)=>T,description:String)=>RootCommand[T]
 λroot4[A,B,C,D,T](arg1:Arg[A],arg2:Arg[B],arg3:Arg[C],arg4:Arg[D],build:λ(A,B,C,D)=>T,description:String)=>RootCommand[T]
-λroot5[A,B,C,D,E,T](arg1:Arg[A],arg2:Arg[B],arg3:Arg[C],arg4:Arg[D],arg5:Arg[E],build:λ(A,B,C,D,E)=>T,description:String)=>RootCommand[T]
-λroot6[A,B,C,D,E,F,T](arg1:Arg[A],arg2:Arg[B],arg3:Arg[C],arg4:Arg[D],arg5:Arg[E],arg6:Arg[F],build:λ(A,B,C,D,E,F)=>T,description:String)=>RootCommand[T]
+λroot5[A,B,C,D,X,T](arg1:Arg[A],arg2:Arg[B],arg3:Arg[C],arg4:Arg[D],arg5:Arg[X],build:λ(A,B,C,D,X)=>T,description:String)=>RootCommand[T]
+λroot6[A,B,C,D,X,Y,T](arg1:Arg[A],arg2:Arg[B],arg3:Arg[C],arg4:Arg[D],arg5:Arg[X],arg6:Arg[Y],build:λ(A,B,C,D,X,Y)=>T,description:String)=>RootCommand[T]
 
 λcommand0[T](description:String,name:String,result:T)=>Command[T]
 λcommand1[A,T](arg1:Arg[A],build:λ(A)=>T,description:String,name:String)=>Command[T]
 λcommand2[A,B,T](arg1:Arg[A],arg2:Arg[B],build:λ(A,B)=>T,description:String,name:String)=>Command[T]
 λcommand3[A,B,C,T](arg1:Arg[A],arg2:Arg[B],arg3:Arg[C],build:λ(A,B,C)=>T,description:String,name:String)=>Command[T]
 λcommand4[A,B,C,D,T](arg1:Arg[A],arg2:Arg[B],arg3:Arg[C],arg4:Arg[D],build:λ(A,B,C,D)=>T,description:String,name:String)=>Command[T]
-λcommand5[A,B,C,D,E,T](arg1:Arg[A],arg2:Arg[B],arg3:Arg[C],arg4:Arg[D],arg5:Arg[E],build:λ(A,B,C,D,E)=>T,description:String,name:String)=>Command[T]
-λcommand6[A,B,C,D,E,F,T](arg1:Arg[A],arg2:Arg[B],arg3:Arg[C],arg4:Arg[D],arg5:Arg[E],arg6:Arg[F],build:λ(A,B,C,D,E,F)=>T,description:String,name:String)=>Command[T]
+λcommand5[A,B,C,D,X,T](arg1:Arg[A],arg2:Arg[B],arg3:Arg[C],arg4:Arg[D],arg5:Arg[X],build:λ(A,B,C,D,X)=>T,description:String,name:String)=>Command[T]
+λcommand6[A,B,C,D,X,Y,T](arg1:Arg[A],arg2:Arg[B],arg3:Arg[C],arg4:Arg[D],arg5:Arg[X],arg6:Arg[Y],build:λ(A,B,C,D,X,Y)=>T,description:String,name:String)=>Command[T]
 
 λflag(description:String,long:String,short:Option[String])=>Arg[Bool]
 λoption(description:String,long:String,short:Option[String],valueName:String)=>Arg[Option[String]]
@@ -278,7 +278,7 @@ t Arg[A]
           Some("c"),
           "ID"
         ),
-        λ(checks:[String])=>checks,
+        λ(checks:[String])=>[String]=checks,
         "Accept repeated check ids."
       )),
       []
@@ -455,6 +455,7 @@ PTY rules:
 - `spawn` and `spawnAt` return owned session handles and are intended to be used with `using`
 - `spawnManaged` and `spawnManagedAt` return storable runtime-managed session refs for long-lived server state
 - `eventsManaged` returns an owned subscription stream for one managed session ref
+- `waitManaged` returns the exit code but leaves the managed ref open until `closeManaged`
 - `closeManaged` is idempotent
 - `spawnAt` is the named-boundary variant for topology-aware projects and takes a `§topology.PtyHandle`
 - `spawnManagedAt` is the named-boundary managed-ref variant for topology-aware projects and takes a `§topology.PtyHandle`

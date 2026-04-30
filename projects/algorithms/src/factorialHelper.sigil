@@ -1,4 +1,4 @@
-λfactHelper(n:Int)=>Int
+total λfactHelper(n:Int)=>Int
 requires 0≤n
 decreases n
 match n{

@@ -1,3 +1,5 @@
+mode total
+
 c height=(18:Int)
 
 c archerAmmoStart=(4:Int)
@@ -63,7 +65,9 @@ c width=(48:Int)
   (¶map.empty():{String↦µActor})
 )
 
-λactorIndexForInner(actors:[µActor],index:{String↦µActor})=>{String↦µActor} match actors{
+λactorIndexForInner(actors:[µActor],index:{String↦µActor})=>{String↦µActor}
+decreases #actors
+match actors{
   []=>index|
   [
   head,
@@ -89,7 +93,9 @@ c width=(48:Int)
   state
 )
 
-λadjacentGoblinInner(points:[µPoint],state:µGameState)=>Option[µActor] match points{
+λadjacentGoblinInner(points:[µPoint],state:µGameState)=>Option[µActor]
+decreases #points
+match points{
   []=>None()|
   [
   head,
@@ -157,7 +163,9 @@ c width=(48:Int)
   rooms
 )
 
-λallRoomsSpacedAgainst(room:µRoom,rooms:[µRoom])=>Bool match rooms{
+λallRoomsSpacedAgainst(room:µRoom,rooms:[µRoom])=>Bool
+decreases #rooms
+match rooms{
   []=>true|
   [
   head,
@@ -171,7 +179,9 @@ c width=(48:Int)
   )
 }
 
-λallRoomsSpacedInner(previous:[µRoom],rooms:[µRoom])=>Bool match rooms{
+λallRoomsSpacedInner(previous:[µRoom],rooms:[µRoom])=>Bool
+decreases #rooms
+match rooms{
   []=>true|
   [
   head,
@@ -304,7 +314,9 @@ match actor.ammo>0{
   target
 )
 
-λbestStepTowardInner(actorId:Int,allowTargetOccupied:Bool,best:Option[µPathTarget],points:[µPoint],state:µGameState,target:µPoint)=>Option[µPoint] match points{
+λbestStepTowardInner(actorId:Int,allowTargetOccupied:Bool,best:Option[µPathTarget],points:[µPoint],state:µGameState,target:µPoint)=>Option[µPoint]
+decreases #points
+match points{
   []=>match best{
     Some(choice)=>Some(choice.pos)|
     None()=>None()
@@ -532,7 +544,9 @@ match actor.ammo>0{
   state
 )
 
-λdamageActors(actorId:Int,actors:[µActor],amount:Int)=>[µActor] match actors{
+λdamageActors(actorId:Int,actors:[µActor],amount:Int)=>[µActor]
+decreases #actors
+match actors{
   []=>[]|
   [
   head,
@@ -628,7 +642,9 @@ match actor.ammo>0{
   visited
 )
 
-λexpandNodesInner(actorId:Int,allowTargetOccupied:Bool,distance:Int,first:µPoint,points:[µPoint],queue:[µPathNode],state:µGameState,target:µPoint,visited:[µPoint])=>[µPathNode] match points{
+λexpandNodesInner(actorId:Int,allowTargetOccupied:Bool,distance:Int,first:µPoint,points:[µPoint],queue:[µPathNode],state:µGameState,target:µPoint,visited:[µPoint])=>[µPathNode]
+decreases #points
+match points{
   []=>[]|
   [
   head,
@@ -685,7 +701,9 @@ match actor.ammo>0{
   }
 }
 
-λfindActorById(actorId:Int,actors:[µActor])=>Option[µActor] match actors{
+λfindActorById(actorId:Int,actors:[µActor])=>Option[µActor]
+decreases #actors
+match actors{
   []=>None()|
   [
   head,
@@ -699,7 +717,9 @@ match actor.ammo>0{
   }
 }
 
-λfindPlayer(actors:[µActor])=>Option[µActor] match actors{
+λfindPlayer(actors:[µActor])=>Option[µActor]
+decreases #actors
+match actors{
   []=>None()|
   [
   head,
@@ -715,7 +735,9 @@ match actor.ammo>0{
   (¶map.empty():{String↦Bool})
 )
 
-λfloorIndexForInner(floors:[µPoint],index:{String↦Bool})=>{String↦Bool} match floors{
+λfloorIndexForInner(floors:[µPoint],index:{String↦Bool})=>{String↦Bool}
+decreases #floors
+match floors{
   []=>index|
   [
   head,
@@ -743,7 +765,9 @@ match actor.ammo>0{
   pos:pos
 }
 
-λgoblinIds(actors:[µActor])=>[Int] match actors{
+λgoblinIds(actors:[µActor])=>[Int]
+decreases #actors
+match actors{
   []=>[]|
   [
   head,
@@ -754,10 +778,23 @@ match actor.ammo>0{
   }
 }
 
-λhalfFloor(n:Int)=>Int match n{
-  0=>0|
-  1=>0|
-  value=>1+halfFloor(value-2)
+λhalfFloor(n:Int)=>Int=halfFloorInner(
+  100000,
+  n
+)
+
+λhalfFloorInner(fuel:Int,n:Int)=>Int
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>0|
+  false=>match n≤1{
+    true=>0|
+    false=>1+halfFloorInner(
+      fuel-1,
+      n-2
+    )
+  }
 }
 
 λhasBow(loadout:µPlayerLoadout)=>Bool match loadout.ranged{
@@ -774,7 +811,9 @@ match actor.ammo>0{
   state
 )
 
-λhealActors(actorId:Int,actors:[µActor],amount:Int)=>[µActor] match actors{
+λhealActors(actorId:Int,actors:[µActor],amount:Int)=>[µActor]
+decreases #actors
+match actors{
   []=>[]|
   [
   head,
@@ -804,10 +843,22 @@ match actor.ammo>0{
 
 λhorizontalPoints(x1:Int,x2:Int,y:Int)=>[µPoint] match x1>x2{
   true=>[]|
+  _=>horizontalPointsInner(
+    x1,
+    x2,
+    y
+  )
+}
+
+λhorizontalPointsInner(x1:Int,x2:Int,y:Int)=>[µPoint]
+requires x1≤x2+1
+decreases x2+1+-x1
+match x1>x2{
+  true=>[]|
   _=>[point(
     x1,
     y
-  )]⧺horizontalPoints(
+  )]⧺horizontalPointsInner(
     x1+1,
     x2,
     y
@@ -819,7 +870,9 @@ match actor.ammo>0{
   and pos.y≥0
   and pos.y<height
 
-λinitialNodes(actorId:Int,allowTargetOccupied:Bool,points:[µPoint],start:µPoint,state:µGameState,target:µPoint)=>[µPathNode] match points{
+λinitialNodes(actorId:Int,allowTargetOccupied:Bool,points:[µPoint],start:µPoint,state:µGameState,target:µPoint)=>[µPathNode]
+decreases #points
+match points{
   []=>[]|
   [
   head,
@@ -920,6 +973,7 @@ match actor.ammo>0{
 }
 
 λlivingEnemyCount(actors:[µActor])=>Int
+decreases #actors
 ensures result≥0
 match actors{
   []=>0|
@@ -933,6 +987,7 @@ match actors{
 }
 
 λlivingGoblinCount(actors:[µActor])=>Int
+decreases #actors
 ensures result≥0
 match actors{
   []=>0|
@@ -1067,9 +1122,12 @@ match actors{
   None()=>[]
 }
 
-λmakeGame()=>!Random µGameState=makeGameAttempt(roomAttempts)
+λmakeGame()=>!Random µGameState=makeGameAttempt(12)
 
-λmakeGameAttempt(remaining:Int)=>!Random µGameState={
+λmakeGameAttempt(remaining:Int)=>!Random µGameState
+requires remaining≥0
+decreases remaining
+={
   l room0=(randRoomInZone(
     6,
     10,
@@ -1253,7 +1311,22 @@ match actors{
       }:µGameState)
     }|
     _=>match remaining≤0{
-      true=>makeGameAttempt(roomAttempts)|
+      true=>demoState(
+        [playerActor(
+          playerMaxHp,
+          1,
+          point(
+            4,
+            4
+          )
+        )],
+        point(
+          45,
+          16
+        ),
+        [],
+        0
+      )|
       _=>makeGameAttempt(remaining-1)
     }
   }
@@ -1310,7 +1383,9 @@ match actors{
   state
 )
 
-λmoveActors(actorId:Int,actors:[µActor],next:µPoint)=>[µActor] match actors{
+λmoveActors(actorId:Int,actors:[µActor],next:µPoint)=>[µActor]
+decreases #actors
+match actors{
   []=>[]|
   [
   head,
@@ -1396,7 +1471,9 @@ match actors{
   state
 )
 
-λnearestPickupTargetInner(actorId:Int,best:Option[µPathTarget],pickups:[µPickup],start:µPoint,state:µGameState)=>Option[µPathTarget] match pickups{
+λnearestPickupTargetInner(actorId:Int,best:Option[µPathTarget],pickups:[µPickup],start:µPoint,state:µGameState)=>Option[µPathTarget]
+decreases #pickups
+match pickups{
   []=>best|
   [
   head,
@@ -1527,7 +1604,9 @@ match actors{
   }
 }
 
-λnodePosIn(nodes:[µPathNode],pos:µPoint)=>Bool match nodes{
+λnodePosIn(nodes:[µPathNode],pos:µPoint)=>Bool
+decreases #nodes
+match nodes{
   []=>false|
   [
   head,
@@ -1654,7 +1733,9 @@ match actors{
   pickups
 )
 
-λpickupIndexForInner(index:{String↦µPickup},pickups:[µPickup])=>{String↦µPickup} match pickups{
+λpickupIndexForInner(index:{String↦µPickup},pickups:[µPickup])=>{String↦µPickup}
+decreases #pickups
+match pickups{
   []=>index|
   [
   head,
@@ -1729,7 +1810,9 @@ match actors{
   )
 }
 
-λpointIn(points:[µPoint],pos:µPoint)=>Bool match points{
+λpointIn(points:[µPoint],pos:µPoint)=>Bool
+decreases #points
+match points{
   []=>false|
   [
   head,
@@ -1782,26 +1865,42 @@ match actors{
   }
 }
 
-λrandomPointInRoom(blocked:[µPoint],room:µRoom)=>!Random µPoint={
-  l candidate=(point(
-    (§random.intBetween(
-      room.x+room.w-1,
-      room.x
-    ):Int),
-    (§random.intBetween(
-      room.y+room.h-1,
-      room.y
-    ):Int)
-  ):µPoint);
-  match pointIn(
-    blocked,
-    candidate
-  ){
-    true=>randomPointInRoom(
+λrandomPointInRoom(blocked:[µPoint],room:µRoom)=>!Random µPoint=randomPointInRoomInner(
+  blocked,
+  100000,
+  room
+)
+
+λrandomPointInRoomInner(blocked:[µPoint],fuel:Int,room:µRoom)=>!Random µPoint
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>point(
+    centerX(room),
+    centerY(room)
+  )|
+  false=>{
+    l candidate=(point(
+      (§random.intBetween(
+        room.x+room.w-1,
+        room.x
+      ):Int),
+      (§random.intBetween(
+        room.y+room.h-1,
+        room.y
+      ):Int)
+    ):µPoint);
+    match pointIn(
       blocked,
-      room
-    )|
-    _=>candidate
+      candidate
+    ){
+      true=>randomPointInRoomInner(
+        blocked,
+        fuel-1,
+        room
+      )|
+      _=>candidate
+    }
   }
 }
 
@@ -1821,7 +1920,9 @@ match actors{
   _=>false
 }
 
-λremoveDeadActors(actors:[µActor])=>[µActor] match actors{
+λremoveDeadActors(actors:[µActor])=>[µActor]
+decreases #actors
+match actors{
   []=>[]|
   [
   head,
@@ -1832,7 +1933,9 @@ match actors{
   }
 }
 
-λremovePickupAt(pickups:[µPickup],pos:µPoint)=>[µPickup] match pickups{
+λremovePickupAt(pickups:[µPickup],pos:µPoint)=>[µPickup]
+decreases #pickups
+match pickups{
   []=>[]|
   [
   head,
@@ -1861,39 +1964,64 @@ match actors{
   turn:state.turn
 }
 
-λrenderRow(state:µGameState,x:Int,y:Int)=>String match width-x{
-  0=>""|
-  _=>tileAt(
+λrenderRow(state:µGameState,x:Int,y:Int)=>String match x≥48{
+  true=>""|
+  false=>renderRowInner(
+    state,
+    x,
+    y
+  )
+}
+
+λrenderRowInner(state:µGameState,x:Int,y:Int)=>String
+requires x≤48
+decreases 48+-x
+match x≥48{
+  true=>""|
+  false=>tileAt(
     point(
       x,
       y
     ),
     state
-  )++renderRow(
+  )++renderRowInner(
     state,
     x+1,
     y
   )
 }
 
-λrenderRows(state:µGameState,y:Int)=>String match height-y{
-  0=>""|
-  1=>renderRow(
+λrenderRows(state:µGameState,y:Int)=>String match y≥18{
+  true=>""|
+  false=>renderRowsInner(
     state,
-    0,
-    y
-  )|
-  _=>renderRow(
-    state,
-    0,
     y
   )
-    ++"
-"
-    ++renderRows(
+}
+
+λrenderRowsInner(state:µGameState,y:Int)=>String
+requires y≤18
+decreases 18+-y
+match y≥18{
+  true=>""|
+  false=>match y=17{
+    true=>renderRow(
       state,
-      y+1
+      0,
+      y
+    )|
+    false=>renderRow(
+      state,
+      0,
+      y
     )
+      ++"
+"
+      ++renderRowsInner(
+        state,
+        y+1
+      )
+  }
 }
 
 λroomFloorPoints(room:µRoom)=>[µPoint]=roomFloorRows(
@@ -1901,16 +2029,29 @@ match actors{
   room
 )
 
-λroomFloorRows(offset:Int,room:µRoom)=>[µPoint] match offset≥room.h{
+λroomFloorRows(offset:Int,room:µRoom)=>[µPoint]=roomFloorRowsInner(
+  100000,
+  offset,
+  room
+)
+
+λroomFloorRowsInner(fuel:Int,offset:Int,room:µRoom)=>[µPoint]
+requires fuel≥0
+decreases fuel
+match fuel=0{
   true=>[]|
-  _=>horizontalPoints(
-    room.x,
-    room.x+room.w-1,
-    room.y+offset
-  )⧺roomFloorRows(
-    offset+1,
-    room
-  )
+  false=>match offset≥room.h{
+    true=>[]|
+    false=>horizontalPoints(
+      room.x,
+      room.x+room.w-1,
+      room.y+offset
+    )⧺roomFloorRowsInner(
+      fuel-1,
+      offset+1,
+      room
+    )
+  }
 }
 
 λroomsSpaced(a:µRoom,b:µRoom)=>Bool=a.x+a.w+1≤b.x
@@ -1920,34 +2061,51 @@ match actors{
 
 λsamePoint(a:µPoint,b:µPoint)=>Bool=a.x=b.x and a.y=b.y
 
-λsearchQueue(actorId:Int,allowTargetOccupied:Bool,queue:[µPathNode],state:µGameState,target:µPoint,visited:[µPoint])=>Option[µPathNode] match queue{
-  []=>None()|
-  [
+λsearchQueue(actorId:Int,allowTargetOccupied:Bool,queue:[µPathNode],state:µGameState,target:µPoint,visited:[µPoint])=>Option[µPathNode]=searchQueueInner(
+  actorId,
+  allowTargetOccupied,
+  100000,
+  queue,
+  state,
+  target,
+  visited
+)
+
+λsearchQueueInner(actorId:Int,allowTargetOccupied:Bool,fuel:Int,queue:[µPathNode],state:µGameState,target:µPoint,visited:[µPoint])=>Option[µPathNode]
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>None()|
+  false=>match queue{
+    []=>None()|
+    [
   head,
   .tail
 ]=>match samePoint(
-    head.pos,
-    target
-  ){
-    true=>Some(head)|
-    _=>{
-      l nextVisited=([head.pos]⧺visited:[µPoint]);
-      searchQueue(
-        actorId,
-        allowTargetOccupied,
-        tail⧺expandNodes(
+      head.pos,
+      target
+    ){
+      true=>Some(head)|
+      _=>{
+        l nextVisited=([head.pos]⧺visited:[µPoint]);
+        searchQueueInner(
           actorId,
           allowTargetOccupied,
-          head,
-          tail,
+          fuel-1,
+          tail⧺expandNodes(
+            actorId,
+            allowTargetOccupied,
+            head,
+            tail,
+            state,
+            target,
+            nextVisited
+          ),
           state,
           target,
           nextVisited
-        ),
-        state,
-        target,
-        nextVisited
-      )
+        )
+      }
     }
   }
 }
@@ -2019,6 +2177,20 @@ match actors{
 
 λshootClearColumn(actorId:Int,state:µGameState,x:Int,y1:Int,y2:Int)=>Bool match y1>y2{
   true=>true|
+  _=>shootClearColumnInner(
+    actorId,
+    state,
+    x,
+    y1,
+    y2
+  )
+}
+
+λshootClearColumnInner(actorId:Int,state:µGameState,x:Int,y1:Int,y2:Int)=>Bool
+requires y1≤y2+1
+decreases y2+1+-y1
+match y1>y2{
+  true=>true|
   _=>match isFloor(
     state,
     x,
@@ -2033,7 +2205,7 @@ match actors{
       state
     ){
       Some(_)=>false|
-      None()=>shootClearColumn(
+      None()=>shootClearColumnInner(
         actorId,
         state,
         x,
@@ -2046,6 +2218,20 @@ match actors{
 }
 
 λshootClearRow(actorId:Int,state:µGameState,x1:Int,x2:Int,y:Int)=>Bool match x1>x2{
+  true=>true|
+  _=>shootClearRowInner(
+    actorId,
+    state,
+    x1,
+    x2,
+    y
+  )
+}
+
+λshootClearRowInner(actorId:Int,state:µGameState,x1:Int,x2:Int,y:Int)=>Bool
+requires x1≤x2+1
+decreases x2+1+-x1
+match x1>x2{
   true=>true|
   _=>match isFloor(
     state,
@@ -2061,7 +2247,7 @@ match actors{
       state
     ){
       Some(_)=>false|
-      None()=>shootClearRow(
+      None()=>shootClearRowInner(
         actorId,
         state,
         x1+1,
@@ -2161,7 +2347,9 @@ match actors{
   state
 )
 
-λstepEnemiesById(ids:[Int],state:µGameState)=>µGameState match ids{
+λstepEnemiesById(ids:[Int],state:µGameState)=>µGameState
+decreases #ids
+match ids{
   []=>state|
   [
   head,
@@ -2297,7 +2485,9 @@ match actors{
   None()=>state
 }
 
-λstepEnemyIds(actors:[µActor])=>[Int] match actors{
+λstepEnemyIds(actors:[µActor])=>[Int]
+decreases #actors
+match actors{
   []=>[]|
   [
   head,
@@ -2315,7 +2505,9 @@ match actors{
   target
 )
 
-λstepEnemyRetreatInner(actorId:Int,points:[µPoint],state:µGameState,target:µPoint)=>Option[µPoint] match points{
+λstepEnemyRetreatInner(actorId:Int,points:[µPoint],state:µGameState,target:µPoint)=>Option[µPoint]
+decreases #points
+match points{
   []=>None()|
   [
   head,
@@ -2394,13 +2586,16 @@ match actors{
   true=>targetBlinkInDirectionAt(
     actor,
     direction,
-    blinkRange,
+    8,
     state
   )|
   _=>None()
 }
 
-λtargetBlinkInDirectionAt(actor:µActor,direction:µDirection,distance:Int,state:µGameState)=>Option[µPoint] match distance≤0{
+λtargetBlinkInDirectionAt(actor:µActor,direction:µDirection,distance:Int,state:µGameState)=>Option[µPoint]
+requires distance≥0
+decreases distance
+match distance≤0{
   true=>None()|
   _=>{
     l target=(pointAlong(
@@ -2436,7 +2631,10 @@ match actors{
   _=>None()
 }
 
-λtargetBombInDirectionAt(actor:µActor,direction:µDirection,distance:Int,state:µGameState)=>Option[µActor] match distance>bombRange{
+λtargetBombInDirectionAt(actor:µActor,direction:µDirection,distance:Int,state:µGameState)=>Option[µActor]
+requires distance≤5
+decreases 5+-distance
+match distance>4{
   true=>None()|
   _=>match actorAt(
     pointAlong(
@@ -2485,7 +2683,10 @@ match actors{
   state
 )
 
-λtargetMeleeInDirectionAt(actor:µActor,direction:µDirection,distance:Int,state:µGameState)=>Option[µActor] match meleeDirectionDistanceLimit(state.loadout.melee)<distance{
+λtargetMeleeInDirectionAt(actor:µActor,direction:µDirection,distance:Int,state:µGameState)=>Option[µActor]
+requires distance≤3
+decreases 3+-distance
+match distance>2{
   true=>None()|
   _=>match actorAt(
     pointAlong(
@@ -2527,7 +2728,10 @@ match actors{
   _=>None()
 }
 
-λtargetRangedInDirectionAt(actor:µActor,direction:µDirection,distance:Int,state:µGameState)=>Option[µActor] match distance>bowRange{
+λtargetRangedInDirectionAt(actor:µActor,direction:µDirection,distance:Int,state:µGameState)=>Option[µActor]
+requires distance≤7
+decreases 7+-distance
+match distance>6{
   true=>None()|
   _=>match actorAt(
     pointAlong(
@@ -2565,7 +2769,9 @@ match actors{
   state
 )
 
-λteleportSafeInner(actor:µActor,floors:[µPoint],state:µGameState)=>Option[µPoint] match floors{
+λteleportSafeInner(actor:µActor,floors:[µPoint],state:µGameState)=>Option[µPoint]
+decreases #floors
+match floors{
   []=>None()|
   [
   head,
@@ -2628,7 +2834,9 @@ match actors{
   state
 )
 
-λteleportThreatenedInner(actor:µActor,actors:[µActor],state:µGameState)=>Bool match actors{
+λteleportThreatenedInner(actor:µActor,actors:[µActor],state:µGameState)=>Bool
+decreases #actors
+match actors{
   []=>false|
   [
   head,
@@ -2678,7 +2886,9 @@ match actors{
   }
 }
 
-λthrowBombApply(actors:[µActor],center:µPoint,state:µGameState)=>µGameState match actors{
+λthrowBombApply(actors:[µActor],center:µPoint,state:µGameState)=>µGameState
+decreases #actors
+match actors{
   []=>state|
   [
   head,
@@ -2704,7 +2914,9 @@ match actors{
   }
 }
 
-λthrowBombEnemyCount(actors:[µActor],center:µPoint)=>Int match actors{
+λthrowBombEnemyCount(actors:[µActor],center:µPoint)=>Int
+decreases #actors
+match actors{
   []=>0|
   [
   head,
@@ -2781,10 +2993,22 @@ match actors{
 
 λverticalPoints(x:Int,y1:Int,y2:Int)=>[µPoint] match y1>y2{
   true=>[]|
+  _=>verticalPointsInner(
+    x,
+    y1,
+    y2
+  )
+}
+
+λverticalPointsInner(x:Int,y1:Int,y2:Int)=>[µPoint]
+requires y1≤y2+1
+decreases y2+1+-y1
+match y1>y2{
+  true=>[]|
   _=>[point(
     x,
     y1
-  )]⧺verticalPoints(
+  )]⧺verticalPointsInner(
     x,
     y1+1,
     y2
@@ -2818,7 +3042,9 @@ match actors{
   state
 )
 
-λwithActorAmmoInner(actorId:Int,actors:[µActor],ammo:Int)=>[µActor] match actors{
+λwithActorAmmoInner(actorId:Int,actors:[µActor],ammo:Int)=>[µActor]
+decreases #actors
+match actors{
   []=>[]|
   [
   head,

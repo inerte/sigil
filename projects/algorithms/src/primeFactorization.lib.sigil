@@ -1,18 +1,31 @@
+mode total
+
 λdivisors(n:Int)=>[Int]=§numeric.range(
   2,
   n
 ) filter (λ(divisor:Int)=>Bool=n%divisor=0)
 
-λprimeFactors(n:Int)=>[Int]
-requires 0≤n
-decreases n
-match n≤1{
+λprimeFactors(n:Int)=>[Int] match n≤1{
+  true=>[]|
+  false=>primeFactorsInner(
+    n,
+    n
+  )
+}
+
+λprimeFactorsInner(fuel:Int,n:Int)=>[Int]
+requires fuel≥0
+decreases fuel
+match fuel=0{
   true=>[]|
   false=>{
     l divisor=(smallestDivisor(n):Int);
     match divisor=n{
       true=>[n]|
-      false=>[divisor]⧺primeFactors(n/divisor)
+      false=>[divisor]⧺primeFactorsInner(
+        fuel-1,
+        n/divisor
+      )
     }
   }
 }

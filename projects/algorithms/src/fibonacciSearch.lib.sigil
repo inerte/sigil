@@ -1,11 +1,13 @@
-λfibonacciSearch(target:Int,xs:[Int])=>Int match #xs=0{
-  true=>-1|
-  false=>searchFrame(
+mode total
+
+λfibonacciSearch(target:Int,xs:[Int])=>Int match #xs>0{
+  true=>searchFrame(
     initialFrame(#xs),
     100000,
     target,
     xs
-  )
+  )|
+  false=>-1
 }
 
 λgrowFib(fibM:Int,fibMm1:Int,fibMm2:Int,offset:Int)=>µFibFrame={
@@ -23,7 +25,9 @@
   None()=>0
 }
 
-λinitialFrame(size:Int)=>µFibFrame=initialFrameFrom(
+λinitialFrame(size:Int)=>µFibFrame
+requires 0<size
+=initialFrameFrom(
   1,
   1,
   0,
@@ -34,82 +38,95 @@
 
 λinitialFrameFrom(fibM:Int,fibMm1:Int,fibMm2:Int,fuel:Int,offset:Int,size:Int)=>µFibFrame
 requires 0≤fuel
+  and 0≤fibMm1
   and 0<size
   and 0<fibM
 decreases fuel
 match fibM≥size{
   true=>growFib(
-  fibM,
-  fibMm1,
-  fibMm2,
-  offset
-)|
-  false=>initialFrameFrom(
-  fibM+fibMm1,
-  fibM,
-  fibMm1,
-  fuel+-1,
-  offset,
-  size
-)}
+    fibM,
+    fibMm1,
+    fibMm2,
+    offset
+  )|
+  false=>match fuel=0{
+    true=>growFib(
+      fibM,
+      fibMm1,
+      fibMm2,
+      offset
+    )|
+    false=>initialFrameFrom(
+      fibM+fibMm1,
+      fibM,
+      fibMm1,
+      fuel+-1,
+      offset,
+      size
+    )
+  }
+}
 
 λsearchFrame(frame:µFibFrame,fuel:Int,target:Int,xs:[Int])=>Int
 requires 0≤fuel
 decreases fuel
-match 1<frame.fibM{
-  true=>match indexValue(
-    §numeric.min(
-      frame.offset+frame.fibMm2,
-      #xs+-1
-    ),
-    xs
-  )=target{
-    true=>§numeric.min(
-      frame.offset+frame.fibMm2,
-      #xs+-1
-    )|
-    false=>match indexValue(
+match fuel=0{
+  true=>-1|
+  false=>match 1<frame.fibM{
+    true=>match indexValue(
       §numeric.min(
         frame.offset+frame.fibMm2,
         #xs+-1
       ),
       xs
-    )<target{
-      true=>searchFrame(
-        {
-          fibM:frame.fibMm1,
-          fibMm1:frame.fibMm2,
-          fibMm2:frame.fibMm1+-frame.fibMm2,
-          offset:§numeric.min(
-            frame.offset+frame.fibMm2,
-            #xs+-1
-          )
-        },
-        fuel+-1,
-        target,
-        xs
-      )|
-      false=>searchFrame(
-        {
-          fibM:frame.fibMm2,
-          fibMm1:frame.fibMm1+-frame.fibMm2,
-          fibMm2:frame.fibMm2+-(frame.fibMm1+-frame.fibMm2),
-          offset:frame.offset
-        },
-        fuel+-1,
-        target,
-        xs
-      )
-    }
-  }|
-  false=>match 0<frame.fibMm1 and frame.offset+1<#xs{
-    true=>match indexValue(
-      frame.offset+1,
-      xs
     )=target{
-      true=>frame.offset+1|
-      false=>-1
+      true=>§numeric.min(
+        frame.offset+frame.fibMm2,
+        #xs+-1
+      )|
+      false=>match indexValue(
+        §numeric.min(
+          frame.offset+frame.fibMm2,
+          #xs+-1
+        ),
+        xs
+      )<target{
+        true=>searchFrame(
+          {
+            fibM:frame.fibMm1,
+            fibMm1:frame.fibMm2,
+            fibMm2:frame.fibMm1+-frame.fibMm2,
+            offset:§numeric.min(
+              frame.offset+frame.fibMm2,
+              #xs+-1
+            )
+          },
+          fuel+-1,
+          target,
+          xs
+        )|
+        false=>searchFrame(
+          {
+            fibM:frame.fibMm2,
+            fibMm1:frame.fibMm1+-frame.fibMm2,
+            fibMm2:frame.fibMm2+-(frame.fibMm1+-frame.fibMm2),
+            offset:frame.offset
+          },
+          fuel+-1,
+          target,
+          xs
+        )
+      }
     }|
-    false=>-1
+    false=>match 0<frame.fibMm1 and frame.offset+1<#xs{
+      true=>match indexValue(
+        frame.offset+1,
+        xs
+      )=target{
+        true=>frame.offset+1|
+        false=>-1
+      }|
+      false=>-1
+    }
   }
 }

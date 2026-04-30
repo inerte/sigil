@@ -8,7 +8,7 @@
   )
 }
 
-λbinarySearchR(high:Int,low:Int,target:Int,xs:[Int])=>Int
+total λbinarySearchR(high:Int,low:Int,target:Int,xs:[Int])=>Int
 requires 0≤1+high+-low
 decreases 1+high+-low
 match high<low{

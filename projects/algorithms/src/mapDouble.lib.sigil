@@ -1,3 +1,5 @@
+mode total
+
 λdouble(x:Int)=>Int=x*2
 
 λmapDouble(xs:[Int])=>[Int]=xs map double

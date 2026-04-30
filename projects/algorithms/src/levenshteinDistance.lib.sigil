@@ -1,3 +1,5 @@
+mode total
+
 λlevenshtein(left:String,right:String)=>Int=levenshteinFrom(
   left,
   0,

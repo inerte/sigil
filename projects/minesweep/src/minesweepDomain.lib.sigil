@@ -1,3 +1,5 @@
+mode total
+
 c boardHeight=(6:Int)
 
 c boardWidth=(6:Int)
@@ -8,6 +10,7 @@ c boardWidth=(6:Int)
 }
 
 λadjacentBombs(points:[µPoint],x:Int,y:Int)=>Int
+decreases #points
 ensures result≥0
 match points{
   []=>0|
@@ -33,9 +36,12 @@ match points{
   }
 }
 
-λallPoints(height:Int,width:Int,y:Int)=>[µPoint] match height-y{
-  0=>[]|
-  _=>allPointsRow(
+λallPoints(height:Int,width:Int,y:Int)=>[µPoint]
+requires 0≤width and y≤height
+decreases height+-y
+match y≥height{
+  true=>[]|
+  false=>allPointsRow(
     width,
     0,
     y
@@ -46,9 +52,12 @@ match points{
   )
 }
 
-λallPointsRow(width:Int,x:Int,y:Int)=>[µPoint] match width-x{
-  0=>[]|
-  _=>[point(
+λallPointsRow(width:Int,x:Int,y:Int)=>[µPoint]
+requires x≤width
+decreases width+-x
+match x≥width{
+  true=>[]|
+  false=>[point(
     x,
     y
   )]⧺allPointsRow(
@@ -60,9 +69,12 @@ match points{
 
 λallSafeCellsRevealed(board:[µCell])=>Bool=board reduce (λ(acc:Bool,cell:µCell)=>Bool=acc and (cell.bomb or cell.revealed)) from true
 
-λbuildBoard(height:Int,points:[µPoint],width:Int,y:Int)=>[µCell] match height-y{
-  0=>[]|
-  _=>buildRow(
+λbuildBoard(height:Int,points:[µPoint],width:Int,y:Int)=>[µCell]
+requires 0≤width and y≤height
+decreases height+-y
+match y≥height{
+  true=>[]|
+  false=>buildRow(
     points,
     width,
     0,
@@ -75,9 +87,12 @@ match points{
   )
 }
 
-λbuildRow(points:[µPoint],width:Int,x:Int,y:Int)=>[µCell] match width-x{
-  0=>[]|
-  _=>[makeCell(
+λbuildRow(points:[µPoint],width:Int,x:Int,y:Int)=>[µCell]
+requires x≤width
+decreases width+-x
+match x≥width{
+  true=>[]|
+  false=>[makeCell(
     points,
     x,
     y
@@ -89,7 +104,9 @@ match points{
   )
 }
 
-λcellAt(board:[µCell],targetX:Int,targetY:Int)=>Option[µCell] match board{
+λcellAt(board:[µCell],targetX:Int,targetY:Int)=>Option[µCell]
+decreases #board
+match board{
   []=>None()|
   [
   head,
@@ -108,7 +125,9 @@ match points{
   }
 }
 
-λcontainsPoint(points:[µPoint],targetX:Int,targetY:Int)=>Bool match points{
+λcontainsPoint(points:[µPoint],targetX:Int,targetY:Int)=>Bool
+decreases #points
+match points{
   []=>false|
   [
   head,
@@ -120,88 +139,109 @@ match points{
   )
 }
 
-λexpandReveal(board:[µCell],frontier:[µPoint],visited:[µPoint])=>[µCell] match frontier{
-  []=>board|
-  [
+λexpandReveal(board:[µCell],frontier:[µPoint],visited:[µPoint])=>[µCell]=expandRevealInner(
+  board,
+  frontier,
+  100000,
+  visited
+)
+
+λexpandRevealInner(board:[µCell],frontier:[µPoint],fuel:Int,visited:[µPoint])=>[µCell]
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>board|
+  false=>match frontier{
+    []=>board|
+    [
   head,
   .tail
 ]=>match containsPoint(
-    visited,
-    head.x,
-    head.y
-  ){
-    true=>expandReveal(
-      board,
-      tail,
-      visited
-    )|
-    false=>match cellAt(
-      board,
+      visited,
       head.x,
       head.y
     ){
-      Some(cell)=>match cell.flagged or cell.revealed{
-        true=>expandReveal(
-          board,
-          tail,
-          [head]⧺visited
-        )|
-        false=>{
-          l nextBoard=(setReveal(
-            board,
-            true,
-            head.x,
-            head.y
-          ):[µCell]);
-          match cell.bomb{
-            true=>expandReveal(
-              nextBoard,
-              tail,
-              [head]⧺visited
-            )|
-            false=>match cell.adjacent=0{
-              true=>expandReveal(
-                nextBoard,
-                tail⧺neighborPoints(
-                  nextBoard,
-                  head.x,
-                  head.y
-                ),
-                [head]⧺visited
-              )|
-              false=>expandReveal(
-                nextBoard,
-                tail,
-                [head]⧺visited
-              )
-            }
-          }
-        }
-      }|
-      None()=>expandReveal(
+      true=>expandRevealInner(
         board,
         tail,
-        [head]⧺visited
-      )
+        fuel-1,
+        visited
+      )|
+      false=>match cellAt(
+        board,
+        head.x,
+        head.y
+      ){
+        Some(cell)=>match cell.flagged or cell.revealed{
+          true=>expandRevealInner(
+            board,
+            tail,
+            fuel-1,
+            [head]⧺visited
+          )|
+          false=>{
+            l nextBoard=(setReveal(
+              board,
+              true,
+              head.x,
+              head.y
+            ):[µCell]);
+            match cell.bomb{
+              true=>expandRevealInner(
+                nextBoard,
+                tail,
+                fuel-1,
+                [head]⧺visited
+              )|
+              false=>match cell.adjacent=0{
+                true=>expandRevealInner(
+                  nextBoard,
+                  tail⧺neighborPoints(
+                    nextBoard,
+                    head.x,
+                    head.y
+                  ),
+                  fuel-1,
+                  [head]⧺visited
+                )|
+                false=>expandRevealInner(
+                  nextBoard,
+                  tail,
+                  fuel-1,
+                  [head]⧺visited
+                )
+              }
+            }
+          }
+        }|
+        None()=>expandRevealInner(
+          board,
+          tail,
+          fuel-1,
+          [head]⧺visited
+        )
+      }
     }
   }
 }
 
 λgameFromBombs(points:[µPoint])=>µGame
-ensures result.height=boardHeight and result.width=boardWidth
+ensures result.height=6 and result.width=6
 ={
   board:(buildBoard(
-    boardHeight,
+    6,
     points,
-    boardWidth,
+    6,
     0
   ):[µCell]),
-  height:boardHeight,
+  height:6,
   status:"playing",
-  width:boardWidth
+  width:6
 }
 
-λhasBomb(points:[µPoint],x:Int,y:Int)=>Bool match points{
+λhasBomb(points:[µPoint],x:Int,y:Int)=>Bool
+decreases #points
+match points{
   []=>false|
   [
   head,

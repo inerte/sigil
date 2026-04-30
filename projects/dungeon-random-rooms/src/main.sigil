@@ -4,11 +4,11 @@ c height=(18:Int)
 
 c width=(48:Int)
 
-λcenterX(room:µRoom)=>Int=room.x+halfFloor(room.w)
+total λcenterX(room:µRoom)=>Int=room.x+halfFloor(room.w)
 
-λcenterY(room:µRoom)=>Int=room.y+halfFloor(room.h)
+total λcenterY(room:µRoom)=>Int=room.y+halfFloor(room.h)
 
-λcorridorL(a:µRoom,b:µRoom,x:Int,y:Int)=>Bool=inH(
+total λcorridorL(a:µRoom,b:µRoom,x:Int,y:Int)=>Bool=inH(
   centerY(a),
   x,
   centerX(a),
@@ -22,13 +22,14 @@ c width=(48:Int)
   centerY(b)
 )
 
-λhalfFloor(n:Int)=>Int match n{
-  0=>0|
-  1=>0|
-  value=>1+halfFloor(value-2)
+total λhalfFloor(n:Int)=>Int
+decreases n
+match n≤1{
+  true=>0|
+  false=>1+halfFloor(n-2)
 }
 
-λinH(cy:Int,x:Int,x1:Int,x2:Int,y:Int)=>Bool=y=cy
+total λinH(cy:Int,x:Int,x1:Int,x2:Int,y:Int)=>Bool=y=cy
   and x≥min2(
     x1,
     x2
@@ -38,12 +39,12 @@ c width=(48:Int)
     x2
   )
 
-λinRect(rh:Int,rw:Int,rx:Int,ry:Int,x:Int,y:Int)=>Bool=x≥rx
+total λinRect(rh:Int,rw:Int,rx:Int,ry:Int,x:Int,y:Int)=>Bool=x≥rx
   and x<rx+rw
   and y≥ry
   and y<ry+rh
 
-λinRoom(room:µRoom,x:Int,y:Int)=>Bool=inRect(
+total λinRoom(room:µRoom,x:Int,y:Int)=>Bool=inRect(
   room.h,
   room.w,
   room.x,
@@ -52,7 +53,7 @@ c width=(48:Int)
   y
 )
 
-λinV(cx:Int,x:Int,y:Int,y1:Int,y2:Int)=>Bool=x=cx
+total λinV(cx:Int,x:Int,y:Int,y1:Int,y2:Int)=>Bool=x=cx
   and y≥min2(
     y1,
     y2
@@ -62,9 +63,9 @@ c width=(48:Int)
     y2
   )
 
-λisExit(world:µWorld,x:Int,y:Int)=>Bool=x=centerX(world.room3) and y=centerY(world.room3)
+total λisExit(world:µWorld,x:Int,y:Int)=>Bool=x=centerX(world.room3) and y=centerY(world.room3)
 
-λisFloor(world:µWorld,x:Int,y:Int)=>Bool=inRoom(
+total λisFloor(world:µWorld,x:Int,y:Int)=>Bool=inRoom(
   world.room1,
   x,
   y
@@ -92,7 +93,7 @@ c width=(48:Int)
     y
   )
 
-λisPlayer(world:µWorld,x:Int,y:Int)=>Bool=x=centerX(world.room1) and y=centerY(world.room1)
+total λisPlayer(world:µWorld,x:Int,y:Int)=>Bool=x=centerX(world.room1) and y=centerY(world.room1)
 
 λmain()=>!Log!Random Unit=console.log(renderRows(
   makeWorld(),
@@ -124,12 +125,12 @@ c width=(48:Int)
   }
 }
 
-λmax2(a:Int,b:Int)=>Int match a>b{
+total λmax2(a:Int,b:Int)=>Int match a>b{
   true=>a|
   _=>b
 }
 
-λmin2(a:Int,b:Int)=>Int match a<b{
+total λmin2(a:Int,b:Int)=>Int match a<b{
   true=>a|
   _=>b
 }
@@ -158,9 +159,12 @@ c width=(48:Int)
   }
 }
 
-λrenderRow(world:µWorld,x:Int,y:Int)=>String match width-x{
-  0=>""|
-  _=>tileAt(
+total λrenderRow(world:µWorld,x:Int,y:Int)=>String
+requires x≤width
+decreases width+-x
+match x≥width{
+  true=>""|
+  false=>tileAt(
     world,
     x,
     y
@@ -171,9 +175,12 @@ c width=(48:Int)
   )
 }
 
-λrenderRows(world:µWorld,y:Int)=>String match height-y{
-  0=>""|
-  _=>renderRow(
+total λrenderRows(world:µWorld,y:Int)=>String
+requires 0≤width and y≤height
+decreases height+-y
+match y≥height{
+  true=>""|
+  false=>renderRow(
     world,
     0,
     y
@@ -186,7 +193,7 @@ c width=(48:Int)
     )
 }
 
-λtileAt(world:µWorld,x:Int,y:Int)=>String match isPlayer(
+total λtileAt(world:µWorld,x:Int,y:Int)=>String match isPlayer(
   world,
   x,
   y

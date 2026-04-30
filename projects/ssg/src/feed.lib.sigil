@@ -1,3 +1,5 @@
+mode total
+
 λabsoluteFeedUrl(config:µSiteBuildConfig)=>String=§string.trimEndChars(
   "/",
   config.siteUrl

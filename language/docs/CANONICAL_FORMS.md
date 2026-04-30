@@ -68,7 +68,7 @@ Top-level `l` is invalid.
 
 A `protocol` declaration defines a compile-time state machine for a handle type. It must follow all `t` declarations in the same file and precede all `λ` declarations.
 
-```sigil module
+```sigil invalid-module
 t Transaction={id:String}
 
 protocol Transaction
@@ -90,10 +90,23 @@ Canonical form rules:
 Functions listed in a `via` clause must declare matching `requires`/`ensures` state annotations (`SIGIL-PROTO-MISSING-CONTRACT`):
 
 ```sigil module
-λcommit(transaction:Transaction)=>!Sql Result[Unit,SqlFailure]
+t Transaction={id:String}
+
+protocol Transaction
+  Open → Closed via commit
+  initial = Open
+  terminal = Closed
+
+λcommit(transaction:Transaction)=>!Sql Result[
+  Unit,
+  §sql.SqlFailure
+]
 requires transaction.state=Open
 ensures transaction.state=Closed
-=Err({kind:Unsupported(),message:"sql intrinsic unavailable"})
+=Err({
+  kind:§sql.Unsupported(),
+  message:"sql intrinsic unavailable"
+})
 ```
 
 State assertions in `requires`/`ensures` use the virtual `.state` field on protocol-typed values. The expression `handle.state=StateName` is a Bool that the Z3 solver tracks through the control-flow graph.
@@ -123,7 +136,10 @@ Examples:
 ```sigil module
 λadd(x:Int,y:Int)=>Int=x+y
 
-λfactorial(n:Int)=>Int match n{
+total λfactorial(n:Int)=>Int
+requires n≥0
+decreases n
+match n{
   0=>1|
   1=>1|
   value=>value*factorial(value-1)
@@ -362,13 +378,18 @@ Sigil rejects this shape because it duplicates work instead of following one can
 ### Canonical Replacement
 
 ```sigil module
-λfib(n:Int)=>Int=fibHelper(
+λfib(n:Int)=>Int
+requires n≥0
+=fibHelper(
   0,
   1,
   n
 )
 
-λfibHelper(a:Int,b:Int,n:Int)=>Int match n{
+total λfibHelper(a:Int,b:Int,n:Int)=>Int
+requires n≥0
+decreases n
+match n{
   0=>a|
   count=>fibHelper(
     b,
@@ -378,7 +399,7 @@ Sigil rejects this shape because it duplicates work instead of following one can
 }
 ```
 
-The preferred replacement is a wrapper plus helper function that threads the working state through one recursive step at a time.
+The preferred replacement is a wrapper plus helper function that threads the working state through one recursive step at a time. If the helper carries a `decreases` proof, mark that helper `total`; the wrapper can stay ordinary unless it also needs total reasoning.
 
 ### What Gets Rejected
 
@@ -398,7 +419,9 @@ Sigil also rejects obvious nested amplification of that same shape, such as:
 
 **Single recursive call:**
 ```sigil module
-λlength(xs:[Int])=>Int match xs{
+total λlength(xs:[Int])=>Int
+decreases #xs
+match xs{
   []=>0|
   [
   h,
@@ -409,7 +432,9 @@ Sigil also rejects obvious nested amplification of that same shape, such as:
 
 **Different non-reduced arguments:**
 ```sigil module
-λmerge(left:[Int],right:[Int])=>[Int] match left{
+total λmerge(left:[Int],right:[Int])=>[Int]
+decreases (#left, #right)
+match left{
   []=>right|
   [
   lh,

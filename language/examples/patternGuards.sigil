@@ -68,7 +68,7 @@ t User={
   Blue()=>"#0000FF"
 }
 
-λfindFirstPositive(list:[Int])=>String
+total λfindFirstPositive(list:[Int])=>String
 decreases #list
 match list{
   []=>"empty list"|

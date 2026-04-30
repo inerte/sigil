@@ -1,3 +1,5 @@
+mode total
+
 λallCheckIds()=>[String]=[
   "docs-drift",
   "canonical-stdlib",

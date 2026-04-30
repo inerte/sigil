@@ -1,3 +1,5 @@
+mode total
+
 λapplyFrontmatterLine(line:String,meta:µPageMeta)=>µPageMeta={
   l separatorIdx=(§string.indexOf(
     line,
@@ -93,7 +95,10 @@
   lowered
 )
 
-λcapitalizeWordsInner(capitalizeNext:Bool,idx:Int,lowered:String)=>String match idx≥#lowered{
+λcapitalizeWordsInner(capitalizeNext:Bool,idx:Int,lowered:String)=>String
+requires idx≤#lowered
+decreases #lowered+-idx
+match idx≥#lowered{
   true=>""|
   false=>match §string.charAt(
     idx,
@@ -129,7 +134,15 @@
   }
 }
 
-λcollapseHyphens(text:String)=>String match §string.replaceAll(
+λcollapseHyphens(text:String)=>String=collapseHyphensInner(
+  100000,
+  text
+)
+
+λcollapseHyphensInner(fuel:Int,text:String)=>String
+requires fuel≥0
+decreases fuel
+match §string.replaceAll(
   "--",
   "-",
   text
@@ -139,14 +152,22 @@
     "-",
     text
   )|
-  false=>collapseHyphens(§string.replaceAll(
-    "--",
-    "-",
-    text
-  ))
+  false=>match fuel=0{
+    true=>text|
+    false=>collapseHyphensInner(
+      fuel-1,
+      §string.replaceAll(
+        "--",
+        "-",
+        text
+      )
+    )
+  }
 }
 
-λconsumeFrontmatter(lines:[String],meta:µPageMeta)=>µParseLinesResult match lines{
+λconsumeFrontmatter(lines:[String],meta:µPageMeta)=>µParseLinesResult
+decreases #lines
+match lines{
   []=>{
     contentLines:[],
     meta:meta
@@ -198,7 +219,9 @@
   }
 }
 
-λdropLast(parts:[String])=>[String] match parts{
+λdropLast(parts:[String])=>[String]
+decreases #parts
+match parts{
   []=>[]|
   [
   part,
@@ -232,7 +255,9 @@
   }
 }
 
-λfirstH1Line(lines:[String])=>[String] match lines{
+λfirstH1Line(lines:[String])=>[String]
+decreases #lines
+match lines{
   []=>[]|
   [
   line,
@@ -260,7 +285,9 @@
   )
 ))
 
-λlastPart(parts:[String])=>String match parts{
+λlastPart(parts:[String])=>String
+decreases #parts
+match parts{
   []=>""|
   [
   part,
@@ -398,26 +425,54 @@
 
 λtrimHyphens(text:String)=>String=trimTrailingHyphens(trimLeadingHyphens(text))
 
-λtrimLeadingHyphens(text:String)=>String match #text>0 and §string.startsWith(
-  "-",
+λtrimLeadingHyphens(text:String)=>String=trimLeadingHyphensInner(
+  100000,
   text
-){
-  true=>trimLeadingHyphens(§string.substring(
-    #text,
-    text,
-    1
-  ))|
-  false=>text
+)
+
+λtrimLeadingHyphensInner(fuel:Int,text:String)=>String
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>text|
+  false=>match #text>0 and §string.startsWith(
+    "-",
+    text
+  ){
+    true=>trimLeadingHyphensInner(
+      fuel-1,
+      §string.substring(
+        #text,
+        text,
+        1
+      )
+    )|
+    false=>text
+  }
 }
 
-λtrimTrailingHyphens(text:String)=>String match #text>0 and §string.endsWith(
-  text,
-  "-"
-){
-  true=>trimTrailingHyphens(§string.substring(
-    #text-1,
+λtrimTrailingHyphens(text:String)=>String=trimTrailingHyphensInner(
+  100000,
+  text
+)
+
+λtrimTrailingHyphensInner(fuel:Int,text:String)=>String
+requires fuel≥0
+decreases fuel
+match fuel=0{
+  true=>text|
+  false=>match #text>0 and §string.endsWith(
     text,
-    0
-  ))|
-  false=>text
+    "-"
+  ){
+    true=>trimTrailingHyphensInner(
+      fuel-1,
+      §string.substring(
+        #text-1,
+        text,
+        0
+      )
+    )|
+    false=>text
+  }
 }

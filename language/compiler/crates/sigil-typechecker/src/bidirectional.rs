@@ -38,10 +38,10 @@ use crate::types::{
 };
 use crate::TypeCheckOptions;
 use sigil_ast::{
-    BinaryOperator, Declaration, Expr, FeatureFlagDecl, FunctionDecl, LabelRef, LiteralExpr,
-    LiteralType, LiteralValue, MemberRef, PrimitiveName, Program, QualifiedType, RecordExpr,
-    RecordField, RuleAction, RuleDecl, SourceLocation, TransformDecl, Type, TypeDecl, TypeDef,
-    UnaryOperator,
+    BinaryOperator, Declaration, Expr, FeatureFlagDecl, FunctionDecl, FunctionMode, LabelRef,
+    LiteralExpr, LiteralType, LiteralValue, MemberRef, PrimitiveName, Program, QualifiedType,
+    RecordExpr, RecordField, RuleAction, RuleDecl, SourceLocation, TransformDecl, Type, TypeDecl,
+    TypeDef, UnaryOperator,
 };
 use sigil_diagnostics::codes;
 use sigil_solver::{
@@ -298,6 +298,7 @@ pub fn type_check(
                             func_decl.name.clone(),
                             scheme.clone(),
                             BindingMeta {
+                                function_mode: Some(func_decl.mode),
                                 return_labels: declared_type_labels(
                                     &env,
                                     Some(&type_param_env),
@@ -315,6 +316,7 @@ pub fn type_check(
                             func_decl.name.clone(),
                             binding_type.clone(),
                             BindingMeta {
+                                function_mode: Some(func_decl.mode),
                                 return_labels: declared_type_labels(
                                     &env,
                                     Some(&type_param_env),
@@ -386,6 +388,7 @@ pub fn type_check(
 
                     let binding_meta = BindingMeta {
                         is_transform: true,
+                        function_mode: Some(func_decl.mode),
                         return_labels: declared_type_labels(
                             &env,
                             Some(&type_param_env),
@@ -527,8 +530,8 @@ pub fn type_check(
                     }
                 }
 
-                Declaration::Test(_) => {
-                    // TODO: Check test declarations
+                Declaration::Test(test_decl) => {
+                    check_test_decl(&env, test_decl)?;
                 }
             }
         }
@@ -584,6 +587,7 @@ pub fn type_check(
                     ast: extern_decl.clone(),
                 }));
             } else if let Declaration::Test(test_decl) = decl {
+                check_test_decl(&env, test_decl)?;
                 typed_declarations.push(TypedDeclaration::Test(build_typed_test_decl(
                     &env, test_decl,
                 )?));
@@ -2423,13 +2427,8 @@ fn symbolic_value_from_expr(
         Expr::Filter(f) => {
             // Filter never increases list length. This is required for `decreases` proofs when
             // a recursive call passes `(xs filter …)` in place of a list-typed parameter.
-            let list_sym = symbolic_value_from_expr(
-                env,
-                proof_context,
-                &f.list,
-                value_binding,
-                collector,
-            )?;
+            let list_sym =
+                symbolic_value_from_expr(env, proof_context, &f.list, value_binding, collector)?;
             let SymbolicValue::Collection(sc) = list_sym else {
                 return Err(
                     "filter: list did not lower to a collection in refinement proof".to_string(),
@@ -2444,7 +2443,7 @@ fn symbolic_value_from_expr(
                     );
                 }
             };
-            let p_out = SymbolPath::root("$filter_result");
+            let p_out = SymbolPath::root(&format!("$filter_result_{}", f.location.start.offset));
             let len_in = LinearExpr::from_path(p_in.length());
             let len_out = LinearExpr::from_path(p_out.length());
             let ax = linear_compare(len_out, ComparisonOp::Le, len_in);
@@ -2566,7 +2565,7 @@ fn symbolic_value_from_expr(
                 proof_context,
                 &contract,
                 &app.args,
-                result_symbolic.clone(),
+                Some(result_symbolic.clone()),
             )?;
             collector.assumptions.extend(assumptions);
             Ok(result_symbolic)
@@ -2931,6 +2930,127 @@ pub(crate) fn scrutinee_proof_context(
     }
 }
 
+fn state_assumption_for_path(
+    proof_context: &ProofContext,
+    path: &SymbolPath,
+    protocol: &str,
+) -> Option<i64> {
+    proof_context.assumptions.iter().find_map(|assumption| {
+        let Formula::Atom(Atom::StateEq {
+            path: assumption_path,
+            protocol: assumption_protocol,
+            state_index,
+        }) = assumption
+        else {
+            return None;
+        };
+        if assumption_path == path && assumption_protocol == protocol {
+            Some(*state_index)
+        } else {
+            None
+        }
+    })
+}
+
+fn protocol_state_assumptions_for_alias(
+    env: &TypeEnvironment,
+    proof_context: &ProofContext,
+    value_type: &InferenceType,
+    source_path: Option<&SymbolPath>,
+    target_path: &SymbolPath,
+) -> Vec<Formula> {
+    if let Ok(Some(constrained)) = resolve_constrained_type(env, value_type) {
+        return protocol_state_assumptions_for_alias(
+            env,
+            proof_context,
+            &constrained.underlying_type,
+            source_path,
+            target_path,
+        );
+    }
+
+    let normalized = env.normalize_type(value_type);
+    if let Some(protocol_name) = resolve_protocol_type_name(&normalized, env) {
+        let Some(spec) = env.lookup_protocol(&protocol_name) else {
+            return Vec::new();
+        };
+        let initial_state = spec
+            .states
+            .iter()
+            .position(|state| state == &spec.initial)
+            .unwrap_or(0) as i64;
+        let state_index = source_path
+            .and_then(|path| state_assumption_for_path(proof_context, path, &protocol_name))
+            .or_else(|| state_assumption_for_path(proof_context, target_path, &protocol_name))
+            .unwrap_or(initial_state);
+        return vec![Formula::Atom(Atom::StateEq {
+            path: target_path.clone(),
+            state_index,
+            protocol: protocol_name,
+        })];
+    }
+
+    match normalized {
+        InferenceType::Owned(inner) => protocol_state_assumptions_for_alias(
+            env,
+            proof_context,
+            &inner,
+            source_path,
+            target_path,
+        ),
+        InferenceType::Borrowed(borrowed) => protocol_state_assumptions_for_alias(
+            env,
+            proof_context,
+            &borrowed.resource_type,
+            source_path,
+            target_path,
+        ),
+        InferenceType::Record(record) => {
+            let mut assumptions = Vec::new();
+            for (field_name, field_type) in sorted_record_field_types(&record) {
+                let field_target = target_path.field(&field_name);
+                let field_source = source_path.map(|path| path.field(&field_name));
+                assumptions.extend(protocol_state_assumptions_for_alias(
+                    env,
+                    proof_context,
+                    &field_type,
+                    field_source.as_ref(),
+                    &field_target,
+                ));
+            }
+            assumptions
+        }
+        InferenceType::Tuple(tuple) => {
+            let mut assumptions = Vec::new();
+            for (index, item_type) in tuple.types.iter().enumerate() {
+                let item_target = target_path.tuple_index(index);
+                let item_source = source_path.map(|path| path.tuple_index(index));
+                assumptions.extend(protocol_state_assumptions_for_alias(
+                    env,
+                    proof_context,
+                    item_type,
+                    item_source.as_ref(),
+                    &item_target,
+                ));
+            }
+            assumptions
+        }
+        _ => Vec::new(),
+    }
+}
+
+fn symbolic_path_for_alias_expr(expr: &Expr) -> Option<SymbolPath> {
+    match expr {
+        Expr::Identifier(identifier) => Some(SymbolPath::root(&identifier.name)),
+        Expr::FieldAccess(field_access) => symbolic_path_for_alias_expr(&field_access.object)
+            .map(|path| path.field(&field_access.field)),
+        Expr::TypeAscription(type_ascription) => {
+            symbolic_path_for_alias_expr(&type_ascription.expr)
+        }
+        _ => None,
+    }
+}
+
 fn let_proof_context(
     env: &TypeEnvironment,
     proof_context: &ProofContext,
@@ -2943,7 +3063,19 @@ fn let_proof_context(
         _ => None,
     };
 
-    if let Expr::Application(app) = value {
+    let value_app = match value {
+        Expr::Application(app) => Some(app.as_ref()),
+        Expr::TypeAscription(type_asc) => {
+            if let Expr::Application(app) = &type_asc.expr {
+                Some(app.as_ref())
+            } else {
+                None
+            }
+        }
+        _ => None,
+    };
+
+    if let Some(app) = value_app {
         if let Some(contract) = lookup_contract_for_call(env, &app.func) {
             let result_path = binding_name
                 .map(SymbolPath::root)
@@ -2955,7 +3087,7 @@ fn let_proof_context(
                     proof_context,
                     &contract,
                     &app.args,
-                    result_symbolic,
+                    Some(result_symbolic),
                 ) {
                     return proof_context
                         .clone()
@@ -2969,22 +3101,17 @@ fn let_proof_context(
         return proof_context.clone();
     };
 
-    // For protocol-typed bindings not coming from a function call (e.g. record literals or
-    // non-contracted functions), inject the protocol's initial state assumption automatically.
-    if let Some(protocol_name) = resolve_protocol_type_name(&env.normalize_type(value_type), env) {
-        if let Some(spec) = env.lookup_protocol(&protocol_name) {
-            let state_index = spec
-                .states
-                .iter()
-                .position(|s| s == &spec.initial)
-                .unwrap_or(0) as i64;
-            let assumption = Formula::Atom(Atom::StateEq {
-                path: SymbolPath::root(binding_name),
-                state_index,
-                protocol: protocol_name.clone(),
-            });
-            return proof_context.clone().with_assumption(assumption);
-        }
+    let binding_path = SymbolPath::root(binding_name);
+    let source_path = symbolic_path_for_alias_expr(value);
+    let protocol_assumptions = protocol_state_assumptions_for_alias(
+        env,
+        proof_context,
+        value_type,
+        source_path.as_ref(),
+        &binding_path,
+    );
+    if !protocol_assumptions.is_empty() {
+        return proof_context.clone().with_assumptions(protocol_assumptions);
     }
 
     if !matches!(
@@ -3010,25 +3137,172 @@ fn protocol_initial_state_proof_context(
     binding_name: &str,
     value_type: &InferenceType,
 ) -> ProofContext {
-    let Some(protocol_name) = resolve_protocol_type_name(&env.normalize_type(value_type), env)
-    else {
-        return proof_context.clone();
-    };
-    let Some(spec) = env.lookup_protocol(&protocol_name) else {
-        return proof_context.clone();
-    };
-    let state_index = spec
-        .states
-        .iter()
-        .position(|state| state == &spec.initial)
-        .unwrap_or(0) as i64;
-    proof_context
-        .clone()
-        .with_assumption(Formula::Atom(Atom::StateEq {
-            path: SymbolPath::root(binding_name),
-            state_index,
-            protocol: protocol_name,
-        }))
+    let assumptions = protocol_state_assumptions_for_alias(
+        env,
+        proof_context,
+        value_type,
+        None,
+        &SymbolPath::root(binding_name),
+    );
+    proof_context.clone().with_assumptions(assumptions)
+}
+
+fn collect_pattern_protocol_state_assumptions(
+    env: &TypeEnvironment,
+    proof_context: &ProofContext,
+    pattern: &sigil_ast::Pattern,
+    scrutinee_type: &InferenceType,
+    scrutinee_path: &SymbolPath,
+    assumptions: &mut Vec<Formula>,
+) -> Result<(), TypeError> {
+    use sigil_ast::Pattern;
+
+    match pattern {
+        Pattern::Wildcard(_) | Pattern::Literal(_) => Ok(()),
+        Pattern::Identifier(identifier_pattern) => {
+            assumptions.extend(protocol_state_assumptions_for_alias(
+                env,
+                proof_context,
+                scrutinee_type,
+                Some(scrutinee_path),
+                &SymbolPath::root(&identifier_pattern.name),
+            ));
+            Ok(())
+        }
+        Pattern::List(list_pattern) => {
+            let InferenceType::List(list_type) = scrutinee_type else {
+                return Ok(());
+            };
+
+            for (index, pattern) in list_pattern.patterns.iter().enumerate() {
+                collect_pattern_protocol_state_assumptions(
+                    env,
+                    proof_context,
+                    pattern,
+                    &list_type.element_type,
+                    &list_pattern_path(scrutinee_path, index),
+                    assumptions,
+                )?;
+            }
+
+            if let Some(rest_name) = &list_pattern.rest {
+                let mut rest_path = scrutinee_path.clone();
+                for _ in 0..list_pattern.patterns.len() {
+                    rest_path = rest_path.list_tail();
+                }
+                assumptions.extend(protocol_state_assumptions_for_alias(
+                    env,
+                    proof_context,
+                    scrutinee_type,
+                    Some(&rest_path),
+                    &SymbolPath::root(rest_name),
+                ));
+            }
+
+            Ok(())
+        }
+        Pattern::Tuple(tuple_pattern) => {
+            let InferenceType::Tuple(tuple_type) = env.normalize_type(scrutinee_type) else {
+                return Ok(());
+            };
+
+            for (index, (pattern, item_type)) in tuple_pattern
+                .patterns
+                .iter()
+                .zip(&tuple_type.types)
+                .enumerate()
+            {
+                collect_pattern_protocol_state_assumptions(
+                    env,
+                    proof_context,
+                    pattern,
+                    item_type,
+                    &scrutinee_path.tuple_index(index),
+                    assumptions,
+                )?;
+            }
+
+            Ok(())
+        }
+        Pattern::Constructor(constructor_pattern) => {
+            let Some(constructor_type) = lookup_constructor_type(
+                env,
+                &constructor_pattern.module_path,
+                &constructor_pattern.name,
+            )?
+            else {
+                return Ok(());
+            };
+
+            let InferenceType::Function(ctor_fn) = constructor_type else {
+                return Ok(());
+            };
+
+            let subst = unify(&ctor_fn.return_type, scrutinee_type).map_err(|message| {
+                TypeError::new(
+                    format!(
+                        "Constructor '{}' does not match scrutinee type {} ({})",
+                        constructor_display_name(
+                            &constructor_pattern.module_path,
+                            &constructor_pattern.name
+                        ),
+                        format_type(scrutinee_type),
+                        message
+                    ),
+                    Some(constructor_pattern.location),
+                )
+            })?;
+
+            for (index, (pattern, param_type)) in constructor_pattern
+                .patterns
+                .iter()
+                .zip(&ctor_fn.params)
+                .enumerate()
+            {
+                collect_pattern_protocol_state_assumptions(
+                    env,
+                    proof_context,
+                    pattern,
+                    &apply_subst(&subst, param_type),
+                    &scrutinee_path.variant_field(index),
+                    assumptions,
+                )?;
+            }
+
+            Ok(())
+        }
+        Pattern::Record(record_pattern) => {
+            let InferenceType::Record(record_type) = env.normalize_type(scrutinee_type) else {
+                return Ok(());
+            };
+
+            for field in &record_pattern.fields {
+                let Some(field_type) = record_type.fields.get(&field.name) else {
+                    continue;
+                };
+                let field_path = scrutinee_path.field(&field.name);
+                match &field.pattern {
+                    Some(pattern) => collect_pattern_protocol_state_assumptions(
+                        env,
+                        proof_context,
+                        pattern,
+                        field_type,
+                        &field_path,
+                        assumptions,
+                    )?,
+                    None => assumptions.extend(protocol_state_assumptions_for_alias(
+                        env,
+                        proof_context,
+                        field_type,
+                        Some(&field_path),
+                        &SymbolPath::root(&field.name),
+                    )),
+                }
+            }
+
+            Ok(())
+        }
+    }
 }
 
 pub(crate) fn scrutinee_symbolic_value(
@@ -3421,6 +3695,15 @@ pub(crate) fn match_arm_refinement(
         scrutinee_symbolic.as_ref(),
         &mut symbolic_bindings,
     )?;
+    let mut pattern_state_assumptions = Vec::new();
+    collect_pattern_protocol_state_assumptions(
+        env,
+        proof_context,
+        &arm.pattern,
+        scrutinee_type,
+        &match_path,
+        &mut pattern_state_assumptions,
+    )?;
 
     let pattern_formula = pattern_refinement_formula(
         env,
@@ -3430,6 +3713,9 @@ pub(crate) fn match_arm_refinement(
         &arm.pattern,
     );
     let mut body_context = proof_context.with_symbolic_bindings(symbolic_bindings);
+    if !pattern_state_assumptions.is_empty() {
+        body_context = body_context.with_assumptions(pattern_state_assumptions);
+    }
     if let Some(pattern_formula) = &pattern_formula {
         body_context = body_context.with_assumption(pattern_formula.clone());
     }
@@ -4049,10 +4335,7 @@ fn validate_decreases_clause<'expr>(
         let typed = build_typed_expr(env, component)?;
         if !typed.effects.is_empty() {
             return Err(TypeError::new(
-                format!(
-                    "Function '{}' decreases clause must be pure",
-                    function_name
-                ),
+                format!("Function '{}' decreases clause must be pure", function_name),
                 Some(expr_location(component)),
             )
             .with_code(sigil_diagnostics::codes::proof::MEASURE_NOT_IN_FRAGMENT));
@@ -4134,11 +4417,7 @@ fn param_list_length_nonneg_for_measure(
             name: PrimitiveName::String,
         }) => {
             let len = LinearExpr::from_path(SymbolPath::root(param_name).length());
-            out.push(linear_compare(
-                len,
-                ComparisonOp::Ge,
-                LinearExpr::int(0),
-            ));
+            out.push(linear_compare(len, ComparisonOp::Ge, LinearExpr::int(0)));
         }
         InferenceType::Record(rec) => {
             for (field, fty) in sorted_record_field_types(rec) {
@@ -4146,15 +4425,9 @@ fn param_list_length_nonneg_for_measure(
                     continue;
                 }
                 let plen = LinearExpr::from_path(
-                    SymbolPath::root(param_name)
-                        .field(field.as_str())
-                        .length(),
+                    SymbolPath::root(param_name).field(field.as_str()).length(),
                 );
-                out.push(linear_compare(
-                    plen,
-                    ComparisonOp::Ge,
-                    LinearExpr::int(0),
-                ));
+                out.push(linear_compare(plen, ComparisonOp::Ge, LinearExpr::int(0)));
             }
         }
         _ => {}
@@ -4196,11 +4469,7 @@ fn int_param_id_nonneg_assumptions_for_decreases(
             continue;
         }
         let p = LinearExpr::from_path(SymbolPath::root(&id.name));
-        out.push(linear_compare(
-            p,
-            ComparisonOp::Ge,
-            LinearExpr::int(0),
-        ));
+        out.push(linear_compare(p, ComparisonOp::Ge, LinearExpr::int(0)));
     }
     out
 }
@@ -4226,12 +4495,10 @@ fn expr_mentions_param(expr: &Expr, name: &str) -> bool {
             expr_mentions_param(&b.left, name) || expr_mentions_param(&b.right, name)
         }
         Expr::TypeAscription(asc) => expr_mentions_param(&asc.expr, name),
-        Expr::Tuple(t) => t
-            .elements
-            .iter()
-            .any(|e| expr_mentions_param(e, name)),
+        Expr::Tuple(t) => t.elements.iter().any(|e| expr_mentions_param(e, name)),
         Expr::Application(a) => {
-            expr_mentions_param(&a.func, name) || a.args.iter().any(|a| expr_mentions_param(a, name))
+            expr_mentions_param(&a.func, name)
+                || a.args.iter().any(|a| expr_mentions_param(a, name))
         }
         Expr::FieldAccess(f) => expr_mentions_param(&f.object, name),
         Expr::Index(i) => {
@@ -4245,9 +4512,7 @@ fn expr_mentions_param(expr: &Expr, name: &str) -> bool {
                     .as_ref()
                     .map_or(false, |b| expr_mentions_param(b, name))
         }
-        Expr::Let(l) => {
-            expr_mentions_param(&l.value, name) || expr_mentions_param(&l.body, name)
-        }
+        Expr::Let(l) => expr_mentions_param(&l.value, name) || expr_mentions_param(&l.body, name),
         Expr::Match(m) => {
             expr_mentions_param(&m.scrutinee, name)
                 || m.arms
@@ -4283,17 +4548,15 @@ fn prove_measure_well_founded(
             .as_ref()
             .expect("prove_measure_well_founded called without decreases clause"),
     );
-    let list_param_nonneg: Vec<Formula> = list_param_length_nonneg_assumptions(env, &func_decl.params);
-    let int_param_id_nonneg: Vec<Formula> = int_param_id_nonneg_assumptions_for_decreases(
-        env,
-        &func_decl.params,
-        measure_components,
-    );
+    let list_param_nonneg: Vec<Formula> =
+        list_param_length_nonneg_assumptions(env, &func_decl.params);
+    let int_param_id_nonneg: Vec<Formula> =
+        int_param_id_nonneg_assumptions_for_decreases(env, &func_decl.params, measure_components);
 
     // Bound check: each entry-component is >= 0 under the function's requires.
     for (index, component) in measure_components.iter().enumerate() {
-        let (value, extra_assumptions) =
-            lower_symbolic_value(env, entry_context, component, None).map_err(|reason| {
+        let (value, extra_assumptions) = lower_symbolic_value(env, entry_context, component, None)
+            .map_err(|reason| {
                 TypeError::new(
                     format!(
                         "Function '{}' decreases clause component {} could not be lowered: {}",
@@ -4370,7 +4633,10 @@ fn prove_measure_well_founded(
         entry_extras.extend(extras);
     }
 
-    let walker_context = entry_context.with_assumptions_replacing_state(entry_extras);
+    let walker_context = entry_context
+        .with_assumptions_replacing_state(entry_extras)
+        .with_assumptions(list_param_nonneg.iter().cloned())
+        .with_assumptions(int_param_id_nonneg.iter().cloned());
 
     walk_for_decreases(
         env,
@@ -4667,7 +4933,9 @@ fn walk_for_decreases(
                 child_depth,
             )?;
             let body_context = if let sigil_ast::Pattern::Identifier(id) = &l.pattern {
-                if let Ok((value, extras)) = lower_symbolic_value(env, proof_context, &l.value, None) {
+                if let Ok((value, extras)) =
+                    lower_symbolic_value(env, proof_context, &l.value, None)
+                {
                     proof_context
                         .clone()
                         .with_assumptions_replacing_state(extras)
@@ -4683,14 +4951,11 @@ fn walk_for_decreases(
                     } else {
                         None
                     };
-                    let value_t = from_ascription
-                        .or_else(|| synthesize(env, &l.value).ok());
+                    let value_t = from_ascription.or_else(|| synthesize(env, &l.value).ok());
                     if let Some(value_t) = value_t {
-                        if let Ok(sv) = symbolic_value_for_type_path(
-                            env,
-                            &value_t,
-                            &SymbolPath::root(&id.name),
-                        ) {
+                        if let Ok(sv) =
+                            symbolic_value_for_type_path(env, &value_t, &SymbolPath::root(&id.name))
+                        {
                             proof_context
                                 .clone()
                                 .with_symbolic_bindings([(id.name.clone(), sv)])
@@ -4772,17 +5037,13 @@ fn walk_for_decreases(
                 child_depth,
             )?;
             if let Some(else_branch) = &i.else_branch {
-                let else_context = match lower_symbolic_formula(
-                    env,
-                    proof_context,
-                    &i.condition,
-                    None,
-                ) {
-                    Ok((formula, assumptions)) => proof_context
-                        .with_assumptions_replacing_state(assumptions)
-                        .with_assumption(Formula::Not(Box::new(formula))),
-                    Err(_) => proof_context.clone(),
-                };
+                let else_context =
+                    match lower_symbolic_formula(env, proof_context, &i.condition, None) {
+                        Ok((formula, assumptions)) => proof_context
+                            .with_assumptions_replacing_state(assumptions)
+                            .with_assumption(Formula::Not(Box::new(formula))),
+                        Err(_) => proof_context.clone(),
+                    };
                 walk_for_decreases(
                     env,
                     &else_context,
@@ -5080,9 +5341,17 @@ fn build_lex_decrease_formula(next: &[LinearExpr], entry: &[LinearExpr]) -> Form
     for (i, (next_i, entry_i)) in next.iter().zip(entry.iter()).enumerate() {
         let mut clause_parts: Vec<Formula> = Vec::with_capacity(i + 1);
         for j in 0..i {
-            clause_parts.push(linear_compare(next[j].clone(), ComparisonOp::Eq, entry[j].clone()));
+            clause_parts.push(linear_compare(
+                next[j].clone(),
+                ComparisonOp::Eq,
+                entry[j].clone(),
+            ));
         }
-        clause_parts.push(linear_compare(next_i.clone(), ComparisonOp::Lt, entry_i.clone()));
+        clause_parts.push(linear_compare(
+            next_i.clone(),
+            ComparisonOp::Lt,
+            entry_i.clone(),
+        ));
         clauses.push(formula_and(clause_parts));
     }
     formula_or(clauses)
@@ -5154,19 +5423,70 @@ fn lookup_contract_for_call(env: &TypeEnvironment, func: &Expr) -> Option<Functi
     }
 }
 
+fn lookup_binding_meta_for_call(env: &TypeEnvironment, func: &Expr) -> Option<BindingMeta> {
+    match func {
+        Expr::Identifier(identifier) => env.lookup_meta(&identifier.name),
+        Expr::MemberAccess(member) => {
+            env.lookup_qualified_value_meta(&member.namespace, &member.member)
+        }
+        _ => None,
+    }
+}
+
+fn call_target_name(func: &Expr) -> Option<String> {
+    match func {
+        Expr::Identifier(identifier) => Some(identifier.name.clone()),
+        Expr::MemberAccess(member) => {
+            Some(format!("{}.{}", member.namespace.join("::"), member.member))
+        }
+        _ => None,
+    }
+}
+
+fn enforce_call_mode(
+    env: &TypeEnvironment,
+    func: &Expr,
+    location: sigil_lexer::SourceLocation,
+) -> Result<(), TypeError> {
+    if env.current_function_mode() != FunctionMode::Total {
+        return Ok(());
+    }
+
+    let Some(meta) = lookup_binding_meta_for_call(env, func) else {
+        return Ok(());
+    };
+
+    if meta.function_mode != Some(FunctionMode::Ordinary) {
+        return Ok(());
+    }
+
+    let target = call_target_name(func).unwrap_or_else(|| "<function>".to_string());
+    Err(TypeError::new(
+        format!("Total functions cannot call ordinary function '{}'", target),
+        Some(location),
+    )
+    .with_detail("functionMode", "total")
+    .with_detail("calleeMode", "ordinary"))
+}
+
 fn call_ensure_assumptions(
     env: &TypeEnvironment,
     proof_context: &ProofContext,
     contract: &FunctionContract,
     args: &[Expr],
-    result_value: SymbolicValue,
+    result_value: Option<SymbolicValue>,
 ) -> Result<Vec<Formula>, String> {
     let Some(ensures) = &contract.ensures else {
         return Ok(Vec::new());
     };
 
-    let call_context = contract_context_for_call(env, proof_context, contract, args, ensures)?
-        .with_symbolic_bindings([("result".to_string(), result_value)]);
+    let mut call_context = contract_context_for_call(env, proof_context, contract, args, ensures)?;
+    if expr_mentions_param(ensures, "result") {
+        let Some(result_value) = result_value else {
+            return Ok(Vec::new());
+        };
+        call_context = call_context.with_symbolic_bindings([("result".to_string(), result_value)]);
+    }
     let (formula, assumptions) = lower_symbolic_formula(env, &call_context, ensures, None)?;
     let mut combined = assumptions;
     combined.push(formula);
@@ -5226,11 +5546,8 @@ fn call_result_proof_context(
         return Ok(proof_context.clone());
     };
 
-    let Ok(result_symbolic) =
-        symbolic_value_for_type_path(env, result_type, &SymbolPath::root("$call_result"))
-    else {
-        return Ok(proof_context.clone());
-    };
+    let result_symbolic =
+        symbolic_value_for_type_path(env, result_type, &SymbolPath::root("$call_result")).ok();
 
     let assumptions = call_ensure_assumptions(env, proof_context, contract, args, result_symbolic)
         .map_err(|reason| {
@@ -5249,6 +5566,7 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
     let type_param_env = make_type_param_env(&func_decl.type_params);
     // Create environment with parameter bindings
     let mut func_env = env.extend(None);
+    func_env.set_current_function_mode(func_decl.mode);
 
     for param in &func_decl.params {
         let param_type = param
@@ -5273,7 +5591,11 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
     }
 
     let measure_components = if let Some(decreases) = &func_decl.decreases {
-        Some(validate_decreases_clause(&func_env, &func_decl.name, decreases)?)
+        Some(validate_decreases_clause(
+            &func_env,
+            &func_decl.name,
+            decreases,
+        )?)
     } else {
         None
     };
@@ -5384,12 +5706,7 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
     // already requires `decreases` on every self-recursive function; this
     // pass proves the measure works.
     if let Some(measure_components) = measure_components {
-        prove_measure_well_founded(
-            &func_env,
-            func_decl,
-            &measure_components,
-            &body_context,
-        )?;
+        prove_measure_well_founded(&func_env, func_decl, &measure_components, &body_context)?;
     }
 
     Ok(())
@@ -5398,6 +5715,7 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
 fn check_transform_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Result<(), TypeError> {
     let type_param_env = make_type_param_env(&func_decl.type_params);
     let mut func_env = env.extend(None);
+    func_env.set_current_function_mode(func_decl.mode);
 
     for param in &func_decl.params {
         let param_type = param
@@ -5422,7 +5740,11 @@ fn check_transform_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resu
     }
 
     let measure_components = if let Some(decreases) = &func_decl.decreases {
-        Some(validate_decreases_clause(&func_env, &func_decl.name, decreases)?)
+        Some(validate_decreases_clause(
+            &func_env,
+            &func_decl.name,
+            decreases,
+        )?)
     } else {
         None
     };
@@ -5434,7 +5756,34 @@ fn check_transform_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resu
         validate_contract_clause(&ensures_env, &func_decl.name, "ensures", ensures)?;
     }
 
-    check(&func_env, &func_decl.body, &expected_return_type)?;
+    let param_nonneg = list_param_length_nonneg_assumptions(&func_env, &func_decl.params);
+    let body_context = if let Some(requires) = &func_decl.requires {
+        let (formula, assumptions) =
+            lower_symbolic_formula(&func_env, &ProofContext::default(), requires, None).map_err(
+                |reason| {
+                    TypeError::new(
+                        format!(
+                            "Transform '{}' requires clause could not be lowered: {}",
+                            func_decl.name, reason
+                        ),
+                        Some(expr_location(requires)),
+                    )
+                },
+            )?;
+        ProofContext::default()
+            .with_assumptions_replacing_state(assumptions)
+            .with_assumption(formula)
+            .with_assumptions(param_nonneg.clone())
+    } else {
+        ProofContext::default().with_assumptions(param_nonneg.clone())
+    };
+
+    check_with_context(
+        &func_env,
+        &body_context,
+        &func_decl.body,
+        &expected_return_type,
+    )?;
 
     let typed_body = build_typed_expr(&func_env, &func_decl.body)?;
     declared_effects_cover_actual(
@@ -5446,31 +5795,68 @@ fn check_transform_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resu
     )?;
 
     if let Some(measure_components) = measure_components {
-        let body_context = if let Some(requires) = &func_decl.requires {
-            let (formula, assumptions) =
-                lower_symbolic_formula(&func_env, &ProofContext::default(), requires, None)
-                    .map_err(|reason| {
-                        TypeError::new(
-                            format!(
-                                "Transform '{}' requires clause could not be lowered: {}",
-                                func_decl.name, reason
-                            ),
-                            Some(expr_location(requires)),
-                        )
-                    })?;
-            ProofContext::default()
-                .with_assumptions_replacing_state(assumptions)
-                .with_assumption(formula)
-        } else {
-            ProofContext::default()
-        };
-        prove_measure_well_founded(
-            &func_env,
-            func_decl,
-            &measure_components,
-            &body_context,
-        )?;
+        prove_measure_well_founded(&func_env, func_decl, &measure_components, &body_context)?;
     }
+
+    Ok(())
+}
+
+fn check_test_decl(
+    env: &TypeEnvironment,
+    test_decl: &sigil_ast::TestDecl,
+) -> Result<(), TypeError> {
+    let mut body_env = env.clone();
+
+    for binding in &test_decl.world_bindings {
+        let expected_type = match &binding.type_annotation {
+            Some(ty) => ast_type_to_inference_type_resolved(&body_env, None, ty)?,
+            None => synthesize(&body_env, &binding.value)?,
+        };
+
+        check_with_context(
+            &body_env,
+            &ProofContext::default(),
+            &binding.value,
+            &expected_type,
+        )
+        .map_err(|error| {
+            TypeError::new(
+                format!(
+                    "Test world binding '{}' type mismatch: {}",
+                    binding.name, error.message
+                ),
+                error.location.or(Some(binding.location)),
+            )
+        })?;
+
+        let typed_binding = build_typed_const_decl(&body_env, binding)?;
+        if !typed_binding.value.effects.is_empty() {
+            return Err(TypeError::new(
+                "test world bindings must be pure".to_string(),
+                Some(binding.location),
+            ));
+        }
+
+        let mut new_bindings = HashMap::new();
+        new_bindings.insert(typed_binding.name.clone(), typed_binding.typ.clone());
+        body_env = body_env.extend(Some(new_bindings));
+    }
+
+    check_with_context(
+        &body_env,
+        &ProofContext::default(),
+        &test_decl.body,
+        &bool_type(),
+    )?;
+
+    let typed_body = build_typed_expr(&body_env, &test_decl.body)?;
+    declared_effects_cover_actual(
+        &body_env,
+        &test_decl.effects,
+        &typed_body.effects,
+        test_decl.location,
+        &format!("Test '{}'", test_decl.description),
+    )?;
 
     Ok(())
 }
@@ -5631,7 +6017,8 @@ fn build_typed_function_decl(
             lambda_env_bindings.insert(param.name.clone(), body_param_type);
         }
     }
-    let function_env = env.extend(Some(lambda_env_bindings));
+    let mut function_env = env.extend(Some(lambda_env_bindings));
+    function_env.set_current_function_mode(func_decl.mode);
     let body = build_typed_expr(&function_env, &func_decl.body)?;
 
     let return_type = func_decl
@@ -6840,6 +7227,7 @@ fn synthesize_application(
     app: &sigil_ast::ApplicationExpr,
 ) -> Result<InferenceType, TypeError> {
     validate_topology_application(env, app)?;
+    enforce_call_mode(env, &app.func, app.location)?;
 
     let raw_fn_type = synthesize(env, &app.func)?;
     let fn_type = env.normalize_type(&raw_fn_type);
@@ -7716,7 +8104,7 @@ fn synthesize_using(
             "usingBody",
         ));
     }
-    let InferenceType::Owned(inner_type) = value_type else {
+    let InferenceType::Owned(ref inner_type) = value_type else {
         return Err(TypeError::new(
             "using initializer must have type Owned[T]".to_string(),
             Some(using_expr.location),
@@ -7727,7 +8115,7 @@ fn synthesize_using(
     let mut bindings = HashMap::new();
     bindings.insert(
         using_expr.name.clone(),
-        borrowed_type((*inner_type).clone(), scope_id),
+        borrowed_type(*inner_type.clone(), scope_id),
     );
     let body_env = env.extend(Some(bindings));
     let body_type = synthesize(&body_env, &using_expr.body)?;
@@ -8866,7 +9254,33 @@ fn synthesize_type_ascription(
             return Ok(ascribed_type);
         }
     }
-    check(env, &type_asc.expr, &ascribed_type)?;
+
+    let proof_sensitive_call = match &type_asc.expr {
+        Expr::Application(app) => lookup_contract_for_call(env, &app.func).is_some(),
+        _ => false,
+    };
+
+    if !proof_sensitive_call {
+        check(env, &type_asc.expr, &ascribed_type)?;
+        return Ok(ascribed_type);
+    }
+
+    let actual_type = synthesize(env, &type_asc.expr)?;
+    let (normalized_actual, normalized_expected) =
+        canonical_pair(env, &actual_type, &ascribed_type);
+    if !types_equal(&normalized_actual, &normalized_expected) {
+        return Err(TypeError::mismatch(
+            format!(
+                "Type mismatch: expected {}, got {}",
+                format_type(&normalized_expected),
+                format_type(&normalized_actual)
+            ),
+            Some(type_asc.location),
+            normalized_expected,
+            normalized_actual,
+        ));
+    }
+
     Ok(ascribed_type)
 }
 
@@ -9032,6 +9446,7 @@ fn check_application(
     expected_type: &InferenceType,
 ) -> Result<(), TypeError> {
     let call_contract = lookup_contract_for_call(env, &app.func);
+    enforce_call_mode(env, &app.func, app.location)?;
     let raw_fn_type = synthesize(env, &app.func)?;
     let fn_type = env.normalize_type(&raw_fn_type);
 
@@ -9261,6 +9676,24 @@ fn check_using(
     expected_type: &InferenceType,
 ) -> Result<(), TypeError> {
     let value_type = synthesize(env, &using_expr.value)?;
+
+    let value_app = match &using_expr.value {
+        Expr::Application(app) => Some(app.as_ref()),
+        Expr::TypeAscription(type_asc) => {
+            if let Expr::Application(app) = &type_asc.expr {
+                Some(app.as_ref())
+            } else {
+                None
+            }
+        }
+        _ => None,
+    };
+    if let Some(app) = value_app {
+        if let Some(contract) = lookup_contract_for_call(env, &app.func) {
+            enforce_call_requires(env, proof_context, &contract, &app.args, app.location)?;
+        }
+    }
+
     if let Some(terminator) = terminating_expr_info(env, &using_expr.value)? {
         return Err(unreachable_code_error(
             &using_expr.body,
@@ -9268,7 +9701,7 @@ fn check_using(
             "usingBody",
         ));
     }
-    let InferenceType::Owned(inner_type) = value_type else {
+    let InferenceType::Owned(ref inner_type) = value_type else {
         return Err(TypeError::new(
             "using initializer must have type Owned[T]".to_string(),
             Some(using_expr.location),
@@ -9279,10 +9712,16 @@ fn check_using(
     let mut bindings = HashMap::new();
     bindings.insert(
         using_expr.name.clone(),
-        borrowed_type((*inner_type).clone(), scope_id),
+        borrowed_type(*inner_type.clone(), scope_id),
     );
-    let body_context =
-        protocol_initial_state_proof_context(env, proof_context, &using_expr.name, &inner_type);
+    let value_context =
+        expression_result_proof_context(env, proof_context, &using_expr.value, &value_type)?;
+    let body_context = protocol_initial_state_proof_context(
+        env,
+        &value_context,
+        &using_expr.name,
+        inner_type.as_ref(),
+    );
     let body_env = env.extend(Some(bindings));
     check_with_context(&body_env, &body_context, &using_expr.body, expected_type)?;
 
@@ -9468,7 +9907,9 @@ fn check_map_literal(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coverage::{pattern_to_space, space_intersection, space_is_empty, total_space_for_type};
+    use crate::coverage::{
+        pattern_to_space, space_intersection, space_is_empty, total_space_for_type,
+    };
     use sigil_lexer::tokenize;
     use sigil_parser::parse;
     use std::collections::HashMap;

@@ -331,6 +331,32 @@ Contract rules:
 - contracts use the same solver-backed proof fragment as constrained types and narrowing
 - contracts do not imply automatic runtime checks
 
+## Function Modes and Termination
+
+Top-level functions are ordinary by default.
+
+`mode total` may appear once at the top of a file to make total the default for
+later function declarations, and any individual declaration may override that
+default with `total λname...` or `ordinary λname...`.
+
+Only total self-recursive functions may declare `decreases`.
+Ordinary self-recursive functions may recurse without a termination proof.
+Type checking rejects calls from total functions into declarations marked
+`ordinary`.
+
+Example:
+
+```sigil module
+total λfactorial(n:Int)=>Int
+requires n≥0
+decreases n
+match n{
+  0=>1|
+  1=>1|
+  value=>value*factorial(value-1)
+}
+```
+
 Dogfooded project usage now lives in:
 
 - `projects/todo-app/src/todoDomain.lib.sigil`

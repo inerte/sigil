@@ -1,3 +1,5 @@
+mode total
+
 λdepthFirstSearch(graph:µGraph,start:Int)=>[Int] match •graphHelpers.hasVertex(
   graph,
   start
@@ -18,7 +20,7 @@ decreases fuel
 match fuel=0{
   true=>visited|
   false=>match mode{
-    µDfsNbrsRest({remaining})=>match remaining{
+    µDfsNbrsRest(tag)=>match (tag.remaining:[Int]){
       []=>visited|
       [
   head,
@@ -37,23 +39,26 @@ match fuel=0{
         )
       )
     }|
-    µDfsVertex({v:vertex})=>match §list.contains(
-      vertex,
-      visited
-    ){
-      true=>visited|
-      false=>{
-        l nbs=(•graphHelpers.neighborsOf(
-          graph,
-          vertex
-        ):[Int]);
-        dfsFused(
-          fuel+-1,
-          graph,
-          µDfsNbrsRest({remaining:nbs}),
-          #nbs,
-          visited⧺[vertex]
-        )
+    µDfsVertex(tag)=>{
+      l vertex=(tag.v:Int);
+      match §list.contains(
+        vertex,
+        visited
+      ){
+        true=>visited|
+        false=>{
+          l nbs=(•graphHelpers.neighborsOf(
+            graph,
+            vertex
+          ):[Int]);
+          dfsFused(
+            fuel+-1,
+            graph,
+            µDfsNbrsRest({remaining:nbs}),
+            #nbs,
+            visited⧺[vertex]
+          )
+        }
       }
     }
   }

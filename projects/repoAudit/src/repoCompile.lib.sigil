@@ -1,3 +1,5 @@
+mode total
+
 λbuildRepoCompileResult(cacheHits:Int,cacheMisses:Int,compiled:Int,considered:Int,issues:[µRepoCompileIssue],startedAt:Int)=>!Clock µRepoCompileResult={
   l finishedAt=(§time.toEpochMillis(§time.now()):Int);
   {

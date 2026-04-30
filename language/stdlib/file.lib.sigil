@@ -1,3 +1,5 @@
+mode total
+
 λappendText(content:String,path:String)=>!Fs Unit=()
 
 λappendTextAt(content:String,path:String,root:§topology.FsRoot)=>!Fs Unit=()

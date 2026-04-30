@@ -1,4 +1,6 @@
-λlenTodos(todos:[µTodo])=>Int match todos{
+total λlenTodos(todos:[µTodo])=>Int
+decreases #todos
+match todos{
   []=>0|
   [
   _,

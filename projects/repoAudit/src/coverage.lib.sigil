@@ -1,4 +1,4 @@
-λcollectQualifiedRefs(source:String)=>[String] match §regex.compile(
+total λcollectQualifiedRefs(source:String)=>[String] match §regex.compile(
   "",
   "§[A-Za-z0-9]+\\.[a-z][A-Za-z0-9]*"
 ){
@@ -10,7 +10,7 @@
   Err(_)=>[]
 }
 
-λcollectQualifiedRefsLine(fuel:Int,pattern:§regex.Regex,refs:[String],source:String)=>[String]
+total λcollectQualifiedRefsLine(fuel:Int,pattern:§regex.Regex,refs:[String],source:String)=>[String]
 requires fuel≥0
 decreases fuel
 match fuel=0{
@@ -36,7 +36,7 @@ match fuel=0{
   }
 }
 
-λcollectQualifiedRefsLines(lines:[String],pattern:§regex.Regex,refs:[String])=>[String]
+total λcollectQualifiedRefsLines(lines:[String],pattern:§regex.Regex,refs:[String])=>[String]
 decreases #lines
 match lines{
   []=>refs|
@@ -55,18 +55,18 @@ match lines{
   )
 }
 
-λcollectStdlibExports(filePath:String,parseJson:String)=>[String]=qualifyExports(
+total λcollectStdlibExports(filePath:String,parseJson:String)=>[String]=qualifyExports(
   functionNamesFromParseJson(parseJson),
   modulePathFromStdlibFile(filePath)
 )
 
-λdocumentedRefsForSnippet(modulePath:String,source:String)=>[String]=documentedRefsForSnippetLines(
+total λdocumentedRefsForSnippet(modulePath:String,source:String)=>[String]=documentedRefsForSnippetLines(
   §string.lines(source),
   modulePath,
   []
 )
 
-λdocumentedRefsForSnippetLines(lines:[String],modulePath:String,refs:[String])=>[String]
+total λdocumentedRefsForSnippetLines(lines:[String],modulePath:String,refs:[String])=>[String]
 decreases #lines
 match lines{
   []=>refs|
@@ -92,7 +92,7 @@ match lines{
   }
 }
 
-λdropUntilBoundary(acc:String,fuel:Int,text:String)=>String
+total λdropUntilBoundary(acc:String,fuel:Int,text:String)=>String
 requires fuel≥0
 decreases fuel
 match #text=0 or fuel=0{
@@ -116,7 +116,7 @@ match #text=0 or fuel=0{
   }
 }
 
-λextractFunctionName(line:String)=>Option[String] match §string.startsWith(
+total λextractFunctionName(line:String)=>Option[String] match §string.startsWith(
   "λ",
   line
 ){
@@ -131,7 +131,7 @@ match #text=0 or fuel=0{
   false=>None()
 }
 
-λextractFunctionNameInner(acc:String,fuel:Int,text:String)=>String
+total λextractFunctionNameInner(acc:String,fuel:Int,text:String)=>String
 requires fuel≥0
 decreases fuel
 match #text=0 or fuel=0{
@@ -155,7 +155,7 @@ match #text=0 or fuel=0{
   }
 }
 
-λfunctionNamesFromDeclMatches(fuel:Int,names:[String],pattern:§regex.Regex,source:String)=>[String]
+total λfunctionNamesFromDeclMatches(fuel:Int,names:[String],pattern:§regex.Regex,source:String)=>[String]
 requires fuel≥0
 decreases fuel
 match fuel=0{
@@ -191,7 +191,7 @@ match fuel=0{
   }
 }
 
-λfunctionNamesFromParseJson(parseJson:String)=>[String] match §regex.compile(
+total λfunctionNamesFromParseJson(parseJson:String)=>[String] match §regex.compile(
   "",
   "\"type\":\"FunctionDecl\",\"name\":\"([A-Za-z_][A-Za-z0-9_]*)\""
 ){
@@ -204,7 +204,7 @@ match fuel=0{
   Err(_)=>[]
 }
 
-λfunctionNamesFromTokens(expectName:Bool,fuel:Int,names:[String],pattern:§regex.Regex,source:String)=>[String]
+total λfunctionNamesFromTokens(expectName:Bool,fuel:Int,names:[String],pattern:§regex.Regex,source:String)=>[String]
 requires fuel≥0
 decreases fuel
 match fuel=0{
@@ -251,7 +251,7 @@ match fuel=0{
   }
 }
 
-λinsertUnique(item:String,items:[String])=>[String] match §list.contains(
+total λinsertUnique(item:String,items:[String])=>[String] match §list.contains(
   item,
   items
 ){
@@ -259,7 +259,7 @@ match fuel=0{
   false=>items⧺[item]
 }
 
-λisDocRefIgnoredLine(trimmed:String)=>Bool=§string.startsWith(
+total λisDocRefIgnoredLine(trimmed:String)=>Bool=§string.startsWith(
   "//",
   trimmed
 )
@@ -272,7 +272,7 @@ match fuel=0{
     trimmed
   )
 
-λisIdentifierChar(ch:String)=>Bool match §regex.compile(
+total λisIdentifierChar(ch:String)=>Bool match §regex.compile(
   "",
   "^[A-Za-z0-9_]$"
 ){
@@ -283,7 +283,7 @@ match fuel=0{
   Err(_)=>false
 }
 
-λmergeUnique(left:[String],right:[String])=>[String]
+total λmergeUnique(left:[String],right:[String])=>[String]
 decreases #right
 match right{
   []=>left|
@@ -299,7 +299,7 @@ match right{
   )
 }
 
-λmoduleNameFromStdlibFile(filePath:String)=>String={
+total λmoduleNameFromStdlibFile(filePath:String)=>String={
   l fileName=(§path.basename(filePath):String);
   §string.substring(
     #fileName-10,
@@ -308,9 +308,9 @@ match right{
   )
 }
 
-λmodulePathFromStdlibFile(filePath:String)=>String="§"++moduleNameFromStdlibFile(filePath)
+total λmodulePathFromStdlibFile(filePath:String)=>String="§"++moduleNameFromStdlibFile(filePath)
 
-λnormalizedRefLines(lines:[String])=>[String]
+total λnormalizedRefLines(lines:[String])=>[String]
 decreases #lines
 match lines{
   []=>[]|
@@ -326,17 +326,17 @@ match lines{
   }
 }
 
-λqualifyExports(exports:[String],modulePath:String)=>[String]=exports map (λ(name:String)=>String=modulePath
+total λqualifyExports(exports:[String],modulePath:String)=>[String]=exports map (λ(name:String)=>String=modulePath
   ++"."
   ++name)
 
-λstripInlineComments(source:String)=>String=stripInlineCommentsInner(
+total λstripInlineComments(source:String)=>String=stripInlineCommentsInner(
   #source,
   false,
   source
 )
 
-λstripInlineCommentsInner(fuel:Int,inComment:Bool,source:String)=>String
+total λstripInlineCommentsInner(fuel:Int,inComment:Bool,source:String)=>String
 requires fuel≥0
 decreases fuel
 match #source=0 or fuel=0{
@@ -386,7 +386,7 @@ match #source=0 or fuel=0{
   }
 }
 
-λtokenName(token:String)=>String=dropUntilBoundary(
+total λtokenName(token:String)=>String=dropUntilBoundary(
   "",
   #token,
   §string.drop(

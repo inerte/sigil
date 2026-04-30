@@ -1,3 +1,5 @@
+mode total
+
 λbfsLoop(fuel:Int,graph:µGraph,queue:[Int],visited:[Int])=>[Int]
 requires 0≤fuel
 decreases fuel

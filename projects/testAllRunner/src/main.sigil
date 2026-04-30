@@ -177,20 +177,6 @@ mode total
   label:"multimodule integration"
 }
 
-λpackageInstallCommand(projectRoot:String,root:String)=>§process.Command=sigilCommandIn(
-  [
-    "package",
-    "install"
-  ],
-  projectRoot,
-  root
-)
-
-λpackageInstallCommands(root:String)=>[§process.Command]=[packageInstallCommand(
-  featureFlagStorefrontRoot(root),
-  root
-)]
-
 λparallelSuites(root:String)=>[µParallelSuite]=[
   algorithmsSuite(root),
   canonicalIntegrationSuite(root),
@@ -458,10 +444,6 @@ match all{
       root
     )],
     label:"compiler tests"
-  }),
-  µSerial({
-    commands:packageInstallCommands(root),
-    label:"package installs"
   }),
   µSerial({
     commands:[

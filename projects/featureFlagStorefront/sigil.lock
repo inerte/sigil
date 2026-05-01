@@ -9,7 +9,7 @@
       "sigilVersion": "2026-04-12T14-00-00Z",
       "npmPackage": "feature-flag-storefront-flags",
       "npmVersion": "20260412.140000.0",
-      "integrity": "sha256:8488173a58fea413125e4f8bda88545ae3d09a85bb790268ed17812bf9c3d988"
+      "integrity": "sha256:1f1437095b1732126fed133131a56437ed0b55fd79e5a3cb462f3276c13e7e7d"
     }
   }
 }

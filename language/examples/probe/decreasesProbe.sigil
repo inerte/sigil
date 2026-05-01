@@ -1,0 +1,13 @@
+total λcountdown(n:Int)=>Int
+requires n≥0
+decreases n
+match n{
+  0=>0|
+  value=>countdown(value-1)
+}
+
+λmain()=>Unit=()
+
+test "countdown terminates" {
+  countdown(3)=0
+}

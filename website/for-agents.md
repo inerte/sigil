@@ -7,12 +7,8 @@ title: Why Sigil for Coding Agents
 Most programming languages were designed for human authors. Sigil was designed
 for the entity that is now writing most of the world's code.
 
-This is not a claim about AI being special. It is a claim about the mismatch
-between how existing languages were designed and how language models actually
-generate code. LLMs do not read a codebase and reason holistically. They predict
-the next token given the preceding context, and they do so probabilistically.
-That means ambiguity — multiple valid forms for the same construct — multiplies
-uncertainty at every step.
+LLMs predict tokens, not semantics. Ambiguity — multiple valid forms for the
+same construct — compounds that uncertainty at every step.
 
 Sigil's answer has two parts. The **canonical constraint hypothesis** reduces
 the valid surface to one accepted form per construct — every valid program has

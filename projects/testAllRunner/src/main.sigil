@@ -279,14 +279,6 @@ match args{
 
 λrenderDuration(durationMs:Int)=>String=(§string.intToString(durationMs):String)++" ms"
 
-λrepoAuditRoot(root:String)=>String=§path.join(
-  §path.join(
-    root,
-    "projects"
-  ),
-  "repoAudit"
-)
-
 λrepoRoot()=>!Process Result[
   String,
   String
@@ -493,20 +485,18 @@ match all{
   }),
   µSerial({
     commands:[
-      sigilCommandIn(
+      sigilCommand(
         [
           "test",
-          "tests"
+          "projects/repoAudit/tests"
         ],
-        repoAuditRoot(root),
         root
       ),
-      sigilCommandIn(
+      sigilCommand(
         [
           "run",
-          "src/main.sigil"
+          "projects/repoAudit/src/main.sigil"
         ],
-        repoAuditRoot(root),
         root
       )
     ],

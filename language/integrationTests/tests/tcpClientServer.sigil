@@ -30,7 +30,10 @@
     "compile",
     "src/rawTcpClient.sigil"
   ])):§process.ProcessResult);
-  l _=(§file.remove(rawClientFile()):Unit);
+  l _=(match §file.exists(rawClientFile()){
+    true=>(§file.remove(rawClientFile()):Unit)|
+    false=>()
+  }:Unit);
   •support.combinedOutput(result)
 }
 

@@ -30,6 +30,8 @@ The sections below explain what this looks like in practice.
 
 - [Reading the Code](#reading-the-code) — Unicode characters and declaration keywords explained
 - [One Representation Per AST](#one-representation-per-ast) — printer-first design
+- [Match as the Only Branching Surface](#match-as-the-only-branching-surface) — no if/else
+- [No Shadowing](#no-shadowing) — one binding per name, always
 - [Explicit Effects](#explicit-effects) — effects declared, not inferred or hidden
 - [World System](#world-system) — swappable effects, not mock functions
 - [Contracts](#contracts) — requires, decreases, ensures
@@ -38,9 +40,7 @@ The sections below explain what this looks like in practice.
 - [Topology as Typed Boundaries](#topology-as-typed-boundaries) — named dependency handles
 - [Labels, Policies, and Trusted Transforms](#labels-policies-and-trusted-transforms) — boundary classification as checked program structure
 - [Named Concurrent Regions](#named-concurrent-regions) — the only concurrency surface
-- [Match as the Only Branching Surface](#match-as-the-only-branching-surface) — no if/else
 - [Canonical Names](#canonical-names) — two case rules, enforced everywhere
-- [No Shadowing](#no-shadowing) — one binding per name, always
 - [Alphabetical Ordering](#alphabetical-ordering) — parameters, fields, and effects
 - [Rooted References, No Imports](#rooted-references-no-imports) — module ownership at every call site
 - [50+ Canonical Rules](#50-canonical-rules) — the full enumerated list
@@ -143,6 +143,77 @@ correct way to write any valid Sigil program. A model that generates valid code
 generates canonical code. There is no valid variation to choose between, no
 layout decision to make, no subtle indentation difference to produce. The
 compiler confirms validity and canonicality in one pass.
+
+---
+
+## Match as the Only Branching Surface
+
+<a id="match-as-the-only-branching-surface"></a>
+
+Sigil has one branching construct: `match`. There is no `if`/`else`, no ternary
+operator, no `when`, no `cond`. Every conditional execution flows through a
+`match` expression.
+
+```sigil module
+λclassify(n:Int)=>String match n{
+  0=>"zero"|
+  value=>match value>0{
+    true=>"positive"|
+    false=>"negative"
+  }
+}
+```
+
+`match` enforces exhaustiveness. Every branch must be covered; dead branches are
+rejected. The compiler's exhaustiveness checker covers `Bool`, `Unit`, tuples,
+list shapes, exact record patterns, and nominal sum constructors. If a new
+constructor is added to a sum type, every `match` over that type that does not
+cover the new constructor becomes a compile error, not a runtime gap.
+
+For a model generating branching logic, this removes the disambiguation problem.
+Python has `if`, `elif`, `else`, ternary expressions, match-case, and short-circuit
+operators as branching surfaces. Sigil has `match`. The model generates `match`.
+
+Exhaustiveness means the model cannot forget a case. Adding a case to a sum type
+propagates into a compile error at every `match` over that type that does not
+handle the new constructor. The compiler finds all the gaps; the model fills them
+in. There is no way to ship a case analysis with a missing branch.
+
+---
+
+## No Shadowing
+
+<a id="no-shadowing"></a>
+
+Sigil rejects all shadowing with `SIGIL-CANON-NO-SHADOWING`. A name introduced
+in an outer scope may not be reused in any inner scope within the same function.
+
+This is the answer to a problem that causes subtle bugs even for expert human
+programmers: when two bindings share a name and the inner one silently hides
+the outer one, readers must track all active bindings and their precedence at
+every point in the function. For a language model, this is compounded — the
+model has already predicted the outer binding's name based on its type and
+role, and if a later branch introduces the same name for a different value, the
+model must revise its implicit mapping.
+
+Sigil requires fresh, descriptive names at every binding site. If `result` is
+already in scope, the inner binding must be named something else — `parsedResult`,
+`validatedResult`, `nextResult`. The compiler rejects ambiguity rather than
+resolving it silently.
+
+```sigil module
+λformatResult(n:Int)=>String match n{
+  0=>"zero"|
+  count=>match count>0{
+    true=>"positive "++§string.intToString(count)|
+    false=>"negative "++§string.intToString(§numeric.abs(count))
+  }
+}
+```
+
+Every name in this function refers to exactly one value. There is no question
+about which `count` or which `result` a reference resolves to, because there
+can only be one.
 
 ---
 
@@ -600,41 +671,6 @@ controls.
 
 ---
 
-## Match as the Only Branching Surface
-
-<a id="match-as-the-only-branching-surface"></a>
-
-Sigil has one branching construct: `match`. There is no `if`/`else`, no ternary
-operator, no `when`, no `cond`. Every conditional execution flows through a
-`match` expression.
-
-```sigil module
-λclassify(n:Int)=>String match n{
-  0=>"zero"|
-  value=>match value>0{
-    true=>"positive"|
-    false=>"negative"
-  }
-}
-```
-
-`match` enforces exhaustiveness. Every branch must be covered; dead branches are
-rejected. The compiler's exhaustiveness checker covers `Bool`, `Unit`, tuples,
-list shapes, exact record patterns, and nominal sum constructors. If a new
-constructor is added to a sum type, every `match` over that type that does not
-cover the new constructor becomes a compile error, not a runtime gap.
-
-For a model generating branching logic, this removes the disambiguation problem.
-Python has `if`, `elif`, `else`, ternary expressions, match-case, and short-circuit
-operators as branching surfaces. Sigil has `match`. The model generates `match`.
-
-Exhaustiveness means the model cannot forget a case. Adding a case to a sum type
-propagates into a compile error at every `match` over that type that does not
-handle the new constructor. The compiler finds all the gaps; the model fills them
-in. There is no way to ship a case analysis with a missing branch.
-
----
-
 ## Canonical Names
 
 <a id="canonical-names"></a>
@@ -681,42 +717,6 @@ with `SIGIL-CANON-FILENAME-CASE`. Only `userService.lib.sigil` is accepted.
 Filenames participate in module path resolution, so filename canonicalization
 eliminates an entire class of case-sensitivity bugs on case-insensitive
 filesystems.
-
----
-
-## No Shadowing
-
-<a id="no-shadowing"></a>
-
-Sigil rejects all shadowing with `SIGIL-CANON-NO-SHADOWING`. A name introduced
-in an outer scope may not be reused in any inner scope within the same function.
-
-This is the answer to a problem that causes subtle bugs even for expert human
-programmers: when two bindings share a name and the inner one silently hides
-the outer one, readers must track all active bindings and their precedence at
-every point in the function. For a language model, this is compounded — the
-model has already predicted the outer binding's name based on its type and
-role, and if a later branch introduces the same name for a different value, the
-model must revise its implicit mapping.
-
-Sigil requires fresh, descriptive names at every binding site. If `result` is
-already in scope, the inner binding must be named something else — `parsedResult`,
-`validatedResult`, `nextResult`. The compiler rejects ambiguity rather than
-resolving it silently.
-
-```sigil module
-λformatResult(n:Int)=>String match n{
-  0=>"zero"|
-  count=>match count>0{
-    true=>"positive "++§string.intToString(count)|
-    false=>"negative "++§string.intToString(§numeric.abs(count))
-  }
-}
-```
-
-Every name in this function refers to exactly one value. There is no question
-about which `count` or which `result` a reference resolves to, because there
-can only be one.
 
 ---
 

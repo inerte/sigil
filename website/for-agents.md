@@ -38,7 +38,6 @@ The sections below explain what this looks like in practice.
 - [Refinement Types](#refinement-types) — type-level invariants backed by a solver
 - [Topology as Typed Boundaries](#topology-as-typed-boundaries) — named dependency handles
 - [Labels, Policies, and Trusted Transforms](#labels-policies-and-trusted-transforms) — boundary classification as checked program structure
-- [Named Concurrent Regions](#named-concurrent-regions) — the only concurrency surface
 - [Canonical Names](#canonical-names) — two case rules, enforced everywhere
 - [Alphabetical Ordering](#alphabetical-ordering) — parameters, fields, and effects
 - [Rooted References, No Imports](#rooted-references-no-imports) — module ownership at every call site
@@ -46,6 +45,7 @@ The sections below explain what this looks like in practice.
 - [Semantic Review](#semantic-review) — declaration-level semantic diffs, not line diffs
 - [JSON-First CLI](#json-first-cli) — structured output by default
 - [Embedded Docs for Cold Starts](#embedded-docs-for-cold-starts) — the binary teaches the language
+- [Named Concurrent Regions](#named-concurrent-regions) — the only concurrency surface
 - [50+ Canonical Rules](#50-canonical-rules) — the full enumerated list
 
 ---
@@ -563,57 +563,6 @@ policy file carries the rules, and the compiler checks both.
 
 ---
 
-## Named Concurrent Regions
-
-<a id="named-concurrent-regions"></a>
-
-Sigil has one canonical concurrency surface: the named concurrent region.
-
-```sigil module
-λfetchAll(urls:[String])=>!Http [ConcurrentOutcome[
-  String,
-  String
-]]=concurrent batchFetch@10:{
-  jitterMs:Some({
-    max:50,
-    min:5
-  }),
-  stopOn:isSystemic,
-  windowMs:Some(1000)
-}{
-  spawnEach urls fetchItem
-}
-
-λfetchItem(url:String)=>!Http Result[
-  String,
-  String
-]=Ok(url)
-
-λisSystemic(err:String)=>Bool=err="TIMEOUT"
-```
-
-A concurrent region is named. Its width — the maximum number of concurrent
-children — is required and explicit. Its policy (jitter, stop predicate, rate
-window) is optional and, when present, uses alphabetically ordered fields.
-The body contains spawn directives, not arbitrary expressions.
-
-There is no `Promise.all`, no `asyncio.gather`, no `goroutine` pattern to
-distinguish from. There is one surface that the model generates when code needs
-to run work in parallel, and the compiler enforces its structure.
-
-The result type is always `[ConcurrentOutcome[T,E]]` — an ordered list of
-outcomes in the same order as the inputs. `Success(value)` when the child
-returned `Ok(value)`. `Failure(error)` when it returned `Err(error)`.
-`Aborted()` when the region stopped it before it started. Order is stable.
-The model can reason about the result shape without reading runtime semantics.
-
-`map` and `filter` remain pure list transforms and are not the concurrency
-surface. This separation prevents a common AI generation error: using a parallel
-map as a substitute for an explicit concurrency region, with none of the policy
-controls.
-
----
-
 ## Canonical Names
 
 <a id="canonical-names"></a>
@@ -1019,6 +968,57 @@ The embedded docs match the installed binary exactly. There is no version drift
 between the compiler the user is running and the docs the model is reading.
 If the user upgrades from one Sigil release to another, the docs upgrade with
 the binary.
+
+---
+
+## Named Concurrent Regions
+
+<a id="named-concurrent-regions"></a>
+
+Sigil has one canonical concurrency surface: the named concurrent region.
+
+```sigil module
+λfetchAll(urls:[String])=>!Http [ConcurrentOutcome[
+  String,
+  String
+]]=concurrent batchFetch@10:{
+  jitterMs:Some({
+    max:50,
+    min:5
+  }),
+  stopOn:isSystemic,
+  windowMs:Some(1000)
+}{
+  spawnEach urls fetchItem
+}
+
+λfetchItem(url:String)=>!Http Result[
+  String,
+  String
+]=Ok(url)
+
+λisSystemic(err:String)=>Bool=err="TIMEOUT"
+```
+
+A concurrent region is named. Its width — the maximum number of concurrent
+children — is required and explicit. Its policy (jitter, stop predicate, rate
+window) is optional and, when present, uses alphabetically ordered fields.
+The body contains spawn directives, not arbitrary expressions.
+
+There is no `Promise.all`, no `asyncio.gather`, no `goroutine` pattern to
+distinguish from. There is one surface that the model generates when code needs
+to run work in parallel, and the compiler enforces its structure.
+
+The result type is always `[ConcurrentOutcome[T,E]]` — an ordered list of
+outcomes in the same order as the inputs. `Success(value)` when the child
+returned `Ok(value)`. `Failure(error)` when it returned `Err(error)`.
+`Aborted()` when the region stopped it before it started. Order is stable.
+The model can reason about the result shape without reading runtime semantics.
+
+`map` and `filter` remain pure list transforms and are not the concurrency
+surface. This separation prevents a common AI generation error: using a parallel
+map as a substitute for an explicit concurrency region, with none of the policy
+controls.
 
 ---
 

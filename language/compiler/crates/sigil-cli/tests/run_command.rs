@@ -682,20 +682,29 @@ fn run_real_fswatch_smoke_succeeds_when_recursive_watch_is_available() {
         return;
     }
 
+    let root = repo_root();
     let dir = temp_dir("fswatch-smoke");
+    let watched_dir = dir.strip_prefix(&root).unwrap().join("watched");
+    let watched_dir_text = watched_dir.to_string_lossy();
     let file = write_program(
         &dir,
         "main.sigil",
-        concat!(
+        &[
             "λmain()=>!Fs!FsWatch!Stream!Timer Bool={\n",
-            "  l _=(§file.makeDirs(\"watched\"):Unit);\n",
+            "  l _=(§file.makeDirs(\"",
+            watched_dir_text.as_ref(),
+            "\"):Unit);\n",
             "  l observed={\n",
-            "    using watch=§fsWatch.watch(\"watched\"){\n",
+            "    using watch=§fsWatch.watch(\"",
+            watched_dir_text.as_ref(),
+            "\"){\n",
             "      l _=(§time.sleepMs(100):Unit);\n",
             "      l _=(§file.writeText(\n",
             "        \"ready\",\n",
             "        §path.join(\n",
-            "          \"watched\",\n",
+            "          \"",
+            watched_dir_text.as_ref(),
+            "\",\n",
             "          \"fresh.txt\"\n",
             "        )\n",
             "      ):Unit);\n",
@@ -710,11 +719,12 @@ fn run_real_fswatch_smoke_succeeds_when_recursive_watch_is_available() {
             "  };\n",
             "  observed\n",
             "}\n",
-        ),
+        ]
+        .concat(),
     );
 
     let output = Command::new(sigil_bin())
-        .current_dir(repo_root())
+        .current_dir(&root)
         .arg("run")
         .arg(&file)
         .output()

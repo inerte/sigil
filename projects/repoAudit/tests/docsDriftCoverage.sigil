@@ -778,12 +778,16 @@ test "markdown coverage helpers read sandbox files" =>!Fs world {
 
 test "path based helpers succeed on decl only markdown" =>!AuditIo {
   l root=(repoRoot():String);
-  l path=(".local/repoAuditCoverage/declOnly.md":String);
+  l path=("projects/repoAudit/.local/repoAuditCoverage/declOnly.md":String);
+  l absolutePath=(§path.join(
+    root,
+    path
+  ):String);
   l tempDir=(§path.join(
     root,
     ".local/repoAuditCoverage/tmp-decl"
   ):String);
-  l _=(§file.makeDirs(".local/repoAuditCoverage"):Unit);
+  l _=(§file.makeDirs(§path.dirname(absolutePath)):Unit);
   l _=(§file.removeTree(tempDir):Unit);
   l _=(§file.makeDirs(tempDir):Unit);
   l _=(§file.writeText(
@@ -792,7 +796,7 @@ test "path based helpers succeed on decl only markdown" =>!AuditIo {
       "λtrim(s:String)=>String",
       "```"
     ]),
-    path
+    absolutePath
   ):Unit);
   l markdownAudit=(•docsDrift.processMarkdownFile(
     false,
@@ -1079,13 +1083,27 @@ test "git list failures surface from process fixtures" =>!Process world {
   †process.rule(
     [
       "git",
+      "rev-parse",
+      "--show-toplevel"
+    ],
+    None(),
+    {
+      code:0,
+      stderr:"",
+      stdout:".
+"
+    }
+  ),
+  †process.rule(
+    [
+      "git",
       "ls-files",
       "--cached",
       "--others",
       "--exclude-standard",
       "*.md"
     ],
-    None(),
+    Some("."),
     {
       code:1,
       stderr:"md boom",
@@ -1101,7 +1119,7 @@ test "git list failures surface from process fixtures" =>!Process world {
       "--exclude-standard",
       "language/stdlib/*.lib.sigil"
     ],
-    None(),
+    Some("."),
     {
       code:1,
       stderr:"stdlib boom",
@@ -1117,7 +1135,7 @@ test "git list failures surface from process fixtures" =>!Process world {
       "--exclude-standard",
       "language/stdlib-tests/tests/*.sigil"
     ],
-    None(),
+    Some("."),
     {
       code:1,
       stderr:"tests boom",
@@ -1182,7 +1200,7 @@ test "repo style checks succeed under a controlled world" =>!AuditIo world {
       "--exclude-standard",
       "*.md"
     ],
-    None(),
+    Some("."),
     {
       code:0,
       stderr:"",
@@ -1199,7 +1217,7 @@ test "repo style checks succeed under a controlled world" =>!AuditIo world {
       "--exclude-standard",
       "language/stdlib/*.lib.sigil"
     ],
-    None(),
+    Some("."),
     {
       code:0,
       stderr:"",
@@ -1216,7 +1234,7 @@ test "repo style checks succeed under a controlled world" =>!AuditIo world {
       "--exclude-standard",
       "language/stdlib-tests/tests/*.sigil"
     ],
-    None(),
+    Some("."),
     {
       code:0,
       stderr:"",

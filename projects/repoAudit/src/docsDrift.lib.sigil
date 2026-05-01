@@ -302,41 +302,38 @@ decreases fuel
   }
 }
 
+λgitTrackedFiles(pathspec:String)=>!Process Result[
+  [String],
+  String
+] match gitTopLevel(){
+  Ok(root)=>parseTrackedFiles(§process.run(§process.withCwd(
+    §process.command([
+      "git",
+      "ls-files",
+      "--cached",
+      "--others",
+      "--exclude-standard",
+      pathspec
+    ]),
+    root
+  )))|
+  Err(message)=>Err(message)
+}
+
 λgitTrackedMarkdown()=>!Process Result[
   [String],
   String
-]=parseTrackedFiles(§process.run(§process.command([
-  "git",
-  "ls-files",
-  "--cached",
-  "--others",
-  "--exclude-standard",
-  "*.md"
-])))
+]=gitTrackedFiles("*.md")
 
 λgitTrackedStdlib()=>!Process Result[
   [String],
   String
-]=parseTrackedFiles(§process.run(§process.command([
-  "git",
-  "ls-files",
-  "--cached",
-  "--others",
-  "--exclude-standard",
-  "language/stdlib/*.lib.sigil"
-])))
+]=gitTrackedFiles("language/stdlib/*.lib.sigil")
 
 λgitTrackedStdlibTests()=>!Process Result[
   [String],
   String
-]=parseTrackedFiles(§process.run(§process.command([
-  "git",
-  "ls-files",
-  "--cached",
-  "--others",
-  "--exclude-standard",
-  "language/stdlib-tests/tests/*.sigil"
-])))
+]=gitTrackedFiles("language/stdlib-tests/tests/*.sigil")
 
 λhasTopLevelPrefix(lines:[String],prefix:String)=>Bool
 decreases #lines

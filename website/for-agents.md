@@ -152,8 +152,8 @@ compiler confirms validity and canonicality in one pass.
 
 Sigil's effect system tracks which effects every function may use, and enforces
 those declarations at compile time. The primitive effects are: `Clock`, `Fs`,
-`FsWatch`, `Http`, `Log`, `Process`, `Pty`, `Random`, `Stream`, `Tcp`,
-`Terminal`, `Timer`, and `WebSocket`.
+`FsWatch`, `Http`, `Log`, `Process`, `Pty`, `Random`, `Sql`, `Stream`, `Task`,
+`Tcp`, `Terminal`, `Timer`, and `WebSocket`.
 
 A function that does not declare an effect cannot call a function that requires
 one. The propagation is transitive: if `fetchProfile` calls `httpClient.get`,
@@ -229,7 +229,7 @@ separate mock API to learn. There is no `jest.fn()` or `sinon.stub()`. There is
 one surface — the effect system — and the world determines what it does.
 
 The test surface also exposes `※observe::http.requests`, `※observe::log.entries`,
-`※check::http.calledOnce`, `※check::http.calledWith`, and similar helpers. These
+`※check::http.calledOnce`, `※check::log.contains`, and similar helpers. These
 are not generic assertion helpers. They are observations over recorded effect
 traces that the runtime world collected during the test.
 
@@ -362,8 +362,6 @@ type with a logical predicate. The compiler enforces that predicate at every
 point where a raw value is promoted into the refined type.
 
 ```sigil module
-t Email=String
-
 t NonEmptyString=String where #value>0
 
 t PositiveInt=Int where value>0
@@ -373,13 +371,12 @@ t NonEmptyList[T]=[T] where #value>0
 
 The refinement proof fragment covers integer and boolean arithmetic, length via
 `#`, field access, comparisons, and pattern-derived facts — enough to express
-structural invariants like "non-empty", "positive", or "within a range". For
-predicates that require external logic — like whether a string matches an email
-format — the canonical pattern is boundary conversion via `§decode` helpers.
-The `Email` type above is a named wrapper: structurally a `String`, but
-domain-distinct from `RawInput` or `Url`. Passing a raw `String` where an
-`Email` is expected is a type error even without a `where` clause, because the
-type system treats named wrappers as distinct types.
+structural invariants like "non-empty", "positive", or "within a range".
+Unconstrained aliases (`t Email=String` with no `where`) normalize to their
+underlying type and do not create a type-level distinction; the `where` clause
+is what gives compile-time enforcement. For predicates that require external
+logic — like whether a string matches an email format — the canonical pattern
+is boundary conversion via `§decode` helpers.
 
 The refinement lives in the type, not in a validation function. A
 `NonEmptyString` is not a `String` that happens to be non-empty at the point
@@ -394,11 +391,11 @@ system boundary, using `§decode` helpers. Once the value crosses into the
 interior of the application as an `Email`, its invariant is a compiler-checked
 fact, not a hope.
 
-Named wrapper types add a further distinction. `t UserId=String where #value>0`
-is not the same type as `t OrderId=String where #value>0`, even though they
-carry the same underlying refinement. Passing a `UserId` where an `OrderId` is
-expected is a type error. The names preserve domain distinction; the refinements
-preserve structural invariants; the compiler enforces both.
+The refinement lives in the type, not in a validation function. A
+`NonEmptyString` is not a `String` that happens to be non-empty at the point
+where it was checked. It is a `String` that the compiler requires to be
+provably non-empty at every promotion site. Any function that accepts
+`NonEmptyString` receives a value the compiler has already verified.
 
 ---
 

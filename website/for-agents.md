@@ -36,6 +36,7 @@ decision matters for code generation specifically.
 - [Protocol State Types](#protocol-state-types) — state machines at compile time
 - [Refinement Types](#refinement-types) — type-level invariants backed by a solver
 - [Topology as Typed Boundaries](#topology-as-typed-boundaries) — named dependency handles
+- [Labels, Policies, and Trusted Transforms](#labels-policies-and-trusted-transforms) — boundary classification as checked program structure
 - [Named Concurrent Regions](#named-concurrent-regions) — the only concurrency surface
 - [Match as the Only Branching Surface](#match-as-the-only-branching-surface) — no if/else
 - [Canonical Names](#canonical-names) — two case rules, enforced everywhere
@@ -455,6 +456,99 @@ endpoint declared? `src/topology.lib.sigil`. What is it set to in production?
 world in the test file. The model never needs to invent, guess, or remember a
 URL — and it can never accidentally read one from `process.env` in the middle
 of business logic, because the compiler rejects that too.
+
+---
+
+## Labels, Policies, and Trusted Transforms
+
+<a id="labels-policies-and-trusted-transforms"></a>
+
+In most languages, data governance — "can this SSN go into the audit log?",
+"should this API token ever reach the filesystem?" — is a code review question.
+Nothing in the type system prevents a model (or a developer) from passing a
+social security number directly to a logging call. The answer lives in
+documentation, convention, and the accumulated memory of the team.
+
+Sigil makes it a compiler question instead.
+
+`where` handles value refinement — constraints on what a value is. `label`
+handles type classification — what a value means in the domain. A type can
+carry one or more labels. Those labels then govern what may happen to that
+value at named topology boundaries.
+
+```sigil module projects/labelled-boundaries/src/types.lib.sigil
+label Brazil
+
+label Credential
+
+label GovAuth
+
+label Pii
+
+label Usa
+
+t Cpf=String label [Brazil,Pii]
+
+t GovBrToken=String label [Brazil,Credential,GovAuth]
+
+t Ssn=String label [Pii,Usa]
+```
+
+`Ssn` is a string, but it is also classified as `Pii` and `Usa`. `GovBrToken`
+is classified as `Brazil`, `Credential`, and `GovAuth`. These are nominal
+classifications — they do not constrain the value's shape, they constrain what
+the program may do with it.
+
+Rules then attach those classifications to named topology boundaries, with one
+of three outcomes: `Allow()`, `Block()`, or `Through(transform)`:
+
+```sigil module projects/labelled-boundaries/src/policies.lib.sigil
+transform λgovBrCommand(token:µGovBrToken)=>§process.Command=§process.withEnv(
+  §process.command(["gov-client"]),
+  {"TOKEN"↦token}
+)
+
+transform λredactSsn(ssn:µSsn)=>String="***-**-"++(§string.substring(
+  #ssn,
+  ssn,
+  5
+):String)
+
+rule [µ.Brazil,µ.Credential,µ.GovAuth] for •topology.govBrCli=Through(•policies.govBrCommand)
+
+rule [µ.Pii,µ.Usa] for •topology.auditLog=Through(•policies.redactSsn)
+
+rule [µ.Brazil,µ.Pii] for •topology.exportsDir=Allow()
+```
+
+USA PII reaching the audit log must pass through `redactSsn` first — the
+compiler enforces this. Brazilian PII may be written to the named export
+directory. The gov.br token may only reach the gov.br process boundary, and
+only via `govBrCommand`. Passing a raw `GovBrToken` anywhere else is a
+compile error.
+
+Labels can also combine. `label Europe combines [Portugal,Spain]` means any
+rule written for `Europe` automatically covers both. A single `Block()` rule
+for `[Europe,Pii]` at a US analytics boundary blocks Portuguese and Spanish
+PII without needing separate rules per country.
+
+Topology in this context is broader than HTTP and TCP. It covers any named
+runtime boundary: filesystem roots, log sinks, process handles, external
+services. A labeled value trying to cross any of those boundaries is checked
+against the declared rules.
+
+For a coding agent, this collapses a large and normally invisible compliance
+surface into explicit, machine-readable program structure:
+
+- a value's labels declare what it is in the domain
+- `src/policies.lib.sigil` declares what may happen to it at each boundary
+- the compiler enforces the policy — no annotation, comment, or review
+  convention needed
+- unlabeled values are unaffected; the system is opt-in per type
+
+The model does not need to infer data governance from scattered comments or
+remember which fields are sensitive. The type carries the classification, the
+policy file carries the rules, and the compiler checks both.
 
 ---
 

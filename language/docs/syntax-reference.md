@@ -154,7 +154,9 @@ The built-in primitive effects are:
 - `Process`
 - `Pty`
 - `Random`
+- `Sql`
 - `Stream`
+- `Task`
 - `Tcp`
 - `Terminal`
 - `Timer`
@@ -499,6 +501,16 @@ Canonical module roots include:
 - `☴...`
 - `※...`
 - `†...`
+
+Current rooted surfaces are:
+
+- `•...` for project modules such as `•todoDomain`, `•topology`, `•policies`, and `•flags`
+- `¤...` for config modules such as `¤site` and `¤release`
+- `§...` for standard library modules
+- `¶...` for core helper modules
+- `†...` for runtime/world modules
+- `※...` for test observe/check surfaces
+- `☴...` for external packages declared in `sigil.json`
 
 Project-defined named types and project sum constructors use:
 

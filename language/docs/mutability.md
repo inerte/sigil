@@ -238,7 +238,9 @@ Current primitive effects are:
 - `Process`
 - `Pty`
 - `Random`
+- `Sql`
 - `Stream`
+- `Task`
 - `Tcp`
 - `Terminal`
 - `Timer`

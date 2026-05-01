@@ -397,6 +397,31 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Message:** "Extern members must be in alphabetical order"
 **How to fix:** Sort extern member declarations alphabetically
 
+### Additional current SIGIL-CANON-* codes
+The implementation currently exports additional canonical-form diagnostics beyond
+the individually documented sections above. If this file and the implementation
+drift, the implementation-exported catalog in
+`language/compiler/crates/sigil-diagnostics/src/codes.rs` is authoritative.
+
+Current additional codes include:
+
+- `SIGIL-CANON-DUPLICATE-IMPORT`
+- `SIGIL-CANON-SOURCE-FORM`
+- `SIGIL-CANON-DELIMITER-SPACING`
+- `SIGIL-CANON-OPERATOR-SPACING`
+- `SIGIL-CANON-MATCH-LAYOUT`
+- `SIGIL-CANON-MATCH-ARM-LAYOUT`
+- `SIGIL-CANON-REDUNDANT-PARENS`
+- `SIGIL-CANON-MATCH-BODY-BLOCK`
+- `SIGIL-CANON-RECORD-EXACTNESS`
+- `SIGIL-CANON-HELPER-DIRECT-WRAPPER`
+- `SIGIL-CANON-SINGLE-USE-PURE-BINDING`
+- `SIGIL-CANON-UNUSED-IMPORT`
+- `SIGIL-CANON-UNUSED-EXTERN`
+- `SIGIL-CANON-UNUSED-BINDING`
+- `SIGIL-CANON-UNUSED-DECLARATION`
+- `SIGIL-CANON-FEATURE-FLAG-DECL`
+
 ## Type Checker Errors (SIGIL-TYPE-*)
 
 ### SIGIL-TYPE-ERROR

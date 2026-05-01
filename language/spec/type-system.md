@@ -394,7 +394,9 @@ Sigil ships with primitive effects:
 - `Process`
 - `Pty`
 - `Random`
+- `Sql`
 - `Stream`
+- `Task`
 - `Tcp`
 - `Terminal`
 - `Timer`

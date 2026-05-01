@@ -35,7 +35,6 @@ The sections below explain what this looks like in practice.
 - [Explicit Effects](#explicit-effects) — effects declared, not inferred or hidden
 - [World System](#world-system) — swappable effects, not mock functions
 - [Contracts](#contracts) — requires, decreases, ensures
-- [Protocol State Types](#protocol-state-types) — state machines at compile time
 - [Refinement Types](#refinement-types) — type-level invariants backed by a solver
 - [Topology as Typed Boundaries](#topology-as-typed-boundaries) — named dependency handles
 - [Labels, Policies, and Trusted Transforms](#labels-policies-and-trusted-transforms) — boundary classification as checked program structure
@@ -43,6 +42,7 @@ The sections below explain what this looks like in practice.
 - [Canonical Names](#canonical-names) — two case rules, enforced everywhere
 - [Alphabetical Ordering](#alphabetical-ordering) — parameters, fields, and effects
 - [Rooted References, No Imports](#rooted-references-no-imports) — module ownership at every call site
+- [Protocol State Types](#protocol-state-types) — state machines at compile time
 - [Semantic Review](#semantic-review) — declaration-level semantic diffs, not line diffs
 - [JSON-First CLI](#json-first-cli) — structured output by default
 - [Embedded Docs for Cold Starts](#embedded-docs-for-cold-starts) — the binary teaches the language
@@ -364,63 +364,6 @@ generating a function that divides two numbers can express `requires divisor≠0
 and have the compiler enforce it at every call site. A model generating a
 recursive function can express its termination measure and have the compiler
 verify it. These are not documentation strings. They are checked claims.
-
----
-
-## Protocol State Types
-
-<a id="protocol-state-types"></a>
-
-Handles in real programs follow state machines. A database transaction may only
-receive inserts, updates, and deletes while it is open; `commit` and `rollback`
-close it; calling any mutation after close is an error. A WebSocket connection
-follows a similar pattern. A PTY session follows another.
-
-In most languages, these state machines live in documentation. Sigil encodes
-them in the type system.
-
-```sigil module
-t Connection={id:String}
-
-protocol Connection
-  Closed → Open via open
-  Open → Closed via close
-  Open → Open via send
-  initial = Closed
-  terminal = Closed
-
-λclose(connection:Connection)=>Bool
-requires connection.state=Open
-ensures connection.state=Closed
-=true
-
-λopen(connection:Connection)=>Bool
-requires connection.state=Closed
-ensures connection.state=Open
-=true
-
-λsend(connection:Connection,data:String)=>Bool
-requires connection.state=Open
-ensures connection.state=Open
-=true
-```
-
-The `protocol` declaration names the state machine and its transitions. Functions
-listed in `via` carry matching `requires`/`ensures` state annotations — those are
-the same contract clauses that exist for value contracts, extended to state.
-
-The solver tracks state through the proof context. After `open(conn)`, the proof
-context contains `conn.state = Open`. A subsequent call to `send` that requires
-`Open` succeeds. After `close(conn)`, the proof context contains
-`conn.state = Closed`. Any subsequent call to `send` — which requires `Open` —
-produces a compile error with a counterexample from the solver.
-
-Double-close, use-after-close, and wrong-order operations are all type errors.
-The programmer does not need to remember protocol state; the compiler tracks it.
-For a language model, this is especially powerful: the model generates calls in
-a sequence, and the compiler tells it which calls are valid given the current
-protocol state. There is no runtime consequence of getting it wrong — the
-program does not compile.
 
 ---
 
@@ -806,6 +749,63 @@ not user-configurable aliases. `§` always means the standard library. `•` alw
 means project configuration. `☴` always means external packages. `†` always
 means the runtime world. A model that learns these four sigils understands the
 full module resolution story for Sigil.
+
+---
+
+## Protocol State Types
+
+<a id="protocol-state-types"></a>
+
+Handles in real programs follow state machines. A database transaction may only
+receive inserts, updates, and deletes while it is open; `commit` and `rollback`
+close it; calling any mutation after close is an error. A WebSocket connection
+follows a similar pattern. A PTY session follows another.
+
+In most languages, these state machines live in documentation. Sigil encodes
+them in the type system.
+
+```sigil module
+t Connection={id:String}
+
+protocol Connection
+  Closed → Open via open
+  Open → Closed via close
+  Open → Open via send
+  initial = Closed
+  terminal = Closed
+
+λclose(connection:Connection)=>Bool
+requires connection.state=Open
+ensures connection.state=Closed
+=true
+
+λopen(connection:Connection)=>Bool
+requires connection.state=Closed
+ensures connection.state=Open
+=true
+
+λsend(connection:Connection,data:String)=>Bool
+requires connection.state=Open
+ensures connection.state=Open
+=true
+```
+
+The `protocol` declaration names the state machine and its transitions. Functions
+listed in `via` carry matching `requires`/`ensures` state annotations — those are
+the same contract clauses that exist for value contracts, extended to state.
+
+The solver tracks state through the proof context. After `open(conn)`, the proof
+context contains `conn.state = Open`. A subsequent call to `send` that requires
+`Open` succeeds. After `close(conn)`, the proof context contains
+`conn.state = Closed`. Any subsequent call to `send` — which requires `Open` —
+produces a compile error with a counterexample from the solver.
+
+Double-close, use-after-close, and wrong-order operations are all type errors.
+The programmer does not need to remember protocol state; the compiler tracks it.
+For a language model, this is especially powerful: the model generates calls in
+a sequence, and the compiler tells it which calls are valid given the current
+protocol state. There is no runtime consequence of getting it wrong — the
+program does not compile.
 
 ---
 

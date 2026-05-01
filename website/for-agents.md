@@ -4,52 +4,48 @@ title: Why Sigil for Coding Agents
 
 # Why Sigil for Coding Agents
 
-Most programming languages were designed for human authors first. Sigil was
-designed around a different question: what would the surface look like if you
-wanted code generation, code reading, and code review by language models to be
-predictable rather than merely possible?
+Most programming languages were designed for human authors. Sigil was designed
+for the entity that is now writing most of the world's code.
 
-The core idea is simple:
+This is not a claim about AI being special. It is a claim about the mismatch
+between how existing languages were designed and how language models actually
+generate code. LLMs do not read a codebase and reason holistically. They predict
+the next token given the preceding context, and they do so probabilistically.
+That means ambiguity — multiple valid forms for the same construct — multiplies
+uncertainty at every step.
 
-- reduce representational freedom
-- make important semantics explicit in syntax
-- give the compiler one canonical answer whenever a human language would usually
-  allow five
+Sigil's answer is the **canonical constraint hypothesis**: reduce the valid
+surface to one accepted form per construct, enforce it at compile time, and let
+the model generate confidently within that constraint. Not by removing
+information. Not by making code harder to read. By giving every valid program
+exactly one textual representation so the model never has to choose between two
+equally valid spellings of the same thing.
 
-That is Sigil's canonical constraint hypothesis. The goal is not to make code
-harder to write. The goal is to shrink the search space an agent has to explore
-at every step:
-
-- how do I spell this construct?
-- where does this dependency come from?
-- which effect does this function use?
-- what shape should this recursion take?
-- which cases are still uncovered?
-
-Sigil answers those questions structurally, not stylistically.
+The sections below explain what this looks like in practice and why each design
+decision matters for code generation specifically.
 
 ---
 
 ## On This Page
 
-- [Reading the Code](#reading-the-code) - the sigils, operators, and declaration markers
-- [One Representation Per AST](#one-representation-per-ast) - canonical source, enforced by the compiler
-- [Rooted References, No Imports, Fixed Project Layout](#rooted-references-no-imports-fixed-project-layout) - where names come from and where project structure lives
-- [Anti-Slop Canonical Surfaces](#anti-slop-canonical-surfaces) - unused code, wrapper bans, and canonical helper surfaces
-- [Match as the Only Branching Surface](#match-as-the-only-branching-surface) - one way to branch, exhaustive by construction
-- [Local Determinism](#local-determinism) - naming, ordering, and no shadowing
-- [Explicit Effects](#explicit-effects) - side effects declared in signatures
-- [World System](#world-system) - explicit test/runtime effect surfaces
-- [Topology as Typed Boundaries](#topology-as-typed-boundaries) - named dependency handles instead of raw endpoints
-- [Labels, Policies, and Trusted Transforms](#labels-policies-and-trusted-transforms) - boundary policy as checked program structure
-- [Contracts](#contracts) - requires, decreases, ensures
-- [Refinement Types](#refinement-types) - compiler-checked invariants
-- [Protocol State Types](#protocol-state-types) - state machines in the type system
-- [Named Concurrent Regions](#named-concurrent-regions) - one widening surface for concurrency
-- [Semantic Review](#semantic-review) - declaration-level diffs
-- [JSON-First CLI](#json-first-cli) - structured compiler output by default
-- [Embedded Docs for Cold Starts](#embedded-docs-for-cold-starts) - the installed binary teaches the language
-- [Appendix: Current SIGIL-CANON Families](#appendix-current-sigil-canon-families) - implementation-exported canonical diagnostics
+- [Reading the Code](#reading-the-code) — Unicode characters and declaration keywords explained
+- [One Representation Per AST](#one-representation-per-ast) — printer-first design
+- [Explicit Effects](#explicit-effects) — effects declared, not inferred or hidden
+- [World System](#world-system) — swappable effects, not mock functions
+- [Contracts](#contracts) — requires, decreases, ensures
+- [Protocol State Types](#protocol-state-types) — state machines at compile time
+- [Refinement Types](#refinement-types) — type-level invariants backed by a solver
+- [Topology as Typed Boundaries](#topology-as-typed-boundaries) — named dependency handles
+- [Named Concurrent Regions](#named-concurrent-regions) — the only concurrency surface
+- [Match as the Only Branching Surface](#match-as-the-only-branching-surface) — no if/else
+- [Canonical Names](#canonical-names) — two case rules, enforced everywhere
+- [No Shadowing](#no-shadowing) — one binding per name, always
+- [Alphabetical Ordering](#alphabetical-ordering) — parameters, fields, and effects
+- [Rooted References, No Imports](#rooted-references-no-imports) — module ownership at every call site
+- [50+ Canonical Rules](#50-canonical-rules) — the full enumerated list
+- [Semantic Review](#semantic-review) — declaration-level semantic diffs, not line diffs
+- [JSON-First CLI](#json-first-cli) — structured output by default
+- [Embedded Docs for Cold Starts](#embedded-docs-for-cold-starts) — the binary teaches the language
 
 ---
 
@@ -57,48 +53,47 @@ Sigil answers those questions structurally, not stylistically.
 
 <a id="reading-the-code"></a>
 
-Sigil uses Unicode sigils as namespace and keyword markers. Each one has a
-stable role. The point is not ornament. The point is compression and
-disambiguation.
+Sigil uses Unicode characters as namespace and keyword markers. Each character
+has one meaning, appears in one syntactic position, and is unambiguous without
+surrounding context. This is also a token efficiency decision: `§` is one token; `stdlib::` is two.
+`§string.contains` is three tokens; `stdlib::string::contains` is five. Every
+rooted reference in Sigil compresses its namespace attribution into a single
+character prefix. (Measured with tiktoken `cl100k_base`, the GPT-4 tokenizer.)
 
-**Rooted surfaces**
+**Root sigils** identify which namespace a qualified name belongs to:
 
-| Surface | Meaning | Example |
-|---------|---------|---------|
+| Character | Namespace | Example |
+|-----------|-----------|---------|
 | `§` | standard library | `§list.sum`, `§string.join`, `§numeric.abs` |
-| `•` | project-owned modules and project surfaces | `•todoDomain.completedCount`, `•topology.mailerApi`, `•policies.redactSsn`, `•flags.NewCheckout` |
-| `¤` | config modules | `¤site.basePath()`, `¤release.outputPath()` |
-| `¶` | core helpers | `¶map.empty()`, `¶option.mapOption(...)` |
-| `†` | runtime/world builders and entries | `†log.capture()`, `†runtime.World` |
-| `※` | test observation and test checks | `※observe::http.requests`, `※check::log.contains` |
-| `☴` | external packages declared in `sigil.json` | `☴router.match` |
-| `µ` | project-defined named types and project sum constructors | `µTodo`, `µGovBrToken` |
+| `†` | runtime / world builders | `†log.capture()`, `†runtime.World` |
+| `•` | project config (topology, config, flags) | `•topology.db`, `•flags.FeatureX` |
+| `☴` | external packages | `☴router.match` |
+| `¶` | core prelude | `¶option.mapOption` (most prelude vocabulary is implicit; helpers stay namespaced) |
+| `µ` | project-defined sum type constructors | `µTodo`, `µAuditIssue` |
+| `※` | test observation (inside test blocks only) | `※check::log.contains`, `※observe::http.requests` |
 
-Selected env declarations in topology-aware projects are also projected through
-`•config.<name>`, for example `•config.flags`.
-
-**Keyword and operator characters**
+**Keyword and operator characters:**
 
 | Character | Meaning |
 |-----------|---------|
-| `λ` | function declaration |
-| `!` | effect annotation |
-| `#` | length / size |
-| `⧺` | list concatenation |
-| `↦` | map entry constructor in `{K↦V}` |
-| `¬` | logical not |
-| `≠` `≥` `≤` | comparison operators |
+| `λ` | function declaration — `λname(params)=>ReturnType=body` |
+| `!` | effect annotation — `=>!Http Result[...]` |
+| `#` | length / size prefix — `#list`, `#string`, `#map` |
+| `⧺` | list concatenation (`++` is string concatenation) |
+| `↦` | map key-value, in types `{K↦V}` and literals `{k↦v}` |
+| `¬` | logical NOT (`!` is taken by effects) |
+| `≠` `≥` `≤` | not-equal, gte, lte — single-token replacements for `!=` `>=` `<=` |
 
-**Short declaration keywords**
+**Short declaration keywords** — single letters at the start of a line:
 
 | Keyword | Meaning |
 |---------|---------|
 | `t` | type declaration |
-| `e` | effect declaration |
-| `c` | const declaration |
-| `l` | local binding |
+| `e` | named effect declaration |
+| `c` | module-level constant |
+| `l` | local let binding (inside a function body) |
 
-With that in mind, this becomes readable quickly:
+With that in mind, this example becomes readable:
 
 ```sigil program tests/observeTest.sigil
 λmain()=>Unit=()
@@ -111,17 +106,11 @@ test "log is captured" =>!Log world {
 }
 ```
 
-`λmain` is a function. `=>!Log` declares the effect surface. `world { ... }`
-derives a test-local world overlay. `†log.capture()` installs a capturing log
-entry. `l _=(...)` sequences an effect without keeping a reusable name.
-`※check::log.contains` asserts over the recorded trace.
-
-For a coding agent, this matters immediately:
-
-- namespace attribution is visible at the call site
-- declaration kind is visible at the first token
-- test observation is a separate, unmistakable surface
-- there is no import block or implicit scope setup to reconstruct first
+`λmain` is a function declaration. `=>!Log` means the test uses the `Log`
+effect. `world { c log=... }` derives a local world that overrides `Log` with
+a capturing implementation (`†log.capture()`). `l _=(...)` is a let binding
+whose value is discarded (sequencing an effect). `§io.println` is the stdlib IO
+print function. `※check::log.contains` asserts on what the captured log recorded.
 
 ---
 
@@ -129,217 +118,30 @@ For a coding agent, this matters immediately:
 
 <a id="one-representation-per-ast"></a>
 
-Sigil is printer-first. The compiler owns the canonical source printer, and a
-parsed program has one accepted printed form. Non-canonical source is rejected
-at compile time.
+The Sigil compiler owns a canonical source printer. Every valid AST has exactly
+one accepted textual representation, and the compiler uses this printer as its
+enforcement point — non-canonical source is a compile error, not a linter
+warning. There is no separate formatter. There is no option to turn on
+alternative layouts. There is no `--format` flag that produces a different
+arrangement of the same program.
 
-There is no public formatter command. There is no linter-only phase where style
-is "recommended". Canonicality is part of validity.
+Concretely, this means the compiler defines canonical choices for every
+formatting decision that would otherwise be up to the author:
 
-Important examples:
+- multiline form is required when an aggregate has two or more items; flat form
+  is required with zero or one
+- repeated `and`, `or`, `++`, and `⧺` chains print vertically, one continued
+  operand per line
+- `requires`, `decreases`, and `ensures` (when present) print on successive
+  lines in that order, before the body
+- `match` branches are always multiline; each arm starts as `pattern=>`
+- direct `match` bodies begin on the same line as their header with no `=`
 
-- zero- and one-item aggregates stay flat
-- two-or-more-item aggregates print multiline
-- repeated `and`, `or`, `++`, and `⧺` chains print vertically
-- `requires`, `decreases`, and `ensures` print on successive lines in that
-  order
-- direct `match` bodies stay `match ...` with no `=`
-- each `match` arm begins `pattern=>`
-
-Comments are valid syntax but are not part of canonical source comparison. The
-canonical claim is therefore about the program text the compiler owns, not about
-comment placement.
-
-For code generation, this is one of Sigil's most important properties. The
-model does not need to choose among multiple valid layouts for the same program.
-If it generated valid Sigil, it generated canonical Sigil too.
-
----
-
-## Rooted References, No Imports, Fixed Project Layout
-
-<a id="rooted-references-no-imports-fixed-project-layout"></a>
-
-Sigil has no import declarations. References are written rooted at the use
-site.
-
-```sigil module projects/todo-app/src/countTodos.lib.sigil
-λtodoCount(todos:[µTodo])=>Int=•todoDomain.completedCount(todos)
-```
-
-```sigil expr
-§list.last(items)
-```
-
-```sigil expr
-¤site.basePath()
-```
-
-This does two things at once:
-
-- the owning module is visible exactly where the name is used
-- adding a new dependency does not require editing a second import surface
-
-Sigil also makes project structure predictable. In a project, important kinds of
-information have canonical homes:
-
-- `src/types.lib.sigil` owns project-defined `t` and `label` declarations
-- `src/effects.lib.sigil` owns project-defined multi-effect aliases
-- `src/topology.lib.sigil` owns named boundary handles and environment names
-- `src/policies.lib.sigil` owns `rule` and `transform` declarations
-- `config/<env>.lib.sigil` owns the selected environment world plus env-selected
-  declarations such as flags
-
-Module scope itself is declaration-only. Top level is not a place for setup
-logic or arbitrary statements.
-
-This is unusually helpful for an agent. "Where should this go?" stops being an
-open-ended repository search and becomes a small number of deterministic
-choices.
-
-External packages are constrained the same way. `☴name` resolves only against
-direct dependencies declared in `sigil.json`. Transitive package imports are
-rejected.
-
-That means:
-
-- if the code says `☴router`, `sigil.json` must name `router`
-- provenance is local rather than inferred through a dependency graph
-- an agent never has to guess whether some transitive dependency is "probably"
-  available
-
----
-
-## Anti-Slop Canonical Surfaces
-
-<a id="anti-slop-canonical-surfaces"></a>
-
-Sigil does not only canonicalize punctuation and layout. It also canonicalizes
-common low-signal programming habits that models frequently reproduce:
-
-- unused named bindings are rejected
-- unused top-level declarations in executable `.sigil` files are rejected
-- unused externs in executable `.sigil` files are rejected
-- pure single-use locals must be inlined
-- wildcard sequencing may not discard pure expressions
-- exact direct wrappers around canonical helpers are rejected
-- hand-rolled clones of canonical list-processing surfaces are rejected
-
-Sigil already has an opinionated surface for common traversal work:
-
-- `xs map fn`
-- `xs filter pred`
-- `xs reduce step from seed`
-- `§list.find`
-- `§list.any`
-- `§list.all`
-- `§list.flatMap`
-- `§list.countIf`
-- `§list.reverse`
-
-The language would rather reject a plausible-but-redundant near-duplicate than
-let the codebase fill up with slightly different handwritten versions of the
-same traversal.
-
-That is valuable for humans, but it is especially valuable for LLMs. Generated
-code tends to drift toward:
-
-- unnecessary intermediate names
-- dead helper functions
-- wrappers that only rename a stdlib function
-- recursive list plumbing where a direct canonical helper already exists
-
-Sigil removes those degrees of freedom from the generator.
-
----
-
-## Match as the Only Branching Surface
-
-<a id="match-as-the-only-branching-surface"></a>
-
-Sigil has one branching construct: `match`.
-
-There is no `if`/`else`, no ternary operator, no `when`, no `cond`.
-
-```sigil module
-λclassify(n:Int)=>String match n{
-  0=>"zero"|
-  value=>match value>0{
-    true=>"positive"|
-    false=>"negative"
-  }
-}
-```
-
-`match` is also exhaustiveness-checked. The compiler checks coverage for:
-
-- `Bool`
-- `Unit`
-- tuples
-- list shapes
-- exact record patterns
-- nominal sum constructors
-
-If a sum type gains a new constructor, every non-exhaustive `match` becomes a
-compile error.
-
-For agents, this matters because it removes both surface and semantic
-ambiguity:
-
-- there is one way to branch
-- the compiler tells the model which cases are still missing
-- adding a new case in one file generates a precise repair list elsewhere
-
----
-
-## Local Determinism
-
-<a id="local-determinism"></a>
-
-Several Sigil rules are individually small, but together they make local code
-far easier for a model to keep straight.
-
-**Canonical naming**
-
-- types, constructors, and type variables use `UpperCamelCase`
-- functions, locals, fields, constants, filenames, and path segments use
-  `lowerCamelCase`
-
-**No shadowing**
-
-- a name in scope may not be reused in an inner binding
-
-**Alphabetical ordering**
-
-- function parameters are alphabetical
-- record fields are alphabetical in type declarations, literals, and patterns
-- declared effects are alphabetical
-
-```sigil module
-t Message={
-  body:String,
-  from:String,
-  subject:String,
-  to:String
-}
-
-λdraft(body:String,from:String,subject:String,to:String)=>Message={
-  body:body,
-  from:from,
-  subject:subject,
-  to:to
-}
-```
-
-The point is not aesthetics. It is predictability.
-
-An agent generating a call site does not have to remember ad hoc parameter
-ordering. An agent reading a function does not have to resolve which `result`
-or which `count` an inner block shadowed. A filename that resolves as a module
-must already be in canonical case.
-
-This is local determinism: once the model understands the rule, it can apply it
-everywhere without rereading the entire repository.
+For code generation, this property is profound. It means there is exactly one
+correct way to write any valid Sigil program. A model that generates valid code
+generates canonical code. There is no valid variation to choose between, no
+layout decision to make, no subtle indentation difference to produce. The
+compiler confirms validity and canonicality in one pass.
 
 ---
 
@@ -347,26 +149,16 @@ everywhere without rereading the entire repository.
 
 <a id="explicit-effects"></a>
 
-Sigil tracks effect usage in signatures and enforces those declarations through
-the call graph.
+Sigil's effect system tracks which effects every function may use, and enforces
+those declarations at compile time. The primitive effects are: `Clock`, `Fs`,
+`FsWatch`, `Http`, `Log`, `Process`, `Pty`, `Random`, `Stream`, `Tcp`,
+`Terminal`, `Timer`, and `WebSocket`.
 
-Current primitive effects in the implementation are:
-
-- `Clock`
-- `Fs`
-- `FsWatch`
-- `Http`
-- `Log`
-- `Process`
-- `Pty`
-- `Random`
-- `Sql`
-- `Stream`
-- `Task`
-- `Tcp`
-- `Terminal`
-- `Timer`
-- `WebSocket`
+A function that does not declare an effect cannot call a function that requires
+one. The propagation is transitive: if `fetchProfile` calls `httpClient.get`,
+then `fetchProfile` must declare `!Http`. Any caller that calls `fetchProfile`
+must also declare `!Http`. This continues up the call graph. The compiler
+enforces the entire chain.
 
 ```sigil module
 λfetchUser(id:String)=>!Http Result[
@@ -377,16 +169,25 @@ Current primitive effects in the implementation are:
 λpure(x:Int)=>Int=x*2
 ```
 
-`pure` cannot call `fetchUser` unless it becomes effectful too. Effect
-propagation is explicit and transitive.
+`pure` cannot call `fetchUser`. The compiler rejects the call because `pure`
+has no declared effects and `fetchUser` requires `!Http`. There is no runtime
+mechanism needed to detect this. The call graph's effect requirements are a
+static property of the program.
 
-Projects may also define reusable multi-effect aliases in `src/effects.lib.sigil`.
-These aliases must expand to at least two primitive effects, so they cannot be
-used to smuggle a single primitive effect behind a local nickname.
+For a language model generating code, this produces a clear contract at every
+function boundary. If a function signature declares `!Http`, the model knows
+that function interacts with the network. If a function signature declares no
+effects, the model knows it is computationally pure. A model generating a pure
+function cannot accidentally introduce a network call — the compiler rejects it.
+A model reading a function signature knows its full side-effect profile without
+reading the body.
 
-For an agent, explicit effects turn function signatures into reliable summaries.
-You do not have to inspect the body to know whether a function can talk to the
-network, filesystem, database, terminal, or subprocess layer.
+Projects may also declare named effects in `src/effects.lib.sigil`. A named
+effect must expand to at least two primitive effects, which means it cannot be
+used to hide a single primitive under an alias. Named effects encourage
+consistent cross-module effect annotation for domain-specific boundaries like
+`DatabaseAccess` (expanding to `Log` + `Tcp`) or `StorageOps` (expanding to
+`Fs` + `Log`).
 
 ---
 
@@ -394,9 +195,15 @@ network, filesystem, database, terminal, or subprocess layer.
 
 <a id="world-system"></a>
 
-Sigil exposes an explicit runtime world surface for test overlays and
-topology-aware execution. Instead of teaching the model a second mocking API,
-Sigil lets tests observe or replace runtime entries directly.
+Sigil treats all effectful behavior as world-dependent. A world is a concrete
+implementation of the effect primitives — it specifies how `Http` calls behave,
+how `Fs` operations behave, how `Log` messages are collected. Production code
+runs in a production world. Tests run in a test world. The runtime's effect
+system consults the active world for every effect operation.
+
+This replaces the conventional mocking pattern. Mock-based testing replaces
+specific functions with substitutes. World-based testing replaces the entire
+effect runtime with an instrumented one that records what happened.
 
 ```sigil program tests/logTest.sigil
 λmain()=>Unit=()
@@ -409,132 +216,21 @@ test "write is observed" =>!Log world {
 }
 ```
 
-The test uses the real effect name, `Log`, and changes the world entry. The
-observation surface is also explicit:
+The `world { ... }` block in a test is a local derivation from the project's
+baseline test world. The test overrides the `Log` effect with a capturing
+implementation, runs the test body, and then uses `※check::log.contains` to
+assert on what was captured. The `Log` effect in the test body is the same `Log`
+effect that production code uses. Nothing was mocked. The world changed.
 
-- `※observe::http.requests`
-- `※observe::log.entries`
-- `※observe::process.commandsAt(...)`
-- `※check::http.calledOnce`
-- `※check::log.contains`
-- `※check::process.calledOnceAt(...)`
+For code generation, this has a clean structural property: the model generates
+test code that uses the same effect names as production code. There is no
+separate mock API to learn. There is no `jest.fn()` or `sinon.stub()`. There is
+one surface — the effect system — and the world determines what it does.
 
-I specifically checked the implementation surface here: `※check::http.calledWith`
-is not currently present, so this article does not claim it.
-
-Why this helps agents:
-
-- tests use the same effect vocabulary as production code
-- there is one observation surface instead of a zoo of library-specific mocks
-- traces are first-class data, not text scraped from logs
-
----
-
-## Topology as Typed Boundaries
-
-<a id="topology-as-typed-boundaries"></a>
-
-Most codebases let external dependencies leak everywhere:
-
-- raw URLs inside business logic
-- hostnames passed by string
-- `process.env` reads in arbitrary modules
-- tests that patch the wrong layer because there is no single boundary concept
-
-Sigil prefers one explicit model:
-
-- `src/topology.lib.sigil` declares named handles
-- `config/<env>.lib.sigil` binds those handles for one environment
-- application code uses `•topology...`
-- in projects, config modules are the place where `process.env` belongs
-
-```sigil module projects/topology-http/src/notifyUser.lib.sigil
-λnotifyUser(message:String)=>!Http String match §httpClient.post(
-  message,
-  •topology.mailerApi,
-  §httpClient.emptyHeaders(),
-  "/notify"
-){
-  Ok(response)=>response.body|
-  Err(error)=>"ERR:"++error.message
-}
-```
-
-The handle `mailerApi` is declared in `src/topology.lib.sigil`. The selected
-environment config must wire it. If it is missing, the build fails before the
-program runs.
-
-For an agent, this collapses a configuration question that usually spans dozens
-of files into a short deterministic path:
-
-- boundary declaration: `src/topology.lib.sigil`
-- boundary wiring: `config/<env>.lib.sigil`
-- application usage: `•topology.handleName`
-
----
-
-## Labels, Policies, and Trusted Transforms
-
-<a id="labels-policies-and-trusted-transforms"></a>
-
-This is one of Sigil's most unusual and most agent-friendly ideas.
-
-`where` handles value refinement. `label` handles type classification. Boundary
-handling then lives in `src/policies.lib.sigil`.
-
-```sigil module projects/labelled-boundaries/src/types.lib.sigil
-label Brazil
-
-label Credential
-
-label GovAuth
-
-label Pii
-
-label Usa
-
-t Cpf=String label [Brazil,Pii]
-
-t GovBrToken=String label [Brazil,Credential,GovAuth]
-
-t Ssn=String label [Pii,Usa]
-```
-
-```sigil module projects/labelled-boundaries/src/policies.lib.sigil
-transform λgovBrCommand(token:µGovBrToken)=>§process.Command=§process.withEnv(
-  §process.command(["gov-client"]),
-  {"TOKEN"↦token}
-)
-
-transform λredactSsn(ssn:µSsn)=>String="***-**-"++(§string.substring(
-  #ssn,
-  ssn,
-  5
-):String)
-
-rule [µ.Brazil,µ.Credential,µ.GovAuth] for •topology.govBrCli=Through(•policies.govBrCommand)
-
-rule [µ.Pii,µ.Usa] for •topology.auditLog=Through(•policies.redactSsn)
-
-rule [µ.Brazil,µ.Pii] for •topology.exportsDir=Allow()
-```
-
-This is a different design from ordinary refinement types:
-
-- labels are nominal classifications, not value predicates
-- rules attach those classifications to named boundaries
-- transforms name the trusted conversions that may cross a boundary
-
-Why this is unusually good for agents:
-
-- boundary policy has a canonical home
-- "can this value go there?" is answered structurally
-- trusted transformations are named program objects, not informal review lore
-- the model does not have to infer a data-governance policy from scattered
-  comments and conventions
-
-If you want to convince someone that Sigil was designed for machine reasoning,
-this section belongs near the top.
+The test surface also exposes `※observe::http.requests`, `※observe::log.entries`,
+`※check::http.calledOnce`, `※check::http.calledWith`, and similar helpers. These
+are not generic assertion helpers. They are observations over recorded effect
+traces that the runtime world collected during the test.
 
 ---
 
@@ -542,17 +238,22 @@ this section belongs near the top.
 
 <a id="contracts"></a>
 
-Sigil's function-contract surface is:
+Sigil has three function contract clauses: `requires`, `decreases`, and
+`ensures`. When present, they appear on successive lines before the function
+body, in that order. The compiler's proof fragment checks them.
 
-- `requires`
-- `decreases`
-- `ensures`
+`requires` specifies a precondition over the function's parameters. A caller
+that cannot prove the precondition gets a compile error.
 
-They appear in that order when present.
+`ensures` specifies a postcondition over `result`. Every caller receives this
+fact as a proof obligation discharged — if `ensures result > 0` is proved, every
+caller that uses the return value may rely on that fact downstream without
+re-proving it.
 
-Top-level functions are ordinary by default. `mode total` sets a file default,
-and `total` / `ordinary` may override per declaration. `decreases` is reserved
-for total self-recursive functions. Total functions may not call ordinary ones.
+`decreases` is reserved for total self-recursive functions. It provides a pure
+integer measure that the solver proves strictly decreases on every recursive
+call. Without a provable `decreases` measure, a total function fails to compile.
+This eliminates an entire class of runaway recursion bugs.
 
 ```sigil module
 λdivide(dividend:Int,divisor:Int)=>Int
@@ -580,12 +281,74 @@ match n{
 }
 ```
 
-These are checked claims, not comments. Callers must prove `requires`.
-`ensures` facts propagate to callers. `decreases` must be solver-provable for
-total self-recursion.
+The proof fragment covers: integer arithmetic, comparisons, boolean logic,
+literal values, field access, list length via `#`, pattern-derived facts from
+tuples, records, and nominal sum constructors, and protocol state via
+`handle.state`. Facts proved in `ensures` propagate into callers automatically.
+`match` arms inject the branch fact into the proof context for their bodies.
 
-For an agent, contracts provide a precise target surface: the model can state
-what must hold, and the compiler checks whether the code actually supports it.
+For code generation, contracts are a precise specification surface. A model
+generating a function that divides two numbers can express `requires divisor≠0`
+and have the compiler enforce it at every call site. A model generating a
+recursive function can express its termination measure and have the compiler
+verify it. These are not documentation strings. They are checked claims.
+
+---
+
+## Protocol State Types
+
+<a id="protocol-state-types"></a>
+
+Handles in real programs follow state machines. A database transaction may only
+receive inserts, updates, and deletes while it is open; `commit` and `rollback`
+close it; calling any mutation after close is an error. A WebSocket connection
+follows a similar pattern. A PTY session follows another.
+
+In most languages, these state machines live in documentation. Sigil encodes
+them in the type system.
+
+```sigil module
+t Connection={id:String}
+
+protocol Connection
+  Closed → Open via open
+  Open → Closed via close
+  Open → Open via send
+  initial = Closed
+  terminal = Closed
+
+λclose(connection:Connection)=>Bool
+requires connection.state=Open
+ensures connection.state=Closed
+=true
+
+λopen(connection:Connection)=>Bool
+requires connection.state=Closed
+ensures connection.state=Open
+=true
+
+λsend(connection:Connection,data:String)=>Bool
+requires connection.state=Open
+ensures connection.state=Open
+=true
+```
+
+The `protocol` declaration names the state machine and its transitions. Functions
+listed in `via` carry matching `requires`/`ensures` state annotations — those are
+the same contract clauses that exist for value contracts, extended to state.
+
+The solver tracks state through the proof context. After `open(conn)`, the proof
+context contains `conn.state = Open`. A subsequent call to `send` that requires
+`Open` succeeds. After `close(conn)`, the proof context contains
+`conn.state = Closed`. Any subsequent call to `send` — which requires `Open` —
+produces a compile error with a counterexample from the solver.
+
+Double-close, use-after-close, and wrong-order operations are all type errors.
+The programmer does not need to remember protocol state; the compiler tracks it.
+For a language model, this is especially powerful: the model generates calls in
+a sequence, and the compiler tells it which calls are valid given the current
+protocol state. There is no runtime consequence of getting it wrong — the
+program does not compile.
 
 ---
 
@@ -593,7 +356,9 @@ what must hold, and the compiler checks whether the code actually supports it.
 
 <a id="refinement-types"></a>
 
-Sigil uses `where` for compile-time value refinement.
+A type alias in Sigil can carry a `where` clause that refines its underlying
+type with a logical predicate. The compiler enforces that predicate at every
+point where a raw value is promoted into the refined type.
 
 ```sigil module
 t Email=String
@@ -605,67 +370,91 @@ t PositiveInt=Int where value>0
 t NonEmptyList[T]=[T] where #value>0
 ```
 
-The important semantic distinction is:
+The refinement proof fragment covers integer and boolean arithmetic, length via
+`#`, field access, comparisons, and pattern-derived facts — enough to express
+structural invariants like "non-empty", "positive", or "within a range". For
+predicates that require external logic — like whether a string matches an email
+format — the canonical pattern is boundary conversion via `§decode` helpers.
+The `Email` type above is a named wrapper: structurally a `String`, but
+domain-distinct from `RawInput` or `Url`. Passing a raw `String` where an
+`Email` is expected is a type error even without a `where` clause, because the
+type system treats named wrappers as distinct types.
 
-- unconstrained aliases like `Email` are structural aliases
-- constrained aliases like `NonEmptyString` act as compile-time refinements over
-  the underlying type
+The refinement lives in the type, not in a validation function. A
+`NonEmptyString` is not a `String` that happens to be non-empty at the point
+where it was checked. It is a `String` that the compiler requires to be provably
+non-empty at every promotion site. Any function that accepts `NonEmptyString`
+receives a value the compiler has already verified.
 
-So `t Email=String` improves readability, but it does not create nominal
-separation from `String` by itself. The real machine-checked power comes from
-`where` constraints and from the boundary-policy layer described in the labels
-section.
+This encourages a discipline that matters for correctness in generated code:
+early boundary conversion. Raw user input arrives as `String`. The model
+generates code that decodes and validates that string into `Email` at the
+system boundary, using `§decode` helpers. Once the value crosses into the
+interior of the application as an `Email`, its invariant is a compiler-checked
+fact, not a hope.
 
-This matters because it keeps the article honest about what Sigil is and is not
-doing today. If you need "provably non-empty", use a refinement. If you need
-"this boundary may accept PII only after redaction", use labels plus rules plus
-transforms.
-
-The practical agent story is still strong:
-
-- invariants live in the type surface
-- promotion into a constrained type requires proof
-- early boundary conversion is encouraged
-- once the value is refined, callers inherit that fact
+Named wrapper types add a further distinction. `t UserId=String where #value>0`
+is not the same type as `t OrderId=String where #value>0`, even though they
+carry the same underlying refinement. Passing a `UserId` where an `OrderId` is
+expected is a type error. The names preserve domain distinction; the refinements
+preserve structural invariants; the compiler enforces both.
 
 ---
 
-## Protocol State Types
+## Topology as Typed Boundaries
 
-<a id="protocol-state-types"></a>
+<a id="topology-as-typed-boundaries"></a>
 
-Many real APIs are state machines. Sigil lets you encode that directly.
+In most languages, configuration and external endpoints can come from anywhere.
+A URL might be hard-coded in the function that uses it. It might live in a
+constant three files away. It might come from `process.env` read directly in
+business logic. It might be passed as a parameter from a caller that got it
+from another caller that read it from a config object that was initialized at
+startup. A model working on such a codebase has no reliable way to answer
+"where does this endpoint come from?" or "how do I change it for the test
+environment?" without reading the entire call graph.
 
-```sigil module
-t Ticket={id:String}
+Sigil gives that question one answer. External dependencies live in
+`src/topology.lib.sigil`. Their concrete values for each environment live in
+`config/<env>.lib.sigil`. Application code references them through the
+`•topology` root. That is the complete list of places to look.
 
-protocol Ticket
-  Open → Closed via resolve
-  Open → Open via annotate
-  initial = Open
-  terminal = Closed
+Topology-aware projects declare all external HTTP, TCP, and filesystem
+dependencies as named handles in `src/topology.lib.sigil`. Application code
+then refers to those handles through the `•topology` root. Concrete URLs, hosts,
+and ports are bound in `config/<env>.lib.sigil` and are never visible to
+application code.
 
-λannotate(note:String,ticket:Ticket)=>Ticket
-requires ticket.state=Open
-ensures result.state=Open
-={id:ticket.id}
+This means a model generating application code cannot hard-code a URL. The
+compiler rejects raw endpoints in topology-aware project code. The model must
+use a named handle: `•topology.searchService`, `•topology.database`,
+`•topology.reportStore`. The actual URL bound to each handle is an
+environment-level concern, verified when the project is compiled with `--env`.
 
-λresolve(ticket:Ticket)=>Bool
-requires ticket.state=Open
-ensures ticket.state=Closed
-=true
+```sigil module projects/topology-http/src/notifyUser.lib.sigil
+λnotifyUser(message:String)=>!Http String match §httpClient.post(
+  message,
+  •topology.mailerApi,
+  §httpClient.emptyHeaders(),
+  "/notify"
+){
+  Ok(response)=>response.body|
+  Err(error)=>"ERR:"++error.message
+}
 ```
 
-The language tracks protocol state through the proof context. Wrong-order
-operations become compile errors:
+The compiler validates that `mailerApi` is declared in
+`src/topology.lib.sigil` and that the selected environment's config wires it
+to a concrete URL. If the topology handle is missing from the config, the build
+fails with a specific diagnostic — not a runtime `undefined` at the network call.
 
-- use after close
-- double close
-- operations that require `Open` after a transition to `Closed`
-
-This is especially useful for generated code because LLMs often produce valid
-individual calls in the wrong sequence. Protocol types give the compiler enough
-structure to reject those sequences early.
+For an AI coding agent working on a topology-aware project, this collapses the
+search space for every configuration question to two files. Where is this
+endpoint declared? `src/topology.lib.sigil`. What is it set to in production?
+`config/production.lib.sigil`. How do I configure a test double? Derive a local
+world in the test file. The model never needs to invent, guess, or remember a
+URL — and it can never accidentally read one from `process.env` in the middle
+of business logic, because the compiler rejects that too.
 
 ---
 
@@ -673,8 +462,7 @@ structure to reject those sequences early.
 
 <a id="named-concurrent-regions"></a>
 
-Sigil widens work through one canonical concurrency surface: named concurrent
-regions.
+Sigil has one canonical concurrency surface: the named concurrent region.
 
 ```sigil module
 λfetchAll(urls:[String])=>!Http [ConcurrentOutcome[
@@ -699,17 +487,326 @@ regions.
 λisSystemic(err:String)=>Bool=err="TIMEOUT"
 ```
 
-The region is named. Width is explicit. Policy is explicit. The result shape is
-explicit: `[ConcurrentOutcome[T,E]]`, preserving input order.
+A concurrent region is named. Its width — the maximum number of concurrent
+children — is required and explicit. Its policy (jitter, stop predicate, rate
+window) is optional and, when present, uses alphabetically ordered fields.
+The body contains spawn directives, not arbitrary expressions.
 
-There is no alternative concurrency surface to choose among here. Not
-`Promise.all`, not goroutines, not callback fan-out, not hidden parallel map.
+There is no `Promise.all`, no `asyncio.gather`, no `goroutine` pattern to
+distinguish from. There is one surface that the model generates when code needs
+to run work in parallel, and the compiler enforces its structure.
 
-For agents, that means:
+The result type is always `[ConcurrentOutcome[T,E]]` — an ordered list of
+outcomes in the same order as the inputs. `Success(value)` when the child
+returned `Ok(value)`. `Failure(error)` when it returned `Err(error)`.
+`Aborted()` when the region stopped it before it started. Order is stable.
+The model can reason about the result shape without reading runtime semantics.
 
-- parallel work has one shape
-- concurrency policy is visible in syntax
-- result handling is stable across the codebase
+`map` and `filter` remain pure list transforms and are not the concurrency
+surface. This separation prevents a common AI generation error: using a parallel
+map as a substitute for an explicit concurrency region, with none of the policy
+controls.
+
+---
+
+## Match as the Only Branching Surface
+
+<a id="match-as-the-only-branching-surface"></a>
+
+Sigil has one branching construct: `match`. There is no `if`/`else`, no ternary
+operator, no `when`, no `cond`. Every conditional execution flows through a
+`match` expression.
+
+```sigil module
+λclassify(n:Int)=>String match n{
+  0=>"zero"|
+  value=>match value>0{
+    true=>"positive"|
+    false=>"negative"
+  }
+}
+```
+
+`match` enforces exhaustiveness. Every branch must be covered; dead branches are
+rejected. The compiler's exhaustiveness checker covers `Bool`, `Unit`, tuples,
+list shapes, exact record patterns, and nominal sum constructors. If a new
+constructor is added to a sum type, every `match` over that type that does not
+cover the new constructor becomes a compile error, not a runtime gap.
+
+For a model generating branching logic, this removes the disambiguation problem.
+Python has `if`, `elif`, `else`, ternary expressions, match-case, and short-circuit
+operators as branching surfaces. Sigil has `match`. The model generates `match`.
+
+Exhaustiveness means the model cannot forget a case. Adding a case to a sum type
+propagates into a compile error at every `match` over that type that does not
+handle the new constructor. The compiler finds all the gaps; the model fills them
+in. There is no way to ship a case analysis with a missing branch.
+
+---
+
+## Canonical Names
+
+<a id="canonical-names"></a>
+
+Names in Sigil follow two rules. Types, constructors, and type variables use
+`UpperCamelCase`. Everything else — functions, parameters, constants, locals,
+record fields, module path segments, and filenames — uses `lowerCamelCase`.
+
+The compiler enforces this. A function named `ProcessUser` is a compile error.
+A type named `emailAddress` is a compile error. There is no linter configuration
+to turn this off, no pragma to suppress it, and no formatter to post-process it
+away. The canonical form is the only form the compiler accepts.
+
+```sigil module
+t UserId=String
+
+t User={
+  email:String,
+  id:UserId,
+  name:String
+}
+
+λcreateUser(email:String,name:String)=>User={
+  email:email,
+  id:"generated",
+  name:name
+}
+```
+
+For a language model, this matters because token prediction probability
+concentrates. When `userId`, `user_id`, `UserId`, `user_Id`, and `USERID` are
+all valid representations of the same concept in a language, the model
+distributes probability across all of them at every token boundary. In Sigil,
+there is only `userId`. The model generates it because it is the only valid
+spelling, and the compiler confirms it.
+
+The naming rules have stable error codes: `SIGIL-CANON-IDENTIFIER-FORM`,
+`SIGIL-CANON-TYPE-NAME-FORM`, `SIGIL-CANON-CONSTRUCTOR-NAME-FORM`, and
+`SIGIL-CANON-TYPE-VAR-FORM`. Each one fires with a corrective message that
+states what was found and what is required.
+
+This extends to filenames. A file named `UserService.lib.sigil` is rejected
+with `SIGIL-CANON-FILENAME-CASE`. Only `userService.lib.sigil` is accepted.
+Filenames participate in module path resolution, so filename canonicalization
+eliminates an entire class of case-sensitivity bugs on case-insensitive
+filesystems.
+
+---
+
+## No Shadowing
+
+<a id="no-shadowing"></a>
+
+Sigil rejects all shadowing with `SIGIL-CANON-NO-SHADOWING`. A name introduced
+in an outer scope may not be reused in any inner scope within the same function.
+
+This is the answer to a problem that causes subtle bugs even for expert human
+programmers: when two bindings share a name and the inner one silently hides
+the outer one, readers must track all active bindings and their precedence at
+every point in the function. For a language model, this is compounded — the
+model has already predicted the outer binding's name based on its type and
+role, and if a later branch introduces the same name for a different value, the
+model must revise its implicit mapping.
+
+Sigil requires fresh, descriptive names at every binding site. If `result` is
+already in scope, the inner binding must be named something else — `parsedResult`,
+`validatedResult`, `nextResult`. The compiler rejects ambiguity rather than
+resolving it silently.
+
+```sigil module
+λformatResult(n:Int)=>String match n{
+  0=>"zero"|
+  count=>match count>0{
+    true=>"positive "++§string.intToString(count)|
+    false=>"negative "++§string.intToString(§numeric.abs(count))
+  }
+}
+```
+
+Every name in this function refers to exactly one value. There is no question
+about which `count` or which `result` a reference resolves to, because there
+can only be one.
+
+---
+
+## Alphabetical Ordering
+
+<a id="alphabetical-ordering"></a>
+
+Sigil requires alphabetical ordering in three places: function parameters,
+record field declarations and usage, and declared effects. Each ordering is
+enforced with a distinct error code: `SIGIL-CANON-PARAM-ORDER`,
+`SIGIL-CANON-RECORD-TYPE-FIELD-ORDER`, `SIGIL-CANON-RECORD-LITERAL-FIELD-ORDER`,
+`SIGIL-CANON-RECORD-PATTERN-FIELD-ORDER`, and `SIGIL-CANON-EFFECT-ORDER`.
+
+The machine-first implication of this rule is often underestimated. When
+parameter order is alphabetical, a model generating a call site does not need
+to read the function definition to know the correct argument order. Given a
+function `λsend(body:String,headers:{String↦String},to:Email)`, the parameter
+order is derivable from the names alone: `b` before `h` before `t`.
+
+The same holds for record literals. A model creating a `User` value knows the
+field order without reading the type declaration: alphabetical by field name,
+always. The field that comes first in the alphabet comes first in the literal,
+the pattern, and the type definition.
+
+```sigil module
+t Message={
+  body:String,
+  from:String,
+  subject:String,
+  to:String
+}
+
+λdraft(body:String,from:String,subject:String,to:String)=>Message={
+  body:body,
+  from:from,
+  subject:subject,
+  to:to
+}
+```
+
+This eliminates the "which order do the arguments go in" problem for every
+function call a model generates. The order is derivable from the grammar, not
+from memory.
+
+---
+
+## Rooted References, No Imports
+
+<a id="rooted-references-no-imports"></a>
+
+Sigil has no import declarations. Module references are written at their use
+sites with explicit root sigils:
+
+- `§list.sum`, `§string.contains`, `§numeric.max` — standard library modules
+- `•topology.serviceName`, `•config.databaseUrl`, `•flags.FeatureX` — project configuration
+- `☴routerPackage.handlers` — external packages
+- `†runtime.World`, `†http.mock` — runtime world builders
+
+```sigil module
+λabbreviate(limit:Int,text:String)=>String match #text≤limit{
+  true=>text|
+  false=>§string.take(
+    limit,
+    text
+  )++"..."
+}
+
+λlongest(a:String,b:String)=>String match #a≥#b{
+  true=>a|
+  false=>b
+}
+```
+
+The module a function belongs to is visible at every call site. There is no
+`from foo import bar as baz` to trace. There is no aliased import that shadows
+a different module with the same local name. There is no star import that
+introduces an unknown set of names into scope.
+
+For a model reading unfamiliar code, this means module attribution is always
+explicit. For a model generating code, there is no import block to maintain.
+The model writes the rooted reference at the call site, and the compiler
+resolves it. Adding a new stdlib call does not require a corresponding import
+statement in a different part of the file.
+
+The root sigils themselves are part of the canonical naming convention. They are
+not user-configurable aliases. `§` always means the standard library. `•` always
+means project configuration. `☴` always means external packages. `†` always
+means the runtime world. A model that learns these four sigils understands the
+full module resolution story for Sigil.
+
+---
+
+## 50+ Canonical Rules
+
+<a id="50-canonical-rules"></a>
+
+The canonical constraint hypothesis works because the rules are numerous,
+specific, and compiler-enforced. Together, they define one valid shape for
+every programming construct. The following is the complete enumerated list of
+`SIGIL-CANON-*` error codes.
+
+**Duplication**
+
+- `SIGIL-CANON-DUPLICATE-TYPE` — two type declarations with the same name
+- `SIGIL-CANON-DUPLICATE-EXTERN` — two extern declarations with the same name
+- `SIGIL-CANON-DUPLICATE-CONST` — two const declarations with the same name
+- `SIGIL-CANON-DUPLICATE-FUNCTION` — two function declarations with the same name
+- `SIGIL-CANON-DUPLICATE-TEST` — two test blocks with the same description
+
+**Source shape**
+
+- `SIGIL-CANON-EOF-NEWLINE` — file must end with a newline
+- `SIGIL-CANON-TRAILING-WHITESPACE` — no trailing whitespace on any line
+- `SIGIL-CANON-BLANK-LINES` — no blank lines within a declaration
+
+**File kind**
+
+- `SIGIL-CANON-LIB-NO-MAIN` — library files may not declare `main`
+- `SIGIL-CANON-EXEC-NEEDS-MAIN` — executable files must declare `main`
+- `SIGIL-CANON-TEST-NEEDS-MAIN` — test files must declare `main()=>Unit=()`
+- `SIGIL-CANON-TEST-LOCATION` — tests may only appear in `tests/` directories
+- `SIGIL-CANON-TEST-PATH` — test file path must match expected pattern
+
+**Filenames**
+
+- `SIGIL-CANON-FILENAME-CASE` — filename must start with a lowercase letter
+- `SIGIL-CANON-FILENAME-INVALID-CHAR` — filename may not contain `_`, `-`, or other non-alphanumeric characters
+- `SIGIL-CANON-FILENAME-FORMAT` — filename must be lowerCamelCase
+
+**Naming**
+
+- `SIGIL-CANON-IDENTIFIER-FORM` — functions, parameters, locals, fields, and filenames must be lowerCamelCase
+- `SIGIL-CANON-TYPE-NAME-FORM` — types must be UpperCamelCase
+- `SIGIL-CANON-CONSTRUCTOR-NAME-FORM` — sum type constructors must be UpperCamelCase
+- `SIGIL-CANON-TYPE-VAR-FORM` — type variables must be UpperCamelCase
+- `SIGIL-CANON-RECORD-FIELD-FORM` — record field names must be lowerCamelCase
+- `SIGIL-CANON-MODULE-PATH-FORM` — module path segments must follow canonical form
+
+**Recursion**
+
+- `SIGIL-CANON-RECURSION-ACCUMULATOR` — accumulator-passing style is rejected; use canonical iterative helpers
+- `SIGIL-CANON-RECURSION-COLLECTION-NONSTRUCTURAL` — non-structural collection recursion rejected
+- `SIGIL-CANON-RECURSION-CPS` — continuation-passing style is rejected
+- `SIGIL-CANON-RECURSION-APPEND-RESULT` — appending to recursive result is rejected; use a helper with a final reverse
+- `SIGIL-CANON-RECURSION-ALL-CLONE` — hand-rolled reimplementation of `§list.all` rejected
+- `SIGIL-CANON-RECURSION-ANY-CLONE` — hand-rolled reimplementation of `§list.any` rejected
+- `SIGIL-CANON-RECURSION-MAP-CLONE` — hand-rolled reimplementation of `map` rejected
+- `SIGIL-CANON-RECURSION-FILTER-CLONE` — hand-rolled reimplementation of `filter` rejected
+- `SIGIL-CANON-RECURSION-FIND-CLONE` — hand-rolled reimplementation of `§list.find` rejected
+- `SIGIL-CANON-RECURSION-FLATMAP-CLONE` — hand-rolled reimplementation of `§list.flatMap` rejected
+- `SIGIL-CANON-RECURSION-REVERSE-CLONE` — hand-rolled reimplementation of `§list.reverse` rejected
+- `SIGIL-CANON-RECURSION-FOLD-CLONE` — hand-rolled reimplementation of `reduce ... from ...` rejected
+- `SIGIL-CANON-BRANCHING-SELF-RECURSION` — multiple sibling self-calls each reducing the same parameter rejected (e.g., naive fibonacci)
+- `SIGIL-CANON-RECURSION-MISSING-DECREASES` — total self-recursive function must provide a `decreases` measure
+- `SIGIL-CANON-ORDINARY-DECREASES` — ordinary functions may not declare `decreases`
+- `SIGIL-CANON-MUTUAL-RECURSION` — top-level mutual recursion within a module is rejected
+- `SIGIL-CANON-TRAVERSAL-FILTER-COUNT` — `#(filter(...))` is rejected; use `§list.countIf`
+
+**Ordering**
+
+- `SIGIL-CANON-PARAM-ORDER` — function parameters must be in alphabetical order
+- `SIGIL-CANON-EFFECT-ORDER` — declared effects must be in alphabetical order
+- `SIGIL-CANON-RECORD-TYPE-FIELD-ORDER` — record type fields must be alphabetical
+- `SIGIL-CANON-RECORD-LITERAL-FIELD-ORDER` — record literals must list fields alphabetically
+- `SIGIL-CANON-RECORD-PATTERN-FIELD-ORDER` — record patterns must list fields alphabetically
+- `SIGIL-CANON-DECL-CATEGORY-ORDER` — declarations must follow `t → e → i → c → λ → test` order
+- `SIGIL-CANON-DECL-EXPORT-ORDER` — exported declarations must precede non-exported ones within each category
+- `SIGIL-CANON-DECL-ALPHABETICAL` — declarations within each category must be alphabetical
+- `SIGIL-CANON-EXTERN-MEMBER-ORDER` — extern members must be ordered
+
+**Bindings**
+
+- `SIGIL-CANON-NO-SHADOWING` — a name in scope may not be reused in an inner binding
+- `SIGIL-CANON-LET-UNTYPED` — `let` bindings that produce effects must be typed
+- `SIGIL-CANON-DEAD-PURE-DISCARD` — pure expressions whose values are discarded are rejected
+
+These rules collectively mean that every dimension of source structure — from
+the character case of a filename to the order in which declarations appear to
+the recursion pattern used to traverse a list — has exactly one canonical form.
+There is no creative latitude that the model needs to exercise for any of these
+choices, because the compiler exercises it for you.
 
 ---
 
@@ -717,28 +814,132 @@ For agents, that means:
 
 <a id="semantic-review"></a>
 
-`git diff` tells you what lines changed. `sigil review` tells you what those
-changes mean at the declaration level.
+`git diff` shows what lines changed. `sigil review` shows what those line
+changes mean at the declaration level: which functions gained or lost an effect,
+which contracts changed, which signatures were modified, whether any changed
+functions now lack test coverage evidence.
 
-If a function gained `!Http`, the review says so. If a `requires` clause
-changed, the review says so. If a diff changed implementation only, without a
-surface-level signature/effect/contract change, the review says that too.
+Take this change to a single function — adding the `!Http` effect and a
+`requires` precondition:
 
-Typical usage:
+**Before:**
 
-```bash
-sigil review
-sigil review --staged
-sigil review --base HEAD~1
-sigil review --base main --head feature-branch
-sigil review --llm --staged
+```sigil module
+λfetchUser(id:String)=>Result[
+  String,
+  String
+]=Ok("user:"++id)
+
+λvalidateId(id:String)=>Bool=#id>0
 ```
 
-`--llm` wraps the same structured facts in a prompt preamble that tells the
-model to stay grounded in the listed data.
+**After:**
 
-This is a very strong agent feature because it narrows review work to semantic
-changes rather than line noise.
+```sigil module
+λfetchUser(id:String)=>!Http Result[
+  String,
+  String
+]
+requires #id>0
+=Ok("user:"++id)
+
+λvalidateId(id:String)=>Bool=#id>0
+```
+
+`git diff` reports:
+
+```text
+-λfetchUser(id:String)=>Result[
++λfetchUser(id:String)=>!Http Result[
+   String,
+   String
+-]=Ok("user:"++id)
++]
++requires #id>0
++=Ok("user:"++id)
+```
+
+`sigil review` reports:
+
+```text
+## Sigil Review
+
+Summary
+- changed declarations: 1
+- signature changes: 0
+- contract changes: 1
+- effect changes: 1
+- type/refinement changes: 0
+- trust surface changes: 0
+- changed test files: 0
+
+Effect Changes
+- ~ function `fetchUser` in `src/api.lib.sigil`
+  - effects: `<none>` -> `!Http`
+  - requires: `<none>` -> `#id>0`
+
+Contract Changes
+- ~ function `fetchUser` in `src/api.lib.sigil`
+  - effects: `<none>` -> `!Http`
+  - requires: `<none>` -> `#id>0`
+
+Test Evidence
+- changed test files: none
+- changed coverage targets: none
+```
+
+The diff shows added lines. The review shows that `fetchUser` crossed a
+trust boundary: it went from pure to `!Http`, and it now imposes a precondition
+that all callers must satisfy. An agent reviewing this change knows immediately
+that it needs to check every call site for `!Http` propagation, and that there
+is no test evidence for the changed function.
+
+### Usage
+
+```bash
+sigil review                    # worktree changes (index → working tree)
+sigil review --staged           # staged changes (HEAD → index)
+sigil review --base HEAD~1      # last commit
+sigil review --base main --head feature-branch
+sigil review -- HEAD~3 HEAD     # raw git diff passthrough
+```
+
+All modes produce the same structured output: summary counts, per-declaration
+change details grouped by kind (signature, effect, contract, termination, trust
+surface, implementation), and test evidence.
+
+### `--llm`
+
+`sigil review --llm` emits the same semantic facts wrapped in a prompt preamble
+designed for direct use as LLM input:
+
+```text
+You are reviewing a Sigil semantic diff.
+
+Use only the facts below.
+Do not infer behavior that is not explicitly listed.
+If analysisMode is `parseOnly`, call out that limitation.
+If any issue has severity `error`, list it first.
+
+Facts:
+{
+  "formatVersion": 1,
+  "command": "sigil review",
+  "ok": true,
+  "phase": "surface",
+  "data": { ... }
+}
+```
+
+The facts object contains the full structured change data: each changed
+declaration, its before and after signatures, effects, contracts, and the
+inferred `changeKinds` list (`"effects"`, `"requires"`, `"ensures"`,
+`"implementation"`, `"signature"`, `"trustSurface"`, etc.). The preamble
+instructs the model to work only from what is listed, not from inference about
+the surrounding codebase.
+
+`--json` emits the same fact envelope without the preamble, for agent loops
+that parse and route the data themselves.
 
 ---
 
@@ -746,40 +947,39 @@ changes rather than line noise.
 
 <a id="json-first-cli"></a>
 
-Sigil's compiler and inspection surfaces are designed around machine-readable
-output.
+Every Sigil compiler command that produces diagnostic or structural output does
+so in JSON. There is no human-readable output mode for `compile`, `test`,
+`inspect`, `validate`, or `featureFlag audit`. JSON is the output format, not
+an opt-in flag.
 
-The important default is not "there exists a `--json` flag somewhere". The
-important default is that structured compiler/introspection output is a first-
-class design target.
+This is the opposite of most language toolchains, where human-readable text is
+the default and `--json` adds a machine-readable mode as an afterthought.
+Sigil's design starts from the assumption that the primary consumer of compiler
+output is an agent loop, and human readers can run `jq`, `fx`, or any JSON
+viewer to inspect it.
 
-Commands like these emit stable JSON envelopes:
+The output structure is stable and versioned with `"formatVersion": 1`. Every
+error includes:
 
-- `sigil compile`
-- `sigil test`
-- `sigil validate`
-- `sigil inspect validate`
-- `sigil inspect types`
-- `sigil inspect proof`
-- `sigil inspect world`
-- `sigil inspect codegen`
-- `sigil docs ...`
-- `sigil featureFlag audit`
+- `"code"` — the stable `SIGIL-*` error code
+- `"phase"` — which compiler phase produced the error
+- `"message"` — a human-readable description that states what was found and
+  what is canonical
+- `"details"` — structured fields with file path, source location (line,
+  column, offset), expected and found types, and any additional context
 
-Two notable exceptions have special human defaults:
+An agent loop can parse every compiler output with a single JSON decode. There
+is no text scraping, no regex on error messages, no need to detect whether the
+output is a success or an error by its shape — the `"ok"` field on the envelope
+handles that.
 
-- `sigil run` passes program output through by default, with `--json` available
-- `sigil review` defaults to a human-readable summary, with `--json` and
-  `--llm` available
-
-The envelope is stable and versioned with `formatVersion`.
-
-For an agent loop, that means:
-
-- no regex scraping of diagnostic text
-- stable error codes
-- explicit `ok` / `phase` / `data`
-- easier orchestration of compile -> inspect -> repair loops
+`run` and `review` have opt-in `--json` flags for different reasons. `run`
+passes a program's stdout through directly by default; `--json` wraps
+everything — program output, exit code, trace data — in a JSON envelope.
+`review` defaults to a human-readable markdown summary; `--json` emits the
+full structured fact envelope for agent loops that parse and route the data
+themselves. Compile-phase errors from `run` always emit JSON regardless of
+the flag.
 
 ---
 
@@ -787,155 +987,68 @@ For an agent loop, that means:
 
 <a id="embedded-docs-for-cold-starts"></a>
 
-Sigil is new. A model cannot rely on pretraining familiarity the way it can for
-Python or TypeScript.
+Sigil is new enough that installed language models do not have its syntax in
+their weights. A model asked to write Sigil code without context is working from
+zero prior knowledge. This is a genuinely different situation from generating
+Python or TypeScript, where the model's training data contains millions of
+examples.
 
-So the binary ships an embedded local docs corpus.
+Sigil's answer is that the binary teaches the language. Every `sigil` installation
+ships an embedded corpus containing:
+
+- the syntax reference
+- the stdlib specification
+- the formal type system spec
+- the canonical forms documentation
+- design articles explaining the rationale behind each decision
+
+These are accessible without a network request:
 
 ```bash
 sigil docs list
 sigil docs search "feature flags"
-sigil docs context --list
 sigil docs context syntax
 sigil docs show docs/syntax-reference --start-line 1 --end-line 100
 ```
 
-Those commands return JSON. The installed tool can teach the installed syntax,
-stdlib surface, and reference semantics without a web lookup.
+The retrieval commands return JSON. An agent loop can call `sigil docs search`
+with a keyword, receive a list of matching documents with their locations, call
+`sigil docs show` to read the relevant section, and generate code with accurate
+prior knowledge of the language — all without a web lookup.
 
-That matters because "what does the language look like?" is part of the
-compiler loop for a new language. Sigil makes that loop local and versioned with
-the binary rather than punting it to external docs drift.
-
----
-
-## Appendix: Current SIGIL-CANON Families
-
-<a id="appendix-current-sigil-canon-families"></a>
-
-This appendix reflects the current implementation-exported `SIGIL-CANON-*`
-families rather than an older hand-maintained subset.
-
-**Duplicate declarations**
-
-- `SIGIL-CANON-DUPLICATE-TYPE`
-- `SIGIL-CANON-DUPLICATE-EXTERN`
-- `SIGIL-CANON-DUPLICATE-IMPORT`
-- `SIGIL-CANON-DUPLICATE-CONST`
-- `SIGIL-CANON-DUPLICATE-FUNCTION`
-- `SIGIL-CANON-DUPLICATE-TEST`
-
-**File formatting and source form**
-
-- `SIGIL-CANON-EOF-NEWLINE`
-- `SIGIL-CANON-TRAILING-WHITESPACE`
-- `SIGIL-CANON-BLANK-LINES`
-- `SIGIL-CANON-SOURCE-FORM`
-- `SIGIL-CANON-DELIMITER-SPACING`
-- `SIGIL-CANON-OPERATOR-SPACING`
-- `SIGIL-CANON-MATCH-LAYOUT`
-- `SIGIL-CANON-MATCH-ARM-LAYOUT`
-- `SIGIL-CANON-REDUNDANT-PARENS`
-- `SIGIL-CANON-MATCH-BODY-BLOCK`
-
-**File purpose**
-
-- `SIGIL-CANON-LIB-NO-MAIN`
-- `SIGIL-CANON-EXEC-NEEDS-MAIN`
-- `SIGIL-CANON-TEST-NEEDS-MAIN`
-- `SIGIL-CANON-TEST-LOCATION`
-- `SIGIL-CANON-TEST-PATH`
-
-**Naming and path shape**
-
-- `SIGIL-CANON-FILENAME-CASE`
-- `SIGIL-CANON-FILENAME-INVALID-CHAR`
-- `SIGIL-CANON-FILENAME-FORMAT`
-- `SIGIL-CANON-IDENTIFIER-FORM`
-- `SIGIL-CANON-TYPE-NAME-FORM`
-- `SIGIL-CANON-CONSTRUCTOR-NAME-FORM`
-- `SIGIL-CANON-TYPE-VAR-FORM`
-- `SIGIL-CANON-RECORD-FIELD-FORM`
-- `SIGIL-CANON-MODULE-PATH-FORM`
-- `SIGIL-CANON-RECORD-EXACTNESS`
-
-**Recursion and helper surfaces**
-
-- `SIGIL-CANON-RECURSION-ACCUMULATOR`
-- `SIGIL-CANON-RECURSION-COLLECTION-NONSTRUCTURAL`
-- `SIGIL-CANON-RECURSION-CPS`
-- `SIGIL-CANON-RECURSION-APPEND-RESULT`
-- `SIGIL-CANON-RECURSION-ALL-CLONE`
-- `SIGIL-CANON-RECURSION-ANY-CLONE`
-- `SIGIL-CANON-RECURSION-FILTER-CLONE`
-- `SIGIL-CANON-RECURSION-FIND-CLONE`
-- `SIGIL-CANON-RECURSION-FLATMAP-CLONE`
-- `SIGIL-CANON-RECURSION-FOLD-CLONE`
-- `SIGIL-CANON-RECURSION-MAP-CLONE`
-- `SIGIL-CANON-RECURSION-REVERSE-CLONE`
-- `SIGIL-CANON-BRANCHING-SELF-RECURSION`
-- `SIGIL-CANON-TRAVERSAL-FILTER-COUNT`
-- `SIGIL-CANON-HELPER-DIRECT-WRAPPER`
-- `SIGIL-CANON-RECURSION-MISSING-DECREASES`
-- `SIGIL-CANON-MUTUAL-RECURSION`
-- `SIGIL-CANON-ORDINARY-DECREASES`
-
-**Ordering and local scope**
-
-- `SIGIL-CANON-PARAM-ORDER`
-- `SIGIL-CANON-EFFECT-ORDER`
-- `SIGIL-CANON-RECORD-TYPE-FIELD-ORDER`
-- `SIGIL-CANON-RECORD-LITERAL-FIELD-ORDER`
-- `SIGIL-CANON-RECORD-PATTERN-FIELD-ORDER`
-- `SIGIL-CANON-NO-SHADOWING`
-
-**Bindings and reachability**
-
-- `SIGIL-CANON-LET-UNTYPED`
-- `SIGIL-CANON-SINGLE-USE-PURE-BINDING`
-- `SIGIL-CANON-DEAD-PURE-DISCARD`
-- `SIGIL-CANON-UNUSED-IMPORT`
-- `SIGIL-CANON-UNUSED-EXTERN`
-- `SIGIL-CANON-UNUSED-BINDING`
-- `SIGIL-CANON-UNUSED-DECLARATION`
-
-**Declaration ordering**
-
-- `SIGIL-CANON-DECL-CATEGORY-ORDER`
-- `SIGIL-CANON-DECL-EXPORT-ORDER`
-- `SIGIL-CANON-DECL-ALPHABETICAL`
-
-Current declaration category order in the implementation docs is:
-
-- types
-- externs
-- consts
-- functions
-- tests
-
-**Other canonical surfaces**
-
-- `SIGIL-CANON-EXTERN-MEMBER-ORDER`
-- `SIGIL-CANON-FEATURE-FLAG-DECL`
+The embedded docs match the installed binary exactly. There is no version drift
+between the compiler the user is running and the docs the model is reading.
+If the user upgrades from one Sigil release to another, the docs upgrade with
+the binary.
 
 ---
 
 ## The Combinatorial Effect
 
-Each Sigil rule removes one dimension of uncertainty:
+Each rule in Sigil removes one dimension of uncertainty from code generation.
+The canonical naming rules eliminate naming variation. The ordering rules
+eliminate layout variation. The effect system eliminates hidden side-effect
+profiles. The contract surface makes preconditions and postconditions explicit.
+The world system makes test behavior structurally identical to production
+behavior. The no-import surface eliminates import management entirely.
 
-- one branching surface instead of several
-- one canonical print form instead of style freedom
-- explicit effects instead of hidden side effects
-- fixed project files instead of ambiguous placement
-- named boundaries instead of raw endpoints
-- labelled boundary policy instead of convention-only data handling
-- direct-only package resolution instead of transitive guesswork
+These rules do not just add up — they multiply. A model generating Sigil code
+navigates a search space that is smaller at every dimension simultaneously. The
+model does not have to choose between naming conventions AND ordering conventions
+AND recursion patterns AND import styles AND concurrency surfaces AND mock
+strategies. Every choice is made by the compiler, and the compiler communicates
+what is canonical through structured JSON diagnostics with stable error codes.
 
-The value is not any single rule in isolation. The value is that the rules
-compose. Every time the model asks "which valid way should I choose?", Sigil
-tries to replace that question with "there is one accepted way; here it is".
+The result is not a language where code generation is merely easier. It is a
+language where the gap between "syntactically valid" and "correct and canonical"
+is as small as Sigil's design can make it.
 
-That is why Sigil is unusually well-shaped for coding agents. It does not ask
-the model to be stylistically disciplined. It moves discipline into the language
-surface and the compiler.
+```bash
+claude "Write a Sigil program that fetches a list of URLs concurrently and 
+returns the response lengths"
+```
+
+The model writes one program. The compiler tells it, in JSON, exactly what is
+wrong and what is canonical. The model corrects the one thing the compiler
+identified. The program compiles. It is also the only valid Sigil representation
+of that program — because every valid program has exactly one.

@@ -28,14 +28,14 @@ The sections below explain what this looks like in practice.
 - [One Representation Per AST](#one-representation-per-ast) — printer-first design
 - [Match as the Only Branching Surface](#match-as-the-only-branching-surface) — no if/else
 - [No Shadowing](#no-shadowing) — one binding per name, always
+- [Canonical Names](#canonical-names) — two case rules, enforced everywhere
+- [Alphabetical Ordering](#alphabetical-ordering) — parameters, fields, and effects
 - [Explicit Effects](#explicit-effects) — effects declared, not inferred or hidden
 - [World System](#world-system) — swappable effects, not mock functions
 - [Contracts](#contracts) — requires, decreases, ensures
 - [Refinement Types](#refinement-types) — type-level invariants backed by a solver
 - [Topology as Typed Boundaries](#topology-as-typed-boundaries) — named dependency handles
 - [Labels, Policies, and Trusted Transforms](#labels-policies-and-trusted-transforms) — boundary classification as checked program structure
-- [Canonical Names](#canonical-names) — two case rules, enforced everywhere
-- [Alphabetical Ordering](#alphabetical-ordering) — parameters, fields, and effects
 - [Rooted References, No Imports](#rooted-references-no-imports) — module ownership at every call site
 - [Protocol State Types](#protocol-state-types) — state machines at compile time
 - [Semantic Review](#semantic-review) — declaration-level semantic diffs, not line diffs
@@ -210,6 +210,98 @@ resolving it silently.
 Every name in this function refers to exactly one value. There is no question
 about which `count` or which `result` a reference resolves to, because there
 can only be one.
+
+---
+
+## Canonical Names
+
+<a id="canonical-names"></a>
+
+Names in Sigil follow two rules. Types, constructors, and type variables use
+`UpperCamelCase`. Everything else — functions, parameters, constants, locals,
+record fields, module path segments, and filenames — uses `lowerCamelCase`.
+
+The compiler enforces this. A function named `ProcessUser` is a compile error.
+A type named `emailAddress` is a compile error. There is no linter configuration
+to turn this off, no pragma to suppress it, and no formatter to post-process it
+away. The canonical form is the only form the compiler accepts.
+
+```sigil module
+t UserId=String
+
+t User={
+  email:String,
+  id:UserId,
+  name:String
+}
+
+λcreateUser(email:String,name:String)=>User={
+  email:email,
+  id:"generated",
+  name:name
+}
+```
+
+For a language model, this matters because token prediction probability
+concentrates. When `userId`, `user_id`, `UserId`, `user_Id`, and `USERID` are
+all valid representations of the same concept in a language, the model
+distributes probability across all of them at every token boundary. In Sigil,
+there is only `userId`. The model generates it because it is the only valid
+spelling, and the compiler confirms it.
+
+The naming rules have stable error codes: `SIGIL-CANON-IDENTIFIER-FORM`,
+`SIGIL-CANON-TYPE-NAME-FORM`, `SIGIL-CANON-CONSTRUCTOR-NAME-FORM`, and
+`SIGIL-CANON-TYPE-VAR-FORM`. Each one fires with a corrective message that
+states what was found and what is required.
+
+This extends to filenames. A file named `UserService.lib.sigil` is rejected
+with `SIGIL-CANON-FILENAME-CASE`. Only `userService.lib.sigil` is accepted.
+Filenames participate in module path resolution, so filename canonicalization
+eliminates an entire class of case-sensitivity bugs on case-insensitive
+filesystems.
+
+---
+
+## Alphabetical Ordering
+
+<a id="alphabetical-ordering"></a>
+
+Sigil requires alphabetical ordering in three places: function parameters,
+record field declarations and usage, and declared effects. Each ordering is
+enforced with a distinct error code: `SIGIL-CANON-PARAM-ORDER`,
+`SIGIL-CANON-RECORD-TYPE-FIELD-ORDER`, `SIGIL-CANON-RECORD-LITERAL-FIELD-ORDER`,
+`SIGIL-CANON-RECORD-PATTERN-FIELD-ORDER`, and `SIGIL-CANON-EFFECT-ORDER`.
+
+The machine-first implication of this rule is often underestimated. When
+parameter order is alphabetical, a model generating a call site does not need
+to read the function definition to know the correct argument order. Given a
+function `λsend(body:String,headers:{String↦String},to:Email)`, the parameter
+order is derivable from the names alone: `b` before `h` before `t`.
+
+The same holds for record literals. A model creating a `User` value knows the
+field order without reading the type declaration: alphabetical by field name,
+always. The field that comes first in the alphabet comes first in the literal,
+the pattern, and the type definition.
+
+```sigil module
+t Message={
+  body:String,
+  from:String,
+  subject:String,
+  to:String
+}
+
+λdraft(body:String,from:String,subject:String,to:String)=>Message={
+  body:body,
+  from:from,
+  subject:subject,
+  to:to
+}
+```
+
+This eliminates the "which order do the arguments go in" problem for every
+function call a model generates. The order is derivable from the grammar, not
+from memory.
 
 ---
 
@@ -504,98 +596,6 @@ SSNs reaching the audit log are automatically redacted. API keys are blocked
 entirely. Both are compile-time enforcement — not conventions, not review
 comments, not runtime checks. The type carries the classification, the policy
 file carries the rules, and the compiler checks both.
-
----
-
-## Canonical Names
-
-<a id="canonical-names"></a>
-
-Names in Sigil follow two rules. Types, constructors, and type variables use
-`UpperCamelCase`. Everything else — functions, parameters, constants, locals,
-record fields, module path segments, and filenames — uses `lowerCamelCase`.
-
-The compiler enforces this. A function named `ProcessUser` is a compile error.
-A type named `emailAddress` is a compile error. There is no linter configuration
-to turn this off, no pragma to suppress it, and no formatter to post-process it
-away. The canonical form is the only form the compiler accepts.
-
-```sigil module
-t UserId=String
-
-t User={
-  email:String,
-  id:UserId,
-  name:String
-}
-
-λcreateUser(email:String,name:String)=>User={
-  email:email,
-  id:"generated",
-  name:name
-}
-```
-
-For a language model, this matters because token prediction probability
-concentrates. When `userId`, `user_id`, `UserId`, `user_Id`, and `USERID` are
-all valid representations of the same concept in a language, the model
-distributes probability across all of them at every token boundary. In Sigil,
-there is only `userId`. The model generates it because it is the only valid
-spelling, and the compiler confirms it.
-
-The naming rules have stable error codes: `SIGIL-CANON-IDENTIFIER-FORM`,
-`SIGIL-CANON-TYPE-NAME-FORM`, `SIGIL-CANON-CONSTRUCTOR-NAME-FORM`, and
-`SIGIL-CANON-TYPE-VAR-FORM`. Each one fires with a corrective message that
-states what was found and what is required.
-
-This extends to filenames. A file named `UserService.lib.sigil` is rejected
-with `SIGIL-CANON-FILENAME-CASE`. Only `userService.lib.sigil` is accepted.
-Filenames participate in module path resolution, so filename canonicalization
-eliminates an entire class of case-sensitivity bugs on case-insensitive
-filesystems.
-
----
-
-## Alphabetical Ordering
-
-<a id="alphabetical-ordering"></a>
-
-Sigil requires alphabetical ordering in three places: function parameters,
-record field declarations and usage, and declared effects. Each ordering is
-enforced with a distinct error code: `SIGIL-CANON-PARAM-ORDER`,
-`SIGIL-CANON-RECORD-TYPE-FIELD-ORDER`, `SIGIL-CANON-RECORD-LITERAL-FIELD-ORDER`,
-`SIGIL-CANON-RECORD-PATTERN-FIELD-ORDER`, and `SIGIL-CANON-EFFECT-ORDER`.
-
-The machine-first implication of this rule is often underestimated. When
-parameter order is alphabetical, a model generating a call site does not need
-to read the function definition to know the correct argument order. Given a
-function `λsend(body:String,headers:{String↦String},to:Email)`, the parameter
-order is derivable from the names alone: `b` before `h` before `t`.
-
-The same holds for record literals. A model creating a `User` value knows the
-field order without reading the type declaration: alphabetical by field name,
-always. The field that comes first in the alphabet comes first in the literal,
-the pattern, and the type definition.
-
-```sigil module
-t Message={
-  body:String,
-  from:String,
-  subject:String,
-  to:String
-}
-
-λdraft(body:String,from:String,subject:String,to:String)=>Message={
-  body:body,
-  from:from,
-  subject:subject,
-  to:to
-}
-```
-
-This eliminates the "which order do the arguments go in" problem for every
-function call a model generates. The order is derivable from the grammar, not
-from memory.
 
 ---
 

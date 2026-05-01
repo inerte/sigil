@@ -47,6 +47,9 @@ indoc = "2.0"
 # Testing
 pretty_assertions = "1.4"
 
+[profile.test]
+debug = 0
+
 [profile.release]
 opt-level = 3
 lto = true

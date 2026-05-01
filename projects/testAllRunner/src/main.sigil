@@ -77,14 +77,26 @@ mode total
 λfinish(result:Result[
   Unit,
   String
-])=>!CliIo Unit match result{
-  Ok(_)=>{
-    l _=(§io.println("All Sigil suites passed"):Unit);
-    §process.exit(0)
-  }|
-  Err(message)=>{
-    l _=(§io.eprintln(message):Unit);
-    §process.exit(1)
+],startedAt:Int)=>!CliIo Unit={
+  l finishedAt=(nowMillis():Int);
+  l durationMs=(finishedAt-startedAt:Int);
+  match result{
+    Ok(_)=>{
+      l _=(§io.println(""):Unit);
+      l _=(§io.println("["
+        ++renderDuration(durationMs)
+        ++"] total run"):Unit);
+      l _=(§io.println("All Sigil suites passed"):Unit);
+      §process.exit(0)
+    }|
+    Err(message)=>{
+      l _=(§io.eprintln(""):Unit);
+      l _=(§io.eprintln("["
+        ++renderDuration(durationMs)
+        ++"] total run"):Unit);
+      l _=(§io.eprintln(message):Unit);
+      §process.exit(1)
+    }
   }
 }
 
@@ -150,9 +162,18 @@ mode total
   label:"language suite"
 }
 
-λmain()=>!CliIo Unit match repoRoot(){
-  Ok(root)=>finish(runSteps(steps(root)))|
-  Err(message)=>finish(Err(message))
+λmain()=>!CliIo Unit={
+  l startedAt=(nowMillis():Int);
+  match repoRoot(){
+    Ok(root)=>finish(
+      runSteps(steps(root)),
+      startedAt
+    )|
+    Err(message)=>finish(
+      Err(message),
+      startedAt
+    )
+  }
 }
 
 λminesweepSuite(root:String)=>µParallelSuite={
@@ -176,6 +197,8 @@ mode total
   ),
   label:"multimodule integration"
 }
+
+λnowMillis()=>!Clock Int=(§time.toEpochMillis(§time.now()):Int)
 
 λparallelSuites(root:String)=>[µParallelSuite]=[
   algorithmsSuite(root),
@@ -254,6 +277,8 @@ match args{
   )
 }
 
+λrenderDuration(durationMs:Int)=>String=(§string.intToString(durationMs):String)++" ms"
+
 λrepoAuditRoot(root:String)=>String=§path.join(
   §path.join(
     root,
@@ -326,10 +351,21 @@ match commands{
 λrunParallelBatch(suites:[µParallelSuite])=>!CliIo Result[
   Unit,
   String
-]=runStartedSuites(
-  suites,
-  []
-)
+]={
+  l startedAt=(nowMillis():Int);
+  l result=(runStartedSuites(
+    suites,
+    []
+  ):Result[
+  Unit,
+  String
+]);
+  l finishedAt=(nowMillis():Int);
+  l _=(§io.println("["
+    ++renderDuration(finishedAt-startedAt)
+    ++"] parallel Sigil suites"):Unit);
+  result
+}
 
 λrunSerialStep(step:µSerialStep)=>!CliIo Result[
   Unit,
@@ -337,7 +373,17 @@ match commands{
 ]={
   l _=(§io.println(""):Unit);
   l _=(§io.println("==> "++step.label):Unit);
-  runCommands(step.commands)
+  l startedAt=(nowMillis():Int);
+  l result=(runCommands(step.commands):Result[
+  Unit,
+  String
+]);
+  l finishedAt=(nowMillis():Int);
+  l _=(§io.println("["
+    ++renderDuration(finishedAt-startedAt)
+    ++"] "
+    ++step.label):Unit);
+  result
 }
 
 λrunStartedSuites(remaining:[µParallelSuite],started:[µStartedSuite])=>!CliIo Result[

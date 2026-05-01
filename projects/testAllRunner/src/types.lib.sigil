@@ -3,6 +3,11 @@ t ParallelSuite={
   label:String
 }
 
+t ParallelStep={
+  label:String,
+  suites:[ParallelSuite]
+}
+
 t SerialStep={
   commands:[§process.Command],
   label:String
@@ -14,7 +19,7 @@ t StartedSuite={
   process:§process.RunningProcess
 }
 
-t Step=Parallel([ParallelSuite])|Serial(SerialStep)
+t Step=Parallel(ParallelStep)|Serial(SerialStep)
 
 t SuiteResult={
   command:§process.Command,

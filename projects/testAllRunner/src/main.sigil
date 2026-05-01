@@ -130,6 +130,16 @@ mode total
   root
 )
 
+λhomebrewPackagingSuite(root:String)=>µParallelSuite={
+  command:homebrewCommand(root),
+  label:"homebrew packaging"
+}
+
+λhttpIntegrationSuite(root:String)=>µParallelSuite={
+  command:httpTestCommand(root),
+  label:"http integration"
+}
+
 λhttpTestCommand(root:String)=>§process.Command=sigilCommand(
   [
     "test",
@@ -220,6 +230,13 @@ mode total
   §process.command(["pnpm"]⧺args),
   root
 )
+
+λpostAuditParallelSuites(root:String)=>[µParallelSuite]=[
+  websiteBuildSuite(root),
+  homebrewPackagingSuite(root),
+  httpIntegrationSuite(root),
+  tcpIntegrationSuite(root)
+]
 
 λprintBatchResults(results:[µSuiteResult])=>!CliIo Unit
 decreases #results
@@ -340,13 +357,13 @@ match commands{
   }
 }
 
-λrunParallelBatch(suites:[µParallelSuite])=>!CliIo Result[
+λrunParallelBatch(step:µParallelStep)=>!CliIo Result[
   Unit,
   String
 ]={
   l startedAt=(nowMillis():Int);
   l result=(runStartedSuites(
-    suites,
+    step.suites,
     []
   ):Result[
   Unit,
@@ -355,7 +372,8 @@ match commands{
   l finishedAt=(nowMillis():Int);
   l _=(§io.println("["
     ++renderDuration(finishedAt-startedAt)
-    ++"] parallel Sigil suites"):Unit);
+    ++"] "
+    ++step.label):Unit);
   result
 }
 
@@ -413,10 +431,10 @@ match remaining{
   Unit,
   String
 ] match step{
-  µParallel(suites)=>{
+  µParallel(parallel)=>{
     l _=(§io.println(""):Unit);
-    l _=(§io.println("==> parallel Sigil suites"):Unit);
-    runParallelBatch(suites)
+    l _=(§io.println("==> "++parallel.label):Unit);
+    runParallelBatch(parallel)
   }|
   µSerial(serial)=>runSerialStep(serial)
 }
@@ -502,25 +520,13 @@ match all{
     ],
     label:"repo audit"
   }),
-  µParallel(parallelSuites(root)),
-  µSerial({
-    commands:[pnpmCommand(
-      ["sigil:build:website"],
-      root
-    )],
-    label:"website build"
+  µParallel({
+    label:"parallel Sigil suites",
+    suites:parallelSuites(root)
   }),
-  µSerial({
-    commands:[homebrewCommand(root)],
-    label:"homebrew packaging"
-  }),
-  µSerial({
-    commands:[httpTestCommand(root)],
-    label:"http integration"
-  }),
-  µSerial({
-    commands:[tcpTestCommand(root)],
-    label:"tcp integration"
+  µParallel({
+    label:"post-audit checks",
+    suites:postAuditParallelSuites(root)
   })
 ]
 
@@ -535,6 +541,11 @@ match results{
     true=>suiteFailure(tail)|
     false=>Some(failedSuiteMessage(head))
   }
+}
+
+λtcpIntegrationSuite(root:String)=>µParallelSuite={
+  command:tcpTestCommand(root),
+  label:"tcp integration"
 }
 
 λtcpTestCommand(root:String)=>§process.Command=sigilCommand(
@@ -571,4 +582,12 @@ match started{
       result:result
     }]⧺waitSuites(tail)
   }
+}
+
+λwebsiteBuildSuite(root:String)=>µParallelSuite={
+  command:pnpmCommand(
+    ["sigil:build:website"],
+    root
+  ),
+  label:"website build"
 }

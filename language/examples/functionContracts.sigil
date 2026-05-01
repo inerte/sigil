@@ -6,6 +6,7 @@ t BirthYear=Int where value>1800
 )
 
 λnormalizeYear(raw:Int)=>Int
+requires raw≥0
 ensures result>1800
 match raw>1800{
   true=>raw|

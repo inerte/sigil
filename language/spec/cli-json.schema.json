@@ -18,6 +18,7 @@
     { "$ref": "#/$defs/docsShowEnvelope" },
     { "$ref": "#/$defs/docsContextEnvelope" },
     { "$ref": "#/$defs/featureFlagAuditEnvelope" },
+    { "$ref": "#/$defs/reviewEnvelope" },
     { "$ref": "#/$defs/runEnvelope" },
     { "$ref": "#/$defs/debugEnvelope" },
     { "$ref": "#/$defs/testEnvelope" }
@@ -1258,6 +1259,174 @@
             { "if": { "properties": { "ok": { "const": true } } }, "then": { "required": ["data"] } },
             { "if": { "properties": { "ok": { "const": false } } }, "then": { "required": ["error"] } }
           ]
+        }
+      ]
+    },
+    "reviewAnalysisMode": {
+      "type": "string",
+      "enum": ["typed", "parseOnly"]
+    },
+    "reviewDeclarationFacts": {
+      "type": "object",
+      "required": ["surface"],
+      "properties": {
+        "surface": { "type": "string" },
+        "signature": { "type": "string" },
+        "mode": { "type": "string" },
+        "effects": { "type": "array", "items": { "type": "string" } },
+        "requires": { "type": "string" },
+        "decreases": { "type": "string" },
+        "ensures": { "type": "string" },
+        "definition": { "type": "string" },
+        "constraint": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "defaultExpr": { "type": "string" },
+        "modulePath": { "type": "string" },
+        "members": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "reviewChangeSide": {
+      "type": "object",
+      "required": ["analysisMode", "facts", "line", "path"],
+      "properties": {
+        "analysisMode": { "$ref": "#/$defs/reviewAnalysisMode" },
+        "facts": { "$ref": "#/$defs/reviewDeclarationFacts" },
+        "line": { "type": "integer", "minimum": 1 },
+        "moduleId": { "type": "string" },
+        "path": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "reviewChange": {
+      "type": "object",
+      "required": [
+        "changeKinds",
+        "declarationKey",
+        "declarationKind",
+        "declarationName",
+        "status"
+      ],
+      "properties": {
+        "after": { "$ref": "#/$defs/reviewChangeSide" },
+        "before": { "$ref": "#/$defs/reviewChangeSide" },
+        "changeKinds": { "type": "array", "items": { "type": "string" } },
+        "declarationKey": { "type": "string" },
+        "declarationKind": { "type": "string" },
+        "declarationName": { "type": "string" },
+        "status": { "type": "string", "enum": ["added", "removed", "modified"] }
+      },
+      "additionalProperties": false
+    },
+    "reviewCoverageTarget": {
+      "type": "object",
+      "required": ["file", "functionName", "id"],
+      "properties": {
+        "file": { "type": "string" },
+        "functionName": { "type": "string" },
+        "id": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "reviewIssue": {
+      "type": "object",
+      "required": ["kind", "message", "phase", "severity"],
+      "properties": {
+        "kind": { "type": "string" },
+        "message": { "type": "string" },
+        "phase": { "type": "string" },
+        "severity": { "type": "string", "enum": ["warning", "error"] },
+        "path": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "reviewSummary": {
+      "type": "object",
+      "required": [
+        "changedCoverageTargets",
+        "changedDeclarations",
+        "changedFiles",
+        "changedTestFiles",
+        "compileIssues",
+        "contractChanges",
+        "effectChanges",
+        "implementationChanges",
+        "signatureChanges",
+        "trustSurfaceChanges",
+        "typeChanges"
+      ],
+      "properties": {
+        "changedCoverageTargets": { "type": "integer", "minimum": 0 },
+        "changedDeclarations": { "type": "integer", "minimum": 0 },
+        "changedFiles": { "type": "integer", "minimum": 0 },
+        "changedTestFiles": { "type": "integer", "minimum": 0 },
+        "compileIssues": { "type": "integer", "minimum": 0 },
+        "contractChanges": { "type": "integer", "minimum": 0 },
+        "effectChanges": { "type": "integer", "minimum": 0 },
+        "implementationChanges": { "type": "integer", "minimum": 0 },
+        "signatureChanges": { "type": "integer", "minimum": 0 },
+        "trustSurfaceChanges": { "type": "integer", "minimum": 0 },
+        "typeChanges": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "reviewScope": {
+      "type": "object",
+      "required": ["after", "before", "gitArgs", "mode"],
+      "properties": {
+        "after": { "type": "string" },
+        "before": { "type": "string" },
+        "gitArgs": { "type": "array", "items": { "type": "string" } },
+        "mode": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "reviewTestEvidence": {
+      "type": "object",
+      "required": [
+        "changedCoverageTargets",
+        "changedTestDeclarations",
+        "changedTestFiles"
+      ],
+      "properties": {
+        "changedCoverageTargets": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reviewCoverageTarget" }
+        },
+        "changedTestDeclarations": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "changedTestFiles": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "reviewData": {
+      "type": "object",
+      "required": ["changes", "issues", "scope", "summary", "testEvidence"],
+      "properties": {
+        "changes": { "type": "array", "items": { "$ref": "#/$defs/reviewChange" } },
+        "issues": { "type": "array", "items": { "$ref": "#/$defs/reviewIssue" } },
+        "scope": { "$ref": "#/$defs/reviewScope" },
+        "summary": { "$ref": "#/$defs/reviewSummary" },
+        "testEvidence": { "$ref": "#/$defs/reviewTestEvidence" }
+      },
+      "additionalProperties": false
+    },
+    "reviewEnvelope": {
+      "allOf": [
+        { "$ref": "#/$defs/baseEnvelope" },
+        {
+          "type": "object",
+          "properties": {
+            "command": { "const": "sigil review" },
+            "phase": { "const": "surface" },
+            "data": { "$ref": "#/$defs/reviewData" }
+          },
+          "required": ["data"]
         }
       ]
     },

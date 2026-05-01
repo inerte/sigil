@@ -13,9 +13,10 @@ cargo run -q -p sigil-cli --no-default-features -- <args...>
 
 ## The Model
 
-Sigil debugging is split into four surfaces:
+Sigil debugging and review are split into five surfaces:
 
 - `inspect`: what the compiler or runtime setup believes
+- `review`: what changed semantically across a git-selected patch
 - `run`: what one program execution did
 - `test`: what one test suite execution did
 - `debug`: replay-backed stepping over one recorded run or one recorded test
@@ -35,6 +36,7 @@ The important design choices are:
 | Did the compiler reject the source shape? | `sigil inspect validate <file-or-dir>` |
 | What top-level types did the checker solve? | `sigil inspect types <file-or-dir>` |
 | Which proof surfaces and branch gates exist here? | `sigil inspect proof <file-or-dir>` |
+| What changed semantically in this PR or staged patch? | `sigil review ...` |
 | What runtime world will this env or standalone file use? | `sigil inspect world <path> [--env <name>]` |
 | What TypeScript did this compile to? | `sigil inspect codegen <file-or-dir>` |
 | Where did one run fail? | `sigil run --json <file>` |
@@ -44,6 +46,47 @@ The important design choices are:
 | What did one test suite do? | `sigil test ...` |
 | Can I replay one failing test? | `sigil test --record <artifact> ...` then `sigil debug test start --replay <artifact> --test <results[].id> ...` |
 | Can I step through a recorded execution? | `sigil debug run ...` or `sigil debug test ...` |
+
+## Review Surface
+
+### `sigil review`
+
+Use this when you need a human-reviewable semantic diff for Sigil code rather
+than a raw textual patch.
+
+Examples:
+
+```bash
+sigil review --staged
+sigil review --base origin/main --head HEAD
+sigil review -- origin/main...HEAD -- projects/todo-app
+sigil review --json -- origin/main...HEAD
+sigil review --llm -- origin/main...HEAD | claude
+```
+
+Current design:
+
+- git selects which files changed
+- Sigil computes the typed/canonical facts for those snapshots
+- the default output is a compact human-readable report
+- `--json` emits the structured machine envelope
+- `--llm` emits grounded prompt text for a separate model
+
+Current report focus:
+
+- declaration additions/removals/modifications
+- signature, contract, termination, type/refinement, and effect changes
+- new or changed trust surfaces such as `extern`
+- changed test files plus review-time test evidence
+- compile/canonical/typecheck problems surfaced as review issues
+
+Current limitation:
+
+- when one side of the diff cannot complete full typed analysis, `sigil review`
+  may fall back to parse-only declaration facts and call that out explicitly
+- `sigil review` shells out to `git` directly for selection and snapshot reads,
+  and it does not yet impose its own subprocess timeout; a hung prompt or repo
+  lock will block review until `git` exits
 
 ## Inspect Surfaces
 

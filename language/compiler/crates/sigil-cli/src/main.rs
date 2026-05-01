@@ -17,8 +17,8 @@ use commands::{
     compile_command, debug_run_session_command, debug_run_start_command,
     debug_test_session_command, debug_test_start_command, docs_context_command, docs_list_command,
     docs_search_command, docs_show_command, feature_flag_audit_command, init_command,
-    inspect_command, lex_command, parse_command, run_command, test_command, validate_command,
-    DebugControlAction,
+    inspect_command, lex_command, parse_command, review_command, run_command, test_command,
+    validate_command, DebugControlAction,
 };
 use package_manager::{
     package_add_command, package_install_command, package_list_command, package_publish_command,
@@ -217,6 +217,37 @@ enum Command {
         /// Runtime topology environment name
         #[arg(long)]
         env: String,
+    },
+
+    /// Review git-selected Sigil changes with compiler facts
+    Review {
+        /// Emit the canonical machine-readable JSON fact envelope
+        #[arg(long, conflicts_with = "llm")]
+        json: bool,
+
+        /// Emit prompt-friendly review facts for an external LLM
+        #[arg(long, conflicts_with = "json")]
+        llm: bool,
+
+        /// Review staged changes (`git diff --cached`)
+        #[arg(long, conflicts_with_all = ["base", "head", "git_diff_args"])]
+        staged: bool,
+
+        /// Convenience base revision (defaults head to `HEAD`)
+        #[arg(long, conflicts_with = "git_diff_args")]
+        base: Option<String>,
+
+        /// Convenience head revision (requires `--base`)
+        #[arg(long, conflicts_with = "git_diff_args")]
+        head: Option<String>,
+
+        /// Limit convenience selectors to one or more paths
+        #[arg(long = "path", value_name = "PATH", conflicts_with = "git_diff_args")]
+        path: Vec<PathBuf>,
+
+        /// Pass raw git diff args after `--`
+        #[arg(last = true, value_name = "GIT_DIFF_ARGS")]
+        git_diff_args: Vec<String>,
     },
 
     /// Query first-class feature flag declarations
@@ -715,6 +746,23 @@ fn main() {
             replay.as_deref(),
         ),
         Command::Validate { path, env } => validate_command(&path, &env),
+        Command::Review {
+            json,
+            llm,
+            staged,
+            base,
+            head,
+            path,
+            git_diff_args,
+        } => review_command(
+            json,
+            llm,
+            staged,
+            base.as_deref(),
+            head.as_deref(),
+            &path,
+            &git_diff_args,
+        ),
         Command::FeatureFlag { command } => match command {
             FeatureFlagCommand::Audit { path, older_than } => {
                 feature_flag_audit_command(&path, older_than.as_deref())

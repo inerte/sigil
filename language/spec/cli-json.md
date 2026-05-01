@@ -15,6 +15,7 @@ Sigil CLI commands are machine-first. JSON is the default output mode for:
 - `sigil docs show`
 - `sigil docs context`
 - `sigil featureFlag audit`
+- `sigil review --json`
 - `sigilc debug run`
 - `sigilc debug test`
 - `sigilc test`
@@ -30,6 +31,12 @@ Sigil CLI commands are machine-first. JSON is the default output mode for:
 - `sigil run --json --break-fn <name> <file>` adds machine-readable breakpoint snapshots
 - `sigil run --json --record <artifact> <file>` adds replay recording metadata and writes a replay artifact
 - `sigil run --json --replay <artifact> <file>` replays a prior artifact and reports replay consumption metadata
+
+`sigil review` is also split:
+
+- plain `sigil review ...` emits a human-readable review report
+- `sigil review --llm ...` emits prompt-friendly grounded facts for piping into an external LLM
+- `sigil review --json ...` emits the structured review envelope documented below
 
 ## Canonical Schema
 
@@ -81,6 +88,8 @@ Failures emit:
 `sigilc inspect types`, `sigilc inspect proof`, `sigilc inspect validate`, `sigilc inspect codegen`, and `sigilc inspect world` use inspect-specific envelopes.
 `sigil docs list`, `sigil docs search`, `sigil docs show`, and `sigil docs context` use docs-specific envelopes with `phase: "docs"` on success.
 `sigil featureFlag audit` uses a query-style envelope with `data.summary` and `data.flags`.
+`sigil review --json` uses a review-specific envelope with `data.scope`, `data.summary`,
+`data.changes`, `data.testEvidence`, and `data.issues`.
 `sigilc run` uses the `runEnvelope` schema in `--json` mode and for failure payloads.
 `sigilc debug run` and `sigilc debug test` use replay-backed debug envelopes with
 `data.session` and `data.snapshot`.
@@ -195,6 +204,7 @@ Use the current surfaces like this:
 - `sigil inspect proof`: declared proof-bearing surfaces and branch gates
 - `sigil inspect world`: normalized runtime world for one project env or one standalone file
 - `sigil featureFlag audit`: first-class feature flag declarations, optionally filtered by age
+- `sigil review [--json|--llm] -- ...`: semantic review facts for a git-selected Sigil diff
 - `sigil inspect codegen`: generated TypeScript plus span-map summary
 - `sigil run --json`: one structured run success/failure envelope
 - `sigil run --json --trace [--trace-expr]`: bounded runtime trace
@@ -224,6 +234,38 @@ Proof-oriented typecheck failures may also enrich `error.details` with:
   - `outcome`
 - `proofKind`
 - `proofSummary`
+
+## Review
+
+`sigil review` is the compiler-owned patch review surface.
+
+Selection:
+
+- convenience forms like `sigil review --staged`
+- convenience revision pairs like `sigil review --base origin/main --head HEAD`
+- raw passthrough to git diff selection semantics like `sigil review -- origin/main...HEAD -- projects/todo-app`
+
+The default output is human-readable because the command exists to help humans
+review Sigil patches. Use `--json` for machine consumption and `--llm` for
+prompt-friendly grounded text.
+
+`sigil review --json` returns:
+
+- `data.scope`
+- `data.summary`
+- `data.changes`
+- `data.testEvidence`
+- `data.issues`
+
+Important current boundaries:
+
+- git chooses which files are in scope
+- Sigil computes typed/canonical review facts over those snapshots
+- the review report is deterministic and does not invoke a model
+- when one snapshot cannot complete full typed analysis, the command may fall
+  back to parse-only declaration facts and record that limitation in `issues`
+- review shells out to `git` for selection and snapshot reads, and it does not
+  yet enforce an internal subprocess timeout
 
 ## Inspect Types
 

@@ -14,15 +14,15 @@ the next token given the preceding context, and they do so probabilistically.
 That means ambiguity — multiple valid forms for the same construct — multiplies
 uncertainty at every step.
 
-Sigil's answer is the **canonical constraint hypothesis**: reduce the valid
-surface to one accepted form per construct, enforce it at compile time, and let
-the model generate confidently within that constraint. Not by removing
-information. Not by making code harder to read. By giving every valid program
-exactly one textual representation so the model never has to choose between two
-equally valid spellings of the same thing.
+Sigil's answer has two parts. The **canonical constraint hypothesis** reduces
+the valid surface to one accepted form per construct — every valid program has
+exactly one textual representation, enforced at compile time, so the model
+never has to choose between equivalent spellings. The **tooling** targets the
+same consumer: structured JSON diagnostics at every compiler phase, semantic
+review that reports which function gained which effect rather than which lines
+changed, and embedded docs the binary can serve directly.
 
-The sections below explain what this looks like in practice and why each design
-decision matters for code generation specifically.
+The sections below explain what this looks like in practice.
 
 ---
 

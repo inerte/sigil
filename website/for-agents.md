@@ -713,7 +713,9 @@ program does not compile.
 `git diff` shows what lines changed. `sigil review` shows what those line
 changes mean at the declaration level: which functions gained or lost an effect,
 which contracts changed, which signatures were modified, whether any changed
-functions now lack test coverage evidence.
+functions now lack test coverage evidence. For a human reviewer, that is the
+difference between scanning a wall of line noise and opening directly on the
+changes that actually matter.
 
 Take this change to a single function — adding the `!Http` effect and a
 `requires` precondition:

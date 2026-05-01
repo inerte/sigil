@@ -23,7 +23,7 @@ Supporting modules:
 
 Standalone algorithm/demo entrypoints:
 
-- `factorial.sigil`, `factorialFold.sigil`, `factorialHelper.sigil`, `factorialMutual.sigil`, `factorialValid.sigil`
+- `factorial.sigil`, `factorialReduce.sigil`, `factorialHelper.sigil`, `factorialMutual.sigil`, `factorialValid.sigil`
 - `fibonacci.sigil`, `gcd.sigil`, `power.sigil`
 - `filterEven.sigil`, `isPalindrome.sigil`, `listLength.sigil`, `listReverse.sigil`, `mapDouble.sigil`, `sumList.sigil`
 

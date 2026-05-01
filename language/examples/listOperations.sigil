@@ -1,3 +1,5 @@
+λappendDigits(xs:[Int])=>Int=xs reduce (λ(acc:Int,x:Int)=>Int=acc*10+x) from 0
+
 λdoubleAll(xs:[Int])=>[Int]=xs map (λ(x:Int)=>Int=x*2)
 
 λfilterThenMap(xs:[Int])=>[Int]=xs filter (λ(x:Int)=>Bool=x>0) map (λ(x:Int)=>Int=x*x)
@@ -18,4 +20,14 @@
   3,
   4,
   5
-]))
+]))+appendDigits([
+  1,
+  2,
+  3
+])+sumSquares([
+  1,
+  2,
+  3
+])
+
+λsumSquares(xs:[Int])=>Int=xs map (λ(x:Int)=>Int=x*x) reduce (λ(acc:Int,x:Int)=>Int=acc+x) from 0

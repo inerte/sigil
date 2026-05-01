@@ -90,7 +90,6 @@ isErr(res)
 λdrop[T](n:Int,xs:[T])=>[T]
 λfind[T](pred:λ(T)=>Bool,xs:[T])=>Option[T]
 λflatMap[T,U](fn:λ(T)=>[U],xs:[T])=>[U]
-λfold[T,U](acc:U,fn:λ(U,T)=>U,xs:[T])=>U
 λinBounds[T](idx:Int,xs:[T])=>Bool
 λlast[T](xs:[T])=>Option[T]
 λmax(xs:[Int])=>Option[Int]
@@ -124,7 +123,7 @@ Sigil treats the list-processing surface as canonical:
 - use `filter` for filtering
 - use `§list.find` for first-match search
 - use `§list.flatMap` for flattening projection
-- use `reduce ... from ...` or `§list.fold` for reduction
+- use `reduce ... from ...` for reduction
 - use `§list.reverse` for reversal
 
 The validator rejects exact recursive clones of `all`, `any`, `map`, `filter`,

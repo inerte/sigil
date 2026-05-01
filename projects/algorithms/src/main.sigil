@@ -11,7 +11,7 @@ c helpLines=([
   "  src/example99Bottles.sigil",
   "  src/extendedGcdDemo.sigil",
   "  src/factorial.sigil",
-  "  src/factorialFold.sigil",
+  "  src/factorialReduce.sigil",
   "  src/factorialHelper.sigil",
   "  src/factorialMutual.sigil",
   "  src/factorialValid.sigil",

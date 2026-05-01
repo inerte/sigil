@@ -2,17 +2,31 @@ mode total
 
 λaddInt(acc:Int,x:Int)=>Int=acc+x
 
-λall[T](pred:λ(T)=>Bool,xs:[T])=>Bool=fold(
-  true,
-  λ(acc:Bool,x:T)=>Bool=acc and pred(x),
-  xs
-)
+λall[T](pred:λ(T)=>Bool,xs:[T])=>Bool
+decreases #xs
+match xs{
+  []=>true|
+  [
+  x,
+  .rest
+]=>pred(x) and all(
+    pred,
+    rest
+  )
+}
 
-λany[T](pred:λ(T)=>Bool,xs:[T])=>Bool=fold(
-  false,
-  λ(acc:Bool,x:T)=>Bool=acc or pred(x),
-  xs
-)
+λany[T](pred:λ(T)=>Bool,xs:[T])=>Bool
+decreases #xs
+match xs{
+  []=>false|
+  [
+  x,
+  .rest
+]=>pred(x) or any(
+    pred,
+    rest
+  )
+}
 
 λcontains[T](item:T,xs:[T])=>Bool
 decreases #xs
@@ -49,14 +63,24 @@ match xs{
   }
 }
 
-λcountIf[T](pred:λ(T)=>Bool,xs:[T])=>Int=fold(
-  0,
-  λ(acc:Int,x:T)=>Int match pred(x){
-    true=>acc+1|
-    false=>acc
-  },
-  xs
-)
+λcountIf[T](pred:λ(T)=>Bool,xs:[T])=>Int
+decreases #xs
+match xs{
+  []=>0|
+  [
+  x,
+  .rest
+]=>match pred(x){
+    true=>1+countIf(
+      pred,
+      rest
+    )|
+    false=>countIf(
+      pred,
+      rest
+    )
+  }
+}
 
 λdrop[T](n:Int,xs:[T])=>[T] match n<0{
   true=>xs|
@@ -83,17 +107,21 @@ match n≤0{
   }
 }
 
-λfind[T](pred:λ(T)=>Bool,xs:[T])=>Option[T]=fold(
-  None(),
-  λ(acc:Option[T],x:T)=>Option[T] match acc{
-    Some(value)=>Some(value)|
-    None()=>match pred(x){
-      true=>Some(x)|
-      false=>None()
-    }
-  },
-  xs
-)
+λfind[T](pred:λ(T)=>Bool,xs:[T])=>Option[T]
+decreases #xs
+match xs{
+  []=>None()|
+  [
+  x,
+  .rest
+]=>match pred(x){
+    true=>Some(x)|
+    false=>find(
+      pred,
+      rest
+    )
+  }
+}
 
 λflatMap[T,U](fn:λ(T)=>[U],xs:[T])=>[U]=reverse(flatMapHelper(
   [],
@@ -112,23 +140,6 @@ match xs{
     prependReversed(
       acc,
       fn(x)
-    ),
-    fn,
-    rest
-  )
-}
-
-λfold[T,U](acc:U,fn:λ(U,T)=>U,xs:[T])=>U
-decreases #xs
-match xs{
-  []=>acc|
-  [
-  x,
-  .rest
-]=>fold(
-    fn(
-      acc,
-      x
     ),
     fn,
     rest
@@ -242,17 +253,20 @@ match xs{
   }
 }
 
-λprependReversed[T](acc:[T],xs:[T])=>[T]=fold(
-  acc,
-  λ(result:[T],x:T)=>[T]=([x]:[T])⧺result,
-  xs
-)
+λprependReversed[T](acc:[T],xs:[T])=>[T]
+decreases #xs
+match xs{
+  []=>acc|
+  [
+  x,
+  .rest
+]=>prependReversed(
+    ([x]:[T])⧺acc,
+    rest
+  )
+}
 
-λproduct(xs:[Int])=>Int=fold(
-  1,
-  multiplyInt,
-  xs
-)
+λproduct(xs:[Int])=>Int=xs reduce multiplyInt from 1
 
 λremoveFirst[T](item:T,xs:[T])=>[T]=reverse(removeFirstHelper(
   [],
@@ -343,11 +357,7 @@ match xs{
   )
 }
 
-λsum(xs:[Int])=>Int=fold(
-  0,
-  addInt,
-  xs
-)
+λsum(xs:[Int])=>Int=xs reduce addInt from 0
 
 λtake[T](n:Int,xs:[T])=>[T] match n<0{
   true=>[]|

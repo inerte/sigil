@@ -77,7 +77,7 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
-    #[error("SIGIL-CANON-RECURSION-FOLD-CLONE: Recursive function '{function_name}' is a hand-rolled fold.\n\nSigil rejects exact recursive list-reduction clones and requires the canonical reduction surface.\n\nUse xs reduce fn from init or stdlib::list.fold instead of custom recursive reduction.")]
+    #[error("SIGIL-CANON-RECURSION-FOLD-CLONE: Recursive function '{function_name}' is a hand-rolled fold.\n\nSigil rejects exact recursive list-reduction clones and requires the canonical reduction surface.\n\nUse xs reduce fn from init instead of custom recursive reduction.")]
     RecursiveFoldClone {
         function_name: String,
         location: SourceLocation,
@@ -789,7 +789,7 @@ impl From<ValidationError> for Diagnostic {
                     format!("Recursive function '{}' is a hand-rolled fold", function_name),
                 )
                 .with_location(source_location_to_span(get_file(), location))
-                .with_details("guidance", "Use xs reduce fn from init or stdlib::list.fold instead of custom recursive reduction.")
+                .with_details("guidance", "Use xs reduce fn from init instead of custom recursive reduction.")
             }
 
             ValidationError::BranchingSelfRecursion { function_name, location } => {

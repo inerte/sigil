@@ -34,7 +34,7 @@ The required replacements are:
 - `filter` for filtering
 - `§list.find` for first-match search
 - `§list.flatMap` for flattening projection
-- `reduce ... from ...` or `§list.fold` for reduction
+- `reduce ... from ...` for reduction
 - `§list.reverse` for reversal
 
 This is not a general optimizer and not a semantic equivalence engine. The

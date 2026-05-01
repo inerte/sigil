@@ -307,7 +307,7 @@ The required replacements are:
 - `filter`
 - `§list.find`
 - `§list.flatMap`
-- `reduce ... from ...` / `§list.fold`
+- `reduce ... from ...`
 - `§list.reverse`
 
 These are exact-shape canonicality rules, not general semantic equivalence or

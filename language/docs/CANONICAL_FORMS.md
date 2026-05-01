@@ -267,7 +267,7 @@ Canonical replacements:
 - filtering: `filter`
 - first-match search: `§list.find`
 - flattening projection: `§list.flatMap`
-- reduction: `reduce ... from ...` or `§list.fold`
+- reduction: `reduce ... from ...`
 - reversal: `§list.reverse`
 - custom list building: wrapper + accumulator helper, reversing once at the end if needed
 

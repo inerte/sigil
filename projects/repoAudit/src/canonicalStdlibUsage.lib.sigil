@@ -1,21 +1,17 @@
 mode total
 
-λanalyzeFile(path:String,rules:[µCanonicalRule],source:String)=>[µCanonicalIssue]=§list.reverse((§list.fold(
-  {
-    issues:[],
-    line:1
-  },
-  λ(acc:µCanonicalAnalyzeState,line:String)=>µCanonicalAnalyzeState={
-    issues:(lineIssues(
-      acc.line,
-      path,
-      rules,
-      line
-    ):[µCanonicalIssue])⧺acc.issues,
-    line:acc.line+1
-  },
-  ((§string.lines(source):[String]) filter nonEmpty:[String])
-):µCanonicalAnalyzeState).issues)
+λanalyzeFile(path:String,rules:[µCanonicalRule],source:String)=>[µCanonicalIssue]=§list.reverse((((§string.lines(source):[String]) filter nonEmpty:[String]) reduce (λ(acc:µCanonicalAnalyzeState,line:String)=>µCanonicalAnalyzeState={
+  issues:(lineIssues(
+    acc.line,
+    path,
+    rules,
+    line
+  ):[µCanonicalIssue])⧺acc.issues,
+  line:acc.line+1
+}) from ({
+  issues:[],
+  line:1
+}:µCanonicalAnalyzeState):µCanonicalAnalyzeState).issues)
 
 λcompileRule(spec:µCanonicalRuleSpec)=>Result[
   µCanonicalRule,
@@ -82,28 +78,24 @@ mode total
   replacement++"("
 )
 
-λlineIssues(lineNumber:Int,path:String,rules:[µCanonicalRule],sourceLine:String)=>[µCanonicalIssue]=§list.fold(
-  [],
-  λ(acc:[µCanonicalIssue],rule:µCanonicalRule)=>[µCanonicalIssue] match §regex.isMatch(
-    sourceLine,
-    rule.pattern
+λlineIssues(lineNumber:Int,path:String,rules:[µCanonicalRule],sourceLine:String)=>[µCanonicalIssue]=rules reduce (λ(acc:[µCanonicalIssue],rule:µCanonicalRule)=>[µCanonicalIssue] match §regex.isMatch(
+  sourceLine,
+  rule.pattern
+){
+  true=>match lineAlreadyUsesCanonicalHelper(
+    rule.replacement,
+    sourceLine
   ){
-    true=>match lineAlreadyUsesCanonicalHelper(
-      rule.replacement,
-      sourceLine
-    ){
-      true=>acc|
-      false=>([{
-        line:lineNumber,
-        name:rule.name,
-        path:path,
-        replacement:rule.replacement
-      }]:[µCanonicalIssue])⧺acc
-    }|
-    false=>acc
-  },
-  rules
-)
+    true=>acc|
+    false=>([{
+      line:lineNumber,
+      name:rule.name,
+      path:path,
+      replacement:rule.replacement
+    }]:[µCanonicalIssue])⧺acc
+  }|
+  false=>acc
+}) from ([]:[µCanonicalIssue])
 
 λnonEmpty(text:String)=>Bool=#text>0
 
@@ -462,14 +454,10 @@ match paths{
   }
 ]
 
-λrules()=>[µCanonicalRule]=§list.fold(
-  [],
-  λ(acc:[µCanonicalRule],spec:µCanonicalRuleSpec)=>[µCanonicalRule] match compileRule(spec){
-    Ok(rule)=>acc⧺[rule]|
-    Err(_)=>acc
-  },
-  ruleSpecs()
-)
+λrules()=>[µCanonicalRule]=ruleSpecs() reduce (λ(acc:[µCanonicalRule],spec:µCanonicalRuleSpec)=>[µCanonicalRule] match compileRule(spec){
+  Ok(rule)=>acc⧺[rule]|
+  Err(_)=>acc
+}) from ([]:[µCanonicalRule])
 
 λrunCheck()=>!AuditIo Result[
   [µCanonicalIssue],

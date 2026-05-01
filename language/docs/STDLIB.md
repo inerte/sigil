@@ -1160,37 +1160,6 @@ Examples:
 ]
 ```
 
-### fold
-
-Reduce a list to a single value by threading an accumulator from left to right.
-
-```sigil decl §list
-λfold[T,U](acc:U,fn:λ(U,T)=>U,xs:[T])=>U
-```
-
-Examples:
-```sigil program
-λappendDigit(acc:Int,x:Int)=>Int=acc*10+x
-
-λmain()=>Bool=§list.fold(
-  0,
-  λ(acc:Int,x:Int)=>Int=acc+x,
-  [
-    1,
-    2,
-    3
-  ]
-)=6 and §list.fold(
-  0,
-  appendDigit,
-  [
-    1,
-    2,
-    3
-  ]
-)=123
-```
-
 ### inBounds
 
 Check if an index is valid for a list (in range [0, len-1]).
@@ -1453,7 +1422,7 @@ not hand-rolled recursive plumbing:
 - use `filter` for filtering
 - use `§list.find` for first-match search
 - use `§list.flatMap` for flattening projection
-- use `reduce ... from ...` or `§list.fold` for reduction
+- use `reduce ... from ...` for reduction
 - use `§list.reverse` for reversal
 
 Sigil now rejects exact recursive clones of `all`, `any`, `map`, `filter`,

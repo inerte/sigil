@@ -100,7 +100,7 @@ Current list-processing examples:
 - recursive `filter` clones are rejected in favor of `filter`
 - recursive `find` clones are rejected in favor of `§list.find`
 - recursive `flatMap` clones are rejected in favor of `§list.flatMap`
-- recursive `fold` clones are rejected in favor of `reduce ... from ...` / `§list.fold`
+- recursive `fold` clones are rejected in favor of `reduce ... from ...`
 - recursive `reverse` clones are rejected in favor of `§list.reverse`
 - recursive result-building of the form `self(rest)⧺rhs` is rejected
 

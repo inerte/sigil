@@ -280,7 +280,7 @@ SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indenta
 **Description:** Exact recursive fold clone detected.
 **Message:** "Recursive function 'name' is a hand-rolled fold"
 **Example:** `λsum(xs:[Int])=>Int match xs{[]=>0|[x,.rest]=>x+sum(rest)}`
-**How to fix:** Use `xs reduce fn from init` or `§list.fold`
+**How to fix:** Use `xs reduce fn from init`
 
 ### SIGIL-CANON-BRANCHING-SELF-RECURSION
 **Description:** Non-canonical sibling self-calls over the same directly reduced parameter.

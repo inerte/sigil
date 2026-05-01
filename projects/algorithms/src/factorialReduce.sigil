@@ -1,0 +1,8 @@
+λfactorial(n:Int)=>Int=§numeric.range(
+  1,
+  n
+) reduce multiply from 1
+
+λmain()=>Int=factorial(5)
+
+λmultiply(acc:Int,x:Int)=>Int=acc*x

@@ -142,7 +142,7 @@
       "projects/algorithms/src/extendedGcd.lib.sigil",
       "projects/algorithms/src/extendedGcdDemo.sigil",
       "projects/algorithms/src/factorial.sigil",
-      "projects/algorithms/src/factorialFold.sigil",
+      "projects/algorithms/src/factorialReduce.sigil",
       "projects/algorithms/src/factorialHelper.sigil",
       "projects/algorithms/src/factorialMutual.sigil",
       "projects/algorithms/src/factorialValid.sigil",

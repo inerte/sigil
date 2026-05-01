@@ -197,7 +197,7 @@ Current constructor and list invariants:
   - reject dead named bindings; use `l _=(...)` when sequencing effects without keeping a reusable local
   - `.sigil` files must keep top-level functions, consts, and types reachable from `main` or tests; `.lib.sigil` files may still expose API that is unused locally
   - do not hand-roll recursive list plumbing when Sigil already has a canonical surface
-  - use `map` for projection, `filter` for filtering, `reduce ... from ...` / `§list.fold` for reduction, `§list.reverse` for reversal, `§list.any` / `§list.all` / `§list.find` for existential, universal, and first-match search, `§list.flatMap` for flattening projection, and `§list.countIf` for predicate counting
+  - use `map` for projection, `filter` for filtering, `reduce ... from ...` for reduction, `§list.reverse` for reversal, `§list.any` / `§list.all` / `§list.find` for existential, universal, and first-match search, `§list.flatMap` for flattening projection, and `§list.countIf` for predicate counting
   - do not build list results by appending to the recursive result (`self(rest)⧺rhs`); use a canonical operator or a wrapper plus accumulator helper with one final reverse
 
 ### 3) Keep user-facing errors actionable

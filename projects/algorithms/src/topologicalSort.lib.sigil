@@ -13,16 +13,12 @@ mode total
   target
 )
 
-λindegreeFromSources(graph:µGraph,sources:[Int],target:Int)=>Int=§list.fold(
-  0,
-  λ(acc:Int,source:Int)=>Int=indegreeFromSource(
-    acc,
-    graph,
-    source,
-    target
-  ),
-  sources
-)
+λindegreeFromSources(graph:µGraph,sources:[Int],target:Int)=>Int=sources reduce (λ(acc:Int,source:Int)=>Int=indegreeFromSource(
+  acc,
+  graph,
+  source,
+  target
+)) from 0
 
 λpickZeroCandidate(candidates:[Int],graph:µGraph,remaining:[Int])=>Int
 decreases #candidates

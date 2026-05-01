@@ -198,20 +198,12 @@ test "list.flatMap preserves order while flattening" {
     )=[]
 }
 
-test "list.fold reduces left to right" {
-  §list.fold(
-    0,
-    appendDigit,
-    [
-      1,
-      2,
-      3
-    ]
-  )=123 and §list.fold(
-    9,
-    appendDigit,
-    []
-  )=9
+test "reduce reduces left to right" {
+  ([
+    1,
+    2,
+    3
+  ] reduce appendDigit from 0)=123 and (([]:[Int]) reduce appendDigit from 9)=9
 }
 
 test "list.last returns option" {

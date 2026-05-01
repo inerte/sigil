@@ -33,7 +33,7 @@ fn temp_dir(label: &str) -> PathBuf {
         "sigil-cli-review-{label}-{}-{unique}",
         std::process::id()
     ));
-    fs::create_dir_all(&dir).unwrap();
+    create_dir(&dir);
     dir
 }
 
@@ -46,7 +46,7 @@ fn external_temp_dir(label: &str) -> PathBuf {
         "sigil-cli-review-ext-{label}-{}-{unique}",
         std::process::id()
     ));
-    fs::create_dir_all(&dir).unwrap();
+    create_dir(&dir);
     dir
 }
 
@@ -83,6 +83,32 @@ fn assert_schema_valid(schema: &JSONSchema, instance: &Value) {
         let rendered = errors.map(|error| error.to_string()).collect::<Vec<_>>();
         panic!("schema validation failed:\n{}", rendered.join("\n"));
     }
+}
+
+fn pretty_json(value: &Value) -> String {
+    serde_json::to_string_pretty(value)
+        .unwrap_or_else(|error| format!("failed to pretty-print JSON: {error}\n{value:?}"))
+}
+
+fn json_array<'a>(json: &'a Value, pointer: &str) -> &'a Vec<Value> {
+    json.pointer(pointer)
+        .and_then(Value::as_array)
+        .unwrap_or_else(|| {
+            panic!(
+                "expected array at `{pointer}` in JSON output:\n{}",
+                pretty_json(json)
+            )
+        })
+}
+
+fn create_dir(path: &Path) {
+    fs::create_dir_all(path)
+        .unwrap_or_else(|error| panic!("failed to create directory `{}`: {error}", path.display()));
+}
+
+fn write_text_file(path: &Path, contents: &str) {
+    fs::write(path, contents)
+        .unwrap_or_else(|error| panic!("failed to write file `{}`: {error}", path.display()));
 }
 
 fn run_sigil(dir: &Path, args: &[&str]) -> Output {
@@ -126,17 +152,8 @@ fn assert_failure(output: &Output) {
     );
 }
 
-fn init_git_repo(dir: &Path) {
-    let output = Command::new("git")
-        .current_dir(dir)
-        .args(["init", "-b", "main"])
-        .output()
-        .unwrap();
-    assert!(output.status.success(), "{output:?}");
-}
-
-fn git(dir: &Path, args: &[&str]) {
-    let output = Command::new("git")
+fn git_output(dir: &Path, args: &[&str]) -> Output {
+    Command::new("git")
         .current_dir(dir)
         .env("GIT_AUTHOR_NAME", "Sigil Test")
         .env("GIT_AUTHOR_EMAIL", "sigil@example.com")
@@ -144,21 +161,43 @@ fn git(dir: &Path, args: &[&str]) {
         .env("GIT_COMMITTER_EMAIL", "sigil@example.com")
         .args(args)
         .output()
-        .unwrap();
+        .unwrap_or_else(|error| {
+            panic!(
+                "failed to run git {:?} in `{}`: {error}",
+                args,
+                dir.display()
+            )
+        })
+}
+
+fn assert_git_success(dir: &Path, args: &[&str], output: &Output) {
     assert!(
         output.status.success(),
-        "git {:?} failed: {}",
+        "git {:?} failed in `{}`\nstdout:\n{}\nstderr:\n{}",
         args,
-        String::from_utf8_lossy(&output.stderr)
+        dir.display(),
+        stdout_text(output),
+        stderr_text(output)
     );
+}
+
+fn init_git_repo(dir: &Path) {
+    let args = ["init", "-b", "main"];
+    let output = git_output(dir, &args);
+    assert_git_success(dir, &args, &output);
+}
+
+fn git(dir: &Path, args: &[&str]) {
+    let output = git_output(dir, args);
+    assert_git_success(dir, args, &output);
 }
 
 fn write_file(dir: &Path, relative_path: &str, contents: &str) {
     let path = dir.join(relative_path);
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent).unwrap();
+        create_dir(parent);
     }
-    fs::write(path, contents).unwrap();
+    write_text_file(&path, contents);
 }
 
 fn write_project(dir: &Path, source: &str, test_source: Option<&str>) {
@@ -278,6 +317,20 @@ fn review_staged_json_output_sets_scope_and_summary() {
 }
 
 #[test]
+fn review_staged_and_base_conflict_reports_user_visible_error() {
+    let dir = temp_dir("staged-base-conflict");
+    init_git_repo(&dir);
+
+    let output = run_sigil(&dir, &["review", "--staged", "--base", "HEAD"]);
+
+    assert_failure(&output);
+    let stderr = stderr_text(&output);
+    assert!(stderr.contains("--staged"));
+    assert!(stderr.contains("--base"));
+    assert!(stderr.contains("cannot be used with"));
+}
+
+#[test]
 fn review_llm_output_embeds_grounded_facts() {
     let dir = temp_dir("llm-output");
     init_git_repo(&dir);
@@ -330,7 +383,7 @@ fn review_reports_before_snapshot_analysis_fallback_in_json() {
 
     assert_success(&output);
     let json = parse_json(&output.stdout);
-    let issues = json["data"]["issues"].as_array().unwrap();
+    let issues = json_array(&json, "/data/issues");
     assert!(issues.iter().any(|issue| {
         issue["kind"] == "analysis-fallback"
             && issue["severity"] == "warning"
@@ -358,7 +411,7 @@ fn review_after_snapshot_analysis_failure_exits_nonzero_and_marks_error() {
     assert_failure(&output);
     let json = parse_json(&output.stdout);
     assert_eq!(json["ok"], false);
-    let issues = json["data"]["issues"].as_array().unwrap();
+    let issues = json_array(&json, "/data/issues");
     assert!(issues.iter().any(|issue| {
         issue["kind"] == "analysis-fallback"
             && issue["severity"] == "error"
@@ -393,7 +446,7 @@ fn review_parse_only_fallback_keeps_matching_generic_signatures_stable() {
 
     assert_success(&output);
     let json = parse_json(&output.stdout);
-    let issues = json["data"]["issues"].as_array().unwrap();
+    let issues = json_array(&json, "/data/issues");
     assert!(issues.iter().any(|issue| {
         issue["kind"] == "analysis-fallback"
             && issue["message"]
@@ -401,7 +454,7 @@ fn review_parse_only_fallback_keeps_matching_generic_signatures_stable() {
                 .unwrap()
                 .contains("before snapshot full analysis failed")
     }));
-    let changes = json["data"]["changes"].as_array().unwrap();
+    let changes = json_array(&json, "/data/changes");
     assert!(changes
         .iter()
         .any(|change| { change["declarationName"] == "value" }));
@@ -434,7 +487,7 @@ fn review_reports_added_and_removed_functions() {
 
     assert_success(&output);
     let json = parse_json(&output.stdout);
-    let changes = json["data"]["changes"].as_array().unwrap();
+    let changes = json_array(&json, "/data/changes");
     assert!(changes
         .iter()
         .any(|change| { change["status"] == "removed" && change["declarationName"] == "triple" }));
@@ -532,6 +585,57 @@ fn review_base_head_mode_sets_scope() {
 }
 
 #[test]
+fn review_path_filter_limits_selected_changes() {
+    let dir = temp_dir("path-filter");
+    init_git_repo(&dir);
+    write_file(
+        &dir,
+        "sigil.json",
+        "{\"name\":\"reviewDemo\",\"version\":\"2026-05-01T00-00-00Z\"}\n",
+    );
+    write_file(&dir, "src/math.lib.sigil", "λdouble(x:Int)=>Int=x*2\n");
+    write_file(&dir, "src/extra.lib.sigil", "λtriple(x:Int)=>Int=x*3\n");
+    git(&dir, &["add", "-A"]);
+    git(&dir, &["commit", "-m", "base"]);
+
+    write_file(
+        &dir,
+        "src/math.lib.sigil",
+        "λdouble(x:Int)=>Int\nrequires x≥0\n=x*2\n",
+    );
+    write_file(
+        &dir,
+        "src/extra.lib.sigil",
+        "λtriple(x:Int)=>Int\nrequires x≥0\n=x*3\n",
+    );
+    git(&dir, &["add", "-A"]);
+    git(&dir, &["commit", "-m", "both"]);
+
+    let output = run_sigil(
+        &dir,
+        &[
+            "review",
+            "--json",
+            "--base",
+            "HEAD~1",
+            "--head",
+            "HEAD",
+            "--path",
+            "src/math.lib.sigil",
+        ],
+    );
+
+    assert_success(&output);
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["data"]["summary"]["changedDeclarations"], 1);
+    assert_eq!(json["data"]["changes"][0]["declarationName"], "double");
+    assert_eq!(
+        json["data"]["changes"][0]["after"]["path"],
+        "src/math.lib.sigil"
+    );
+}
+
+#[test]
 fn review_head_without_base_errors_clearly() {
     let dir = temp_dir("head-without-base");
     init_git_repo(&dir);
@@ -555,6 +659,31 @@ fn review_json_no_diff_returns_empty_change_set() {
     assert_success(&output);
     let json = parse_json(&output.stdout);
     assert_eq!(json["data"]["summary"]["changedDeclarations"], 0);
+    assert_eq!(json["data"]["changes"], json!([]));
+}
+
+#[test]
+fn review_sigil_json_only_change_returns_empty_set() {
+    let dir = temp_dir("manifest-only");
+    init_git_repo(&dir);
+    write_project(&dir, "λdouble(x:Int)=>Int=x*2\n", None);
+    git(&dir, &["add", "-A"]);
+    git(&dir, &["commit", "-m", "base"]);
+
+    write_file(
+        &dir,
+        "sigil.json",
+        "{\"name\":\"reviewDemo\",\"version\":\"2026-05-02T00-00-00Z\"}\n",
+    );
+    git(&dir, &["add", "sigil.json"]);
+    git(&dir, &["commit", "-m", "manifest"]);
+
+    let output = run_sigil(&dir, &["review", "--json", "--", "HEAD~1..HEAD"]);
+
+    assert_success(&output);
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["data"]["summary"]["changedDeclarations"], 0);
+    assert_eq!(json["data"]["summary"]["changedFiles"], 0);
     assert_eq!(json["data"]["changes"], json!([]));
 }
 
@@ -683,7 +812,7 @@ fn review_test_evidence_warning_is_non_blocking() {
     assert_eq!(json["ok"], true);
     assert_eq!(json["data"]["summary"]["changedCoverageTargets"], 1);
     assert_eq!(json["data"]["summary"]["changedTestFiles"], 0);
-    let issues = json["data"]["issues"].as_array().unwrap();
+    let issues = json_array(&json, "/data/issues");
     assert!(issues.iter().any(|issue| {
         issue["kind"] == "test-evidence"
             && issue["severity"] == "warning"

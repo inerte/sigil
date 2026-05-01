@@ -229,8 +229,9 @@ impl SnapshotDir {
             .join("review")
             .join(format!("{label}-{}-{unique}", std::process::id()));
         fs::create_dir_all(&dir)?;
-        materialize_snapshot(repo_root, source, &dir)?;
-        Ok(Self { path: dir })
+        let snapshot = Self { path: dir };
+        materialize_snapshot(repo_root, source, snapshot.path())?;
+        Ok(snapshot)
     }
 
     fn path(&self) -> &Path {

@@ -283,7 +283,7 @@ fn review_staged_human_output_mentions_contracts_and_test_evidence() {
     assert_success(&output);
     let text = stdout_text(&output);
     assert!(text.contains("Contract Changes"));
-    assert!(text.contains("`double` in `src/math.lib.sigil`"));
+    assert!(text.contains("`double` in `src/math.lib.sigil:1`"));
     assert!(text.contains("changed test files: none"));
 }
 
@@ -521,8 +521,8 @@ fn review_human_output_shows_add_and_remove_markers() {
     assert_success(&output);
     let text = stdout_text(&output);
     assert!(text.contains("Signature Changes"));
-    assert!(text.contains("- - function `triple` in `src/math.lib.sigil`"));
-    assert!(text.contains("- + function `quadruple` in `src/math.lib.sigil`"));
+    assert!(text.contains("- - function `triple` in `src/math.lib.sigil:3`"));
+    assert!(text.contains("- + function `quadruple` in `src/math.lib.sigil:3`"));
 }
 
 #[test]

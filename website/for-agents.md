@@ -622,7 +622,7 @@ changes mean at the declaration level: which functions gained or lost an effect,
 which contracts changed, which signatures were modified, whether any changed
 functions now lack test coverage evidence. For a human reviewer, that is the
 difference between scanning a wall of line noise and opening directly on the
-changes that actually matter.
+declaration that changed.
 
 Take this change to a single function — adding the `!Http` effect and a
 `requires` precondition:
@@ -679,12 +679,12 @@ Summary
 - changed test files: 0
 
 Effect Changes
-- ~ function `fetchUser` in `src/api.lib.sigil`
+- ~ function `fetchUser` in `src/api.lib.sigil:1`
   - effects: `<none>` -> `!Http`
   - requires: `<none>` -> `#id>0`
 
 Contract Changes
-- ~ function `fetchUser` in `src/api.lib.sigil`
+- ~ function `fetchUser` in `src/api.lib.sigil:1`
   - effects: `<none>` -> `!Http`
   - requires: `<none>` -> `#id>0`
 

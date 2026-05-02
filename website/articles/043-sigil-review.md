@@ -64,12 +64,12 @@ Summary
 - changed test files: 0
 
 Effect Changes
-- ~ function `fetchUser` in `src/api.lib.sigil`
+- ~ function `fetchUser` in `src/api.lib.sigil:1`
   - effects: `<none>` -> `!Http`
   - requires: `<none>` -> `#id>0`
 
 Contract Changes
-- ~ function `fetchUser` in `src/api.lib.sigil`
+- ~ function `fetchUser` in `src/api.lib.sigil:1`
   - effects: `<none>` -> `!Http`
   - requires: `<none>` -> `#id>0`
 
@@ -87,8 +87,8 @@ changed despite a coverage target being modified — a warning worth acting on.
 `sigil review` snapshots the before and after versions of changed Sigil files,
 compiles each side, and compares them at the declaration level. For every
 function, type, extern, effect alias, feature flag, const, and test that changed,
-it reports what specifically changed: not which lines, but which semantic
-properties.
+it reports what specifically changed and where the declaration starts: not which
+diff hunk lines changed, but which semantic properties did.
 
 For functions and transforms, the tracked properties are:
 
@@ -172,6 +172,6 @@ trust boundary crossed, higher risk, callers need to propagate the annotation.
 These are different categories of change that line diffs treat identically.
 
 For a human reviewer, this is the difference between scanning a wall of line
-noise and opening directly on the changes that actually matter. For a coding
-agent, it is a structured fact set that distinguishes safe refactors from
-semantic contract changes without reading every modified line.
+noise and opening directly on the declaration that changed. For a coding agent,
+it is a structured fact set that distinguishes safe refactors from semantic
+contract changes without reading every modified line.

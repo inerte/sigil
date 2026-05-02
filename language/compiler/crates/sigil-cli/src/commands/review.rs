@@ -1640,6 +1640,20 @@ fn change_path(change: &ReviewChange) -> String {
         .unwrap_or_else(|| "<unknown>".to_string())
 }
 
+fn change_display_path(change: &ReviewChange) -> String {
+    change
+        .after
+        .as_ref()
+        .map(|side| format!("{}:{}", side.path, side.line))
+        .or_else(|| {
+            change
+                .before
+                .as_ref()
+                .map(|side| format!("{}:{}", side.path, side.line))
+        })
+        .unwrap_or_else(|| "<unknown>".to_string())
+}
+
 fn emit_review(data: &ReviewData, json_output: bool, llm_output: bool) -> Result<(), CliError> {
     let ok = data.issues.iter().all(|issue| issue.severity != "error");
     if json_output {
@@ -1819,7 +1833,7 @@ fn render_section<'a>(
             marker,
             change.declaration_kind,
             change.declaration_name,
-            change_path(change)
+            change_display_path(change)
         ));
         if let (Some(before), Some(after)) = (&change.before, &change.after) {
             if before.facts.signature != after.facts.signature {

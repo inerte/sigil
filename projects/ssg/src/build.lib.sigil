@@ -443,20 +443,36 @@ match projects{
 }
 
 λloadStandalonePages(config:µSiteBuildConfig)=>!Fs [µSitePage]={
-  l page=(loadPage(
+  l aboutSite=(loadPage(
     config,
     µHome(),
     "website/about-site.md"
   ):µSitePage);
-  [{
-    bodyHtml:page.bodyHtml,
-    bodyMarkdown:page.bodyMarkdown,
-    meta:page.meta,
-    outputDir:"about-site",
-    project:page.project,
-    section:page.section,
-    sourcePath:page.sourcePath
-  }]
+  l forAgents=(loadPage(
+    config,
+    µHome(),
+    "website/for-agents.md"
+  ):µSitePage);
+  [
+    {
+      bodyHtml:aboutSite.bodyHtml,
+      bodyMarkdown:aboutSite.bodyMarkdown,
+      meta:aboutSite.meta,
+      outputDir:"about-site",
+      project:aboutSite.project,
+      section:aboutSite.section,
+      sourcePath:aboutSite.sourcePath
+    },
+    {
+      bodyHtml:forAgents.bodyHtml,
+      bodyMarkdown:forAgents.bodyMarkdown,
+      meta:forAgents.meta,
+      outputDir:"for-agents",
+      project:forAgents.project,
+      section:forAgents.section,
+      sourcePath:forAgents.sourcePath
+    }
+  ]
 }
 
 λoutputDirPath(config:µSiteBuildConfig,page:µSitePage)=>String match page.outputDir{

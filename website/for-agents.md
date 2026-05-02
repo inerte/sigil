@@ -1,8 +1,8 @@
 ---
-title: Why Sigil for Coding Agents
+title: Why Sigil Works Well for Coding Agents: A Tour of the Constraints
 ---
 
-# Why Sigil for Coding Agents
+# Why Sigil Works Well for Coding Agents: A Tour of the Constraints
 
 Most programming languages were designed for human authors. Sigil was designed
 for the entity that is now writing most of the world's code.

@@ -14,31 +14,6 @@ way callers need to adapt to?
 
 `sigil review` answers those questions directly.
 
-## What It Does
-
-`sigil review` snapshots the before and after versions of changed Sigil files,
-compiles each side, and compares them at the declaration level. For every
-function, type, extern, effect alias, feature flag, const, and test that changed,
-it reports what specifically changed: not which lines, but which semantic
-properties.
-
-For functions and transforms, the tracked properties are:
-
-- **signature** — parameter types or return type changed
-- **mode** — `ordinary` vs `total` changed
-- **effects** — the declared effect set changed
-- **requires** — precondition changed
-- **decreases** — termination measure changed
-- **ensures** — postcondition changed
-- **implementation** — body changed with no surface-level delta
-
-For types: definition and constraint changes. For externs: trust surface changes
-(module path or member list). For effect aliases: the expanded primitive set.
-For feature flags: value type, creation date, or default changed.
-
-If a function's effects changed but nothing else did, the review reports only
-an effect change — not a wall of line noise around it.
-
 ## A Concrete Example
 
 Before:
@@ -106,6 +81,31 @@ Test Evidence
 The semantic reading is immediate: `fetchUser` crossed a trust boundary, gained
 the `Http` effect, and now imposes a precondition on callers. No test files
 changed despite a coverage target being modified — a warning worth acting on.
+
+## What It Does
+
+`sigil review` snapshots the before and after versions of changed Sigil files,
+compiles each side, and compares them at the declaration level. For every
+function, type, extern, effect alias, feature flag, const, and test that changed,
+it reports what specifically changed: not which lines, but which semantic
+properties.
+
+For functions and transforms, the tracked properties are:
+
+- **signature** — parameter types or return type changed
+- **mode** — `ordinary` vs `total` changed
+- **effects** — the declared effect set changed
+- **requires** — precondition changed
+- **decreases** — termination measure changed
+- **ensures** — postcondition changed
+- **implementation** — body changed with no surface-level delta
+
+For types: definition and constraint changes. For externs: trust surface changes
+(module path or member list). For effect aliases: the expanded primitive set.
+For feature flags: value type, creation date, or default changed.
+
+If a function's effects changed but nothing else did, the review reports only
+an effect change — not a wall of line noise around it.
 
 ## Test Evidence
 

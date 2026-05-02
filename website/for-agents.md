@@ -42,7 +42,7 @@ The sections below explain what this looks like in practice.
 - [Semantic Review](#semantic-review) — declaration-level semantic diffs, not line diffs
 - [JSON-First CLI](#json-first-cli) — structured output by default
 - [Embedded Docs for Cold Starts](#embedded-docs-for-cold-starts) — the binary teaches the language
-- [50+ Canonical Rules](#50-canonical-rules) — the full enumerated list
+- [60+ Canonical Rules](#60-canonical-rules) — the full enumerated list
 
 ---
 
@@ -63,7 +63,8 @@ character prefix. (Measured with tiktoken `cl100k_base`, the GPT-4 tokenizer.)
 |-----------|-----------|---------|
 | `§` | standard library | `§list.sum`, `§string.join`, `§numeric.abs` |
 | `†` | runtime / world builders | `†log.capture()`, `†runtime.World` |
-| `•` | project config (topology, config, flags) | `•topology.db`, `•flags.FeatureX` |
+| `•` | project modules | `•todoDomain.count`, `•topology.mailerApi`, `•policies.redactSsn`, `•flags.FeatureX` |
+| `¤` | config modules | `¤site.basePath()`, `¤release.outputPath()` |
 | `☴` | external packages | `☴router.match` |
 | `¶` | core prelude | `¶option.mapOption` (most prelude vocabulary is implicit; helpers stay namespaced) |
 | `µ` | project-defined sum type constructors | `µTodo`, `µAuditIssue` |
@@ -86,7 +87,7 @@ character prefix. (Measured with tiktoken `cl100k_base`, the GPT-4 tokenizer.)
 | Keyword | Meaning |
 |---------|---------|
 | `t` | type declaration |
-| `e` | named effect declaration |
+| `e` | extern declaration |
 | `c` | module-level constant |
 | `l` | local let binding (inside a function body) |
 
@@ -493,11 +494,6 @@ system boundary, using `§decode` helpers. Once the value crosses into the
 interior of the application as an `Email`, its invariant is a compiler-checked
 fact, not a hope.
 
-The refinement lives in the type, not in a validation function. A
-`NonEmptyString` is not a `String` that happens to be non-empty at the point
-where it was checked. It is a `String` that the compiler requires to be
-provably non-empty at every promotion site. Any function that accepts
-`NonEmptyString` receives a value the compiler has already verified.
 
 ---
 
@@ -968,95 +964,76 @@ the binary.
 
 ---
 
-## 50+ Canonical Rules
+## 60+ Canonical Rules
 
-<a id="50-canonical-rules"></a>
+<a id="60-canonical-rules"></a>
 
 The canonical constraint hypothesis works because the rules are numerous,
-specific, and compiler-enforced. Together, they define one valid shape for
-every programming construct. The following is the complete enumerated list of
-`SIGIL-CANON-*` error codes.
+specific, and compiler-enforced. There are currently 66 `SIGIL-CANON-*`
+diagnostic codes. The complete authoritative list lives in
+`language/compiler/crates/sigil-diagnostics/src/codes.rs`. The most
+agent-relevant rules are grouped below.
 
-**Duplication**
+**Bindings and locals**
 
-- `SIGIL-CANON-DUPLICATE-TYPE` — two type declarations with the same name
-- `SIGIL-CANON-DUPLICATE-EXTERN` — two extern declarations with the same name
-- `SIGIL-CANON-DUPLICATE-CONST` — two const declarations with the same name
-- `SIGIL-CANON-DUPLICATE-FUNCTION` — two function declarations with the same name
-- `SIGIL-CANON-DUPLICATE-TEST` — two test blocks with the same description
+- `SIGIL-CANON-NO-SHADOWING` — a name in scope may not be reused in an inner binding
+- `SIGIL-CANON-SINGLE-USE-PURE-BINDING` — single-use pure locals must be inlined
+- `SIGIL-CANON-UNUSED-BINDING` — unused let bindings are rejected
+- `SIGIL-CANON-DEAD-PURE-DISCARD` — pure expressions whose values are discarded are rejected
+- `SIGIL-CANON-LET-UNTYPED` — effect-producing bindings must carry a type annotation
 
-**Source shape**
+**Unused declarations**
 
-- `SIGIL-CANON-EOF-NEWLINE` — file must end with a newline
-- `SIGIL-CANON-TRAILING-WHITESPACE` — no trailing whitespace on any line
-- `SIGIL-CANON-BLANK-LINES` — no blank lines within a declaration
-
-**File kind**
-
-- `SIGIL-CANON-LIB-NO-MAIN` — library files may not declare `main`
-- `SIGIL-CANON-EXEC-NEEDS-MAIN` — executable files must declare `main`
-- `SIGIL-CANON-TEST-NEEDS-MAIN` — test files must declare `main()=>Unit=()`
-- `SIGIL-CANON-TEST-LOCATION` — tests may only appear in `tests/` directories
-- `SIGIL-CANON-TEST-PATH` — test file path must match expected pattern
-
-**Filenames**
-
-- `SIGIL-CANON-FILENAME-CASE` — filename must start with a lowercase letter
-- `SIGIL-CANON-FILENAME-INVALID-CHAR` — filename may not contain `_`, `-`, or other non-alphanumeric characters
-- `SIGIL-CANON-FILENAME-FORMAT` — filename must be lowerCamelCase
-
-**Naming**
-
-- `SIGIL-CANON-IDENTIFIER-FORM` — functions, parameters, locals, fields, and filenames must be lowerCamelCase
-- `SIGIL-CANON-TYPE-NAME-FORM` — types must be UpperCamelCase
-- `SIGIL-CANON-CONSTRUCTOR-NAME-FORM` — sum type constructors must be UpperCamelCase
-- `SIGIL-CANON-TYPE-VAR-FORM` — type variables must be UpperCamelCase
-- `SIGIL-CANON-RECORD-FIELD-FORM` — record field names must be lowerCamelCase
-- `SIGIL-CANON-MODULE-PATH-FORM` — module path segments must follow canonical form
-
-**Recursion**
-
-- `SIGIL-CANON-RECURSION-ACCUMULATOR` — accumulator-passing style is rejected; use canonical iterative helpers
-- `SIGIL-CANON-RECURSION-COLLECTION-NONSTRUCTURAL` — non-structural collection recursion rejected
-- `SIGIL-CANON-RECURSION-CPS` — continuation-passing style is rejected
-- `SIGIL-CANON-RECURSION-APPEND-RESULT` — appending to recursive result is rejected; use a helper with a final reverse
-- `SIGIL-CANON-RECURSION-ALL-CLONE` — hand-rolled reimplementation of `§list.all` rejected
-- `SIGIL-CANON-RECURSION-ANY-CLONE` — hand-rolled reimplementation of `§list.any` rejected
-- `SIGIL-CANON-RECURSION-MAP-CLONE` — hand-rolled reimplementation of `map` rejected
-- `SIGIL-CANON-RECURSION-FILTER-CLONE` — hand-rolled reimplementation of `filter` rejected
-- `SIGIL-CANON-RECURSION-FIND-CLONE` — hand-rolled reimplementation of `§list.find` rejected
-- `SIGIL-CANON-RECURSION-FLATMAP-CLONE` — hand-rolled reimplementation of `§list.flatMap` rejected
-- `SIGIL-CANON-RECURSION-REVERSE-CLONE` — hand-rolled reimplementation of `§list.reverse` rejected
-- `SIGIL-CANON-RECURSION-FOLD-CLONE` — hand-rolled reimplementation of `reduce ... from ...` rejected
-- `SIGIL-CANON-BRANCHING-SELF-RECURSION` — multiple sibling self-calls each reducing the same parameter rejected (e.g., naive fibonacci)
-- `SIGIL-CANON-RECURSION-MISSING-DECREASES` — total self-recursive function must provide a `decreases` measure
-- `SIGIL-CANON-ORDINARY-DECREASES` — ordinary functions may not declare `decreases`
-- `SIGIL-CANON-MUTUAL-RECURSION` — top-level mutual recursion within a module is rejected
-- `SIGIL-CANON-TRAVERSAL-FILTER-COUNT` — `#(filter(...))` is rejected; use `§list.countIf`
+- `SIGIL-CANON-UNUSED-DECLARATION` — unreachable top-level declarations rejected in executable files
+- `SIGIL-CANON-UNUSED-EXTERN` — unused extern declarations rejected
+- `SIGIL-CANON-UNUSED-IMPORT` — unused import declarations rejected
 
 **Ordering**
 
-- `SIGIL-CANON-PARAM-ORDER` — function parameters must be in alphabetical order
-- `SIGIL-CANON-EFFECT-ORDER` — declared effects must be in alphabetical order
+- `SIGIL-CANON-PARAM-ORDER` — function parameters must be alphabetical
+- `SIGIL-CANON-EFFECT-ORDER` — declared effects must be alphabetical
 - `SIGIL-CANON-RECORD-TYPE-FIELD-ORDER` — record type fields must be alphabetical
 - `SIGIL-CANON-RECORD-LITERAL-FIELD-ORDER` — record literals must list fields alphabetically
 - `SIGIL-CANON-RECORD-PATTERN-FIELD-ORDER` — record patterns must list fields alphabetically
-- `SIGIL-CANON-DECL-CATEGORY-ORDER` — declarations must follow `t → e → i → c → λ → test` order
-- `SIGIL-CANON-DECL-EXPORT-ORDER` — exported declarations must precede non-exported ones within each category
+- `SIGIL-CANON-DECL-CATEGORY-ORDER` — declarations must follow `label → t → effect → e → featureFlag → c → transform → λ → rule → test`
 - `SIGIL-CANON-DECL-ALPHABETICAL` — declarations within each category must be alphabetical
-- `SIGIL-CANON-EXTERN-MEMBER-ORDER` — extern members must be ordered
 
-**Bindings**
+**Naming**
 
-- `SIGIL-CANON-NO-SHADOWING` — a name in scope may not be reused in an inner binding
-- `SIGIL-CANON-LET-UNTYPED` — `let` bindings that produce effects must be typed
-- `SIGIL-CANON-DEAD-PURE-DISCARD` — pure expressions whose values are discarded are rejected
+- `SIGIL-CANON-IDENTIFIER-FORM` — functions, parameters, locals, and fields must be lowerCamelCase
+- `SIGIL-CANON-TYPE-NAME-FORM` — types must be UpperCamelCase
+- `SIGIL-CANON-CONSTRUCTOR-NAME-FORM` — sum type constructors must be UpperCamelCase
+- `SIGIL-CANON-FILENAME-CASE` — filenames must start with a lowercase letter
+- `SIGIL-CANON-FILENAME-FORMAT` — filenames must be lowerCamelCase
 
-These rules collectively mean that every dimension of source structure — from
-the character case of a filename to the order in which declarations appear to
-the recursion pattern used to traverse a list — has exactly one canonical form.
-There is no creative latitude that the model needs to exercise for any of these
-choices, because the compiler exercises it for you.
+**Recursion and canonical surfaces**
+
+- `SIGIL-CANON-RECURSION-ACCUMULATOR` — accumulator-passing style rejected
+- `SIGIL-CANON-BRANCHING-SELF-RECURSION` — multiple sibling self-calls each reducing the same parameter rejected
+- `SIGIL-CANON-RECURSION-MISSING-DECREASES` — total self-recursive functions must provide a `decreases` measure
+- `SIGIL-CANON-MUTUAL-RECURSION` — top-level mutual recursion rejected
+- `SIGIL-CANON-RECURSION-MAP-CLONE` — hand-rolled `map` rejected
+- `SIGIL-CANON-RECURSION-FILTER-CLONE` — hand-rolled `filter` rejected
+- `SIGIL-CANON-RECURSION-FOLD-CLONE` — hand-rolled `reduce` rejected
+- `SIGIL-CANON-HELPER-DIRECT-WRAPPER` — top-level wrappers around canonical helpers rejected
+- `SIGIL-CANON-TRAVERSAL-FILTER-COUNT` — `#(filter(...))` rejected; use `§list.countIf`
+
+**Layout**
+
+- `SIGIL-CANON-SOURCE-FORM` — overall source must match canonical printer output
+- `SIGIL-CANON-MATCH-LAYOUT` — match expressions must follow canonical layout
+- `SIGIL-CANON-MATCH-ARM-LAYOUT` — each match arm must follow canonical form
+- `SIGIL-CANON-DELIMITER-SPACING` — canonical spacing around delimiters
+- `SIGIL-CANON-OPERATOR-SPACING` — canonical spacing around operators
+- `SIGIL-CANON-REDUNDANT-PARENS` — redundant parentheses rejected
+
+**Complete list (all 66)**
+
+`SIGIL-CANON-BLANK-LINES` · `SIGIL-CANON-BRANCHING-SELF-RECURSION` · `SIGIL-CANON-CONSTRUCTOR-NAME-FORM` · `SIGIL-CANON-DEAD-PURE-DISCARD` · `SIGIL-CANON-DECL-ALPHABETICAL` · `SIGIL-CANON-DECL-CATEGORY-ORDER` · `SIGIL-CANON-DECL-EXPORT-ORDER` · `SIGIL-CANON-DELIMITER-SPACING` · `SIGIL-CANON-DUPLICATE-CONST` · `SIGIL-CANON-DUPLICATE-EXTERN` · `SIGIL-CANON-DUPLICATE-FUNCTION` · `SIGIL-CANON-DUPLICATE-IMPORT` · `SIGIL-CANON-DUPLICATE-TEST` · `SIGIL-CANON-DUPLICATE-TYPE` · `SIGIL-CANON-EFFECT-ORDER` · `SIGIL-CANON-EOF-NEWLINE` · `SIGIL-CANON-EXEC-NEEDS-MAIN` · `SIGIL-CANON-EXTERN-MEMBER-ORDER` · `SIGIL-CANON-FEATURE-FLAG-DECL` · `SIGIL-CANON-FILENAME-CASE` · `SIGIL-CANON-FILENAME-FORMAT` · `SIGIL-CANON-FILENAME-INVALID-CHAR` · `SIGIL-CANON-HELPER-DIRECT-WRAPPER` · `SIGIL-CANON-IDENTIFIER-FORM` · `SIGIL-CANON-LET-UNTYPED` · `SIGIL-CANON-LIB-NO-MAIN` · `SIGIL-CANON-MATCH-ARM-LAYOUT` · `SIGIL-CANON-MATCH-BODY-BLOCK` · `SIGIL-CANON-MATCH-LAYOUT` · `SIGIL-CANON-MODULE-PATH-FORM` · `SIGIL-CANON-MUTUAL-RECURSION` · `SIGIL-CANON-NO-SHADOWING` · `SIGIL-CANON-OPERATOR-SPACING` · `SIGIL-CANON-PARAM-ORDER` · `SIGIL-CANON-RECORD-EXACTNESS` · `SIGIL-CANON-RECORD-FIELD-FORM` · `SIGIL-CANON-RECORD-LITERAL-FIELD-ORDER` · `SIGIL-CANON-RECORD-PATTERN-FIELD-ORDER` · `SIGIL-CANON-RECORD-TYPE-FIELD-ORDER` · `SIGIL-CANON-RECURSION-ACCUMULATOR` · `SIGIL-CANON-RECURSION-ALL-CLONE` · `SIGIL-CANON-RECURSION-ANY-CLONE` · `SIGIL-CANON-RECURSION-APPEND-RESULT` · `SIGIL-CANON-RECURSION-COLLECTION-NONSTRUCTURAL` · `SIGIL-CANON-RECURSION-CPS` · `SIGIL-CANON-RECURSION-FILTER-CLONE` · `SIGIL-CANON-RECURSION-FIND-CLONE` · `SIGIL-CANON-RECURSION-FLATMAP-CLONE` · `SIGIL-CANON-RECURSION-FOLD-CLONE` · `SIGIL-CANON-RECURSION-MAP-CLONE` · `SIGIL-CANON-RECURSION-MISSING-DECREASES` · `SIGIL-CANON-RECURSION-REVERSE-CLONE` · `SIGIL-CANON-REDUNDANT-PARENS` · `SIGIL-CANON-SINGLE-USE-PURE-BINDING` · `SIGIL-CANON-SOURCE-FORM` · `SIGIL-CANON-TEST-LOCATION` · `SIGIL-CANON-TEST-NEEDS-MAIN` · `SIGIL-CANON-TEST-PATH` · `SIGIL-CANON-TRAILING-WHITESPACE` · `SIGIL-CANON-TRAVERSAL-FILTER-COUNT` · `SIGIL-CANON-TYPE-NAME-FORM` · `SIGIL-CANON-TYPE-VAR-FORM` · `SIGIL-CANON-UNUSED-BINDING` · `SIGIL-CANON-UNUSED-DECLARATION` · `SIGIL-CANON-UNUSED-EXTERN` · `SIGIL-CANON-UNUSED-IMPORT`
+
+Every dimension of source structure — from filename case to recursion shape to
+binding locality — has exactly one canonical form. The compiler exercises that
+choice so the model does not have to.
 
 ---
 

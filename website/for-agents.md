@@ -104,11 +104,7 @@ test "log is captured" =>!Log world {
 }
 ```
 
-`λmain` is a function declaration. `=>!Log` means the test uses the `Log`
-effect. `world { c log=... }` derives a local world that overrides `Log` with
-a capturing implementation (`†log.capture()`). `l _=(...)` is a let binding
-whose value is discarded (sequencing an effect). `§io.println` is the stdlib IO
-print function. `※check::log.contains` asserts on what the captured log recorded.
+`λmain` declares the entrypoint. `=>!Log` is the effect annotation. `world { ... }` derives a local world overriding `Log` with a capturing implementation. `l _=(...)` sequences an effect without keeping the result. `※check::` asserts over the recorded trace.
 
 ---
 
@@ -135,11 +131,7 @@ formatting decision that would otherwise be up to the author:
 - `match` branches are always multiline; each arm starts as `pattern=>`
 - direct `match` bodies begin on the same line as their header with no `=`
 
-For code generation, this property is profound. It means there is exactly one
-correct way to write any valid Sigil program. A model that generates valid code
-generates canonical code. There is no valid variation to choose between, no
-layout decision to make, no subtle indentation difference to produce. The
-compiler confirms validity and canonicality in one pass.
+A model that generates valid Sigil generates canonical Sigil — there is only one form.
 
 ---
 
@@ -162,19 +154,9 @@ operator, no `when`, no `cond`. Every conditional execution flows through a
 ```
 
 `match` enforces exhaustiveness. Every branch must be covered; dead branches are
-rejected. The compiler's exhaustiveness checker covers `Bool`, `Unit`, tuples,
-list shapes, exact record patterns, and nominal sum constructors. If a new
-constructor is added to a sum type, every `match` over that type that does not
-cover the new constructor becomes a compile error, not a runtime gap.
-
-For a model generating branching logic, this removes the disambiguation problem.
-Python has `if`, `elif`, `else`, ternary expressions, match-case, and short-circuit
-operators as branching surfaces. Sigil has `match`. The model generates `match`.
-
-Exhaustiveness means the model cannot forget a case. Adding a case to a sum type
-propagates into a compile error at every `match` over that type that does not
-handle the new constructor. The compiler finds all the gaps; the model fills them
-in. There is no way to ship a case analysis with a missing branch.
+rejected. If a new constructor is added to a sum type, every `match` over that
+type that does not handle it becomes a compile error. The compiler finds the
+gaps; the model fills them in.
 
 ---
 
@@ -183,20 +165,8 @@ in. There is no way to ship a case analysis with a missing branch.
 <a id="no-shadowing"></a>
 
 Sigil rejects all shadowing with `SIGIL-CANON-NO-SHADOWING`. A name introduced
-in an outer scope may not be reused in any inner scope within the same function.
-
-This is the answer to a problem that causes subtle bugs even for expert human
-programmers: when two bindings share a name and the inner one silently hides
-the outer one, readers must track all active bindings and their precedence at
-every point in the function. For a language model, this is compounded — the
-model has already predicted the outer binding's name based on its type and
-role, and if a later branch introduces the same name for a different value, the
-model must revise its implicit mapping.
-
-Sigil requires fresh, descriptive names at every binding site. If `result` is
-already in scope, the inner binding must be named something else — `parsedResult`,
-`validatedResult`, `nextResult`. The compiler rejects ambiguity rather than
-resolving it silently.
+in any scope may not be reused in an inner scope. Every binding site requires a
+fresh name; the compiler rejects ambiguity rather than resolving it silently.
 
 ```sigil module
 λformatResult(n:Int)=>String match n{
@@ -207,10 +177,6 @@ resolving it silently.
   }
 }
 ```
-
-Every name in this function refers to exactly one value. There is no question
-about which `count` or which `result` a reference resolves to, because there
-can only be one.
 
 ---
 
@@ -243,23 +209,10 @@ t User={
 }
 ```
 
-For a language model, this matters because token prediction probability
-concentrates. When `userId`, `user_id`, `UserId`, `user_Id`, and `USERID` are
-all valid representations of the same concept in a language, the model
-distributes probability across all of them at every token boundary. In Sigil,
-there is only `userId`. The model generates it because it is the only valid
-spelling, and the compiler confirms it.
-
-The naming rules have stable error codes: `SIGIL-CANON-IDENTIFIER-FORM`,
-`SIGIL-CANON-TYPE-NAME-FORM`, `SIGIL-CANON-CONSTRUCTOR-NAME-FORM`, and
-`SIGIL-CANON-TYPE-VAR-FORM`. Each one fires with a corrective message that
-states what was found and what is required.
-
-This extends to filenames. A file named `UserService.lib.sigil` is rejected
-with `SIGIL-CANON-FILENAME-CASE`. Only `userService.lib.sigil` is accepted.
-Filenames participate in module path resolution, so filename canonicalization
-eliminates an entire class of case-sensitivity bugs on case-insensitive
-filesystems.
+When five spellings of the same name are equally valid, a model distributes
+probability across all five. Sigil has one — `userId` — and the compiler
+rejects the rest. This extends to filenames: `UserService.lib.sigil` is
+rejected; only `userService.lib.sigil` compiles.
 
 ---
 
@@ -273,16 +226,10 @@ enforced with a distinct error code: `SIGIL-CANON-PARAM-ORDER`,
 `SIGIL-CANON-RECORD-TYPE-FIELD-ORDER`, `SIGIL-CANON-RECORD-LITERAL-FIELD-ORDER`,
 `SIGIL-CANON-RECORD-PATTERN-FIELD-ORDER`, and `SIGIL-CANON-EFFECT-ORDER`.
 
-The machine-first implication of this rule is often underestimated. When
-parameter order is alphabetical, a model generating a call site does not need
-to read the function definition to know the correct argument order. Given a
-function `λsend(body:String,headers:{String↦String},to:Email)`, the parameter
-order is derivable from the names alone: `b` before `h` before `t`.
-
-The same holds for record literals. A model creating a `User` value knows the
-field order without reading the type declaration: alphabetical by field name,
-always. The field that comes first in the alphabet comes first in the literal,
-the pattern, and the type definition.
+With alphabetical ordering, a model generating a call site does not need to
+read the function definition. Given `λsend(body:String,headers:{String↦String},to:Email)`,
+the argument order is derivable from the names: `b` before `h` before `t`.
+The same holds for record literals — alphabetical, always.
 
 ```sigil module
 t Message={
@@ -299,10 +246,6 @@ t Message={
   to:to
 }
 ```
-
-This eliminates the "which order do the arguments go in" problem for every
-function call a model generates. The order is derivable from the grammar, not
-from memory.
 
 ---
 
@@ -330,25 +273,12 @@ enforces the entire chain.
 λpure(x:Int)=>Int=x*2
 ```
 
-`pure` cannot call `fetchUser`. The compiler rejects the call because `pure`
-has no declared effects and `fetchUser` requires `!Http`. There is no runtime
-mechanism needed to detect this. The call graph's effect requirements are a
-static property of the program.
-
-For a language model generating code, this produces a clear contract at every
-function boundary. If a function signature declares `!Http`, the model knows
-that function interacts with the network. If a function signature declares no
-effects, the model knows it is computationally pure. A model generating a pure
-function cannot accidentally introduce a network call — the compiler rejects it.
-A model reading a function signature knows its full side-effect profile without
-reading the body.
+`pure` cannot call `fetchUser` — the compiler rejects it. A function's full
+side-effect profile is visible in its signature without reading the body.
 
 Projects may also declare named effects in `src/effects.lib.sigil`. A named
-effect must expand to at least two primitive effects, which means it cannot be
-used to hide a single primitive under an alias. Named effects encourage
-consistent cross-module effect annotation for domain-specific boundaries like
-`DatabaseAccess` (expanding to `Log` + `Tcp`) or `StorageOps` (expanding to
-`Fs` + `Log`).
+effect must expand to at least two primitives — it cannot alias a single one.
+Example: `DatabaseAccess` expanding to `Log` + `Tcp`.
 
 ---
 
@@ -356,15 +286,10 @@ consistent cross-module effect annotation for domain-specific boundaries like
 
 <a id="world-system"></a>
 
-Sigil treats all effectful behavior as world-dependent. A world is a concrete
-implementation of the effect primitives — it specifies how `Http` calls behave,
-how `Fs` operations behave, how `Log` messages are collected. Production code
-runs in a production world. Tests run in a test world. The runtime's effect
-system consults the active world for every effect operation.
-
-This replaces the conventional mocking pattern. Mock-based testing replaces
-specific functions with substitutes. World-based testing replaces the entire
-effect runtime with an instrumented one that records what happened.
+A world is a concrete implementation of the effect primitives. Production code
+runs in a production world. Tests run in a test world. Instead of mocking
+individual functions, tests swap the entire effect runtime for an instrumented
+one that records what happened.
 
 ```sigil program tests/logTest.sigil
 λmain()=>Unit=()
@@ -377,21 +302,13 @@ test "write is observed" =>!Log world {
 }
 ```
 
-The `world { ... }` block in a test is a local derivation from the project's
-baseline test world. The test overrides the `Log` effect with a capturing
-implementation, runs the test body, and then uses `※check::log.contains` to
-assert on what was captured. The `Log` effect in the test body is the same `Log`
-effect that production code uses. Nothing was mocked. The world changed.
+`world { ... }` overrides the `Log` effect locally with a capturing implementation.
+No separate mock API. No `jest.fn()`. The same `!Log` effect that production
+code uses — the world changes, not the code.
 
-For code generation, this has a clean structural property: the model generates
-test code that uses the same effect names as production code. There is no
-separate mock API to learn. There is no `jest.fn()` or `sinon.stub()`. There is
-one surface — the effect system — and the world determines what it does.
-
-The test surface also exposes `※observe::http.requests`, `※observe::log.entries`,
-`※check::http.calledOnce`, `※check::log.contains`, and similar helpers. These
-are not generic assertion helpers. They are observations over recorded effect
-traces that the runtime world collected during the test.
+The test surface exposes `※observe::http.requests`, `※check::http.calledOnce`,
+`※check::log.contains`, and similar helpers — observations over recorded effect
+traces, not generic assertion stubs.
 
 ---
 
@@ -448,11 +365,7 @@ tuples, records, and nominal sum constructors, and protocol state via
 `handle.state`. Facts proved in `ensures` propagate into callers automatically.
 `match` arms inject the branch fact into the proof context for their bodies.
 
-For code generation, contracts are a precise specification surface. A model
-generating a function that divides two numbers can express `requires divisor≠0`
-and have the compiler enforce it at every call site. A model generating a
-recursive function can express its termination measure and have the compiler
-verify it. These are not documentation strings. They are checked claims.
+These are not documentation strings. They are checked claims.
 
 ---
 
@@ -487,14 +400,6 @@ where it was checked. It is a `String` that the compiler requires to be provably
 non-empty at every promotion site. Any function that accepts `NonEmptyString`
 receives a value the compiler has already verified.
 
-This encourages a discipline that matters for correctness in generated code:
-early boundary conversion. Raw user input arrives as `String`. The model
-generates code that decodes and validates that string into `Email` at the
-system boundary, using `§decode` helpers. Once the value crosses into the
-interior of the application as an `Email`, its invariant is a compiler-checked
-fact, not a hope.
-
-
 ---
 
 ## Topology as Typed Boundaries
@@ -510,22 +415,10 @@ startup. A model working on such a codebase has no reliable way to answer
 "where does this endpoint come from?" or "how do I change it for the test
 environment?" without reading the entire call graph.
 
-Sigil gives that question one answer. External dependencies live in
-`src/topology.lib.sigil`. Their concrete values for each environment live in
-`config/<env>.lib.sigil`. Application code references them through the
-`•topology` root. That is the complete list of places to look.
-
-Topology-aware projects declare all external HTTP, TCP, and filesystem
-dependencies as named handles in `src/topology.lib.sigil`. Application code
-then refers to those handles through the `•topology` root. Concrete URLs, hosts,
-and ports are bound in `config/<env>.lib.sigil` and are never visible to
-application code.
-
-This means a model generating application code cannot hard-code a URL. The
-compiler rejects raw endpoints in topology-aware project code. The model must
-use a named handle: `•topology.searchService`, `•topology.database`,
-`•topology.reportStore`. The actual URL bound to each handle is an
-environment-level concern, verified when the project is compiled with `--env`.
+Sigil gives that question one answer. Dependencies are declared in
+`src/topology.lib.sigil`, bound per-environment in `config/<env>.lib.sigil`,
+and referenced in application code as named handles via `•topology`. Raw
+endpoints are rejected by the compiler; the model must use `•topology.serviceName`.
 
 ```sigil module projects/topology-http/src/notifyUser.lib.sigil
 λnotifyUser(message:String)=>!Http String match §httpClient.post(
@@ -544,13 +437,9 @@ The compiler validates that `mailerApi` is declared in
 to a concrete URL. If the topology handle is missing from the config, the build
 fails with a specific diagnostic — not a runtime `undefined` at the network call.
 
-For an AI coding agent working on a topology-aware project, this collapses the
-search space for every configuration question to two files. Where is this
-endpoint declared? `src/topology.lib.sigil`. What is it set to in production?
-`config/production.lib.sigil`. How do I configure a test double? Derive a local
-world in the test file. The model never needs to invent, guess, or remember a
-URL — and it can never accidentally read one from `process.env` in the middle
-of business logic, because the compiler rejects that too.
+Configuration questions collapse to two files: `src/topology.lib.sigil` for
+what exists, `config/<env>.lib.sigil` for what it resolves to. The model never
+invents a URL, and `process.env` in business logic is a compiler error.
 
 ---
 
@@ -622,22 +511,9 @@ sites with explicit root sigils:
 }
 ```
 
-The module a function belongs to is visible at every call site. There is no
-`from foo import bar as baz` to trace. There is no aliased import that shadows
-a different module with the same local name. There is no star import that
-introduces an unknown set of names into scope.
-
-For a model reading unfamiliar code, this means module attribution is always
-explicit. For a model generating code, there is no import block to maintain.
-The model writes the rooted reference at the call site, and the compiler
-resolves it. Adding a new stdlib call does not require a corresponding import
-statement in a different part of the file.
-
-The root sigils themselves are part of the canonical naming convention. They are
-not user-configurable aliases. `§` always means the standard library. `•` always
-means project configuration. `☴` always means external packages. `†` always
-means the runtime world. A model that learns these four sigils understands the
-full module resolution story for Sigil.
+The owning module is visible at every call site. No import block to maintain,
+no aliased imports that shadow other names, no star imports. Adding a stdlib
+call means writing the rooted reference — nothing else.
 
 ---
 
@@ -679,22 +555,10 @@ ensures connection.state=Open
 =true
 ```
 
-The `protocol` declaration names the state machine and its transitions. Functions
-listed in `via` carry matching `requires`/`ensures` state annotations — those are
-the same contract clauses that exist for value contracts, extended to state.
-
-The solver tracks state through the proof context. After `open(conn)`, the proof
-context contains `conn.state = Open`. A subsequent call to `send` that requires
-`Open` succeeds. After `close(conn)`, the proof context contains
-`conn.state = Closed`. Any subsequent call to `send` — which requires `Open` —
-produces a compile error with a counterexample from the solver.
-
-Double-close, use-after-close, and wrong-order operations are all type errors.
-The programmer does not need to remember protocol state; the compiler tracks it.
-For a language model, this is especially powerful: the model generates calls in
-a sequence, and the compiler tells it which calls are valid given the current
-protocol state. There is no runtime consequence of getting it wrong — the
-program does not compile.
+The solver tracks state through the proof context. After `open(conn)`, the
+context gains `conn.state = Open`. After `close(conn)`, it becomes `Closed`.
+A subsequent call to `send` — which requires `Open` — is a compile error.
+Double-close, use-after-close, and wrong-order operations never reach runtime.
 
 ---
 
@@ -872,13 +736,6 @@ Facts:
 }
 ```
 
-The facts object contains the full structured change data: each changed
-declaration, its before and after signatures, effects, contracts, and the
-inferred `changeKinds` list (`"effects"`, `"requires"`, `"ensures"`,
-`"implementation"`, `"signature"`, `"trustSurface"`, etc.). The preamble
-instructs the model to work only from what is listed, not from inference about
-the surrounding codebase.
-
 `--json` emits the same fact envelope without the preamble, for agent loops
 that parse and route the data themselves.
 
@@ -888,31 +745,12 @@ that parse and route the data themselves.
 
 <a id="json-first-cli"></a>
 
-Every Sigil compiler command that produces diagnostic or structural output does
-so in JSON. There is no human-readable output mode for `compile`, `test`,
-`inspect`, `validate`, or `featureFlag audit`. JSON is the output format, not
-an opt-in flag.
-
-This is the opposite of most language toolchains, where human-readable text is
-the default and `--json` adds a machine-readable mode as an afterthought.
-Sigil's design starts from the assumption that the primary consumer of compiler
-output is an agent loop, and human readers can run `jq`, `fx`, or any JSON
-viewer to inspect it.
-
-The output structure is stable and versioned with `"formatVersion": 1`. Every
-error includes:
-
-- `"code"` — the stable `SIGIL-*` error code
-- `"phase"` — which compiler phase produced the error
-- `"message"` — a human-readable description that states what was found and
-  what is canonical
-- `"details"` — structured fields with file path, source location (line,
-  column, offset), expected and found types, and any additional context
-
-An agent loop can parse every compiler output with a single JSON decode. There
-is no text scraping, no regex on error messages, no need to detect whether the
-output is a success or an error by its shape — the `"ok"` field on the envelope
-handles that.
+`compile`, `test`, `inspect`, `validate`, and `featureFlag audit` always emit
+JSON — there is no human-readable mode. The output envelope is stable and
+versioned (`"formatVersion": 1`). Every error includes a stable `SIGIL-*`
+code, the compiler phase, a corrective message, and structured location data.
+The `"ok"` field on the envelope tells the agent loop whether the command
+succeeded without text scraping.
 
 `run` and `review` have opt-in `--json` flags for different reasons. `run`
 passes a program's stdout through directly by default; `--json` wraps
@@ -928,39 +766,18 @@ the flag.
 
 <a id="embedded-docs-for-cold-starts"></a>
 
-Sigil is new enough that installed language models do not have its syntax in
-their weights. A model asked to write Sigil code without context is working from
-zero prior knowledge. This is a genuinely different situation from generating
-Python or TypeScript, where the model's training data contains millions of
-examples.
-
-Sigil's answer is that the binary teaches the language. Every `sigil` installation
-ships an embedded corpus containing:
-
-- the syntax reference
-- the stdlib specification
-- the formal type system spec
-- the canonical forms documentation
-- design articles explaining the rationale behind each decision
-
-These are accessible without a network request:
+No language model has Sigil in its training data. The binary solves this by
+shipping an embedded corpus — syntax reference, stdlib spec, type system spec,
+canonical forms doc, and design articles — queryable without a network request:
 
 ```bash
-sigil docs list
 sigil docs search "feature flags"
 sigil docs context syntax
 sigil docs show docs/syntax-reference --start-line 1 --end-line 100
 ```
 
-The retrieval commands return JSON. An agent loop can call `sigil docs search`
-with a keyword, receive a list of matching documents with their locations, call
-`sigil docs show` to read the relevant section, and generate code with accurate
-prior knowledge of the language — all without a web lookup.
-
-The embedded docs match the installed binary exactly. There is no version drift
-between the compiler the user is running and the docs the model is reading.
-If the user upgrades from one Sigil release to another, the docs upgrade with
-the binary.
+All commands return JSON. The embedded docs match the installed binary exactly —
+no version drift between the compiler and the spec the model is reading.
 
 ---
 

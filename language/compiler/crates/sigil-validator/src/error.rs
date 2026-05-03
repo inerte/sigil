@@ -118,6 +118,18 @@ pub enum ValidationError {
         location: SourceLocation,
     },
 
+    #[error("SIGIL-CANON-JSON-DIRECT-CODEC: Top-level declaration '{declaration_name}' recreates the direct JSON {surface_kind} surface for derivable type '{target_name}'.\n\nSigil keeps ONE canonical direct JSON codec surface for derivable named types.\nUse `derive json {target_name}` and the generated helpers `{encode_helper}`, `{decode_helper}`, `{parse_helper}`, and `{stringify_helper}` directly instead.\n\nIf the wire format is legacy or custom, introduce an explicit payload type such as `{target_name}Payload` and translate that into `{target_name}`.")]
+    DirectJsonCodec {
+        declaration_name: String,
+        target_name: String,
+        surface_kind: String,
+        encode_helper: String,
+        decode_helper: String,
+        parse_helper: String,
+        stringify_helper: String,
+        location: SourceLocation,
+    },
+
     #[error("SIGIL-CANON-RECURSION-COLLECTION-NONSTRUCTURAL: Recursive function '{function_name}' has collection parameter but doesn't use structural recursion.\n\nSigil enforces ONE way: structural recursion for collections.")]
     NonStructuralRecursion {
         function_name: String,
@@ -445,6 +457,7 @@ impl ValidationError {
             ValidationError::BranchingSelfRecursion { location, .. } => *location,
             ValidationError::FilterThenCount { location } => *location,
             ValidationError::HelperDirectWrapper { location, .. } => *location,
+            ValidationError::DirectJsonCodec { location, .. } => *location,
             ValidationError::NonStructuralRecursion { location, .. } => *location,
             ValidationError::MissingReturnType { location, .. } => *location,
             ValidationError::MissingParamType { location, .. } => *location,
@@ -831,6 +844,32 @@ impl From<ValidationError> for Diagnostic {
             .with_location(source_location_to_span(get_file(), location))
             .with_details("kind", "direct_wrapper")
             .with_details("guidance", format!("Use {} directly instead.", canonical_surface)),
+
+            ValidationError::DirectJsonCodec {
+                declaration_name,
+                target_name,
+                surface_kind,
+                encode_helper,
+                decode_helper,
+                parse_helper,
+                stringify_helper,
+                location,
+            } => Diagnostic::new(
+                codes::canonical::JSON_DIRECT_CODEC,
+                SigilPhase::Canonical,
+                format!(
+                    "top-level declaration '{}' recreates the direct JSON {} surface for derivable type '{}'",
+                    declaration_name, surface_kind, target_name
+                ),
+            )
+            .with_location(source_location_to_span(get_file(), location))
+            .with_details("declaration", declaration_name)
+            .with_details("target_type", target_name)
+            .with_details("surface_kind", surface_kind)
+            .with_details("encode_helper", encode_helper)
+            .with_details("decode_helper", decode_helper)
+            .with_details("parse_helper", parse_helper)
+            .with_details("stringify_helper", stringify_helper),
 
             ValidationError::RecordTypeFieldOrder { type_name, field_name, prev_field, position: _, expected_order, location } => {
                 Diagnostic::new(

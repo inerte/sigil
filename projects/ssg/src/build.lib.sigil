@@ -708,7 +708,7 @@ match pages{
 }
 
 λwriteSearchIndex(config:µSiteBuildConfig,data:µSiteData)=>!Fs Unit=§file.writeText(
-  •search.searchIndexJson(data),
+  •search.searchIndexJson(•search.searchPages(data)),
   §path.join(
     config.outputDir,
     "search-index.json"

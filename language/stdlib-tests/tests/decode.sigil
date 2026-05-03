@@ -1,45 +1,22 @@
-λinstant(value:§json.JsonValue)=>Result[
-  §time.Instant,
-  §decode.DecodeError
-] match §decode.string(value){
-  Ok(text)=>match §time.parseIso(text){
-    Ok(decoded)=>Ok(decoded)|
-    Err(error)=>Err({
-      message:error.message,
-      path:[]
-    })
-  }|
-  Err(error)=>Err(error)
-}
+derive json µMessagePayload
 
 λmain()=>Unit=()
 
-λmessage(value:§json.JsonValue)=>Result[
+λmessage(payload:µMessagePayload)=>Result[
   µMessage,
   §decode.DecodeError
-] match §decode.field(
-  instant,
-  "createdAt"
-)(value){
-  Ok(createdAt)=>match §decode.field(
-    todoId,
-    "id"
-  )(value){
+] match §time.parseIso(payload.createdAt){
+  Ok(createdAt)=>match §decode.int(§json.JsonString(payload.id)){
     Ok(id)=>Ok({
       createdAt:createdAt,
-      id:id
+      id:µTodoId(id)
     })|
     Err(error)=>Err(error)
   }|
-  Err(error)=>Err(error)
-}
-
-λtodoId(value:§json.JsonValue)=>Result[
-  µTodoId,
-  §decode.DecodeError
-] match §decode.int(value){
-  Ok(id)=>Ok(µTodoId(id))|
-  Err(error)=>Err(error)
+  Err(error)=>Err({
+    message:error.message,
+    path:[]
+  })
 }
 
 test "decode.dict decodes object values" {
@@ -124,12 +101,12 @@ test "decode.optionalField returns None when key is absent" {
 }
 
 test "decode.parse builds trusted wrapper-backed message" {
-  match §decode.parse(
-    message,
-    "{\"createdAt\":\"2026-03-07T00:00:00.000Z\",\"id\":\"42\"}"
-  ){
-    Ok(decoded)=>match decoded.id{
-      µTodoId(id)=>id=42 and decoded.createdAt.epochMillis>0
+  match parseMessagePayload("{\"createdAt\":\"2026-03-07T00:00:00.000Z\",\"id\":\"42\"}"){
+    Ok(payload)=>match message(payload){
+      Ok(decoded)=>match decoded.id{
+        µTodoId(id)=>id=42 and decoded.createdAt.epochMillis>0
+      }|
+      Err(_)=>false
     }|
     Err(_)=>false
   }

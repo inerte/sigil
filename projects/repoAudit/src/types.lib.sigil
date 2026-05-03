@@ -5,6 +5,15 @@ t AuditCheckResult={
   repoCompileStats:Option[RepoCompileStats]
 }
 
+t AuditFailureEnvelope={
+  command:String,
+  error:AuditFailurePayload,
+  ok:Bool,
+  phase:String
+}
+
+t AuditFailurePayload={message:String}
+
 t AuditCheckOutcome={
   issues:[AuditIssue],
   repoCompileStats:Option[RepoCompileStats]
@@ -25,6 +34,13 @@ t AuditIssue={
   message:String,
   path:String,
   severity:String
+}
+
+t AuditSuccessEnvelope={
+  command:String,
+  data:AuditData,
+  ok:Bool,
+  phase:String
 }
 
 t AuditSelection={checks:[String]}

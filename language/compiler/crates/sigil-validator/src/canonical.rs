@@ -11,9 +11,11 @@ use crate::error::ValidationError;
 use crate::printer::print_canonical_program_with_effects;
 use sigil_ast::*;
 use sigil_lexer::{tokenize, Position, SourceLocation, Token, TokenType};
+use sigil_typechecker::json_codec::derive_json_surface_info_for_type;
 use sigil_typechecker::typed_ir::TypedConcurrentStep;
+use sigil_typechecker::types::{ast_type_to_inference_type, InferenceType, TPrimitive};
 use sigil_typechecker::{
-    EffectCatalog, PurityClass, TypedDeclaration, TypedExpr, TypedExprKind, TypedProgram,
+    EffectCatalog, PurityClass, TypeInfo, TypedDeclaration, TypedExpr, TypedExprKind, TypedProgram,
 };
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -23,10 +25,37 @@ pub struct ValidationOptions {
     pub effect_catalog: Option<EffectCatalog>,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct TypedValidationOptions {
+    pub local_type_registry: HashMap<String, TypeInfo>,
+    pub imported_type_registries: HashMap<String, HashMap<String, TypeInfo>>,
+    pub module_id: Option<String>,
+    pub source_file: Option<String>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct CanonicalHelperWrapper {
     canonical_helper: String,
     canonical_surface: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum DirectJsonCodecSurface {
+    Encode,
+    Decode,
+    Parse,
+    Stringify,
+}
+
+impl DirectJsonCodecSurface {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Encode => "encode",
+            Self::Decode => "decode",
+            Self::Parse => "parse",
+            Self::Stringify => "stringify",
+        }
+    }
 }
 
 fn is_lower_camel_case(name: &str) -> bool {
@@ -1035,8 +1064,19 @@ pub fn validate_typed_canonical_form(
     program: &TypedProgram,
     file_path: Option<&str>,
 ) -> Result<(), Vec<ValidationError>> {
+    validate_typed_canonical_form_with_options(
+        program,
+        file_path,
+        TypedValidationOptions::default(),
+    )
+}
+
+pub fn validate_typed_canonical_form_with_options(
+    program: &TypedProgram,
+    file_path: Option<&str>,
+    options: TypedValidationOptions,
+) -> Result<(), Vec<ValidationError>> {
     let mut errors = Vec::new();
-    let _ = file_path;
 
     for declaration in &program.declarations {
         match declaration {
@@ -1061,11 +1101,402 @@ pub fn validate_typed_canonical_form(
         }
     }
 
+    collect_direct_json_codec_surfaces(program, file_path, &options, &mut errors);
+
     if errors.is_empty() {
         Ok(())
     } else {
         Err(errors)
     }
+}
+
+fn collect_direct_json_codec_surfaces(
+    program: &TypedProgram,
+    file_path: Option<&str>,
+    options: &TypedValidationOptions,
+    errors: &mut Vec<ValidationError>,
+) {
+    for declaration in &program.declarations {
+        match declaration {
+            TypedDeclaration::Function(function) => {
+                let Some(param_types) = function
+                    .params
+                    .iter()
+                    .map(|param| param.type_annotation.as_ref().map(ast_type_to_inference_type))
+                    .collect::<Option<Vec<_>>>()
+                else {
+                    continue;
+                };
+                let param_names = function
+                    .params
+                    .iter()
+                    .map(|param| param.name.clone())
+                    .collect::<Vec<_>>();
+                if let Some(error) = direct_json_codec_error_for_surface(
+                    &function.name,
+                    &param_types,
+                    &function.return_type,
+                    &function.body,
+                    &param_names,
+                    function.location,
+                    file_path,
+                    options,
+                ) {
+                    errors.push(error);
+                }
+            }
+            TypedDeclaration::Const(const_decl) => {
+                let InferenceType::Function(function_type) = &const_decl.typ else {
+                    continue;
+                };
+                let param_names = match &const_decl.value.kind {
+                    TypedExprKind::Lambda(lambda) => {
+                        lambda.params.iter().map(|param| param.name.clone()).collect()
+                    }
+                    _ => Vec::new(),
+                };
+                if let Some(error) = direct_json_codec_error_for_surface(
+                    &const_decl.name,
+                    &function_type.params,
+                    &function_type.return_type,
+                    &const_decl.value,
+                    &param_names,
+                    const_decl.location,
+                    file_path,
+                    options,
+                ) {
+                    errors.push(error);
+                }
+            }
+            TypedDeclaration::Type(_)
+            | TypedDeclaration::JsonCodec(_)
+            | TypedDeclaration::Test(_)
+            | TypedDeclaration::Extern(_) => {}
+        }
+    }
+}
+
+fn direct_json_codec_error_for_surface(
+    declaration_name: &str,
+    params: &[InferenceType],
+    return_type: &InferenceType,
+    body: &TypedExpr,
+    wrapper_param_names: &[String],
+    location: SourceLocation,
+    file_path: Option<&str>,
+    options: &TypedValidationOptions,
+) -> Option<ValidationError> {
+    if params.len() != 1 {
+        return None;
+    }
+
+    let source_file = options.source_file.as_deref().or(file_path);
+
+    if is_json_value_type(return_type) {
+        let surface_info = derive_json_surface_info_for_type(
+            &params[0],
+            options.module_id.as_deref(),
+            source_file,
+            &options.local_type_registry,
+            &options.imported_type_registries,
+        )
+        .ok()?;
+        return Some(ValidationError::DirectJsonCodec {
+            declaration_name: declaration_name.to_string(),
+            target_name: surface_info.target_name.clone(),
+            surface_kind: DirectJsonCodecSurface::Encode.label().to_string(),
+            encode_helper: surface_info.helper_names.encode,
+            decode_helper: surface_info.helper_names.decode,
+            parse_helper: surface_info.helper_names.parse,
+            stringify_helper: surface_info.helper_names.stringify,
+            location,
+        });
+    }
+
+    if is_string_type(return_type) {
+        let surface_info = derive_json_surface_info_for_type(
+            &params[0],
+            options.module_id.as_deref(),
+            source_file,
+            &options.local_type_registry,
+            &options.imported_type_registries,
+        )
+        .ok()?;
+        if !expr_uses_json_stringify_surface(
+            body,
+            &surface_info.helper_names.stringify,
+            wrapper_param_names,
+        ) {
+            return None;
+        }
+        return Some(ValidationError::DirectJsonCodec {
+            declaration_name: declaration_name.to_string(),
+            target_name: surface_info.target_name.clone(),
+            surface_kind: DirectJsonCodecSurface::Stringify.label().to_string(),
+            encode_helper: surface_info.helper_names.encode,
+            decode_helper: surface_info.helper_names.decode,
+            parse_helper: surface_info.helper_names.parse,
+            stringify_helper: surface_info.helper_names.stringify,
+            location,
+        });
+    }
+
+    let Some(decoded_root_type) = decode_result_ok_type(return_type) else {
+        return None;
+    };
+    let surface_kind = if is_json_value_type(&params[0]) {
+        DirectJsonCodecSurface::Decode
+    } else if is_string_type(&params[0]) {
+        DirectJsonCodecSurface::Parse
+    } else {
+        return None;
+    };
+
+    let surface_info = derive_json_surface_info_for_type(
+        decoded_root_type,
+        options.module_id.as_deref(),
+        source_file,
+        &options.local_type_registry,
+        &options.imported_type_registries,
+    )
+    .ok()?;
+    Some(ValidationError::DirectJsonCodec {
+        declaration_name: declaration_name.to_string(),
+        target_name: surface_info.target_name,
+        surface_kind: surface_kind.label().to_string(),
+        encode_helper: surface_info.helper_names.encode,
+        decode_helper: surface_info.helper_names.decode,
+        parse_helper: surface_info.helper_names.parse,
+        stringify_helper: surface_info.helper_names.stringify,
+        location,
+    })
+}
+
+fn is_json_value_type(typ: &InferenceType) -> bool {
+    matches!(
+        typ,
+        InferenceType::Constructor(constructor)
+            if constructor.name == "stdlib::json.JsonValue" && constructor.type_args.is_empty()
+    )
+}
+
+fn is_string_type(typ: &InferenceType) -> bool {
+    matches!(
+        typ,
+        InferenceType::Primitive(TPrimitive {
+            name: PrimitiveName::String,
+        })
+    )
+}
+
+fn decode_result_ok_type(return_type: &InferenceType) -> Option<&InferenceType> {
+    let InferenceType::Constructor(constructor) = return_type else {
+        return None;
+    };
+    if constructor.name != "Result" || constructor.type_args.len() != 2 {
+        return None;
+    }
+    if !is_decode_error_type(&constructor.type_args[1]) {
+        return None;
+    }
+    Some(&constructor.type_args[0])
+}
+
+fn is_decode_error_type(typ: &InferenceType) -> bool {
+    match typ {
+        InferenceType::Constructor(error_type) => {
+            error_type.name == "stdlib::decode.DecodeError" && error_type.type_args.is_empty()
+        }
+        InferenceType::Record(record) => {
+            record.name.as_deref() == Some("stdlib::decode.DecodeError")
+        }
+        _ => false,
+    }
+}
+
+fn expr_uses_json_stringify_surface(
+    expr: &TypedExpr,
+    stringify_helper: &str,
+    wrapper_param_names: &[String],
+) -> bool {
+    expr_contains_named_call(expr, &["stdlib", "json"], "stringify")
+        || expr_is_identifier_named(expr, stringify_helper)
+        || expr_is_direct_call_wrapper(expr, stringify_helper, wrapper_param_names)
+}
+
+fn expr_is_identifier_named(expr: &TypedExpr, helper_name: &str) -> bool {
+    matches!(
+        &expr.kind,
+        TypedExprKind::Identifier(identifier) if identifier.name == helper_name
+    )
+}
+
+fn expr_is_direct_call_wrapper(
+    expr: &TypedExpr,
+    helper_name: &str,
+    wrapper_param_names: &[String],
+) -> bool {
+    let TypedExprKind::Call(call) = &expr.kind else {
+        return false;
+    };
+    if wrapper_param_names.len() != call.args.len() {
+        return false;
+    }
+    match &call.func.kind {
+        TypedExprKind::Identifier(identifier) if identifier.name == helper_name => {}
+        _ => return false,
+    }
+    call.args.iter().zip(wrapper_param_names).all(|(arg, param_name)| {
+        matches!(
+            &arg.kind,
+            TypedExprKind::Identifier(identifier) if identifier.name == *param_name
+        )
+    })
+}
+
+fn expr_contains_named_call(expr: &TypedExpr, namespace: &[&str], member: &str) -> bool {
+    match &expr.kind {
+        TypedExprKind::Call(call) => {
+            is_namespace_member(&call.func, namespace, member)
+                || expr_contains_named_call(&call.func, namespace, member)
+                || call
+                    .args
+                    .iter()
+                    .any(|arg| expr_contains_named_call(arg, namespace, member))
+        }
+        TypedExprKind::ConstructorCall(call) => call
+            .args
+            .iter()
+            .any(|arg| expr_contains_named_call(arg, namespace, member)),
+        TypedExprKind::ExternCall(call) => call
+            .args
+            .iter()
+            .any(|arg| expr_contains_named_call(arg, namespace, member)),
+        TypedExprKind::MethodCall(call) => {
+            expr_contains_named_call(&call.receiver, namespace, member)
+                || call
+                    .args
+                    .iter()
+                    .any(|arg| expr_contains_named_call(arg, namespace, member))
+        }
+        TypedExprKind::Binary(binary) => {
+            expr_contains_named_call(&binary.left, namespace, member)
+                || expr_contains_named_call(&binary.right, namespace, member)
+        }
+        TypedExprKind::Unary(unary) => expr_contains_named_call(&unary.operand, namespace, member),
+        TypedExprKind::Match(match_expr) => {
+            expr_contains_named_call(&match_expr.scrutinee, namespace, member)
+                || match_expr.arms.iter().any(|arm| {
+                    arm.guard
+                        .as_ref()
+                        .is_some_and(|guard| expr_contains_named_call(guard, namespace, member))
+                        || expr_contains_named_call(&arm.body, namespace, member)
+                })
+        }
+        TypedExprKind::Let(let_expr) => {
+            expr_contains_named_call(&let_expr.value, namespace, member)
+                || expr_contains_named_call(&let_expr.body, namespace, member)
+        }
+        TypedExprKind::Using(using_expr) => {
+            expr_contains_named_call(&using_expr.value, namespace, member)
+                || expr_contains_named_call(&using_expr.body, namespace, member)
+        }
+        TypedExprKind::If(if_expr) => {
+            expr_contains_named_call(&if_expr.condition, namespace, member)
+                || expr_contains_named_call(&if_expr.then_branch, namespace, member)
+                || if_expr
+                    .else_branch
+                    .as_ref()
+                    .is_some_and(|else_branch| expr_contains_named_call(else_branch, namespace, member))
+        }
+        TypedExprKind::List(list) => list
+            .elements
+            .iter()
+            .any(|element| expr_contains_named_call(element, namespace, member)),
+        TypedExprKind::Tuple(tuple) => tuple
+            .elements
+            .iter()
+            .any(|element| expr_contains_named_call(element, namespace, member)),
+        TypedExprKind::Record(record) => record
+            .fields
+            .iter()
+            .any(|field| expr_contains_named_call(&field.value, namespace, member)),
+        TypedExprKind::MapLiteral(map) => map.entries.iter().any(|entry| {
+            expr_contains_named_call(&entry.key, namespace, member)
+                || expr_contains_named_call(&entry.value, namespace, member)
+        }),
+        TypedExprKind::FieldAccess(access) => {
+            expr_contains_named_call(&access.object, namespace, member)
+        }
+        TypedExprKind::Index(index) => {
+            expr_contains_named_call(&index.object, namespace, member)
+                || expr_contains_named_call(&index.index, namespace, member)
+        }
+        TypedExprKind::Map(map_expr) => {
+            expr_contains_named_call(&map_expr.list, namespace, member)
+                || expr_contains_named_call(&map_expr.func, namespace, member)
+        }
+        TypedExprKind::Filter(filter) => {
+            expr_contains_named_call(&filter.list, namespace, member)
+                || expr_contains_named_call(&filter.predicate, namespace, member)
+        }
+        TypedExprKind::Fold(fold) => {
+            expr_contains_named_call(&fold.list, namespace, member)
+                || expr_contains_named_call(&fold.func, namespace, member)
+                || expr_contains_named_call(&fold.init, namespace, member)
+        }
+        TypedExprKind::Pipeline(pipeline) => {
+            expr_contains_named_call(&pipeline.left, namespace, member)
+                || expr_contains_named_call(&pipeline.right, namespace, member)
+        }
+        TypedExprKind::Concurrent(concurrent) => {
+            expr_contains_named_call(&concurrent.config.width, namespace, member)
+                || concurrent
+                    .config
+                    .jitter_ms
+                    .as_ref()
+                    .is_some_and(|expr| expr_contains_named_call(expr, namespace, member))
+                || concurrent
+                    .config
+                    .stop_on
+                    .as_ref()
+                    .is_some_and(|expr| expr_contains_named_call(expr, namespace, member))
+                || concurrent
+                    .config
+                    .window_ms
+                    .as_ref()
+                    .is_some_and(|expr| expr_contains_named_call(expr, namespace, member))
+                || concurrent.steps.iter().any(|step| match step {
+                    TypedConcurrentStep::Spawn(spawn) => {
+                        expr_contains_named_call(&spawn.expr, namespace, member)
+                    }
+                    TypedConcurrentStep::SpawnEach(spawn_each) => {
+                        expr_contains_named_call(&spawn_each.list, namespace, member)
+                            || expr_contains_named_call(&spawn_each.func, namespace, member)
+                    }
+                })
+        }
+        TypedExprKind::Lambda(lambda) => expr_contains_named_call(&lambda.body, namespace, member),
+        TypedExprKind::Literal(_)
+        | TypedExprKind::Identifier(_)
+        | TypedExprKind::NamespaceMember { .. } => false,
+    }
+}
+
+fn is_namespace_member(expr: &TypedExpr, namespace: &[&str], member: &str) -> bool {
+    matches!(
+        &expr.kind,
+        TypedExprKind::NamespaceMember {
+            namespace: actual_namespace,
+            member: actual_member,
+        } if actual_member == member
+            && actual_namespace.len() == namespace.len()
+            && actual_namespace
+                .iter()
+                .map(String::as_str)
+                .zip(namespace.iter().copied())
+                .all(|(left, right)| left == right)
+    )
 }
 
 fn collect_unused_named_bindings(expr: &TypedExpr, errors: &mut Vec<ValidationError>) {
@@ -6985,7 +7416,75 @@ mod tests {
     use super::*;
     use sigil_lexer::tokenize;
     use sigil_parser::parse;
-    use sigil_typechecker::type_check;
+    use sigil_typechecker::{type_check, TypeCheckOptions, TypeInfo};
+
+    fn type_registry_for(program: &Program) -> HashMap<String, TypeInfo> {
+        program
+            .declarations
+            .iter()
+            .filter_map(|declaration| match declaration {
+                Declaration::Type(type_decl) => Some((
+                    type_decl.name.clone(),
+                    TypeInfo {
+                        type_params: type_decl.type_params.clone(),
+                        definition: type_decl.definition.clone(),
+                        constraint: type_decl.constraint.clone(),
+                        labels: std::collections::BTreeSet::new(),
+                    },
+                )),
+                _ => None,
+            })
+            .collect()
+    }
+
+    fn validator_test_imported_type_registries() -> HashMap<String, HashMap<String, TypeInfo>> {
+        let json_source = "t JsonValue=JsonArray([JsonValue])|JsonBool(Bool)|JsonNull()|JsonNumber(Float)|JsonObject({String↦JsonValue})|JsonString(String)\n";
+        let json_program = parse(tokenize(json_source).unwrap(), "json.lib.sigil").unwrap();
+        let decode_source = "t DecodeError={message:String,path:[String]}\n";
+        let decode_program = parse(tokenize(decode_source).unwrap(), "decode.lib.sigil").unwrap();
+        HashMap::from([
+            ("stdlib::json".to_string(), type_registry_for(&json_program)),
+            ("stdlib::decode".to_string(), type_registry_for(&decode_program)),
+        ])
+    }
+
+    fn validator_test_imported_namespaces() -> HashMap<String, InferenceType> {
+        let empty_namespace = |name: &str| {
+            InferenceType::Record(sigil_typechecker::types::TRecord {
+                fields: HashMap::new(),
+                name: Some(name.to_string()),
+            })
+        };
+        HashMap::from([
+            ("stdlib::json".to_string(), empty_namespace("stdlib::json")),
+            ("stdlib::decode".to_string(), empty_namespace("stdlib::decode")),
+        ])
+    }
+
+    fn type_check_for_typed_validation(
+        program: &Program,
+        source: &str,
+    ) -> sigil_typechecker::TypeCheckResult {
+        type_check(
+            program,
+            source,
+            Some(TypeCheckOptions {
+                imported_namespaces: Some(validator_test_imported_namespaces()),
+                imported_type_registries: Some(validator_test_imported_type_registries()),
+                ..TypeCheckOptions::default()
+            }),
+        )
+        .unwrap()
+    }
+
+    fn typed_validation_options_for(program: &Program, file_path: &str) -> TypedValidationOptions {
+        TypedValidationOptions {
+            local_type_registry: type_registry_for(program),
+            imported_type_registries: validator_test_imported_type_registries(),
+            module_id: None,
+            source_file: Some(file_path.to_string()),
+        }
+    }
 
     #[test]
     fn test_no_duplicate_functions() {
@@ -7143,6 +7642,223 @@ mod tests {
             .unwrap_err()
             .iter()
             .any(|error| matches!(error, ValidationError::UnusedBinding { binding_name, .. } if binding_name == "unused")));
+    }
+
+    #[test]
+    fn test_manual_direct_json_encoder_rejected_for_derivable_type() {
+        let source = r#"t User={name:String}
+
+derive json User
+
+λuserToJson(user:User)=>§json.JsonValue=encodeUser(user)
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+        let typed = type_check_for_typed_validation(&program, source);
+
+        let result = validate_typed_canonical_form_with_options(
+            &typed.typed_program,
+            Some("test.lib.sigil"),
+            typed_validation_options_for(&program, "test.lib.sigil"),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().iter().any(|error| matches!(
+            error,
+            ValidationError::DirectJsonCodec {
+                declaration_name,
+                target_name,
+                surface_kind,
+                encode_helper,
+                ..
+            } if declaration_name == "userToJson"
+                && target_name == "User"
+                && surface_kind == "encode"
+                && encode_helper == "encodeUser"
+        )));
+    }
+
+    #[test]
+    fn test_manual_direct_json_decoder_rejected_for_derivable_type() {
+        let source = r#"t Result[T,E]=Err(E)|Ok(T)
+
+t User={name:String}
+
+λfromJsonUser(value:§json.JsonValue)=>Result[
+  User,
+  §decode.DecodeError
+]=Ok({name:"sigil"})
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+        let typed = type_check_for_typed_validation(&program, source);
+
+        let result = validate_typed_canonical_form_with_options(
+            &typed.typed_program,
+            Some("test.lib.sigil"),
+            typed_validation_options_for(&program, "test.lib.sigil"),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().iter().any(|error| matches!(
+            error,
+            ValidationError::DirectJsonCodec {
+                declaration_name,
+                target_name,
+                surface_kind,
+                decode_helper,
+                ..
+            } if declaration_name == "fromJsonUser"
+                && target_name == "User"
+                && surface_kind == "decode"
+                && decode_helper == "decodeUser"
+        )));
+    }
+
+    #[test]
+    fn test_manual_direct_json_parser_rejected_for_derivable_type() {
+        let source = r#"t Result[T,E]=Err(E)|Ok(T)
+
+t User={name:String}
+
+λfromJsonText(input:String)=>Result[
+  User,
+  §decode.DecodeError
+]=Err({
+  message:"bad json",
+  path:[]
+})
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+        let typed = type_check_for_typed_validation(&program, source);
+
+        let result = validate_typed_canonical_form_with_options(
+            &typed.typed_program,
+            Some("test.lib.sigil"),
+            typed_validation_options_for(&program, "test.lib.sigil"),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().iter().any(|error| matches!(
+            error,
+            ValidationError::DirectJsonCodec {
+                declaration_name,
+                target_name,
+                surface_kind,
+                parse_helper,
+                ..
+            } if declaration_name == "fromJsonText"
+                && target_name == "User"
+                && surface_kind == "parse"
+                && parse_helper == "parseUser"
+        )));
+    }
+
+    #[test]
+    fn test_manual_direct_json_stringifier_rejected_for_derivable_type() {
+        let source = r#"t User={name:String}
+
+derive json User
+
+λuserToJsonText(user:User)=>String=stringifyUser(user)
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+        let typed = type_check_for_typed_validation(&program, source);
+
+        let result = validate_typed_canonical_form_with_options(
+            &typed.typed_program,
+            Some("test.lib.sigil"),
+            typed_validation_options_for(&program, "test.lib.sigil"),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().iter().any(|error| matches!(
+            error,
+            ValidationError::DirectJsonCodec {
+                declaration_name,
+                target_name,
+                surface_kind,
+                stringify_helper,
+                ..
+            } if declaration_name == "userToJsonText"
+                && target_name == "User"
+                && surface_kind == "stringify"
+                && stringify_helper == "stringifyUser"
+        )));
+    }
+
+    #[test]
+    fn test_function_valued_const_direct_json_encoder_rejected() {
+        let source = r#"t User={name:String}
+
+derive json User
+
+c userToJson=(encodeUser:λ(User)=>§json.JsonValue)
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+        let typed = type_check_for_typed_validation(&program, source);
+
+        let result = validate_typed_canonical_form_with_options(
+            &typed.typed_program,
+            Some("test.lib.sigil"),
+            typed_validation_options_for(&program, "test.lib.sigil"),
+        );
+        assert!(result.is_err());
+        assert!(result.unwrap_err().iter().any(|error| matches!(
+            error,
+            ValidationError::DirectJsonCodec {
+                declaration_name,
+                target_name,
+                surface_kind,
+                ..
+            } if declaration_name == "userToJson"
+                && target_name == "User"
+                && surface_kind == "encode"
+        )));
+    }
+
+    #[test]
+    fn test_non_json_string_function_allowed_for_derivable_type() {
+        let source = r#"t User={name:String}
+
+λdisplayName(user:User)=>String=user.name
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+        let typed = type_check_for_typed_validation(&program, source);
+
+        assert!(
+            validate_typed_canonical_form_with_options(
+                &typed.typed_program,
+                Some("test.lib.sigil"),
+                typed_validation_options_for(&program, "test.lib.sigil"),
+            )
+            .is_ok()
+        );
+    }
+
+    #[test]
+    fn test_manual_decoder_allowed_for_non_derivable_payload_type() {
+        let source = r#"t Result[T,E]=Err(E)|Ok(T)
+
+t LegacyUserPayload=LegacyUserPayload(Char)
+
+λdecodeLegacyUser(value:§json.JsonValue)=>Result[
+  LegacyUserPayload,
+  §decode.DecodeError
+]=Ok(LegacyUserPayload('x'))
+"#;
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.lib.sigil").unwrap();
+        let typed = type_check_for_typed_validation(&program, source);
+
+        assert!(
+            validate_typed_canonical_form_with_options(
+                &typed.typed_program,
+                Some("test.lib.sigil"),
+                typed_validation_options_for(&program, "test.lib.sigil"),
+            )
+            .is_ok()
+        );
     }
 
     #[test]

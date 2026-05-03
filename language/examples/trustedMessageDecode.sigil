@@ -3,44 +3,31 @@ t Message={
   text:String
 }
 
-λcreatedAt(value:§json.JsonValue)=>Result[
-  §time.Instant,
-  §decode.DecodeError
-] match §decode.string(value){
-  Ok(text)=>match §time.parseIso(text){
-    Ok(instant)=>Ok(instant)|
-    Err(error)=>Err({
-      message:error.message,
-      path:[]
-    })
-  }|
-  Err(error)=>Err(error)
+t MessagePayload={
+  createdAt:String,
+  text:String
 }
+
+derive json MessagePayload
 
 λmain()=>Result[
   Message,
   §decode.DecodeError
-]=§decode.parse(
-  message,
-  "{\"createdAt\":\"2026-03-07T00:00:00.000Z\",\"text\":\"hello\"}"
-)
+] match parseMessagePayload("{\"createdAt\":\"2026-03-07T00:00:00.000Z\",\"text\":\"hello\"}"){
+  Ok(payload)=>message(payload)|
+  Err(error)=>Err(error)
+}
 
-λmessage(value:§json.JsonValue)=>Result[
+λmessage(payload:MessagePayload)=>Result[
   Message,
   §decode.DecodeError
-] match §decode.field(
-  createdAt,
-  "createdAt"
-)(value){
-  Ok(createdAtValue)=>match §decode.field(
-    §decode.string,
-    "text"
-  )(value){
-    Ok(text)=>Ok({
-      createdAt:createdAtValue,
-      text:text
-    })|
-    Err(error)=>Err(error)
-  }|
-  Err(error)=>Err(error)
+] match §time.parseIso(payload.createdAt){
+  Ok(createdAtValue)=>Ok({
+    createdAt:createdAtValue,
+    text:payload.text
+  })|
+  Err(error)=>Err({
+    message:error.message,
+    path:[]
+  })
 }

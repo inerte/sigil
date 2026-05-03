@@ -770,6 +770,11 @@ For a derived root `TypeName`, the compiler exports four same-module helpers:
 Semantics:
 
 - the derive target must resolve to one monomorphic named type
+- for derivable named types, these generated helpers are the only canonical
+  direct JSON codec surface
+- if a legacy or custom wire format differs from the domain shape, user code
+  should define an explicit payload or wire type, derive JSON for that payload,
+  and translate between payload and domain with ordinary functions
 - only explicitly derived roots get public helpers; nested reachable named types use private generated helpers
 - records map to exact JSON objects by declared field name
 - lists map to JSON arrays

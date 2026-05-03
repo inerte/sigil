@@ -1,5 +1,7 @@
 mode total
 
+derive json µRepoCompileCacheEntry
+
 λbuildRepoCompileResult(cacheHits:Int,cacheMisses:Int,compiled:Int,considered:Int,issues:[µRepoCompileIssue],startedAt:Int)=>!Clock µRepoCompileResult={
   l finishedAt=(§time.toEpochMillis(§time.now()):Int);
   {
@@ -296,8 +298,6 @@ match paths{
     )
   }
 }
-
-λencodeRepoCompileCacheEntry(entry:µRepoCompileCacheEntry)=>String=§json.stringify(§json.JsonObject({"fingerprint"↦§json.JsonString(entry.fingerprint)}))
 
 λfallbackCompileIssue(result:§process.ProcessResult)=>µRepoCompileIssue={
   message:"compile failed: "++processOutput(result),
@@ -643,20 +643,6 @@ match states{
   false=>Err(prefix++processOutput(result))
 }
 
-λparseRepoCompileCacheEntry(text:String)=>Option[µRepoCompileCacheEntry] match §json.parse(text){
-  Ok(value)=>match §json.asObject(value){
-    Some(obj)=>match jsonStringField(
-      "fingerprint",
-      obj
-    ){
-      Some(fingerprint)=>Some({fingerprint:fingerprint})|
-      None()=>None()
-    }|
-    None()=>None()
-  }|
-  Err(_)=>None()
-}
-
 λprocessCompileTaskState(state:µRepoCompileTaskState)=>!AuditIo Result[
   Unit,
   µRepoCompileIssue
@@ -703,7 +689,7 @@ match states{
     task
   ):String);
   match §file.exists(path){
-    true=>parseRepoCompileCacheEntry(§file.readText(path))|
+    true=>repoCompileCacheEntryFromText(§file.readText(path))|
     false=>None()
   }
 }
@@ -723,6 +709,20 @@ match states{
   root,
   ".sigil/cache/repoAudit/repo-compile-v1"
 )
+
+λrepoCompileCacheEntryFromText(text:String)=>Option[µRepoCompileCacheEntry] match §json.parse(text){
+  Ok(value)=>match §json.asObject(value){
+    Some(obj)=>match jsonStringField(
+      "fingerprint",
+      obj
+    ){
+      Some(fingerprint)=>Some({fingerprint:fingerprint})|
+      None()=>None()
+    }|
+    None()=>None()
+  }|
+  Err(_)=>None()
+}
 
 λrepoCompileCacheVersion()=>String="repo-compile-v1"
 
@@ -947,7 +947,7 @@ match paths{
 λwriteRepoCompileCacheEntry(entry:µRepoCompileCacheEntry,root:String,task:µRepoCompileTask)=>!Fs Unit={
   l _=(§file.makeDirs(repoCompileCacheDir(root)):Unit);
   §file.writeText(
-    encodeRepoCompileCacheEntry(entry),
+    stringifyRepoCompileCacheEntry(entry),
     cacheEntryPath(
       root,
       task

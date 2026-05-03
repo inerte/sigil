@@ -14,6 +14,12 @@ use crate::types::{
 use sigil_ast::{DeriveDecl, Expr, FunctionMode, PrimitiveName, Type, TypeDef};
 use std::collections::HashMap;
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct JsonCodecSurfaceInfo {
+    pub target_name: String,
+    pub helper_names: JsonCodecHelperNames,
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct JsonCodecSeed {
     pub target: Type,
@@ -194,6 +200,67 @@ pub(crate) fn finalize_json_codec_decl(
         helper_names: seed.helper_names,
         named_types,
         location: seed.location,
+    })
+}
+
+pub fn derive_json_surface_info_for_type(
+    root_type: &InferenceType,
+    module_id: Option<&str>,
+    source_file: Option<&str>,
+    local_type_registry: &HashMap<String, TypeInfo>,
+    imported_type_registries: &HashMap<String, HashMap<String, TypeInfo>>,
+) -> Result<JsonCodecSurfaceInfo, TypeError> {
+    let mut env = TypeEnvironment::new();
+    env.set_module_id(module_id.map(ToOwned::to_owned));
+    env.set_source_file(source_file.map(ToOwned::to_owned));
+    for (name, info) in local_type_registry {
+        env.register_type(name.clone(), info.clone());
+    }
+    for (imported_module_id, registry) in imported_type_registries {
+        env.register_imported_types(imported_module_id.clone(), registry.clone());
+    }
+
+    let instance = match root_type {
+        InferenceType::Constructor(constructor) => {
+            resolve_nested_named_instance(&env, constructor, zero_source_location())?
+        }
+        InferenceType::Record(record) => {
+            let Some(name) = &record.name else {
+                return Err(TypeError::new(
+                    format!(
+                        "derive json expects a named type target, got {}",
+                        format_type(root_type)
+                    ),
+                    Some(zero_source_location()),
+                ));
+            };
+            resolve_nested_named_instance(
+                &env,
+                &TConstructor {
+                    name: name.clone(),
+                    type_args: Vec::new(),
+                },
+                zero_source_location(),
+            )?
+        }
+        other => {
+            return Err(TypeError::new(
+                format!(
+                    "derive json expects a named type target, got {}",
+                    format_type(other)
+                ),
+                Some(zero_source_location()),
+            ));
+        }
+    };
+
+    let target_name = instance.base_name.clone();
+    let helper_names = helper_names_for_target(&target_name);
+    let mut analyzer = JsonCodecAnalyzer::new(&env, "");
+    analyzer.analyze_named_instance(instance)?;
+    Ok(JsonCodecSurfaceInfo {
+        target_name,
+        helper_names,
     })
 }
 
@@ -691,6 +758,21 @@ fn helper_suffix_for_type_id(type_id: &str) -> String {
         sanitized.to_string()
     };
     format!("{}_{}", sanitized, stable_hash(type_id))
+}
+
+fn zero_source_location() -> sigil_ast::SourceLocation {
+    sigil_ast::SourceLocation {
+        start: sigil_ast::Position {
+            line: 1,
+            column: 1,
+            offset: 0,
+        },
+        end: sigil_ast::Position {
+            line: 1,
+            column: 1,
+            offset: 0,
+        },
+    }
 }
 
 fn stable_hash(input: &str) -> String {

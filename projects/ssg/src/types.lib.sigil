@@ -35,6 +35,15 @@ t ProjectInfo={
   projectDir:String
 }
 
+t SearchPage={
+  description:String,
+  section:String,
+  sourcePath:String,
+  text:String,
+  title:String,
+  url:String
+}
+
 t Section=Article()|Doc()|Home()|Project()|Spec()
 
 t SiteBuildConfig={

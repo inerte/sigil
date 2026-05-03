@@ -1,11 +1,34 @@
 mode total
 
+derive json µAuditCheckResult
+
+derive json µAuditData
+
+derive json µAuditIssue
+
+derive json µAuditSummary
+
+derive json µAuditFailureEnvelope
+
+derive json µAuditFailurePayload
+
+derive json µRepoCompileStats
+
+derive json µAuditSuccessEnvelope
+
 λallCheckIds()=>[String]=[
   "docs-drift",
   "canonical-stdlib",
   "repo-compile",
   "package-publishability"
 ]
+
+λauditFailureEnvelope(message:String)=>µAuditFailureEnvelope={
+  command:"repoAudit",
+  error:{message:message},
+  ok:false,
+  phase:"audit"
+}
 
 λauditIssue(check:String,code:String,line:Int,message:String,path:String)=>µAuditIssue={
   check:check,
@@ -32,57 +55,19 @@ mode total
   []
 )
 
+λauditSuccessEnvelope(data:µAuditData)=>µAuditSuccessEnvelope={
+  command:"repoAudit",
+  data:data,
+  ok:data.summary.issueCount=0,
+  phase:"audit"
+}
+
 λbuildCheckResult(check:String,outcome:µAuditCheckOutcome)=>µAuditCheckResult={
   check:check,
   issueCount:#outcome.issues,
   ok:#outcome.issues=0,
   repoCompileStats:outcome.repoCompileStats
 }
-
-λencodeAuditCheckResult(result:µAuditCheckResult)=>§json.JsonValue match result.repoCompileStats{
-  Some(stats)=>§json.JsonObject({
-    "check"↦§json.JsonString(result.check),
-    "issueCount"↦§json.JsonNumber(§float.toFloat(result.issueCount)),
-    "ok"↦§json.JsonBool(result.ok),
-    "repoCompileStats"↦encodeRepoCompileStats(stats)
-  })|
-  None()=>§json.JsonObject({
-    "check"↦§json.JsonString(result.check),
-    "issueCount"↦§json.JsonNumber(§float.toFloat(result.issueCount)),
-    "ok"↦§json.JsonBool(result.ok)
-  })
-}
-
-λencodeAuditData(data:µAuditData)=>§json.JsonValue=§json.JsonObject({
-  "checks"↦§json.JsonArray(data.checks map encodeAuditCheckResult),
-  "issues"↦§json.JsonArray(data.issues map encodeAuditIssue),
-  "summary"↦encodeAuditSummary(data.summary)
-})
-
-λencodeAuditIssue(issue:µAuditIssue)=>§json.JsonValue=§json.JsonObject({
-  "check"↦§json.JsonString(issue.check),
-  "code"↦§json.JsonString(issue.code),
-  "line"↦§json.JsonNumber(§float.toFloat(issue.line)),
-  "message"↦§json.JsonString(issue.message),
-  "path"↦§json.JsonString(issue.path),
-  "severity"↦§json.JsonString(issue.severity)
-})
-
-λencodeAuditSummary(summary:µAuditSummary)=>§json.JsonValue=§json.JsonObject({
-  "checks"↦§json.JsonNumber(§float.toFloat(summary.checks)),
-  "issueCount"↦§json.JsonNumber(§float.toFloat(summary.issueCount)),
-  "selectedChecks"↦§json.JsonArray(summary.selectedChecks map §json.JsonString)
-})
-
-λencodeError(message:String)=>§json.JsonValue=§json.JsonObject({"message"↦§json.JsonString(message)})
-
-λencodeRepoCompileStats(stats:µRepoCompileStats)=>§json.JsonValue=§json.JsonObject({
-  "cacheHits"↦§json.JsonNumber(§float.toFloat(stats.cacheHits)),
-  "cacheMisses"↦§json.JsonNumber(§float.toFloat(stats.cacheMisses)),
-  "compiled"↦§json.JsonNumber(§float.toFloat(stats.compiled)),
-  "considered"↦§json.JsonNumber(§float.toFloat(stats.considered)),
-  "durationMs"↦§json.JsonNumber(§float.toFloat(stats.durationMs))
-})
 
 λinsertUnique(item:String,items:[String])=>[String] match §list.contains(
   item,
@@ -163,20 +148,6 @@ mode total
 )
 
 λmapRepoCompileIssues(issues:[µRepoCompileIssue])=>[µAuditIssue]=issues map mapRepoCompileIssue
-
-λrenderError(message:String)=>String=§json.stringify(§json.JsonObject({
-  "command"↦§json.JsonString("repoAudit"),
-  "error"↦encodeError(message),
-  "ok"↦§json.JsonBool(false),
-  "phase"↦§json.JsonString("audit")
-}))
-
-λrenderSuccess(data:µAuditData)=>String=§json.stringify(§json.JsonObject({
-  "command"↦§json.JsonString("repoAudit"),
-  "data"↦encodeAuditData(data),
-  "ok"↦§json.JsonBool(data.summary.issueCount=0),
-  "phase"↦§json.JsonString("audit")
-}))
 
 λrepoCompileOutcome(result:µRepoCompileResult)=>µAuditCheckOutcome={
   issues:mapRepoCompileIssues(result.issues),

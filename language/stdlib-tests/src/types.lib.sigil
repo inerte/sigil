@@ -3,4 +3,9 @@ t Message={
   id:TodoId
 }
 
+t MessagePayload={
+  createdAt:String,
+  id:String
+}
+
 t TodoId=TodoId(Int)

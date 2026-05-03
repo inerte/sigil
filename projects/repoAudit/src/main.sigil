@@ -3,14 +3,14 @@
   •repoAudit.auditProgram()
 )){
   Ok(data)=>{
-    l _=(§io.println(•repoAudit.renderSuccess(data)):Unit);
+    l _=(§io.println(•repoAudit.stringifyAuditSuccessEnvelope(•repoAudit.auditSuccessEnvelope(data))):Unit);
     §process.exit(match data.summary.issueCount=0{
       true=>0|
       false=>1
     })
   }|
   Err(message)=>{
-    l _=(§io.println(•repoAudit.renderError(message)):Unit);
+    l _=(§io.println(•repoAudit.stringifyAuditFailureEnvelope(•repoAudit.auditFailureEnvelope(message))):Unit);
     §process.exit(1)
   }
 }

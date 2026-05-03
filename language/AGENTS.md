@@ -178,6 +178,8 @@ Current constructor and list invariants:
   - direct boolean local aliases of supported facts participate in that same flow-sensitive refinement and coverage model
   - `where`, `requires`, and `ensures` do not imply runtime validation
   - prefer early boundary conversion with `§decode` instead of carrying raw `JsonValue` deep into business logic
+  - for derivable named types, use `derive json` as the only direct `encode*` / `decode*` / `parse*` / `stringify*` surface
+  - if external JSON does not match the domain shape, introduce an explicit payload/wire type, derive that payload, and translate it into the domain type
   - when a validated boundary value should remain distinct from a raw primitive, prefer a named wrapper type like `Email` or `UserId`
   - topology-aware projects must declare named runtime boundaries and environment names in `src/topology.lib.sigil`
   - topology-aware projects are validated against the selected `--env`, which must resolve to `config/<env>.lib.sigil`

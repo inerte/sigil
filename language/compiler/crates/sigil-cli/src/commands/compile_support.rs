@@ -20,7 +20,7 @@ use sigil_typechecker::{
     type_check, BindingMeta, BoundaryRule, FunctionContract, LabelInfo, ProtocolSpec,
     TypeCheckOptions, TypeInfo, TypeScheme, TypedDeclaration, TypedProgram,
 };
-use sigil_validator::validate_typed_canonical_form;
+use sigil_validator::{validate_typed_canonical_form_with_options, TypedValidationOptions};
 use std::collections::{BTreeSet, HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -1491,9 +1491,15 @@ pub(super) fn analyze_module_graph(graph: &ModuleGraph) -> Result<AnalyzedGraphO
         let extracted_type_registry =
             extract_type_registry(&module.ast, &module.file_path, module_id);
 
-        validate_typed_canonical_form(
+        validate_typed_canonical_form_with_options(
             &typecheck_result.typed_program,
             Some(module.file_path.to_string_lossy().as_ref()),
+            TypedValidationOptions {
+                local_type_registry: extracted_type_registry.clone(),
+                imported_type_registries: imported_type_regs.clone(),
+                module_id: Some(module_id.clone()),
+                source_file: Some(module.file_path.to_string_lossy().to_string()),
+            },
         )
         .map_err(|errors| CliError::Validation(format_validation_errors(&errors)))?;
 

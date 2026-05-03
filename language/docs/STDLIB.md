@@ -601,7 +601,9 @@ need to include it.
 ```
 
 `§decode` is the canonical layer for turning raw `JsonValue` into trusted
-internal Sigil values:
+internal Sigil values. For legacy or custom wire formats, define an explicit
+payload type for the raw JSON shape and translate that payload into the domain
+type:
 
 ```sigil module
 t Message={
@@ -609,38 +611,25 @@ t Message={
   text:String
 }
 
-λinstant(value:§json.JsonValue)=>Result[
-  §time.Instant,
-  §decode.DecodeError
-] match §decode.string(value){
-  Ok(text)=>match §time.parseIso(text){
-    Ok(instant)=>Ok(instant)|
-    Err(error)=>Err({
-      message:error.message,
-      path:[]
-    })
-  }|
-  Err(error)=>Err(error)
+t MessagePayload={
+  createdAt:String,
+  text:String
 }
 
-λmessage(value:§json.JsonValue)=>Result[
+derive json MessagePayload
+
+λmessage(payload:MessagePayload)=>Result[
   Message,
   §decode.DecodeError
-] match §decode.field(
-  instant,
-  "createdAt"
-)(value){
-  Ok(createdAt)=>match §decode.field(
-    §decode.string,
-    "text"
-  )(value){
-    Ok(text)=>Ok({
-      createdAt:createdAt,
-      text:text
-    })|
-    Err(error)=>Err(error)
-  }|
-  Err(error)=>Err(error)
+] match §time.parseIso(payload.createdAt){
+  Ok(createdAt)=>Ok({
+    createdAt:createdAt,
+    text:payload.text
+  })|
+  Err(error)=>Err({
+    message:error.message,
+    path:["createdAt"]
+  })
 }
 ```
 
@@ -674,6 +663,11 @@ derive json Todo
 - `decodeTypeName(value)=>Result[TypeName,§decode.DecodeError]`
 - `parseTypeName(input)=>Result[TypeName,§decode.DecodeError]`
 - `stringifyTypeName(value)=>String`
+
+For derivable named types, these generated helpers are the only canonical
+direct JSON codec surface. If an external wire format differs from the domain
+shape, define an explicit payload or wire type, derive JSON for that payload,
+and translate between the payload and the domain type with ordinary functions.
 
 Current v1 rules:
 

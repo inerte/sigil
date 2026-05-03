@@ -6860,7 +6860,7 @@ impl TypeScriptGenerator {
         self.emit("  if (typeof __sigil_debug_step_emit === 'function') {");
         self.emit("    __sigil_debug_step_emit({ kind: 'expr_throw', ...meta, spanKind: String(meta.spanKind ?? ''), error: errorSummary, expressionDepth: depth });");
         self.emit("  }");
-        self.emit("  if (!state.failure || Number(depth) >= Number(state.failure.depth ?? 0)) {");
+        self.emit("  if (!state.failure || Number(depth) > Number(state.failure.depth ?? 0)) {");
         self.emit("    state.failure = { depth: Number(depth), snapshot: __sigil_expression_snapshot_from_meta(meta, typeId, { error: errorSummary }) };");
         self.emit("  }");
         self.emit("}");

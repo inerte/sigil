@@ -5061,20 +5061,18 @@ fn analyze_runtime_exception(
         .as_ref()
         .and_then(|expression| declaration_frame_for_expression(expression, module_debug_outputs));
     let frames = parse_generated_stack_frames(&capture.stack);
-    for frame in &frames {
-        if let Some(sigil_frame) = map_generated_frame_to_sigil(frame, module_debug_outputs) {
-            return RuntimeExceptionAnalysis {
-                generated_frame: Some(frame.clone()),
-                sigil_frame: Some(sigil_frame),
-                sigil_expression,
-            };
-        }
-    }
+    let generated_mapping = frames.iter().find_map(|frame| {
+        map_generated_frame_to_sigil(frame, module_debug_outputs)
+            .map(|sigil_frame| (frame.clone(), sigil_frame))
+    });
 
     RuntimeExceptionAnalysis {
-        generated_frame: frames.into_iter().next(),
+        generated_frame: generated_mapping
+            .as_ref()
+            .map(|(frame, _)| frame.clone())
+            .or_else(|| frames.into_iter().next()),
         sigil_expression,
-        sigil_frame: expression_frame,
+        sigil_frame: expression_frame.or_else(|| generated_mapping.map(|(_, frame)| frame)),
     }
 }
 

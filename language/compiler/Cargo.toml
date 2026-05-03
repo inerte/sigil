@@ -38,7 +38,7 @@ im = "15.1"
 # Serialization (for JSON output)
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
-sha2 = "0.10"
+sha2 = "0.11"
 z3 = "0.20"
 
 # String formatting

@@ -26,6 +26,7 @@ pub struct DebugSourceSpan {
 pub enum DebugSpanKind {
     FunctionDecl,
     ConstDecl,
+    JsonCodecDecl,
     TestDecl,
     TestWorldBinding,
     MatchArm,
@@ -185,6 +186,20 @@ impl SpanCollector {
                     self.collect_expr(&binding.value, Some(binding_span_id));
                 }
                 self.collect_expr(&test_decl.body, Some(span_id.clone()));
+                Some(span_id)
+            }
+            TypedDeclaration::JsonCodec(codec_decl) => {
+                let span_id = self.push_span(
+                    DebugSpanKind::JsonCodecDecl,
+                    codec_decl.location,
+                    None,
+                    Some(codec_decl.target_name.clone()),
+                );
+                for named_type in &codec_decl.named_types {
+                    if let Some(constraint) = &named_type.constraint {
+                        self.collect_expr(&constraint.predicate, Some(span_id.clone()));
+                    }
+                }
                 Some(span_id)
             }
             TypedDeclaration::Type(_) | TypedDeclaration::Extern(_) => None,

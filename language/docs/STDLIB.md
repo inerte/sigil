@@ -651,6 +651,56 @@ The intended split is:
 If a field may be absent, keep the record exact and use `Option[T]` in that
 field. Sigil does not use open or partial records for this.
 
+### Derived JSON codecs
+
+For canonical save-state and boundary payloads, Sigil also exposes a
+compiler-owned derive surface:
+
+```sigil module
+t TodoId=TodoId(Int)
+
+t Todo={
+  done:Bool,
+  id:TodoId,
+  text:String
+}
+
+derive json Todo
+```
+
+`derive json <NamedType>` generates same-module helpers for the requested root:
+
+- `encodeTypeName(value)=>§json.JsonValue`
+- `decodeTypeName(value)=>Result[TypeName,§decode.DecodeError]`
+- `parseTypeName(input)=>Result[TypeName,§decode.DecodeError]`
+- `stringifyTypeName(value)=>String`
+
+Current v1 rules:
+
+- the derive target must be one monomorphic named type
+- only explicitly derived roots get public helper names
+- nested reachable named types are handled automatically with private helpers
+- records encode as exact JSON objects
+- lists encode as JSON arrays
+- `{String↦T}` encodes as JSON objects
+- `Option[T]` encodes as `null | T`
+- ordinary sums encode as `{"tag":"Variant","values":[...]}`
+- wrapper sums of the form `t Name=Name(T)` encode as the underlying value
+- constrained aliases and constrained products validate after decode
+- `Int` encodes as JSON numbers and decodes only from integral JSON numbers
+
+To preserve one canonical mapping, v1 rejects:
+
+- generic derive roots
+- recursive type graphs
+- non-`String` map keys
+- constrained sum types
+- `Option[T]` payloads whose canonical encoding can already be `null`
+
+`sigil inspect types` reports derived codec metadata under `jsonCodecs`,
+including helper names and the resolved wire-format summary. See
+`language/examples/derivedJsonCodecs.sigil` for a runnable self-testing example.
+
 `§time` exposes strict ISO parsing, instant comparison, and harness sleep:
 
 ```sigil program

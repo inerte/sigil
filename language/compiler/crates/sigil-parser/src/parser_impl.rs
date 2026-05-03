@@ -126,6 +126,11 @@ impl Parser {
             return self.type_declaration();
         }
 
+        // Derive declaration: derive json TypeName
+        if self.match_identifier("derive") {
+            return self.derive_declaration();
+        }
+
         // Protocol declaration: protocol TypeName ...
         if self.match_identifier("protocol") {
             return self.protocol_declaration();
@@ -158,7 +163,7 @@ impl Parser {
         }
 
         Err(self.error(
-            "Expected top-level declaration (mode, label, rule, transform, t, protocol, effect, featureFlag, e, c, λ, total λ, ordinary λ, or test)",
+            "Expected top-level declaration (mode, label, rule, transform, t, derive, protocol, effect, featureFlag, e, c, λ, total λ, ordinary λ, or test)",
         ))
     }
 
@@ -481,6 +486,135 @@ impl Parser {
             labels,
             location,
         }))
+    }
+
+    fn derive_declaration(&mut self) -> Result<Declaration, ParseError> {
+        let start = self.previous();
+        self.consume_identifier(
+            "json",
+            "Expected derive kind after derive (canonical form: derive json TypeName)",
+        )?;
+        let target = self.derive_target_type()?;
+        let end = self.previous();
+        Ok(Declaration::Derive(DeriveDecl {
+            kind: DeriveKind::Json,
+            target,
+            location: self.make_location(start.location.start, end.location.end),
+        }))
+    }
+
+    fn derive_target_type(&mut self) -> Result<Type, ParseError> {
+        // Root-qualified type: §time.Instant
+        if let Some(root) = self.match_root_token() {
+            let start = root;
+            let module_path = self.rooted_module_path(&start)?;
+            self.consume(
+                TokenType::DOT,
+                "Expected \".\" after derive target module path (canonical form: derive json module::path.TypeName)",
+            )?;
+            let type_name = self
+                .consume(
+                    TokenType::UpperIdentifier,
+                    "Expected type name after \".\" in derive target",
+                )?
+                .value
+                .clone();
+            let type_args = self.optional_derive_target_type_args()?;
+            let end = self.previous();
+            return Ok(Type::Qualified(QualifiedType {
+                module_path,
+                type_name,
+                type_args,
+                location: self.make_location(start.location.start, end.location.end),
+            }));
+        }
+
+        // Project type root: µPersistedState
+        if let Some(root) = self.match_project_type_root() {
+            let start = root;
+            let type_name = self
+                .consume(
+                    TokenType::UpperIdentifier,
+                    "Expected type name after \"µ\" in derive target",
+                )?
+                .value
+                .clone();
+            let type_args = self.optional_derive_target_type_args()?;
+            let end = self.previous();
+            return Ok(Type::Qualified(QualifiedType {
+                module_path: project_types_module_path(),
+                type_name,
+                type_args,
+                location: self.make_location(start.location.start, end.location.end),
+            }));
+        }
+
+        if self.match_token(TokenType::IDENTIFIER) || self.match_token(TokenType::UpperIdentifier) {
+            let start = self.previous();
+            let first_segment = start.value.clone();
+            let is_upper = start.token_type == TokenType::UpperIdentifier;
+
+            if self.check(TokenType::NamespaceSep) {
+                let mut module_path = vec![first_segment];
+                while self.match_token(TokenType::NamespaceSep) {
+                    module_path.push(self.module_path_segment()?);
+                }
+                self.consume(
+                    TokenType::DOT,
+                    &format!(
+                        "Expected \".\" after derive target module path \"{}\". Qualified derive targets use syntax: derive json module::path.TypeName",
+                        module_path.join("::")
+                    ),
+                )?;
+                let type_name = self
+                    .consume(
+                        TokenType::UpperIdentifier,
+                        "Expected type name after \".\" in derive target",
+                    )?
+                    .value
+                    .clone();
+                let type_args = self.optional_derive_target_type_args()?;
+                let end = self.previous();
+                return Ok(Type::Qualified(QualifiedType {
+                    module_path,
+                    type_name,
+                    type_args,
+                    location: self.make_location(start.location.start, end.location.end),
+                }));
+            }
+
+            if is_upper {
+                let type_args = self.optional_derive_target_type_args()?;
+                let end = self.previous();
+                return Ok(Type::Constructor(TypeConstructor {
+                    name: first_segment,
+                    type_args,
+                    location: self.make_location(start.location.start, end.location.end),
+                }));
+            }
+
+            return Err(self.error(
+                "Expected named type after derive json (canonical form: derive json TypeName)",
+            ));
+        }
+
+        Err(self.error(
+            "Expected named type after derive json (canonical form: derive json TypeName)",
+        ))
+    }
+
+    fn optional_derive_target_type_args(&mut self) -> Result<Vec<Type>, ParseError> {
+        let mut type_args = Vec::new();
+        if self.match_token(TokenType::LBRACKET) {
+            loop {
+                type_args.push(self.parse_type()?);
+                if !self.match_token(TokenType::COMMA) {
+                    break;
+                }
+            }
+            self.consume(TokenType::RBRACKET, "Expected \"]\" after derive target type arguments")?;
+        }
+        Ok(type_args)
     }
 
     fn protocol_declaration(&mut self) -> Result<Declaration, ParseError> {

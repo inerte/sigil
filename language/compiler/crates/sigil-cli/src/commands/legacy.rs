@@ -259,6 +259,7 @@ fn source_location_json(source_file: &str, location: SourceLocation) -> serde_js
 fn ast_declaration_summary(program: &Program) -> serde_json::Value {
     let mut functions = 0usize;
     let mut types = 0usize;
+    let mut derives = 0usize;
     let mut effects = 0usize;
     let mut consts = 0usize;
     let mut feature_flags = 0usize;
@@ -272,6 +273,7 @@ fn ast_declaration_summary(program: &Program) -> serde_json::Value {
         match declaration {
             Declaration::Function(_) => functions += 1,
             Declaration::Type(_) => types += 1,
+            Declaration::Derive(_) => derives += 1,
             Declaration::Protocol(_) => {}
             Declaration::Effect(_) => effects += 1,
             Declaration::Const(_) => consts += 1,
@@ -288,6 +290,7 @@ fn ast_declaration_summary(program: &Program) -> serde_json::Value {
         "declarations": program.declarations.len(),
         "functions": functions,
         "types": types,
+        "derives": derives,
         "effects": effects,
         "consts": consts,
         "featureFlags": feature_flags,
@@ -835,6 +838,185 @@ fn inspect_named_types(module: &AnalyzedModule) -> Vec<Value> {
                 }))
             }
             TypedDeclaration::Function(_)
+            | TypedDeclaration::JsonCodec(_)
+            | TypedDeclaration::Const(_)
+            | TypedDeclaration::Test(_)
+            | TypedDeclaration::Extern(_) => None,
+        })
+        .collect()
+}
+
+fn inspect_json_codec_wire_type(
+    typ: &sigil_typechecker::typed_ir::JsonCodecType,
+    named_types: &HashMap<String, &sigil_typechecker::typed_ir::JsonCodecNamedType>,
+) -> Value {
+    match typ {
+        sigil_typechecker::typed_ir::JsonCodecType::Bool => {
+            json!({"kind": "bool", "encoding": "jsonBoolean"})
+        }
+        sigil_typechecker::typed_ir::JsonCodecType::Float => {
+            json!({"kind": "float", "encoding": "jsonNumber"})
+        }
+        sigil_typechecker::typed_ir::JsonCodecType::Int => {
+            json!({"kind": "int", "encoding": "jsonNumber", "decodeRule": "integralOnly"})
+        }
+        sigil_typechecker::typed_ir::JsonCodecType::String => {
+            json!({"kind": "string", "encoding": "jsonString"})
+        }
+        sigil_typechecker::typed_ir::JsonCodecType::List(item) => {
+            json!({"kind": "list", "encoding": "jsonArray", "item": inspect_json_codec_wire_type(item, named_types)})
+        }
+        sigil_typechecker::typed_ir::JsonCodecType::MapString(value) => {
+            json!({"kind": "map", "encoding": "jsonObject", "keys": "String", "value": inspect_json_codec_wire_type(value, named_types)})
+        }
+        sigil_typechecker::typed_ir::JsonCodecType::Option(value) => {
+            json!({"kind": "option", "encoding": "nullOrValue", "value": inspect_json_codec_wire_type(value, named_types)})
+        }
+        sigil_typechecker::typed_ir::JsonCodecType::Named { type_id, .. } => {
+            let Some(named_type) = named_types.get(type_id) else {
+                return json!({"kind": "named", "typeId": type_id, "missing": true});
+            };
+            inspect_json_codec_named_type_summary(named_type, named_types)
+        }
+    }
+}
+
+fn inspect_json_codec_named_type_summary(
+    named_type: &sigil_typechecker::typed_ir::JsonCodecNamedType,
+    named_types: &HashMap<String, &sigil_typechecker::typed_ir::JsonCodecNamedType>,
+) -> Value {
+    let mut object = serde_json::Map::new();
+    object.insert("typeId".to_string(), json!(named_type.type_id));
+    object.insert("resolvedName".to_string(), json!(named_type.resolved_name));
+    object.insert("name".to_string(), json!(named_type.base_name));
+    object.insert("nullable".to_string(), json!(named_type.nullable));
+    if let Some(constraint) = &named_type.constraint {
+        object.insert(
+            "constraint".to_string(),
+            json!({
+                "source": constraint.source,
+                "validatedOnDecode": true
+            }),
+        );
+    }
+    match &named_type.body {
+        sigil_typechecker::typed_ir::JsonCodecNamedBody::Alias { inner } => {
+            object.insert("kind".to_string(), json!("alias"));
+            object.insert("encoding".to_string(), json!("underlyingValue"));
+            object.insert(
+                "wire".to_string(),
+                inspect_json_codec_wire_type(inner, named_types),
+            );
+        }
+        sigil_typechecker::typed_ir::JsonCodecNamedBody::Product { fields } => {
+            object.insert("kind".to_string(), json!("product"));
+            object.insert("encoding".to_string(), json!("jsonObject"));
+            object.insert("exactFields".to_string(), json!(true));
+            object.insert(
+                "fields".to_string(),
+                json!(fields
+                    .iter()
+                    .map(|field| json!({
+                        "name": field.name,
+                        "wire": inspect_json_codec_wire_type(&field.typ, named_types)
+                    }))
+                    .collect::<Vec<_>>()),
+            );
+        }
+        sigil_typechecker::typed_ir::JsonCodecNamedBody::Wrapper {
+            variant_name,
+            inner,
+        } => {
+            object.insert("kind".to_string(), json!("wrapper"));
+            object.insert("encoding".to_string(), json!("underlyingValue"));
+            object.insert("variant".to_string(), json!(variant_name));
+            object.insert(
+                "wire".to_string(),
+                inspect_json_codec_wire_type(inner, named_types),
+            );
+        }
+        sigil_typechecker::typed_ir::JsonCodecNamedBody::Sum { variants } => {
+            object.insert("kind".to_string(), json!("sum"));
+            object.insert("encoding".to_string(), json!("taggedObject"));
+            object.insert("tagField".to_string(), json!("tag"));
+            object.insert("valuesField".to_string(), json!("values"));
+            object.insert(
+                "variants".to_string(),
+                json!(variants
+                    .iter()
+                    .map(|variant| json!({
+                        "name": variant.name,
+                        "fields": variant
+                            .fields
+                            .iter()
+                            .map(|field| inspect_json_codec_wire_type(field, named_types))
+                            .collect::<Vec<_>>()
+                    }))
+                    .collect::<Vec<_>>()),
+            );
+        }
+    }
+    Value::Object(object)
+}
+
+fn inspect_json_codecs(module: &AnalyzedModule) -> Vec<Value> {
+    let source_file = module.file_path.to_string_lossy().to_string();
+
+    module
+        .typed_program
+        .declarations
+        .iter()
+        .enumerate()
+        .filter_map(|(index, declaration)| match declaration {
+            TypedDeclaration::JsonCodec(codec_decl) => {
+                let named_types = codec_decl
+                    .named_types
+                    .iter()
+                    .map(|named_type| (named_type.type_id.clone(), named_type))
+                    .collect::<HashMap<_, _>>();
+                let root_summary = named_types
+                    .get(&codec_decl.target_type_id)
+                    .map(|named_type| inspect_json_codec_named_type_summary(named_type, &named_types))
+                    .unwrap_or_else(|| json!({"typeId": codec_decl.target_type_id, "missing": true}));
+                let encode_name = codec_decl.helper_names.encode.clone();
+                let decode_name = codec_decl.helper_names.decode.clone();
+                let parse_name = codec_decl.helper_names.parse.clone();
+                let stringify_name = codec_decl.helper_names.stringify.clone();
+                let helper_type = |name: &str| {
+                    module
+                        .declaration_types
+                        .get(name)
+                        .map(sigil_typechecker::format_type)
+                        .unwrap_or_default()
+                };
+                Some(json!({
+                    "targetName": codec_decl.target_name.clone(),
+                    "targetTypeId": codec_decl.target_type_id.clone(),
+                    "helpers": {
+                        "encode": {
+                            "name": encode_name.clone(),
+                            "type": helper_type(&encode_name)
+                        },
+                        "decode": {
+                            "name": decode_name.clone(),
+                            "type": helper_type(&decode_name)
+                        },
+                        "parse": {
+                            "name": parse_name.clone(),
+                            "type": helper_type(&parse_name)
+                        },
+                        "stringify": {
+                            "name": stringify_name.clone(),
+                            "type": helper_type(&stringify_name)
+                        }
+                    },
+                    "wireFormat": root_summary,
+                    "spanId": module.declaration_span_ids.get(index).and_then(|span_id| span_id.clone()).unwrap_or_default(),
+                    "location": source_location_json(&source_file, codec_decl.location)
+                }))
+            }
+            TypedDeclaration::Function(_)
+            | TypedDeclaration::Type(_)
             | TypedDeclaration::Const(_)
             | TypedDeclaration::Test(_)
             | TypedDeclaration::Extern(_) => None,
@@ -886,12 +1068,14 @@ fn inspect_type_declarations(module: &AnalyzedModule) -> Vec<Value> {
                 "spanId": module.declaration_span_ids.get(index).and_then(|span_id| span_id.clone()).unwrap_or_default(),
                 "location": source_location_json(&source_file, test_decl.location)
             })),
-            TypedDeclaration::Type(_) | TypedDeclaration::Extern(_) => None,
+            TypedDeclaration::Type(_)
+            | TypedDeclaration::JsonCodec(_)
+            | TypedDeclaration::Extern(_) => None,
         })
         .collect()
 }
 
-fn inspect_type_summary(declarations: &[Value], types: &[Value]) -> Value {
+fn inspect_type_summary(declarations: &[Value], types: &[Value], json_codecs: &[Value]) -> Value {
     let mut functions = 0usize;
     let mut consts = 0usize;
     let mut tests = 0usize;
@@ -930,21 +1114,24 @@ fn inspect_type_summary(declarations: &[Value], types: &[Value]) -> Value {
         "aliases": aliases,
         "products": products,
         "sums": sums,
-        "constrainedTypes": constrained_types
+        "constrainedTypes": constrained_types,
+        "jsonCodecs": json_codecs.len()
     })
 }
 
 fn inspect_types_file_result(input: &Path, module: &AnalyzedModule) -> Value {
     let declarations = inspect_type_declarations(module);
     let types = inspect_named_types(module);
+    let json_codecs = inspect_json_codecs(module);
     json!({
         "input": input.to_string_lossy(),
         "moduleId": module.module_id,
         "sourceFile": module.file_path.to_string_lossy(),
         "project": project_json(module.project.as_ref()),
-        "summary": inspect_type_summary(&declarations, &types),
+        "summary": inspect_type_summary(&declarations, &types, &json_codecs),
         "declarations": declarations,
-        "types": types
+        "types": types,
+        "jsonCodecs": json_codecs
     })
 }
 
@@ -1292,6 +1479,7 @@ fn inspect_proof_sites(module: &AnalyzedModule) -> Vec<Value> {
             | Declaration::Extern(_)
             | Declaration::Transform(_)
             | Declaration::Label(_)
+            | Declaration::Derive(_)
             | Declaration::Rule(_) => {}
         }
     }

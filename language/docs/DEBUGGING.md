@@ -125,6 +125,18 @@ Current scope:
 - useful for exported/library surfaces and entry declarations
 - not a nested-expression type explorer
 
+For compiler-derived JSON codecs, `inspect types` also reports `jsonCodecs` per
+file. Each entry includes:
+
+- the derived root `targetName` / `targetTypeId`
+- generated helper names and solved signatures
+- a normalized `wireFormat` summary for records, sums, wrappers, lists, maps,
+  `Option`, and decode-time constraint validation
+
+This is the fastest way to confirm the exact JSON contract that
+`derive json <NamedType>` will accept and emit without reading generated
+TypeScript.
+
 ### `sigil inspect proof`
 
 Use this when you need the declared proof surface without waiting for a failing

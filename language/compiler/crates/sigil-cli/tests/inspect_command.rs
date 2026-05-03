@@ -200,6 +200,68 @@ fn inspect_types_reports_named_type_inventory_and_constraints() {
 }
 
 #[test]
+fn inspect_types_reports_derived_json_codec_metadata() {
+    let dir = temp_dir("types-json-codec");
+    write_program(
+        &dir,
+        "sigil.json",
+        "{\"name\":\"inspectJsonCodec\",\"version\":\"2026-05-02T18-20-00Z\"}\n",
+    );
+    write_program(
+        &dir,
+        "src/types.lib.sigil",
+        concat!(
+            "t NextTodoId=NextTodoId(Int)\n\n",
+            "t PersistedState={\n  nextId:NextTodoId,\n  todos:[Todo]\n}\n\n",
+            "t Todo={\n  done:Bool,\n  id:Int,\n  text:String\n}\n",
+        ),
+    );
+    let codec = write_program(
+        &dir,
+        "src/todoJson.lib.sigil",
+        "derive json µPersistedState\n",
+    );
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("inspect")
+        .arg("types")
+        .arg(&codec)
+        .output()
+        .unwrap();
+
+    assert!(output.status.success());
+    assert!(output.stderr.is_empty());
+
+    let json = parse_json(&output.stdout);
+    assert_eq!(json["command"], "sigilc inspect types");
+    assert_eq!(json["data"]["summary"]["jsonCodecs"], 1);
+
+    let codecs = json["data"]["jsonCodecs"].as_array().unwrap();
+    assert_eq!(codecs.len(), 1);
+
+    let codec = &codecs[0];
+    assert_eq!(codec["targetName"], "PersistedState");
+    assert_eq!(codec["helpers"]["encode"]["name"], "encodePersistedState");
+    assert_eq!(codec["helpers"]["decode"]["name"], "decodePersistedState");
+    assert_eq!(codec["helpers"]["parse"]["name"], "parsePersistedState");
+    assert_eq!(
+        codec["helpers"]["stringify"]["name"],
+        "stringifyPersistedState"
+    );
+    assert_eq!(codec["wireFormat"]["kind"], "product");
+    assert_eq!(codec["wireFormat"]["fields"][0]["name"], "nextId");
+    assert_eq!(codec["wireFormat"]["fields"][0]["wire"]["kind"], "wrapper");
+    assert_eq!(
+        codec["wireFormat"]["fields"][0]["wire"]["encoding"],
+        "underlyingValue"
+    );
+    assert_eq!(codec["wireFormat"]["fields"][1]["name"], "todos");
+    assert_eq!(codec["wireFormat"]["fields"][1]["wire"]["kind"], "list");
+    assert_eq!(codec["wireFormat"]["fields"][1]["wire"]["item"]["kind"], "product");
+}
+
+#[test]
 fn inspect_types_directory_reports_requested_modules_only() {
     let dir = temp_dir("types-directory");
     write_program(

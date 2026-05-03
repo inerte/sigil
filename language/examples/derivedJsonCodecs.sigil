@@ -1,0 +1,101 @@
+t Contact={
+  aliases:[String],
+  nickname:Option[String]
+}
+
+t NonEmpty=String where #value>0
+
+t Profile={
+  contact:Contact,
+  id:UserId,
+  metrics:{String↦Int},
+  name:NonEmpty,
+  status:Status
+}
+
+t Status=Blocked(String)|Ready()
+
+t UserId=UserId(Int)
+
+derive json UserId
+
+derive json Status
+
+derive json Profile
+
+λmain()=>Unit=()
+
+λsampleProfile()=>Profile={
+  contact:{
+    aliases:[
+      "ops",
+      "owner"
+    ],
+    nickname:None()
+  },
+  id:UserId(7),
+  metrics:{
+    "bugs"↦1,
+    "score"↦3
+  },
+  name:"Sigil",
+  status:Blocked("later")
+}
+
+test "derived json encodes wrapper sums as underlying values" {
+  encodeUserId(UserId(7))=(§json.JsonNumber(7.0):§json.JsonValue)
+}
+
+test "derived json rejects string ints for wrapper sums" {
+  match decodeUserId((§json.JsonString("7"):§json.JsonValue)){
+    Ok(_)=>false|
+    Err(_)=>true
+  }
+}
+
+test "derived json encodes sums as tagged objects" {
+  encodeStatus(Blocked("later"))=(§json.JsonObject({
+    "tag"↦§json.JsonString("Blocked"),
+    "values"↦§json.JsonArray([§json.JsonString("later")])
+  }):§json.JsonValue)
+}
+
+test "derived json roundtrip preserves nested products" {
+  l profile=(sampleProfile():Profile);
+  match parseProfile((stringifyProfile(profile):String)){
+    Ok(decoded)=>decoded=profile|
+    Err(_)=>false
+  }
+}
+
+test "derived json encodes options lists and maps canonically" {
+  encodeProfile(sampleProfile())=(§json.JsonObject({
+    "contact"↦§json.JsonObject({
+      "aliases"↦§json.JsonArray([
+        §json.JsonString("ops"),
+        §json.JsonString("owner")
+      ]),
+      "nickname"↦§json.JsonNull()
+    }),
+    "id"↦§json.JsonNumber(7.0),
+    "metrics"↦§json.JsonObject({
+      "bugs"↦§json.JsonNumber(1.0),
+      "score"↦§json.JsonNumber(3.0)
+    }),
+    "name"↦§json.JsonString("Sigil"),
+    "status"↦§json.JsonObject({
+      "tag"↦§json.JsonString("Blocked"),
+      "values"↦§json.JsonArray([§json.JsonString("later")])
+    })
+  }):§json.JsonValue)
+}
+
+test "derived json reports constrained decode failures at the field path" {
+  parseProfile("{\"contact\":{\"aliases\":[],\"nickname\":null},\"id\":7,\"metrics\":{},\"name\":\"\",\"status\":{\"tag\":\"Ready\",\"values\":[]}}")=(Err(({
+    message:"constraint failed for NonEmpty: #value>0",
+    path:["name"]
+  }:§decode.DecodeError)):Result[
+  Profile,
+  §decode.DecodeError
+])
+}

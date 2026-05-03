@@ -9,7 +9,7 @@ slug: sigil-todo
 This example demonstrates the recommended frontend integration pattern:
 
 - `src/todoDomain.lib.sigil`: canonical Sigil domain logic (Sigil project source)
-- `src/todoJson.lib.sigil`: canonical Sigil JSON codec for persisted todo payloads
+- `src/todoJson.lib.sigil`: compiler-derived JSON codec for persisted todo payloads
 - `tests/todoDomain.sigil`: Sigil tests for the domain logic
 - `tests/todoJson.sigil`: Sigil tests for codec roundtrip/error handling
 - `web/src/generated/todo-domain.ts`: generated Sigil TypeScript output (regenerated locally, not tracked)
@@ -49,3 +49,22 @@ SIGIL_TODO_BASE=/projects/sigil-todo/demo/ pnpm build
 ```
 
 `pnpm build` also regenerates the Sigil bridge before producing `web/dist/`.
+
+## Persisted JSON shape
+
+`src/todoJson.lib.sigil` now contains one declaration:
+
+```sigil module
+derive json µPersistedState
+```
+
+That generates the persisted-state helpers in the same module:
+
+- `encodePersistedState`
+- `decodePersistedState`
+- `parsePersistedState`
+- `stringifyPersistedState`
+
+The Sigil tests pin the canonical wire format: todo ids and `nextId` are JSON
+numbers, records stay exact JSON objects, and invalid payloads fail through
+`§decode.DecodeError`.

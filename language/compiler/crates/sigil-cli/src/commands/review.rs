@@ -1023,6 +1023,17 @@ fn declaration_snapshot(
             schemes,
             typed_functions,
         ),
+        Declaration::Derive(derive_decl) => ReviewDeclaration {
+            facts: DeclarationFacts {
+                definition: Some(print_canonical_type(&derive_decl.target)),
+                surface: render_declaration_surface(program, declaration),
+                ..DeclarationFacts::default()
+            },
+            key: format!("derive:json:{}", print_canonical_type(&derive_decl.target)),
+            kind: "derive".to_string(),
+            line: derive_decl.location.start.line,
+            name: format!("json {}", print_canonical_type(&derive_decl.target)),
+        },
         Declaration::Type(type_decl) => ReviewDeclaration {
             facts: DeclarationFacts {
                 constraint: type_decl.constraint.as_ref().map(print_canonical_expr),
@@ -1228,6 +1239,7 @@ fn declaration_location(declaration: &Declaration) -> sigil_ast::SourceLocation 
         Declaration::Function(value) => value.location,
         Declaration::Transform(value) => value.function.location,
         Declaration::Type(value) => value.location,
+        Declaration::Derive(value) => value.location,
         Declaration::Protocol(value) => value.location,
         Declaration::Label(value) => value.location,
         Declaration::Rule(value) => value.location,

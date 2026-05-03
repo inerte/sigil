@@ -221,6 +221,46 @@ fn test_feature_flag_declaration() {
 }
 
 #[test]
+fn test_derive_json_declaration_local_target() {
+    let source = "derive json PersistedState";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "src/todoJson.lib.sigil").unwrap();
+
+    match &program.declarations[0] {
+        Declaration::Derive(derive_decl) => {
+            assert_eq!(derive_decl.kind, DeriveKind::Json);
+            match &derive_decl.target {
+                Type::Constructor(target) => {
+                    assert_eq!(target.name, "PersistedState");
+                    assert!(target.type_args.is_empty());
+                }
+                other => panic!("Expected local named target, got {:?}", other),
+            }
+        }
+        other => panic!("Expected derive declaration, got {:?}", other),
+    }
+}
+
+#[test]
+fn test_derive_json_declaration_qualified_target() {
+    let source = "derive json src::types.PersistedState";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "src/todoJson.lib.sigil").unwrap();
+
+    match &program.declarations[0] {
+        Declaration::Derive(derive_decl) => match &derive_decl.target {
+            Type::Qualified(qualified) => {
+                assert_eq!(qualified.module_path, vec!["src".to_string(), "types".to_string()]);
+                assert_eq!(qualified.type_name, "PersistedState");
+                assert!(qualified.type_args.is_empty());
+            }
+            other => panic!("Expected qualified named target, got {:?}", other),
+        },
+        other => panic!("Expected derive declaration, got {:?}", other),
+    }
+}
+
+#[test]
 fn test_function_declaration_with_requires_and_ensures() {
     let source = "λnormalizeYear(raw:Int)=>Int\nrequires raw>0\nensures result>1800\nmatch raw>1800{true=>raw|false=>1900}";
     let tokens = tokenize(source).unwrap();

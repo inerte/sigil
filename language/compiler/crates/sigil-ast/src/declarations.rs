@@ -30,6 +30,8 @@ pub enum Declaration {
     Transform(TransformDecl),
     #[cfg_attr(feature = "serde", serde(rename = "TypeDecl"))]
     Type(TypeDecl),
+    #[cfg_attr(feature = "serde", serde(rename = "DeriveDecl"))]
+    Derive(DeriveDecl),
     #[cfg_attr(feature = "serde", serde(rename = "ProtocolDecl"))]
     Protocol(ProtocolDecl),
     #[cfg_attr(feature = "serde", serde(rename = "LabelDecl"))]
@@ -118,6 +120,30 @@ pub struct TypeDecl {
     #[cfg_attr(feature = "serde", serde(skip_serializing_if = "Vec::is_empty"))]
     pub labels: Vec<LabelRef>,
     pub location: SourceLocation,
+}
+
+/// Derive declaration: derive json TypeName
+#[derive(Debug, Clone, PartialEq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+pub struct DeriveDecl {
+    pub kind: DeriveKind,
+    pub target: Type,
+    pub location: SourceLocation,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", serde(rename_all = "camelCase"))]
+pub enum DeriveKind {
+    Json,
+}
+
+impl DeriveKind {
+    pub fn keyword(self) -> &'static str {
+        match self {
+            Self::Json => "json",
+        }
+    }
 }
 
 /// Label declaration: label Pii combines [Sensitive,CustomerData]

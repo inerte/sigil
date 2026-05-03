@@ -17,6 +17,9 @@ use crate::environment::{
     FunctionContract, LabelInfo, TypeEnvironment, TypeInfo,
 };
 use crate::errors::{format_type, TypeError};
+use crate::json_codec::{
+    analyze_json_codec_decl, bind_json_codec_helpers, finalize_json_codec_decl, JsonCodecSeed,
+};
 use crate::proof_context::{
     proof_outcome_reason, refinement_type_support_error, AssumptionCollector,
     ConstraintProofResult, ProofContext, SymbolicCollection, SymbolicRecord, SymbolicValue,
@@ -61,7 +64,7 @@ static NEXT_RESOURCE_SCOPE_ID: AtomicU32 = AtomicU32::new(1);
 /// Returns a map of function names to their inferred types
 pub fn type_check(
     program: &Program,
-    _source_code: &str,
+    source_code: &str,
     options: TypeCheckOptions,
 ) -> Result<TypeCheckResult, TypeError> {
     let source_file = options.source_file.clone();
@@ -74,6 +77,9 @@ pub fn type_check(
         env.set_source_file(options.source_file.clone());
         let mut types = HashMap::new();
         let mut schemes = HashMap::new();
+        let reserved_value_names = collect_top_level_value_names(program);
+        let mut generated_json_helper_names = HashSet::new();
+        let mut json_codec_seeds: Vec<JsonCodecSeed> = Vec::new();
 
         // Register imported type registries
         if let Some(imported_type_registries) = options.imported_type_registries.as_ref() {
@@ -202,6 +208,37 @@ pub fn type_check(
                             }
                         }
                     }
+                }
+
+                Declaration::Derive(derive_decl) => {
+                    let seed = analyze_json_codec_decl(&env, derive_decl, source_code)?;
+                    for helper_name in [
+                        seed.helper_names.encode.clone(),
+                        seed.helper_names.decode.clone(),
+                        seed.helper_names.parse.clone(),
+                        seed.helper_names.stringify.clone(),
+                    ] {
+                        if reserved_value_names.contains(&helper_name) {
+                            return Err(TypeError::new(
+                                format!(
+                                    "derive json for '{}' would generate helper '{}' which conflicts with an existing top-level value",
+                                    seed.target_name, helper_name
+                                ),
+                                Some(derive_decl.location),
+                            ));
+                        }
+                        if !generated_json_helper_names.insert(helper_name.clone()) {
+                            return Err(TypeError::new(
+                                format!(
+                                    "derive json helper '{}' is generated more than once in this module",
+                                    helper_name
+                                ),
+                                Some(derive_decl.location),
+                            ));
+                        }
+                    }
+                    bind_json_codec_helpers(&mut env, &mut types, &seed);
+                    json_codec_seeds.push(seed);
                 }
 
                 Declaration::Label(_) => {}
@@ -541,6 +578,7 @@ pub fn type_check(
         validate_protocol_state_runtime_usage(&env, program)?;
 
         let mut typed_declarations = Vec::new();
+        let mut json_codec_seed_iter = json_codec_seeds.into_iter();
 
         // Second pass: Type check function bodies and build typed IR
         for decl in &program.declarations {
@@ -580,6 +618,16 @@ pub fn type_check(
                 typed_declarations.push(TypedDeclaration::Type(TypedTypeDecl {
                     ast: type_decl.clone(),
                 }));
+            } else if let Declaration::Derive(_) = decl {
+                let seed = json_codec_seed_iter.next().ok_or_else(|| {
+                    TypeError::new(
+                        "internal error: missing derived json codec seed".to_string(),
+                        Some(decl_location(decl)),
+                    )
+                })?;
+                typed_declarations.push(TypedDeclaration::JsonCodec(finalize_json_codec_decl(
+                    &env, seed,
+                )?));
             } else if let Declaration::Label(_) | Declaration::Rule(_) = decl {
                 // Labels and rules are compile-time only.
             } else if let Declaration::Extern(extern_decl) = decl {
@@ -697,6 +745,60 @@ fn lookup_named_type_info(env: &TypeEnvironment, name: &str) -> Option<TypeInfo>
         return env.lookup_qualified_type(&module_path, &type_name);
     }
     env.lookup_type(name)
+}
+
+fn collect_top_level_value_names(program: &Program) -> HashSet<String> {
+    let mut names = HashSet::new();
+    for decl in &program.declarations {
+        match decl {
+            Declaration::Function(function) => {
+                names.insert(function.name.clone());
+            }
+            Declaration::Transform(transform) => {
+                names.insert(transform.function.name.clone());
+            }
+            Declaration::Const(const_decl) => {
+                names.insert(const_decl.name.clone());
+            }
+            Declaration::FeatureFlag(feature_flag_decl) => {
+                names.insert(feature_flag_decl.name.clone());
+            }
+            Declaration::Extern(extern_decl) => {
+                names.insert(extern_decl.module_path.join("::"));
+            }
+            Declaration::Type(type_decl) => {
+                if let TypeDef::Sum(sum) = &type_decl.definition {
+                    for variant in &sum.variants {
+                        names.insert(variant.name.clone());
+                    }
+                }
+            }
+            Declaration::Derive(_)
+            | Declaration::Label(_)
+            | Declaration::Rule(_)
+            | Declaration::Effect(_)
+            | Declaration::Protocol(_)
+            | Declaration::Test(_) => {}
+        }
+    }
+    names
+}
+
+fn decl_location(decl: &Declaration) -> SourceLocation {
+    match decl {
+        Declaration::Function(function) => function.location,
+        Declaration::Transform(transform) => transform.function.location,
+        Declaration::Type(type_decl) => type_decl.location,
+        Declaration::Derive(derive_decl) => derive_decl.location,
+        Declaration::Protocol(protocol_decl) => protocol_decl.location,
+        Declaration::Label(label_decl) => label_decl.location,
+        Declaration::Rule(rule_decl) => rule_decl.location,
+        Declaration::Effect(effect_decl) => effect_decl.location,
+        Declaration::FeatureFlag(feature_flag_decl) => feature_flag_decl.location,
+        Declaration::Const(const_decl) => const_decl.location,
+        Declaration::Test(test_decl) => test_decl.location,
+        Declaration::Extern(extern_decl) => extern_decl.location,
+    }
 }
 
 fn label_closure(env: &TypeEnvironment, direct: &BTreeSet<String>) -> BTreeSet<String> {
@@ -1138,7 +1240,7 @@ fn resolve_named_type(
     }
 }
 
-fn ast_type_to_inference_type_resolved(
+pub(crate) fn ast_type_to_inference_type_resolved(
     env: &TypeEnvironment,
     type_param_env: Option<&TypeParamEnv>,
     ast_type: &Type,
@@ -1491,6 +1593,7 @@ fn validate_protocol_state_runtime_usage(
             Declaration::Const(const_decl) => {
                 validate_protocol_state_runtime_expr(env, &const_decl.value)?;
             }
+            Declaration::Derive(_) => {}
             Declaration::FeatureFlag(feature_flag_decl) => {
                 validate_protocol_state_runtime_expr(env, &feature_flag_decl.default)?;
             }
@@ -1748,7 +1851,7 @@ fn expr_has_state_access(expr: &Expr) -> bool {
     }
 }
 
-fn expr_location(expr: &Expr) -> sigil_lexer::SourceLocation {
+pub(crate) fn expr_location(expr: &Expr) -> sigil_lexer::SourceLocation {
     match expr {
         Expr::Literal(expr) => expr.location,
         Expr::Identifier(expr) => expr.location,
@@ -3959,6 +4062,7 @@ fn ensure_expr_matches_expected_with_contexts(
 fn validate_declaration_surface_types(decl: &Declaration) -> Result<(), TypeError> {
     match decl {
         Declaration::Label(_) | Declaration::Rule(_) => Ok(()),
+        Declaration::Derive(derive_decl) => validate_surface_type(&derive_decl.target),
         Declaration::Type(type_decl) => match &type_decl.definition {
             TypeDef::Alias(alias) => validate_surface_type(&alias.aliased_type),
             TypeDef::Product(product) => {
@@ -6229,7 +6333,7 @@ fn feature_flag_runtime_id(module_id: Option<&str>, flag_name: &str) -> String {
     format!("{normalized_module}.{flag_name}")
 }
 
-fn type_location(ty: &Type) -> SourceLocation {
+pub(crate) fn type_location(ty: &Type) -> SourceLocation {
     match ty {
         Type::Primitive(primitive) => primitive.location,
         Type::List(list) => list.location,
@@ -6289,7 +6393,7 @@ fn build_typed_test_decl(
     })
 }
 
-fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, TypeError> {
+pub(crate) fn build_typed_expr(env: &TypeEnvironment, expr: &Expr) -> Result<TypedExpr, TypeError> {
     let typ = synthesize(env, expr)?;
     match expr {
         Expr::Literal(lit) => Ok(typed_expr(

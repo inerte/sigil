@@ -1055,7 +1055,9 @@ pub fn validate_typed_canonical_form(
                 collect_single_use_pure_bindings(&test_decl.body, &mut errors);
                 collect_dead_pure_discards(&test_decl.body, &mut errors);
             }
-            TypedDeclaration::Type(_) | TypedDeclaration::Extern(_) => {}
+            TypedDeclaration::Type(_)
+            | TypedDeclaration::JsonCodec(_)
+            | TypedDeclaration::Extern(_) => {}
         }
     }
 
@@ -2383,6 +2385,8 @@ fn validate_no_duplicates(program: &Program) -> Result<(), Vec<ValidationError>>
                 }
             }
 
+            Declaration::Derive(_) => {}
+
             Declaration::Effect(EffectDecl { name, location, .. }) => {
                 if let Some(first_loc) = effect_names.get(name) {
                     errors.push(ValidationError::DuplicateDeclaration {
@@ -3211,6 +3215,7 @@ fn validate_no_unused_items(
                     },
                 );
             }
+            Declaration::Derive(_) => {}
             Declaration::Function(function_decl) => {
                 values.insert(
                     function_decl.name.clone(),
@@ -5162,6 +5167,9 @@ fn validate_naming_forms(program: &Program, errors: &mut Vec<ValidationError>) {
                     validate_identifier_forms_in_type(return_type, errors);
                 }
                 validate_identifier_forms_in_expr(&function.body, errors);
+            }
+            Declaration::Derive(derive_decl) => {
+                validate_identifier_forms_in_type(&derive_decl.target, errors);
             }
             Declaration::Transform(transform_decl) => {
                 let function = &transform_decl.function;
@@ -7765,15 +7773,16 @@ fn validate_category_boundaries(declarations: &[Declaration]) -> Result<(), Vec<
         match decl {
             Declaration::Label(_) => 0,
             Declaration::Type(_) => 1,
-            Declaration::Protocol(_) => 2,
-            Declaration::Effect(_) => 3,
-            Declaration::Extern(_) => 4,
-            Declaration::FeatureFlag(_) => 5,
-            Declaration::Const(_) => 6,
-            Declaration::Transform(_) => 7,
-            Declaration::Function(_) => 8,
-            Declaration::Rule(_) => 9,
-            Declaration::Test(_) => 10,
+            Declaration::Derive(_) => 2,
+            Declaration::Protocol(_) => 3,
+            Declaration::Effect(_) => 4,
+            Declaration::Extern(_) => 5,
+            Declaration::FeatureFlag(_) => 6,
+            Declaration::Const(_) => 7,
+            Declaration::Transform(_) => 8,
+            Declaration::Function(_) => 9,
+            Declaration::Rule(_) => 10,
+            Declaration::Test(_) => 11,
         }
     };
 
@@ -7786,6 +7795,7 @@ fn validate_category_boundaries(declarations: &[Declaration]) -> Result<(), Vec<
             let category_names = [
                 "label",
                 "type",
+                "derive",
                 "protocol",
                 "effect",
                 "extern",
@@ -7799,6 +7809,7 @@ fn validate_category_boundaries(declarations: &[Declaration]) -> Result<(), Vec<
             let category_symbols = [
                 "label",
                 "t",
+                "derive",
                 "protocol",
                 "effect",
                 "e",
@@ -7814,7 +7825,7 @@ fn validate_category_boundaries(declarations: &[Declaration]) -> Result<(), Vec<
                 message: format!(
                     "SIGIL-CANON-DECL-CATEGORY-ORDER: Wrong category position\n\
                      Found: {} ({}) at line {}\n\
-                     Category order: label => t => protocol => effect => e => featureFlag => c => transform => λ => rule => test",
+                     Category order: label => t => derive => protocol => effect => e => featureFlag => c => transform => λ => rule => test",
                     category_symbols[current_index as usize],
                     category_names[current_index as usize],
                     get_declaration_location(decl).start.line
@@ -7893,6 +7904,7 @@ fn get_declaration_location(decl: &Declaration) -> &SourceLocation {
     match decl {
         Declaration::Label(LabelDecl { location, .. }) => location,
         Declaration::Type(TypeDecl { location, .. }) => location,
+        Declaration::Derive(DeriveDecl { location, .. }) => location,
         Declaration::Protocol(ProtocolDecl { location, .. }) => location,
         Declaration::Rule(RuleDecl { location, .. }) => location,
         Declaration::Effect(EffectDecl { location, .. }) => location,

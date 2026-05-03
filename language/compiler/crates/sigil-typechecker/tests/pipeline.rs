@@ -8,6 +8,7 @@ use sigil_diagnostics::codes;
 use sigil_lexer::tokenize;
 use sigil_parser::parse;
 use sigil_typechecker::type_check;
+use sigil_typechecker::typed_ir::TypedDeclaration;
 
 /// Run lex + parse + typecheck on a source string.
 fn pipeline(source: &str) -> Result<sigil_typechecker::TypeCheckResult, String> {
@@ -144,6 +145,52 @@ fn pipeline_protocol_state_valid() {
 fn pipeline_constrained_type() {
     let r = typecheck_only("t Score=Int where value≥0 and value≤100\nλperfect()=>Score=100");
     assert!(r.is_ok(), "{r:?}");
+}
+
+#[test]
+fn pipeline_derive_json_registers_helper_signatures() {
+    let result = typecheck_only(concat!(
+        "t UserId=UserId(Int)\n",
+        "t User={\n  id:UserId,\n  name:String\n}\n\n",
+        "derive json User\n\n",
+        "λroundtripJson(user:User)=>Bool match decodeUser(encodeUser(user)){\n",
+        "  _=>true\n",
+        "}\n",
+        "λroundtripText(user:User)=>Bool match parseUser(stringifyUser(user)){\n",
+        "  _=>true\n",
+        "}\n",
+    ))
+    .unwrap();
+
+    let encode_type = sigil_typechecker::format_type(result.declaration_types.get("encodeUser").unwrap())
+        .replace(' ', "");
+    let decode_type = sigil_typechecker::format_type(result.declaration_types.get("decodeUser").unwrap())
+        .replace(' ', "");
+    let parse_type = sigil_typechecker::format_type(result.declaration_types.get("parseUser").unwrap())
+        .replace(' ', "");
+    let stringify_type =
+        sigil_typechecker::format_type(result.declaration_types.get("stringifyUser").unwrap())
+            .replace(' ', "");
+
+    assert_eq!(encode_type, "(User)=>stdlib::json.JsonValue");
+    assert_eq!(
+        decode_type,
+        "(stdlib::json.JsonValue)=>Result[User,stdlib::decode.DecodeError]"
+    );
+    assert_eq!(
+        parse_type,
+        "(String)=>Result[User,stdlib::decode.DecodeError]"
+    );
+    assert_eq!(stringify_type, "(User)=>String");
+    assert_eq!(
+        result
+            .typed_program
+            .declarations
+            .iter()
+            .filter(|decl| matches!(decl, TypedDeclaration::JsonCodec(_)))
+            .count(),
+        1
+    );
 }
 
 // ============================================================================

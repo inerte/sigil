@@ -1,37 +1,52 @@
 λmain()=>Unit=()
 
-test "todo json decode rejects invalid payload" {
-  match •todoJson.decodeState("{bad"){
+test "todo json parse rejects invalid payload" {
+  match •todoJson.parsePersistedState("{bad"){
     Ok(_)=>false|
     Err(_)=>true
   }
 }
 
 test "todo json decode rejects missing fields" {
-  match •todoJson.decodeState("{\"todos\":[]}"){
+  match •todoJson.decodePersistedState((§json.JsonObject({"todos"↦§json.JsonArray([])}):§json.JsonValue)){
     Ok(_)=>false|
     Err(_)=>true
   }
 }
 
-test "todo json decode next todo id rejects non numeric string" {
-  match •todoJson.decodeNextTodoId((§json.JsonString("oops"):§json.JsonValue)){
-    Ok(_)=>false|
-    Err(_)=>true
-  }
+test "todo json encode uses canonical numeric ids" {
+  •todoJson.encodePersistedState(({
+    nextId:µNextTodoId(9),
+    todos:[
+      {
+        done:false,
+        id:1,
+        text:"Ship JSON stdlib"
+      },
+      {
+        done:true,
+        id:2,
+        text:"Write tests"
+      }
+    ]
+  }:µPersistedState))=(§json.JsonObject({
+    "nextId"↦§json.JsonNumber(9.0),
+    "todos"↦§json.JsonArray([
+      §json.JsonObject({
+        "done"↦§json.JsonBool(false),
+        "id"↦§json.JsonNumber(1.0),
+        "text"↦§json.JsonString("Ship JSON stdlib")
+      }),
+      §json.JsonObject({
+        "done"↦§json.JsonBool(true),
+        "id"↦§json.JsonNumber(2.0),
+        "text"↦§json.JsonString("Write tests")
+      })
+    ])
+  }):§json.JsonValue)
 }
 
-test "todo json decode todo rejects missing text field" {
-  match •todoJson.decodeTodo((§json.JsonObject({
-    "done"↦§json.JsonBool(false),
-    "id"↦§json.JsonString("1")
-  }):§json.JsonValue)){
-    Ok(_)=>false|
-    Err(_)=>true
-  }
-}
-
-test "todo json roundtrip preserves state" {
+test "todo json stringify and parse preserve state" {
   l state=({
     nextId:µNextTodoId(9),
     todos:[
@@ -47,17 +62,15 @@ test "todo json roundtrip preserves state" {
       }
     ]
   }:µPersistedState);
-  match •todoJson.decodeState((•todoJson.encodeState(state):String)){
+  match •todoJson.parsePersistedState((•todoJson.stringifyPersistedState(state):String)){
     Ok(decoded)=>decoded=state|
     Err(_)=>false
   }
 }
 
-test "todo json decode accepts numeric ids from older payloads" {
-  match •todoJson.decodeState("{\"nextId\":9,\"todos\":[{\"done\":false,\"id\":1,\"text\":\"Ship JSON stdlib\"}]}"){
-    Ok(state)=>•todoJson.nextTodoIdValue(state.nextId)=9
-      and #state.todos=1
-      and state.todos[0].id=1|
-    Err(_)=>false
+test "todo json parse rejects legacy string ids" {
+  match •todoJson.parsePersistedState("{\"nextId\":\"9\",\"todos\":[{\"done\":false,\"id\":\"1\",\"text\":\"Ship JSON stdlib\"}]}"){
+    Ok(_)=>false|
+    Err(_)=>true
   }
 }

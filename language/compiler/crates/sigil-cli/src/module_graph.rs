@@ -371,6 +371,7 @@ fn collect_declaration_modules(declaration: &Declaration, modules: &mut HashSet<
             }
             TypeDef::Alias(alias) => collect_type_modules(&alias.aliased_type, modules),
         },
+        Declaration::Derive(derive_decl) => collect_type_modules(&derive_decl.target, modules),
         Declaration::Label(label_decl) => {
             for label_ref in &label_decl.combines {
                 collect_label_ref_modules(label_ref, modules);

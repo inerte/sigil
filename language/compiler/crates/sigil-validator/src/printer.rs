@@ -115,6 +115,7 @@ impl Printer {
             Declaration::Function(function) => self.function_decl(function, indent),
             Declaration::Transform(transform_decl) => self.transform_decl(transform_decl, indent),
             Declaration::Type(type_decl) => self.type_decl(type_decl, indent),
+            Declaration::Derive(derive_decl) => self.derive_decl(derive_decl, indent),
             Declaration::Protocol(protocol_decl) => self.protocol_decl(protocol_decl, indent),
             Declaration::Label(label_decl) => self.label_decl(label_decl, indent),
             Declaration::Rule(rule_decl) => self.rule_decl(rule_decl, indent),
@@ -132,6 +133,14 @@ impl Printer {
             Declaration::Test(test_decl) => self.test_decl(test_decl, indent),
             Declaration::Extern(extern_decl) => self.extern_decl(extern_decl, indent),
         }
+    }
+
+    fn derive_decl(&mut self, derive_decl: &DeriveDecl, indent: usize) {
+        self.indent(indent);
+        self.push("derive ");
+        self.push(derive_decl.kind.keyword());
+        self.push(" ");
+        self.push(&self.type_text(&derive_decl.target));
     }
 
     fn protocol_decl(&mut self, protocol: &ProtocolDecl, indent: usize) {

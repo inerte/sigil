@@ -153,3 +153,31 @@ fn protocol_state_violation() {
         "requires clause",
     );
 }
+
+#[test]
+fn derive_json_generic_root_rejected() {
+    expect_error(
+        "t Box[T]=Box(T)\nderive json Box",
+        "must be monomorphic; generic type declarations are not supported as public derive roots in v1",
+    );
+}
+
+#[test]
+fn derive_json_non_string_map_keys_rejected() {
+    expect_error(
+        "t Bad={values:{Int↦String}}\nderive json Bad",
+        "derive json only supports maps with String keys",
+    );
+}
+
+#[test]
+fn derive_json_ambiguous_option_payload_rejected() {
+    expect_error(
+        concat!(
+            "t MaybeInt=MaybeInt(Option[Int])\n",
+            "t Bad={payload:Option[MaybeInt]}\n",
+            "derive json Bad",
+        ),
+        "derive json rejects Option payloads whose canonical encoding can already be null",
+    );
+}

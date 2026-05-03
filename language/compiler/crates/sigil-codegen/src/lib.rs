@@ -14,10 +14,11 @@ use sigil_ast::{
     PipelineOperator, SourceLocation, Type, TypeDecl, TypeDef, UnaryOperator,
 };
 use sigil_typechecker::typed_ir::{
-    MethodSelector, TypedBinaryExpr, TypedCallExpr, TypedConcurrentExpr, TypedConcurrentStep,
-    TypedConstDecl, TypedConstructorCallExpr, TypedDeclaration, TypedExpr, TypedExprKind,
-    TypedExternCallExpr, TypedFieldAccessExpr, TypedFilterExpr, TypedFoldExpr, TypedFunctionDecl,
-    TypedIfExpr, TypedIndexExpr, TypedLambdaExpr, TypedLetExpr, TypedListExpr, TypedMapExpr,
+    JsonCodecNamedBody, JsonCodecType, MethodSelector, TypedBinaryExpr, TypedCallExpr,
+    TypedConcurrentExpr, TypedConcurrentStep, TypedConstDecl, TypedConstructorCallExpr,
+    TypedDeclaration, TypedExpr, TypedExprKind, TypedExternCallExpr, TypedFieldAccessExpr,
+    TypedFilterExpr, TypedFoldExpr, TypedFunctionDecl, TypedIfExpr, TypedIndexExpr,
+    TypedJsonCodecDecl, TypedLambdaExpr, TypedLetExpr, TypedListExpr, TypedMapExpr,
     TypedMapLiteralExpr, TypedMatchExpr, TypedMethodCallExpr, TypedPipelineExpr, TypedProgram,
     TypedRecordExpr, TypedTestDecl, TypedTupleExpr, TypedUnaryExpr, TypedUsingExpr,
 };
@@ -3928,6 +3929,7 @@ pub struct TypeScriptGenerator {
     current_trace_owner: Option<TraceOwner>,
     indent: usize,
     declaration_span_ids: Vec<Option<String>>,
+    emitted_json_codec_type_ids: BTreeSet<String>,
     local_type_names: BTreeSet<String>,
     module_id: Option<String>,
     output: Vec<String>,
@@ -3953,6 +3955,7 @@ impl TypeScriptGenerator {
             current_trace_owner: None,
             indent: 0,
             declaration_span_ids: Vec::new(),
+            emitted_json_codec_type_ids: BTreeSet::new(),
             local_type_names: BTreeSet::new(),
             module_id: options.module_id,
             output: Vec::new(),
@@ -4969,6 +4972,28 @@ impl TypeScriptGenerator {
         self.emit("}");
         self.emit("function __sigil_json_stringify_value(value) {");
         self.emit("  return JSON.stringify(__sigil_json_to_js(value));");
+        self.emit("}");
+        self.emit("function __sigil_json_codec_ok(value) {");
+        self.emit("  return { __tag: 'Ok', __fields: [value] };");
+        self.emit("}");
+        self.emit("function __sigil_json_codec_err(message, path = []) {");
+        self.emit("  return { __tag: 'Err', __fields: [{ message: String(message ?? ''), path: Array.isArray(path) ? path.map((segment) => String(segment)) : [] }] };");
+        self.emit("}");
+        self.emit("function __sigil_json_codec_prepend(result, segment) {");
+        self.emit("  if (result?.__tag !== 'Err') return result;");
+        self.emit("  const error = result.__fields?.[0] ?? { message: '', path: [] };");
+        self.emit("  const path = Array.isArray(error.path) ? error.path.map((item) => String(item)) : [];");
+        self.emit("  return { __tag: 'Err', __fields: [{ message: String(error.message ?? ''), path: [String(segment), ...path] }] };");
+        self.emit("}");
+        self.emit("function __sigil_json_codec_is_plain_object(value) {");
+        self.emit("  return value !== null && typeof value === 'object' && !Array.isArray(value);");
+        self.emit("}");
+        self.emit("function __sigil_json_codec_unexpected_field(value, expectedKeys) {");
+        self.emit("  const expected = new Set(expectedKeys);");
+        self.emit("  for (const key of Object.keys(value ?? {})) {");
+        self.emit("    if (!expected.has(key)) return key;");
+        self.emit("  }");
+        self.emit("  return null;");
         self.emit("}");
         self.emit("function __sigil_time_is_iso(input) {");
         self.emit("  return /^\\d{4}-\\d{2}-\\d{2}(?:T\\d{2}:\\d{2}:\\d{2}(?:\\.\\d{3})?(?:Z|[+-]\\d{2}:\\d{2}))?$/.test(input);");
@@ -6922,6 +6947,7 @@ impl TypeScriptGenerator {
         match decl {
             TypedDeclaration::Function(func) => self.generate_function(func),
             TypedDeclaration::Type(type_decl) => self.generate_type_decl(&type_decl.ast),
+            TypedDeclaration::JsonCodec(codec_decl) => self.generate_json_codec_decl(codec_decl),
             TypedDeclaration::Const(const_decl) => self.generate_const(const_decl),
             TypedDeclaration::Extern(extern_decl) => self.generate_extern(&extern_decl.ast),
             TypedDeclaration::Test(test) => self.generate_test(test),
@@ -7531,6 +7557,464 @@ impl TypeScriptGenerator {
         }
 
         Ok(())
+    }
+
+    fn generate_json_codec_decl(
+        &mut self,
+        codec_decl: &TypedJsonCodecDecl,
+    ) -> Result<(), CodegenError> {
+        self.emit(&format!("// derive json {}", codec_decl.target_name));
+
+        let Some(root_named_type) = codec_decl
+            .named_types
+            .iter()
+            .find(|named_type| named_type.type_id == codec_decl.target_type_id)
+        else {
+            return Err(CodegenError::General(
+                "missing root json codec named type".to_string(),
+            ));
+        };
+
+        for named_type in &codec_decl.named_types {
+            if self
+                .emitted_json_codec_type_ids
+                .insert(named_type.type_id.clone())
+            {
+                self.generate_json_codec_named_type(named_type)?;
+                self.output.push("\n".to_string());
+            }
+        }
+
+        let export_keyword = if self.should_export_from_lib() {
+            "export function"
+        } else {
+            "function"
+        };
+        let root_encode = self.json_codec_private_encode_name(&root_named_type.helper_suffix);
+        let root_decode = self.json_codec_private_decode_name(&root_named_type.helper_suffix);
+
+        self.emit(&format!(
+            "{} {}(value) {{",
+            export_keyword,
+            sanitize_js_identifier(&codec_decl.helper_names.encode)
+        ));
+        self.indent += 1;
+        self.emit(&format!(
+            "return {};",
+            self.js_ready(&format!("__sigil_json_from_js({}(value))", root_encode))
+        ));
+        self.indent -= 1;
+        self.emit("}");
+
+        self.emit(&format!(
+            "{} {}(value) {{",
+            export_keyword,
+            sanitize_js_identifier(&codec_decl.helper_names.decode)
+        ));
+        self.indent += 1;
+        self.emit(&format!(
+            "return {}(__sigil_json_to_js(value));",
+            root_decode
+        ));
+        self.indent -= 1;
+        self.emit("}");
+
+        self.emit(&format!(
+            "{} {}(input) {{",
+            export_keyword,
+            sanitize_js_identifier(&codec_decl.helper_names.parse)
+        ));
+        self.indent += 1;
+        self.emit("const __parsed = __sigil_json_parse_result(input);");
+        self.emit("if (__parsed?.__tag !== 'Ok') {");
+        self.indent += 1;
+        self.emit(
+            "return __sigil_ready(__sigil_json_codec_err(String(__parsed?.__fields?.[0]?.message ?? 'invalid JSON')));",
+        );
+        self.indent -= 1;
+        self.emit("}");
+        self.emit(&format!(
+            "return {}(__sigil_json_to_js(__parsed.__fields?.[0]));",
+            root_decode
+        ));
+        self.indent -= 1;
+        self.emit("}");
+
+        self.emit(&format!(
+            "{} {}(value) {{",
+            export_keyword,
+            sanitize_js_identifier(&codec_decl.helper_names.stringify)
+        ));
+        self.indent += 1;
+        self.emit(&format!(
+            "return {};",
+            self.js_ready(&format!("JSON.stringify({}(value))", root_encode))
+        ));
+        self.indent -= 1;
+        self.emit("}");
+
+        Ok(())
+    }
+
+    fn generate_json_codec_named_type(
+        &mut self,
+        named_type: &sigil_typechecker::typed_ir::JsonCodecNamedType,
+    ) -> Result<(), CodegenError> {
+        let encode_name = self.json_codec_private_encode_name(&named_type.helper_suffix);
+        let decode_name = self.json_codec_private_decode_name(&named_type.helper_suffix);
+
+        if let Some(constraint) = &named_type.constraint {
+            let validate_name = self.json_codec_private_validate_name(&named_type.helper_suffix);
+            let predicate = self.generate_expression(&constraint.predicate)?;
+            self.emit(&format!("async function {}(value) {{", validate_name));
+            self.indent += 1;
+            self.emit(&format!("return {};", predicate));
+            self.indent -= 1;
+            self.emit("}");
+        }
+
+        self.emit(&format!("function {}(value) {{", encode_name));
+        self.indent += 1;
+        match &named_type.body {
+            JsonCodecNamedBody::Alias { inner } => {
+                let encoded = self.json_codec_encode_js_expression(inner, "value")?;
+                self.emit(&format!("return {};", encoded));
+            }
+            JsonCodecNamedBody::Product { fields } => {
+                let mut encoded_fields = Vec::with_capacity(fields.len());
+                for field in fields {
+                    encoded_fields.push(format!(
+                        "{}: {}",
+                        field.name,
+                        self.json_codec_encode_js_expression(
+                            &field.typ,
+                            &format!("value[{}]", self.json_string_literal(&field.name)?)
+                        )?
+                    ));
+                }
+                self.emit(&format!("return {{ {} }};", encoded_fields.join(", ")));
+            }
+            JsonCodecNamedBody::Wrapper { inner, .. } => {
+                let encoded =
+                    self.json_codec_encode_js_expression(inner, "(value.__fields?.[0])")?;
+                self.emit(&format!("return {};", encoded));
+            }
+            JsonCodecNamedBody::Sum { variants } => {
+                self.emit("switch (value?.__tag) {");
+                self.indent += 1;
+                for variant in variants {
+                    self.emit(&format!(
+                        "case {}: {{",
+                        self.json_string_literal(&variant.name)?
+                    ));
+                    self.indent += 1;
+                    let mut encoded_values = Vec::with_capacity(variant.fields.len());
+                    for (index, field_type) in variant.fields.iter().enumerate() {
+                        encoded_values.push(self.json_codec_encode_js_expression(
+                            field_type,
+                            &format!("value.__fields?.[{}]", index),
+                        )?);
+                    }
+                    self.emit(&format!(
+                        "return {{ tag: {}, values: [{}] }};",
+                        self.json_string_literal(&variant.name)?,
+                        encoded_values.join(", ")
+                    ));
+                    self.indent -= 1;
+                    self.emit("}");
+                }
+                self.emit("default:");
+                self.indent += 1;
+                self.emit(&format!(
+                    "throw new Error({});",
+                    self.json_string_literal(&format!(
+                        "invalid value for derived JSON encoder {}",
+                        named_type.base_name
+                    ))?
+                ));
+                self.indent -= 1;
+                self.indent -= 1;
+                self.emit("}");
+            }
+        }
+        self.indent -= 1;
+        self.emit("}");
+
+        self.emit(&format!("async function {}(value) {{", decode_name));
+        self.indent += 1;
+        match &named_type.body {
+            JsonCodecNamedBody::Alias { inner } => {
+                let decode_call = self.json_codec_decode_call_expression(inner, "value")?;
+                self.emit(&format!("const __decoded = await {};", decode_call));
+                self.emit("if (__decoded.__tag === 'Err') return __decoded;");
+                self.emit("const __value = __decoded.__fields[0];");
+                self.emit_json_codec_constraint_check(named_type, "__value")?;
+            }
+            JsonCodecNamedBody::Product { fields } => {
+                self.emit(
+                    "if (!__sigil_json_codec_is_plain_object(value)) return __sigil_json_codec_err('expected object');",
+                );
+                for field in fields {
+                    self.emit(&format!(
+                        "if (!Object.prototype.hasOwnProperty.call(value, {})) return __sigil_json_codec_err('missing required field', [{}]);",
+                        self.json_string_literal(&field.name)?,
+                        self.json_string_literal(&field.name)?,
+                    ));
+                }
+                self.emit(&format!(
+                    "const __unexpected = __sigil_json_codec_unexpected_field(value, {});",
+                    self.json_codec_string_array_literal(
+                        &fields
+                            .iter()
+                            .map(|field| field.name.clone())
+                            .collect::<Vec<_>>()
+                    )?
+                ));
+                self.emit(
+                    "if (__unexpected !== null) return __sigil_json_codec_err(`unexpected field '${String(__unexpected)}'`, [String(__unexpected)]);",
+                );
+                for field in fields {
+                    let field_var = format!("__field_{}", sanitize_js_identifier(&field.name));
+                    let field_key = self.json_string_literal(&field.name)?;
+                    let decode_call = self.json_codec_decode_call_expression(
+                        &field.typ,
+                        &format!("value[{field_key}]"),
+                    )?;
+                    self.emit(&format!("const {} = await {};", field_var, decode_call));
+                    self.emit(&format!(
+                        "if ({}.__tag === 'Err') return __sigil_json_codec_prepend({}, {});",
+                        field_var, field_var, field_key,
+                    ));
+                }
+                let decoded_fields = fields
+                    .iter()
+                    .map(|field| {
+                        format!(
+                            "{}: __field_{}.__fields[0]",
+                            field.name,
+                            sanitize_js_identifier(&field.name)
+                        )
+                    })
+                    .collect::<Vec<_>>();
+                self.emit(&format!(
+                    "const __decoded = {{ {} }};",
+                    decoded_fields.join(", ")
+                ));
+                self.emit_json_codec_constraint_check(named_type, "__decoded")?;
+            }
+            JsonCodecNamedBody::Wrapper {
+                inner,
+                variant_name,
+            } => {
+                let decode_call = self.json_codec_decode_call_expression(inner, "value")?;
+                self.emit(&format!("const __decoded = await {};", decode_call));
+                self.emit("if (__decoded.__tag === 'Err') return __decoded;");
+                self.emit(&format!(
+                    "return __sigil_json_codec_ok({{ __tag: {}, __fields: [__decoded.__fields[0]] }});",
+                    self.json_string_literal(variant_name)?,
+                ));
+            }
+            JsonCodecNamedBody::Sum { variants } => {
+                self.emit(
+                    "if (!__sigil_json_codec_is_plain_object(value)) return __sigil_json_codec_err('expected object');",
+                );
+                self.emit(
+                    "if (!Object.prototype.hasOwnProperty.call(value, 'tag')) return __sigil_json_codec_err('missing required field', ['tag']);",
+                );
+                self.emit(
+                    "if (!Object.prototype.hasOwnProperty.call(value, 'values')) return __sigil_json_codec_err('missing required field', ['values']);",
+                );
+                self.emit(
+                    "const __unexpected = __sigil_json_codec_unexpected_field(value, ['tag', 'values']);",
+                );
+                self.emit(
+                    "if (__unexpected !== null) return __sigil_json_codec_err(`unexpected field '${String(__unexpected)}'`, [String(__unexpected)]);",
+                );
+                self.emit(
+                    "if (typeof value.tag !== 'string') return __sigil_json_codec_err('expected string', ['tag']);",
+                );
+                self.emit(
+                    "if (!Array.isArray(value.values)) return __sigil_json_codec_err('expected array', ['values']);",
+                );
+                self.emit("switch (value.tag) {");
+                self.indent += 1;
+                for variant in variants {
+                    self.emit(&format!(
+                        "case {}: {{",
+                        self.json_string_literal(&variant.name)?
+                    ));
+                    self.indent += 1;
+                    self.emit(&format!(
+                        "if (value.values.length !== {}) return __sigil_json_codec_err({}, ['values']);",
+                        variant.fields.len(),
+                        self.json_string_literal(&format!(
+                            "expected {} value(s) for tag '{}'",
+                            variant.fields.len(),
+                            variant.name
+                        ))?,
+                    ));
+                    for (index, field_type) in variant.fields.iter().enumerate() {
+                        let decode_call = self.json_codec_decode_call_expression(
+                            field_type,
+                            &format!("value.values[{}]", index),
+                        )?;
+                        self.emit(&format!("const __value_{} = await {};", index, decode_call));
+                        self.emit(&format!(
+                            "if (__value_{}.__tag === 'Err') return __sigil_json_codec_prepend(__sigil_json_codec_prepend(__value_{}, {}), 'values');",
+                            index,
+                            index,
+                            self.json_string_literal(&index.to_string())?,
+                        ));
+                    }
+                    let decoded_values = (0..variant.fields.len())
+                        .map(|index| format!("__value_{}.__fields[0]", index))
+                        .collect::<Vec<_>>();
+                    self.emit(&format!(
+                        "return __sigil_json_codec_ok({{ __tag: {}, __fields: [{}] }});",
+                        self.json_string_literal(&variant.name)?,
+                        decoded_values.join(", ")
+                    ));
+                    self.indent -= 1;
+                    self.emit("}");
+                }
+                self.emit("default:");
+                self.indent += 1;
+                self.emit(
+                    "return __sigil_json_codec_err(`unknown tag '${String(value.tag)}'`, ['tag']);",
+                );
+                self.indent -= 1;
+                self.indent -= 1;
+                self.emit("}");
+            }
+        }
+        self.indent -= 1;
+        self.emit("}");
+
+        Ok(())
+    }
+
+    fn emit_json_codec_constraint_check(
+        &mut self,
+        named_type: &sigil_typechecker::typed_ir::JsonCodecNamedType,
+        value_expr: &str,
+    ) -> Result<(), CodegenError> {
+        if let Some(constraint) = &named_type.constraint {
+            let validate_name = self.json_codec_private_validate_name(&named_type.helper_suffix);
+            self.emit(&format!(
+                "if (!(await {}({}))) {{",
+                validate_name, value_expr
+            ));
+            self.indent += 1;
+            self.emit(&format!(
+                "return __sigil_json_codec_err({});",
+                self.json_string_literal(&constraint.failure_message)?
+            ));
+            self.indent -= 1;
+            self.emit("}");
+        }
+        self.emit(&format!("return __sigil_json_codec_ok({});", value_expr));
+        Ok(())
+    }
+
+    fn json_codec_encode_js_expression(
+        &mut self,
+        typ: &JsonCodecType,
+        value_expr: &str,
+    ) -> Result<String, CodegenError> {
+        match typ {
+            JsonCodecType::Bool
+            | JsonCodecType::Float
+            | JsonCodecType::Int
+            | JsonCodecType::String => Ok(value_expr.to_string()),
+            JsonCodecType::List(inner) => Ok(format!(
+                "({}).map((__item) => {})",
+                value_expr,
+                self.json_codec_encode_js_expression(inner, "__item")?
+            )),
+            JsonCodecType::MapString(inner) => Ok(format!(
+                "Object.fromEntries(__sigil_map_entries({}).map(([__key, __item]) => [String(__key), {}]))",
+                value_expr,
+                self.json_codec_encode_js_expression(inner, "__item")?
+            )),
+            JsonCodecType::Option(inner) => Ok(format!(
+                "((__option) => (__option?.__tag === 'Some' ? {} : null))({})",
+                self.json_codec_encode_js_expression(inner, "(__option.__fields?.[0])")?,
+                value_expr
+            )),
+            JsonCodecType::Named { helper_suffix, .. } => Ok(format!(
+                "{}({})",
+                self.json_codec_private_encode_name(helper_suffix),
+                value_expr
+            )),
+        }
+    }
+
+    fn json_codec_decode_call_expression(
+        &mut self,
+        typ: &JsonCodecType,
+        value_expr: &str,
+    ) -> Result<String, CodegenError> {
+        match typ {
+            JsonCodecType::Bool => Ok(format!(
+                "(typeof ({}) === 'boolean' ? __sigil_json_codec_ok({}) : __sigil_json_codec_err('expected bool'))",
+                value_expr, value_expr
+            )),
+            JsonCodecType::Float => Ok(format!(
+                "(typeof ({}) === 'number' && Number.isFinite({}) ? __sigil_json_codec_ok({}) : __sigil_json_codec_err('expected float'))",
+                value_expr, value_expr, value_expr
+            )),
+            JsonCodecType::Int => Ok(format!(
+                "(typeof ({}) === 'number' && Number.isInteger({}) ? __sigil_json_codec_ok({}) : __sigil_json_codec_err('expected int'))",
+                value_expr, value_expr, value_expr
+            )),
+            JsonCodecType::String => Ok(format!(
+                "(typeof ({}) === 'string' ? __sigil_json_codec_ok({}) : __sigil_json_codec_err('expected string'))",
+                value_expr, value_expr
+            )),
+            JsonCodecType::List(inner) => Ok(format!(
+                "(async (__value) => {{ if (!Array.isArray(__value)) return __sigil_json_codec_err('expected array'); const __items = []; for (let __index = 0; __index < __value.length; __index += 1) {{ const __decoded = await {}; if (__decoded.__tag === 'Err') return __sigil_json_codec_prepend(__decoded, String(__index)); __items.push(__decoded.__fields[0]); }} return __sigil_json_codec_ok(__items); }})({})",
+                self.json_codec_decode_call_expression(inner, "__value[__index]")?,
+                value_expr
+            )),
+            JsonCodecType::MapString(inner) => Ok(format!(
+                "(async (__value) => {{ if (!__sigil_json_codec_is_plain_object(__value)) return __sigil_json_codec_err('expected object'); const __entries = []; for (const [__key, __item] of Object.entries(__value)) {{ const __decoded = await {}; if (__decoded.__tag === 'Err') return __sigil_json_codec_prepend(__decoded, __key); __entries.push([__key, __decoded.__fields[0]]); }} return __sigil_json_codec_ok(__sigil_map_from_entries(__entries)); }})({})",
+                self.json_codec_decode_call_expression(inner, "__item")?,
+                value_expr
+            )),
+            JsonCodecType::Option(inner) => Ok(format!(
+                "((__value) => (__value === null ? __sigil_json_codec_ok({{ __tag: 'None', __fields: [] }}) : (async () => {{ const __decoded = await {}; if (__decoded.__tag === 'Err') return __decoded; return __sigil_json_codec_ok({{ __tag: 'Some', __fields: [__decoded.__fields[0]] }}); }})()))({})",
+                self.json_codec_decode_call_expression(inner, "__value")?,
+                value_expr
+            )),
+            JsonCodecType::Named { helper_suffix, .. } => Ok(format!(
+                "{}({})",
+                self.json_codec_private_decode_name(helper_suffix),
+                value_expr
+            )),
+        }
+    }
+
+    fn json_codec_private_encode_name(&self, helper_suffix: &str) -> String {
+        format!("__sigil_json_encode_{}", helper_suffix)
+    }
+
+    fn json_codec_private_decode_name(&self, helper_suffix: &str) -> String {
+        format!("__sigil_json_decode_{}", helper_suffix)
+    }
+
+    fn json_codec_private_validate_name(&self, helper_suffix: &str) -> String {
+        format!("__sigil_json_validate_{}", helper_suffix)
+    }
+
+    fn json_codec_string_array_literal(&self, values: &[String]) -> Result<String, CodegenError> {
+        Ok(format!(
+            "[{}]",
+            values
+                .iter()
+                .map(|value| self.json_string_literal(value))
+                .collect::<Result<Vec<_>, _>>()?
+                .join(", ")
+        ))
     }
 
     fn generate_const(&mut self, const_decl: &TypedConstDecl) -> Result<(), CodegenError> {
@@ -12031,6 +12515,13 @@ fn collect_runtime_modules_in_declaration(
         TypedDeclaration::Function(function) => {
             collect_runtime_modules_in_expr(&function.body, modules)
         }
+        TypedDeclaration::JsonCodec(codec_decl) => {
+            for named_type in &codec_decl.named_types {
+                if let Some(constraint) = &named_type.constraint {
+                    collect_runtime_modules_in_expr(&constraint.predicate, modules);
+                }
+            }
+        }
         TypedDeclaration::Const(const_decl) => {
             collect_runtime_modules_in_expr(&const_decl.value, modules)
         }
@@ -12312,6 +12803,75 @@ mod tests {
         assert!(!result.contains("async function Red"));
         // Should use __tag pattern
         assert!(result.contains("__tag"));
+    }
+
+    #[test]
+    fn test_generate_json_codec_public_helpers_and_tagged_sum_shape() {
+        let source = "t Status=Blocked(String)|Ready()\nderive json Status";
+        let program = typed_program_for(source, "test.lib.sigil");
+
+        let mut gen = TypeScriptGenerator::new(CodegenOptions::default());
+        let result = gen.generate(&program).unwrap();
+
+        assert!(result.contains("function encodeStatus"));
+        assert!(result.contains("function decodeStatus"));
+        assert!(result.contains("function parseStatus"));
+        assert!(result.contains("function stringifyStatus"));
+        assert!(result.contains("tag: "));
+        assert!(result.contains("values: ["));
+    }
+
+    #[test]
+    fn test_generate_json_codec_product_fields_use_bracket_access() {
+        let source = "t KeywordRecord={default:Int}\nderive json KeywordRecord";
+        let program = typed_program_for(source, "test.lib.sigil");
+
+        let mut gen = TypeScriptGenerator::new(CodegenOptions::default());
+        let result = gen.generate(&program).unwrap();
+
+        assert!(result.contains("[\"default\"]"));
+        assert!(!result.contains("value.default"));
+    }
+
+    #[test]
+    fn test_generate_json_codec_deduplicates_shared_private_helpers() {
+        let source = concat!(
+            "t UserId=UserId(Int)\n",
+            "t Profile={\n  id:UserId,\n  name:String\n}\n\n",
+            "derive json UserId\n\n",
+            "derive json Profile\n",
+        );
+        let program = typed_program_for(source, "test.lib.sigil");
+
+        let mut gen = TypeScriptGenerator::new(CodegenOptions::default());
+        let result = gen.generate(&program).unwrap();
+
+        assert_eq!(result.matches("function __sigil_json_encode_").count(), 2);
+        assert_eq!(
+            result
+                .matches("async function __sigil_json_decode_")
+                .count(),
+            2
+        );
+    }
+
+    #[test]
+    fn test_json_codec_named_refs_use_ir_helper_suffix() {
+        let mut gen = TypeScriptGenerator::new(CodegenOptions::default());
+        let named = sigil_typechecker::typed_ir::JsonCodecType::Named {
+            type_id: "src::types.UserId".to_string(),
+            helper_suffix: "from_ir".to_string(),
+        };
+
+        let encode = gen
+            .json_codec_encode_js_expression(&named, "value")
+            .unwrap();
+        let decode = gen
+            .json_codec_decode_call_expression(&named, "value")
+            .unwrap();
+
+        assert_eq!(encode, "__sigil_json_encode_from_ir(value)");
+        assert_eq!(decode, "__sigil_json_decode_from_ir(value)");
     }
 
     #[test]

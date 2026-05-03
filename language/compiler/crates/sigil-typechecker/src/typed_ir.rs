@@ -2,7 +2,7 @@ use crate::environment::{BindingMeta, BoundaryRule, FunctionContract, LabelInfo,
 use crate::types::{EffectSet, InferenceType, TypeScheme};
 use sigil_ast::{
     BinaryOperator, ExternDecl, IdentifierExpr, LiteralExpr, Param, Pattern, PipelineOperator,
-    SourceLocation, TypeDecl, UnaryOperator,
+    SourceLocation, Type, TypeDecl, UnaryOperator,
 };
 use std::collections::HashMap;
 
@@ -27,6 +27,7 @@ pub struct TypedProgram {
 pub enum TypedDeclaration {
     Function(TypedFunctionDecl),
     Type(TypedTypeDecl),
+    JsonCodec(TypedJsonCodecDecl),
     Const(TypedConstDecl),
     Test(TypedTestDecl),
     Extern(TypedExternDecl),
@@ -49,6 +50,87 @@ pub struct TypedFunctionDecl {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypedTypeDecl {
     pub ast: TypeDecl,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct TypedJsonCodecDecl {
+    pub target: Type,
+    pub target_name: String,
+    pub target_type_id: String,
+    pub root_type: InferenceType,
+    pub helper_names: JsonCodecHelperNames,
+    pub named_types: Vec<JsonCodecNamedType>,
+    pub location: SourceLocation,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct JsonCodecHelperNames {
+    pub encode: String,
+    pub decode: String,
+    pub parse: String,
+    pub stringify: String,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct JsonCodecNamedType {
+    pub type_id: String,
+    pub resolved_name: String,
+    pub base_name: String,
+    pub helper_suffix: String,
+    pub body: JsonCodecNamedBody,
+    pub nullable: bool,
+    pub constraint: Option<JsonConstraintValidator>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum JsonCodecNamedBody {
+    Alias {
+        inner: JsonCodecType,
+    },
+    Product {
+        fields: Vec<JsonCodecField>,
+    },
+    Wrapper {
+        variant_name: String,
+        inner: JsonCodecType,
+    },
+    Sum {
+        variants: Vec<JsonCodecVariant>,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum JsonCodecType {
+    Bool,
+    Float,
+    Int,
+    String,
+    List(Box<JsonCodecType>),
+    MapString(Box<JsonCodecType>),
+    Option(Box<JsonCodecType>),
+    Named {
+        type_id: String,
+        helper_suffix: String,
+    },
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct JsonCodecField {
+    pub name: String,
+    pub typ: JsonCodecType,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct JsonCodecVariant {
+    pub name: String,
+    pub fields: Vec<JsonCodecType>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct JsonConstraintValidator {
+    pub source: String,
+    pub failure_message: String,
+    pub predicate: TypedExpr,
 }
 
 #[derive(Debug, Clone, PartialEq)]

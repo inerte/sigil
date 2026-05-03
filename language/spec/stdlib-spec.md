@@ -1,7 +1,7 @@
 # Sigil Standard Library Specification
 
 Version: 1.0.0
-Last Updated: 2026-03-07
+Last Updated: 2026-05-02
 
 ## Overview
 
@@ -751,6 +751,46 @@ Notes:
 - `DecodeError.path` records the nested field/index path of the failure.
 - If a field may be absent, keep the record exact and use `Option[T]` for that field.
 - Sigil does not use open records or partial records for this boundary story.
+
+### Derived JSON codec surface
+
+Sigil also provides a compiler-owned declaration form for canonical JSON codecs:
+
+```sigil decl module
+derive json TypeName
+```
+
+For a derived root `TypeName`, the compiler exports four same-module helpers:
+
+- `encodeTypeName(value)=>§json.JsonValue`
+- `decodeTypeName(value)=>Result[TypeName,§decode.DecodeError]`
+- `parseTypeName(input)=>Result[TypeName,§decode.DecodeError]`
+- `stringifyTypeName(value)=>String`
+
+Semantics:
+
+- the derive target must resolve to one monomorphic named type
+- only explicitly derived roots get public helpers; nested reachable named types use private generated helpers
+- records map to exact JSON objects by declared field name
+- lists map to JSON arrays
+- `{String↦T}` maps to JSON objects and rejects non-`String` keys at derive time
+- `Option[T]` maps to `null | T`
+- ordinary sums map to tagged objects with discriminator fields `tag` and `values`
+- wrapper sums of the form `t Name=Name(T)` map to the underlying value
+- constrained aliases and constrained products decode through the underlying wire shape and then run the constraint as a runtime validation step
+- `Int` maps to JSON numbers and decodes only from integral JSON numbers
+
+Current v1 rejections:
+
+- generic/public roots that are not monomorphic
+- recursive type graphs
+- constrained sum types
+- `Option[T]` where `T` can already encode as `null`
+- unsupported value kinds outside the current JSON mapping surface
+
+`sigil inspect types` exposes the derived inventory for each analyzed file under
+`jsonCodecs`, including target helper names and the normalized wire-format
+summary.
 
 ## Time Operations
 

@@ -192,7 +192,7 @@ match lines{
   snippetRefs:[]
 }
 
-λexecuteSnippetCheck(expectsSuccess:Bool,filePath:String,root:String,subcommand:String,tempDir:String,virtualPath:String,wrappedSource:String)=>!AuditIo [µIssue]={
+λexecuteSnippetCheck(expectsSuccess:Bool,filePath:String,root:String,subcommand:String,tempDir:String,virtualPath:String,wrappedSource:String)=>!Fs!Process [µIssue]={
   l resolvedVirtualPath=(resolvedSnippetVirtualPath(
     filePath,
     root,
@@ -572,6 +572,71 @@ match tasks{
   }
 }
 
+λmergeSnippetOutcome(acc:µMarkdownAudit,filePath:String,outcome:ConcurrentOutcome[
+  µMarkdownAudit,
+  String
+])=>µMarkdownAudit match outcome{
+  Success(current)=>{
+    documentedRefs:mergeUnique(
+      acc.documentedRefs,
+      current.documentedRefs
+    ),
+    issues:mergeIssueLists(
+      acc.issues,
+      current.issues
+    ),
+    snippetRefs:mergeUnique(
+      acc.snippetRefs,
+      current.snippetRefs
+    )
+  }|
+  Failure(message)=>{
+    documentedRefs:acc.documentedRefs,
+    issues:mergeIssueLists(
+      acc.issues,
+      [markdownTaskIssue(
+        0,
+        "concurrent snippet audit failed: "++message,
+        filePath
+      )]
+    ),
+    snippetRefs:acc.snippetRefs
+  }|
+  Aborted()=>{
+    documentedRefs:acc.documentedRefs,
+    issues:mergeIssueLists(
+      acc.issues,
+      [markdownTaskIssue(
+        0,
+        "concurrent snippet audit aborted",
+        filePath
+      )]
+    ),
+    snippetRefs:acc.snippetRefs
+  }
+}
+
+λmergeSnippetOutcomes(acc:µMarkdownAudit,filePath:String,outcomes:[ConcurrentOutcome[
+  µMarkdownAudit,
+  String
+]])=>µMarkdownAudit
+decreases #outcomes
+match outcomes{
+  []=>acc|
+  [
+  head,
+  .tail
+]=>mergeSnippetOutcomes(
+    mergeSnippetOutcome(
+      acc,
+      filePath,
+      head
+    ),
+    filePath,
+    tail
+  )
+}
+
 λmergeUnique(left:[String],right:[String])=>[String]
 decreases #right
 match right{
@@ -650,7 +715,7 @@ match lines{
   false=>Err(result.stderr)
 }
 
-λprepareSnippetWorkspace(filePath:String,root:String,tempDir:String,virtualPath:String)=>!AuditIo [µIssue] match projectRootFromVirtualPath(virtualPath){
+λprepareSnippetWorkspace(filePath:String,root:String,tempDir:String,virtualPath:String)=>!Fs!Process [µIssue] match projectRootFromVirtualPath(virtualPath){
   Some(projectRoot)=>{
     l targetProjectRoot=(§path.join(
       tempDir,
@@ -690,7 +755,7 @@ match issues{
   }
 }
 
-λprocessMarkdownFile(failFast:Bool,filePath:String,root:String,tempDir:String)=>!AuditIo µMarkdownAudit={
+λprocessMarkdownFile(failFast:Bool,filePath:String,root:String,tempDir:String)=>!Fs!Process µMarkdownAudit={
   l markdown=(§file.readText(§path.join(
     root,
     filePath
@@ -715,23 +780,36 @@ match issues{
         snippetRefs:[]
       }
     }|
-    false=>processSnippets(
-      failFast,
-      filePath,
-      1,
-      root,
-      extraction.results,
-      {
-        documentedRefs:[],
-        issues:extraction.issues,
-        snippetRefs:[]
-      },
-      tempDir
-    )
+    false=>match failFast{
+      true=>processSnippets(
+        true,
+        filePath,
+        1,
+        root,
+        extraction.results,
+        {
+          documentedRefs:[],
+          issues:extraction.issues,
+          snippetRefs:[]
+        },
+        tempDir
+      )|
+      false=>processSnippetsConcurrent(
+        filePath,
+        root,
+        {
+          documentedRefs:[],
+          issues:extraction.issues,
+          snippetRefs:[]
+        },
+        extraction.results,
+        tempDir
+      )
+    }
   }
 }
 
-λprocessMarkdownTask(task:µMarkdownTask)=>!AuditIo Result[
+λprocessMarkdownTask(task:µMarkdownTask)=>!Fs!Process Result[
   µMarkdownAudit,
   String
 ] match §file.exists(§path.join(
@@ -752,7 +830,18 @@ match issues{
   false=>§string.trim(result.stdout)
 }
 
-λprocessSnippets(failFast:Bool,filePath:String,ordinal:Int,root:String,snippets:[µSnippet],state:µMarkdownAudit,tempDir:String)=>!AuditIo µMarkdownAudit
+λprocessSnippetTask(task:µSnippetTask)=>!Fs!Process Result[
+  µMarkdownAudit,
+  String
+]=Ok(validateSnippet(
+  task.filePath,
+  task.ordinal,
+  task.root,
+  task.snippet,
+  task.tempDir
+))
+
+λprocessSnippets(failFast:Bool,filePath:String,ordinal:Int,root:String,snippets:[µSnippet],state:µMarkdownAudit,tempDir:String)=>!Fs!Process µMarkdownAudit
 decreases #snippets
 match snippets{
   []=>state|
@@ -820,6 +909,22 @@ match snippets{
     }
   }
 }
+
+λprocessSnippetsConcurrent(filePath:String,root:String,seed:µMarkdownAudit,snippets:[µSnippet],tempDir:String)=>!Fs!Process µMarkdownAudit=mergeSnippetOutcomes(
+  seed,
+  filePath,
+  (concurrent snippetAudit@4{
+    spawnEach snippetTasks(
+      filePath,
+      root,
+      snippets,
+      tempDir
+    ) processSnippetTask
+  }:[ConcurrentOutcome[
+  µMarkdownAudit,
+  String
+]])
+)
 
 λprojectRootFromDocPath(filePath:String,root:String)=>!Fs Option[String]=projectRootFromDocPathDir(
   §path.dirname(filePath),
@@ -959,7 +1064,7 @@ match paths{
   }
 }
 
-λreadStdlibExports(paths:[String],root:String)=>!AuditIo Result[
+λreadStdlibExports(paths:[String],root:String)=>!Fs!Process Result[
   [String],
   String
 ]=readStdlibExportsInner(
@@ -968,7 +1073,7 @@ match paths{
   root
 )
 
-λreadStdlibExportsInner(acc:[String],paths:[String],root:String)=>!AuditIo Result[
+λreadStdlibExportsInner(acc:[String],paths:[String],root:String)=>!Fs!Process Result[
   [String],
   String
 ]
@@ -1059,7 +1164,7 @@ match paths{
   }
 }
 
-λrunCheck()=>!AuditIo Result[
+λrunCheck()=>!Fs!Process Result[
   [µIssue],
   String
 ] match gitTopLevel(){
@@ -1109,7 +1214,7 @@ match paths{
   Err(message)=>Err(message)
 }
 
-λrunCheckForPaths(paths:[String])=>!AuditIo Result[
+λrunCheckForPaths(paths:[String])=>!Fs!Process Result[
   [µIssue],
   String
 ] match gitTopLevel(){
@@ -1153,7 +1258,7 @@ match paths{
   coverageRefs
 )
 
-λrunCoverageOnly()=>!AuditIo Result[
+λrunCoverageOnly()=>!Fs!Process Result[
   [µIssue],
   String
 ] match gitTopLevel(){
@@ -1194,7 +1299,7 @@ match paths{
   Err(message)=>Err(message)
 }
 
-λrunMarkdownAudit(failFast:Bool,paths:[String],root:String,tempDir:String)=>!AuditIo µMarkdownAudit match failFast{
+λrunMarkdownAudit(failFast:Bool,paths:[String],root:String,tempDir:String)=>!Fs!Process µMarkdownAudit match failFast{
   true=>runMarkdownAuditInner(
     emptyMarkdownAudit(),
     true,
@@ -1209,7 +1314,7 @@ match paths{
   )
 }
 
-λrunMarkdownAuditConcurrent(paths:[String],root:String,tempDir:String)=>!AuditIo µMarkdownAudit={
+λrunMarkdownAuditConcurrent(paths:[String],root:String,tempDir:String)=>!Fs!Process µMarkdownAudit={
   l tasks=(markdownTasks(
     paths,
     root,
@@ -1217,7 +1322,7 @@ match paths{
   ):[µMarkdownTask]);
   mergeMarkdownTaskOutcomes(
     emptyMarkdownAudit(),
-    (concurrent markdownAudit@4{
+    (concurrent markdownAudit@8{
       spawnEach tasks processMarkdownTask
     }:[ConcurrentOutcome[
   µMarkdownAudit,
@@ -1227,7 +1332,7 @@ match paths{
   )
 }
 
-λrunMarkdownAuditInner(acc:µMarkdownAudit,failFast:Bool,paths:[String],root:String,tempDir:String)=>!AuditIo µMarkdownAudit
+λrunMarkdownAuditInner(acc:µMarkdownAudit,failFast:Bool,paths:[String],root:String,tempDir:String)=>!Fs!Process µMarkdownAudit
 decreases #paths
 match paths{
   []=>acc|
@@ -1356,7 +1461,7 @@ match refs{
   }
 }
 
-λrunRefsForFile(filePath:String)=>!AuditIo Result[
+λrunRefsForFile(filePath:String)=>!Fs!Process Result[
   µMarkdownAudit,
   String
 ] match gitTopLevel(){
@@ -1367,7 +1472,7 @@ match refs{
   Err(message)=>Err(message)
 }
 
-λrunRefsForPaths(paths:[String])=>!AuditIo Result[
+λrunRefsForPaths(paths:[String])=>!Fs!Process Result[
   µMarkdownAudit,
   String
 ] match gitTopLevel(){
@@ -1378,7 +1483,7 @@ match refs{
   Err(message)=>Err(message)
 }
 
-λrunRepoCheck()=>!AuditIo Result[
+λrunRepoCheck()=>!Fs!Process Result[
   [µIssue],
   String
 ] match gitTopLevel(){
@@ -1425,7 +1530,7 @@ match refs{
   Err(message)=>Err(message)
 }
 
-λrunStdlibExportsForFile(filePath:String)=>!AuditIo Result[
+λrunStdlibExportsForFile(filePath:String)=>!Fs!Process Result[
   [String],
   String
 ] match gitTopLevel(){
@@ -1443,7 +1548,7 @@ match refs{
   Err(message)=>Err(message)
 }
 
-λrunStdlibExportsForPaths(paths:[String])=>!AuditIo Result[
+λrunStdlibExportsForPaths(paths:[String])=>!Fs!Process Result[
   [String],
   String
 ] match gitTopLevel(){
@@ -1597,6 +1702,36 @@ match documentedRefs{
   kind=>snippetSubcommand(kind)
 }
 
+λsnippetTasks(filePath:String,root:String,snippets:[µSnippet],tempDir:String)=>[µSnippetTask]=snippetTasksInner(
+  filePath,
+  1,
+  root,
+  snippets,
+  tempDir
+)
+
+λsnippetTasksInner(filePath:String,index:Int,root:String,snippets:[µSnippet],tempDir:String)=>[µSnippetTask]
+decreases #snippets
+match snippets{
+  []=>[]|
+  [
+  head,
+  .tail
+]=>[{
+    filePath:filePath,
+    ordinal:index,
+    root:root,
+    snippet:head,
+    tempDir:tempDir
+  }]⧺snippetTasksInner(
+    filePath,
+    index+1,
+    root,
+    tail,
+    tempDir
+  )
+}
+
 λsnippetVirtualPath(snippet:µSnippet)=>String match snippet.info.context{
   Some(path)=>path|
   None()=>match snippet.info.kind{
@@ -1605,7 +1740,7 @@ match documentedRefs{
   }
 }
 
-λvalidateSnippet(filePath:String,ordinal:Int,root:String,snippet:µSnippet,tempDir:String)=>!AuditIo µMarkdownAudit match isCheckedKind(snippet.info.kind){
+λvalidateSnippet(filePath:String,ordinal:Int,root:String,snippet:µSnippet,tempDir:String)=>!Fs!Process µMarkdownAudit match isCheckedKind(snippet.info.kind){
   false=>{
     documentedRefs:[],
     issues:[invalidFenceIssue(

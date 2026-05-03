@@ -12,6 +12,7 @@ use super::shared::{
     validate_project_entrypoint_for_path, validate_project_entrypoints_for_files,
     SourcePoint as TestLocation,
 };
+use crate::hash::encode_lower_hex;
 use crate::module_graph::{
     entry_module_key, load_project_effect_catalog_for, ModuleGraph, ModuleGraphError,
 };
@@ -4167,7 +4168,7 @@ fn resolve_run_artifact_path(path: &Path, ensure_parent: bool) -> Result<PathBuf
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
+    encode_lower_hex(Sha256::digest(bytes))
 }
 
 fn build_replay_binding(
@@ -4212,7 +4213,7 @@ fn build_replay_binding(
         },
         ReplayArtifactBinding {
             algorithm: "sha256".to_string(),
-            fingerprint: format!("{:x}", fingerprint_hasher.finalize()),
+            fingerprint: encode_lower_hex(fingerprint_hasher.finalize()),
             modules,
         },
     ))
@@ -4398,7 +4399,7 @@ fn build_test_replay_binding(
         },
         ReplayArtifactBinding {
             algorithm: "sha256".to_string(),
-            fingerprint: format!("{:x}", fingerprint_hasher.finalize()),
+            fingerprint: encode_lower_hex(fingerprint_hasher.finalize()),
             modules,
         },
     ))

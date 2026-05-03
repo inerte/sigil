@@ -3,6 +3,7 @@ use super::shared::{
     extract_error_code, format_validation_errors, output_json_error, phase_for_code,
     project_error_json_details, type_error_json_details, SourcePoint,
 };
+use crate::hash::encode_lower_hex;
 use crate::module_graph::{
     entry_module_key, load_project_effect_catalog_for, LoadedModule, ModuleGraph, ModuleGraphError,
 };
@@ -281,7 +282,7 @@ fn compiler_binary_hash() -> Result<String, CliError> {
                     error
                 )
             })?;
-            Ok(format!("{:x}", Sha256::digest(bytes)))
+            Ok(encode_lower_hex(Sha256::digest(bytes)))
         })
         .clone()
         .map_err(CliError::Codegen)
@@ -709,7 +710,7 @@ fn fingerprint_file_set(base: &Path, files: &[PathBuf]) -> Result<String, CliErr
         })?);
         hasher.update([0]);
     }
-    Ok(format!("{:x}", hasher.finalize()))
+    Ok(encode_lower_hex(hasher.finalize()))
 }
 
 fn resolve_compile_cache_context(
@@ -769,7 +770,7 @@ fn resolve_compile_cache_context(
     hasher.update([0]);
     hasher.update([trace as u8, breakpoints as u8, expression_debug as u8]);
     hasher.update(input_fingerprint.as_bytes());
-    let cache_key = format!("{:x}", hasher.finalize());
+    let cache_key = encode_lower_hex(hasher.finalize());
 
     Ok(Some(CompileCacheContext {
         cache_path: owner.cache_dir().join(format!("{cache_key}.json")),

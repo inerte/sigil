@@ -8,12 +8,20 @@ t Response={message:String}
 
 t Server={port:Int}
 
-λlisten(handler:λ(Request)=>Response,port:Int)=>!Tcp Server={port:port}
+e stdlibTcpServer:{listen:λ(λ(Request)=>Response,Int)=>!Tcp Server,serve:λ(λ(Request)=>Response,Int)=>!Tcp Unit,wait:λ(Server)=>!Tcp Unit}
+
+λlisten(handler:λ(Request)=>Response,port:Int)=>!Tcp Server=stdlibTcpServer.listen(
+  handler,
+  port
+)
 
 λport(server:Server)=>Int=server.port
 
 λresponse(message:String)=>Response={message:message}
 
-λserve(handler:λ(Request)=>Response,port:Int)=>!Tcp Unit=()
+λserve(handler:λ(Request)=>Response,port:Int)=>!Tcp Unit=stdlibTcpServer.serve(
+  handler,
+  port
+)
 
-λwait(server:Server)=>!Tcp Unit=()
+λwait(server:Server)=>!Tcp Unit=stdlibTcpServer.wait(server)

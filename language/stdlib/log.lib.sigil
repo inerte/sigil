@@ -1,1 +1,6 @@
-λwrite(message:String,sink:§topology.LogSink)=>!Log Unit=()
+e stdlibLog:{write:λ(String,§topology.LogSink)=>!Log Unit}
+
+λwrite(message:String,sink:§topology.LogSink)=>!Log Unit=stdlibLog.write(
+  message,
+  sink
+)

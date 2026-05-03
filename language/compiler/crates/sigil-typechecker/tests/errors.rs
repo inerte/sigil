@@ -6,12 +6,20 @@
 use sigil_diagnostics::codes;
 use sigil_lexer::tokenize;
 use sigil_parser::parse;
-use sigil_typechecker::type_check;
+use sigil_typechecker::{type_check, EffectCatalog, TypeCheckOptions};
 
 fn expect_error(source: &str, expected_fragment: &str) {
+    expect_error_with_options(source, None, expected_fragment);
+}
+
+fn expect_error_with_options(
+    source: &str,
+    options: Option<TypeCheckOptions>,
+    expected_fragment: &str,
+) {
     let tokens = tokenize(source).unwrap();
     let program = parse(tokens, "test.sigil").unwrap();
-    let result = type_check(&program, source, None);
+    let result = type_check(&program, source, options);
     match result {
         Ok(_) => panic!(
             "Expected error containing '{}' but typecheck succeeded.\nSource: {}",
@@ -118,6 +126,66 @@ fn missing_effect_annotation() {
         "e console:{log:λ(String)=>!Log Unit}\nλbad()=>Unit=console.log(\"hi\")",
         "missing declared effects",
     );
+}
+
+#[test]
+fn unused_effect_annotation_on_function() {
+    expect_error("λbad()=>!Log Unit=()", "unused declared effects");
+}
+
+#[test]
+fn unused_effect_annotation_on_lambda() {
+    expect_error(
+        "λbad()=>Unit=(λ()=>!Log Unit=())()",
+        "unused declared effects",
+    );
+}
+
+#[test]
+fn unused_effect_annotation_on_transform() {
+    expect_error(
+        "transform λbad(value:Int)=>!Log Int=value",
+        "unused declared effects",
+    );
+}
+
+#[test]
+fn unused_effect_annotation_on_test() {
+    expect_error(
+        "λmain()=>Unit=()\ntest \"unused effect\" =>!Log { true }",
+        "unused declared effects",
+    );
+}
+
+#[test]
+fn alias_overdeclaration_is_rejected() {
+    expect_error(
+        "effect CliIo=!Fs!Log\ne console:{log:λ(String)=>!Log Unit}\nλbad()=>!CliIo Unit=console.log(\"hi\")",
+        "unused declared effects",
+    );
+}
+
+#[test]
+fn alias_overdeclaration_is_rejected_with_injected_effect_catalog() {
+    let source =
+        "effect CliIo=!Fs!Log\ne console:{log:λ(String)=>!Log Unit}\nλbad()=>!CliIo Unit=console.log(\"hi\")";
+    let tokens = tokenize(source).unwrap();
+    let program = parse(tokens, "test.sigil").unwrap();
+    let effect_catalog = EffectCatalog::from_program(&program).unwrap();
+
+    expect_error_with_options(
+        source,
+        Some(TypeCheckOptions {
+            effect_catalog: Some(effect_catalog),
+            ..TypeCheckOptions::default()
+        }),
+        "unused declared effects",
+    );
+}
+
+#[test]
+fn self_recursion_does_not_justify_effects() {
+    expect_error("λbad()=>!Log Unit=bad()", "unused declared effects");
 }
 
 // ============================================================================

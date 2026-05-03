@@ -73,7 +73,7 @@ test "pty fixture streams scripted output and exit" =>!Pty!Stream world {
   }
 }
 
-test "pty handle fixtures capture resizes and closes" =>!Pty!Stream world {
+test "pty handle fixtures capture resizes and closes" =>!Pty world {
   c ptyHandle=(†pty.fixtureHandle(
   assistantShell,
   [†pty.rule(

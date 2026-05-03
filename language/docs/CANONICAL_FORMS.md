@@ -97,16 +97,18 @@ protocol Transaction
   initial = Open
   terminal = Closed
 
+e txDb:{commit:λ(Transaction)=>!Sql Result[
+  Unit,
+  §sql.SqlFailure
+]}
+
 λcommit(transaction:Transaction)=>!Sql Result[
   Unit,
   §sql.SqlFailure
 ]
 requires transaction.state=Open
 ensures transaction.state=Closed
-=Err({
-  kind:§sql.Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+=txDb.commit(transaction)
 ```
 
 State assertions in `requires`/`ensures` use the virtual `.state` field on protocol-typed values. The expression `handle.state=StateName` is a Bool that the Z3 solver tracks through the control-flow graph.

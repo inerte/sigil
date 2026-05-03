@@ -65,6 +65,17 @@ fn pipeline_effect_annotation() {
 }
 
 #[test]
+fn pipeline_concurrent_spawneach_child_effect_satisfies_enclosing_signature() {
+    let r = typecheck_only(
+        "e clock:{tick:λ()=>!Timer Unit}\nt ConcurrentOutcome[T,E]=Aborted()|Failure(E)|Success(T)\nt Result[T,E]=Ok(T)|Err(E)\nλmain()=>!Timer [ConcurrentOutcome[Int,String]]=concurrent urlAudit@1{spawnEach [1,2] process}\nλprocess(value:Int)=>!Timer Result[Int,String]={l _=(clock.tick():Unit);Ok(value)}",
+    );
+    assert!(
+        r.is_ok(),
+        "spawnEach child effects should satisfy the enclosing declaration: {r:?}"
+    );
+}
+
+#[test]
 fn pipeline_requires_ensures() {
     let r = typecheck_only("λpos(n:Int)=>Int\nrequires n>0\nensures result>0\n=n");
     assert!(r.is_ok(), "{r:?}");
@@ -199,6 +210,24 @@ fn pipeline_effect_missing_rejected() {
     let r =
         typecheck_only("e console:{log:λ(String)=>!Log Unit}\nλbad()=>Unit=console.log(\"hi\")");
     assert!(r.is_err(), "Expected missing effect error");
+}
+
+#[test]
+fn pipeline_concurrent_spawneach_missing_child_effect_rejected() {
+    let r = typecheck_only(
+        "e clock:{tick:λ()=>!Timer Unit}\nt ConcurrentOutcome[T,E]=Aborted()|Failure(E)|Success(T)\nt Result[T,E]=Ok(T)|Err(E)\nλmain()=>!Log [ConcurrentOutcome[Int,String]]=concurrent urlAudit@1{spawnEach [1,2] process}\nλprocess(value:Int)=>!Timer Result[Int,String]={l _=(clock.tick():Unit);Ok(value)}",
+    );
+    let e = r.unwrap_err();
+    assert!(
+        e.message.contains("missing declared effects"),
+        "Expected missing effect error, got: {}",
+        e.message
+    );
+    assert!(
+        e.message.contains("!Timer"),
+        "Expected missing !Timer effect, got: {}",
+        e.message
+    );
 }
 
 #[test]

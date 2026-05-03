@@ -4,6 +4,8 @@ t Instant={epochMillis:Int}
 
 t TimeError={message:String}
 
+e stdlibTime:{now:λ()=>!Clock Instant,sleepMs:λ(Int)=>!Timer Unit}
+
 λcompare(left:Instant,right:Instant)=>Int=0
 
 λformatIso(instant:Instant)=>String=""
@@ -14,13 +16,13 @@ t TimeError={message:String}
 
 λisBefore(left:Instant,right:Instant)=>Bool=false
 
-λnow()=>!Clock Instant={epochMillis:0}
+λnow()=>!Clock Instant=stdlibTime.now()
 
 λparseIso(input:String)=>Result[
   Instant,
   TimeError
 ]=Err({message:"time parse intrinsic unavailable"})
 
-λsleepMs(ms:Int)=>!Timer Unit=()
+λsleepMs(ms:Int)=>!Timer Unit=stdlibTime.sleepMs(ms)
 
 λtoEpochMillis(instant:Instant)=>Int=instant.epochMillis

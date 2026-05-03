@@ -13,19 +13,27 @@ protocol Client
   initial = Open
   terminal = Closed
 
+e stdlibWebSocket:{close:λ(Client)=>!WebSocket Unit,connections:λ(§topology.WebSocketHandle,Server)=>!WebSocket Owned[§stream.Source[Client]],listen:λ(Int,[Route])=>!WebSocket Owned[Server],messages:λ(Client)=>!WebSocket Owned[§stream.Source[String]],send:λ(Client,String)=>!WebSocket Unit,wait:λ(Server)=>!WebSocket Unit}
+
 λclose(client:Client)=>!WebSocket Unit
 requires client.state=Open
 ensures client.state=Closed
-=()
+=stdlibWebSocket.close(client)
 
-λconnections(handle:§topology.WebSocketHandle,server:Server)=>!WebSocket Owned[§stream.Source[Client]]=((§stream.StreamSource(0):§stream.Source[Client]):Owned[§stream.Source[Client]])
+λconnections(handle:§topology.WebSocketHandle,server:Server)=>!WebSocket Owned[§stream.Source[Client]]=stdlibWebSocket.connections(
+  handle,
+  server
+)
 
-λlisten(port:Int,routes:[Route])=>!WebSocket Owned[Server]=({port:port}:Owned[Server])
+λlisten(port:Int,routes:[Route])=>!WebSocket Owned[Server]=stdlibWebSocket.listen(
+  port,
+  routes
+)
 
 λmessages(client:Client)=>!WebSocket Owned[§stream.Source[String]]
 requires client.state=Open
 ensures client.state=Open
-=((§stream.StreamSource(0):§stream.Source[String]):Owned[§stream.Source[String]])
+=stdlibWebSocket.messages(client)
 
 λport(server:Server)=>Int=server.port
 
@@ -37,6 +45,9 @@ ensures client.state=Open
 λsend(client:Client,text:String)=>!WebSocket Unit
 requires client.state=Open
 ensures client.state=Open
-=()
+=stdlibWebSocket.send(
+  client,
+  text
+)
 
-λwait(server:Server)=>!WebSocket Unit=()
+λwait(server:Server)=>!WebSocket Unit=stdlibWebSocket.wait(server)

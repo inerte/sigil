@@ -9,7 +9,7 @@
 
 use crate::coverage::{analyze_match_coverage, expr_summary};
 use crate::effects::{
-    declared_effects_cover_actual, effects_option_to_set, merge_effects, purity_from_effects,
+    declared_effects_match_actual, effects_option_to_set, merge_effects, purity_from_effects,
     resolve_effect_names,
 };
 use crate::environment::{
@@ -5567,6 +5567,7 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
     // Create environment with parameter bindings
     let mut func_env = env.extend(None);
     func_env.set_current_function_mode(func_decl.mode);
+    let mut param_types = Vec::new();
 
     for param in &func_decl.params {
         let param_type = param
@@ -5575,7 +5576,9 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
             .map(|ty| ast_type_to_inference_type_resolved(env, Some(&type_param_env), ty))
             .transpose()?
             .unwrap_or(InferenceType::Any);
-        func_env.bind(param.name.clone(), env.normalize_type(&param_type));
+        let body_param_type = env.normalize_type(&param_type);
+        param_types.push(body_param_type.clone());
+        func_env.bind(param.name.clone(), body_param_type);
     }
 
     // Get expected return type
@@ -5585,6 +5588,20 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
         .map(|ty| ast_type_to_inference_type_resolved(env, Some(&type_param_env), ty))
         .transpose()?
         .unwrap_or(InferenceType::Any);
+    if !func_decl
+        .params
+        .iter()
+        .any(|param| param.name == func_decl.name)
+    {
+        func_env.bind(
+            func_decl.name.clone(),
+            InferenceType::Function(Box::new(TFunction {
+                params: param_types.clone(),
+                return_type: expected_return_type.clone(),
+                effects: None,
+            })),
+        );
+    }
 
     if let Some(requires) = &func_decl.requires {
         validate_contract_clause(&func_env, &func_decl.name, "requires", requires)?;
@@ -5676,7 +5693,7 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
     }
 
     let typed_body = build_typed_expr(&func_env, &func_decl.body)?;
-    declared_effects_cover_actual(
+    declared_effects_match_actual(
         env,
         &func_decl.effects,
         &typed_body.effects,
@@ -5716,6 +5733,7 @@ fn check_transform_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resu
     let type_param_env = make_type_param_env(&func_decl.type_params);
     let mut func_env = env.extend(None);
     func_env.set_current_function_mode(func_decl.mode);
+    let mut param_types = Vec::new();
 
     for param in &func_decl.params {
         let param_type = param
@@ -5725,6 +5743,7 @@ fn check_transform_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resu
             .transpose()?
             .unwrap_or(InferenceType::Any);
         let body_param_type = func_env.normalize_type(&param_type);
+        param_types.push(body_param_type.clone());
         func_env.bind(param.name.clone(), body_param_type);
     }
 
@@ -5734,6 +5753,20 @@ fn check_transform_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resu
         .map(|ty| ast_type_to_inference_type_resolved(env, Some(&type_param_env), ty))
         .transpose()?
         .unwrap_or(InferenceType::Any);
+    if !func_decl
+        .params
+        .iter()
+        .any(|param| param.name == func_decl.name)
+    {
+        func_env.bind(
+            func_decl.name.clone(),
+            InferenceType::Function(Box::new(TFunction {
+                params: param_types.clone(),
+                return_type: expected_return_type.clone(),
+                effects: None,
+            })),
+        );
+    }
 
     if let Some(requires) = &func_decl.requires {
         validate_contract_clause(&func_env, &func_decl.name, "requires", requires)?;
@@ -5786,7 +5819,7 @@ fn check_transform_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resu
     )?;
 
     let typed_body = build_typed_expr(&func_env, &func_decl.body)?;
-    declared_effects_cover_actual(
+    declared_effects_match_actual(
         env,
         &func_decl.effects,
         &typed_body.effects,
@@ -5850,7 +5883,7 @@ fn check_test_decl(
     )?;
 
     let typed_body = build_typed_expr(&body_env, &test_decl.body)?;
-    declared_effects_cover_actual(
+    declared_effects_match_actual(
         &body_env,
         &test_decl.effects,
         &typed_body.effects,
@@ -5999,6 +6032,10 @@ fn same_type(env: &TypeEnvironment, left: &InferenceType, right: &InferenceType)
     types_equal(&normalized_left, &normalized_right)
 }
 
+// Invariant: callers must run `check_function_decl` / `check_transform_decl`
+// before building typed IR here. Those passes enforce exact declared effects,
+// contract validity, and other declaration-level checks; this builder assumes
+// the declaration is already semantically valid and reconstructs typed IR only.
 fn build_typed_function_decl(
     env: &TypeEnvironment,
     func_decl: &FunctionDecl,
@@ -6264,7 +6301,7 @@ fn build_typed_test_decl(
     }
 
     let body = build_typed_expr(&body_env, &test_decl.body)?;
-    declared_effects_cover_actual(
+    declared_effects_match_actual(
         &body_env,
         &test_decl.effects,
         &body.effects,
@@ -6764,6 +6801,9 @@ fn build_typed_concurrent(
                 let func = build_typed_expr(env, &spawn_each.func)?;
                 effects.extend(list.effects.clone());
                 effects.extend(func.effects.clone());
+                if let InferenceType::Function(tfunc) = &func.typ {
+                    effects.extend(effects_option_to_set(&tfunc.effects));
+                }
                 steps.push(TypedConcurrentStep::SpawnEach(TypedSpawnEachStep {
                     func: Box::new(func),
                     list: Box::new(list),
@@ -6784,6 +6824,55 @@ fn build_typed_concurrent(
         StrictnessClass::Deferred,
         concurrent_expr.location,
     ))
+}
+
+// Fallback effect table for untyped or alias-style internal extern references
+// when synthesis cannot recover a typed function signature. Typed extern
+// members should encode their effects directly in the declared member type
+// instead of relying on this table.
+fn intrinsic_extern_member_effects(namespace: &[String], member: &str) -> Option<EffectSet> {
+    let names: &[&str] = match (namespace.join("::").as_str(), member) {
+        ("stdlib::cli", "run") | ("stdlibCli", "run") => &["Log", "Process"],
+        ("stdlib::file", _) | ("stdlibFile", _) => &["Fs"],
+        ("stdlib::fsWatch", _) | ("stdlibFsWatch", _) => &["FsWatch"],
+        ("stdlib::httpClient", _) | ("stdlibHttpClient", _) => &["Http"],
+        ("stdlib::httpServer", _) | ("stdlibHttpServer", _) => &["Http"],
+        ("stdlib::io", _) | ("stdlibIo", _) => &["Log"],
+        ("stdlib::log", _) | ("stdlibLog", _) => &["Log"],
+        ("stdlib::process", _) | ("stdlibProcess", _) => &["Process"],
+        ("stdlib::pty", _) | ("stdlibPty", _) => &["Pty"],
+        ("stdlib::random", _) | ("stdlibRandom", _) => &["Random"],
+        ("stdlib::sql", _) | ("stdlibSql", _) => &["Sql"],
+        ("stdlib::stream", _) | ("stdlibStream", _) => &["Stream"],
+        ("stdlib::task", _) | ("stdlibTask", _) => &["Task"],
+        ("stdlib::tcpClient", _) | ("stdlibTcpClient", _) => &["Tcp"],
+        ("stdlib::tcpServer", _) | ("stdlibTcpServer", _) => &["Tcp"],
+        ("stdlib::terminal", _) | ("stdlibTerminal", _) => &["Terminal"],
+        ("stdlib::time", "now") | ("stdlibTime", "now") => &["Clock"],
+        ("stdlib::time", "sleepMs") | ("stdlibTime", "sleepMs") => &["Timer"],
+        ("stdlib::timer", _) | ("stdlibTimer", _) => &["Timer"],
+        ("stdlib::websocket", _) | ("stdlibWebSocket", _) => &["WebSocket"],
+        _ => return None,
+    };
+    Some(names.iter().map(|name| (*name).to_string()).collect())
+}
+
+fn extern_namespace_path(env: &TypeEnvironment, expr: &Expr) -> Option<Vec<String>> {
+    match expr {
+        Expr::Identifier(identifier) => env
+            .lookup_meta(&identifier.name)
+            .filter(|meta| meta.is_extern_namespace)
+            .map(|_| vec![identifier.name.clone()]),
+        Expr::MemberAccess(member_access) => {
+            let mut namespace = member_access.namespace.clone();
+            namespace.push(member_access.member.clone());
+            let namespace_name = namespace.join("::");
+            env.lookup_meta(&namespace_name)
+                .filter(|meta| meta.is_extern_namespace)
+                .map(|_| namespace)
+        }
+        _ => None,
+    }
 }
 
 fn build_typed_application(
@@ -6818,9 +6907,37 @@ fn build_typed_application(
             ));
         }
 
+        // Qualified module exports like `§process.command(...)` are ordinary
+        // module calls, not raw extern invocations. Keep the extern-call path
+        // for unresolved namespace members such as true FFI namespaces.
+        let namespace_name = member_access.namespace.join("::");
+        let is_extern_namespace = env
+            .lookup_meta(&namespace_name)
+            .is_some_and(|meta| meta.is_extern_namespace);
+        if !is_extern_namespace {
+            let func = build_typed_expr(env, &app.func)?;
+            let mut effects = merge_effects(args.iter().map(|arg| arg.effects.clone()));
+            effects.extend(func.effects.clone());
+            return Ok(typed_expr(
+                TypedExprKind::Call(TypedCallExpr {
+                    func: Box::new(func),
+                    args,
+                }),
+                typ,
+                effects,
+                StrictnessClass::Deferred,
+                app.location,
+            ));
+        }
+
         let mut effects = merge_effects(args.iter().map(|arg| arg.effects.clone()));
-        if let InferenceType::Function(tfunc) = synthesize_member_access(env, member_access)? {
+        let member_type = synthesize_member_access(env, member_access)?;
+        if let InferenceType::Function(tfunc) = member_type {
             effects.extend(effects_option_to_set(&tfunc.effects));
+        } else if let Some(intrinsic_effects) =
+            intrinsic_extern_member_effects(&member_access.namespace, &member_access.member)
+        {
+            effects.extend(intrinsic_effects);
         }
         let subscription = env
             .lookup_extern_member_kind(&member_access.namespace, &member_access.member)
@@ -6863,6 +6980,33 @@ fn build_typed_application(
 
     if let Expr::FieldAccess(field_access) = &app.func {
         let receiver = build_typed_expr(env, &field_access.object)?;
+        if let Some(namespace) = extern_namespace_path(env, &field_access.object) {
+            let mut effects = merge_effects(args.iter().map(|arg| arg.effects.clone()));
+            effects.extend(receiver.effects.clone());
+            if let InferenceType::Function(tfunc) = synthesize_field_access(env, field_access)? {
+                effects.extend(effects_option_to_set(&tfunc.effects));
+            } else if let Some(intrinsic_effects) =
+                intrinsic_extern_member_effects(&namespace, &field_access.field)
+            {
+                effects.extend(intrinsic_effects);
+            }
+            let subscription = env
+                .lookup_extern_member_kind(&namespace, &field_access.field)
+                .is_some_and(|kind| matches!(kind, sigil_ast::ExternMemberKind::Subscription));
+            return Ok(typed_expr(
+                TypedExprKind::ExternCall(TypedExternCallExpr {
+                    namespace: namespace.clone(),
+                    member: field_access.field.clone(),
+                    mock_key: format!("extern:{}.{}", namespace.join("/"), field_access.field),
+                    subscription,
+                    args,
+                }),
+                typ,
+                effects,
+                StrictnessClass::Deferred,
+                app.location,
+            ));
+        }
         let mut effects = merge_effects(args.iter().map(|arg| arg.effects.clone()));
         effects.extend(receiver.effects.clone());
         if let InferenceType::Function(tfunc) = synthesize_field_access(env, field_access)? {
@@ -8953,7 +9097,7 @@ fn synthesize_lambda(
     // Check body against declared return type
     check(&lambda_env, &lambda_expr.body, &return_type)?;
     let typed_body = build_typed_expr(&lambda_env, &lambda_expr.body)?;
-    declared_effects_cover_actual(
+    declared_effects_match_actual(
         env,
         &lambda_expr.effects,
         &typed_body.effects,

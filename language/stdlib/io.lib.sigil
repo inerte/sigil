@@ -1,11 +1,13 @@
 mode total
 
-λdebug(msg:String)=>!Log Unit=()
+e stdlibIo:{debug:λ(String)=>!Log Unit,eprintln:λ(String)=>!Log Unit,print:λ(String)=>!Log Unit,println:λ(String)=>!Log Unit,warn:λ(String)=>!Log Unit}
 
-λeprintln(msg:String)=>!Log Unit=()
+λdebug(msg:String)=>!Log Unit=stdlibIo.debug(msg)
 
-λprint(msg:String)=>!Log Unit=()
+λeprintln(msg:String)=>!Log Unit=stdlibIo.eprintln(msg)
 
-λprintln(msg:String)=>!Log Unit=()
+λprint(msg:String)=>!Log Unit=stdlibIo.print(msg)
 
-λwarn(msg:String)=>!Log Unit=()
+λprintln(msg:String)=>!Log Unit=stdlibIo.println(msg)
+
+λwarn(msg:String)=>!Log Unit=stdlibIo.warn(msg)

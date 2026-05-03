@@ -187,7 +187,7 @@ composition promise-shaped, and introduce widening only through named
 `concurrent` regions with explicit policy.
 
 ```sigil module
-e fs::promises
+e fs::promises:{readFile:λ(String,String)=>!Fs String}
 
 λadd(a:Int,b:Int)=>Int=a+b
 

@@ -81,16 +81,21 @@ protocol Transaction
   initial = Open
   terminal = Closed
 
+e txDb:{commit:λ(Transaction)=>!Sql Result[
+  Unit,
+  §sql.SqlFailure
+],execInsertIn:λ(String,Transaction)=>!Sql Result[
+  Int,
+  §sql.SqlFailure
+]}
+
 λcommit(transaction:Transaction)=>!Sql Result[
   Unit,
   §sql.SqlFailure
 ]
 requires transaction.state=Open
 ensures transaction.state=Closed
-=Err({
-  kind:§sql.Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+=txDb.commit(transaction)
 
 λexecInsertIn(statement:String,transaction:Transaction)=>!Sql Result[
   Int,
@@ -98,10 +103,10 @@ ensures transaction.state=Closed
 ]
 requires transaction.state=Open
 ensures transaction.state=Open
-=Err({
-  kind:§sql.Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+=txDb.execInsertIn(
+  statement,
+  transaction
+)
 ```
 
 `handle.state` is a virtual field on protocol-typed values. It only exists in

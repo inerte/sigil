@@ -1,6 +1,6 @@
 e console:{error:λ(String)=>!Log Unit}
 
-λfail(message:String)=>!CliIo Unit={
+λfail(message:String)=>!Log!Process Unit={
   l _=(console.error(message):Unit);
   §process.exit(1)
 }

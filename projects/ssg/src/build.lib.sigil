@@ -1,6 +1,6 @@
 mode total
 
-e fs::promises
+e fs::promises:{copyFile:λ(String,String)=>!Fs Unit,cp:λ(String,String,µCopyTreeOptions)=>!Fs Unit}
 
 λarticleNav(config:µSiteBuildConfig,nextCard:String,previousCard:String)=>String match nextCard++previousCard{
   ""=>""|
@@ -174,10 +174,10 @@ match assetNames{
 λcopyDemoTree(source:String,target:String)=>!Fs Unit=fs::promises.cp(
   source,
   target,
-  {
+  ({
     force:true,
     recursive:true
-  }
+  }:µCopyTreeOptions)
 )
 
 λcopyFile(source:String,target:String)=>!Fs Unit=fs::promises.copyFile(

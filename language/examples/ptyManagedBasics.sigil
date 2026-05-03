@@ -74,7 +74,7 @@ test "managed pty refs can live in ordinary state and expose event streams" =>!P
   }
 }
 
-test "managed pty handle refs support named handle operations" =>!Pty!Stream world {
+test "managed pty handle refs support named handle operations" =>!Pty world {
   c ptyHandle=(†pty.fixtureHandle(
   assistantShell,
   [†pty.rule(

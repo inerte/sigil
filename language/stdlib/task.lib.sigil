@@ -2,8 +2,10 @@ t Task[T]={id:Int}
 
 t TaskResult[T]=Cancelled()|Failed(String)|Succeeded(T)
 
-λcancel[T](task:Task[T])=>!Task Unit=()
+e stdlibTask
 
-λspawn[T](work:λ()=>T)=>!Task Owned[Task[T]]=({id:-1}:Owned[Task[T]])
+λcancel[T](task:Task[T])=>!Task Unit=stdlibTask.cancel(task)
 
-λwait[T](task:Task[T])=>!Task TaskResult[T]=Cancelled()
+λspawn[T](work:λ()=>T)=>!Task Owned[Task[T]]=stdlibTask.spawn(work)
+
+λwait[T](task:Task[T])=>!Task TaskResult[T]=stdlibTask.wait(task)

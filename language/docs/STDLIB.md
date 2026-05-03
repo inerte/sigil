@@ -39,9 +39,9 @@ The Sigil standard library provides core utility functions and predicates for co
 ## Rooted Module Syntax
 
 ```sigil program
-e console
+e console:{log:λ(String)=>!Log Unit}
 
-λmain()=>Unit=console.log(§string.intToString(#[
+λmain()=>!Log Unit=console.log(§string.intToString(#[
   1,
   2,
   3

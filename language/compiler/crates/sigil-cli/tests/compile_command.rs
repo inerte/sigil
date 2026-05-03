@@ -48,6 +48,27 @@ fn parse_json(text: &[u8]) -> Value {
     serde_json::from_slice(text).unwrap()
 }
 
+fn compile_generated_source(label: &str, source: &str) -> String {
+    let dir = temp_dir(label);
+    let file = write_program(&dir, "main.sigil", source);
+
+    let output = Command::new(sigil_bin())
+        .current_dir(repo_root())
+        .arg("compile")
+        .arg(&file)
+        .output()
+        .unwrap();
+
+    assert!(
+        output.status.success(),
+        "{}",
+        String::from_utf8_lossy(&output.stdout)
+    );
+    let json = parse_json(&output.stdout);
+    let root_ts = PathBuf::from(json["data"]["outputs"]["rootTs"].as_str().unwrap());
+    fs::read_to_string(root_ts).unwrap()
+}
+
 fn write_feature_flag_project(root: &Path) -> PathBuf {
     write_program(
         root,
@@ -480,4 +501,51 @@ fn compile_project_bridge_subscription_preserves_subscribes_and_relative_bridge_
     assert!(generated.contains("__sigil_extern_subscribe("));
     assert!(generated.contains("bridges/subscriptionProbe.js"));
     assert!(generated.contains("import { tick } from"));
+}
+
+#[test]
+fn compile_rooted_stdlib_process_helper_uses_module_call_path() {
+    let generated = compile_generated_source(
+        "rooted-stdlib-process-helper",
+        "λmain()=>§process.Command=§process.command([\"git\"])\n",
+    );
+
+    assert!(generated.contains("import * as stdlib_process from"));
+    assert!(generated.contains(
+        "__sigil_call(\"extern:stdlib/process.command\", stdlib_process.command, __sigil_args)"
+    ));
+    assert!(!generated.contains("Internal stdlib namespace 'stdlib/process'"));
+}
+
+#[test]
+fn compile_rooted_stdlib_crypto_helper_uses_intrinsic_path() {
+    let generated = compile_generated_source(
+        "rooted-stdlib-crypto-helper",
+        "λmain()=>String=§crypto.sha256(\"hello\")\n",
+    );
+
+    assert!(generated.contains("__sigil_crypto_sha256(__input)"));
+    assert!(!generated.contains("stdlib_crypto.sha256"));
+}
+
+#[test]
+fn compile_rooted_stdlib_float_helper_uses_intrinsic_path() {
+    let generated = compile_generated_source(
+        "rooted-stdlib-float-helper",
+        "λmain()=>Float=§float.abs(-3.0)\n",
+    );
+
+    assert!(generated.contains("Math.abs(__x)"));
+    assert!(!generated.contains("stdlib_float.abs"));
+}
+
+#[test]
+fn compile_rooted_stdlib_regex_helper_uses_intrinsic_path() {
+    let generated = compile_generated_source(
+        "rooted-stdlib-regex-helper",
+        "λmain()=>Result[\n  §regex.Regex,\n  §regex.RegexError\n]=§regex.compile(\n  \"\",\n  \"^a+$\"\n)\n",
+    );
+
+    assert!(generated.contains("__sigil_regex_compile_result(__flags, __pattern)"));
+    assert!(!generated.contains("stdlib_regex.compile"));
 }

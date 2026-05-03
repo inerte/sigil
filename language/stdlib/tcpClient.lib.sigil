@@ -12,13 +12,15 @@ t TcpRequest={
 
 t TcpResponse={message:String}
 
+e stdlibTcpClient:{request:λ(TcpRequest)=>!Tcp Result[
+  TcpResponse,
+  TcpError
+]}
+
 λrequest(request:TcpRequest)=>!Tcp Result[
   TcpResponse,
   TcpError
-]=Err({
-  kind:Connection(),
-  message:"tcp client runtime unavailable"
-})
+]=stdlibTcpClient.request(request)
 
 λsend(dependency:§topology.TcpServiceDependency,message:String)=>!Tcp Result[
   TcpResponse,

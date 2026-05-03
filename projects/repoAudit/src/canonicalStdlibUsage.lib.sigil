@@ -459,7 +459,7 @@ match paths{
   Err(_)=>acc
 }) from ([]:[µCanonicalRule])
 
-λrunCheck()=>!AuditIo Result[
+λrunCheck()=>!Fs!Process Result[
   [µCanonicalIssue],
   String
 ] match gitTopLevel(){

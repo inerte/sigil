@@ -427,8 +427,9 @@ e console:{log:λ(String)=>!Log Unit}
 ```
 
 Effects are explicit surface syntax. The checker tracks them as part of the
-typed program and rejects callees or bodies whose required effects are not
-covered by the enclosing signature.
+typed program and enforces exact effect annotations after named-effect
+expansion: missing required effects are rejected, and extra unused declared
+effects are rejected as well.
 
 ## Canonical Typed Rules
 

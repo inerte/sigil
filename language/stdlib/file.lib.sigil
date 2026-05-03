@@ -1,41 +1,81 @@
 mode total
 
-λappendText(content:String,path:String)=>!Fs Unit=()
+e stdlibFile:{appendText:λ(String,String)=>!Fs Unit,appendTextAt:λ(String,String,§topology.FsRoot)=>!Fs Unit,exists:λ(String)=>!Fs Bool,existsAt:λ(String,§topology.FsRoot)=>!Fs Bool,listDir:λ(String)=>!Fs [String],listDirAt:λ(String,§topology.FsRoot)=>!Fs [String],makeDir:λ(String)=>!Fs Unit,makeDirAt:λ(String,§topology.FsRoot)=>!Fs Unit,makeDirs:λ(String)=>!Fs Unit,makeDirsAt:λ(String,§topology.FsRoot)=>!Fs Unit,makeTempDir:λ(String)=>!Fs String,makeTempDirAt:λ(String,§topology.FsRoot)=>!Fs String,readText:λ(String)=>!Fs String,readTextAt:λ(String,§topology.FsRoot)=>!Fs String,remove:λ(String)=>!Fs Unit,removeAt:λ(String,§topology.FsRoot)=>!Fs Unit,removeTree:λ(String)=>!Fs Unit,removeTreeAt:λ(String,§topology.FsRoot)=>!Fs Unit,writeText:λ(String,String)=>!Fs Unit,writeTextAt:λ(String,String,§topology.FsRoot)=>!Fs Unit}
 
-λappendTextAt(content:String,path:String,root:§topology.FsRoot)=>!Fs Unit=()
+λappendText(content:String,path:String)=>!Fs Unit=stdlibFile.appendText(
+  content,
+  path
+)
 
-λexists(path:String)=>!Fs Bool=false
+λappendTextAt(content:String,path:String,root:§topology.FsRoot)=>!Fs Unit=stdlibFile.appendTextAt(
+  content,
+  path,
+  root
+)
 
-λexistsAt(path:String,root:§topology.FsRoot)=>!Fs Bool=false
+λexists(path:String)=>!Fs Bool=stdlibFile.exists(path)
 
-λlistDir(path:String)=>!Fs [String]=[]
+λexistsAt(path:String,root:§topology.FsRoot)=>!Fs Bool=stdlibFile.existsAt(
+  path,
+  root
+)
 
-λlistDirAt(path:String,root:§topology.FsRoot)=>!Fs [String]=[]
+λlistDir(path:String)=>!Fs [String]=stdlibFile.listDir(path)
 
-λmakeDir(path:String)=>!Fs Unit=()
+λlistDirAt(path:String,root:§topology.FsRoot)=>!Fs [String]=stdlibFile.listDirAt(
+  path,
+  root
+)
 
-λmakeDirAt(path:String,root:§topology.FsRoot)=>!Fs Unit=()
+λmakeDir(path:String)=>!Fs Unit=stdlibFile.makeDir(path)
 
-λmakeDirs(path:String)=>!Fs Unit=()
+λmakeDirAt(path:String,root:§topology.FsRoot)=>!Fs Unit=stdlibFile.makeDirAt(
+  path,
+  root
+)
 
-λmakeDirsAt(path:String,root:§topology.FsRoot)=>!Fs Unit=()
+λmakeDirs(path:String)=>!Fs Unit=stdlibFile.makeDirs(path)
 
-λmakeTempDir(prefix:String)=>!Fs String=""
+λmakeDirsAt(path:String,root:§topology.FsRoot)=>!Fs Unit=stdlibFile.makeDirsAt(
+  path,
+  root
+)
 
-λmakeTempDirAt(prefix:String,root:§topology.FsRoot)=>!Fs String=""
+λmakeTempDir(prefix:String)=>!Fs String=stdlibFile.makeTempDir(prefix)
 
-λreadText(path:String)=>!Fs String=""
+λmakeTempDirAt(prefix:String,root:§topology.FsRoot)=>!Fs String=stdlibFile.makeTempDirAt(
+  prefix,
+  root
+)
 
-λreadTextAt(path:String,root:§topology.FsRoot)=>!Fs String=""
+λreadText(path:String)=>!Fs String=stdlibFile.readText(path)
 
-λremove(path:String)=>!Fs Unit=()
+λreadTextAt(path:String,root:§topology.FsRoot)=>!Fs String=stdlibFile.readTextAt(
+  path,
+  root
+)
 
-λremoveAt(path:String,root:§topology.FsRoot)=>!Fs Unit=()
+λremove(path:String)=>!Fs Unit=stdlibFile.remove(path)
 
-λremoveTree(path:String)=>!Fs Unit=()
+λremoveAt(path:String,root:§topology.FsRoot)=>!Fs Unit=stdlibFile.removeAt(
+  path,
+  root
+)
 
-λremoveTreeAt(path:String,root:§topology.FsRoot)=>!Fs Unit=()
+λremoveTree(path:String)=>!Fs Unit=stdlibFile.removeTree(path)
 
-λwriteText(content:String,path:String)=>!Fs Unit=()
+λremoveTreeAt(path:String,root:§topology.FsRoot)=>!Fs Unit=stdlibFile.removeTreeAt(
+  path,
+  root
+)
 
-λwriteTextAt(content:String,path:String,root:§topology.FsRoot)=>!Fs Unit=()
+λwriteText(content:String,path:String)=>!Fs Unit=stdlibFile.writeText(
+  content,
+  path
+)
+
+λwriteTextAt(content:String,path:String,root:§topology.FsRoot)=>!Fs Unit=stdlibFile.writeTextAt(
+  content,
+  path,
+  root
+)

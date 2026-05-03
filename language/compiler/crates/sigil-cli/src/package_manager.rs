@@ -1,4 +1,5 @@
 use crate::commands::CliError;
+use crate::hash::encode_lower_hex;
 use crate::module_graph::collect_referenced_module_ids;
 use crate::project::{
     get_project_config, get_project_config_at_root, is_lower_camel_name,
@@ -1018,7 +1019,7 @@ fn sha256_hex(path: &Path) -> Result<String, CliError> {
     let bytes = fs::read(path)?;
     let mut hasher = Sha256::new();
     hasher.update(bytes);
-    Ok(format!("sha256:{:x}", hasher.finalize()))
+    Ok(format!("sha256:{}", encode_lower_hex(hasher.finalize())))
 }
 
 fn copy_dir_recursive(from: &Path, to: &Path) -> Result<(), CliError> {

@@ -17,22 +17,22 @@ That's it. Exactly ONE way to do FFI (canonical form).
 ### Console Output
 
 ```sigil program
-e console
+e console:{log:λ(String)=>!Log Unit}
 
-λmain()=>Unit=console.log("Hello from Sigil!")
+λmain()=>!Log Unit=console.log("Hello from Sigil!")
 ```
 
 ### Node.js Built-ins
 
 ```sigil program
-e fs::promises
+e fs::promises:{writeFile:λ(String,String)=>!Fs Unit}
 
-λmain()=>Unit=writeFile(
+λmain()=>!Fs Unit=writeFile(
   "output.txt",
   "Hello, Sigil!"
 )
 
-λwriteFile(content:String,path:String)=>Unit=fs::promises.writeFile(
+λwriteFile(content:String,path:String)=>!Fs Unit=fs::promises.writeFile(
   path,
   content
 )
@@ -47,11 +47,11 @@ npm install axios
 
 Then use it:
 ```sigil program
-e axios
+e axios:{get:λ(String)=>!Http String}
 
-λfetchUser(id:Int)=>Unit=axios.get("https://api.example.com/users/"+id)
+λfetchUser(id:Int)=>!Http String=axios.get("https://api.example.com/users/"+id)
 
-λmain()=>Unit=fetchUser(123)
+λmain()=>!Http String=fetchUser(123)
 ```
 
 ### Project-Local Bridges
@@ -141,17 +141,17 @@ export async function main() {
 ### ✅ Works - Correct member
 
 ```sigil program
-e console
+e console:{log:λ(String)=>!Log Unit}
 
-λmain()=>Unit=console.log("works!")
+λmain()=>!Log Unit=console.log("works!")
 ```
 
 ### ❌ Fails - Typo in member
 
 ```text
-e console
+e console:{log:λ(String)=>!Log Unit}
 
-λmain()=>Unit=console.logg("typo!")
+λmain()=>!Log Unit=console.logg("typo!")
 ```
 
 ```
@@ -163,9 +163,9 @@ Check for typos or see module documentation.
 ### ❌ Fails - Module not installed
 
 ```text
-e axios
+e axios:{get:λ(String)=>!Http String}
 
-λmain()=>Unit=axios.get("url")
+λmain()=>!Http String=axios.get("url")
 ```
 
 ```
@@ -189,6 +189,12 @@ e fs::promises
 Uses `any` type for FFI calls. Member validation is **structural** (does it exist?) not type-based.
 This trust-mode `any` is an internal compiler escape hatch for untyped externs, not a
 general-purpose surface type you should write in Sigil source.
+Effectful wrappers should prefer typed extern members. Under exact effect
+checking, a non-stdlib untyped extern call does not justify a declared effect
+because the compiler only knows the member exists, not what effects it may
+perform. Some internal stdlib shims are compiler-known and may still attach
+effects during checking, but that fallback is an implementation detail rather
+than a general FFI contract.
 
 ### Typed FFI (Type-Safe Mode)
 
@@ -197,9 +203,9 @@ You can optionally provide type signatures for extern members:
 ```sigil module
 t MkdirOptions={recursive:Bool}
 
-e fs::promises:{mkdir:λ(String,MkdirOptions)=>Unit}
+e fs::promises:{mkdir:λ(String,MkdirOptions)=>!Fs Unit}
 
-λensureDir(dir:String)=>Unit=fs::promises.mkdir(
+λensureDir(dir:String)=>!Fs Unit=fs::promises.mkdir(
   dir,
   ({recursive:true}:MkdirOptions)
 )
@@ -286,7 +292,7 @@ See [Canonical Declaration Ordering](/articles/canonical-declaration-ordering) f
 Sigil uses one promise-shaped runtime model for FFI too. Promise-returning FFI calls are started automatically and joined only when a strict consumer needs their values:
 
 ```sigil program
-e fs::promises
+e fs::promises:{readFile:λ(String,String)=>!Fs String}
 
 λmain()=>!Fs String=readFile("data.txt")
 
@@ -367,24 +373,24 @@ Use functional APIs or wrapper functions.
 ### 1. Wrap FFI in Sigil Functions
 
 ```sigil program
-e console
+e console:{log:λ(String)=>!Log Unit}
 
-λlog(msg:String)=>Unit=console.log(msg)
+λlog(msg:String)=>!Log Unit=console.log(msg)
 
-λmain()=>Unit=log("Info message")
+λmain()=>!Log Unit=log("Info message")
 ```
 
 ### 2. Use Semantic Names
 
 ```sigil module
-e fs::promises
+e fs::promises:{readFile:λ(String,String)=>!Fs String,writeFile:λ(String,String)=>!Fs Unit}
 
-λreadFile(path:String)=>Unit=fs::promises.readFile(
+λreadFile(path:String)=>!Fs String=fs::promises.readFile(
   path,
   "utf-8"
 )
 
-λwriteFile(content:String,path:String)=>Unit=fs::promises.writeFile(
+λwriteFile(content:String,path:String)=>!Fs Unit=fs::promises.writeFile(
   path,
   content
 )
@@ -411,7 +417,7 @@ Why keep a separate bridge?
 
 ## Future Extensions
 
-- Type annotations for FFI declarations
+- richer extern validation and adapters
 - Method chaining syntax
 - Class/object interop
 - Callback conversions (JS => Sigil functions)

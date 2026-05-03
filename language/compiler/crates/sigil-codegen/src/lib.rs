@@ -6885,7 +6885,7 @@ impl TypeScriptGenerator {
         self.emit("  if (typeof __sigil_debug_step_emit === 'function') {");
         self.emit("    __sigil_debug_step_emit({ kind: 'expr_throw', ...meta, spanKind: String(meta.spanKind ?? ''), error: errorSummary, expressionDepth: depth });");
         self.emit("  }");
-        self.emit("  if (!state.failure || Number(depth) >= Number(state.failure.depth ?? 0)) {");
+        self.emit("  if (!state.failure || Number(depth) > Number(state.failure.depth ?? 0)) {");
         self.emit("    state.failure = { depth: Number(depth), snapshot: __sigil_expression_snapshot_from_meta(meta, typeId, { error: errorSummary }) };");
         self.emit("  }");
         self.emit("}");
@@ -8083,6 +8083,57 @@ impl TypeScriptGenerator {
     }
 
     fn generate_extern(&mut self, extern_decl: &ExternDecl) -> Result<(), CodegenError> {
+        let namespace = extern_decl.module_path.join("::");
+        // Only runtime-backed internal stdlib wrappers suppress imports here.
+        // Keep this list aligned with the alias-style normalization in
+        // `generate_extern_call`. Other intrinsic namespaces such as
+        // `stdlib::featureFlags`, `stdlib::crypto`, `stdlib::float`,
+        // `stdlib::regex`, and `stdlib::url` intentionally keep their
+        // canonical module ids because they are not suppressed alias wrappers.
+        if matches!(
+            namespace.as_str(),
+            "stdlib::cli"
+                | "stdlib::file"
+                | "stdlib::fsWatch"
+                | "stdlib::httpClient"
+                | "stdlib::httpServer"
+                | "stdlib::io"
+                | "stdlib::log"
+                | "stdlib::process"
+                | "stdlib::pty"
+                | "stdlib::random"
+                | "stdlib::sql"
+                | "stdlib::stream"
+                | "stdlib::task"
+                | "stdlib::tcpClient"
+                | "stdlib::tcpServer"
+                | "stdlib::terminal"
+                | "stdlib::time"
+                | "stdlib::timer"
+                | "stdlib::websocket"
+                | "stdlibCli"
+                | "stdlibFile"
+                | "stdlibFsWatch"
+                | "stdlibHttpClient"
+                | "stdlibHttpServer"
+                | "stdlibIo"
+                | "stdlibLog"
+                | "stdlibProcess"
+                | "stdlibPty"
+                | "stdlibRandom"
+                | "stdlibSql"
+                | "stdlibStream"
+                | "stdlibTask"
+                | "stdlibTcpClient"
+                | "stdlibTcpServer"
+                | "stdlibTerminal"
+                | "stdlibTime"
+                | "stdlibTimer"
+                | "stdlibWebSocket"
+        ) {
+            return Ok(());
+        }
+
         let import_path = self.extern_import_path(extern_decl)?;
         if self.lazy_extern_namespaces {
             let namespace = sanitize_js_identifier(&extern_decl.module_path.join("_"));
@@ -8541,6 +8592,15 @@ impl TypeScriptGenerator {
                 if module == "stdlib/featureFlags" {
                     return self.generate_feature_flags_intrinsic(call_expr, member, args);
                 }
+                if module == "stdlib/crypto" {
+                    return self.generate_crypto_intrinsic(call_expr, member, args);
+                }
+                if module == "stdlib/float" {
+                    return self.generate_float_intrinsic(call_expr, member, args);
+                }
+                if module == "stdlib/regex" {
+                    return self.generate_regex_intrinsic(call_expr, member, args);
+                }
                 if module == "stdlib/url" {
                     return self.generate_url_intrinsic(call_expr, member, args);
                 }
@@ -8707,6 +8767,20 @@ impl TypeScriptGenerator {
                 if self
                     .source_file
                     .as_deref()
+                    .is_some_and(|path| path.ends_with("language/stdlib/crypto.lib.sigil"))
+                {
+                    return self.generate_crypto_intrinsic(call_expr, &name.name, args);
+                }
+                if self
+                    .source_file
+                    .as_deref()
+                    .is_some_and(|path| path.ends_with("language/stdlib/float.lib.sigil"))
+                {
+                    return self.generate_float_intrinsic(call_expr, &name.name, args);
+                }
+                if self
+                    .source_file
+                    .as_deref()
                     .is_some_and(|path| path.contains("/language/test/observe/"))
                 {
                     let module = self
@@ -8725,6 +8799,13 @@ impl TypeScriptGenerator {
                         &name.name,
                         args,
                     );
+                }
+                if self
+                    .source_file
+                    .as_deref()
+                    .is_some_and(|path| path.ends_with("language/stdlib/regex.lib.sigil"))
+                {
+                    return self.generate_regex_intrinsic(call_expr, &name.name, args);
                 }
                 if self
                     .source_file
@@ -11390,101 +11471,160 @@ impl TypeScriptGenerator {
         expr: &TypedExpr,
         call: &TypedExternCallExpr,
     ) -> Result<String, CodegenError> {
-        if call.namespace.join("/") == "stdlib/string" {
+        let joined_namespace = call.namespace.join("/");
+        // Normalize only the alias-style internal stdlib wrappers whose imports
+        // are suppressed in `generate_extern`. Non-suppressed intrinsic
+        // namespaces such as `stdlib/featureFlags`, `stdlib/crypto`,
+        // `stdlib/float`, `stdlib/regex`, and `stdlib/url` intentionally do not
+        // participate in alias-style normalization.
+        let call_namespace = match joined_namespace.as_str() {
+            "stdlibCli" => "stdlib/cli",
+            "stdlibFile" => "stdlib/file",
+            "stdlibFsWatch" => "stdlib/fsWatch",
+            "stdlibHttpClient" => "stdlib/httpClient",
+            "stdlibHttpServer" => "stdlib/httpServer",
+            "stdlibIo" => "stdlib/io",
+            "stdlibLog" => "stdlib/log",
+            "stdlibProcess" => "stdlib/process",
+            "stdlibPty" => "stdlib/pty",
+            "stdlibRandom" => "stdlib/random",
+            "stdlibSql" => "stdlib/sql",
+            "stdlibStream" => "stdlib/stream",
+            "stdlibTask" => "stdlib/task",
+            "stdlibTcpClient" => "stdlib/tcpClient",
+            "stdlibTcpServer" => "stdlib/tcpServer",
+            "stdlibTerminal" => "stdlib/terminal",
+            "stdlibTime" => "stdlib/time",
+            "stdlibTimer" => "stdlib/timer",
+            "stdlibWebSocket" => "stdlib/websocket",
+            _ => joined_namespace.as_str(),
+        };
+        if call_namespace == "stdlib/string" {
             if let Some(intrinsic) =
                 self.generate_string_intrinsic(expr, &call.member, &call.args)?
             {
                 return Ok(intrinsic);
             }
         }
-        if call.namespace.join("/") == "stdlib/json" {
+        if call_namespace == "stdlib/json" {
             if let Some(intrinsic) = self.generate_json_intrinsic(expr, &call.member, &call.args)? {
                 return Ok(intrinsic);
             }
         }
-        if call.namespace.join("/") == "stdlib/file" {
+        if call_namespace == "stdlib/file" {
             if let Some(intrinsic) = self.generate_file_intrinsic(expr, &call.member, &call.args)? {
                 return Ok(intrinsic);
             }
         }
-        if call.namespace.join("/") == "stdlib/fsWatch" {
+        if call_namespace == "stdlib/fsWatch" {
             if let Some(intrinsic) =
                 self.generate_fswatch_intrinsic(expr, &call.member, &call.args)?
             {
                 return Ok(intrinsic);
             }
         }
-        if call.namespace.join("/") == "stdlib/log" {
+        if call_namespace == "stdlib/log" {
             if let Some(intrinsic) = self.generate_log_intrinsic(expr, &call.member, &call.args)? {
                 return Ok(intrinsic);
             }
         }
-        if call.namespace.join("/") == "stdlib/io" {
+        if call_namespace == "stdlib/io" {
             if let Some(intrinsic) = self.generate_io_intrinsic(expr, &call.member, &call.args)? {
                 return Ok(intrinsic);
             }
         }
-        if call.namespace.join("/") == "stdlib/httpClient" {
+        if call_namespace == "stdlib/httpClient" {
             if let Some(intrinsic) =
                 self.generate_http_client_intrinsic(expr, &call.member, &call.args)?
             {
                 return Ok(intrinsic);
             }
         }
-        if call.namespace.join("/") == "stdlib/tcpClient" {
+        if call_namespace == "stdlib/httpServer" {
+            if let Some(intrinsic) =
+                self.generate_http_server_intrinsic(expr, &call.member, &call.args)?
+            {
+                return Ok(intrinsic);
+            }
+        }
+        if call_namespace == "stdlib/cli" {
+            if let Some(intrinsic) = self.generate_cli_intrinsic(expr, &call.member, &call.args)? {
+                return Ok(intrinsic);
+            }
+        }
+        if call_namespace == "stdlib/tcpClient" {
             if let Some(intrinsic) =
                 self.generate_tcp_client_intrinsic(expr, &call.member, &call.args)?
             {
                 return Ok(intrinsic);
             }
         }
-        if call.namespace.join("/") == "stdlib/time" {
+        if call_namespace == "stdlib/tcpServer" {
+            if let Some(intrinsic) =
+                self.generate_tcp_server_intrinsic(expr, &call.member, &call.args)?
+            {
+                return Ok(intrinsic);
+            }
+        }
+        if call_namespace == "stdlib/time" {
             if let Some(intrinsic) = self.generate_time_intrinsic(expr, &call.member, &call.args)? {
                 return Ok(intrinsic);
             }
         }
-        if call.namespace.join("/") == "stdlib/terminal" {
+        if call_namespace == "stdlib/timer" {
+            if let Some(intrinsic) =
+                self.generate_timer_intrinsic(expr, &call.member, &call.args)?
+            {
+                return Ok(intrinsic);
+            }
+        }
+        if call_namespace == "stdlib/terminal" {
             if let Some(intrinsic) =
                 self.generate_terminal_intrinsic(expr, &call.member, &call.args)?
             {
                 return Ok(intrinsic);
             }
         }
-        if call.namespace.join("/") == "stdlib/sql" {
+        if call_namespace == "stdlib/sql" {
             if let Some(intrinsic) = self.generate_sql_intrinsic(expr, &call.member, &call.args)? {
                 return Ok(intrinsic);
             }
         }
-        if call.namespace.join("/") == "stdlib/process" {
+        if call_namespace == "stdlib/process" {
             if let Some(intrinsic) =
                 self.generate_process_intrinsic(expr, &call.member, &call.args)?
             {
                 return Ok(intrinsic);
             }
         }
-        if call.namespace.join("/") == "stdlib/pty" {
+        if call_namespace == "stdlib/pty" {
             if let Some(intrinsic) = self.generate_pty_intrinsic(expr, &call.member, &call.args)? {
                 return Ok(intrinsic);
             }
         }
-        if call.namespace.join("/") == "stdlib/websocket" {
+        if call_namespace == "stdlib/websocket" {
             if let Some(intrinsic) =
                 self.generate_websocket_intrinsic(expr, &call.member, &call.args)?
             {
                 return Ok(intrinsic);
             }
         }
-        if call.namespace.join("/") == "stdlib/random" {
+        if call_namespace == "stdlib/random" {
             if let Some(intrinsic) =
                 self.generate_random_intrinsic(expr, &call.member, &call.args)?
             {
                 return Ok(intrinsic);
             }
         }
-        if call.namespace.join("/") == "stdlib/stream" {
+        if call_namespace == "stdlib/stream" {
             if let Some(intrinsic) =
                 self.generate_stream_intrinsic(expr, &call.member, &call.args)?
             {
+                return Ok(intrinsic);
+            }
+        }
+        if call_namespace == "stdlib/task" {
+            if let Some(intrinsic) = self.generate_task_intrinsic(expr, &call.member, &call.args)? {
                 return Ok(intrinsic);
             }
         }
@@ -11530,6 +11670,33 @@ impl TypeScriptGenerator {
             )? {
                 return Ok(intrinsic);
             }
+        }
+        if matches!(
+            call_namespace,
+            "stdlib/cli"
+                | "stdlib/file"
+                | "stdlib/fsWatch"
+                | "stdlib/httpClient"
+                | "stdlib/httpServer"
+                | "stdlib/io"
+                | "stdlib/log"
+                | "stdlib/process"
+                | "stdlib/pty"
+                | "stdlib/random"
+                | "stdlib/sql"
+                | "stdlib/stream"
+                | "stdlib/task"
+                | "stdlib/tcpClient"
+                | "stdlib/tcpServer"
+                | "stdlib/terminal"
+                | "stdlib/time"
+                | "stdlib/timer"
+                | "stdlib/websocket"
+        ) {
+            return Err(CodegenError::General(format!(
+                "Internal stdlib namespace '{}' does not support member '{}' in codegen; add an intrinsic lowering before suppressing its import",
+                call_namespace, call.member
+            )));
         }
 
         let func_ref = format!(

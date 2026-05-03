@@ -12,6 +12,7 @@ use super::shared::{
     validate_project_entrypoint_for_path, validate_project_entrypoints_for_files,
     SourcePoint as TestLocation,
 };
+use crate::hash::encode_lower_hex;
 use crate::module_graph::{
     entry_module_key, load_project_effect_catalog_for, ModuleGraph, ModuleGraphError,
 };
@@ -4355,7 +4356,7 @@ fn resolve_run_artifact_path(path: &Path, ensure_parent: bool) -> Result<PathBuf
 }
 
 fn sha256_hex(bytes: &[u8]) -> String {
-    format!("{:x}", Sha256::digest(bytes))
+    encode_lower_hex(Sha256::digest(bytes))
 }
 
 fn build_replay_binding(
@@ -4400,7 +4401,7 @@ fn build_replay_binding(
         },
         ReplayArtifactBinding {
             algorithm: "sha256".to_string(),
-            fingerprint: format!("{:x}", fingerprint_hasher.finalize()),
+            fingerprint: encode_lower_hex(fingerprint_hasher.finalize()),
             modules,
         },
     ))
@@ -4586,7 +4587,7 @@ fn build_test_replay_binding(
         },
         ReplayArtifactBinding {
             algorithm: "sha256".to_string(),
-            fingerprint: format!("{:x}", fingerprint_hasher.finalize()),
+            fingerprint: encode_lower_hex(fingerprint_hasher.finalize()),
             modules,
         },
     ))
@@ -5249,20 +5250,18 @@ fn analyze_runtime_exception(
         .as_ref()
         .and_then(|expression| declaration_frame_for_expression(expression, module_debug_outputs));
     let frames = parse_generated_stack_frames(&capture.stack);
-    for frame in &frames {
-        if let Some(sigil_frame) = map_generated_frame_to_sigil(frame, module_debug_outputs) {
-            return RuntimeExceptionAnalysis {
-                generated_frame: Some(frame.clone()),
-                sigil_frame: Some(sigil_frame),
-                sigil_expression,
-            };
-        }
-    }
+    let generated_mapping = frames.iter().find_map(|frame| {
+        map_generated_frame_to_sigil(frame, module_debug_outputs)
+            .map(|sigil_frame| (frame.clone(), sigil_frame))
+    });
 
     RuntimeExceptionAnalysis {
-        generated_frame: frames.into_iter().next(),
+        generated_frame: generated_mapping
+            .as_ref()
+            .map(|(frame, _)| frame.clone())
+            .or_else(|| frames.into_iter().next()),
         sigil_expression,
-        sigil_frame: expression_frame,
+        sigil_frame: expression_frame.or_else(|| generated_mapping.map(|(_, frame)| frame)),
     }
 }
 

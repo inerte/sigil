@@ -59,13 +59,15 @@ protocol Transaction
   initial = Open
   terminal = Closed
 
+e stdlibSql
+
 λall[Row](handle:§topology.SqlHandle,select:Select[Row])=>!Sql Result[
   [Row],
   SqlFailure
-]=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+]=stdlibSql.all(
+  handle,
+  select
+)
 
 λallIn[Row](select:Select[Row],transaction:Transaction)=>!Sql Result[
   [Row],
@@ -73,10 +75,10 @@ protocol Transaction
 ]
 requires transaction.state=Open
 ensures transaction.state=Open
-=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+=stdlibSql.allIn(
+  select,
+  transaction
+)
 
 λand[Row](left:Predicate[Row],right:Predicate[Row])=>Predicate[Row]=SqlPredicate(
   0,
@@ -86,10 +88,7 @@ ensures transaction.state=Open
 λbegin(handle:§topology.SqlHandle)=>!Sql Result[
   Owned[Transaction],
   SqlFailure
-]=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+]=stdlibSql.begin(handle)
 
 λboolColumn[Row](field:String,name:String)=>Column[
   Row,
@@ -117,10 +116,7 @@ ensures transaction.state=Open
 ]
 requires transaction.state=Open
 ensures transaction.state=Closed
-=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+=stdlibSql.commit(transaction)
 
 λdelete[Row](table:Table[Row])=>Delete[Row]=SqlDelete(
   0,
@@ -143,10 +139,10 @@ ensures transaction.state=Closed
 λexecDelete[Row](handle:§topology.SqlHandle,statement:Delete[Row])=>!Sql Result[
   Int,
   SqlFailure
-]=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+]=stdlibSql.execDelete(
+  handle,
+  statement
+)
 
 λexecDeleteIn[Row](statement:Delete[Row],transaction:Transaction)=>!Sql Result[
   Int,
@@ -154,18 +150,18 @@ ensures transaction.state=Closed
 ]
 requires transaction.state=Open
 ensures transaction.state=Open
-=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+=stdlibSql.execDeleteIn(
+  statement,
+  transaction
+)
 
 λexecInsert[Row](handle:§topology.SqlHandle,statement:Insert[Row])=>!Sql Result[
   Int,
   SqlFailure
-]=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+]=stdlibSql.execInsert(
+  handle,
+  statement
+)
 
 λexecInsertIn[Row](statement:Insert[Row],transaction:Transaction)=>!Sql Result[
   Int,
@@ -173,18 +169,18 @@ ensures transaction.state=Open
 ]
 requires transaction.state=Open
 ensures transaction.state=Open
-=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+=stdlibSql.execInsertIn(
+  statement,
+  transaction
+)
 
 λexecUpdate[Row](handle:§topology.SqlHandle,statement:Update[Row])=>!Sql Result[
   Int,
   SqlFailure
-]=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+]=stdlibSql.execUpdate(
+  handle,
+  statement
+)
 
 λexecUpdateIn[Row](statement:Update[Row],transaction:Transaction)=>!Sql Result[
   Int,
@@ -192,10 +188,10 @@ ensures transaction.state=Open
 ]
 requires transaction.state=Open
 ensures transaction.state=Open
-=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+=stdlibSql.execUpdateIn(
+  statement,
+  transaction
+)
 
 λfloatColumn[Row](field:String,name:String)=>Column[
   Row,
@@ -285,10 +281,10 @@ ensures transaction.state=Open
 λone[Row](handle:§topology.SqlHandle,select:Select[Row])=>!Sql Result[
   Option[Row],
   SqlFailure
-]=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+]=stdlibSql.one(
+  handle,
+  select
+)
 
 λoneIn[Row](select:Select[Row],transaction:Transaction)=>!Sql Result[
   Option[Row],
@@ -296,10 +292,10 @@ ensures transaction.state=Open
 ]
 requires transaction.state=Open
 ensures transaction.state=Open
-=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+=stdlibSql.oneIn(
+  select,
+  transaction
+)
 
 λor[Row](left:Predicate[Row],right:Predicate[Row])=>Predicate[Row]=SqlPredicate(
   0,
@@ -319,10 +315,10 @@ ensures transaction.state=Open
 λrawExec(handle:§topology.SqlHandle,statement:RawStatement)=>!Sql Result[
   Int,
   SqlFailure
-]=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+]=stdlibSql.rawExec(
+  handle,
+  statement
+)
 
 λrawExecIn(statement:RawStatement,transaction:Transaction)=>!Sql Result[
   Int,
@@ -330,18 +326,18 @@ ensures transaction.state=Open
 ]
 requires transaction.state=Open
 ensures transaction.state=Open
-=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+=stdlibSql.rawExecIn(
+  statement,
+  transaction
+)
 
 λrawQuery(handle:§topology.SqlHandle,statement:RawStatement)=>!Sql Result[
   [RawRow],
   SqlFailure
-]=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+]=stdlibSql.rawQuery(
+  handle,
+  statement
+)
 
 λrawQueryIn(statement:RawStatement,transaction:Transaction)=>!Sql Result[
   [RawRow],
@@ -349,18 +345,18 @@ ensures transaction.state=Open
 ]
 requires transaction.state=Open
 ensures transaction.state=Open
-=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+=stdlibSql.rawQueryIn(
+  statement,
+  transaction
+)
 
 λrawQueryOne(handle:§topology.SqlHandle,statement:RawStatement)=>!Sql Result[
   Option[RawRow],
   SqlFailure
-]=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+]=stdlibSql.rawQueryOne(
+  handle,
+  statement
+)
 
 λrawQueryOneIn(statement:RawStatement,transaction:Transaction)=>!Sql Result[
   Option[RawRow],
@@ -368,10 +364,10 @@ ensures transaction.state=Open
 ]
 requires transaction.state=Open
 ensures transaction.state=Open
-=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+=stdlibSql.rawQueryOneIn(
+  statement,
+  transaction
+)
 
 λrollback(transaction:Transaction)=>!Sql Result[
   Unit,
@@ -379,10 +375,7 @@ ensures transaction.state=Open
 ]
 requires transaction.state=Open
 ensures transaction.state=Closed
-=Err({
-  kind:Unsupported(),
-  message:"sql intrinsic unavailable"
-})
+=stdlibSql.rollback(transaction)
 
 λselect[Row](table:Table[Row])=>Select[Row]=SqlSelect(
   0,

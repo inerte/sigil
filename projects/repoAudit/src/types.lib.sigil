@@ -170,3 +170,11 @@ t Snippet={
   info:FenceInfo,
   line:Int
 }
+
+t SnippetTask={
+  filePath:String,
+  ordinal:Int,
+  root:String,
+  snippet:Snippet,
+  tempDir:String
+}

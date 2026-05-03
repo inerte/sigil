@@ -33,7 +33,9 @@ t WebSocketRoute={
   path:String
 }
 
-e console:{log:λ(String)=>Unit}
+e console:{log:λ(String)=>!Log Unit}
+
+e stdlibHttpServer:{listen:λ(Int)=>!Http Owned[Server],listenWith:λ(λ(Request)=>Response,Int)=>!Http Server,listenWithWebSockets:λ(Int,[WebSocketRoute])=>!Http Owned[Server],reply:λ(Responder,Response)=>!Http Unit,requests:λ(Server)=>!Http Owned[§stream.Source[PendingRequest]],serve:λ(λ(Request)=>Response,Int)=>!Http Unit,wait:λ(Server)=>!Http Unit,websocketClose:λ(WebSocketClient)=>!Http Unit,websocketConnections:λ(§topology.WebSocketHandle,Server)=>!Http Owned[§stream.Source[WebSocketClient]],websocketMessages:λ(WebSocketClient)=>!Http Owned[§stream.Source[String]],websocketSend:λ(WebSocketClient,String)=>!Http Unit}
 
 λjson(body:String,status:Int)=>Response={
   body:body,
@@ -46,11 +48,17 @@ e console:{log:λ(String)=>Unit}
   HttpBodyError
 ]=Err({message:"http json body intrinsic unavailable"})
 
-λlisten(port:Int)=>!Http Owned[Server]=({port:port}:Owned[Server])
+λlisten(port:Int)=>!Http Owned[Server]=stdlibHttpServer.listen(port)
 
-λlistenWith(handler:λ(Request)=>Response,port:Int)=>!Http Server={port:port}
+λlistenWith(handler:λ(Request)=>Response,port:Int)=>!Http Server=stdlibHttpServer.listenWith(
+  handler,
+  port
+)
 
-λlistenWithWebSockets(port:Int,routes:[WebSocketRoute])=>!Http Owned[Server]=({port:port}:Owned[Server])
+λlistenWithWebSockets(port:Int,routes:[WebSocketRoute])=>!Http Owned[Server]=stdlibHttpServer.listenWithWebSockets(
+  port,
+  routes
+)
 
 λlogRequest(req:Request)=>!Log Unit=console.log((req.method
   ++" "
@@ -80,9 +88,12 @@ e console:{log:λ(String)=>Unit}
 
 λport(server:Server)=>Int=server.port
 
-λreply(responder:Responder,response:Response)=>!Http Unit=()
+λreply(responder:Responder,response:Response)=>!Http Unit=stdlibHttpServer.reply(
+  responder,
+  response
+)
 
-λrequests(server:Server)=>!Http Owned[§stream.Source[PendingRequest]]=((§stream.StreamSource(0):§stream.Source[PendingRequest]):Owned[§stream.Source[PendingRequest]])
+λrequests(server:Server)=>!Http Owned[§stream.Source[PendingRequest]]=stdlibHttpServer.requests(server)
 
 λresponse(body:String,contentType:String,status:Int)=>Response={
   body:body,
@@ -90,7 +101,10 @@ e console:{log:λ(String)=>Unit}
   status:status
 }
 
-λserve(handler:λ(Request)=>Response,port:Int)=>!Http Unit=()
+λserve(handler:λ(Request)=>Response,port:Int)=>!Http Unit=stdlibHttpServer.serve(
+  handler,
+  port
+)
 
 λserverError(message:String)=>Response={
   body:"<h1>500 Internal Server Error</h1><p>"
@@ -100,17 +114,23 @@ e console:{log:λ(String)=>Unit}
   status:500
 }
 
-λwait(server:Server)=>!Http Unit=()
+λwait(server:Server)=>!Http Unit=stdlibHttpServer.wait(server)
 
-λwebsocketClose(client:WebSocketClient)=>!Http Unit=()
+λwebsocketClose(client:WebSocketClient)=>!Http Unit=stdlibHttpServer.websocketClose(client)
 
-λwebsocketConnections(handle:§topology.WebSocketHandle,server:Server)=>!Http Owned[§stream.Source[WebSocketClient]]=((§stream.StreamSource(0):§stream.Source[WebSocketClient]):Owned[§stream.Source[WebSocketClient]])
+λwebsocketConnections(handle:§topology.WebSocketHandle,server:Server)=>!Http Owned[§stream.Source[WebSocketClient]]=stdlibHttpServer.websocketConnections(
+  handle,
+  server
+)
 
-λwebsocketMessages(client:WebSocketClient)=>!Http Owned[§stream.Source[String]]=((§stream.StreamSource(0):§stream.Source[String]):Owned[§stream.Source[String]])
+λwebsocketMessages(client:WebSocketClient)=>!Http Owned[§stream.Source[String]]=stdlibHttpServer.websocketMessages(client)
 
 λwebsocketRoute(handle:§topology.WebSocketHandle,path:String)=>WebSocketRoute={
   handle:handle,
   path:path
 }
 
-λwebsocketSend(client:WebSocketClient,text:String)=>!Http Unit=()
+λwebsocketSend(client:WebSocketClient,text:String)=>!Http Unit=stdlibHttpServer.websocketSend(
+  client,
+  text
+)

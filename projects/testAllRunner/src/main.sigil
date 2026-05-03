@@ -238,7 +238,7 @@ mode total
   tcpIntegrationSuite(root)
 ]
 
-λprintBatchResults(results:[µSuiteResult])=>!CliIo Unit
+λprintBatchResults(results:[µSuiteResult])=>!Log Unit
 decreases #results
 match results{
   []=>()|
@@ -251,7 +251,7 @@ match results{
   }
 }
 
-λprintResultOutput(result:§process.ProcessResult)=>!CliIo Unit={
+λprintResultOutput(result:§process.ProcessResult)=>!Log Unit={
   l _=(match #result.stdout>0{
     true=>(§io.print(result.stdout):Unit)|
     false=>()
@@ -262,7 +262,7 @@ match results{
   }
 }
 
-λprintSuiteResult(suite:µSuiteResult)=>!CliIo Unit={
+λprintSuiteResult(suite:µSuiteResult)=>!Log Unit={
   l _=(§io.println(""):Unit);
   l _=(§io.println("==> "++suite.label):Unit);
   printResultOutput(suite.result)
@@ -334,7 +334,7 @@ match args{
   label:"roguelike suite"
 }
 
-λrunCommands(commands:[§process.Command])=>!CliIo Result[
+λrunCommands(commands:[§process.Command])=>!Log!Process Result[
   Unit,
   String
 ]
@@ -396,7 +396,7 @@ match commands{
   result
 }
 
-λrunStartedSuites(remaining:[µParallelSuite],started:[µStartedSuite])=>!CliIo Result[
+λrunStartedSuites(remaining:[µParallelSuite],started:[µStartedSuite])=>!Log!Process Result[
   Unit,
   String
 ]

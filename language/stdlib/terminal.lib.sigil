@@ -2,16 +2,18 @@ mode total
 
 t Key=Escape()|Text(String)
 
-λclearScreen()=>!Terminal Unit=()
+e stdlibTerminal:{clearScreen:λ()=>!Terminal Unit,disableRawMode:λ()=>!Terminal Unit,enableRawMode:λ()=>!Terminal Unit,hideCursor:λ()=>!Terminal Unit,readKey:λ()=>!Terminal Key,showCursor:λ()=>!Terminal Unit,write:λ(String)=>!Terminal Unit}
 
-λdisableRawMode()=>!Terminal Unit=()
+λclearScreen()=>!Terminal Unit=stdlibTerminal.clearScreen()
 
-λenableRawMode()=>!Terminal Unit=()
+λdisableRawMode()=>!Terminal Unit=stdlibTerminal.disableRawMode()
 
-λhideCursor()=>!Terminal Unit=()
+λenableRawMode()=>!Terminal Unit=stdlibTerminal.enableRawMode()
 
-λreadKey()=>!Terminal Key=Escape()
+λhideCursor()=>!Terminal Unit=stdlibTerminal.hideCursor()
 
-λshowCursor()=>!Terminal Unit=()
+λreadKey()=>!Terminal Key=stdlibTerminal.readKey()
 
-λwrite(text:String)=>!Terminal Unit=()
+λshowCursor()=>!Terminal Unit=stdlibTerminal.showCursor()
+
+λwrite(text:String)=>!Terminal Unit=stdlibTerminal.write(text)

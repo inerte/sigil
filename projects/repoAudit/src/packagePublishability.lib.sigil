@@ -143,7 +143,7 @@ match paths{
   }
 }
 
-λrunCheck()=>!AuditIo Result[
+λrunCheck()=>!Fs!Process Result[
   [µPackagePublishabilityIssue],
   String
 ] match gitTopLevel(){

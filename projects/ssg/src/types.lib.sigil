@@ -3,6 +3,11 @@ t AliasRoute={
   route:String
 }
 
+t CopyTreeOptions={
+  force:Bool,
+  recursive:Bool
+}
+
 t CuratedProject={
   demoSourceDir:String,
   localRun:String,

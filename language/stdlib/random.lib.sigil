@@ -1,7 +1,12 @@
 mode total
 
-λintBetween(max:Int,min:Int)=>!Random Int=0
+e stdlibRandom
 
-λpick[T](items:[T])=>!Random Option[T]=None()
+λintBetween(max:Int,min:Int)=>!Random Int=stdlibRandom.intBetween(
+  max,
+  min
+)
 
-λshuffle[T](items:[T])=>!Random [T]=[]
+λpick[T](items:[T])=>!Random Option[T]=stdlibRandom.pick(items)
+
+λshuffle[T](items:[T])=>!Random [T]=stdlibRandom.shuffle(items)

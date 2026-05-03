@@ -24,6 +24,11 @@ t HttpResponse={
   url:String
 }
 
+e stdlibHttpClient:{request:λ(HttpRequest)=>!Http Result[
+  HttpResponse,
+  HttpError
+]}
+
 λdelete(dependency:§topology.HttpServiceDependency,headers:Headers,path:String)=>!Http Result[
   HttpResponse,
   HttpError
@@ -168,10 +173,7 @@ t HttpResponse={
 λrequest(request:HttpRequest)=>!Http Result[
   HttpResponse,
   HttpError
-]=Err({
-  kind:Network(),
-  message:"http client runtime unavailable"
-})
+]=stdlibHttpClient.request(request)
 
 λresponseJson(response:HttpResponse)=>Result[
   §json.JsonValue,

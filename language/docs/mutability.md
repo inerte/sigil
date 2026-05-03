@@ -283,10 +283,10 @@ Sigil enforces **ONE way** to write each algorithm. All list operations are immu
 
 ```text
 e Array
-e console
+e console:{log:λ([Int])=>!Log Unit}
 
 ⟦ JavaScript's Array.sort mutates in place ⟧
-λsortAndLog(arr:mut [Int])=>Unit match {
+λsortAndLog(arr:mut [Int])=>!Log Unit match {
   Array.sort(arr);
   console.log(arr)
 }

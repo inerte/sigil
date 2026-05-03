@@ -8,6 +8,8 @@ t Program[T]=CliProgram(Int)
 
 t RootCommand[T]=CliRootCommand(Int)
 
+e stdlibCli
+
 λcommand0[T](description:String,name:String,result:T)=>Command[T]=CliCommand(0)
 
 λcommand1[A,T](arg1:Arg[A],build:λ(A)=>T,description:String,name:String)=>Command[T]=CliCommand(0)
@@ -52,4 +54,7 @@ t RootCommand[T]=CliRootCommand(Int)
 
 λroot6[A,B,C,D,E,F,T](arg1:Arg[A],arg2:Arg[B],arg3:Arg[C],arg4:Arg[D],arg5:Arg[E],arg6:Arg[F],build:λ(A,B,C,D,E,F)=>T,description:String)=>RootCommand[T]=CliRootCommand(0)
 
-λrun[T](argv:[String],program:Program[T])=>!Log!Process T=§process.exit(2)
+λrun[T](argv:[String],program:Program[T])=>!Log!Process T=stdlibCli.run(
+  argv,
+  program
+)

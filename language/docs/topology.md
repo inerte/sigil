@@ -211,7 +211,7 @@ c assistantShell=(§topology.ptyHandle("assistantShell"):§topology.PtyHandle)
 Canonical SQL usage:
 
 ```sigil program projects/topology-sql/src/main.sigil
-λmain()=>!Process!Sql String match •sqlRoundtripApp.run(){
+λmain()=>!Sql String match •sqlRoundtripApp.run(){
   Ok(text)=>text|
   Err(failure)=>failure.message
 }

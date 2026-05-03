@@ -19,6 +19,11 @@ way callers need to adapt to?
 Before:
 
 ```sigil module
+e api:{fetchUser:λ(String)=>!Http Result[
+  String,
+  String
+]}
+
 λfetchUser(id:String)=>Result[
   String,
   String
@@ -28,12 +33,17 @@ Before:
 After:
 
 ```sigil module
+e api:{fetchUser:λ(String)=>!Http Result[
+  String,
+  String
+]}
+
 λfetchUser(id:String)=>!Http Result[
   String,
   String
 ]
 requires #id>0
-=Ok("user:"++id)
+=api.fetchUser(id)
 ```
 
 `git diff` reports:
@@ -46,7 +56,7 @@ requires #id>0
 -]=Ok("user:"++id)
 +]
 +requires #id>0
-+=Ok("user:"++id)
++=api.fetchUser(id)
 ```
 
 `sigil review` reports:
@@ -78,9 +88,10 @@ Test Evidence
 - changed coverage targets: none
 ```
 
-The semantic reading is immediate: `fetchUser` crossed a trust boundary, gained
-the `Http` effect, and now imposes a precondition on callers. No test files
-changed despite a coverage target being modified — a warning worth acting on.
+The semantic reading is immediate: `fetchUser` widened its public effect
+contract to `!Http`, now calls an `!Http` callee, and now imposes a
+precondition on callers. No test files changed despite a coverage target being
+modified — a warning worth acting on.
 
 ## What It Does
 
@@ -167,8 +178,10 @@ implementation change because it has run the typechecker on both sides.
 
 When a function's body changes but its signature, effects, and contracts stay
 the same, the review reports an implementation change — internal, lower risk.
-When a function gains `!Http`, the review reports an effect change — external
-trust boundary crossed, higher risk, callers need to propagate the annotation.
+When a function gains `!Http`, the review reports an effect change — higher
+risk, callers need to propagate the annotation, and under current Sigil rules
+the body must justify that effect by performing it or calling a callee that
+does.
 These are different categories of change that line diffs treat identically.
 
 For a human reviewer, this is the difference between scanning a wall of line

@@ -1,5 +1,7 @@
 t Tick=Tick()
 
-λafterMs(ms:Int)=>!Timer Owned[§stream.Source[Unit]]=((§stream.StreamSource(0):§stream.Source[Unit]):Owned[§stream.Source[Unit]])
+e stdlibTimer:{afterMs:λ(Int)=>!Timer Owned[§stream.Source[Unit]],everyMs:λ(Int)=>!Timer Owned[§stream.Source[Unit]]}
 
-λeveryMs(ms:Int)=>!Timer Owned[§stream.Source[Unit]]=((§stream.StreamSource(0):§stream.Source[Unit]):Owned[§stream.Source[Unit]])
+λafterMs(ms:Int)=>!Timer Owned[§stream.Source[Unit]]=stdlibTimer.afterMs(ms)
+
+λeveryMs(ms:Int)=>!Timer Owned[§stream.Source[Unit]]=stdlibTimer.everyMs(ms)

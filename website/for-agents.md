@@ -226,8 +226,8 @@ enforced with a distinct error code: `SIGIL-CANON-PARAM-ORDER`,
 `SIGIL-CANON-RECORD-TYPE-FIELD-ORDER`, `SIGIL-CANON-RECORD-LITERAL-FIELD-ORDER`,
 `SIGIL-CANON-RECORD-PATTERN-FIELD-ORDER`, and `SIGIL-CANON-EFFECT-ORDER`.
 
-With alphabetical ordering, a model generating a call site does not need to
-read the function definition. Given `λsend(body:String,headers:{String↦String},to:Email)`,
+With alphabetical ordering, a model generating a function has fewer options.
+Given `λsend(body:String,headers:{String↦String},to:Email)`,
 the argument order is derivable from the names: `b` before `h` before `t`.
 The same holds for record literals — alphabetical, always.
 
@@ -262,13 +262,19 @@ A function that does not declare an effect cannot call a function that requires
 one. The propagation is transitive: if `fetchProfile` calls `httpClient.get`,
 then `fetchProfile` must declare `!Http`. Any caller that calls `fetchProfile`
 must also declare `!Http`. This continues up the call graph. The compiler
-enforces the entire chain.
+enforces the entire chain. Effect annotations are exact after named-effect
+expansion, so declaring an unused effect is rejected too.
 
 ```sigil module
+e api:{fetchUser:λ(String)=>!Http Result[
+  String,
+  String
+]}
+
 λfetchUser(id:String)=>!Http Result[
   String,
   String
-]=Ok("user:"++id)
+]=api.fetchUser(id)
 
 λpure(x:Int)=>Int=x*2
 ```
@@ -278,7 +284,8 @@ side-effect profile is visible in its signature without reading the body.
 
 Projects may also declare named effects in `src/effects.lib.sigil`. A named
 effect must expand to at least two primitives — it cannot alias a single one.
-Example: `DatabaseAccess` expanding to `Log` + `Tcp`.
+Example: `DatabaseAccess` expanding to `Log` + `Tcp`. Those aliases are also
+exact after expansion; `!DatabaseAccess` is invalid on a body that only logs.
 
 ---
 
@@ -465,22 +472,20 @@ t ApiKey=String label ApiKey
 t Ssn=String label Pii
 ```
 
-```sigil module
+```sigil module projects/labelled-boundaries/src/policies.lib.sigil
 transform λredactSsn(ssn:µSsn)=>String="***-**-"++(§string.substring(
   #ssn,
   ssn,
   5
 ):String)
 
-rule [µ.Pii] for •topology.auditLog=Through(•policies.redactSsn)
-
-rule [µ.ApiKey] for •topology.auditLog=Block()
+rule µ.Pii for •topology.auditLog=Through(redactSsn)
 ```
 
-SSNs reaching the audit log are automatically redacted. API keys are blocked
-entirely. Both are compile-time enforcement — not conventions, not review
-comments, not runtime checks. The type carries the classification, the policy
-file carries the rules, and the compiler checks both.
+SSNs reaching the audit log are automatically redacted. That enforcement is
+compile-time — not a convention, not a review comment, not a runtime check.
+The type carries the classification, the policy file carries the rule, and the
+compiler checks both.
 
 ---
 
@@ -569,6 +574,11 @@ Double-close, use-after-close, and wrong-order operations never reach runtime.
 Sigil has one canonical concurrency surface: the named concurrent region.
 
 ```sigil module
+e api:{fetchItem:λ(String)=>!Http Result[
+  String,
+  String
+]}
+
 λfetchAll(urls:[String])=>!Http [ConcurrentOutcome[
   String,
   String
@@ -586,7 +596,7 @@ Sigil has one canonical concurrency surface: the named concurrent region.
 λfetchItem(url:String)=>!Http Result[
   String,
   String
-]=Ok(url)
+]=api.fetchItem(url)
 
 λisSystemic(err:String)=>Bool=err="TIMEOUT"
 ```
@@ -630,6 +640,11 @@ Take this change to a single function — adding the `!Http` effect and a
 **Before:**
 
 ```sigil module
+e api:{fetchUser:λ(String)=>!Http Result[
+  String,
+  String
+]}
+
 λfetchUser(id:String)=>Result[
   String,
   String
@@ -641,12 +656,17 @@ Take this change to a single function — adding the `!Http` effect and a
 **After:**
 
 ```sigil module
+e api:{fetchUser:λ(String)=>!Http Result[
+  String,
+  String
+]}
+
 λfetchUser(id:String)=>!Http Result[
   String,
   String
 ]
 requires #id>0
-=Ok("user:"++id)
+=api.fetchUser(id)
 
 λvalidateId(id:String)=>Bool=#id>0
 ```
@@ -661,7 +681,7 @@ requires #id>0
 -]=Ok("user:"++id)
 +]
 +requires #id>0
-+=Ok("user:"++id)
++=api.fetchUser(id)
 ```
 
 `sigil review` reports:
@@ -693,11 +713,11 @@ Test Evidence
 - changed coverage targets: none
 ```
 
-The diff shows added lines. The review shows that `fetchUser` crossed a
-trust boundary: it went from pure to `!Http`, and it now imposes a precondition
-that all callers must satisfy. An agent reviewing this change knows immediately
-that it needs to check every call site for `!Http` propagation, and that there
-is no test evidence for the changed function.
+The diff shows added lines. The review shows that `fetchUser` widened its
+public effect contract to `!Http`, now calls an `!Http` callee, and now imposes
+a precondition that all callers must satisfy. An agent reviewing this change
+knows immediately that it needs to check every call site for `!Http`
+propagation, and that there is no test evidence for the changed function.
 
 ### Usage
 

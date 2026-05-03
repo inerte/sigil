@@ -413,7 +413,7 @@ fn test_error_result_includes_exact_exception_details() {
     assert_eq!(result["exception"]["sigilFrame"]["label"], "boom");
     assert_eq!(
         result["exception"]["sigilExpression"]["kind"],
-        "expr_method_call"
+        "expr_extern_call"
     );
 }
 

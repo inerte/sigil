@@ -120,14 +120,20 @@ total λextractFunctionName(line:String)=>Option[String] match §string.startsWi
   "λ",
   line
 ){
-  true=>Some(extractFunctionNameInner(
-    "",
-    #line,
-    §string.drop(
-      1,
-      line
-    )
-  ))|
+  true=>{
+    l name=(extractFunctionNameInner(
+      "",
+      #line,
+      §string.drop(
+        1,
+        line
+      )
+    ):String);
+    match #name=0{
+      true=>None()|
+      false=>Some(name)
+    }
+  }|
   false=>None()
 }
 

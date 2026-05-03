@@ -47,6 +47,7 @@ test "coverage helpers parse refs exports and identifiers" {
         •coverage.documentedRefsForSnippetLines(
           [
             "λtrim(s:String)=>String",
+            "λ(Request)=>Response",
             "c ignored=1"
           ],
           "§string",
@@ -95,6 +96,10 @@ test "coverage helpers parse refs exports and identifiers" {
           None()=>false
         },
         match •coverage.extractFunctionName("c sample=1"){
+          Some(_)=>false|
+          None()=>true
+        },
+        match •coverage.extractFunctionName("λ(Request)=>Response"){
           Some(_)=>false|
           None()=>true
         },
@@ -542,7 +547,7 @@ test "markdown task helpers keep deterministic concurrent merge order" {
   ])
 }
 
-test "process markdown task reports missing files as failures" =>!AuditIo {
+test "process markdown task reports missing files as failures" =>!Fs!Process {
   l _=(§file.removeTree(".local/repoAuditCoverage/missing-task"):Unit);
   match •docsDrift.processMarkdownTask(•docsDrift.markdownTask(
     "docs/missing.md",
@@ -554,7 +559,7 @@ test "process markdown task reports missing files as failures" =>!AuditIo {
   }
 }
 
-test "bare project virtual paths resolve from markdown project roots" =>!AuditIo {
+test "bare project virtual paths resolve from markdown project roots" =>!Fs!Process {
   l root=(repoRoot():String);
   allOk([
     match •docsDrift.projectRootFromDocPath(
@@ -776,7 +781,7 @@ test "markdown coverage helpers read sandbox files" =>!Fs world {
   ])
 }
 
-test "path based helpers succeed on decl only markdown" =>!AuditIo {
+test "path based helpers succeed on decl only markdown" =>!Fs!Process {
   l root=(repoRoot():String);
   l path=("projects/repoAudit/.local/repoAuditCoverage/declOnly.md":String);
   l absolutePath=(§path.join(
@@ -839,7 +844,7 @@ test "path based helpers succeed on decl only markdown" =>!AuditIo {
   ])
 }
 
-test "validate snippet compiles a module workspace" =>!AuditIo {
+test "validate snippet compiles a module workspace" =>!Fs!Process {
   l root=(repoRoot():String);
   l tempDir=(§path.join(
     root,
@@ -864,7 +869,7 @@ test "validate snippet compiles a module workspace" =>!AuditIo {
   ).issues=[]
 }
 
-test "stdlib export helpers parse repo stdlib files" =>!AuditIo {
+test "stdlib export helpers parse repo stdlib files" =>!Fs!Process {
   l root=(repoRoot():String);
   l readExports=(•docsDrift.readStdlibExports(
     ["language/stdlib/string.lib.sigil"],
@@ -941,7 +946,7 @@ test "stdlib export helpers parse repo stdlib files" =>!AuditIo {
   ])
 }
 
-test "stdlib export helpers surface parse failures for existing files" =>!AuditIo world {
+test "stdlib export helpers surface parse failures for existing files" =>!Fs!Process world {
   c fs=(†fs.sandbox(".local/repoAuditCoverage/stdlibParseFailure"):†fs.FsEntry)
   c process=(†process.fixture([†process.rule(
   (•docsDrift.compilerCommand(
@@ -1023,7 +1028,7 @@ test "git discovery helpers return repo paths" =>!Process {
   ])
 }
 
-test "git rev parse failure propagates through wrappers" =>!AuditIo world {
+test "git rev parse failure propagates through wrappers" =>!Fs!Process world {
   c process=(†process.fixture([†process.rule(
   [
     "git",
@@ -1175,7 +1180,7 @@ test "print issues writes formatted lines to captured log" =>!Log world {
   ※check::log.contains("docs/test.md:5: bad snippet")
 }
 
-test "repo style checks succeed under a controlled world" =>!AuditIo world {
+test "repo style checks succeed under a controlled world" =>!Fs!Process world {
   c process=(†process.fixture([
   †process.rule(
     [

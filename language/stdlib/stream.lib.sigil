@@ -4,12 +4,17 @@ t Next[T]=Done()|Item(T)
 
 t Source[T]=StreamSource(Int)
 
-λclose[T](source:Source[T])=>!Stream Unit=()
+e stdlibStream
 
-λhub[T]()=>!Stream Owned[Hub[T]]=(StreamHub(0):Owned[Hub[T]])
+λclose[T](source:Source[T])=>!Stream Unit=stdlibStream.close(source)
 
-λnext[T](source:Source[T])=>!Stream Next[T]=Done()
+λhub[T]()=>!Stream Owned[Hub[T]]=stdlibStream.hub()
 
-λpublish[T](hub:Hub[T],value:T)=>!Stream Unit=()
+λnext[T](source:Source[T])=>!Stream Next[T]=stdlibStream.next(source)
 
-λsubscribe[T](hub:Hub[T])=>!Stream Owned[Source[T]]=(StreamSource(0):Owned[Source[T]])
+λpublish[T](hub:Hub[T],value:T)=>!Stream Unit=stdlibStream.publish(
+  hub,
+  value
+)
+
+λsubscribe[T](hub:Hub[T])=>!Stream Owned[Source[T]]=stdlibStream.subscribe(hub)

@@ -20,7 +20,15 @@ t ProcessFailure={
   stdout:String
 }
 
-λargv()=>!Process [String]=[]
+e stdlibProcess:{argv:λ()=>!Process [String],exit:λ(Int)=>!Process Never,kill:λ(RunningProcess)=>!Process Unit,run:λ(Command)=>!Process ProcessResult,runAt:λ(Command,§topology.ProcessHandle)=>!Process ProcessResult,runChecked:λ(Command)=>!Process Result[
+  ProcessResult,
+  ProcessFailure
+],runJson:λ(Command)=>!Process Result[
+  §json.JsonValue,
+  ProcessFailure
+],start:λ(Command)=>!Process Owned[RunningProcess],startAt:λ(Command,§topology.ProcessHandle)=>!Process Owned[RunningProcess],wait:λ(RunningProcess)=>!Process ProcessResult}
+
+λargv()=>!Process [String]=stdlibProcess.argv()
 
 λcommand(argv:[String])=>Command={
   argv:argv,
@@ -28,49 +36,35 @@ t ProcessFailure={
   env:({↦}:{String↦String})
 }
 
-λexit(code:Int)=>!Process Never=exit(code)
+λexit(code:Int)=>!Process Never=stdlibProcess.exit(code)
 
-λkill(process:RunningProcess)=>!Process Unit=()
+λkill(process:RunningProcess)=>!Process Unit=stdlibProcess.kill(process)
 
-λrun(command:Command)=>!Process ProcessResult={
-  code:-1,
-  stderr:"process intrinsic unavailable",
-  stdout:""
-}
+λrun(command:Command)=>!Process ProcessResult=stdlibProcess.run(command)
 
-λrunAt(command:Command,handle:§topology.ProcessHandle)=>!Process ProcessResult={
-  code:-1,
-  stderr:"process intrinsic unavailable",
-  stdout:""
-}
+λrunAt(command:Command,handle:§topology.ProcessHandle)=>!Process ProcessResult=stdlibProcess.runAt(
+  command,
+  handle
+)
 
 λrunChecked(command:Command)=>!Process Result[
   ProcessResult,
   ProcessFailure
-]=Err({
-  code:-1,
-  stderr:"process intrinsic unavailable",
-  stdout:""
-})
+]=stdlibProcess.runChecked(command)
 
 λrunJson(command:Command)=>!Process Result[
   §json.JsonValue,
   ProcessFailure
-]=Err({
-  code:-1,
-  stderr:"process intrinsic unavailable",
-  stdout:""
-})
+]=stdlibProcess.runJson(command)
 
-λstart(command:Command)=>!Process Owned[RunningProcess]=({pid:-1}:Owned[RunningProcess])
+λstart(command:Command)=>!Process Owned[RunningProcess]=stdlibProcess.start(command)
 
-λstartAt(command:Command,handle:§topology.ProcessHandle)=>!Process Owned[RunningProcess]=({pid:-1}:Owned[RunningProcess])
+λstartAt(command:Command,handle:§topology.ProcessHandle)=>!Process Owned[RunningProcess]=stdlibProcess.startAt(
+  command,
+  handle
+)
 
-λwait(process:RunningProcess)=>!Process ProcessResult={
-  code:-1,
-  stderr:"process intrinsic unavailable",
-  stdout:""
-}
+λwait(process:RunningProcess)=>!Process ProcessResult=stdlibProcess.wait(process)
 
 λwithCwd(command:Command,cwd:String)=>Command={
   argv:command.argv,

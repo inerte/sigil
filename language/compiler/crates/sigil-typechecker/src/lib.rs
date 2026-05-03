@@ -52,5 +52,17 @@ pub fn type_check(
     source_code: &str,
     options: Option<TypeCheckOptions>,
 ) -> Result<TypeCheckResult, TypeError> {
-    bidirectional::type_check(program, source_code, options.unwrap_or_default())
+    let mut options = options.unwrap_or_default();
+    let program_effect_catalog =
+        EffectCatalog::from_program(program).map_err(|message| TypeError::new(message, None))?;
+    options.effect_catalog = Some(
+        options
+            .effect_catalog
+            .as_ref()
+            .map(|effect_catalog| effect_catalog.merged_with(&program_effect_catalog))
+            .transpose()
+            .map_err(|message| TypeError::new(message, None))?
+            .unwrap_or(program_effect_catalog),
+    );
+    bidirectional::type_check(program, source_code, options)
 }

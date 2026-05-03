@@ -2,10 +2,15 @@ t Event=Changed(String)|Created(String)|Removed(String)
 
 t Watch={id:String}
 
-λclose(watch:Watch)=>!FsWatch Unit=()
+e stdlibFsWatch:{close:λ(Watch)=>!FsWatch Unit,events:λ(Watch)=>!FsWatch §stream.Source[Event],watch:λ(String)=>!FsWatch Owned[Watch],watchAt:λ(String,§topology.FsRoot)=>!FsWatch Owned[Watch]}
 
-λevents(watch:Watch)=>!FsWatch §stream.Source[Event]=(§stream.StreamSource(0):§stream.Source[Event])
+λclose(watch:Watch)=>!FsWatch Unit=stdlibFsWatch.close(watch)
 
-λwatch(path:String)=>!FsWatch Owned[Watch]=({id:path}:Owned[Watch])
+λevents(watch:Watch)=>!FsWatch §stream.Source[Event]=stdlibFsWatch.events(watch)
 
-λwatchAt(path:String,root:§topology.FsRoot)=>!FsWatch Owned[Watch]=({id:path}:Owned[Watch])
+λwatch(path:String)=>!FsWatch Owned[Watch]=stdlibFsWatch.watch(path)
+
+λwatchAt(path:String,root:§topology.FsRoot)=>!FsWatch Owned[Watch]=stdlibFsWatch.watchAt(
+  path,
+  root
+)

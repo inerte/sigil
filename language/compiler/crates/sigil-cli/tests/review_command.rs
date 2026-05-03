@@ -1,4 +1,4 @@
-use jsonschema::JSONSchema;
+use jsonschema::Validator;
 use serde_json::{json, Value};
 use std::env;
 use std::fs;
@@ -59,7 +59,7 @@ fn parse_json(text: &[u8]) -> Value {
     })
 }
 
-fn cli_schema() -> JSONSchema {
+fn cli_schema() -> Validator {
     let schema_path = repo_root().join("language/spec/cli-json.schema.json");
     let schema_text = fs::read_to_string(&schema_path).unwrap_or_else(|error| {
         panic!("failed to read schema `{}`: {error}", schema_path.display())
@@ -70,7 +70,7 @@ fn cli_schema() -> JSONSchema {
             schema_path.display()
         )
     });
-    JSONSchema::compile(&schema_json).unwrap_or_else(|error| {
+    jsonschema::validator_for(&schema_json).unwrap_or_else(|error| {
         panic!(
             "failed to compile schema `{}`: {error}",
             schema_path.display()
@@ -78,9 +78,13 @@ fn cli_schema() -> JSONSchema {
     })
 }
 
-fn assert_schema_valid(schema: &JSONSchema, instance: &Value) {
-    if let Err(errors) = schema.validate(instance) {
-        let rendered = errors.map(|error| error.to_string()).collect::<Vec<_>>();
+fn assert_schema_valid(schema: &Validator, instance: &Value) {
+    let rendered = schema
+        .iter_errors(instance)
+        .map(|error| error.to_string())
+        .collect::<Vec<_>>();
+
+    if !rendered.is_empty() {
         panic!("schema validation failed:\n{}", rendered.join("\n"));
     }
 }

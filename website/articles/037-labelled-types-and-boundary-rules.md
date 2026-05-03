@@ -24,7 +24,7 @@ t Ssn=String where #value=11 label Pii
 transform λredactSsn(ssn:µSsn)=>String="***"
 
 ⟦ When Pii goes through the audit log boundary, it will be redacted ⟧
-rule [µ.Pii] for •topology.auditLog=Through(•policies.redactSsn)
+rule µ.Pii for •topology.auditLog=Through(redactSsn)
 ```
 
 ## Combining Labels

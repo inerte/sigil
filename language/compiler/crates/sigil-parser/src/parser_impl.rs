@@ -1179,13 +1179,11 @@ impl Parser {
 
             while !self.check(TokenType::RBRACE) && !self.is_at_end() {
                 let member_start = self.peek();
-                let member_name = self
-                    .consume(
-                        TokenType::IDENTIFIER,
-                        "Expected member name in extern type declaration",
-                    )?
-                    .value
-                    .clone();
+                let member_name = if let Some(token) = self.match_member_name() {
+                    token.value
+                } else {
+                    return Err(self.error("Expected member name in extern type declaration"));
+                };
                 self.consume(TokenType::COLON, "Expected \":\" after member name")?;
                 let kind = if self.match_token(TokenType::Subscribes) {
                     ExternMemberKind::Subscription
@@ -1891,10 +1889,11 @@ impl Parser {
             }
             // Field access: record.field
             else if self.match_token(TokenType::DOT) {
-                let field = self
-                    .consume(TokenType::IDENTIFIER, "Expected field name")?
-                    .value
-                    .clone();
+                let field = if let Some(token) = self.match_member_name() {
+                    token.value
+                } else {
+                    return Err(self.error("Expected field name"));
+                };
                 let end = self.previous().location.end;
                 let start = expr.location().start;
                 expr = Expr::FieldAccess(Box::new(FieldAccessExpr {
@@ -3232,5 +3231,52 @@ mod tests {
         let tokens = tokenize(source).unwrap();
         let result = parse(tokens, "test.sigil");
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_field_access_allows_keyword_member_names() {
+        let source = "e stdlibPty\nλmain()=>Unit=stdlibPty.spawn(1)";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let function = program
+            .declarations
+            .iter()
+            .find_map(|decl| match decl {
+                Declaration::Function(function) if function.name == "main" => Some(function),
+                _ => None,
+            })
+            .expect("expected main function declaration");
+        let Expr::Application(app) = &function.body else {
+            panic!("expected application body");
+        };
+        let Expr::FieldAccess(field) = &app.func else {
+            panic!("expected dotted field access");
+        };
+        let Expr::Identifier(identifier) = &field.object else {
+            panic!("expected identifier receiver");
+        };
+        assert_eq!(identifier.name, "stdlibPty");
+        assert_eq!(field.field, "spawn");
+    }
+
+    #[test]
+    fn test_typed_extern_allows_keyword_member_names() {
+        let source = "e stdlibPty:{spawn:λ(Int)=>!Pty Int}";
+        let tokens = tokenize(source).unwrap();
+        let program = parse(tokens, "test.sigil").unwrap();
+        let extern_decl = program
+            .declarations
+            .iter()
+            .find_map(|decl| match decl {
+                Declaration::Extern(extern_decl) => Some(extern_decl),
+                _ => None,
+            })
+            .expect("expected extern declaration");
+        let members = extern_decl
+            .members
+            .as_ref()
+            .expect("expected typed extern members");
+        assert_eq!(members.len(), 1);
+        assert_eq!(members[0].name, "spawn");
     }
 }

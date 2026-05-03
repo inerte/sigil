@@ -1,4 +1,4 @@
-use jsonschema::JSONSchema;
+use jsonschema::Validator;
 use serde_json::Value;
 use std::fs;
 use std::path::PathBuf;
@@ -20,16 +20,20 @@ fn parse_json(text: &[u8]) -> Value {
     serde_json::from_slice(text).unwrap()
 }
 
-fn cli_schema() -> JSONSchema {
+fn cli_schema() -> Validator {
     let schema_path = repo_root().join("language/spec/cli-json.schema.json");
     let schema_text = fs::read_to_string(schema_path).unwrap();
     let schema_json: Value = serde_json::from_str(&schema_text).unwrap();
-    JSONSchema::compile(&schema_json).unwrap()
+    jsonschema::validator_for(&schema_json).unwrap()
 }
 
-fn assert_schema_valid(schema: &JSONSchema, instance: &Value) {
-    if let Err(errors) = schema.validate(instance) {
-        let rendered = errors.map(|error| error.to_string()).collect::<Vec<_>>();
+fn assert_schema_valid(schema: &Validator, instance: &Value) {
+    let rendered = schema
+        .iter_errors(instance)
+        .map(|error| error.to_string())
+        .collect::<Vec<_>>();
+
+    if !rendered.is_empty() {
         panic!("schema validation failed:\n{}", rendered.join("\n"));
     }
 }

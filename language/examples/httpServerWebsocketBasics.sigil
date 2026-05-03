@@ -22,7 +22,7 @@ c world=(†runtime.withWebSocketHandles(
 
 λmain()=>Unit=()
 
-test "http server websocket routes stream fixture clients on one server handle" =>!Http!Stream!WebSocket world {
+test "http server websocket routes stream fixture clients on one server handle" =>!Http!Stream world {
   c websocketHandle=(†websocket.fixtureHandle(
   liveUpdates,
   [†websocket.rule(["ping"])]

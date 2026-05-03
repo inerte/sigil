@@ -164,7 +164,7 @@ match paths{
   }
 }
 
-λcompileTaskState(compilerHash:String,paths:[String],task:µRepoCompileTask)=>!AuditIo Result[
+λcompileTaskState(compilerHash:String,paths:[String],task:µRepoCompileTask)=>!Fs!Process Result[
   µRepoCompileTaskState,
   String
 ] match targetFingerprint(
@@ -189,7 +189,7 @@ match paths{
   Err(message)=>Err(message)
 }
 
-λcompileTaskStates(compilerHash:String,paths:[String],tasks:[µRepoCompileTask])=>!AuditIo Result[
+λcompileTaskStates(compilerHash:String,paths:[String],tasks:[µRepoCompileTask])=>!Fs!Process Result[
   [µRepoCompileTaskState],
   String
 ]
@@ -578,7 +578,7 @@ match states{
   ".sigil/packages"
 )
 
-λpackageInputPaths(task:µRepoCompileTask)=>!AuditIo Result[
+λpackageInputPaths(task:µRepoCompileTask)=>!Fs!Process Result[
   [String],
   String
 ] match task.path="language"{
@@ -643,7 +643,7 @@ match states{
   false=>Err(prefix++processOutput(result))
 }
 
-λprocessCompileTaskState(state:µRepoCompileTaskState)=>!AuditIo Result[
+λprocessCompileTaskState(state:µRepoCompileTaskState)=>!Fs!Process Result[
   Unit,
   µRepoCompileIssue
 ]={
@@ -896,7 +896,7 @@ match paths{
   )
 }
 
-λtargetFingerprint(compilerHash:String,paths:[String],task:µRepoCompileTask)=>!AuditIo Result[
+λtargetFingerprint(compilerHash:String,paths:[String],task:µRepoCompileTask)=>!Fs!Process Result[
   String,
   String
 ] match packageInputPaths(task){

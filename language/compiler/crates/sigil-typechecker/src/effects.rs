@@ -97,41 +97,34 @@ impl EffectCatalog {
             }
         }
 
-        let mut aliases = BTreeMap::new();
-        let mut resolving = HashSet::new();
-        let mut resolved = HashMap::new();
+        build_effect_catalog(raw)
+    }
 
-        for name in raw.keys() {
-            let expanded = expand_alias(name, &raw, &mut resolving, &mut resolved)?;
-            aliases.insert(
-                name.clone(),
-                EffectAlias {
-                    expanded,
-                    members: raw.get(name).cloned().unwrap_or_default(),
-                },
-            );
+    pub fn merged_with(&self, other: &Self) -> Result<Self, String> {
+        if self.aliases.is_empty() {
+            return Ok(other.clone());
+        }
+        if other.aliases.is_empty() {
+            return Ok(self.clone());
         }
 
-        for (name, alias) in &aliases {
-            if alias.expanded.len() < 2 {
-                return Err(format!(
-                    "Effect '{}' must expand to at least two primitive effects",
-                    name
-                ));
+        let mut raw: BTreeMap<String, Vec<String>> = self
+            .aliases
+            .iter()
+            .map(|(name, alias)| (name.clone(), alias.members.clone()))
+            .collect();
+
+        for (name, alias) in &other.aliases {
+            match raw.get(name) {
+                Some(existing) if existing == &alias.members => {}
+                Some(_) => return Err(format!("Duplicate effect declaration '{}'", name)),
+                None => {
+                    raw.insert(name.clone(), alias.members.clone());
+                }
             }
         }
 
-        let mut seen_expansions: HashMap<BTreeSet<String>, String> = HashMap::new();
-        for (name, alias) in &aliases {
-            if let Some(existing) = seen_expansions.insert(alias.expanded.clone(), name.clone()) {
-                return Err(format!(
-                    "Effect '{}' duplicates the expanded primitive set of '{}'",
-                    name, existing
-                ));
-            }
-        }
-
-        Ok(Self { aliases })
+        build_effect_catalog(raw)
     }
 
     pub fn expand_effect_names(&self, names: &[String]) -> Result<BTreeSet<String>, String> {
@@ -215,6 +208,44 @@ impl EffectCatalog {
     }
 }
 
+fn build_effect_catalog(raw: BTreeMap<String, Vec<String>>) -> Result<EffectCatalog, String> {
+    let mut aliases = BTreeMap::new();
+    let mut resolving = HashSet::new();
+    let mut resolved = HashMap::new();
+
+    for name in raw.keys() {
+        let expanded = expand_alias(name, &raw, &mut resolving, &mut resolved)?;
+        aliases.insert(
+            name.clone(),
+            EffectAlias {
+                expanded,
+                members: raw.get(name).cloned().unwrap_or_default(),
+            },
+        );
+    }
+
+    for (name, alias) in &aliases {
+        if alias.expanded.len() < 2 {
+            return Err(format!(
+                "Effect '{}' must expand to at least two primitive effects",
+                name
+            ));
+        }
+    }
+
+    let mut seen_expansions: HashMap<BTreeSet<String>, String> = HashMap::new();
+    for (name, alias) in &aliases {
+        if let Some(existing) = seen_expansions.insert(alias.expanded.clone(), name.clone()) {
+            return Err(format!(
+                "Effect '{}' duplicates the expanded primitive set of '{}'",
+                name, existing
+            ));
+        }
+    }
+
+    Ok(EffectCatalog { aliases })
+}
+
 fn expand_alias(
     name: &str,
     raw: &BTreeMap<String, Vec<String>>,
@@ -272,7 +303,7 @@ pub(crate) fn resolve_effect_names(
         .map_err(|message| TypeError::new(format!("{}: {}", context, message), Some(location)))
 }
 
-pub(crate) fn declared_effects_cover_actual(
+pub(crate) fn declared_effects_match_actual(
     env: &TypeEnvironment,
     declared_surface_effects: &[String],
     actual_effects: &EffectSet,
@@ -280,21 +311,40 @@ pub(crate) fn declared_effects_cover_actual(
     context: &str,
 ) -> Result<(), TypeError> {
     let declared_effects = resolve_effect_names(env, declared_surface_effects, location, context)?;
-    if actual_effects.is_subset(&declared_effects) {
-        return Ok(());
-    }
-
     let mut missing: Vec<String> = actual_effects
         .difference(&declared_effects)
         .cloned()
         .collect();
     missing.sort();
+    if !missing.is_empty() {
+        return Err(TypeError::new(
+            format!(
+                "{} is missing declared effects: {}",
+                context,
+                missing
+                    .into_iter()
+                    .map(|effect| format!("!{}", effect))
+                    .collect::<Vec<_>>()
+                    .join(" ")
+            ),
+            Some(location),
+        ));
+    }
+
+    let mut unused: Vec<String> = declared_effects
+        .difference(actual_effects)
+        .cloned()
+        .collect();
+    unused.sort();
+    if unused.is_empty() {
+        return Ok(());
+    }
 
     Err(TypeError::new(
         format!(
-            "{} is missing declared effects: {}",
+            "{} has unused declared effects: {}",
             context,
-            missing
+            unused
                 .into_iter()
                 .map(|effect| format!("!{}", effect))
                 .collect::<Vec<_>>()

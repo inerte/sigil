@@ -124,7 +124,7 @@ test "print issues writes formatted log line" =>!Log world {
   ※check::log.contains("projects/demo.sigil:7: local 'sum' duplicates canonical helper '§list.sum'; use the qualified stdlib path instead.")
 }
 
-test "run check surfaces git top level failure" =>!AuditIo world {
+test "run check surfaces git top level failure" =>!Fs!Process world {
   c process=(†process.fixture([†process.rule(
   [
     "git",
@@ -145,7 +145,7 @@ test "run check surfaces git top level failure" =>!AuditIo world {
   }
 }
 
-test "run check finds no canonical stdlib duplicates in repo" =>!AuditIo {
+test "run check finds no canonical stdlib duplicates in repo" =>!Fs!Process {
   match •canonicalStdlibUsage.runCheck(){
     Ok(issues)=>issues=[]|
     Err(_)=>false

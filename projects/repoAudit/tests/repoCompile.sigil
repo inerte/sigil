@@ -867,7 +867,7 @@ test "run check surfaces package install failures before compile" =>!AuditIo wor
   }
 }
 
-test "helper coverage exercises repo compile cache error branches" =>!AuditIo world {
+test "helper coverage exercises repo compile cache error branches" =>!Fs!Process world {
   c fs=(†fs.sandbox(".local/repoCompile/helper-coverage"):†fs.FsEntry)
   c process=(†process.fixture([
   †process.rule(

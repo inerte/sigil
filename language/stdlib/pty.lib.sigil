@@ -18,45 +18,67 @@ protocol SessionRef
   initial = Open
   terminal = Closed
 
-λclose(session:Session)=>!Pty Unit=()
+e stdlibPty:{close:λ(Session)=>!Pty Unit,closeManaged:λ(SessionRef)=>!Pty Unit,events:λ(Session)=>!Pty §stream.Source[Event],eventsManaged:λ(SessionRef)=>!Pty Owned[§stream.Source[Event]],resize:λ(Int,Int,Session)=>!Pty Unit,resizeManaged:λ(Int,Int,SessionRef)=>!Pty Unit,spawn:λ(Spawn)=>!Pty Owned[Session],spawnAt:λ(§topology.PtyHandle,Spawn)=>!Pty Owned[Session],spawnManaged:λ(Spawn)=>!Pty SessionRef,spawnManagedAt:λ(§topology.PtyHandle,Spawn)=>!Pty SessionRef,wait:λ(Session)=>!Pty Int,waitManaged:λ(SessionRef)=>!Pty Int,write:λ(String,Session)=>!Pty Unit,writeManaged:λ(String,SessionRef)=>!Pty Unit}
+
+λclose(session:Session)=>!Pty Unit=stdlibPty.close(session)
 
 λcloseManaged(session:SessionRef)=>!Pty Unit
 requires session.state=Open
 ensures session.state=Closed
-=()
+=stdlibPty.closeManaged(session)
 
-λevents(session:Session)=>!Pty §stream.Source[Event]=(§stream.StreamSource(0):§stream.Source[Event])
+λevents(session:Session)=>!Pty §stream.Source[Event]=stdlibPty.events(session)
 
 λeventsManaged(session:SessionRef)=>!Pty Owned[§stream.Source[Event]]
 requires session.state=Open
 ensures session.state=Open
-=((§stream.StreamSource(0):§stream.Source[Event]):Owned[§stream.Source[Event]])
+=stdlibPty.eventsManaged(session)
 
-λresize(cols:Int,rows:Int,session:Session)=>!Pty Unit=()
+λresize(cols:Int,rows:Int,session:Session)=>!Pty Unit=stdlibPty.resize(
+  cols,
+  rows,
+  session
+)
 
 λresizeManaged(cols:Int,rows:Int,session:SessionRef)=>!Pty Unit
 requires session.state=Open
 ensures session.state=Open
-=()
+=stdlibPty.resizeManaged(
+  cols,
+  rows,
+  session
+)
 
-λspawn(request:Spawn)=>!Pty Owned[Session]=({pid:-1}:Owned[Session])
+λspawn(request:Spawn)=>!Pty Owned[Session]=stdlibPty.spawn(request)
 
-λspawnAt(handle:§topology.PtyHandle,request:Spawn)=>!Pty Owned[Session]=({pid:-1}:Owned[Session])
+λspawnAt(handle:§topology.PtyHandle,request:Spawn)=>!Pty Owned[Session]=stdlibPty.spawnAt(
+  handle,
+  request
+)
 
-λspawnManaged(request:Spawn)=>!Pty SessionRef={id:""}
+λspawnManaged(request:Spawn)=>!Pty SessionRef=stdlibPty.spawnManaged(request)
 
-λspawnManagedAt(handle:§topology.PtyHandle,request:Spawn)=>!Pty SessionRef={id:""}
+λspawnManagedAt(handle:§topology.PtyHandle,request:Spawn)=>!Pty SessionRef=stdlibPty.spawnManagedAt(
+  handle,
+  request
+)
 
-λwait(session:Session)=>!Pty Int=-1
+λwait(session:Session)=>!Pty Int=stdlibPty.wait(session)
 
 λwaitManaged(session:SessionRef)=>!Pty Int
 requires session.state=Open
 ensures session.state=Open
-=-1
+=stdlibPty.waitManaged(session)
 
-λwrite(input:String,session:Session)=>!Pty Unit=()
+λwrite(input:String,session:Session)=>!Pty Unit=stdlibPty.write(
+  input,
+  session
+)
 
 λwriteManaged(input:String,session:SessionRef)=>!Pty Unit
 requires session.state=Open
 ensures session.state=Open
-=()
+=stdlibPty.writeManaged(
+  input,
+  session
+)

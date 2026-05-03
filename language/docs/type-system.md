@@ -389,7 +389,9 @@ effects:
 - `Process`
 - `Pty`
 - `Random`
+- `Sql`
 - `Stream`
+- `Task`
 - `Tcp`
 - `Terminal`
 - `Timer`
@@ -432,9 +434,11 @@ test "captured log contains line" =>!Log world {
 }
 ```
 
-The checker enforces effect propagation. If a body or callee requires `!Fs`,
-`!Http`, or any other declared effect, the enclosing signature must declare a
-covering effect set or compilation fails.
+The checker enforces exact effect annotations. If a body or callee requires
+`!Fs`, `!Http`, or any other declared effect, the enclosing signature must
+declare that effect. Declaring extra unused effects is rejected too. Sigil
+checks the body's static may-effect set after named-effect expansion, not a
+loose upper bound.
 
 ## Canonical Typed Rules
 

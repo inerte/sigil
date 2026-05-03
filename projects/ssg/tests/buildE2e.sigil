@@ -269,7 +269,7 @@ test "build site writes search index with core page fields" =>!SiteBuild {
     )
 }
 
-test "build site copies demo trees when source exists" =>!SiteBuild {
+test "build site copies demo trees when source exists" =>!Fs {
   l root=("/tmp/sigil-ssg-e2e-demo-copy":String);
   l sourceDir=(§path.join(
     root,

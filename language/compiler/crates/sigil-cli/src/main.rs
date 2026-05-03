@@ -9,6 +9,7 @@ use std::process;
 
 mod commands;
 mod docs_support;
+mod hash;
 mod module_graph;
 mod package_manager;
 mod project;

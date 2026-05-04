@@ -686,14 +686,12 @@ fn run_real_fswatch_smoke_succeeds_when_recursive_watch_is_available() {
     let dir = temp_dir("fswatch-smoke");
     let watched_dir = dir.strip_prefix(&root).unwrap().join("watched");
     let watched_dir_text = watched_dir.to_string_lossy();
+    fs::create_dir_all(root.join(&watched_dir)).unwrap();
     let file = write_program(
         &dir,
         "main.sigil",
         &[
             "λmain()=>!Fs!FsWatch!Stream!Timer Bool={\n",
-            "  l _=(§file.makeDirs(\"",
-            watched_dir_text.as_ref(),
-            "\"):Unit);\n",
             "  l observed={\n",
             "    using watch=§fsWatch.watch(\"",
             watched_dir_text.as_ref(),

@@ -598,9 +598,8 @@ impl Parser {
             ));
         }
 
-        Err(self.error(
-            "Expected named type after derive json (canonical form: derive json TypeName)",
-        ))
+        Err(self
+            .error("Expected named type after derive json (canonical form: derive json TypeName)"))
     }
 
     fn optional_derive_target_type_args(&mut self) -> Result<Vec<Type>, ParseError> {
@@ -612,7 +611,10 @@ impl Parser {
                     break;
                 }
             }
-            self.consume(TokenType::RBRACKET, "Expected \"]\" after derive target type arguments")?;
+            self.consume(
+                TokenType::RBRACKET,
+                "Expected \"]\" after derive target type arguments",
+            )?;
         }
         Ok(type_args)
     }

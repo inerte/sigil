@@ -1122,7 +1122,12 @@ fn collect_direct_json_codec_surfaces(
                 let Some(param_types) = function
                     .params
                     .iter()
-                    .map(|param| param.type_annotation.as_ref().map(ast_type_to_inference_type))
+                    .map(|param| {
+                        param
+                            .type_annotation
+                            .as_ref()
+                            .map(ast_type_to_inference_type)
+                    })
                     .collect::<Option<Vec<_>>>()
                 else {
                     continue;
@@ -1150,9 +1155,11 @@ fn collect_direct_json_codec_surfaces(
                     continue;
                 };
                 let param_names = match &const_decl.value.kind {
-                    TypedExprKind::Lambda(lambda) => {
-                        lambda.params.iter().map(|param| param.name.clone()).collect()
-                    }
+                    TypedExprKind::Lambda(lambda) => lambda
+                        .params
+                        .iter()
+                        .map(|param| param.name.clone())
+                        .collect(),
                     _ => Vec::new(),
                 };
                 if let Some(error) = direct_json_codec_error_for_surface(
@@ -1346,12 +1353,15 @@ fn expr_is_direct_call_wrapper(
         TypedExprKind::Identifier(identifier) if identifier.name == helper_name => {}
         _ => return false,
     }
-    call.args.iter().zip(wrapper_param_names).all(|(arg, param_name)| {
-        matches!(
-            &arg.kind,
-            TypedExprKind::Identifier(identifier) if identifier.name == *param_name
-        )
-    })
+    call.args
+        .iter()
+        .zip(wrapper_param_names)
+        .all(|(arg, param_name)| {
+            matches!(
+                &arg.kind,
+                TypedExprKind::Identifier(identifier) if identifier.name == *param_name
+            )
+        })
 }
 
 fn expr_contains_named_call(expr: &TypedExpr, namespace: &[&str], member: &str) -> bool {
@@ -1404,10 +1414,9 @@ fn expr_contains_named_call(expr: &TypedExpr, namespace: &[&str], member: &str) 
         TypedExprKind::If(if_expr) => {
             expr_contains_named_call(&if_expr.condition, namespace, member)
                 || expr_contains_named_call(&if_expr.then_branch, namespace, member)
-                || if_expr
-                    .else_branch
-                    .as_ref()
-                    .is_some_and(|else_branch| expr_contains_named_call(else_branch, namespace, member))
+                || if_expr.else_branch.as_ref().is_some_and(|else_branch| {
+                    expr_contains_named_call(else_branch, namespace, member)
+                })
         }
         TypedExprKind::List(list) => list
             .elements
@@ -7444,7 +7453,10 @@ mod tests {
         let decode_program = parse(tokenize(decode_source).unwrap(), "decode.lib.sigil").unwrap();
         HashMap::from([
             ("stdlib::json".to_string(), type_registry_for(&json_program)),
-            ("stdlib::decode".to_string(), type_registry_for(&decode_program)),
+            (
+                "stdlib::decode".to_string(),
+                type_registry_for(&decode_program),
+            ),
         ])
     }
 
@@ -7457,7 +7469,10 @@ mod tests {
         };
         HashMap::from([
             ("stdlib::json".to_string(), empty_namespace("stdlib::json")),
-            ("stdlib::decode".to_string(), empty_namespace("stdlib::decode")),
+            (
+                "stdlib::decode".to_string(),
+                empty_namespace("stdlib::decode"),
+            ),
         ])
     }
 
@@ -7826,14 +7841,12 @@ c userToJson=(encodeUser:λ(User)=>§json.JsonValue)
         let program = parse(tokens, "test.lib.sigil").unwrap();
         let typed = type_check_for_typed_validation(&program, source);
 
-        assert!(
-            validate_typed_canonical_form_with_options(
-                &typed.typed_program,
-                Some("test.lib.sigil"),
-                typed_validation_options_for(&program, "test.lib.sigil"),
-            )
-            .is_ok()
-        );
+        assert!(validate_typed_canonical_form_with_options(
+            &typed.typed_program,
+            Some("test.lib.sigil"),
+            typed_validation_options_for(&program, "test.lib.sigil"),
+        )
+        .is_ok());
     }
 
     #[test]
@@ -7851,14 +7864,12 @@ t LegacyUserPayload=LegacyUserPayload(Char)
         let program = parse(tokens, "test.lib.sigil").unwrap();
         let typed = type_check_for_typed_validation(&program, source);
 
-        assert!(
-            validate_typed_canonical_form_with_options(
-                &typed.typed_program,
-                Some("test.lib.sigil"),
-                typed_validation_options_for(&program, "test.lib.sigil"),
-            )
-            .is_ok()
-        );
+        assert!(validate_typed_canonical_form_with_options(
+            &typed.typed_program,
+            Some("test.lib.sigil"),
+            typed_validation_options_for(&program, "test.lib.sigil"),
+        )
+        .is_ok());
     }
 
     #[test]

@@ -173,12 +173,15 @@ fn pipeline_derive_json_registers_helper_signatures() {
     ))
     .unwrap();
 
-    let encode_type = sigil_typechecker::format_type(result.declaration_types.get("encodeUser").unwrap())
-        .replace(' ', "");
-    let decode_type = sigil_typechecker::format_type(result.declaration_types.get("decodeUser").unwrap())
-        .replace(' ', "");
-    let parse_type = sigil_typechecker::format_type(result.declaration_types.get("parseUser").unwrap())
-        .replace(' ', "");
+    let encode_type =
+        sigil_typechecker::format_type(result.declaration_types.get("encodeUser").unwrap())
+            .replace(' ', "");
+    let decode_type =
+        sigil_typechecker::format_type(result.declaration_types.get("decodeUser").unwrap())
+            .replace(' ', "");
+    let parse_type =
+        sigil_typechecker::format_type(result.declaration_types.get("parseUser").unwrap())
+            .replace(' ', "");
     let stringify_type =
         sigil_typechecker::format_type(result.declaration_types.get("stringifyUser").unwrap())
             .replace(' ', "");

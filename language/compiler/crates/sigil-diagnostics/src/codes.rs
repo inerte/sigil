@@ -198,7 +198,7 @@ pub mod runtime {
 
 /// All error codes in one flat list (for documentation and testing)
 pub const ALL_ERROR_CODES: &[&str] = &[
-    // Lexer (9 codes)
+    // Lexer (10 codes)
     lexer::TAB,
     lexer::CRLF,
     lexer::UNTERMINATED_STRING,
@@ -292,7 +292,7 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     typecheck::UNREACHABLE_CODE,
     // Mutability (1 code)
     mutability::INVALID,
-    // CLI (10 codes)
+    // CLI (18 codes)
     cli::BREAKPOINT_NOT_FOUND,
     cli::BREAKPOINT_AMBIGUOUS,
     cli::USAGE,
@@ -311,7 +311,7 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     cli::DOC_INVALID_LINE_RANGE,
     cli::CONFIG_ENV_REQUIRED,
     cli::CONFIG_MODULE_NOT_FOUND,
-    // Topology (10 codes)
+    // Topology (15 codes)
     topology::BINDING_KIND_MISMATCH,
     topology::CONSTRUCTOR_LOCATION,
     topology::DEPENDENCY_KIND_MISMATCH,
@@ -327,7 +327,7 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     topology::MISSING_CONFIG_MODULE,
     topology::MISSING_MODULE,
     topology::RAW_ENDPOINT_FORBIDDEN,
-    // Runtime (3 codes)
+    // Runtime (6 codes)
     runtime::CHILD_EXIT,
     runtime::REPLAY_BINDING_MISMATCH,
     runtime::REPLAY_DIVERGED,
@@ -377,8 +377,8 @@ mod tests {
         // Keep this in sync when adding or removing diagnostic codes.
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            135,
-            "Expected 135 error codes, found {}",
+            136,
+            "Expected 136 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

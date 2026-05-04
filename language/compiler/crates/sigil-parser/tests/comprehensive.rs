@@ -250,7 +250,10 @@ fn test_derive_json_declaration_qualified_target() {
     match &program.declarations[0] {
         Declaration::Derive(derive_decl) => match &derive_decl.target {
             Type::Qualified(qualified) => {
-                assert_eq!(qualified.module_path, vec!["src".to_string(), "types".to_string()]);
+                assert_eq!(
+                    qualified.module_path,
+                    vec!["src".to_string(), "types".to_string()]
+                );
                 assert_eq!(qualified.type_name, "PersistedState");
                 assert!(qualified.type_args.is_empty());
             }

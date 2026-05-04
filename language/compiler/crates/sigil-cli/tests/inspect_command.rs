@@ -258,7 +258,10 @@ fn inspect_types_reports_derived_json_codec_metadata() {
     );
     assert_eq!(codec["wireFormat"]["fields"][1]["name"], "todos");
     assert_eq!(codec["wireFormat"]["fields"][1]["wire"]["kind"], "list");
-    assert_eq!(codec["wireFormat"]["fields"][1]["wire"]["item"]["kind"], "product");
+    assert_eq!(
+        codec["wireFormat"]["fields"][1]["wire"]["item"]["kind"],
+        "product"
+    );
 }
 
 #[test]

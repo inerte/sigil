@@ -1,6 +1,6 @@
 e axios:{get:λ(String)=>!Http String}
 
-e console
+e console:{log:λ(String)=>!Log Unit}
 
 λadd(a:Int,b:Int)=>Int=a+b
 
@@ -17,7 +17,7 @@ e console
 
 λlogDoubled(x:Int)=>!Log Unit=logValue(double(x))
 
-λlogValue(x:Int)=>!Log Unit=console.log(x)
+λlogValue(x:Int)=>!Log Unit=console.log(§string.intToString(x))
 
 λmain()=>!Http!Log Unit=processAndLog()
 

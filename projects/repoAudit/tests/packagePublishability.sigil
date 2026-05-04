@@ -66,7 +66,7 @@ test "git tracked files surfaces process failure" =>!Process world {
   }
 }
 
-test "run check surfaces git top level failure" =>!AuditIo world {
+test "run check surfaces git top level failure" =>!Fs!Process world {
   c process=(†process.fixture([†process.rule(
   [
     "git",
@@ -87,7 +87,7 @@ test "run check surfaces git top level failure" =>!AuditIo world {
   }
 }
 
-test "run check validates only publishable tracked projects" =>!AuditIo world {
+test "run check validates only publishable tracked projects" =>!Fs!Process world {
   c fs=(†fs.sandbox(".local/repoAuditPackage/success"):†fs.FsEntry)
   c process=(†process.fixture([
   †process.rule(
@@ -160,7 +160,7 @@ projects/demo/sigil.json
   }
 }
 
-test "run check reports package validate failures" =>!AuditIo world {
+test "run check reports package validate failures" =>!Fs!Process world {
   c fs=(†fs.sandbox(".local/repoAuditPackage/failure"):†fs.FsEntry)
   c process=(†process.fixture([
   †process.rule(

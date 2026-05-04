@@ -7,7 +7,7 @@ test "captured log contains line" =>!Log world {
   ※check::log.contains("captured")
 }
 
-test "test worlds start fresh" =>!Log world {
+test "test worlds start fresh" world {
   c log=(†log.capture():†log.LogEntry)
 } {
   ¬※check::log.contains("captured")

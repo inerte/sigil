@@ -35,13 +35,13 @@ e console:{log:λ(String)=>!Log Unit}
   }
 }
 
-λplayLoop(mode:µInputMode,state:µGameState)=>!Log!Random!Terminal µLoopResult=playLoopInner(
+λplayLoop(mode:µInputMode,state:µGameState)=>!Terminal µLoopResult=playLoopInner(
   100000,
   mode,
   state
 )
 
-λplayLoopInner(fuel:Int,mode:µInputMode,state:µGameState)=>!Log!Random!Terminal µLoopResult
+λplayLoopInner(fuel:Int,mode:µInputMode,state:µGameState)=>!Terminal µLoopResult
 requires fuel≥0
 decreases fuel
 match fuel=0{

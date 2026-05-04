@@ -9721,7 +9721,7 @@ impl TypeScriptGenerator {
                 )?
             ))),
             "spawn" if generated_args.len() == 1 => Ok(Some(format!(
-                "{}.then((__work) => {})",
+                "__sigil_ready({}).then((__work) => {})",
                 generated_args[0],
                 self.wrap_effect_trace(
                     span_id,

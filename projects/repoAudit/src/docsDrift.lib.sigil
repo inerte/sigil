@@ -833,13 +833,19 @@ match issues{
 λprocessSnippetTask(task:µSnippetTask)=>!Fs!Process Result[
   µMarkdownAudit,
   String
-]=Ok(validateSnippet(
-  task.filePath,
-  task.ordinal,
+] match §file.exists(§path.join(
   task.root,
-  task.snippet,
-  task.tempDir
-))
+  task.filePath
+)){
+  true=>Ok(validateSnippet(
+    task.filePath,
+    task.ordinal,
+    task.root,
+    task.snippet,
+    task.tempDir
+  ))|
+  false=>Err("markdown file disappeared before concurrent snippet audit: "++task.filePath)
+}
 
 λprocessSnippets(failFast:Bool,filePath:String,ordinal:Int,root:String,snippets:[µSnippet],state:µMarkdownAudit,tempDir:String)=>!Fs!Process µMarkdownAudit
 decreases #snippets

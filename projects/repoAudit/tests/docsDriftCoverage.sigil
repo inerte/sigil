@@ -559,6 +559,28 @@ test "process markdown task reports missing files as failures" =>!Fs!Process {
   }
 }
 
+test "process snippet task reports missing files as failures" =>!Fs!Process {
+  l _=(§file.removeTree(".local/repoAuditCoverage/missing-snippet-task"):Unit);
+  match •docsDrift.processSnippetTask({
+    filePath:"docs/missing.md",
+    ordinal:1,
+    root:".local/repoAuditCoverage/missing-snippet-task",
+    snippet:snippet(
+      "§string.trim(\" hi \")",
+      "docs/missing.md",
+      fenceInfo(
+        None(),
+        "expr"
+      ),
+      1
+    ),
+    tempDir:"tmp/file-1"
+  }){
+    Err(message)=>message="markdown file disappeared before concurrent snippet audit: docs/missing.md"|
+    Ok(_)=>false
+  }
+}
+
 test "bare project virtual paths resolve from markdown project roots" =>!Fs!Process {
   l root=(repoRoot():String);
   allOk([

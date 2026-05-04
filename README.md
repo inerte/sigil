@@ -70,17 +70,18 @@ For multiple worktrees, you can share build outputs with `CARGO_TARGET_DIR=/path
 
 ## Installation
 
-Sigil is distributed as a native CLI binary through GitHub Releases.
+Sigil is distributed as a native CLI bundle through GitHub Releases.
 
 - Download the archive for your platform from the latest release
-- Extract `sigil`
-- Put it on your `PATH`
+- Extract the archive contents
+- Keep `sigil`, `language/`, and `runtime/` together after extraction
+- Put `sigil` on your `PATH`
 - Run `sigil --version`
 - Install Node.js if you want to use runtime-backed commands such as `sigil run`, `sigil test`, `sigil validate`, `sigil inspect world`, or `sigil debug ...`
 
 Release versions use canonical UTC timestamps in the format `YYYY-MM-DDTHH-mm-ssZ`.
 
-Homebrew packaging is generated from those release artifacts in `projects/homebrewPackaging` and mirrored through a separate tap repo when configured. The generated formula declares `node` as a runtime dependency. The release tarballs remain the source of truth.
+Homebrew packaging is generated from those release artifacts in `projects/homebrewPackaging` and mirrored through a separate tap repo when configured. The generated formula installs the bundled `language/` and `runtime/` payloads under `share/sigil/` and declares `node` as a runtime dependency. The release tarballs remain the source of truth.
 
 Create a new standalone Sigil project with:
 

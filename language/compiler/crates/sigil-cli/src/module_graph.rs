@@ -984,6 +984,29 @@ fn resolve_sigil_import(
 }
 
 fn find_language_root(start_path: &Path) -> Result<PathBuf, ModuleGraphError> {
+    let executable = std::env::current_exe().ok();
+    find_language_root_with_executable(start_path, executable.as_deref())
+}
+
+fn find_language_root_with_executable(
+    start_path: &Path,
+    executable: Option<&Path>,
+) -> Result<PathBuf, ModuleGraphError> {
+    if let Some(language_root) = find_language_root_from_source_tree(start_path) {
+        return Ok(language_root);
+    }
+
+    if let Some(language_root) = executable.and_then(find_language_root_from_executable) {
+        return Ok(language_root);
+    }
+
+    Err(ModuleGraphError::ImportNotFound {
+        module_id: "stdlib".to_string(),
+        expected_path: "language root not found".to_string(),
+    })
+}
+
+fn find_language_root_from_source_tree(start_path: &Path) -> Option<PathBuf> {
     let mut current = start_path.to_path_buf();
 
     // Walk up until we find a directory containing stdlib/
@@ -1006,14 +1029,14 @@ fn find_language_root(start_path: &Path) -> Result<PathBuf, ModuleGraphError> {
 
         let stdlib_dir = current.join("stdlib");
         if stdlib_dir.exists() && stdlib_dir.is_dir() {
-            return Ok(current);
+            return Some(current);
         }
 
         let language_dir = current.join("language");
         if language_dir.exists() {
             let lang_stdlib = language_dir.join("stdlib");
             if lang_stdlib.exists() && lang_stdlib.is_dir() {
-                return Ok(language_dir);
+                return Some(language_dir);
             }
         }
 
@@ -1024,16 +1047,56 @@ fn find_language_root(start_path: &Path) -> Result<PathBuf, ModuleGraphError> {
         }
     }
 
-    Err(ModuleGraphError::ImportNotFound {
-        module_id: "stdlib".to_string(),
-        expected_path: "language root not found".to_string(),
+    None
+}
+
+fn find_language_root_from_executable(executable: &Path) -> Option<PathBuf> {
+    let executable_dir = executable.parent()?;
+    let mut candidates = vec![executable_dir.join("language")];
+
+    if let Some(root) = executable_dir.parent() {
+        candidates.push(root.join("share").join("sigil").join("language"));
+    }
+
+    for ancestor in executable_dir.ancestors() {
+        candidates.push(ancestor.join("language"));
+    }
+
+    candidates.into_iter().find(|candidate| {
+        let stdlib_dir = candidate.join("stdlib");
+        stdlib_dir.exists() && stdlib_dir.is_dir()
     })
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{entry_module_key, ModuleGraph};
-    use std::path::PathBuf;
+    use super::{entry_module_key, find_language_root_with_executable, ModuleGraph};
+    use std::fs;
+    use std::path::{Path, PathBuf};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    struct TestDir {
+        path: PathBuf,
+    }
+
+    impl TestDir {
+        fn new(path: PathBuf) -> Self {
+            fs::create_dir_all(&path).unwrap();
+            Self { path }
+        }
+    }
+
+    impl AsRef<Path> for TestDir {
+        fn as_ref(&self) -> &Path {
+            self.path.as_path()
+        }
+    }
+
+    impl Drop for TestDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.path);
+        }
+    }
 
     fn repo_root() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -1041,6 +1104,26 @@ mod tests {
             .nth(4)
             .unwrap()
             .to_path_buf()
+    }
+
+    fn external_temp_dir(label: &str) -> TestDir {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!(
+            "sigil-module-graph-{label}-{}-{unique}",
+            std::process::id()
+        ));
+        TestDir::new(dir)
+    }
+
+    fn write_file(root: &Path, relative: &str, contents: &str) {
+        let path = root.join(relative);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent).unwrap();
+        }
+        fs::write(path, contents).unwrap();
     }
 
     #[test]
@@ -1055,5 +1138,52 @@ mod tests {
         assert!(!module.source_imports.contains_key("src::policies"));
         assert!(module.source_imports.contains_key("src::topology"));
         assert!(module.source_imports.contains_key("src::types"));
+    }
+
+    #[test]
+    fn find_language_root_uses_executable_ancestor_language_dir_for_external_projects() {
+        let workspace = external_temp_dir("ancestor-language-root");
+        write_file(
+            workspace.as_ref(),
+            "project/src/main.sigil",
+            "λmain()=>Int=1\n",
+        );
+        write_file(
+            workspace.as_ref(),
+            "checkout/language/stdlib/path.lib.sigil",
+            "λjoin(left:String,right:String)=>String=left++right\n",
+        );
+
+        let project_file = workspace.as_ref().join("project/src/main.sigil");
+        let executable = workspace.as_ref().join("checkout/target/debug/sigil");
+        let language_root =
+            find_language_root_with_executable(&project_file, Some(&executable)).unwrap();
+
+        assert_eq!(language_root, workspace.as_ref().join("checkout/language"));
+    }
+
+    #[test]
+    fn find_language_root_uses_pkgshare_language_dir_for_external_projects() {
+        let workspace = external_temp_dir("pkgshare-language-root");
+        write_file(
+            workspace.as_ref(),
+            "project/src/main.sigil",
+            "λmain()=>Int=1\n",
+        );
+        write_file(
+            workspace.as_ref(),
+            "prefix/share/sigil/language/stdlib/path.lib.sigil",
+            "λjoin(left:String,right:String)=>String=left++right\n",
+        );
+
+        let project_file = workspace.as_ref().join("project/src/main.sigil");
+        let executable = workspace.as_ref().join("prefix/bin/sigil");
+        let language_root =
+            find_language_root_with_executable(&project_file, Some(&executable)).unwrap();
+
+        assert_eq!(
+            language_root,
+            workspace.as_ref().join("prefix/share/sigil/language")
+        );
     }
 }

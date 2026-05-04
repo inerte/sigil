@@ -28,10 +28,25 @@ class Sigil < Formula
   def install
     bin.install "sigil"
     pkgshare.install "README.txt"
+    pkgshare.install "language"
     pkgshare.install "runtime"
   end
 
   test do
     assert_match "sigil 2026-03-11T14-58-24Z", shell_output("#{bin}/sigil --version")
+    system bin/"sigil", "init"
+    (testpath/"src/main.sigil").write <<~SIGIL
+      λmain()=>Int=1+1
+    SIGIL
+    (testpath/"tests/basic.sigil").write <<~SIGIL
+      λmain()=>Unit=()
+
+      test "adds" {
+        1+1=2
+      }
+    SIGIL
+    system bin/"sigil", "inspect", "codegen", "src/main.sigil"
+    system bin/"sigil", "compile", "."
+    system bin/"sigil", "test"
   end
 end

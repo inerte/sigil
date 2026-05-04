@@ -70,11 +70,44 @@ test "formula renders release version and platform checksums" {
     )
     and §string.contains(
       text,
+      "pkgshare.install \"language\""
+    )
+    and §string.contains(
+      text,
       "sigil 2026-03-11T14-58-24Z"
     )
     and §string.contains(
       text,
       "https://github.com/inerte/sigil/releases/download/2026-03-11T14-58-24Z/sigil-2026-03-11T14-58-24Z-linux-x64.tar.gz"
+    )
+}
+
+test "formula smoke-tests installed compile and test flow" {
+  l text=•formula.formula({
+    checksums:{
+      darwinArm64:"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      darwinX64:"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      linuxArm64:"cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      linuxX64:"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    repo:"inerte/sigil",
+    version:"2026-03-11T14-58-24Z"
+  });
+  §string.contains(
+    text,
+    "system bin/\"sigil\", \"init\""
+  )
+    and §string.contains(
+      text,
+      "system bin/\"sigil\", \"inspect\", \"codegen\", \"src/main.sigil\""
+    )
+    and §string.contains(
+      text,
+      "system bin/\"sigil\", \"compile\", \".\""
+    )
+    and §string.contains(
+      text,
+      "system bin/\"sigil\", \"test\""
     )
 }
 

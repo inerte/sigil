@@ -19,7 +19,7 @@ way callers need to adapt to?
 Before:
 
 ```sigil module
-e api:{fetchUser:λ(String)=>!Http Result[
+e api:{fetchUser:λ(String)=>Result[
   String,
   String
 ]}
@@ -49,6 +49,12 @@ requires #id>0
 `git diff` reports:
 
 ```text
+-e api:{fetchUser:λ(String)=>Result[
++e api:{fetchUser:λ(String)=>!Http Result[
+   String,
+   String
+ ]}
+ 
 -λfetchUser(id:String)=>Result[
 +λfetchUser(id:String)=>!Http Result[
    String,
@@ -74,12 +80,12 @@ Summary
 - changed test files: 0
 
 Effect Changes
-- ~ function `fetchUser` in `src/api.lib.sigil:1`
+- ~ function `fetchUser` in `src/api.lib.sigil:6`
   - effects: `<none>` -> `!Http`
   - requires: `<none>` -> `#id>0`
 
 Contract Changes
-- ~ function `fetchUser` in `src/api.lib.sigil:1`
+- ~ function `fetchUser` in `src/api.lib.sigil:6`
   - effects: `<none>` -> `!Http`
   - requires: `<none>` -> `#id>0`
 
@@ -121,9 +127,11 @@ an effect change — not a wall of line noise around it.
 ## Test Evidence
 
 `sigil review` tracks which public functions changed and whether the test suite
-moved to match. If coverage targets changed but no test files did, it surfaces
-a warning. This is not a coverage percentage. It is a direct check: did the
-function that changed have corresponding test activity?
+moved to match. A coverage target is a public function in a project's `src/`
+directory that the test suite is expected to exercise. If coverage targets
+changed but no test files did, it surfaces a warning. This is not a coverage
+percentage. It is a direct check: did the function that changed have
+corresponding test activity?
 
 ## Usage
 
@@ -144,8 +152,8 @@ so it reflects what you are about to stage.
 
 **Default (human-readable markdown):**
 Summary counts, then per-declaration changes grouped by kind: Signature Changes,
-Effect Changes, Contract Changes, Termination Changes, Trust Surface Changes,
-Implementation Changes. Followed by Test Evidence.
+Type And Refinement Changes, Effect Changes, Contract Changes, Termination Changes,
+Trust Surface Changes, Implementation Changes. Followed by Test Evidence.
 
 **`--json`:**
 The same structured data as a JSON envelope, versioned with `"formatVersion": 1`.

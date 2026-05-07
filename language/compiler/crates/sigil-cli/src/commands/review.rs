@@ -1966,7 +1966,7 @@ fn render_llm_review(data: &ReviewData, ok: bool) -> Result<String, CliError> {
     }))
     .map_err(|error| CliError::Runtime(format!("failed to serialize review facts: {error}")))?;
     Ok(format!(
-        "You are reviewing a Sigil semantic diff.\n\nUse only the facts below.\nDo not infer behavior that is not explicitly listed.\nIf analysisMode is `parseOnly`, call out that limitation.\nIf any issue has severity `error`, list it first.\n\nFacts:\n{facts}"
+        "You are reviewing a Sigil semantic diff.\n\nThe facts below contain the complete semantic picture of what changed: effects, contracts, signatures, and test evidence. Use them as the foundation of your review.\nIf you need to inspect the implementation or surrounding context, run `git diff` or read the relevant source files directly.\nDo not assert facts about the broader codebase that you have not verified.\nIf analysisMode is `parseOnly`, call out that limitation.\nIf any issue has severity `error`, list it first.\n\nFacts:\n{facts}"
     ))
 }
 

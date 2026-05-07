@@ -165,8 +165,12 @@ The JSON facts wrapped in a prompt preamble:
 ```text
 You are reviewing a Sigil semantic diff.
 
-Use only the facts below.
-Do not infer behavior that is not explicitly listed.
+The facts below contain the complete semantic picture of what changed:
+effects, contracts, signatures, and test evidence. Use them as the
+foundation of your review.
+If you need to inspect the implementation or surrounding context, run
+`git diff` or read the relevant source files directly.
+Do not assert facts about the broader codebase that you have not verified.
 If analysisMode is `parseOnly`, call out that limitation.
 If any issue has severity `error`, list it first.
 

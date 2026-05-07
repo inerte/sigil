@@ -178,6 +178,16 @@ Facts:
 review task. The preamble instructs the model to stay grounded in the listed
 facts rather than inferring from the surrounding codebase.
 
+To pass the output to Claude:
+
+```bash
+claude -p "$(sigil review --llm)"
+```
+
+Command substitution is more reliable than piping here — `sigil review`
+compiles both snapshots before producing any output, which can exceed the
+stdin wait threshold of pipe-reading tools before the data arrives.
+
 ## Why This Is Different
 
 Most diff tools operate on text. `sigil review` operates on typed, compiled

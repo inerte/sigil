@@ -112,8 +112,32 @@ fn requires_violated_at_call_site() {
 }
 
 #[test]
+fn forward_public_requires_violation_is_rejected_at_call_site() {
+    expect_error(
+        "total λfib05SequenceBuilder(n:Int)=>Int\nrequires n≥0\n=fibSequence(n)\n\ntotal λfibSequence(n:Int)=>Int\nrequires n≥0\n=0\n\nλbad()=>Int=fib05SequenceBuilder(-1)",
+        "requires clause",
+    );
+}
+
+#[test]
+fn forward_public_fuel_requires_violation_is_rejected_at_call_site() {
+    expect_error(
+        "mode total\n\nλegR(fuel:Int)=>Int\nrequires 0≤fuel\n=egK(fuel)\n\nλegK(fuel:Int)=>Int\nrequires 0≤fuel\ndecreases fuel\nmatch fuel=0{\n  true=>0|\n  false=>egK(fuel+-1)\n}\n\nλbad()=>Int=egR(-1)",
+        "requires clause",
+    );
+}
+
+#[test]
 fn ensures_cannot_be_proven() {
     expect_error("λbad(n:Int)=>Int\nensures result>n\n=n", "ensures clause");
+}
+
+#[test]
+fn transform_ensures_do_not_justify_unjustified_requires() {
+    expect_error_code(
+        "transform total λuse(xs:[Int])=>Int\nrequires #xs>0\nensures result=0\n=0",
+        codes::canonical::UNJUSTIFIED_REQUIRES,
+    );
 }
 
 // ============================================================================

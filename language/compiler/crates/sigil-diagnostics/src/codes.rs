@@ -113,6 +113,7 @@ pub mod canonical {
     // Extern member ordering
     pub const EXTERN_MEMBER_ORDER: &str = "SIGIL-CANON-EXTERN-MEMBER-ORDER";
     pub const FEATURE_FLAG_DECLARATION: &str = "SIGIL-CANON-FEATURE-FLAG-DECL";
+    pub const UNJUSTIFIED_REQUIRES: &str = "SIGIL-CANON-UNJUSTIFIED-REQUIRES";
 }
 
 /// Type checker error codes (SIGIL-TYPE-*)

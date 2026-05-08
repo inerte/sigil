@@ -421,6 +421,19 @@ Current additional codes include:
 - `SIGIL-CANON-UNUSED-BINDING`
 - `SIGIL-CANON-UNUSED-DECLARATION`
 - `SIGIL-CANON-FEATURE-FLAG-DECL`
+- `SIGIL-CANON-UNJUSTIFIED-REQUIRES`
+
+### SIGIL-CANON-UNJUSTIFIED-REQUIRES
+**Description:** A `requires` clause on a `total` function or transform is not load-bearing. All proof obligations — body type-checking (including callee preconditions and constrained return types), `ensures` proofs, and `decreases` proofs — hold without it. The clause imposes a caller proof burden with no mechanical justification.
+**Message:** `requires clause on total function '<name>' is not load-bearing; all proof obligations hold without it`
+**How to fix:** Remove the `requires` clause, or encode the restriction as a constrained parameter type:
+```sigil module
+t NonNegInt = Int where value≥0
+
+λgcd(a:Int, b:NonNegInt) => Int = ...
+```
+**Exception:** Protocol-state assertions (`handle.state=StateName`) are always canonical in `requires` and are exempt from this check, including when mixed with value predicates.
+**Note:** The check currently applies only to total declarations without a `decreases` clause. Total self-recursive functions with `decreases` are conservatively skipped pending refinement of the bound-check replay.
 
 ## Type Checker Errors (SIGIL-TYPE-*)
 
@@ -547,7 +560,7 @@ Current additional codes include:
 **Description:** Two `protocol` declarations exist for the same type.
 **How to fix:** Keep only one `protocol` declaration per type.
 
-## Total Error Codes: 64
+## Total Error Codes: 65
 
 - Lexer: 9 codes
 - Parser: 5 codes

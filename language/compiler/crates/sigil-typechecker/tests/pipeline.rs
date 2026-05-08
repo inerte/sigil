@@ -83,6 +83,28 @@ fn pipeline_requires_ensures() {
 }
 
 #[test]
+fn pipeline_forward_public_requires_can_be_justified_by_later_callee_contract() {
+    let r = typecheck_only(
+        "total λfib05SequenceBuilder(n:Int)=>Int\nrequires n≥0\n=fibSequence(n)\n\ntotal λfibSequence(n:Int)=>Int\nrequires n≥0\n=0",
+    );
+    assert!(
+        r.is_ok(),
+        "Forward callee contracts should justify matching public requires clauses: {r:?}"
+    );
+}
+
+#[test]
+fn pipeline_forward_public_fuel_requires_can_be_justified_by_later_callee_contract() {
+    let r = typecheck_only(
+        "mode total\n\nλegR(fuel:Int)=>Int\nrequires 0≤fuel\n=egK(fuel)\n\nλegK(fuel:Int)=>Int\nrequires 0≤fuel\ndecreases fuel\nmatch fuel=0{\n  true=>0|\n  false=>egK(fuel+-1)\n}",
+    );
+    assert!(
+        r.is_ok(),
+        "Public helper fuel contracts should survive when a later callee still depends on them: {r:?}"
+    );
+}
+
+#[test]
 fn pipeline_total_function_cannot_call_ordinary_function() {
     let r = typecheck_only("mode total\n\nordinary λhelper()=>Int=1\n\nλmain()=>Int=helper()");
     let e = r.unwrap_err();
@@ -115,11 +137,22 @@ fn pipeline_total_function_allows_shadowed_local_function_value() {
 #[test]
 fn pipeline_transform_uses_requires_context_with_decreases() {
     let r = typecheck_only(
-        "total λhead(xs:[Int])=>Int\nrequires #xs>0\n=0\n\ntransform total λuse(xs:[Int])=>Int\nrequires #xs>0\ndecreases #xs\n=head(xs)",
+        "total λhead(xs:[Int])=>Int\n=0\n\ntransform total λuse(xs:[Int])=>Int\nrequires #xs>0\ndecreases #xs\n=head(xs)",
     );
     assert!(
         r.is_ok(),
         "Transforms should typecheck under their requires context even when they carry decreases: {r:?}"
+    );
+}
+
+#[test]
+fn pipeline_transform_requires_can_be_justified_by_callee_contract_without_decreases() {
+    let r = typecheck_only(
+        "t NonEmpty=[Int] where #value>0\n\ntotal λkeep(xs:[Int])=>NonEmpty\nrequires #xs>0\n=xs\n\ntransform total λuse(xs:[Int])=>NonEmpty\nrequires #xs>0\n=keep(xs)",
+    );
+    assert!(
+        r.is_ok(),
+        "Transform requires clauses should stay allowed when a callee contract still needs them: {r:?}"
     );
 }
 

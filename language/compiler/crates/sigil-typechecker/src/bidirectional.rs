@@ -1844,6 +1844,102 @@ fn ensures_is_state_assertion(expr: &Expr) -> bool {
     }
 }
 
+/// Returns true if the expression is a length-only predicate — comparisons where at least one
+/// side is a `#param` length expression, optionally combined with `and`/`or`/`not`.
+/// Used to scope SIGIL-CANON-UNJUSTIFIED-REQUIRES narrowly: value-domain restrictions like
+/// `requires n≥0` may have semantic meaning the proof system cannot mechanically verify, so
+/// only length-based requires (which are fully in the proof fragment) are checked.
+fn requires_is_length_predicate(expr: &Expr) -> bool {
+    match expr {
+        Expr::Binary(b) => {
+            let is_cmp = matches!(
+                b.operator,
+                BinaryOperator::Equal
+                    | BinaryOperator::NotEqual
+                    | BinaryOperator::Less
+                    | BinaryOperator::LessEq
+                    | BinaryOperator::Greater
+                    | BinaryOperator::GreaterEq
+            );
+            if is_cmp {
+                return expr_has_length_operator(&b.left)
+                    || expr_has_length_operator(&b.right);
+            }
+            let is_logical =
+                matches!(b.operator, BinaryOperator::And | BinaryOperator::Or);
+            if is_logical {
+                return requires_is_length_predicate(&b.left)
+                    && requires_is_length_predicate(&b.right);
+            }
+            false
+        }
+        Expr::Unary(u) if matches!(u.operator, UnaryOperator::Not) => {
+            requires_is_length_predicate(&u.operand)
+        }
+        _ => false,
+    }
+}
+
+fn expr_has_length_operator(expr: &Expr) -> bool {
+    matches!(expr, Expr::Unary(u) if matches!(u.operator, UnaryOperator::Length))
+}
+
+/// Returns true if the expression contains any protocol state assertion anywhere in its tree.
+/// Used to exempt requires clauses that carry state obligations from the unjustified-requires
+/// check — state assertions are axiomatic and cannot be encoded as constrained parameter types.
+fn requires_contains_state_assertion(expr: &Expr) -> bool {
+    match expr {
+        Expr::Binary(b) => {
+            if matches!(b.operator, BinaryOperator::Equal | BinaryOperator::NotEqual) {
+                if expr_has_state_access(&b.left) || expr_has_state_access(&b.right) {
+                    return true;
+                }
+            }
+            requires_contains_state_assertion(&b.left)
+                || requires_contains_state_assertion(&b.right)
+        }
+        Expr::Unary(u) => requires_contains_state_assertion(&u.operand),
+        _ => false,
+    }
+}
+
+/// Returns true if the requires clause on a total declaration is NOT load-bearing — that is,
+/// all proof obligations (body type-check including callee preconditions, ensures, decreases)
+/// succeed even when the requires formula is removed from the proof context.
+fn requires_is_unjustified(
+    env: &TypeEnvironment,
+    func_decl: &FunctionDecl,
+    expected_return_type: &InferenceType,
+    stripped_context: &ProofContext,
+    measure_components: Option<&[&Expr]>,
+    check_ensures: bool,
+) -> bool {
+    if check_with_context(env, stripped_context, &func_decl.body, expected_return_type).is_err() {
+        return false;
+    }
+    if check_ensures {
+        if let Some(ensures) = &func_decl.ensures {
+            if !ensures_is_state_assertion(ensures) {
+                match prove_expr_satisfies_constraint(
+                    env,
+                    stripped_context,
+                    &func_decl.body,
+                    ensures,
+                ) {
+                    Ok(proof) if proof.proved() => {}
+                    _ => return false,
+                }
+            }
+        }
+    }
+    if let Some(components) = measure_components {
+        if prove_measure_well_founded(env, func_decl, components, stripped_context).is_err() {
+            return false;
+        }
+    }
+    true
+}
+
 fn expr_has_state_access(expr: &Expr) -> bool {
     match expr {
         Expr::FieldAccess(f) => f.field == "state",
@@ -5746,9 +5842,9 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
         ProofContext::default()
             .with_assumptions_replacing_state(assumptions)
             .with_assumption(formula)
-            .with_assumptions(param_nonneg)
+            .with_assumptions(param_nonneg.clone())
     } else {
-        ProofContext::default().with_assumptions(param_nonneg)
+        ProofContext::default().with_assumptions(param_nonneg.clone())
     };
 
     check_with_context(
@@ -5820,6 +5916,44 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
             ),
             Some(func_decl.location),
         ));
+    }
+
+    // Unjustified-requires check: for total non-recursive functions, verify the requires
+    // clause is load-bearing when it is a length predicate (`#param op n`). Length
+    // predicates are fully in the proof fragment, so the replay is reliable for them.
+    // Value-domain restrictions (e.g. `requires n≥0`) may have semantic meaning the proof
+    // system cannot mechanically verify and are excluded from this check for now.
+    // Skipped when decreases is present: the implicit int-param nonneg assumptions added
+    // inside prove_measure_well_founded make the bound check pass without requires, so the
+    // replay cannot reliably distinguish load-bearing from unjustified in that path yet.
+    if func_decl.mode != FunctionMode::Ordinary && func_decl.decreases.is_none() {
+        if let Some(requires_expr) = &func_decl.requires {
+            if !requires_contains_state_assertion(requires_expr)
+                && requires_is_length_predicate(requires_expr)
+            {
+                let stripped_context =
+                    ProofContext::default().with_assumptions(param_nonneg);
+                if requires_is_unjustified(
+                    &func_env,
+                    func_decl,
+                    &expected_return_type,
+                    &stripped_context,
+                    None,
+                    true,
+                ) {
+                    return Err(TypeError::new(
+                        format!(
+                            "requires clause on total function '{}' is not load-bearing; \
+                             all proof obligations hold without it",
+                            func_decl.name
+                        ),
+                        Some(expr_location(requires_expr)),
+                    )
+                    .with_code(sigil_diagnostics::codes::canonical::UNJUSTIFIED_REQUIRES)
+                    .with_detail("function", &func_decl.name));
+                }
+            }
+        }
     }
 
     // Termination proof: if a `decreases` clause is present, walk the body
@@ -5930,6 +6064,36 @@ fn check_transform_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resu
         func_decl.location,
         &format!("Transform '{}'", func_decl.name),
     )?;
+
+    if func_decl.mode != FunctionMode::Ordinary && func_decl.decreases.is_none() {
+        if let Some(requires_expr) = &func_decl.requires {
+            if !requires_contains_state_assertion(requires_expr)
+                && requires_is_length_predicate(requires_expr)
+            {
+                let stripped_context =
+                    ProofContext::default().with_assumptions(param_nonneg);
+                if requires_is_unjustified(
+                    &func_env,
+                    func_decl,
+                    &expected_return_type,
+                    &stripped_context,
+                    None,
+                    false, // transforms do not prove ensures in the normal path
+                ) {
+                    return Err(TypeError::new(
+                        format!(
+                            "requires clause on total transform '{}' is not load-bearing; \
+                             all proof obligations hold without it",
+                            func_decl.name
+                        ),
+                        Some(expr_location(requires_expr)),
+                    )
+                    .with_code(sigil_diagnostics::codes::canonical::UNJUSTIFIED_REQUIRES)
+                    .with_detail("transform", &func_decl.name));
+                }
+            }
+        }
+    }
 
     if let Some(measure_components) = measure_components {
         prove_measure_well_founded(&func_env, func_decl, &measure_components, &body_context)?;

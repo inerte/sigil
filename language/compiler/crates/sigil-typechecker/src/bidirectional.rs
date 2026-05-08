@@ -1862,11 +1862,9 @@ fn requires_is_length_predicate(expr: &Expr) -> bool {
                     | BinaryOperator::GreaterEq
             );
             if is_cmp {
-                return expr_has_length_operator(&b.left)
-                    || expr_has_length_operator(&b.right);
+                return expr_has_length_operator(&b.left) || expr_has_length_operator(&b.right);
             }
-            let is_logical =
-                matches!(b.operator, BinaryOperator::And | BinaryOperator::Or);
+            let is_logical = matches!(b.operator, BinaryOperator::And | BinaryOperator::Or);
             if is_logical {
                 return requires_is_length_predicate(&b.left)
                     && requires_is_length_predicate(&b.right);
@@ -5931,8 +5929,7 @@ fn check_function_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resul
             if !requires_contains_state_assertion(requires_expr)
                 && requires_is_length_predicate(requires_expr)
             {
-                let stripped_context =
-                    ProofContext::default().with_assumptions(param_nonneg);
+                let stripped_context = ProofContext::default().with_assumptions(param_nonneg);
                 if requires_is_unjustified(
                     &func_env,
                     func_decl,
@@ -6070,8 +6067,7 @@ fn check_transform_decl(env: &TypeEnvironment, func_decl: &FunctionDecl) -> Resu
             if !requires_contains_state_assertion(requires_expr)
                 && requires_is_length_predicate(requires_expr)
             {
-                let stripped_context =
-                    ProofContext::default().with_assumptions(param_nonneg);
+                let stripped_context = ProofContext::default().with_assumptions(param_nonneg);
                 if requires_is_unjustified(
                     &func_env,
                     func_decl,

@@ -1,6 +1,7 @@
 mode total
 
 λegK(a:Int,b:Int,fuel:Int)=>µExtendedGcd
+requires 0≤fuel
 decreases fuel
 match fuel=0{
   true=>{
@@ -62,9 +63,7 @@ requires 0≤fuel
   fuel
 )
 
-λextendedGcd(a:Int,b:Int)=>µExtendedGcd
-requires 0≤b
-=egR(
+λextendedGcd(a:Int,b:Int)=>µExtendedGcd=egR(
   a,
   b,
   100000

@@ -358,7 +358,7 @@ fn review_llm_output_embeds_grounded_facts() {
 
     assert_success(&output);
     let text = stdout_text(&output);
-    assert!(text.contains("Use only the facts below."));
+    assert!(text.contains("Use them as the foundation of your review."));
     assert!(text.contains("\"command\": \"sigil review\""));
     assert!(text.contains("\"contractChanges\": 1"));
 }

@@ -18,8 +18,8 @@ importers:
         specifier: ^19.2.5
         version: 19.2.5
       react-dom:
-        specifier: ^19.2.5
-        version: 19.2.5(react@19.2.5)
+        specifier: ^19.2.6
+        version: 19.2.6(react@19.2.5)
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^5.0.0
@@ -37,8 +37,8 @@ importers:
         specifier: ^19.2.5
         version: 19.2.5
       react-dom:
-        specifier: ^19.2.5
-        version: 19.2.5(react@19.2.5)
+        specifier: ^19.2.6
+        version: 19.2.6(react@19.2.5)
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^5.0.0
@@ -56,8 +56,8 @@ importers:
         specifier: ^19.2.5
         version: 19.2.5
       react-dom:
-        specifier: ^19.2.5
-        version: 19.2.5(react@19.2.5)
+        specifier: ^19.2.6
+        version: 19.2.6(react@19.2.5)
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^5.0.0
@@ -75,8 +75,8 @@ importers:
         specifier: ^19.2.5
         version: 19.2.5
       react-dom:
-        specifier: ^19.2.5
-        version: 19.2.5(react@19.2.5)
+        specifier: ^19.2.6
+        version: 19.2.6(react@19.2.5)
     devDependencies:
       '@vitejs/plugin-react':
         specifier: ^5.0.0
@@ -813,10 +813,10 @@ packages:
     resolution: {integrity: sha512-qif0+jGGZoLWdHey3UFHHWP0H7Gbmsk8T5VEqyYFbWqPr1XqvLGBbk/sl8V5exGmcYJklJOhOQq1pV9IcsiFag==}
     engines: {node: ^10 || ^12 || >=14}
 
-  react-dom@19.2.5:
-    resolution: {integrity: sha512-J5bAZz+DXMMwW/wV3xzKke59Af6CHY7G4uYLN1OvBcKEsWOs4pQExj86BBKamxl/Ik5bx9whOrvBlSDfWzgSag==}
+  react-dom@19.2.6:
+    resolution: {integrity: sha512-0prMI+hvBbPjsWnxDLxlCGyM8PN6UuWjEUCYmZhO67xIV9Xasa/r/vDnq+Xyq4Lo27g8QSbO5YzARu0D1Sps3g==}
     peerDependencies:
-      react: ^19.2.5
+      react: ^19.2.6
 
   react-refresh@0.18.0:
     resolution: {integrity: sha512-QgT5//D3jfjJb6Gsjxv0Slpj23ip+HtOpnNgnb2S5zU3CB26G/IDPGoy4RJB42wzFE46DRsstbW6tKHoKbhAxw==}
@@ -1498,7 +1498,7 @@ snapshots:
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
-  react-dom@19.2.5(react@19.2.5):
+  react-dom@19.2.6(react@19.2.5):
     dependencies:
       react: 19.2.5
       scheduler: 0.27.0

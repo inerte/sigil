@@ -30,7 +30,7 @@ codespan-reporting = "0.11"
 termcolor = "1.2"
 
 # Lexing
-logos = "0.13"
+logos = "0.16"
 
 # Immutable data structures (for type environments)
 im = "15.1"

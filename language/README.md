@@ -140,8 +140,13 @@ cargo run -q -p sigil-cli --no-default-features -- run projects/repoAudit/src/ma
 ```
 
 Use repeated `--check <id>` flags to run a subset such as `docs-drift`,
-`canonical-stdlib`, or `repo-compile`.
+`canonical-stdlib`, `test-registration`, or `repo-compile`.
 The full repo audit also includes `package-publishability` for publishable packages.
+
+The authoritative contributor and CI gate is `pnpm sigil:quality`. It combines
+that audit with compiler/schema tests, every registered first-party suite,
+website builds, and packaging validation. Release operations are documented in
+`docs/RELEASING.md`.
 
 First-party CLI apps should treat `§process.argv()` as the raw input surface and
 layer canonical typed parsing above it with `§cli.run(...)`.

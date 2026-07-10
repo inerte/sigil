@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sigil-lang.dev/spec/release-manifest.schema.json",
+  "title": "Sigil release manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["artifacts", "compiler", "formatVersion", "source", "version"],
+  "properties": {
+    "artifacts": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/artifact" }
+    },
+    "compiler": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capabilities", "version"],
+      "properties": {
+        "capabilities": { "type": "object" },
+        "version": { "$ref": "#/$defs/version" }
+      }
+    },
+    "formatVersion": { "const": 1 },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["commit", "repository"],
+      "properties": {
+        "commit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+        "repository": { "type": "string", "pattern": "^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$" }
+      }
+    },
+    "version": { "$ref": "#/$defs/version" }
+  },
+  "$defs": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["archiveFormat", "file", "platform", "sha256", "sizeBytes"],
+      "properties": {
+        "archiveFormat": { "enum": ["tar.gz", "zip"] },
+        "file": { "type": "string" },
+        "platform": { "$ref": "#/$defs/platform" },
+        "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "sizeBytes": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["architecture", "id", "os", "target"],
+      "properties": {
+        "architecture": { "enum": ["arm64", "x64"] },
+        "id": { "enum": ["darwin-arm64", "darwin-x64", "linux-arm64", "linux-x64", "windows-x64"] },
+        "os": { "enum": ["darwin", "linux", "windows"] },
+        "target": { "type": "string", "minLength": 1 }
+      }
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$"
+    }
+  }
+}

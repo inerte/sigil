@@ -255,9 +255,15 @@ For refinement/contract changes, keep these runnable examples current:
 - `language/examples/functionContracts.sigil`
 - `language/examples/proofMeasures.sigil`
 
-`projects/repoAudit` now includes a full repo compile check, so
-`pnpm sigil:test:repo-audit` and the aggregate `pnpm sigil:test:all` pass are
-expected to catch compile drift across first-party Sigil sources.
+`projects/repoAudit` includes full repo compile and required-suite registration
+checks. `pnpm sigil:quality` is the authoritative aggregate gate for compiler,
+schema, repo, project, website, and packaging drift. `pnpm sigil:test:all`
+remains a compatibility alias for that command.
+
+Release archives for macOS arm64/x64, Linux arm64/x64, and Windows x64 are one
+all-or-nothing contract. Validate installed behavior from extracted archives,
+require identical `sigil capabilities` output, generate the version-1 release
+manifest and checksums, and do not clobber published assets.
 
 ## Common Commands (from repo root)
 

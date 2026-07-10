@@ -10,6 +10,24 @@ Repo-level integration tests are ordinary Sigil test files under
 `language/integrationTests/tests/`. They run through the same `sigil test`
 machinery as project tests rather than through separate shell launchers.
 
+## Repository Quality Gate
+
+The authoritative local and CI gate is:
+
+```bash
+pnpm sigil:quality
+```
+
+It covers Rust formatting and compiler tests, machine-output and release
+schemas, repo audit, language and integration suites, every registered project
+suite, website builds, and packaging checks. All of these are blockers; there
+is no advisory lint or security tier hidden inside this command.
+
+`projects/testAllRunner/quality-gate.json` is the project-suite registry. The
+repo audit's `test-registration` check ensures that every tracked
+`projects/*/tests/*.sigil` directory is either registered or has a non-empty
+explanation for running through another required phase.
+
 ## Canonical Layout
 
 - `sigil.json` is the mode switch

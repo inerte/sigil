@@ -1,0 +1,195 @@
+mode total
+
+derive json µQualityGateRegistry
+
+λcoveredPaths(registry:µQualityGateRegistry)=>[String]=(registry.suites map normalizedSuitePath)⧺(registry.exemptions map (λ(exemption:µQualitySuiteExemption)=>String=exemption.path))
+
+λduplicateIssues(paths:[String])=>[µQualityGateIssue]=duplicateIssuesInner(
+  paths,
+  []
+)
+
+λduplicateIssuesInner(remaining:[String],seen:[String])=>[µQualityGateIssue]
+decreases #remaining
+match remaining{
+  []=>[]|
+  [
+  head,
+  .tail
+]=>match §list.contains(
+    head,
+    seen
+  ){
+    true=>[issue(
+      "suite path is registered more than once",
+      head
+    )]⧺duplicateIssuesInner(
+      tail,
+      seen
+    )|
+    false=>duplicateIssuesInner(
+      tail,
+      seen⧺[head]
+    )
+  }
+}
+
+λexemptionIssues(exemptions:[µQualitySuiteExemption])=>[µQualityGateIssue]=exemptions filter (λ(exemption:µQualitySuiteExemption)=>Bool=#§string.trim(exemption.reason)=0) map (λ(exemption:µQualitySuiteExemption)=>µQualityGateIssue=issue(
+  "quality gate exemptions require a non-empty reason",
+  exemption.path
+))
+
+λgitTopLevel()=>!Process Result[
+  String,
+  String
+]={
+  l result=(§process.run(§process.command([
+    "git",
+    "rev-parse",
+    "--show-toplevel"
+  ])):§process.ProcessResult);
+  match result.code=0{
+    true=>Ok(§string.trim(result.stdout))|
+    false=>Err("failed to resolve repository root: "++§string.trim(result.stderr))
+  }
+}
+
+λgitTrackedProjectTests(root:String)=>!Process Result[
+  [String],
+  String
+]={
+  l result=(§process.run(§process.withCwd(
+    §process.command([
+      "git",
+      "ls-files",
+      "projects/*/tests/*.sigil"
+    ]),
+    root
+  )):§process.ProcessResult);
+  match result.code=0{
+    true=>Ok((§string.lines(result.stdout):[String]) filter (λ(path:String)=>Bool=#path>0))|
+    false=>Err("failed to list tracked project tests: "++§string.trim(result.stderr))
+  }
+}
+
+λissue(message:String,path:String)=>µQualityGateIssue={
+  message:message,
+  path:path
+}
+
+λmissingIssues(covered:[String],tracked:[String])=>[µQualityGateIssue]=tracked filter (λ(path:String)=>Bool=¬§list.contains(
+  path,
+  covered
+)) map (λ(path:String)=>µQualityGateIssue=issue(
+  "tracked project test directory is not registered in the required quality gate",
+  path
+))
+
+λnormalizedSuitePath(suite:µQualitySuite)=>String match suite.cwd="."{
+  true=>suite.path|
+  false=>suite.cwd
+    ++"/"
+    ++suite.path
+}
+
+λparseRegistry(text:String)=>Result[
+  µQualityGateRegistry,
+  String
+] match parseQualityGateRegistry(text){
+  Ok(registry)=>match registry.formatVersion=1{
+    true=>Ok(registry)|
+    false=>Err("unsupported quality gate registry format version")
+  }|
+  Err(_)=>Err("invalid quality gate registry")
+}
+
+λprojectTestRoot(path:String)=>String match §string.split(
+  "/",
+  path
+){
+  [
+  projects,
+  project,
+  tests,
+  .rest
+]=>§string.join(
+    "/",
+    [
+      projects,
+      project,
+      tests
+    ]
+  )|
+  _=>path
+}
+
+λregistryPath(root:String)=>String=§path.join(
+  root,
+  "projects/testAllRunner/quality-gate.json"
+)
+
+λrunCheck()=>!Fs!Process Result[
+  [µQualityGateIssue],
+  String
+] match gitTopLevel(){
+  Ok(root)=>match parseRegistry(§file.readText(registryPath(root))){
+    Ok(registry)=>match gitTrackedProjectTests(root){
+      Ok(paths)=>Ok(validateRegistry(
+        registry,
+        uniqueRoots(paths)
+      ))|
+      Err(message)=>Err(message)
+    }|
+    Err(message)=>Err(message)
+  }|
+  Err(message)=>Err(message)
+}
+
+λstaleIssues(covered:[String],tracked:[String])=>[µQualityGateIssue]=covered filter (λ(path:String)=>Bool=¬§list.contains(
+  path,
+  tracked
+)) map (λ(path:String)=>µQualityGateIssue=issue(
+  "quality gate registration does not match a tracked project test directory",
+  path
+))
+
+λuniqueRoots(paths:[String])=>[String]=uniqueRootsInner(
+  paths,
+  []
+)
+
+λuniqueRootsInner(remaining:[String],roots:[String])=>[String]
+decreases #remaining
+match remaining{
+  []=>roots|
+  [
+  head,
+  .tail
+]=>{
+    l root=(projectTestRoot(head):String);
+    uniqueRootsInner(
+      tail,
+      match §list.contains(
+        root,
+        roots
+      ){
+        true=>roots|
+        false=>roots⧺[root]
+      }
+    )
+  }
+}
+
+λvalidateRegistry(registry:µQualityGateRegistry,tracked:[String])=>[µQualityGateIssue]={
+  l covered=(coveredPaths(registry):[String]);
+  duplicateIssues(covered)
+    ⧺exemptionIssues(registry.exemptions)
+    ⧺missingIssues(
+      covered,
+      tracked
+    )
+    ⧺staleIssues(
+      covered,
+      tracked
+    )
+}

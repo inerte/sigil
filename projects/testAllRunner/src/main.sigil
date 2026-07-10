@@ -1,16 +1,5 @@
 mode total
 
-λalgorithmsSuite(root:String)=>µParallelSuite={
-  command:sigilCommand(
-    [
-      "test",
-      "projects/algorithms/tests"
-    ],
-    root
-  ),
-  label:"algorithms suite"
-}
-
 λcanonicalIntegrationSuite(root:String)=>µParallelSuite={
   command:sigilCommand(
     [
@@ -52,28 +41,6 @@ mode total
   suite.result
 )
 
-λfeatureFlagStorefrontRoot(root:String)=>String=§path.join(
-  §path.join(
-    root,
-    "projects"
-  ),
-  "featureFlagStorefront"
-)
-
-λfeatureFlagStorefrontSuite(root:String)=>µParallelSuite={
-  command:sigilCommandIn(
-    [
-      "test",
-      "tests",
-      "--env",
-      "test"
-    ],
-    featureFlagStorefrontRoot(root),
-    root
-  ),
-  label:"feature flag storefront suite"
-}
-
 λfinish(result:Result[
   Unit,
   String
@@ -98,28 +65,6 @@ mode total
       §process.exit(1)
     }
   }
-}
-
-λflashcardsSuite(root:String)=>µParallelSuite={
-  command:sigilCommand(
-    [
-      "test",
-      "projects/flashcards/tests"
-    ],
-    root
-  ),
-  label:"flashcards suite"
-}
-
-λgame2048Suite(root:String)=>µParallelSuite={
-  command:sigilCommand(
-    [
-      "test",
-      "projects/game-2048/tests"
-    ],
-    root
-  ),
-  label:"2048 suite"
 }
 
 λhomebrewCommand(root:String)=>§process.Command=§process.withCwd(
@@ -148,19 +93,6 @@ mode total
   root
 )
 
-λlabelledBoundariesSuite(root:String)=>µParallelSuite={
-  command:sigilCommand(
-    [
-      "test",
-      "projects/labelled-boundaries/tests",
-      "--env",
-      "test"
-    ],
-    root
-  ),
-  label:"labelled boundaries suite"
-}
-
 λlanguageSuite(root:String)=>µParallelSuite={
   command:sigilCommand(
     [
@@ -172,29 +104,27 @@ mode total
   label:"language suite"
 }
 
-λmain()=>!CliIo Unit={
+λmain()=>!CliIo!Fs Unit={
   l startedAt=(nowMillis():Int);
   match repoRoot(){
-    Ok(root)=>finish(
-      runSteps(steps(root)),
-      startedAt
-    )|
+    Ok(root)=>match •registry.load(qualityGateRegistryPath(root)){
+      Ok(registry)=>finish(
+        runSteps(steps(
+          registry.suites,
+          root
+        )),
+        startedAt
+      )|
+      Err(message)=>finish(
+        Err(message),
+        startedAt
+      )
+    }|
     Err(message)=>finish(
       Err(message),
       startedAt
     )
   }
-}
-
-λminesweepSuite(root:String)=>µParallelSuite={
-  command:sigilCommand(
-    [
-      "test",
-      "projects/minesweep/tests"
-    ],
-    root
-  ),
-  label:"minesweep suite"
 }
 
 λmultimoduleSuite(root:String)=>µParallelSuite={
@@ -210,21 +140,15 @@ mode total
 
 λnowMillis()=>!Clock Int=(§time.toEpochMillis(§time.now()):Int)
 
-λparallelSuites(root:String)=>[µParallelSuite]=[
-  algorithmsSuite(root),
+λparallelSuites(registered:[µQualitySuite],root:String)=>[µParallelSuite]=[
   canonicalIntegrationSuite(root),
-  featureFlagStorefrontSuite(root),
-  flashcardsSuite(root),
-  game2048Suite(root),
-  labelledBoundariesSuite(root),
   languageSuite(root),
-  minesweepSuite(root),
   multimoduleSuite(root),
-  roguelikeSuite(root),
-  ssgSuite(root),
-  stdlibSuite(root),
-  todoSuite(root)
-]
+  stdlibSuite(root)
+]⧺qualitySuites(
+  registered,
+  root
+)
 
 λpnpmCommand(args:[String],root:String)=>§process.Command=§process.withCwd(
   §process.command(["pnpm"]⧺args),
@@ -235,6 +159,7 @@ mode total
   websiteBuildSuite(root),
   homebrewPackagingSuite(root),
   httpIntegrationSuite(root),
+  releaseManifestSuite(root),
   tcpIntegrationSuite(root)
 ]
 
@@ -266,6 +191,52 @@ match results{
   l _=(§io.println(""):Unit);
   l _=(§io.println("==> "++suite.label):Unit);
   printResultOutput(suite.result)
+}
+
+λqualityGateRegistryPath(root:String)=>String=§path.join(
+  root,
+  "projects/testAllRunner/quality-gate.json"
+)
+
+λqualitySuite(root:String,suite:µQualitySuite)=>µParallelSuite={
+  command:sigilCommandIn(
+    qualitySuiteArgs(suite),
+    match suite.cwd="."{
+      true=>root|
+      false=>§path.join(
+        root,
+        suite.cwd
+      )
+    },
+    root
+  ),
+  label:suite.id++" suite"
+}
+
+λqualitySuiteArgs(suite:µQualitySuite)=>[String] match #suite.env>0{
+  true=>[
+    "test",
+    suite.path,
+    "--env",
+    suite.env
+  ]|
+  false=>[
+    "test",
+    suite.path
+  ]
+}
+
+λqualitySuites(registered:[µQualitySuite],root:String)=>[µParallelSuite]=registered map (λ(suite:µQualitySuite)=>µParallelSuite=qualitySuite(
+  root,
+  suite
+))
+
+λreleaseManifestSuite(root:String)=>µParallelSuite={
+  command:pnpmCommand(
+    ["sigil:test:release-manifest"],
+    root
+  ),
+  label:"release manifest"
 }
 
 λrenderCommand(args:[String])=>String match args{
@@ -312,26 +283,6 @@ match args{
       false=>"failed to resolve repo root"
     })
   }
-}
-
-λroguelikeRoot(root:String)=>String=§path.join(
-  §path.join(
-    root,
-    "projects"
-  ),
-  "roguelike"
-)
-
-λroguelikeSuite(root:String)=>µParallelSuite={
-  command:sigilCommandIn(
-    [
-      "test",
-      "tests"
-    ],
-    roguelikeRoot(root),
-    root
-  ),
-  label:"roguelike suite"
 }
 
 λrunCommands(commands:[§process.Command])=>!Log!Process Result[
@@ -465,17 +416,6 @@ match all{
   cwd
 )
 
-λssgSuite(root:String)=>µParallelSuite={
-  command:sigilCommand(
-    [
-      "test",
-      "projects/ssg/tests"
-    ],
-    root
-  ),
-  label:"ssg suite"
-}
-
 λstdlibSuite(root:String)=>µParallelSuite={
   command:sigilCommand(
     [
@@ -487,7 +427,18 @@ match all{
   label:"stdlib suite"
 }
 
-λsteps(root:String)=>[µStep]=[
+λsteps(registered:[µQualitySuite],root:String)=>[µStep]=[
+  µSerial({
+    commands:[cargo(
+      [
+        "fmt",
+        "--all",
+        "--check"
+      ],
+      root
+    )],
+    label:"Rust formatting"
+  }),
   µSerial({
     commands:[cargo(
       [
@@ -522,7 +473,10 @@ match all{
   }),
   µParallel({
     label:"parallel Sigil suites",
-    suites:parallelSuites(root)
+    suites:parallelSuites(
+      registered,
+      root
+    )
   }),
   µParallel({
     label:"post-audit checks",
@@ -555,17 +509,6 @@ match results{
   ],
   root
 )
-
-λtodoSuite(root:String)=>µParallelSuite={
-  command:sigilCommand(
-    [
-      "test",
-      "projects/todo-app/tests"
-    ],
-    root
-  ),
-  label:"todo app suite"
-}
 
 λwaitSuites(started:[µStartedSuite])=>!Process [µSuiteResult]
 decreases #started

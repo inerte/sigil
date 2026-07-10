@@ -1,0 +1,151 @@
+λmain()=>Unit=()
+
+λregistry(exemptions:[µQualitySuiteExemption],suites:[µQualitySuite])=>µQualityGateRegistry={
+  exemptions:exemptions,
+  formatVersion:1,
+  suites:suites
+}
+
+λsuite(id:String,path:String)=>µQualitySuite={
+  cwd:".",
+  env:"",
+  id:id,
+  path:path
+}
+
+test "quality gate registry parses canonical version one" {
+  match •qualityGateRegistration.parseRegistry("{\"exemptions\":[],\"formatVersion\":1,\"suites\":[{\"cwd\":\".\",\"env\":\"\",\"id\":\"router\",\"path\":\"projects/router/tests\"}]}"){
+    Ok(value)=>value.formatVersion=1 and value.suites[0].id="router"|
+    Err(_)=>false
+  }
+}
+
+test "quality gate registry rejects unsupported versions" {
+  match •qualityGateRegistration.parseRegistry("{\"exemptions\":[],\"formatVersion\":2,\"suites\":[]}"){
+    Ok(_)=>false|
+    Err(message)=>message="unsupported quality gate registry format version"
+  }
+}
+
+test "quality gate registry accepts complete coverage" {
+  •qualityGateRegistration.validateRegistry(
+    registry(
+      [],
+      [suite(
+        "router",
+        "projects/router/tests"
+      )]
+    ),
+    ["projects/router/tests"]
+  )=[]
+}
+
+test "quality gate registry reports missing and stale paths" {
+  l issues=•qualityGateRegistration.validateRegistry(
+    registry(
+      [],
+      [suite(
+        "stale",
+        "projects/stale/tests"
+      )]
+    ),
+    ["projects/router/tests"]
+  );
+  #issues=2
+    and issues[0].path="projects/router/tests"
+    and issues[1].path="projects/stale/tests"
+}
+
+test "quality gate registry reports duplicates and empty exemption reasons" {
+  l issues=•qualityGateRegistration.validateRegistry(
+    registry(
+      [{
+        path:"projects/router/tests",
+        reason:""
+      }],
+      [suite(
+        "router",
+        "projects/router/tests"
+      )]
+    ),
+    ["projects/router/tests"]
+  );
+  #issues=2
+    and issues[0].message="suite path is registered more than once"
+    and issues[1].message="quality gate exemptions require a non-empty reason"
+}
+
+test "checked-in quality gate registry covers tracked project tests" =>!Fs!Process {
+  match •qualityGateRegistration.runCheck(){
+    Ok(issues)=>issues=[]
+      and •qualityGateRegistration.projectTestRoot("projects/router/tests/package.sigil")="projects/router/tests"
+      and •qualityGateRegistration.uniqueRoots([
+        "projects/router/tests/package.sigil",
+        "projects/router/tests/second.sigil"
+      ])=["projects/router/tests"]|
+    Err(_)=>false
+  }
+}
+
+test "quality gate registration surfaces repository root failures" =>!Fs!Process world {
+  c process=(†process.fixture([†process.rule(
+  [
+    "git",
+    "rev-parse",
+    "--show-toplevel"
+  ],
+  None(),
+  {
+    code:1,
+    stderr:"boom",
+    stdout:""
+  }
+)]):†process.ProcessEntry)
+} {
+  match •qualityGateRegistration.runCheck(){
+    Ok(_)=>false|
+    Err(message)=>message="failed to resolve repository root: boom"
+  }
+}
+
+test "quality gate registration surfaces tracked-file failures" =>!Process world {
+  c process=(†process.fixture([†process.rule(
+  [
+    "git",
+    "ls-files",
+    "projects/*/tests/*.sigil"
+  ],
+  Some("."),
+  {
+    code:1,
+    stderr:"boom",
+    stdout:""
+  }
+)]):†process.ProcessEntry)
+} {
+  match •qualityGateRegistration.gitTrackedProjectTests("."){
+    Ok(_)=>false|
+    Err(message)=>message="failed to list tracked project tests: boom"
+  }
+}
+
+test "quality gate repository root helper surfaces process failures" =>!Process world {
+  c process=(†process.fixture([†process.rule(
+  [
+    "git",
+    "rev-parse",
+    "--show-toplevel"
+  ],
+  None(),
+  {
+    code:1,
+    stderr:"boom",
+    stdout:""
+  }
+)]):†process.ProcessEntry)
+} {
+  match •qualityGateRegistration.gitTopLevel(){
+    Ok(_)=>false|
+    Err(message)=>message="failed to resolve repository root: boom"
+  }
+}

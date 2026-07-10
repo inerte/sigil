@@ -191,7 +191,7 @@ test "fallback and helper none paths stay stable" {
 }
 
 test "repo compile cache entries round trip" {
-  match •repoCompile.parseRepoCompileCacheEntry(•repoCompile.encodeRepoCompileCacheEntry({fingerprint:"abc123"})){
+  match •repoCompile.repoCompileCacheEntryFromText(§json.stringify(•repoCompile.encodeRepoCompileCacheEntry({fingerprint:"abc123"}))){
     Some(entry)=>entry={fingerprint:"abc123"}|
     None()=>false
   }
@@ -672,7 +672,7 @@ test "run check reuses matching cache entries without spawning compile" =>!Audit
     Ok(fingerprint)=>{
       l _=(§file.makeDirs(•repoCompile.repoCompileCacheDir(".")):Unit);
       l _=(§file.writeText(
-        •repoCompile.encodeRepoCompileCacheEntry({fingerprint:fingerprint}),
+        §json.stringify(•repoCompile.encodeRepoCompileCacheEntry({fingerprint:fingerprint})),
         •repoCompile.cacheEntryPath(
           ".",
           task
@@ -769,7 +769,7 @@ test "run check recompiles when tracked inputs change after caching" =>!AuditIo 
     Ok(fingerprint)=>{
       l _=(§file.makeDirs(•repoCompile.repoCompileCacheDir(".")):Unit);
       l _=(§file.writeText(
-        •repoCompile.encodeRepoCompileCacheEntry({fingerprint:fingerprint}),
+        §json.stringify(•repoCompile.encodeRepoCompileCacheEntry({fingerprint:fingerprint})),
         •repoCompile.cacheEntryPath(
           ".",
           task
@@ -938,7 +938,7 @@ b
       ]|
       Err(_)=>false
     },
-    match •repoCompile.parseRepoCompileCacheEntry("nope"){
+    match •repoCompile.repoCompileCacheEntryFromText("nope"){
       Some(_)=>false|
       None()=>true
     },

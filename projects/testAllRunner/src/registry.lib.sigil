@@ -1,0 +1,14 @@
+mode total
+
+derive json µQualityGateRegistry
+
+λload(path:String)=>!Fs Result[
+  µQualityGateRegistry,
+  String
+] match parseQualityGateRegistry(§file.readText(path)){
+  Ok(registry)=>match registry.formatVersion=1{
+    true=>Ok(registry)|
+    false=>Err("unsupported quality gate registry format version")
+  }|
+  Err(_)=>Err("invalid quality gate registry")
+}

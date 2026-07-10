@@ -1,0 +1,151 @@
+name: homebrew channel
+
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Published Sigil version to retry
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+concurrency:
+  group: homebrew-${{ github.event.release.tag_name || inputs.version }}
+  cancel-in-progress: false
+
+jobs:
+  prepare-formula:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.value }}
+
+    steps:
+      - id: version
+        name: Resolve published version
+        shell: bash
+        env:
+          EVENT_VERSION: ${{ github.event.release.tag_name }}
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          version="${EVENT_VERSION:-$INPUT_VERSION}"
+          if [[ ! "$version" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}-[0-9]{2}-[0-9]{2}Z$ ]]; then
+            echo "invalid canonical Sigil version: $version" >&2
+            exit 1
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.version.outputs.value }}
+
+      - name: Download authoritative release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.value }}
+        shell: bash
+        run: gh release download "$VERSION" --dir dist --repo "${{ github.repository }}"
+
+      - name: Verify release checksums
+        shell: bash
+        run: cd dist && sha256sum -c SHA256SUMS
+
+      - name: Generate formula with released Sigil
+        env:
+          VERSION: ${{ steps.version.outputs.value }}
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/sigil-release" formula
+          tar -xzf "dist/sigil-${VERSION}-linux-x64.tar.gz" -C "$RUNNER_TEMP/sigil-release"
+          sigil_bin="$RUNNER_TEMP/sigil-release/sigil-${VERSION}-linux-x64/sigil"
+          sigilHomebrewVersion="$VERSION" \
+          sigilHomebrewRepo="${{ github.repository }}" \
+          sigilHomebrewSha256SumsPath="$PWD/dist/SHA256SUMS" \
+          sigilHomebrewOutputPath="$PWD/formula/sigil.rb" \
+            "$sigil_bin" run projects/homebrewPackaging/src/main.sigil --env release
+          ruby -c formula/sigil.rb
+
+      - uses: actions/upload-artifact@v6
+        with:
+          name: homebrew-formula-${{ steps.version.outputs.value }}
+          path: formula/sigil.rb
+
+  test-formula:
+    needs:
+      - prepare-formula
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: homebrew-formula-${{ needs.prepare-formula.outputs.version }}
+          path: formula
+
+      - name: Install and test formula
+        shell: bash
+        run: |
+          brew install --formula "$PWD/formula/sigil.rb"
+          brew test sigil
+
+  publish-tap:
+    needs:
+      - prepare-formula
+      - test-formula
+    runs-on: ubuntu-latest
+    env:
+      HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
+      VERSION: ${{ needs.prepare-formula.outputs.version }}
+
+    steps:
+      - id: configuration
+        name: Check tap configuration
+        shell: bash
+        run: |
+          if [[ -n "$HOMEBREW_TAP_DEPLOY_KEY" ]]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "Homebrew tap deploy key is not configured; the GitHub release remains authoritative."
+          fi
+
+      - uses: actions/download-artifact@v8
+        if: steps.configuration.outputs.configured == 'true'
+        with:
+          name: homebrew-formula-${{ needs.prepare-formula.outputs.version }}
+          path: formula
+
+      - name: Configure tap deploy key
+        if: steps.configuration.outputs.configured == 'true'
+        shell: bash
+        run: |
+          install -m 700 -d ~/.ssh
+          printf "%s" "$HOMEBREW_TAP_DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keygen -y -f ~/.ssh/id_ed25519 >/dev/null
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+
+      - name: Publish monotonic tap update
+        if: steps.configuration.outputs.configured == 'true'
+        shell: bash
+        run: |
+          git clone git@github.com:inerte/homebrew-tap.git "$RUNNER_TEMP/homebrew-tap"
+          mkdir -p "$RUNNER_TEMP/homebrew-tap/Formula"
+          current="$(sed -n 's/^  version "\([^"]*\)"/\1/p' "$RUNNER_TEMP/homebrew-tap/Formula/sigil.rb" 2>/dev/null || true)"
+          if [[ -n "$current" && ( "$current" == "$VERSION" || "$current" > "$VERSION" ) ]]; then
+            echo "tap already contains Sigil $current; skipping stale $VERSION"
+            exit 0
+          fi
+          cp formula/sigil.rb "$RUNNER_TEMP/homebrew-tap/Formula/sigil.rb"
+          cd "$RUNNER_TEMP/homebrew-tap"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/sigil.rb
+          git commit -m "update: publish sigil ${VERSION} formula"
+          git push

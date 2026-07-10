@@ -21,4 +21,11 @@ pnpm sigil:test:homebrew
 
 ## Tap publishing
 
-The release workflow can push the generated formula to `inerte/homebrew-tap` when the `HOMEBREW_TAP_DEPLOY_KEY` secret is configured. The tap repo should contain `Formula/sigil.rb` and no generation logic.
+GitHub release archives are authoritative. A separate release-triggered
+Homebrew workflow downloads those assets, verifies `SHA256SUMS`, generates the
+formula with the released binary, installs and tests the formula, and only then
+pushes `inerte/homebrew-tap` when `HOMEBREW_TAP_DEPLOY_KEY` is configured.
+
+The workflow supports a manual version retry and refuses to replace a newer tap
+formula with an older release. The tap repo should contain `Formula/sigil.rb`
+and no generation logic.

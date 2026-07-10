@@ -9,6 +9,7 @@ test "all check ids stay canonical" {
   •repoAudit.allCheckIds()=[
     "docs-drift",
     "canonical-stdlib",
+    "test-registration",
     "repo-compile",
     "package-publishability"
   ]
@@ -210,11 +211,26 @@ test "docs drift messages map to stable codes" {
   ])
 }
 
+test "quality gate issues map to stable audit diagnostics" {
+  •repoAudit.mapQualityGateIssues([{
+    message:"missing registration",
+    path:"projects/router/tests"
+  }])=[{
+    check:"test-registration",
+    code:"test-registration/coverage",
+    line:1,
+    message:"missing registration",
+    path:"projects/router/tests",
+    severity:"error"
+  }]
+}
+
 test "selection defaults to all checks" {
   match •repoAudit.selectionFromRequestedChecks([]){
     Ok(selection)=>selection.checks=[
       "docs-drift",
       "canonical-stdlib",
+      "test-registration",
       "repo-compile",
       "package-publishability"
     ]|

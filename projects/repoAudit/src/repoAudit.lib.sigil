@@ -19,6 +19,7 @@ derive json µAuditSuccessEnvelope
 λallCheckIds()=>[String]=[
   "docs-drift",
   "canonical-stdlib",
+  "test-registration",
   "repo-compile",
   "package-publishability"
 ]
@@ -139,6 +140,16 @@ derive json µAuditSuccessEnvelope
 
 λmapPackagePublishabilityIssues(issues:[µPackagePublishabilityIssue])=>[µAuditIssue]=issues map mapPackagePublishabilityIssue
 
+λmapQualityGateIssue(issue:µQualityGateIssue)=>µAuditIssue=auditIssue(
+  "test-registration",
+  "test-registration/coverage",
+  1,
+  issue.message,
+  issue.path
+)
+
+λmapQualityGateIssues(issues:[µQualityGateIssue])=>[µAuditIssue]=issues map mapQualityGateIssue
+
 λmapRepoCompileIssue(issue:µRepoCompileIssue)=>µAuditIssue=auditIssue(
   "repo-compile",
   "repo-compile/compile-failed",
@@ -148,6 +159,10 @@ derive json µAuditSuccessEnvelope
 )
 
 λmapRepoCompileIssues(issues:[µRepoCompileIssue])=>[µAuditIssue]=issues map mapRepoCompileIssue
+
+λrenderError(message:String)=>String=stringifyAuditFailureEnvelope(auditFailureEnvelope(message))
+
+λrenderSuccess(data:µAuditData)=>String=stringifyAuditSuccessEnvelope(auditSuccessEnvelope(data))
 
 λrepoCompileOutcome(result:µRepoCompileResult)=>µAuditCheckOutcome={
   issues:mapRepoCompileIssues(result.issues),
@@ -168,6 +183,13 @@ derive json µAuditSuccessEnvelope
   "docs-drift"=>match •docsDrift.runRepoCheck(){
     Ok(issues)=>Ok({
       issues:mapDocsDriftIssues(issues),
+      repoCompileStats:None()
+    })|
+    Err(message)=>Err(message)
+  }|
+  "test-registration"=>match •qualityGateRegistration.runCheck(){
+    Ok(issues)=>Ok({
+      issues:mapQualityGateIssues(issues),
       repoCompileStats:None()
     })|
     Err(message)=>Err(message)

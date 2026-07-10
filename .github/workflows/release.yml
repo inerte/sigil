@@ -24,7 +24,8 @@ jobs:
     if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push' }}
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.version }}
+      commit: ${{ steps.release.outputs.commit }}
+      version: ${{ steps.release.outputs.version }}
 
     steps:
       - uses: actions/checkout@v6
@@ -32,29 +33,16 @@ jobs:
           fetch-depth: 0
           ref: ${{ github.event.workflow_run.head_sha }}
 
-      - id: version
-        name: Compute release version
+      - id: release
+        name: Compute candidate identity
         shell: bash
         env:
           TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           commit_epoch="$(git show -s --format=%ct "$TARGET_SHA")"
           version="$(date -u -d "@${commit_epoch}" +"%Y-%m-%dT%H-%M-%SZ")"
+          echo "commit=${TARGET_SHA}" >> "$GITHUB_OUTPUT"
           echo "version=${version}" >> "$GITHUB_OUTPUT"
-
-      - name: Create release tag
-        shell: bash
-        env:
-          TARGET_SHA: ${{ github.event.workflow_run.head_sha }}
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          if git rev-parse -q --verify "refs/tags/${VERSION}" >/dev/null; then
-            echo "Tag ${VERSION} already exists"
-            exit 0
-          fi
-
-          git tag "${VERSION}" "$TARGET_SHA"
-          git push origin "refs/tags/${VERSION}"
 
   build-binaries:
     needs:
@@ -63,52 +51,53 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: darwin-arm64
+          - architecture: arm64
+            archive_ext: tar.gz
+            os: darwin
+            platform: darwin-arm64
             runner: macos-14
             target: aarch64-apple-darwin
+          - architecture: x64
             archive_ext: tar.gz
-          - platform: darwin-x64
+            os: darwin
+            platform: darwin-x64
             runner: macos-14
             target: x86_64-apple-darwin
+          - architecture: arm64
             archive_ext: tar.gz
-          - platform: linux-arm64
+            os: linux
+            platform: linux-arm64
             runner: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
+          - architecture: x64
             archive_ext: tar.gz
-          - platform: linux-x64
+            os: linux
+            platform: linux-x64
             runner: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            archive_ext: tar.gz
-          - platform: windows-x64
+          - architecture: x64
+            archive_ext: zip
+            os: windows
+            platform: windows-x64
             runner: windows-latest
             target: x86_64-pc-windows-msvc
-            archive_ext: zip
 
     runs-on: ${{ matrix.runner }}
 
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ needs.prepare-release.outputs.commit }}
 
       - name: Select compatible macOS toolchain
         if: runner.os == 'macOS'
         shell: bash
-        run: |
-          echo "DEVELOPER_DIR=/Applications/Xcode_16.2.app/Contents/Developer" >> "$GITHUB_ENV"
+        run: echo "DEVELOPER_DIR=/Applications/Xcode_16.2.app/Contents/Developer" >> "$GITHUB_ENV"
 
       - name: Pin macOS deployment target
         if: runner.os == 'macOS'
         shell: bash
-        run: |
-          echo "MACOSX_DEPLOYMENT_TARGET=14.5" >> "$GITHUB_ENV"
-
-      - name: Show macOS compiler
-        if: runner.os == 'macOS'
-        shell: bash
-        run: |
-          /usr/bin/xcodebuild -version
-          /usr/bin/clang++ --version | head -n 1
+        run: echo "MACOSX_DEPLOYMENT_TARGET=14.5" >> "$GITHUB_ENV"
 
       - uses: actions/setup-node@v6
         with:
@@ -125,24 +114,12 @@ jobs:
         run: |
           z3_version="4.15.4"
           case "${{ matrix.target }}" in
-            aarch64-apple-darwin)
-              z3_asset="z3-${z3_version}-arm64-osx-13.7.6.zip"
-              ;;
-            x86_64-apple-darwin)
-              z3_asset="z3-${z3_version}-x64-osx-13.7.6.zip"
-              ;;
-            aarch64-unknown-linux-gnu)
-              z3_asset="z3-${z3_version}-arm64-glibc-2.34.zip"
-              ;;
-            x86_64-unknown-linux-gnu)
-              z3_asset="z3-${z3_version}-x64-glibc-2.39.zip"
-              ;;
-            *)
-              echo "unsupported Z3 target: ${{ matrix.target }}" >&2
-              exit 1
-              ;;
+            aarch64-apple-darwin) z3_asset="z3-${z3_version}-arm64-osx-13.7.6.zip" ;;
+            x86_64-apple-darwin) z3_asset="z3-${z3_version}-x64-osx-13.7.6.zip" ;;
+            aarch64-unknown-linux-gnu) z3_asset="z3-${z3_version}-arm64-glibc-2.34.zip" ;;
+            x86_64-unknown-linux-gnu) z3_asset="z3-${z3_version}-x64-glibc-2.39.zip" ;;
+            *) echo "unsupported Z3 target: ${{ matrix.target }}" >&2; exit 1 ;;
           esac
-
           z3_root="${RUNNER_TEMP}/z3"
           z3_static_dir="${RUNNER_TEMP}/z3-static-lib"
           rm -rf "${z3_root}" "${z3_static_dir}"
@@ -152,23 +129,18 @@ jobs:
           cp "${z3_root}"/*/bin/libz3.a "${z3_static_dir}/libz3.a"
           echo "Z3_LIBRARY_PATH_OVERRIDE=${z3_static_dir}" >> "$GITHUB_ENV"
 
-      - name: Install system Z3
+      - name: Install Windows Z3
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
           choco install z3 --version=4.16.0 -y
           $chocoRoot = if ($env:ChocolateyInstall) { $env:ChocolateyInstall } else { Join-Path $env:ProgramData "chocolatey" }
-          $z3Root = Join-Path $chocoRoot "lib\\z3\\tools\\bin"
-          $z3LibDir = Join-Path $z3Root "bin"
-          if (!(Test-Path (Join-Path $z3LibDir "libz3.lib"))) {
-            throw "expected libz3.lib in $z3LibDir"
-          }
-          if (!(Test-Path (Join-Path $z3LibDir "libz3.dll"))) {
-            throw "expected libz3.dll in $z3LibDir"
-          }
-          Add-Content -Path $env:GITHUB_ENV -Value "Z3_LIBRARY_PATH_OVERRIDE=$z3LibDir"
-          Add-Content -Path $env:GITHUB_ENV -Value "Z3_RUNTIME_DIR=$z3LibDir"
-          Add-Content -Path $env:GITHUB_PATH -Value $z3LibDir
+          $z3Root = Join-Path $chocoRoot "lib\z3\tools\bin\bin"
+          if (!(Test-Path (Join-Path $z3Root "libz3.lib"))) { throw "expected libz3.lib in $z3Root" }
+          if (!(Test-Path (Join-Path $z3Root "libz3.dll"))) { throw "expected libz3.dll in $z3Root" }
+          Add-Content -Path $env:GITHUB_ENV -Value "Z3_LIBRARY_PATH_OVERRIDE=$z3Root"
+          Add-Content -Path $env:GITHUB_ENV -Value "Z3_RUNTIME_DIR=$z3Root"
+          Add-Content -Path $env:GITHUB_PATH -Value $z3Root
 
       - uses: actions/cache@v5
         with:
@@ -176,105 +148,107 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             language/compiler/target
-          key: ${{ runner.os }}-${{ matrix.target }}-cargo-dist-z3-archive-${{ hashFiles('language/compiler/Cargo.lock') }}
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-dist-z3-${{ hashFiles('language/compiler/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-${{ matrix.target }}-cargo-dist-z3-archive-
+            ${{ runner.os }}-${{ matrix.target }}-cargo-dist-z3-
 
       - name: Build release binary
-        if: runner.os != 'Windows'
         env:
           SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
         run: cargo build --locked --profile dist --manifest-path language/compiler/Cargo.toml -p sigil-cli --target ${{ matrix.target }} --no-default-features
 
-      - name: Build release binary
-        if: runner.os == 'Windows'
-        env:
-          SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
-        run: cargo build --locked --profile dist --manifest-path language/compiler/Cargo.toml -p sigil-cli --target ${{ matrix.target }} --no-default-features
+      - name: Install platform-native runtime dependencies
+        shell: bash
+        run: npm ci --prefix language/runtime/node --registry=https://registry.npmjs.org
 
-      - name: Smoke test binary
+      - name: Package Unix archive
         if: runner.os != 'Windows'
         env:
-          SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
+          VERSION: ${{ needs.prepare-release.outputs.version }}
         shell: bash
         run: |
-          binary="language/compiler/target/${{ matrix.target }}/dist/sigil"
-          if [[ "${{ matrix.target }}" == "x86_64-apple-darwin" ]]; then
-            /usr/sbin/softwareupdate --install-rosetta --agree-to-license >/dev/null 2>&1 || true
-            version="$(arch -x86_64 "$binary" --version)"
-          else
-            version="$("$binary" --version)"
-          fi
-          test "$version" = "sigil ${SIGIL_VERSION}"
-
-      - name: Install bundled PTY runtime
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          npm ci --prefix language/runtime/node --registry=https://registry.npmjs.org
-
-      - name: Package unix archive
-        if: runner.os != 'Windows'
-        env:
-          SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
-        shell: bash
-        run: |
-          base="sigil-${SIGIL_VERSION}-${{ matrix.platform }}"
+          base="sigil-${VERSION}-${{ matrix.platform }}"
           stage_dir="dist/${base}"
-          mkdir -p "${stage_dir}" "${stage_dir}/runtime" "${stage_dir}/language"
+          mkdir -p "${stage_dir}/runtime/node" "${stage_dir}/language"
           cp "language/compiler/target/${{ matrix.target }}/dist/sigil" "${stage_dir}/sigil"
-          cp -R "language/runtime/node" "${stage_dir}/runtime/node"
-          for dir in core stdlib world test; do
-            cp -R "language/${dir}" "${stage_dir}/language/${dir}"
-          done
+          cp -R language/runtime/node/. "${stage_dir}/runtime/node/"
+          for dir in core stdlib world test; do cp -R "language/${dir}" "${stage_dir}/language/${dir}"; done
           cp LICENSE "${stage_dir}/LICENSE"
-          printf "Sigil %s\n\nRun ./sigil --help\n" "${SIGIL_VERSION}" > "${stage_dir}/README.txt"
+          printf "Sigil %s\n\nRun ./sigil --help\n" "${VERSION}" > "${stage_dir}/README.txt"
           tar -C dist -czf "dist/${base}.tar.gz" "${base}"
 
-      - name: Validate packaged unix archive
+      - name: Validate packaged Unix archive
         if: runner.os != 'Windows'
         env:
-          SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
+          VERSION: ${{ needs.prepare-release.outputs.version }}
         shell: bash
         run: |
-          base="sigil-${SIGIL_VERSION}-${{ matrix.platform }}"
+          base="sigil-${VERSION}-${{ matrix.platform }}"
           extract_dir="$(mktemp -d)"
           trap 'rm -rf "$extract_dir"' EXIT
           tar -C "$extract_dir" -xzf "dist/${base}.tar.gz"
-          tools/checkBundledNodeRuntime.sh "$extract_dir/${base}"
-          bash tools/checkBundledLanguageRoot.sh "$extract_dir/${base}"
+          if [[ "${{ matrix.target }}" == "x86_64-apple-darwin" ]]; then
+            /usr/sbin/softwareupdate --install-rosetta --agree-to-license >/dev/null 2>&1 || true
+          fi
+          node tools/checkReleaseBundle.mjs \
+            --root "$extract_dir/${base}" \
+            --version "$VERSION" \
+            --fixture language/examples/ptyBasics.sigil \
+            --metadata "dist/${{ matrix.platform }}.artifact.json" \
+            --archive "${base}.tar.gz" \
+            --archive-format tar.gz \
+            --platform-id "${{ matrix.platform }}" \
+            --os "${{ matrix.os }}" \
+            --architecture "${{ matrix.architecture }}" \
+            --target "${{ matrix.target }}"
 
-      - name: Smoke test binary
+      - name: Package Windows archive
         if: runner.os == 'Windows'
         env:
-          SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
+          VERSION: ${{ needs.prepare-release.outputs.version }}
         shell: pwsh
         run: |
-          $binary = "language/compiler/target/${{ matrix.target }}/dist/sigil.exe"
-          $version = & $binary --version
-          if ($version -ne "sigil $env:SIGIL_VERSION") {
-            throw "unexpected version output: $version"
-          }
-
-      - name: Package windows archive
-        if: runner.os == 'Windows'
-        env:
-          SIGIL_VERSION: ${{ needs.prepare-release.outputs.version }}
-        shell: pwsh
-        run: |
-          $base = "sigil-$env:SIGIL_VERSION-${{ matrix.platform }}"
+          $base = "sigil-$env:VERSION-${{ matrix.platform }}"
           $stageDir = "dist/$base"
-          New-Item -ItemType Directory -Force -Path $stageDir | Out-Null
+          New-Item -ItemType Directory -Force -Path "$stageDir/runtime/node", "$stageDir/language" | Out-Null
           Copy-Item "language/compiler/target/${{ matrix.target }}/dist/sigil.exe" "$stageDir/sigil.exe"
+          Copy-Item "language/runtime/node/*" "$stageDir/runtime/node" -Recurse -Force
+          foreach ($dir in @("core", "stdlib", "world", "test")) {
+            Copy-Item "language/$dir" "$stageDir/language/$dir" -Recurse -Force
+          }
           Copy-Item "$env:Z3_RUNTIME_DIR/*.dll" $stageDir
           Copy-Item "LICENSE" "$stageDir/LICENSE"
-          Set-Content -Path "$stageDir/README.txt" -Value "Sigil $env:SIGIL_VERSION`n`nRun .\\sigil.exe --help"
+          Set-Content -Path "$stageDir/README.txt" -Value "Sigil $env:VERSION`n`nRun .\sigil.exe --help"
           Compress-Archive -Path $stageDir -DestinationPath "dist/$base.zip" -Force
+
+      - name: Validate packaged Windows archive
+        if: runner.os == 'Windows'
+        env:
+          VERSION: ${{ needs.prepare-release.outputs.version }}
+        shell: pwsh
+        run: |
+          $base = "sigil-$env:VERSION-${{ matrix.platform }}"
+          $extractDir = Join-Path $env:RUNNER_TEMP "sigil-release-extracted"
+          Remove-Item $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+          Expand-Archive -Path "dist/$base.zip" -DestinationPath $extractDir
+          node tools/checkReleaseBundle.mjs `
+            --root "$extractDir/$base" `
+            --version "$env:VERSION" `
+            --fixture language/examples/ptyBasics.sigil `
+            --metadata "dist/${{ matrix.platform }}.artifact.json" `
+            --archive "$base.zip" `
+            --archive-format zip `
+            --platform-id "${{ matrix.platform }}" `
+            --os "${{ matrix.os }}" `
+            --architecture "${{ matrix.architecture }}" `
+            --target "${{ matrix.target }}"
 
       - uses: actions/upload-artifact@v6
         with:
           name: release-${{ matrix.platform }}
-          path: dist/*.${{ matrix.archive_ext }}
+          path: |
+            dist/*.${{ matrix.archive_ext }}
+            dist/${{ matrix.platform }}.artifact.json
           compression-level: 0
 
   publish-release:
@@ -286,142 +260,90 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          ref: ${{ needs.prepare-release.outputs.commit }}
 
       - uses: actions/download-artifact@v8
-        with:
-          pattern: release-*
-          merge-multiple: true
-          path: dist
-
-      - name: Generate checksums
-        shell: bash
-        run: |
-          cd dist
-          sha256sum sigil-* > SHA256SUMS
-
-      - name: Publish GitHub Release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.prepare-release.outputs.version }}
-          REPO: ${{ github.repository }}
-        shell: bash
-        run: |
-          if gh release view "${VERSION}" --repo "${REPO}" >/dev/null 2>&1; then
-            gh release upload "${VERSION}" dist/* --clobber --repo "${REPO}"
-          else
-            gh release create "${VERSION}" dist/* --title "${VERSION}" --latest --generate-notes --repo "${REPO}"
-          fi
-
-  publish-homebrew-tap:
-    needs:
-      - prepare-release
-      - build-binaries
-      - publish-release
-    runs-on: ubuntu-latest
-    env:
-      HOMEBREW_TAP_DEPLOY_KEY: ${{ secrets.HOMEBREW_TAP_DEPLOY_KEY }}
-
-    steps:
-      - name: Check tap publish configuration
-        id: tap-config
-        shell: bash
-        run: |
-          if [[ -n "${HOMEBREW_TAP_DEPLOY_KEY}" ]]; then
-            echo "configured=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "configured=false" >> "$GITHUB_OUTPUT"
-            echo "Homebrew tap deploy key not configured; skipping tap publish."
-          fi
-
-      - uses: actions/checkout@v6
-        if: ${{ steps.tap-config.outputs.configured == 'true' }}
-        with:
-          ref: ${{ github.event.workflow_run.head_sha }}
-
-      - uses: actions/download-artifact@v8
-        if: ${{ steps.tap-config.outputs.configured == 'true' }}
         with:
           pattern: release-*
           merge-multiple: true
           path: dist
 
       - uses: actions/setup-node@v6
-        if: ${{ steps.tap-config.outputs.configured == 'true' }}
         with:
           node-version: 24
+          package-manager-cache: true
 
       - name: Enable corepack pnpm
-        if: ${{ steps.tap-config.outputs.configured == 'true' }}
         shell: bash
         run: |
           corepack enable
           corepack prepare pnpm@10.0.0 --activate
 
-      - name: Install workspace dependencies
-        if: ${{ steps.tap-config.outputs.configured == 'true' }}
-        shell: bash
+      - name: Install manifest tooling dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Generate checksums
-        if: ${{ steps.tap-config.outputs.configured == 'true' }}
+      - name: Generate and verify release metadata
+        env:
+          COMMIT: ${{ needs.prepare-release.outputs.commit }}
+          REPOSITORY: ${{ github.repository }}
+          VERSION: ${{ needs.prepare-release.outputs.version }}
         shell: bash
         run: |
+          pnpm exec tsx tools/releaseManifest.ts generate \
+            --artifacts-dir dist \
+            --commit "$COMMIT" \
+            --manifest dist/release-manifest.json \
+            --repository "$REPOSITORY" \
+            --sums dist/SHA256SUMS \
+            --version "$VERSION"
           cd dist
-          sha256sum sigil-* > SHA256SUMS
+          sha256sum -c SHA256SUMS
 
-      - name: Extract Sigil release binary
-        if: ${{ steps.tap-config.outputs.configured == 'true' }}
+      - name: Publish immutable release assets
         env:
+          COMMIT: ${{ needs.prepare-release.outputs.commit }}
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
           VERSION: ${{ needs.prepare-release.outputs.version }}
         shell: bash
         run: |
-          mkdir -p "$RUNNER_TEMP/sigil-release"
-          tar -xzf "dist/sigil-${VERSION}-linux-x64.tar.gz" -C "$RUNNER_TEMP/sigil-release"
-          echo "SIGIL_BIN=$(find "$RUNNER_TEMP/sigil-release" -name sigil -type f | head -1)" >> "$GITHUB_ENV"
-
-      - name: Generate Homebrew formula
-        if: ${{ steps.tap-config.outputs.configured == 'true' }}
-        env:
-          VERSION: ${{ needs.prepare-release.outputs.version }}
-          REPO: ${{ github.repository }}
-        shell: bash
-        run: |
-          mkdir -p "$RUNNER_TEMP/homebrew/Formula"
-          sigilHomebrewVersion="${VERSION}" \
-          sigilHomebrewRepo="${REPO}" \
-          sigilHomebrewSha256SumsPath="$PWD/dist/SHA256SUMS" \
-          sigilHomebrewOutputPath="$RUNNER_TEMP/homebrew/Formula/sigil.rb" \
-          "$SIGIL_BIN" run projects/homebrewPackaging/src/main.sigil --env release
-          ruby -c "$RUNNER_TEMP/homebrew/Formula/sigil.rb"
-
-      - name: Configure tap deploy key
-        if: ${{ steps.tap-config.outputs.configured == 'true' }}
-        shell: bash
-        run: |
-          install -m 700 -d ~/.ssh
-          printf "%s" "$HOMEBREW_TAP_DEPLOY_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          ssh-keygen -y -f ~/.ssh/id_ed25519 >/dev/null
-          ssh-keyscan github.com >> ~/.ssh/known_hosts
-
-      - name: Update tap repo
-        if: ${{ steps.tap-config.outputs.configured == 'true' }}
-        env:
-          TAP_REPO: inerte/homebrew-tap
-          VERSION: ${{ needs.prepare-release.outputs.version }}
-        shell: bash
-        run: |
-          git clone "git@github.com:${TAP_REPO}.git" "$RUNNER_TEMP/homebrew-tap"
-          mkdir -p "$RUNNER_TEMP/homebrew-tap/Formula"
-          cp "$RUNNER_TEMP/homebrew/Formula/sigil.rb" "$RUNNER_TEMP/homebrew-tap/Formula/sigil.rb"
-          cd "$RUNNER_TEMP/homebrew-tap"
-          if [[ -z "$(git status --porcelain -- Formula/sigil.rb)" ]]; then
-            echo "Homebrew formula already up to date"
-            exit 0
+          expected_assets="$(find dist -maxdepth 1 -type f ! -name '*.artifact.json' -printf '%f\n' | sort)"
+          if gh release view "$VERSION" --repo "$REPOSITORY" >/dev/null 2>&1; then
+            release_json="$(gh release view "$VERSION" --repo "$REPOSITORY" --json assets,isDraft,targetCommitish)"
+            target="$(jq -r '.targetCommitish' <<<"$release_json")"
+            draft="$(jq -r '.isDraft' <<<"$release_json")"
+            if [[ "$target" != "$COMMIT" ]]; then
+              echo "release $VERSION targets $target instead of $COMMIT" >&2
+              exit 1
+            fi
+            if [[ "$draft" == "true" ]]; then
+              gh release delete "$VERSION" --cleanup-tag --yes --repo "$REPOSITORY"
+            else
+              actual_assets="$(jq -r '.assets[].name' <<<"$release_json" | sort)"
+              if [[ "$actual_assets" != "$expected_assets" ]]; then
+                echo "published release asset set differs from the validated candidate" >&2
+                exit 1
+              fi
+              existing_dir="$(mktemp -d)"
+              gh release download "$VERSION" --repo "$REPOSITORY" --dir "$existing_dir" --pattern release-manifest.json --pattern SHA256SUMS
+              cmp dist/release-manifest.json "$existing_dir/release-manifest.json"
+              cmp dist/SHA256SUMS "$existing_dir/SHA256SUMS"
+              echo "published release $VERSION already matches the validated candidate"
+              exit 0
+            fi
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add Formula/sigil.rb
-          git commit -m "update: publish sigil ${VERSION} formula"
-          git push
+
+          gh release create "$VERSION" \
+            dist/SHA256SUMS \
+            dist/release-manifest.json \
+            dist/sigil-* \
+            --generate-notes \
+            --latest=false \
+            --repo "$REPOSITORY" \
+            --target "$COMMIT" \
+            --title "$VERSION"
+
+          current_latest="$(gh release view --repo "$REPOSITORY" --json tagName --jq '.tagName' 2>/dev/null || true)"
+          if [[ -z "$current_latest" || "$current_latest" == "$VERSION" || "$VERSION" > "$current_latest" ]]; then
+            gh release edit "$VERSION" --latest --repo "$REPOSITORY"
+          fi

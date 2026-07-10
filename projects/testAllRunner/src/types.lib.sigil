@@ -26,3 +26,21 @@ t SuiteResult={
   label:String,
   result:§process.ProcessResult
 }
+
+t QualityGateRegistry={
+  exemptions:[QualitySuiteExemption],
+  formatVersion:Int,
+  suites:[QualitySuite]
+}
+
+t QualitySuite={
+  cwd:String,
+  env:String,
+  id:String,
+  path:String
+}
+
+t QualitySuiteExemption={
+  path:String,
+  reason:String
+}

@@ -41,10 +41,12 @@
     "sigil:build:flashcards:prepared": "(cd projects/flashcards && SIGIL_FLASHCARDS_BASE=${sigilSiteBasePath:-/}projects/sigil-flashcards/demo/ pnpm build)",
     "sigil:test:repo-audit": "cargo run -q -p sigil-cli --no-default-features -- test projects/repoAudit/tests && cargo run -q -p sigil-cli --no-default-features -- run projects/repoAudit/src/main.sigil",
     "sigil:test:repo-compile": "cargo run -q -p sigil-cli --no-default-features -- run projects/repoAudit/src/main.sigil -- --check repo-compile",
+    "sigil:test:release-manifest": "node --import tsx --test tools/releaseManifest.test.ts",
     "sigil:test:package-publishability": "cargo run -q -p sigil-cli --no-default-features -- run projects/repoAudit/src/main.sigil -- --check package-publishability",
     "sigil:test:canonical": "cargo run -q -p sigil-cli --no-default-features -- test language/integrationTests/tests/canonical.sigil",
     "sigil:test:multimodule": "cargo run -q -p sigil-cli --no-default-features -- test language/integrationTests/tests/multimodule.sigil",
-    "sigil:test:all": "cargo run -q -p sigil-cli --no-default-features -- run projects/testAllRunner/src/main.sigil --env local",
+    "sigil:quality": "cargo run -q -p sigil-cli --no-default-features -- run projects/testAllRunner/src/main.sigil --env local",
+    "sigil:test:all": "pnpm sigil:quality",
     "sigil:test:minesweep": "cargo run -q -p sigil-cli --no-default-features -- test projects/minesweep/tests",
     "sigil:build:website": "pnpm install --frozen-lockfile && pnpm sigil:build:todo:prepared && pnpm sigil:build:minesweep:prepared && pnpm sigil:build:2048:prepared && pnpm sigil:build:flashcards:prepared && cargo run -q -p sigil-cli --no-default-features -- run projects/ssg/src/main.sigil --env site",
     "sigil:package:homebrew": "VERSION=$(python3 - <<'PY'\nimport re\nline=open('packaging/homebrew/SHA256SUMS').read().splitlines()[0]\nmatch=re.search(r'sigil-(.*)-darwin-arm64\\.tar\\.gz', line)\nprint(match.group(1) if match else '')\nPY\n) && sigilHomebrewVersion=$VERSION sigilHomebrewRepo=inerte/sigil sigilHomebrewSha256SumsPath=packaging/homebrew/SHA256SUMS sigilHomebrewOutputPath=packaging/homebrew/Formula/sigil.rb cargo run -q -p sigil-cli --no-default-features -- run projects/homebrewPackaging/src/main.sigil --env release"

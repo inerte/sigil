@@ -45,7 +45,13 @@ For language/compiler work, prefer the deeper guide:
 - Start with discovery (`rg`, targeted file reads)
 - Make the smallest coherent change
 - Run relevant checks (build/compile/tests) for touched areas
+- Use `pnpm sigil:quality` as the authoritative pre-release and full-repo gate
 - Summarize what changed, what was verified, and any known unrelated failures
+
+For release changes, preserve the five-platform artifact contract, generate
+`release-manifest.json` and `SHA256SUMS` before publication, and never overwrite
+published release assets. Homebrew is a retryable downstream channel, not the
+authority for release validity.
 
 ## Commit Guidance
 

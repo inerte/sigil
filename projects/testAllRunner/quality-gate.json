@@ -1,0 +1,24 @@
+{
+  "formatVersion": 1,
+  "suites": [
+    { "cwd": ".", "env": "", "id": "algorithms", "path": "projects/algorithms/tests" },
+    { "cwd": "projects/featureFlagStorefront", "env": "test", "id": "featureFlagStorefront", "path": "tests" },
+    { "cwd": ".", "env": "", "id": "featureFlagStorefrontFlags", "path": "projects/featureFlagStorefrontFlags/tests" },
+    { "cwd": ".", "env": "", "id": "flashcards", "path": "projects/flashcards/tests" },
+    { "cwd": ".", "env": "", "id": "game2048", "path": "projects/game-2048/tests" },
+    { "cwd": ".", "env": "release", "id": "homebrewPackaging", "path": "projects/homebrewPackaging/tests" },
+    { "cwd": ".", "env": "test", "id": "labelledBoundaries", "path": "projects/labelled-boundaries/tests" },
+    { "cwd": ".", "env": "", "id": "minesweep", "path": "projects/minesweep/tests" },
+    { "cwd": "projects/roguelike", "env": "", "id": "roguelike", "path": "tests" },
+    { "cwd": ".", "env": "", "id": "router", "path": "projects/router/tests" },
+    { "cwd": ".", "env": "", "id": "ssg", "path": "projects/ssg/tests" },
+    { "cwd": ".", "env": "", "id": "todoApp", "path": "projects/todo-app/tests" },
+    { "cwd": ".", "env": "sqlite", "id": "topologySql", "path": "projects/topology-sql/tests" }
+  ],
+  "exemptions": [
+    {
+      "path": "projects/repoAudit/tests",
+      "reason": "repoAudit tests run serially before the audit executable"
+    }
+  ]
+}

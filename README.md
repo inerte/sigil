@@ -22,6 +22,9 @@ pnpm build
 # Run the compiler test suite with the same Cargo feature flags used in CI
 pnpm sigil:test:compiler
 
+# Run the complete required local/CI quality gate
+pnpm sigil:quality
+
 # Compile a file through the root convenience wrapper
 pnpm sigil compile projects/algorithms/src/fibonacci.sigil
 
@@ -77,9 +80,13 @@ Sigil is distributed as a native CLI bundle through GitHub Releases.
 - Keep `sigil`, `language/`, and `runtime/` together after extraction
 - Put `sigil` on your `PATH`
 - Run `sigil --version`
+- Verify `SHA256SUMS` and inspect `release-manifest.json`
 - Install Node.js if you want to use runtime-backed commands such as `sigil run`, `sigil test`, `sigil validate`, `sigil inspect world`, or `sigil debug ...`
 
 Release versions use canonical UTC timestamps in the format `YYYY-MM-DDTHH-mm-ssZ`.
+Every release manifest records the exact source commit, compiler capabilities,
+platform targets, archive sizes, and SHA-256 hashes. See
+`language/docs/RELEASING.md` for the release and rollback procedure.
 
 Homebrew packaging is generated from those release artifacts in `projects/homebrewPackaging` and mirrored through a separate tap repo when configured. The generated formula installs the bundled `language/` and `runtime/` payloads under `share/sigil/` and declares `node` as a runtime dependency. The release tarballs remain the source of truth.
 

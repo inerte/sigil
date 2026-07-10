@@ -16,7 +16,7 @@ that burden.
 This creates a class of non-canonical code: a `total` function with a `requires`
 clause that contributes nothing to any proof the compiler actually runs.
 
-```sigil module
+```sigil invalid-module
 mode total
 
 λisPalindrome(s:String)=>Bool
@@ -125,7 +125,7 @@ domain belongs in the type:
 ```sigil module
 t NonEmptyString=String where #value>0
 
-λisPalindrome(s:NonEmptyString)=>Bool=s=§string.reverse(s)
+λisPalindrome(s:NonEmptyString)=>Bool=§string.reverse(s)=§string.reverse(§string.reverse(s))
 ```
 
 The constrained type enforces the restriction at every call site through the

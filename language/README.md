@@ -114,10 +114,17 @@ On a fresh install, an assistant can bootstrap its Sigil knowledge locally:
 
 ```bash
 sigil help
+sigil capabilities
 sigil docs context --list
 sigil docs context overview
 sigil docs search "feature flags"
 ```
+
+Every machine-readable command uses the same `formatVersion: 1` envelope with
+explicit analysis completeness and ordered diagnostics. Use
+`sigil inspect trust <path> [--env <name>]` to inventory compiler-known extern
+assumptions, protocol axioms, boundary controls, codecs, dependencies,
+topology, and runtime effects.
 
 This matters because Sigil is new enough that model weights and web search
 should not be assumed to know the language yet. The installed binary carries a

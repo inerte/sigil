@@ -749,10 +749,13 @@ If any issue has severity `error`, list it first.
 Facts:
 {
   "formatVersion": 1,
+  "compilerVersion": "dev",
   "command": "sigil review",
   "ok": true,
   "phase": "surface",
-  "data": { ... }
+  "analysis": {"status": "complete", "level": "typed"},
+  "data": { ... },
+  "diagnostics": []
 }
 ```
 
@@ -765,12 +768,18 @@ that parse and route the data themselves.
 
 <a id="json-first-cli"></a>
 
-`compile`, `test`, `inspect`, `validate`, and `featureFlag audit` always emit
-JSON — there is no human-readable mode. The output envelope is stable and
-versioned (`"formatVersion": 1`). Every error includes a stable `SIGIL-*`
-code, the compiler phase, a corrective message, and structured location data.
-The `"ok"` field on the envelope tells the agent loop whether the command
-succeeded without text scraping.
+`capabilities`, `init`, `docs`, `compile`, `test`, `inspect`, `validate`,
+`featureFlag audit`, `package`, and `debug` emit JSON. Every machine path uses
+one versioned envelope with `compilerVersion`, `command`, `ok`, `phase`,
+`analysis`, object-valued `data`, and ordered `diagnostics`. Agents must check
+both `ok` and `analysis.status` before treating `data` as complete. Only
+fix-its marked `machineApplicable` may be applied without semantic review.
+
+Use `sigil capabilities` to discover the installed machine interface. Use
+`sigil inspect trust` when a task touches externs, protocol-state axioms,
+labelled boundaries, derived codecs, package dependencies, topology, or
+runtime effects. Trust entries declare whether their evidence is parsed or
+typed; do not promote parse-only facts into typed claims.
 
 `run` and `review` have opt-in `--json` flags for different reasons. `run`
 passes a program's stdout through directly by default; `--json` wraps

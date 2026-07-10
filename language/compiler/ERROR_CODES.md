@@ -4,7 +4,7 @@ Complete list of the current Sigil compiler error codes.
 
 ## Error Format
 
-All errors follow the format:
+Human renderings follow the format:
 ```
 CODE file:line:column message (found X, expected Y)
 ```
@@ -13,6 +13,12 @@ Example:
 ```
 SIGIL-LEX-TAB test.sigil:5:10 tab characters not allowed (use spaces for indentation)
 ```
+
+Machine-readable commands return errors in the common envelope's ordered
+`diagnostics` array. Each diagnostic includes `code`, `phase`, `severity`, and
+`message`, with optional spans, proof/runtime details, suggestions, and
+fix-its. Agents may apply only fix-its whose `applicability` is
+`machineApplicable` without semantic review.
 
 ## Lexer Errors (SIGIL-LEX-*)
 
@@ -428,9 +434,7 @@ Current additional codes include:
 **Message:** `requires clause on total function '<name>' is not load-bearing; all proof obligations hold without it`
 **How to fix:** Remove the `requires` clause, or encode the restriction as a constrained parameter type:
 ```sigil module
-t NonNegInt = Int where value≥0
-
-λgcd(a:Int, b:NonNegInt) => Int = ...
+t NonNegInt=Int where value≥0
 ```
 **Exception:** Protocol-state assertions (`handle.state=StateName`) are always canonical in `requires` and are exempt from this check, including when mixed with value predicates.
 **Note:** The check currently applies only to total declarations without a `decreases` clause. Total self-recursive functions with `decreases` are conservatively skipped pending refinement of the bound-check replay.
@@ -495,6 +499,16 @@ t NonNegInt = Int where value≥0
 **Description:** Unexpected CLI error.
 **Message:** Various error messages
 **How to fix:** Check error message for details
+
+### SIGIL-CLI-TESTS-FAILED
+**Description:** One or more selected tests failed, errored, or stopped.
+**Message:** "one or more Sigil tests did not pass"
+**How to fix:** Inspect `data.results` for each test outcome and `data.summary` for suite totals
+
+### SIGIL-CLI-REVIEW-FAILED
+**Description:** Semantic review retained one or more error-level analysis issues.
+**Message:** "semantic review could not complete without errors"
+**How to fix:** Inspect `data.issues` and the primary diagnostic before relying on review facts
 
 ### SIGIL-CLI-IMPORT-NOT-FOUND
 **Description:** Cannot resolve rooted module reference.

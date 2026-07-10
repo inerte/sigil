@@ -973,8 +973,8 @@ fn run_feature_flag_rollout_requires_a_stable_key() {
 
     assert!(!output.status.success());
     let json = parse_json(&output.stdout);
-    assert_eq!(json["error"]["code"], "SIGIL-RUNTIME-FEATURE-FLAG");
-    assert!(json["error"]["details"]["runtime"]["stderr"]
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-RUNTIME-FEATURE-FLAG");
+    assert!(json["diagnostics"][0]["details"]["runtime"]["stderr"]
         .as_str()
         .unwrap()
         .contains("uses a rollout rule but no stable key was resolved"));
@@ -1031,8 +1031,8 @@ fn run_feature_flag_rollout_rejects_invalid_variant_weights() {
 
     assert!(!output.status.success());
     let json = parse_json(&output.stdout);
-    assert_eq!(json["error"]["code"], "SIGIL-RUNTIME-FEATURE-FLAG");
-    assert!(json["error"]["details"]["runtime"]["stderr"]
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-RUNTIME-FEATURE-FLAG");
+    assert!(json["diagnostics"][0]["details"]["runtime"]["stderr"]
         .as_str()
         .unwrap()
         .contains("rollout variant weights must sum to 100"));
@@ -1059,7 +1059,7 @@ fn run_json_preserves_success_envelope() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc run");
+    assert_eq!(json["command"], "sigil run");
     assert_eq!(json["ok"], true);
     assert_eq!(json["data"]["runtime"]["stdout"], "json ok\n");
     assert_eq!(json["data"]["runtime"]["stderr"], "");
@@ -1088,11 +1088,11 @@ fn run_trace_requires_json() {
     assert!(output.stdout.is_empty());
 
     let json = parse_json(output.stderr.trim_ascii());
-    assert_eq!(json["command"], "sigilc run");
+    assert_eq!(json["command"], "sigil run");
     assert_eq!(json["ok"], false);
     assert_eq!(json["phase"], "cli");
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-USAGE");
-    assert!(json["error"]["message"]
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-CLI-USAGE");
+    assert!(json["diagnostics"][0]["message"]
         .as_str()
         .unwrap()
         .contains("--json"));
@@ -1116,8 +1116,8 @@ fn run_trace_expr_requires_trace_and_json() {
     assert!(output.stdout.is_empty());
 
     let json = parse_json(output.stderr.trim_ascii());
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-USAGE");
-    assert!(json["error"]["message"]
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-CLI-USAGE");
+    assert!(json["diagnostics"][0]["message"]
         .as_str()
         .unwrap()
         .contains("--trace-expr"));
@@ -1141,8 +1141,8 @@ fn run_breakpoints_require_json() {
     assert!(output.stdout.is_empty());
 
     let json = parse_json(output.stderr.trim_ascii());
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-USAGE");
-    assert!(json["error"]["message"]
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-CLI-USAGE");
+    assert!(json["diagnostics"][0]["message"]
         .as_str()
         .unwrap()
         .contains("--json"));
@@ -1167,7 +1167,10 @@ fn run_json_breakpoint_not_found_reports_cli_error() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-BREAKPOINT-NOT-FOUND");
+    assert_eq!(
+        json["diagnostics"][0]["code"],
+        "SIGIL-CLI-BREAKPOINT-NOT-FOUND"
+    );
 }
 
 #[test]
@@ -1202,7 +1205,10 @@ fn run_json_breakpoint_ambiguous_function_reports_cli_error() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-BREAKPOINT-AMBIGUOUS");
+    assert_eq!(
+        json["diagnostics"][0]["code"],
+        "SIGIL-CLI-BREAKPOINT-AMBIGUOUS"
+    );
 }
 
 #[test]
@@ -1338,9 +1344,12 @@ fn run_json_breakpoint_failure_preserves_hits_in_error_details() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["error"]["code"], "SIGIL-RUNTIME-UNCAUGHT-EXCEPTION");
+    assert_eq!(
+        json["diagnostics"][0]["code"],
+        "SIGIL-RUNTIME-UNCAUGHT-EXCEPTION"
+    );
     assert!(
-        json["error"]["details"]["breakpoints"]["totalHits"]
+        json["diagnostics"][0]["details"]["breakpoints"]["totalHits"]
             .as_u64()
             .unwrap()
             >= 1
@@ -1378,7 +1387,7 @@ fn run_json_trace_success_includes_call_branch_and_effect_events() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc run");
+    assert_eq!(json["command"], "sigil run");
     assert_eq!(json["ok"], true);
     assert_eq!(json["data"]["trace"]["enabled"], true);
     let events = json["data"]["trace"]["events"]
@@ -1413,7 +1422,7 @@ fn run_emits_json_error_on_compile_failure() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(!stderr.contains("\nError: "));
     let json = parse_json(output.stderr.trim_ascii());
-    assert_eq!(json["command"], "sigilc run");
+    assert_eq!(json["command"], "sigil run");
     assert_eq!(json["ok"], false);
     assert_eq!(json["phase"], "parser");
 }
@@ -1444,18 +1453,18 @@ e process:{exit:λ(Int)=>Unit}\n\
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(!stderr.contains("\nError: Process exited with code"));
     let json = parse_json(output.stderr.trim_ascii());
-    assert_eq!(json["command"], "sigilc run");
+    assert_eq!(json["command"], "sigil run");
     assert_eq!(json["ok"], false);
-    assert_eq!(json["error"]["code"], "SIGIL-RUNTIME-CHILD-EXIT");
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-RUNTIME-CHILD-EXIT");
     assert_eq!(
-        json["error"]["details"]["runtime"]["stdout"],
+        json["diagnostics"][0]["details"]["runtime"]["stdout"],
         "before exit\n"
     );
     assert_eq!(
-        json["error"]["details"]["compile"]["input"],
+        json["diagnostics"][0]["details"]["compile"]["input"],
         file.to_string_lossy().to_string()
     );
-    assert!(json["error"]["details"]["exception"].is_null());
+    assert!(json["diagnostics"][0]["details"]["exception"].is_null());
 }
 
 #[test]
@@ -1483,18 +1492,18 @@ e process:{exit:λ(Int)=>Unit}\n\
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc run");
+    assert_eq!(json["command"], "sigil run");
     assert_eq!(json["ok"], false);
-    assert_eq!(json["error"]["code"], "SIGIL-RUNTIME-CHILD-EXIT");
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-RUNTIME-CHILD-EXIT");
     assert_eq!(
-        json["error"]["details"]["runtime"]["stdout"],
+        json["diagnostics"][0]["details"]["runtime"]["stdout"],
         "json before exit\n"
     );
     assert_eq!(
-        json["error"]["details"]["compile"]["input"],
+        json["diagnostics"][0]["details"]["compile"]["input"],
         file.to_string_lossy().to_string()
     );
-    assert!(json["error"]["details"]["exception"].is_null());
+    assert!(json["diagnostics"][0]["details"]["exception"].is_null());
 }
 
 #[test]
@@ -1519,14 +1528,14 @@ fn run_json_trace_preserves_child_exit_failures_with_trace_details() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["error"]["code"], "SIGIL-RUNTIME-CHILD-EXIT");
-    assert_eq!(json["error"]["details"]["trace"]["enabled"], true);
-    assert!(json["error"]["details"]["trace"]["events"]
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-RUNTIME-CHILD-EXIT");
+    assert_eq!(json["diagnostics"][0]["details"]["trace"]["enabled"], true);
+    assert!(json["diagnostics"][0]["details"]["trace"]["events"]
         .as_array()
         .unwrap()
         .iter()
         .any(|event| event["kind"] == "effect_call"));
-    assert!(json["error"]["details"]["exception"].is_null());
+    assert!(json["diagnostics"][0]["details"]["exception"].is_null());
 }
 
 #[test]
@@ -1550,68 +1559,73 @@ fn run_json_enriches_uncaught_runtime_exceptions() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc run");
+    assert_eq!(json["command"], "sigil run");
     assert_eq!(json["ok"], false);
     assert_eq!(json["phase"], "runtime");
-    assert_eq!(json["error"]["code"], "SIGIL-RUNTIME-UNCAUGHT-EXCEPTION");
     assert_eq!(
-        json["error"]["location"]["file"],
+        json["diagnostics"][0]["code"],
+        "SIGIL-RUNTIME-UNCAUGHT-EXCEPTION"
+    );
+    assert_eq!(
+        json["diagnostics"][0]["location"]["file"],
         file.to_string_lossy().to_string()
     );
     assert_eq!(
-        json["error"]["details"]["compile"]["input"],
+        json["diagnostics"][0]["details"]["compile"]["input"],
         file.to_string_lossy().to_string()
     );
     assert!(PathBuf::from(
-        json["error"]["details"]["compile"]["spanMapFile"]
+        json["diagnostics"][0]["details"]["compile"]["spanMapFile"]
             .as_str()
             .expect("spanMapFile path")
     )
     .exists());
-    assert!(json["error"]["details"]["runtime"]["stderr"]
+    assert!(json["diagnostics"][0]["details"]["runtime"]["stderr"]
         .as_str()
         .unwrap()
         .contains("ReferenceError"));
     assert_eq!(
-        json["error"]["details"]["exception"]["name"],
+        json["diagnostics"][0]["details"]["exception"]["name"],
         "ReferenceError"
     );
     assert_eq!(
-        json["error"]["details"]["exception"]["sigilFrame"]["label"],
+        json["diagnostics"][0]["details"]["exception"]["sigilFrame"]["label"],
         "main"
     );
     assert_eq!(
-        json["error"]["details"]["exception"]["sigilExpression"]["file"],
+        json["diagnostics"][0]["details"]["exception"]["sigilExpression"]["file"],
         file.to_string_lossy().to_string()
     );
     assert_ne!(
-        json["error"]["details"]["exception"]["sigilExpression"]["kind"],
+        json["diagnostics"][0]["details"]["exception"]["sigilExpression"]["kind"],
         "function_decl"
     );
     assert!(
-        json["error"]["details"]["exception"]["sigilExpression"]["location"]["start"]["column"]
+        json["diagnostics"][0]["details"]["exception"]["sigilExpression"]["location"]["start"]
+            ["column"]
             .as_u64()
             .unwrap()
-            > json["error"]["details"]["exception"]["sigilFrame"]["location"]["start"]["column"]
+            > json["diagnostics"][0]["details"]["exception"]["sigilFrame"]["location"]["start"]
+                ["column"]
                 .as_u64()
                 .unwrap()
     );
     assert_eq!(
-        json["error"]["details"]["exception"]["sigilFrame"]["kind"],
+        json["diagnostics"][0]["details"]["exception"]["sigilFrame"]["kind"],
         "function_decl"
     );
     assert_eq!(
-        json["error"]["details"]["exception"]["sigilFrame"]["file"],
+        json["diagnostics"][0]["details"]["exception"]["sigilFrame"]["file"],
         file.to_string_lossy().to_string()
     );
     assert!(
-        json["error"]["details"]["exception"]["generatedFrame"]["file"]
+        json["diagnostics"][0]["details"]["exception"]["generatedFrame"]["file"]
             .as_str()
             .unwrap()
             .ends_with(".mjs")
     );
     assert!(
-        json["error"]["details"]["exception"]["sigilFrame"]["excerpt"]["text"]
+        json["diagnostics"][0]["details"]["exception"]["sigilFrame"]["excerpt"]["text"]
             .as_str()
             .unwrap()
             .contains("λmain()=>Unit=boom.explode()")
@@ -1666,9 +1680,12 @@ fn run_json_trace_failure_includes_trace_details() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["error"]["code"], "SIGIL-RUNTIME-UNCAUGHT-EXCEPTION");
-    assert_eq!(json["error"]["details"]["trace"]["enabled"], true);
-    assert!(json["error"]["details"]["trace"]["events"]
+    assert_eq!(
+        json["diagnostics"][0]["code"],
+        "SIGIL-RUNTIME-UNCAUGHT-EXCEPTION"
+    );
+    assert_eq!(json["diagnostics"][0]["details"]["trace"]["enabled"], true);
+    assert!(json["diagnostics"][0]["details"]["trace"]["events"]
         .as_array()
         .unwrap()
         .iter()
@@ -1696,35 +1713,38 @@ fn run_json_enriches_import_time_runtime_exceptions() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["error"]["code"], "SIGIL-RUNTIME-UNCAUGHT-EXCEPTION");
     assert_eq!(
-        json["error"]["location"]["file"],
+        json["diagnostics"][0]["code"],
+        "SIGIL-RUNTIME-UNCAUGHT-EXCEPTION"
+    );
+    assert_eq!(
+        json["diagnostics"][0]["location"]["file"],
         file.to_string_lossy().to_string()
     );
     assert_eq!(
-        json["error"]["details"]["exception"]["sigilFrame"]["label"],
+        json["diagnostics"][0]["details"]["exception"]["sigilFrame"]["label"],
         "bad"
     );
     assert_eq!(
-        json["error"]["details"]["exception"]["sigilExpression"]["file"],
+        json["diagnostics"][0]["details"]["exception"]["sigilExpression"]["file"],
         file.to_string_lossy().to_string()
     );
     assert_ne!(
-        json["error"]["details"]["exception"]["sigilExpression"]["kind"],
+        json["diagnostics"][0]["details"]["exception"]["sigilExpression"]["kind"],
         "const_decl"
     );
     assert!(
-        json["error"]["details"]["exception"]["sigilExpression"]["error"]["typeId"]
+        json["diagnostics"][0]["details"]["exception"]["sigilExpression"]["error"]["typeId"]
             .as_str()
             .unwrap()
             .ends_with(".BirthYear")
     );
     assert_eq!(
-        json["error"]["details"]["exception"]["sigilFrame"]["kind"],
+        json["diagnostics"][0]["details"]["exception"]["sigilFrame"]["kind"],
         "const_decl"
     );
     assert!(
-        json["error"]["details"]["exception"]["sigilFrame"]["excerpt"]["text"]
+        json["diagnostics"][0]["details"]["exception"]["sigilFrame"]["excerpt"]["text"]
             .as_str()
             .unwrap()
             .contains("c bad=(process.chdir(\"\"):BirthYear)")
@@ -1756,7 +1776,7 @@ fn run_json_runtime_expression_includes_live_locals_when_breakpoints_are_enabled
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    let locals = json["error"]["details"]["exception"]["sigilExpression"]["locals"]
+    let locals = json["diagnostics"][0]["details"]["exception"]["sigilExpression"]["locals"]
         .as_array()
         .expect("expression locals");
     assert!(locals.iter().any(|local| {
@@ -1865,27 +1885,30 @@ fn run_json_preserves_topology_codes_for_bootstrap_failures() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc run");
+    assert_eq!(json["command"], "sigil run");
     assert_eq!(json["ok"], false);
     assert_eq!(json["phase"], "topology");
-    assert_eq!(json["error"]["code"], "SIGIL-TOPO-ENV-NOT-FOUND");
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-TOPO-ENV-NOT-FOUND");
     assert_eq!(
-        json["error"]["details"]["compile"]["input"],
+        json["diagnostics"][0]["details"]["compile"]["input"],
         file.to_string_lossy().to_string()
     );
-    assert!(json["error"]["details"]["runtime"]["stderr"]
+    assert!(json["diagnostics"][0]["details"]["runtime"]["stderr"]
         .as_str()
         .unwrap()
         .contains("SIGIL-TOPO-ENV-NOT-FOUND"));
-    assert_eq!(json["error"]["details"]["exception"]["name"], "Error");
+    assert_eq!(
+        json["diagnostics"][0]["details"]["exception"]["name"],
+        "Error"
+    );
     assert!(
-        json["error"]["details"]["exception"]["generatedFrame"]["file"]
+        json["diagnostics"][0]["details"]["exception"]["generatedFrame"]["file"]
             .as_str()
             .unwrap()
             .ends_with(".run.mjs")
     );
-    assert!(json["error"]["location"].is_null());
-    assert!(json["error"]["details"]["exception"]["sigilFrame"].is_null());
+    assert!(json["diagnostics"][0]["location"].is_null());
+    assert!(json["diagnostics"][0]["details"]["exception"]["sigilFrame"].is_null());
 }
 
 #[test]
@@ -1988,9 +2011,15 @@ fn run_json_record_writes_partial_artifact_on_runtime_failure() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["error"]["code"], "SIGIL-RUNTIME-UNCAUGHT-EXCEPTION");
-    assert_eq!(json["error"]["details"]["replay"]["mode"], "record");
-    assert_eq!(json["error"]["details"]["replay"]["partial"], true);
+    assert_eq!(
+        json["diagnostics"][0]["code"],
+        "SIGIL-RUNTIME-UNCAUGHT-EXCEPTION"
+    );
+    assert_eq!(
+        json["diagnostics"][0]["details"]["replay"]["mode"],
+        "record"
+    );
+    assert_eq!(json["diagnostics"][0]["details"]["replay"]["partial"], true);
     assert!(artifact.exists());
 
     let artifact_json = parse_replay_artifact(&artifact);
@@ -2151,8 +2180,8 @@ fn run_replay_rejects_env() {
 
     assert!(!output.status.success());
     let json = parse_json(output.stderr.trim_ascii());
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-USAGE");
-    assert!(json["error"]["message"]
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-CLI-USAGE");
+    assert!(json["diagnostics"][0]["message"]
         .as_str()
         .unwrap()
         .contains("--replay"));
@@ -2195,7 +2224,7 @@ fn run_json_replay_rejects_binding_mismatch_on_argv() {
 
     let json = parse_json(&replayed.stdout);
     assert_eq!(
-        json["error"]["code"],
+        json["diagnostics"][0]["code"],
         "SIGIL-RUNTIME-REPLAY-BINDING-MISMATCH"
     );
 }
@@ -2321,7 +2350,7 @@ fn run_json_replay_reproduces_recorded_filesystem_failure() {
     assert!(recorded.stderr.is_empty());
     let recorded_json = parse_json(&recorded.stdout);
     assert_eq!(
-        recorded_json["error"]["code"],
+        recorded_json["diagnostics"][0]["code"],
         "SIGIL-RUNTIME-UNCAUGHT-EXCEPTION"
     );
 
@@ -2349,18 +2378,18 @@ fn run_json_replay_reproduces_recorded_filesystem_failure() {
 
     let replayed_json = parse_json(&replayed.stdout);
     assert_eq!(
-        replayed_json["error"]["code"],
+        replayed_json["diagnostics"][0]["code"],
         "SIGIL-RUNTIME-UNCAUGHT-EXCEPTION"
     );
     assert_eq!(
-        replayed_json["error"]["details"]["replay"]["mode"],
+        replayed_json["diagnostics"][0]["details"]["replay"]["mode"],
         "replay"
     );
-    assert!(replayed_json["error"]["message"]
+    assert!(replayed_json["diagnostics"][0]["message"]
         .as_str()
         .unwrap()
         .contains("ENOENT"));
-    assert!(replayed_json["error"]["details"]["exception"]["sigilExpression"].is_object());
+    assert!(replayed_json["diagnostics"][0]["details"]["exception"]["sigilExpression"].is_object());
 }
 
 #[test]
@@ -2385,7 +2414,10 @@ fn run_json_replay_reproduces_recorded_child_exit_failure() {
 
     assert!(!recorded.status.success());
     let recorded_json = parse_json(&recorded.stdout);
-    assert_eq!(recorded_json["error"]["code"], "SIGIL-RUNTIME-CHILD-EXIT");
+    assert_eq!(
+        recorded_json["diagnostics"][0]["code"],
+        "SIGIL-RUNTIME-CHILD-EXIT"
+    );
 
     let replayed = Command::new(sigil_bin())
         .current_dir(repo_root())
@@ -2401,9 +2433,12 @@ fn run_json_replay_reproduces_recorded_child_exit_failure() {
     assert!(replayed.stderr.is_empty());
 
     let replayed_json = parse_json(&replayed.stdout);
-    assert_eq!(replayed_json["error"]["code"], "SIGIL-RUNTIME-CHILD-EXIT");
     assert_eq!(
-        replayed_json["error"]["details"]["replay"]["mode"],
+        replayed_json["diagnostics"][0]["code"],
+        "SIGIL-RUNTIME-CHILD-EXIT"
+    );
+    assert_eq!(
+        replayed_json["diagnostics"][0]["details"]["replay"]["mode"],
         "replay"
     );
 }

@@ -17,6 +17,7 @@ Start from the normal CLI help:
 
 ```bash
 sigil help
+sigil capabilities
 ```
 
 Then move into the local docs surface:
@@ -127,6 +128,10 @@ That split is intentional:
 
 - help text bootstraps command discovery
 - JSON payloads are the machine-first retrieval surface
+
+Docs results use the same canonical machine envelope as every other JSON
+command. Read document-specific values under `data`, confirm
+`analysis.status`, and handle failures through ordered `diagnostics`.
 
 ## Why This Exists Even After Models Catch Up
 

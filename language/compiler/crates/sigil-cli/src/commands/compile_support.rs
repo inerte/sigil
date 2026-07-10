@@ -1,7 +1,7 @@
 use super::legacy::CliError;
 use super::shared::{
-    extract_error_code, format_validation_errors, output_json_error, phase_for_code,
-    project_error_json_details, type_error_json_details, SourcePoint,
+    extract_error_code, format_validation_errors, output_json_error, output_json_value,
+    phase_for_code, project_error_json_details, type_error_json_details, SourcePoint,
 };
 use crate::hash::encode_lower_hex;
 use crate::module_graph::{
@@ -1092,7 +1092,7 @@ fn compile_single_file_command(
                 let error_code = extract_error_code(&error_msg);
 
                 output_json_error(
-                    "sigilc compile",
+                    "sigil compile",
                     "canonical",
                     &error_code,
                     &error_msg,
@@ -1102,35 +1102,33 @@ fn compile_single_file_command(
                     }),
                 );
             }
-            return Err(CliError::ModuleGraph(ModuleGraphError::Validation(errors)));
+            return Err(CliError::Reported(1));
         }
         Err(CliError::ModuleGraph(ModuleGraphError::ProjectConfig(project_error))) => {
             output_json_error(
-                "sigilc compile",
+                "sigil compile",
                 phase_for_code(project_error.code()),
                 project_error.code(),
                 &project_error.to_string(),
                 project_error_json_details(&project_error, "file", file, serde_json::Map::new()),
             );
-            return Err(CliError::ModuleGraph(ModuleGraphError::ProjectConfig(
-                project_error,
-            )));
+            return Err(CliError::Reported(1));
         }
         Err(CliError::Type(type_error)) => {
             output_json_error(
-                "sigilc compile",
+                "sigil compile",
                 "typecheck",
                 &type_error.code,
                 &type_error.message,
                 type_error_json_details(&type_error),
             );
-            return Err(CliError::Type(type_error));
+            return Err(CliError::Reported(1));
         }
         Err(error) => {
             let message = error.to_string();
             let error_code = extract_error_code(&message);
             output_json_error(
-                "sigilc compile",
+                "sigil compile",
                 phase_for_code(&error_code),
                 &error_code,
                 &message,
@@ -1138,7 +1136,7 @@ fn compile_single_file_command(
                     "file": file.to_string_lossy()
                 }),
             );
-            return Err(error);
+            return Err(CliError::Reported(1));
         }
     };
     let entry_output = compiled.entry_output_path.clone();
@@ -1174,7 +1172,7 @@ fn compile_single_file_command(
 
     let output_json = serde_json::json!({
         "formatVersion": 1,
-        "command": "sigilc compile",
+        "command": "sigil compile",
         "ok": true,
         "phase": "codegen",
         "data": {
@@ -1191,7 +1189,7 @@ fn compile_single_file_command(
             }
         }
     });
-    println!("{}", serde_json::to_string(&output_json).unwrap());
+    output_json_value(&output_json, false);
 
     Ok(())
 }
@@ -1244,7 +1242,7 @@ fn compile_directory_command(
                             json!(start_time.elapsed().as_millis()),
                         );
                         output_json_error(
-                            "sigilc compile",
+                            "sigil compile",
                             "typecheck",
                             &type_error.code,
                             &type_error.message,
@@ -1254,7 +1252,7 @@ fn compile_directory_command(
                     CliError::ModuleGraph(ModuleGraphError::ProjectConfig(project_error))
                     | CliError::ProjectConfig(project_error) => {
                         output_json_error(
-                            "sigilc compile",
+                            "sigil compile",
                             phase_for_code(project_error.code()),
                             project_error.code(),
                             &project_error.to_string(),
@@ -1283,7 +1281,7 @@ fn compile_directory_command(
                         let message = error.to_string();
                         let error_code = extract_error_code(&message);
                         output_json_error(
-                            "sigilc compile",
+                            "sigil compile",
                             "codegen",
                             &error_code,
                             &message,
@@ -1297,7 +1295,7 @@ fn compile_directory_command(
                         );
                     }
                 }
-                return Err(error);
+                return Err(CliError::Reported(1));
             }
         };
 
@@ -1322,7 +1320,7 @@ fn compile_directory_command(
 
     let output_json = serde_json::json!({
         "formatVersion": 1,
-        "command": "sigilc compile",
+        "command": "sigil compile",
         "ok": true,
         "phase": "codegen",
         "data": {
@@ -1337,7 +1335,7 @@ fn compile_directory_command(
             "files": file_results
         }
     });
-    println!("{}", serde_json::to_string(&output_json).unwrap());
+    output_json_value(&output_json, false);
 
     Ok(())
 }
@@ -1429,7 +1427,7 @@ console.log(JSON.stringify({{
 
     let output_json = serde_json::json!({
         "formatVersion": 1,
-        "command": "sigilc validate",
+        "command": "sigil validate",
         "ok": true,
         "phase": "topology",
         "data": {
@@ -1437,7 +1435,7 @@ console.log(JSON.stringify({{
             "projectRoot": project_root.to_string_lossy()
         }
     });
-    println!("{}", serde_json::to_string(&output_json).unwrap());
+    output_json_value(&output_json, false);
 
     Ok(())
 }

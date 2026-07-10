@@ -1,3 +1,4 @@
+mod capabilities;
 mod compile;
 mod compile_support;
 mod debug;
@@ -9,10 +10,12 @@ mod legacy;
 mod lex_parse;
 mod review;
 mod run;
-mod shared;
+pub(crate) mod shared;
 mod test;
+mod trust;
 mod validate;
 
+pub use capabilities::capabilities_command;
 pub use compile::compile_command;
 pub use debug::{
     debug_run_session_command, debug_run_start_command, debug_test_session_command,

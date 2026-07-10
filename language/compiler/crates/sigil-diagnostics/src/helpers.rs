@@ -1,4 +1,6 @@
-use crate::types::{Diagnostic, Fixit, SourcePoint, SourceSpan, Suggestion, SymbolTarget};
+use crate::types::{
+    Diagnostic, Fixit, FixitApplicability, SourcePoint, SourceSpan, Suggestion, SymbolTarget,
+};
 
 /// Create a basic diagnostic with code, phase, and message
 pub fn diagnostic(
@@ -99,6 +101,7 @@ pub fn suggest_generic(message: impl Into<String>, action: Option<String>) -> Su
 pub fn fixit_replace(range: SourceSpan, text: impl Into<String>) -> Fixit {
     Fixit::Replace {
         range,
+        applicability: FixitApplicability::MachineApplicable,
         text: Some(text.into()),
     }
 }
@@ -107,13 +110,17 @@ pub fn fixit_replace(range: SourceSpan, text: impl Into<String>) -> Fixit {
 pub fn fixit_insert(range: SourceSpan, text: impl Into<String>) -> Fixit {
     Fixit::Insert {
         range,
+        applicability: FixitApplicability::MachineApplicable,
         text: Some(text.into()),
     }
 }
 
 /// Create a delete fixit
 pub fn fixit_delete(range: SourceSpan) -> Fixit {
-    Fixit::Delete { range }
+    Fixit::Delete {
+        range,
+        applicability: FixitApplicability::MachineApplicable,
+    }
 }
 
 #[cfg(test)]

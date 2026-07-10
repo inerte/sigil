@@ -97,10 +97,10 @@ fn test_trace_expr_requires_trace() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc test");
+    assert_eq!(json["command"], "sigil test");
     assert_eq!(json["ok"], false);
     assert_eq!(json["phase"], "cli");
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-USAGE");
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-CLI-USAGE");
 }
 
 #[test]
@@ -156,11 +156,11 @@ fn test_directory_runs_inline_tests_in_standalone_files() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc test");
+    assert_eq!(json["command"], "sigil test");
     assert_eq!(json["ok"], true);
-    assert_eq!(json["summary"]["files"], 2);
-    assert_eq!(json["summary"]["discovered"], 1);
-    assert_eq!(json["summary"]["passed"], 1);
+    assert_eq!(json["data"]["summary"]["files"], 2);
+    assert_eq!(json["data"]["summary"]["discovered"], 1);
+    assert_eq!(json["data"]["summary"]["passed"], 1);
 }
 
 #[test]
@@ -184,7 +184,7 @@ fn test_suite_succeeds_when_pnpm_is_shadowed() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["summary"]["passed"], 1);
+    assert_eq!(json["data"]["summary"]["passed"], 1);
 }
 
 #[test]
@@ -200,9 +200,9 @@ fn test_pty_example_fixture_suite_passes() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc test");
+    assert_eq!(json["command"], "sigil test");
     assert_eq!(json["ok"], true);
-    assert_eq!(json["summary"]["passed"], 2);
+    assert_eq!(json["data"]["summary"]["passed"], 2);
 }
 
 #[test]
@@ -218,9 +218,9 @@ fn test_managed_pty_example_fixture_suite_passes() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc test");
+    assert_eq!(json["command"], "sigil test");
     assert_eq!(json["ok"], true);
-    assert_eq!(json["summary"]["passed"], 2);
+    assert_eq!(json["data"]["summary"]["passed"], 2);
 }
 
 #[test]
@@ -236,9 +236,9 @@ fn test_fswatch_example_fixture_suite_passes() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc test");
+    assert_eq!(json["command"], "sigil test");
     assert_eq!(json["ok"], true);
-    assert_eq!(json["summary"]["passed"], 2);
+    assert_eq!(json["data"]["summary"]["passed"], 2);
 }
 
 #[test]
@@ -254,9 +254,9 @@ fn test_websocket_example_fixture_suite_passes() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc test");
+    assert_eq!(json["command"], "sigil test");
     assert_eq!(json["ok"], true);
-    assert_eq!(json["summary"]["passed"], 1);
+    assert_eq!(json["data"]["summary"]["passed"], 1);
 }
 
 #[test]
@@ -272,9 +272,9 @@ fn test_http_server_websocket_example_fixture_suite_passes() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc test");
+    assert_eq!(json["command"], "sigil test");
     assert_eq!(json["ok"], true);
-    assert_eq!(json["summary"]["passed"], 1);
+    assert_eq!(json["data"]["summary"]["passed"], 1);
 }
 
 #[test]
@@ -301,8 +301,8 @@ fn test_replay_rejects_env() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-USAGE");
-    assert!(json["error"]["message"]
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-CLI-USAGE");
+    assert!(json["diagnostics"][0]["message"]
         .as_str()
         .unwrap()
         .contains("--replay"));
@@ -330,12 +330,13 @@ fn test_breakpoint_stop_marks_only_current_test_as_stopped() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc test");
+    assert_eq!(json["command"], "sigil test");
     assert_eq!(json["ok"], false);
-    assert_eq!(json["summary"]["passed"], 1);
-    assert_eq!(json["summary"]["stopped"], 1);
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-CLI-TESTS-FAILED");
+    assert_eq!(json["data"]["summary"]["passed"], 1);
+    assert_eq!(json["data"]["summary"]["stopped"], 1);
 
-    let results = json["results"].as_array().unwrap();
+    let results = json["data"]["results"].as_array().unwrap();
     let stopped = results
         .iter()
         .find(|result| result["name"] == "stops here")
@@ -380,7 +381,7 @@ test "traces random" =>!Random world {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    let result = &json["results"][0];
+    let result = &json["data"]["results"][0];
     assert_eq!(result["status"], "pass");
     let events = result["trace"]["events"].as_array().unwrap();
     assert!(events
@@ -408,7 +409,7 @@ fn test_error_result_includes_exact_exception_details() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    let result = &json["results"][0];
+    let result = &json["data"]["results"][0];
     assert_eq!(result["status"], "error");
     assert_eq!(result["exception"]["sigilFrame"]["label"], "boom");
     assert_eq!(
@@ -457,7 +458,10 @@ test "seeded replay" =>!Random world {
     assert!(recorded.stderr.is_empty());
 
     let recorded_json = parse_json(&recorded.stdout);
-    assert_eq!(recorded_json["results"][0]["replay"]["mode"], "record");
+    assert_eq!(
+        recorded_json["data"]["results"][0]["replay"]["mode"],
+        "record"
+    );
 
     let artifact_json = parse_replay_artifact(&artifact);
     assert_eq!(artifact_json["kind"], "sigilTestReplay");
@@ -484,7 +488,13 @@ test "seeded replay" =>!Random world {
     assert!(replayed.stderr.is_empty());
 
     let replayed_json = parse_json(&replayed.stdout);
-    assert_eq!(replayed_json["results"][0]["status"], "pass");
-    assert_eq!(replayed_json["results"][0]["replay"]["mode"], "replay");
-    assert_eq!(replayed_json["results"][0]["replay"]["remainingEvents"], 0);
+    assert_eq!(replayed_json["data"]["results"][0]["status"], "pass");
+    assert_eq!(
+        replayed_json["data"]["results"][0]["replay"]["mode"],
+        "replay"
+    );
+    assert_eq!(
+        replayed_json["data"]["results"][0]["replay"]["remainingEvents"],
+        0
+    );
 }

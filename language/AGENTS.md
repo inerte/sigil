@@ -105,6 +105,9 @@ Current high-signal printer choices:
 - multi-arm `match` is always multiline
 - newline-containing string literals print as multiline `"` strings with exact preserved line breaks
 - each arm starts as `pattern=>`
+- all machine-readable CLI commands use the canonical version-1 envelope; keep command-specific results under `data`, failures and warnings under ordered `diagnostics`, and partial evidence explicit under `analysis`
+- canonical command identifiers use the installed `sigil ...` name, never the historical `sigilc ...` name
+- only fix-its marked `machineApplicable` may be applied without semantic review
 - no discretionary alternative layout for the same AST shape
 - `match` is the branching surface; do not reintroduce a separate public `if` story
 - exhaustiveness and dead-arm checking currently cover `Bool`, `Unit`, tuples, list shapes, exact record patterns, and nominal sum constructors

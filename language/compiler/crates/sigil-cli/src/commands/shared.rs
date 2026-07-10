@@ -8,6 +8,12 @@ use sigil_validator::ValidationError;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+pub(super) const MACHINE_FORMAT_VERSION: u8 = 1;
+pub(super) const COMPILER_VERSION: &str = match option_env!("SIGIL_VERSION") {
+    Some(version) => version,
+    None => "dev",
+};
+
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub(super) struct SourcePoint {
     pub line: usize,
@@ -17,20 +23,15 @@ pub(super) struct SourcePoint {
 pub(super) fn extract_error_code(message: &str) -> String {
     if let Some(index) = message.find("SIGIL-") {
         let suffix = &message[index..];
-        if let Some(colon_pos) = suffix.find(':') {
-            return suffix[..colon_pos].to_string();
-        }
-        return suffix
-            .split_whitespace()
-            .next()
-            .unwrap_or("SIGIL-ERROR")
-            .to_string();
+        let end = suffix
+            .char_indices()
+            .find_map(|(index, character)| {
+                (character == ':' || character.is_whitespace()).then_some(index)
+            })
+            .unwrap_or(suffix.len());
+        return suffix[..end].to_string();
     }
-    if let Some(colon_pos) = message.find(':') {
-        message[..colon_pos].to_string()
-    } else {
-        "SIGIL-ERROR".to_string()
-    }
+    "SIGIL-CLI-UNEXPECTED".to_string()
 }
 
 pub(super) fn format_validation_errors(errors: &[ValidationError]) -> String {
@@ -64,7 +65,7 @@ pub(super) fn output_json_error_to(
     to_stderr: bool,
 ) {
     let output = json!({
-        "formatVersion": 1,
+        "formatVersion": MACHINE_FORMAT_VERSION,
         "command": command,
         "ok": false,
         "phase": phase,
@@ -78,12 +79,228 @@ pub(super) fn output_json_error_to(
     output_json_value(&output, to_stderr);
 }
 
-pub(super) fn output_json_value(output: &serde_json::Value, to_stderr: bool) {
-    let serialized = serde_json::to_string(output).unwrap();
+pub(crate) fn output_json_value(output: &serde_json::Value, to_stderr: bool) {
+    let normalized = canonical_machine_output(output.clone());
+    let serialized = serde_json::to_string(&normalized).unwrap();
     if to_stderr {
         eprintln!("{}", serialized);
     } else {
         println!("{}", serialized);
+    }
+}
+
+pub(super) fn canonical_machine_output(mut output: serde_json::Value) -> serde_json::Value {
+    let Some(object) = output.as_object_mut() else {
+        return json!({
+            "formatVersion": MACHINE_FORMAT_VERSION,
+            "compilerVersion": COMPILER_VERSION,
+            "command": "sigil",
+            "ok": false,
+            "phase": "internal",
+            "analysis": {"status": "failed", "level": "none"},
+            "data": {},
+            "diagnostics": [{
+                "code": "SIGIL-CLI-UNEXPECTED",
+                "phase": "internal",
+                "severity": "error",
+                "message": "command produced a non-object machine result",
+                "details": {"value": output}
+            }]
+        });
+    };
+
+    object.insert("formatVersion".to_string(), json!(MACHINE_FORMAT_VERSION));
+    object.insert("compilerVersion".to_string(), json!(COMPILER_VERSION));
+
+    let command = object
+        .get("command")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or("sigil");
+    let normalized_command = command
+        .strip_prefix("sigilc")
+        .map(|suffix| format!("sigil{suffix}"))
+        .unwrap_or_else(|| command.to_string());
+    object.insert("command".to_string(), json!(&normalized_command));
+
+    let ok = object
+        .get("ok")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false);
+    object.insert("ok".to_string(), json!(ok));
+
+    let phase = object
+        .get("phase")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_else(|| default_phase_for_command(&normalized_command, ok))
+        .to_string();
+    object.insert("phase".to_string(), json!(&phase));
+
+    let mut data = object
+        .remove("data")
+        .unwrap_or_else(|| serde_json::Value::Object(serde_json::Map::new()));
+    if !data.is_object() {
+        data = json!({"value": data});
+    }
+    if object.contains_key("summary") || object.contains_key("results") {
+        let data_object = data.as_object_mut().expect("data normalized to object");
+        if let Some(summary) = object.remove("summary") {
+            data_object.insert("summary".to_string(), summary);
+        }
+        if let Some(results) = object.remove("results") {
+            data_object.insert("results".to_string(), results);
+        }
+    }
+    remove_volatile_fields(&mut data);
+    object.insert("data".to_string(), data);
+
+    let mut diagnostics = object
+        .remove("diagnostics")
+        .and_then(|value| value.as_array().cloned())
+        .unwrap_or_default();
+    if let Some(error) = object.remove("error") {
+        diagnostics.insert(0, error);
+    }
+    if !ok && diagnostics.is_empty() {
+        let (code, message, details) = if normalized_command == "sigil test" {
+            (
+                codes::cli::TESTS_FAILED,
+                "one or more Sigil tests did not pass",
+                json!({"summary": object["data"]["summary"]}),
+            )
+        } else if normalized_command == "sigil review" {
+            (
+                codes::cli::REVIEW_FAILED,
+                "semantic review could not complete without errors",
+                json!({"issues": object["data"]["issues"]}),
+            )
+        } else {
+            (
+                codes::cli::UNEXPECTED,
+                "command reported failure without a structured diagnostic",
+                json!({}),
+            )
+        };
+        diagnostics.push(json!({
+            "code": code,
+            "phase": phase,
+            "severity": "error",
+            "message": message,
+            "details": details
+        }));
+    }
+    for diagnostic in &mut diagnostics {
+        if let Some(diagnostic_object) = diagnostic.as_object_mut() {
+            if let Some(related_locations) = diagnostic_object.remove("related_locations") {
+                diagnostic_object.insert("relatedLocations".to_string(), related_locations);
+            }
+            diagnostic_object
+                .entry("severity".to_string())
+                .or_insert_with(|| json!("error"));
+            diagnostic_object
+                .entry("phase".to_string())
+                .or_insert_with(|| json!(&phase));
+        }
+        remove_volatile_fields(diagnostic);
+    }
+    object.insert("diagnostics".to_string(), json!(diagnostics));
+
+    if !object.contains_key("analysis") {
+        object.insert(
+            "analysis".to_string(),
+            json!({
+                "status": if ok && matches!(phase.as_str(), "docs" | "package") {
+                    "notApplicable"
+                } else if ok {
+                    "complete"
+                } else {
+                    "failed"
+                },
+                "level": analysis_level_for_phase(&phase, ok)
+            }),
+        );
+    }
+
+    output
+}
+
+fn remove_volatile_fields(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::Object(object) => {
+            object.remove("durationMs");
+            for nested in object.values_mut() {
+                remove_volatile_fields(nested);
+            }
+        }
+        serde_json::Value::Array(items) => {
+            for item in items {
+                remove_volatile_fields(item);
+            }
+        }
+        _ => {}
+    }
+}
+
+fn default_phase_for_command(command: &str, ok: bool) -> &'static str {
+    if command.starts_with("sigil test")
+        || command.starts_with("sigil run")
+        || command.starts_with("sigil debug")
+    {
+        "runtime"
+    } else if command.starts_with("sigil package") {
+        "package"
+    } else if ok {
+        "cli"
+    } else {
+        "internal"
+    }
+}
+
+fn analysis_level_for_phase(phase: &str, ok: bool) -> &'static str {
+    match phase {
+        "lexer" => {
+            if ok {
+                "lexed"
+            } else {
+                "none"
+            }
+        }
+        "parser" => {
+            if ok {
+                "parsed"
+            } else {
+                "lexed"
+            }
+        }
+        "canonical" => {
+            if ok {
+                "canonical"
+            } else {
+                "parsed"
+            }
+        }
+        "typecheck" | "proof" | "topology" | "mutability" | "extern" => {
+            if ok {
+                "typed"
+            } else {
+                "canonical"
+            }
+        }
+        "codegen" => {
+            if ok {
+                "generated"
+            } else {
+                "typed"
+            }
+        }
+        "runtime" => {
+            if ok {
+                "executed"
+            } else {
+                "generated"
+            }
+        }
+        "surface" => "mixed",
+        _ => "none",
     }
 }
 
@@ -368,11 +585,122 @@ pub(super) fn phase_for_code(code: &str) -> &'static str {
         "typecheck"
     } else if code.starts_with("SIGIL-TOPO-") {
         "topology"
+    } else if code.starts_with("SIGIL-PROOF-") {
+        "proof"
+    } else if code.starts_with("SIGIL-PACKAGE-") {
+        "package"
     } else if code.starts_with("SIGIL-RUNTIME-") || code.starts_with("SIGIL-RUN-") {
         "runtime"
     } else if code.starts_with("SIGIL-MUTABILITY-") {
         "mutability"
     } else {
         "cli"
+    }
+}
+
+#[allow(dead_code)] // Used by the binary target; the library target has no top-level dispatcher.
+pub(crate) fn output_unhandled_error(error: &CliError) {
+    if matches!(error, CliError::Reported(_)) {
+        return;
+    }
+    let message = error.to_string();
+    let extracted = extract_error_code(&message);
+    let code = if extracted.starts_with("SIGIL-") {
+        extracted
+    } else {
+        match error {
+            CliError::Io(_) | CliError::ModuleGraph(ModuleGraphError::Io(_)) => {
+                "SIGIL-CLI-IO".to_string()
+            }
+            _ => codes::cli::UNEXPECTED.to_string(),
+        }
+    };
+    let phase = match error {
+        CliError::Lexer(_) | CliError::ModuleGraph(ModuleGraphError::Lexer(_)) => "lexer",
+        CliError::Parser(_) | CliError::ModuleGraph(ModuleGraphError::Parser(_)) => "parser",
+        CliError::Validation(_) | CliError::ModuleGraph(ModuleGraphError::Validation(_)) => {
+            "canonical"
+        }
+        CliError::Type(_) => "typecheck",
+        CliError::Codegen(_) => "codegen",
+        CliError::Runtime(_) | CliError::Breakpoint { .. } => "runtime",
+        CliError::Io(_) | CliError::ModuleGraph(ModuleGraphError::Io(_)) => "io",
+        _ => phase_for_code(&code),
+    };
+    let details = match error {
+        CliError::Type(type_error) => type_error_json_details(type_error),
+        CliError::Breakpoint { details, .. } => details.clone(),
+        _ => json!({}),
+    };
+    output_json_error("sigil", phase, &code, &message, details);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{canonical_machine_output, extract_error_code};
+    use serde_json::json;
+
+    #[test]
+    fn canonicalizes_legacy_failure_into_ordered_diagnostics() {
+        let output = canonical_machine_output(json!({
+            "formatVersion": 1,
+            "command": "sigilc compile",
+            "ok": false,
+            "phase": "parser",
+            "error": {
+                "code": "SIGIL-PARSE-TEST",
+                "phase": "parser",
+                "message": "bad source"
+            }
+        }));
+        assert_eq!(output["command"], "sigil compile");
+        assert_eq!(output["analysis"]["level"], "lexed");
+        assert_eq!(output["data"], json!({}));
+        assert_eq!(output["diagnostics"][0]["severity"], "error");
+        assert!(output.get("error").is_none());
+    }
+
+    #[test]
+    fn moves_test_summary_and_results_under_data() {
+        let output = canonical_machine_output(json!({
+            "formatVersion": 1,
+            "command": "sigilc test",
+            "ok": true,
+            "summary": {"passed": 1},
+            "results": [{"status": "passed"}]
+        }));
+        assert_eq!(output["phase"], "runtime");
+        assert_eq!(output["analysis"]["level"], "executed");
+        assert_eq!(output["data"]["summary"]["passed"], 1);
+        assert_eq!(output["data"]["results"][0]["status"], "passed");
+    }
+
+    #[test]
+    fn extracts_only_the_stable_diagnostic_code() {
+        assert_eq!(
+            extract_error_code(
+                "Parser error: SIGIL-PARSE-UNEXPECTED-TOKEN /tmp/main.sigil:2:3 unexpected token"
+            ),
+            "SIGIL-PARSE-UNEXPECTED-TOKEN"
+        );
+        assert_eq!(
+            extract_error_code("Module graph error: module not found"),
+            "SIGIL-CLI-UNEXPECTED"
+        );
+    }
+
+    #[test]
+    fn failed_test_results_receive_a_primary_diagnostic() {
+        let output = canonical_machine_output(json!({
+            "command": "sigilc test",
+            "ok": false,
+            "summary": {"failed": 1},
+            "results": [{"status": "fail"}]
+        }));
+        assert_eq!(
+            output["diagnostics"][0]["code"],
+            sigil_diagnostics::codes::cli::TESTS_FAILED
+        );
+        assert_eq!(output["diagnostics"][0]["details"]["summary"]["failed"], 1);
     }
 }

@@ -208,13 +208,16 @@ fn compile_rejects_project_executables_without_src_main() {
 
     let json = parse_json(&output.stdout);
     assert_eq!(json["ok"], false);
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-PROJECT-MAIN-REQUIRED");
     assert_eq!(
-        json["error"]["details"]["missingPath"],
+        json["diagnostics"][0]["code"],
+        "SIGIL-CLI-PROJECT-MAIN-REQUIRED"
+    );
+    assert_eq!(
+        json["diagnostics"][0]["details"]["missingPath"],
         dir.join("src/main.sigil").to_string_lossy().to_string()
     );
     assert_eq!(
-        json["error"]["details"]["executableSources"]
+        json["diagnostics"][0]["details"]["executableSources"]
             .as_array()
             .unwrap()
             .len(),
@@ -244,11 +247,14 @@ fn compile_directory_reports_missing_project_main_once_per_project() {
 
     let json = parse_json(&output.stdout);
     assert_eq!(json["ok"], false);
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-PROJECT-MAIN-REQUIRED");
-    assert_eq!(json["error"]["details"]["discovered"], 2);
-    assert_eq!(json["error"]["details"]["compiled"], 0);
     assert_eq!(
-        json["error"]["details"]["executableSources"]
+        json["diagnostics"][0]["code"],
+        "SIGIL-CLI-PROJECT-MAIN-REQUIRED"
+    );
+    assert_eq!(json["diagnostics"][0]["details"]["discovered"], 2);
+    assert_eq!(json["diagnostics"][0]["details"]["compiled"], 0);
+    assert_eq!(
+        json["diagnostics"][0]["details"]["executableSources"]
             .as_array()
             .unwrap()
             .len(),
@@ -271,7 +277,10 @@ fn compile_selected_config_requires_env() {
     assert!(!output.status.success());
     let json = parse_json(&output.stdout);
     assert_eq!(json["ok"], false);
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-CONFIG-ENV-REQUIRED");
+    assert_eq!(
+        json["diagnostics"][0]["code"],
+        "SIGIL-CLI-CONFIG-ENV-REQUIRED"
+    );
 }
 
 #[test]
@@ -320,7 +329,7 @@ fn compile_selected_config_rejects_legacy_feature_flag_fields() {
     assert!(!output.status.success());
     let json = parse_json(&output.stdout);
     assert_eq!(json["ok"], false);
-    let message = json["error"]["message"].as_str().unwrap();
+    let message = json["diagnostics"][0]["message"].as_str().unwrap();
     assert!(
         message.contains("overrides") || message.contains("rollout"),
         "{}",
@@ -347,8 +356,11 @@ fn compile_rejects_dead_pure_wildcard_discard() {
     assert!(!output.status.success());
     let json = parse_json(&output.stdout);
     assert_eq!(json["ok"], false);
-    assert_eq!(json["error"]["code"], "SIGIL-CANON-DEAD-PURE-DISCARD");
-    let message = json["error"]["message"].as_str().unwrap();
+    assert_eq!(
+        json["diagnostics"][0]["code"],
+        "SIGIL-CANON-DEAD-PURE-DISCARD"
+    );
+    let message = json["diagnostics"][0]["message"].as_str().unwrap();
     assert!(
         message.contains("Wildcard sequencing must not discard pure expressions"),
         "{}",
@@ -375,10 +387,19 @@ fn compile_rejects_unreachable_code_after_process_exit() {
     assert!(!output.status.success());
     let json = parse_json(&output.stdout);
     assert_eq!(json["ok"], false);
-    assert_eq!(json["error"]["code"], "SIGIL-TYPE-UNREACHABLE-CODE");
-    assert_eq!(json["error"]["details"]["unreachableKind"], "letBody");
-    assert_eq!(json["error"]["details"]["terminatorKind"], "processExit");
-    let message = json["error"]["message"].as_str().unwrap();
+    assert_eq!(
+        json["diagnostics"][0]["code"],
+        "SIGIL-TYPE-UNREACHABLE-CODE"
+    );
+    assert_eq!(
+        json["diagnostics"][0]["details"]["unreachableKind"],
+        "letBody"
+    );
+    assert_eq!(
+        json["diagnostics"][0]["details"]["terminatorKind"],
+        "processExit"
+    );
+    let message = json["diagnostics"][0]["message"].as_str().unwrap();
     assert!(
         message.contains("Unreachable code after terminating expression"),
         "{}",

@@ -3,7 +3,7 @@
 //! Command-line interface for the Sigil compiler.
 //! Provides commands: compile, run, test, parse, lex
 
-use clap::{Parser, Subcommand, ValueEnum};
+use clap::{error::ErrorKind, Parser, Subcommand, ValueEnum};
 use std::path::PathBuf;
 use std::process;
 
@@ -15,7 +15,7 @@ mod package_manager;
 mod project;
 
 use commands::{
-    compile_command, debug_run_session_command, debug_run_start_command,
+    capabilities_command, compile_command, debug_run_session_command, debug_run_start_command,
     debug_test_session_command, debug_test_start_command, docs_context_command, docs_list_command,
     docs_search_command, docs_show_command, feature_flag_audit_command, init_command,
     inspect_command, lex_command, parse_command, review_command, run_command, test_command,
@@ -48,6 +48,9 @@ enum BreakModeArg {
 
 #[derive(Subcommand)]
 enum Command {
+    /// Report the installed compiler's machine-readable interface
+    Capabilities,
+
     /// Initialize a neutral Sigil project root
     Init {
         /// Target directory (default: current directory)
@@ -393,6 +396,24 @@ enum InspectCommand {
         #[arg(long)]
         env: Option<String>,
     },
+
+    /// Inspect compiler-known trust assumptions and boundary controls
+    Trust {
+        /// Input .sigil file or directory
+        path: PathBuf,
+
+        /// Ignore an additional path while inspecting a directory
+        #[arg(long)]
+        ignore: Vec<PathBuf>,
+
+        /// Load gitignore-style ignore rules from a file while inspecting a directory
+        #[arg(long = "ignore-from")]
+        ignore_from: Option<PathBuf>,
+
+        /// Selected config environment for topology-aware projects
+        #[arg(long)]
+        env: Option<String>,
+    },
 }
 
 #[derive(Subcommand)]
@@ -602,9 +623,41 @@ enum DebugTestCommand {
 }
 
 fn main() {
-    let cli = Cli::parse();
+    let cli = match Cli::try_parse() {
+        Ok(cli) => cli,
+        Err(error)
+            if matches!(
+                error.kind(),
+                ErrorKind::DisplayHelp | ErrorKind::DisplayVersion
+            ) =>
+        {
+            error.print().expect("clap help output should be writable");
+            return;
+        }
+        Err(error) => {
+            commands::shared::output_json_value(
+                &serde_json::json!({
+                    "formatVersion": 1,
+                    "command": "sigil",
+                    "ok": false,
+                    "phase": "cli",
+                    "analysis": {"status": "failed", "level": "none"},
+                    "data": {},
+                    "diagnostics": [{
+                        "code": "SIGIL-CLI-USAGE",
+                        "phase": "cli",
+                        "severity": "error",
+                        "message": error.to_string()
+                    }]
+                }),
+                false,
+            );
+            process::exit(2);
+        }
+    };
 
     let result = match cli.command {
+        Command::Capabilities => capabilities_command(),
         Command::Init { path } => init_command(path.as_deref()),
         Command::Docs { command } => match command {
             DocsCommand::List => docs_list_command(),
@@ -688,6 +741,18 @@ fn main() {
                 env.as_deref(),
                 &[],
                 None,
+            ),
+            InspectCommand::Trust {
+                path,
+                ignore,
+                ignore_from,
+                env,
+            } => inspect_command(
+                commands::InspectMode::Trust,
+                &path,
+                env.as_deref(),
+                &ignore,
+                ignore_from.as_deref(),
             ),
         },
         Command::Run {
@@ -869,7 +934,7 @@ fn main() {
         if let Some(exit_code) = e.reported_exit_code() {
             process::exit(exit_code);
         }
-        eprintln!("Error: {}", e);
+        commands::shared::output_unhandled_error(&e);
         process::exit(1);
     }
 }

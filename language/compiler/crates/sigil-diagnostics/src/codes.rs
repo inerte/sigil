@@ -151,6 +151,8 @@ pub mod cli {
     pub const DOC_INVALID_LINE_RANGE: &str = "SIGIL-CLI-DOC-INVALID-LINE-RANGE";
     pub const CONFIG_ENV_REQUIRED: &str = "SIGIL-CLI-CONFIG-ENV-REQUIRED";
     pub const CONFIG_MODULE_NOT_FOUND: &str = "SIGIL-CLI-CONFIG-MODULE-NOT-FOUND";
+    pub const TESTS_FAILED: &str = "SIGIL-CLI-TESTS-FAILED";
+    pub const REVIEW_FAILED: &str = "SIGIL-CLI-REVIEW-FAILED";
 }
 
 /// Topology error codes (SIGIL-TOPO-*)
@@ -293,7 +295,7 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     typecheck::UNREACHABLE_CODE,
     // Mutability (1 code)
     mutability::INVALID,
-    // CLI (18 codes)
+    // CLI (20 codes)
     cli::BREAKPOINT_NOT_FOUND,
     cli::BREAKPOINT_AMBIGUOUS,
     cli::USAGE,
@@ -312,6 +314,8 @@ pub const ALL_ERROR_CODES: &[&str] = &[
     cli::DOC_INVALID_LINE_RANGE,
     cli::CONFIG_ENV_REQUIRED,
     cli::CONFIG_MODULE_NOT_FOUND,
+    cli::TESTS_FAILED,
+    cli::REVIEW_FAILED,
     // Topology (15 codes)
     topology::BINDING_KIND_MISMATCH,
     topology::CONSTRUCTOR_LOCATION,
@@ -378,8 +382,8 @@ mod tests {
         // Keep this in sync when adding or removing diagnostic codes.
         assert_eq!(
             ALL_ERROR_CODES.len(),
-            136,
-            "Expected 136 error codes, found {}",
+            138,
+            "Expected 138 error codes, found {}",
             ALL_ERROR_CODES.len()
         );
     }

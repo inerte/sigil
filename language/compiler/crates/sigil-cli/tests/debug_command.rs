@@ -90,7 +90,7 @@ fn debug_run_start_pauses_at_main_entry() {
     assert!(started.status.success());
     assert!(started.stderr.is_empty());
     let json = parse_json(&started.stdout);
-    assert_eq!(json["command"], "sigilc debug run");
+    assert_eq!(json["command"], "sigil debug run");
     assert_eq!(json["ok"], true);
     assert_eq!(json["data"]["snapshot"]["eventKind"], "function_enter");
     assert_eq!(json["data"]["snapshot"]["declarationLabel"], "main");
@@ -240,7 +240,7 @@ fn debug_run_rejects_advancing_completed_session() {
     assert!(invalid.stderr.is_empty());
     let json = parse_json(&invalid.stdout);
     assert_eq!(json["ok"], false);
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-UNEXPECTED");
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-CLI-UNEXPECTED");
 }
 
 #[test]
@@ -263,7 +263,7 @@ fn debug_test_start_and_step_over_use_exact_test_ids() {
         .unwrap();
     assert!(recorded.status.success());
     let recorded_json = parse_json(&recorded.stdout);
-    let test_id = recorded_json["results"][0]["id"]
+    let test_id = recorded_json["data"]["results"][0]["id"]
         .as_str()
         .unwrap()
         .to_string();
@@ -283,7 +283,7 @@ fn debug_test_start_and_step_over_use_exact_test_ids() {
 
     assert!(started.status.success());
     let started_json = parse_json(&started.stdout);
-    assert_eq!(started_json["command"], "sigilc debug test");
+    assert_eq!(started_json["command"], "sigil debug test");
     assert_eq!(started_json["data"]["snapshot"]["eventKind"], "test_enter");
     assert_eq!(started_json["data"]["snapshot"]["testId"], test_id);
     let session = started_json["data"]["session"]["file"].as_str().unwrap();
@@ -330,7 +330,7 @@ fn debug_test_continue_completes_one_test_session() {
         .unwrap();
     assert!(recorded.status.success());
     let recorded_json = parse_json(&recorded.stdout);
-    let test_id = recorded_json["results"][0]["id"]
+    let test_id = recorded_json["data"]["results"][0]["id"]
         .as_str()
         .unwrap()
         .to_string();
@@ -528,7 +528,7 @@ fn debug_run_rejects_invalid_watch_selector() {
     assert!(started.stderr.is_empty());
     let json = parse_json(&started.stdout);
     assert_eq!(json["ok"], false);
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-USAGE");
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-CLI-USAGE");
 }
 
 #[test]
@@ -577,7 +577,7 @@ test "demo" {
         .unwrap();
     assert!(recorded.status.success());
     let recorded_json = parse_json(&recorded.stdout);
-    let test_id = recorded_json["results"][0]["id"]
+    let test_id = recorded_json["data"]["results"][0]["id"]
         .as_str()
         .unwrap()
         .to_string();

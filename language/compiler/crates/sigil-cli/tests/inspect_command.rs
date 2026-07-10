@@ -93,7 +93,7 @@ fn inspect_types_reports_top_level_types_and_spans() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect types");
+    assert_eq!(json["command"], "sigil inspect types");
     assert_eq!(json["ok"], true);
     assert_eq!(json["phase"], "typecheck");
     assert_eq!(json["data"]["summary"]["functions"], 1);
@@ -234,7 +234,7 @@ fn inspect_types_reports_derived_json_codec_metadata() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect types");
+    assert_eq!(json["command"], "sigil inspect types");
     assert_eq!(json["data"]["summary"]["jsonCodecs"], 1);
 
     let codecs = json["data"]["jsonCodecs"].as_array().unwrap();
@@ -287,7 +287,7 @@ fn inspect_types_directory_reports_requested_modules_only() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect types");
+    assert_eq!(json["command"], "sigil inspect types");
     assert_eq!(json["data"]["summary"]["discovered"], 2);
     assert_eq!(json["data"]["summary"]["inspected"], 2);
 
@@ -328,7 +328,7 @@ fn inspect_types_emits_json_error_on_type_failure() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect types");
+    assert_eq!(json["command"], "sigil inspect types");
     assert_eq!(json["ok"], false);
     assert_eq!(json["phase"], "typecheck");
 }
@@ -363,7 +363,7 @@ fn inspect_proof_reports_constraints_contracts_and_branch_sites() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect proof");
+    assert_eq!(json["command"], "sigil inspect proof");
     assert_eq!(json["ok"], true);
     assert_eq!(json["phase"], "proof");
     assert_eq!(json["data"]["summary"]["typeConstraints"], 1);
@@ -400,7 +400,7 @@ fn inspect_validate_returns_canonical_source_for_noncanonical_input() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect validate");
+    assert_eq!(json["command"], "sigil inspect validate");
     assert_eq!(json["ok"], true);
     assert_eq!(json["data"]["alreadyCanonical"], false);
     assert_eq!(json["data"]["validation"]["ok"], false);
@@ -428,7 +428,7 @@ fn inspect_validate_rejects_leading_blank_line_as_noncanonical() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect validate");
+    assert_eq!(json["command"], "sigil inspect validate");
     assert_eq!(json["ok"], true);
     assert_eq!(json["data"]["alreadyCanonical"], false);
     assert_eq!(json["data"]["validation"]["ok"], false);
@@ -457,7 +457,7 @@ fn inspect_validate_directory_reports_per_file_status() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect validate");
+    assert_eq!(json["command"], "sigil inspect validate");
     assert_eq!(json["data"]["summary"]["discovered"], 2);
     assert_eq!(json["data"]["summary"]["inspected"], 2);
 
@@ -500,9 +500,12 @@ fn inspect_validate_rejects_project_executables_without_src_main() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect validate");
+    assert_eq!(json["command"], "sigil inspect validate");
     assert_eq!(json["ok"], false);
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-PROJECT-MAIN-REQUIRED");
+    assert_eq!(
+        json["diagnostics"][0]["code"],
+        "SIGIL-CLI-PROJECT-MAIN-REQUIRED"
+    );
 }
 
 #[test]
@@ -555,7 +558,7 @@ fn validate_succeeds_when_pnpm_is_shadowed() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc validate");
+    assert_eq!(json["command"], "sigil validate");
     assert_eq!(json["ok"], true);
 }
 
@@ -582,7 +585,7 @@ fn inspect_codegen_returns_inline_ts_and_module_inventory_without_writing_files(
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect codegen");
+    assert_eq!(json["command"], "sigil inspect codegen");
     assert_eq!(json["ok"], true);
     assert_eq!(json["phase"], "codegen");
     assert_eq!(json["data"]["moduleId"], "src::main");
@@ -648,7 +651,7 @@ fn inspect_codegen_directory_batches_requested_files_and_respects_ignore_rules()
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect codegen");
+    assert_eq!(json["command"], "sigil inspect codegen");
     assert_eq!(json["data"]["summary"]["discovered"], 1);
     assert_eq!(json["data"]["summary"]["inspected"], 1);
     assert_eq!(json["data"]["summary"]["groups"], 1);
@@ -679,7 +682,7 @@ fn inspect_codegen_emits_json_error_on_pipeline_failure() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect codegen");
+    assert_eq!(json["command"], "sigil inspect codegen");
     assert_eq!(json["ok"], false);
     assert_eq!(json["phase"], "typecheck");
 }
@@ -747,7 +750,7 @@ fn inspect_world_reports_normalized_runtime_world_for_topology_project() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect world");
+    assert_eq!(json["command"], "sigil inspect world");
     assert_eq!(json["ok"], true);
     assert_eq!(json["phase"], "topology");
     assert_eq!(json["data"]["environment"], "local");
@@ -827,7 +830,7 @@ fn inspect_world_supports_config_only_projects_without_topology() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect world");
+    assert_eq!(json["command"], "sigil inspect world");
     assert_eq!(json["ok"], true);
     assert!(json["data"].get("sources").is_none());
     assert_eq!(json["data"]["topology"]["present"], false);
@@ -895,10 +898,10 @@ fn inspect_world_emits_json_error_when_env_is_undeclared() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect world");
+    assert_eq!(json["command"], "sigil inspect world");
     assert_eq!(json["ok"], false);
     assert_eq!(json["phase"], "topology");
-    assert_eq!(json["error"]["code"], "SIGIL-TOPO-ENV-NOT-FOUND");
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-TOPO-ENV-NOT-FOUND");
 }
 
 #[test]
@@ -929,10 +932,13 @@ fn inspect_world_emits_json_error_when_config_module_is_missing() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect world");
+    assert_eq!(json["command"], "sigil inspect world");
     assert_eq!(json["ok"], false);
     assert_eq!(json["phase"], "topology");
-    assert_eq!(json["error"]["code"], "SIGIL-TOPO-MISSING-CONFIG-MODULE");
+    assert_eq!(
+        json["diagnostics"][0]["code"],
+        "SIGIL-TOPO-MISSING-CONFIG-MODULE"
+    );
 }
 
 #[test]
@@ -978,7 +984,7 @@ fn inspect_world_supports_standalone_single_file_worlds() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect world");
+    assert_eq!(json["command"], "sigil inspect world");
     assert_eq!(json["ok"], true);
     assert_eq!(json["data"]["environment"], Value::Null);
     assert_eq!(json["data"]["topology"]["present"], true);
@@ -1037,7 +1043,7 @@ fn inspect_world_succeeds_when_pnpm_is_shadowed() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect world");
+    assert_eq!(json["command"], "sigil inspect world");
     assert_eq!(json["ok"], true);
     assert_eq!(json["data"]["summary"]["fsWatchKind"], "real");
     assert_eq!(json["data"]["summary"]["ptyKind"], "real");
@@ -1063,7 +1069,7 @@ fn inspect_world_rejects_env_for_standalone_files() {
     assert!(output.stderr.is_empty());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["command"], "sigilc inspect world");
+    assert_eq!(json["command"], "sigil inspect world");
     assert_eq!(json["ok"], false);
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-USAGE");
+    assert_eq!(json["diagnostics"][0]["code"], "SIGIL-CLI-USAGE");
 }

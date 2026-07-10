@@ -205,7 +205,10 @@ fn docs_invalid_inputs_return_explicit_error_codes() {
         .unwrap();
     assert!(!missing_doc_output.status.success());
     let missing_doc_json = parse_json(&missing_doc_output.stdout);
-    assert_eq!(missing_doc_json["error"]["code"], "SIGIL-CLI-DOC-NOT-FOUND");
+    assert_eq!(
+        missing_doc_json["diagnostics"][0]["code"],
+        "SIGIL-CLI-DOC-NOT-FOUND"
+    );
 
     let missing_context_output = Command::new(sigil_bin())
         .arg("docs")
@@ -216,7 +219,7 @@ fn docs_invalid_inputs_return_explicit_error_codes() {
     assert!(!missing_context_output.status.success());
     let missing_context_json = parse_json(&missing_context_output.stdout);
     assert_eq!(
-        missing_context_json["error"]["code"],
+        missing_context_json["diagnostics"][0]["code"],
         "SIGIL-CLI-DOC-CONTEXT-NOT-FOUND"
     );
 
@@ -231,7 +234,7 @@ fn docs_invalid_inputs_return_explicit_error_codes() {
     assert!(!invalid_range_output.status.success());
     let invalid_range_json = parse_json(&invalid_range_output.stdout);
     assert_eq!(
-        invalid_range_json["error"]["code"],
+        invalid_range_json["diagnostics"][0]["code"],
         "SIGIL-CLI-DOC-INVALID-LINE-RANGE"
     );
 }

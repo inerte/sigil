@@ -328,10 +328,12 @@ fn review_staged_and_base_conflict_reports_user_visible_error() {
     let output = run_sigil(&dir, &["review", "--staged", "--base", "HEAD"]);
 
     assert_failure(&output);
-    let stderr = stderr_text(&output);
-    assert!(stderr.contains("--staged"));
-    assert!(stderr.contains("--base"));
-    assert!(stderr.contains("cannot be used with"));
+    assert!(output.stderr.is_empty());
+    let json = parse_json(&output.stdout);
+    let message = json["diagnostics"][0]["message"].as_str().unwrap();
+    assert!(message.contains("--staged"));
+    assert!(message.contains("--base"));
+    assert!(message.contains("cannot be used with"));
 }
 
 #[test]
@@ -647,7 +649,12 @@ fn review_head_without_base_errors_clearly() {
     let output = run_sigil(&dir, &["review", "--head", "HEAD"]);
 
     assert_failure(&output);
-    assert!(stderr_text(&output).contains("sigil review --head requires --base"));
+    assert!(output.stderr.is_empty());
+    let json = parse_json(&output.stdout);
+    assert!(json["diagnostics"][0]["message"]
+        .as_str()
+        .unwrap()
+        .contains("sigil review --head requires --base"));
 }
 
 #[test]
@@ -852,5 +859,10 @@ fn review_non_git_repo_errors_clearly() {
     let output = run_sigil(&dir, &["review"]);
 
     assert_failure(&output);
-    assert!(stderr_text(&output).contains("sigil review requires a git repository"));
+    assert!(output.stderr.is_empty());
+    let json = parse_json(&output.stdout);
+    assert!(json["diagnostics"][0]["message"]
+        .as_str()
+        .unwrap()
+        .contains("sigil review requires a git repository"));
 }

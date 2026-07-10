@@ -261,10 +261,13 @@ For process-heavy harness code, prefer:
 Top-level fields:
 
 - `formatVersion`
+- `compilerVersion`
 - `command`
 - `ok`
-- `summary`
-- `results`
+- `phase`
+- `analysis`
+- `data`, containing `summary` and `results`
+- `diagnostics`
 
 Each result currently includes:
 
@@ -273,7 +276,6 @@ Each result currently includes:
 - `name`
 - `status`
   - `pass | fail | error | stopped`
-- `durationMs`
 - `location`
 - optional `failure`
 - optional `trace`

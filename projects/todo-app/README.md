@@ -54,7 +54,7 @@ SIGIL_TODO_BASE=/projects/sigil-todo/demo/ pnpm build
 
 `src/todoJson.lib.sigil` now contains one declaration:
 
-```sigil module
+```sigil module projects/todo-app/src/todoJson.lib.sigil
 derive json µPersistedState
 ```
 

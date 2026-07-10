@@ -98,16 +98,18 @@ pub enum InspectMode {
     Validate,
     Codegen,
     World,
+    Trust,
 }
 
 impl InspectMode {
     fn command_name(self) -> &'static str {
         match self {
-            InspectMode::Types => "sigilc inspect types",
-            InspectMode::Proof => "sigilc inspect proof",
-            InspectMode::Validate => "sigilc inspect validate",
-            InspectMode::Codegen => "sigilc inspect codegen",
-            InspectMode::World => "sigilc inspect world",
+            InspectMode::Types => "sigil inspect types",
+            InspectMode::Proof => "sigil inspect proof",
+            InspectMode::Validate => "sigil inspect validate",
+            InspectMode::Codegen => "sigil inspect codegen",
+            InspectMode::World => "sigil inspect world",
+            InspectMode::Trust => "sigil inspect trust",
         }
     }
 
@@ -118,6 +120,7 @@ impl InspectMode {
             InspectMode::Validate => "canonical",
             InspectMode::Codegen => "codegen",
             InspectMode::World => "topology",
+            InspectMode::Trust => "typecheck",
         }
     }
 
@@ -128,6 +131,7 @@ impl InspectMode {
             InspectMode::Validate => "inspect validate",
             InspectMode::Codegen => "inspect codegen",
             InspectMode::World => "inspect world",
+            InspectMode::Trust => "inspect trust",
         }
     }
 }
@@ -145,7 +149,7 @@ pub fn lex_command(file: &Path) -> Result<(), CliError> {
 
     let output = serde_json::json!({
         "formatVersion": 1,
-        "command": "sigilc lex",
+        "command": "sigil lex",
         "ok": true,
         "phase": "lexer",
         "data": {
@@ -172,7 +176,7 @@ pub fn lex_command(file: &Path) -> Result<(), CliError> {
             }).collect::<Vec<_>>()
         }
     });
-    println!("{}", serde_json::to_string(&output).unwrap());
+    output_json_value(&output, false);
 
     Ok(())
 }
@@ -208,14 +212,12 @@ pub fn parse_command(file: &Path) -> Result<(), CliError> {
         CliError::Validation(format_validation_errors(&errors))
     })?;
 
-    let ast_json = serde_json::to_value(&ast).unwrap_or_else(|e| {
-        eprintln!("Warning: AST serialization failed: {}", e);
-        serde_json::json!(format!("{:#?}", ast))
-    });
+    let ast_json =
+        serde_json::to_value(&ast).unwrap_or_else(|_| serde_json::json!(format!("{:#?}", ast)));
 
     let output = serde_json::json!({
         "formatVersion": 1,
-        "command": "sigilc parse",
+        "command": "sigil parse",
         "ok": true,
         "phase": "parser",
         "data": {
@@ -227,7 +229,7 @@ pub fn parse_command(file: &Path) -> Result<(), CliError> {
             "ast": ast_json
         }
     });
-    println!("{}", serde_json::to_string(&output).unwrap());
+    output_json_value(&output, false);
 
     Ok(())
 }
@@ -1605,7 +1607,7 @@ fn inspect_proof_single_file_command(
         "phase": InspectMode::Proof.phase(),
         "data": inspect_proof_file_result(file, module)
     });
-    println!("{}", serde_json::to_string(&output).unwrap());
+    output_json_value(&output, false);
     Ok(())
 }
 
@@ -1765,7 +1767,7 @@ fn inspect_proof_directory_command(
             "files": file_results
         }
     });
-    println!("{}", serde_json::to_string(&output).unwrap());
+    output_json_value(&output, false);
     Ok(())
 }
 
@@ -1936,6 +1938,9 @@ pub fn inspect_command(
             inspect_codegen_command(path, selected_env, ignore_paths, ignore_from)
         }
         InspectMode::World => inspect_world_command(path, selected_env),
+        InspectMode::Trust => {
+            super::trust::inspect_trust_command(path, selected_env, ignore_paths, ignore_from)
+        }
     }
 }
 
@@ -2019,7 +2024,7 @@ fn inspect_codegen_single_file_command(
         "phase": InspectMode::Codegen.phase(),
         "data": data
     });
-    println!("{}", serde_json::to_string(&output).unwrap());
+    output_json_value(&output, false);
     Ok(())
 }
 
@@ -2198,7 +2203,7 @@ fn inspect_codegen_directory_command(
             "files": file_results
         }
     });
-    println!("{}", serde_json::to_string(&output).unwrap());
+    output_json_value(&output, false);
     Ok(())
 }
 
@@ -2269,7 +2274,7 @@ fn inspect_types_single_file_command(
         "phase": InspectMode::Types.phase(),
         "data": inspect_types_file_result(file, module)
     });
-    println!("{}", serde_json::to_string(&output).unwrap());
+    output_json_value(&output, false);
     Ok(())
 }
 
@@ -2429,7 +2434,7 @@ fn inspect_types_directory_command(
             "files": file_results
         }
     });
-    println!("{}", serde_json::to_string(&output).unwrap());
+    output_json_value(&output, false);
     Ok(())
 }
 
@@ -2467,7 +2472,7 @@ fn inspect_validate_single_file_command(file: &Path) -> Result<(), CliError> {
         "phase": InspectMode::Validate.phase(),
         "data": data
     });
-    println!("{}", serde_json::to_string(&output).unwrap());
+    output_json_value(&output, false);
     Ok(())
 }
 
@@ -2558,7 +2563,7 @@ fn inspect_validate_directory_command(
             "files": file_results
         }
     });
-    println!("{}", serde_json::to_string(&output).unwrap());
+    output_json_value(&output, false);
     Ok(())
 }
 
@@ -2583,7 +2588,7 @@ pub fn inspect_world_command(path: &Path, env: Option<&str>) -> Result<(), CliEr
         "phase": InspectMode::World.phase(),
         "data": data
     });
-    println!("{}", serde_json::to_string(&output).unwrap());
+    output_json_value(&output, false);
     Ok(())
 }
 
@@ -2833,7 +2838,7 @@ pub fn run_command(
 
     if trace_output && !json_output {
         output_json_error_to(
-            "sigilc run",
+            "sigil run",
             "cli",
             codes::cli::USAGE,
             "`--trace` requires `--json`",
@@ -2849,7 +2854,7 @@ pub fn run_command(
 
     if trace_expr_output && (!trace_output || !json_output) {
         output_json_error_to(
-            "sigilc run",
+            "sigil run",
             "cli",
             codes::cli::USAGE,
             "`--trace-expr` requires `--trace` and `--json`",
@@ -2865,7 +2870,7 @@ pub fn run_command(
 
     if breakpoints_requested && !json_output {
         output_json_error_to(
-            "sigilc run",
+            "sigil run",
             "cli",
             codes::cli::USAGE,
             "breakpoints require `--json`",
@@ -2881,7 +2886,7 @@ pub fn run_command(
 
     if breakpoints_requested && breakpoint_max_hits == 0 {
         output_json_error_to(
-            "sigilc run",
+            "sigil run",
             "cli",
             codes::cli::USAGE,
             "`--break-max-hits` must be at least 1",
@@ -2897,7 +2902,7 @@ pub fn run_command(
 
     if replay_path.is_some() && selected_env.is_some() {
         output_json_error_to(
-            "sigilc run",
+            "sigil run",
             "cli",
             codes::cli::USAGE,
             "`--replay` cannot be combined with `--env`",
@@ -2937,7 +2942,7 @@ pub fn run_command(
             message,
             details,
         }) => {
-            output_json_error_to("sigilc run", "cli", &code, &message, details, !json_output);
+            output_json_error_to("sigil run", "cli", &code, &message, details, !json_output);
             return Err(CliError::Reported(1));
         }
         Err(error) => {
@@ -2972,7 +2977,7 @@ pub fn run_command(
     if json_output {
         let mut output_json = serde_json::json!({
             "formatVersion": 1,
-            "command": "sigilc run",
+            "command": "sigil run",
             "ok": true,
             "phase": "runtime",
             "data": {
@@ -4970,7 +4975,7 @@ fn build_runtime_failure_output(
 
     json!({
         "formatVersion": 1,
-        "command": "sigilc run",
+        "command": "sigil run",
         "ok": false,
         "phase": "runtime",
         "error": {
@@ -5041,7 +5046,7 @@ fn build_runtime_exception_output(
 
     json!({
         "formatVersion": 1,
-        "command": "sigilc run",
+        "command": "sigil run",
         "ok": false,
         "phase": phase,
         "error": error
@@ -5939,7 +5944,7 @@ pub fn debug_run_session_command(
     let mut session = read_debug_session(&resolved_session)?;
     if session.target_kind != DebugSessionTargetKind::Run {
         output_json_error_to(
-            "sigilc debug run",
+            "sigil debug run",
             "cli",
             codes::cli::UNEXPECTED,
             "debug session target does not match `sigil debug run`",
@@ -6002,7 +6007,7 @@ pub fn debug_test_start_command(
 ) -> Result<(), CliError> {
     let Some(test_id) = test_id else {
         output_json_error_to(
-            "sigilc debug test",
+            "sigil debug test",
             "cli",
             codes::cli::USAGE,
             "`sigil debug test start` requires `--test <id>`",
@@ -6064,7 +6069,7 @@ pub fn debug_test_session_command(
     let mut session = read_debug_session(&resolved_session)?;
     if session.target_kind != DebugSessionTargetKind::Test {
         output_json_error_to(
-            "sigilc debug test",
+            "sigil debug test",
             "cli",
             codes::cli::UNEXPECTED,
             "debug session target does not match `sigil debug test`",
@@ -6356,7 +6361,7 @@ fn map_runner_launch_error(error: io::Error) -> CliError {
 fn output_run_error(file: &Path, error: &CliError, to_stderr: bool) {
     match error {
         CliError::Type(type_error) => output_json_error_to(
-            "sigilc run",
+            "sigil run",
             "typecheck",
             &type_error.code,
             &type_error.message,
@@ -6370,7 +6375,7 @@ fn output_run_error(file: &Path, error: &CliError, to_stderr: bool) {
                 .unwrap_or_else(|| "validation errors".to_string());
             let error_code = extract_error_code(&message);
             output_json_error_to(
-                "sigilc run",
+                "sigil run",
                 "canonical",
                 &error_code,
                 &message,
@@ -6385,7 +6390,7 @@ fn output_run_error(file: &Path, error: &CliError, to_stderr: bool) {
             module_id,
             expected_path,
         }) => output_json_error_to(
-            "sigilc run",
+            "sigil run",
             "cli",
             codes::cli::IMPORT_NOT_FOUND,
             &format!("module not found: {}", module_id),
@@ -6397,7 +6402,7 @@ fn output_run_error(file: &Path, error: &CliError, to_stderr: bool) {
             to_stderr,
         ),
         CliError::ModuleGraph(ModuleGraphError::ImportCycle(cycle)) => output_json_error_to(
-            "sigilc run",
+            "sigil run",
             "cli",
             codes::cli::IMPORT_CYCLE,
             "module import cycle detected",
@@ -6408,7 +6413,7 @@ fn output_run_error(file: &Path, error: &CliError, to_stderr: bool) {
             to_stderr,
         ),
         CliError::ModuleGraph(ModuleGraphError::Io(error)) => output_json_error_to(
-            "sigilc run",
+            "sigil run",
             "io",
             codes::cli::UNEXPECTED,
             &error.to_string(),
@@ -6434,7 +6439,7 @@ fn output_run_error(file: &Path, error: &CliError, to_stderr: bool) {
             message,
             details,
         } => output_json_error_to(
-            "sigilc run",
+            "sigil run",
             phase_for_code(code),
             code,
             message,
@@ -6443,7 +6448,7 @@ fn output_run_error(file: &Path, error: &CliError, to_stderr: bool) {
         ),
         CliError::ModuleGraph(ModuleGraphError::ProjectConfig(project_error))
         | CliError::ProjectConfig(project_error) => output_json_error_to(
-            "sigilc run",
+            "sigil run",
             phase_for_code(project_error.code()),
             project_error.code(),
             &project_error.to_string(),
@@ -6451,7 +6456,7 @@ fn output_run_error(file: &Path, error: &CliError, to_stderr: bool) {
             to_stderr,
         ),
         CliError::Io(error) => output_json_error_to(
-            "sigilc run",
+            "sigil run",
             "io",
             codes::cli::UNEXPECTED,
             &error.to_string(),
@@ -6461,7 +6466,7 @@ fn output_run_error(file: &Path, error: &CliError, to_stderr: bool) {
             to_stderr,
         ),
         CliError::Codegen(message) => output_json_error_to(
-            "sigilc run",
+            "sigil run",
             "codegen",
             codes::cli::UNEXPECTED,
             message,
@@ -6484,7 +6489,7 @@ fn output_run_message_error(file: &Path, message: &str, to_stderr: bool) {
     };
 
     output_json_error_to(
-        "sigilc run",
+        "sigil run",
         phase,
         &code,
         message,
@@ -6501,7 +6506,7 @@ fn output_test_error(path: &Path, error: &CliError) {
             let message = type_error.to_string();
             let error_code = extract_error_code(&message);
             output_json_error_to(
-                "sigilc test",
+                "sigil test",
                 "typecheck",
                 &error_code,
                 &message,
@@ -6520,7 +6525,7 @@ fn output_test_error(path: &Path, error: &CliError) {
             message,
             details,
         } => output_json_error_to(
-            "sigilc test",
+            "sigil test",
             phase_for_code(code),
             code,
             message,
@@ -6531,7 +6536,7 @@ fn output_test_error(path: &Path, error: &CliError) {
             module_id,
             expected_path,
         }) => output_json_error_to(
-            "sigilc test",
+            "sigil test",
             "cli",
             codes::cli::IMPORT_NOT_FOUND,
             &format!("module not found: {}", module_id),
@@ -6543,7 +6548,7 @@ fn output_test_error(path: &Path, error: &CliError) {
             false,
         ),
         CliError::ModuleGraph(ModuleGraphError::ImportCycle(cycle)) => output_json_error_to(
-            "sigilc test",
+            "sigil test",
             "cli",
             codes::cli::IMPORT_CYCLE,
             "module import cycle detected",
@@ -6554,7 +6559,7 @@ fn output_test_error(path: &Path, error: &CliError) {
             false,
         ),
         CliError::ModuleGraph(ModuleGraphError::Io(io_error)) => output_json_error_to(
-            "sigilc test",
+            "sigil test",
             "io",
             codes::cli::UNEXPECTED,
             &io_error.to_string(),
@@ -6581,7 +6586,7 @@ fn output_test_error(path: &Path, error: &CliError) {
         }
         CliError::ModuleGraph(ModuleGraphError::ProjectConfig(project_error))
         | CliError::ProjectConfig(project_error) => output_json_error_to(
-            "sigilc test",
+            "sigil test",
             phase_for_code(project_error.code()),
             project_error.code(),
             &project_error.to_string(),
@@ -6589,7 +6594,7 @@ fn output_test_error(path: &Path, error: &CliError) {
             false,
         ),
         CliError::Io(io_error) => output_json_error_to(
-            "sigilc test",
+            "sigil test",
             "io",
             codes::cli::UNEXPECTED,
             &io_error.to_string(),
@@ -6599,7 +6604,7 @@ fn output_test_error(path: &Path, error: &CliError) {
             false,
         ),
         CliError::Codegen(message) => output_json_error_to(
-            "sigilc test",
+            "sigil test",
             "codegen",
             codes::cli::UNEXPECTED,
             message,
@@ -6622,7 +6627,7 @@ fn output_test_message_error(path: &Path, message: &str) {
     };
 
     output_json_error_to(
-        "sigilc test",
+        "sigil test",
         phase,
         &code,
         message,
@@ -6685,7 +6690,7 @@ pub fn test_command(
 
     if trace_expr_enabled && !trace_enabled {
         output_json_error_to(
-            "sigilc test",
+            "sigil test",
             "cli",
             codes::cli::USAGE,
             "`--trace-expr` requires `--trace`",
@@ -6701,7 +6706,7 @@ pub fn test_command(
 
     if debug_options.breakpoints_requested() && breakpoint_max_hits == 0 {
         output_json_error_to(
-            "sigilc test",
+            "sigil test",
             "cli",
             codes::cli::USAGE,
             "`--break-max-hits` must be at least 1",
@@ -6717,7 +6722,7 @@ pub fn test_command(
 
     if replay_path.is_some() && selected_env.is_some() {
         output_json_error_to(
-            "sigilc test",
+            "sigil test",
             "cli",
             codes::cli::USAGE,
             "`--replay` cannot be combined with `--env`",
@@ -6735,7 +6740,7 @@ pub fn test_command(
     if !path.exists() {
         let output_json = serde_json::json!({
             "formatVersion": 1,
-            "command": "sigilc test",
+            "command": "sigil test",
             "ok": true,
             "summary": {
                 "files": 0,
@@ -6750,7 +6755,7 @@ pub fn test_command(
             },
             "results": []
         });
-        println!("{}", serde_json::to_string(&output_json).unwrap());
+        output_json_value(&output_json, false);
         return Ok(());
     }
 
@@ -6837,7 +6842,7 @@ pub fn test_command(
     if let Some(PreparedTestReplayMode::Replay { artifact, .. }) = suite_replay_mode.as_ref() {
         if artifact.selected_test_ids != selected_ids {
             output_json_error_to(
-                "sigilc test",
+                "sigil test",
                 "runtime",
                 codes::runtime::REPLAY_BINDING_MISMATCH,
                 "replay artifact selected tests do not match this run",
@@ -6969,7 +6974,7 @@ pub fn test_command(
 
     let output_json = serde_json::json!({
         "formatVersion": 1,
-        "command": "sigilc test",
+        "command": "sigil test",
         "ok": ok,
         "summary": {
             "files": test_files.len(),
@@ -6984,7 +6989,7 @@ pub fn test_command(
         },
         "results": all_results
     });
-    println!("{}", serde_json::to_string(&output_json).unwrap());
+    output_json_value(&output_json, false);
 
     if !ok {
         return Err(CliError::Reported(1));
@@ -7202,8 +7207,8 @@ impl DebugSessionTargetKind {
 
     fn command_name(self) -> &'static str {
         match self {
-            DebugSessionTargetKind::Run => "sigilc debug run",
-            DebugSessionTargetKind::Test => "sigilc debug test",
+            DebugSessionTargetKind::Run => "sigil debug run",
+            DebugSessionTargetKind::Test => "sigil debug test",
         }
     }
 }

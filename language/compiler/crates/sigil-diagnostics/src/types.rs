@@ -14,7 +14,61 @@ pub enum SigilPhase {
     Mutability,
     Extern,
     Codegen,
+    Proof,
+    Topology,
     Runtime,
+    Docs,
+    Package,
+    Internal,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum DiagnosticSeverity {
+    Error,
+    Warning,
+    Info,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum FixitApplicability {
+    MachineApplicable,
+    RequiresReview,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RelatedLocation {
+    pub message: String,
+    pub location: SourceSpan,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AnalysisStatus {
+    Complete,
+    Partial,
+    Failed,
+    NotApplicable,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum AnalysisLevel {
+    None,
+    Lexed,
+    Parsed,
+    Canonical,
+    Typed,
+    Generated,
+    Executed,
+    Mixed,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AnalysisReport {
+    pub status: AnalysisStatus,
+    pub level: AnalysisLevel,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -79,17 +133,27 @@ impl SourceSpan {
 pub enum Fixit {
     Replace {
         range: SourceSpan,
+        #[serde(default = "default_fixit_applicability")]
+        applicability: FixitApplicability,
         #[serde(skip_serializing_if = "Option::is_none")]
         text: Option<String>,
     },
     Insert {
         range: SourceSpan,
+        #[serde(default = "default_fixit_applicability")]
+        applicability: FixitApplicability,
         #[serde(skip_serializing_if = "Option::is_none")]
         text: Option<String>,
     },
     Delete {
         range: SourceSpan,
+        #[serde(default = "default_fixit_applicability")]
+        applicability: FixitApplicability,
     },
+}
+
+fn default_fixit_applicability() -> FixitApplicability {
+    FixitApplicability::RequiresReview
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -138,12 +202,17 @@ pub enum SymbolTarget {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Diagnostic {
     pub code: String,
     pub phase: SigilPhase,
+    #[serde(default = "default_diagnostic_severity")]
+    pub severity: DiagnosticSeverity,
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub location: Option<SourceSpan>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub related_locations: Option<Vec<RelatedLocation>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub found: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -162,14 +231,35 @@ impl Diagnostic {
         Self {
             code: code.into(),
             phase,
+            severity: DiagnosticSeverity::Error,
             message: message.into(),
             location: None,
+            related_locations: None,
             found: None,
             expected: None,
             details: None,
             fixits: None,
             suggestions: None,
         }
+    }
+
+    pub fn with_severity(mut self, severity: DiagnosticSeverity) -> Self {
+        self.severity = severity;
+        self
+    }
+
+    pub fn with_related_location(
+        mut self,
+        message: impl Into<String>,
+        location: SourceSpan,
+    ) -> Self {
+        self.related_locations
+            .get_or_insert_with(Vec::new)
+            .push(RelatedLocation {
+                message: message.into(),
+                location,
+            });
+        self
     }
 
     /// Set the location
@@ -225,36 +315,62 @@ impl Diagnostic {
 pub struct CommandEnvelope<T = serde_json::Value> {
     #[serde(rename = "formatVersion")]
     pub format_version: u8,
+    #[serde(rename = "compilerVersion")]
+    pub compiler_version: String,
     pub command: String,
     pub ok: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub phase: Option<SigilPhase>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub data: Option<T>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<Diagnostic>,
+    pub phase: SigilPhase,
+    pub analysis: AnalysisReport,
+    pub data: T,
+    pub diagnostics: Vec<Diagnostic>,
 }
 
 impl<T> CommandEnvelope<T> {
-    pub fn success(command: impl Into<String>, data: T) -> Self {
+    pub fn success(
+        compiler_version: impl Into<String>,
+        command: impl Into<String>,
+        phase: SigilPhase,
+        level: AnalysisLevel,
+        data: T,
+    ) -> Self {
         Self {
             format_version: 1,
+            compiler_version: compiler_version.into(),
             command: command.into(),
             ok: true,
-            phase: None,
-            data: Some(data),
-            error: None,
+            phase,
+            analysis: AnalysisReport {
+                status: AnalysisStatus::Complete,
+                level,
+            },
+            data,
+            diagnostics: Vec::new(),
         }
     }
 
-    pub fn failure(command: impl Into<String>, error: Diagnostic) -> Self {
+    pub fn failure(
+        compiler_version: impl Into<String>,
+        command: impl Into<String>,
+        level: AnalysisLevel,
+        data: T,
+        error: Diagnostic,
+    ) -> Self {
         Self {
             format_version: 1,
+            compiler_version: compiler_version.into(),
             command: command.into(),
             ok: false,
-            phase: Some(error.phase),
-            data: None,
-            error: Some(error),
+            phase: error.phase,
+            analysis: AnalysisReport {
+                status: AnalysisStatus::Failed,
+                level,
+            },
+            data,
+            diagnostics: vec![error],
         }
     }
+}
+
+fn default_diagnostic_severity() -> DiagnosticSeverity {
+    DiagnosticSeverity::Error
 }

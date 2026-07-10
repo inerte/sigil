@@ -756,8 +756,8 @@ Notes:
 
 Sigil also provides a compiler-owned declaration form for canonical JSON codecs:
 
-```sigil decl module
-derive json TypeName
+```sigil module projects/todo-app/src/todoJson.lib.sigil
+derive json µPersistedState
 ```
 
 For a derived root `TypeName`, the compiler exports four same-module helpers:

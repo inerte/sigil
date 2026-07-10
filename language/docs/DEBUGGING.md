@@ -21,6 +21,11 @@ Sigil debugging and review are split into five surfaces:
 - `test`: what one test suite execution did
 - `debug`: replay-backed stepping over one recorded run or one recorded test
 
+Two discovery surfaces support that loop:
+
+- `capabilities`: which machine commands and output features this binary supports
+- `inspect trust`: which assumptions, controls, dependencies, and runtime capabilities the compiler sees
+
 The important design choices are:
 
 - JSON is the primary debugging surface
@@ -28,6 +33,8 @@ The important design choices are:
 - runtime failures prefer exact Sigil expression blame when available
 - stepping is replay-backed rather than attached to a live debugger process
 - watches, traces, and breakpoints all use compact machine-oriented summaries
+- every JSON path uses one envelope with `analysis`, `data`, and ordered `diagnostics`
+- partial analysis is explicit and retains only facts supported by completed phases
 
 ## Choose The Right Command
 
@@ -36,15 +43,17 @@ The important design choices are:
 | Did the compiler reject the source shape? | `sigil inspect validate <file-or-dir>` |
 | What top-level types did the checker solve? | `sigil inspect types <file-or-dir>` |
 | Which proof surfaces and branch gates exist here? | `sigil inspect proof <file-or-dir>` |
+| Which trust assumptions and boundary controls exist here? | `sigil inspect trust <file-or-dir> [--env <name>]` |
+| Which machine features does this compiler support? | `sigil capabilities` |
 | What changed semantically in this PR or staged patch? | `sigil review ...` |
 | What runtime world will this env or standalone file use? | `sigil inspect world <path> [--env <name>]` |
 | What TypeScript did this compile to? | `sigil inspect codegen <file-or-dir>` |
 | Where did one run fail? | `sigil run --json <file>` |
 | How did execution flow? | `sigil run --json --trace <file>` |
-| Which exact expression failed? | `sigil run --json <file>` and inspect `error.details.exception.sigilExpression` |
+| Which exact expression failed? | `sigil run --json <file>` and inspect `diagnostics[0].details.exception.sigilExpression` |
 | Can I reproduce the same run exactly? | `sigil run --json --record <artifact> <file>` then `--replay <artifact>` |
 | What did one test suite do? | `sigil test ...` |
-| Can I replay one failing test? | `sigil test --record <artifact> ...` then `sigil debug test start --replay <artifact> --test <results[].id> ...` |
+| Can I replay one failing test? | `sigil test --record <artifact> ...` then `sigil debug test start --replay <artifact> --test <data.results[].id> ...` |
 | Can I step through a recorded execution? | `sigil debug run ...` or `sigil debug test ...` |
 
 ## Review Surface
@@ -235,9 +244,9 @@ inspect:
 - top-level `phase`
 - top-level `error.code`
 - `error.location`
-- `error.details.runtime`
-- `error.details.exception.sigilFrame`
-- `error.details.exception.sigilExpression`
+- `diagnostics[0].details.runtime`
+- `diagnostics[0].details.exception.sigilFrame`
+- `diagnostics[0].details.exception.sigilExpression`
 
 `sigilExpression` is the precise runtime-blame surface:
 
@@ -378,7 +387,7 @@ Per-test results may include:
 - `replay`
 - `exception`
 
-When replaying a failing test, use the exact stable `results[].id` later with
+When replaying a failing test, use the exact stable `data.results[].id` later with
 `sigil debug test start`.
 
 ## Replay-Backed Debug Sessions With `sigil debug`
@@ -411,7 +420,7 @@ Rules:
 - `sigil debug` is JSON-only
 - `start` currently requires `--replay`
 - `start` may also preload repeatable `--break`, `--break-fn`, and `--break-span` selectors
-- `sigil debug test --test <id>` requires one exact `results[].id`
+- `sigil debug test --test <id>` requires one exact `data.results[].id`
 - watch selectors are `local(.field)*`
 - `snapshot` reads the current stored session state without advancing execution
 - `step-into` advances to the next source-level pause point
@@ -465,8 +474,8 @@ Read in this order:
 1. `phase`
 2. `error.code`
 3. `error.location`
-4. `error.details.exception.sigilExpression`
-5. `error.details.trace.events`
+4. `diagnostics[0].details.exception.sigilExpression`
+5. `diagnostics[0].details.trace.events`
 
 If the failure looks effectful or flaky, record it next:
 
@@ -516,10 +525,10 @@ Use:
 sigil test --record .local/tests.replay.json tests/
 ```
 
-Then take the exact `results[].id` for the failing test and start:
+Then take the exact `data.results[].id` for the failing test and start:
 
 ```bash
-sigil debug test start --replay .local/tests.replay.json --test "<results[].id>" --watch result.value tests/
+sigil debug test start --replay .local/tests.replay.json --test "<data.results[].id>" --watch result.value tests/
 ```
 
 This lets you step only that test's recorded execution without rerunning the

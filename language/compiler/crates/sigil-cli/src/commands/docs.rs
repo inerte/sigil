@@ -150,6 +150,7 @@ static CONTEXTS: &[DocsContextSpec] = &[
         included_docs: &[
             "docs/debugging",
             "article/machine-first-debugging",
+            "article/designing-sigils-canonical-machine-output",
             "spec/cli-json",
         ],
     },

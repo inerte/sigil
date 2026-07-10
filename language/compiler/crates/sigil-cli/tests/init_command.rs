@@ -193,8 +193,11 @@ fn init_rejects_invalid_target_name() {
 
     let json = parse_json(&output.stdout);
     assert_eq!(json["ok"], false);
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-PROJECT-INIT-INVALID-NAME");
-    assert_eq!(json["error"]["details"]["rawName"], "123-demo");
+    assert_eq!(
+        json["diagnostics"][0]["code"],
+        "SIGIL-CLI-PROJECT-INIT-INVALID-NAME"
+    );
+    assert_eq!(json["diagnostics"][0]["details"]["rawName"], "123-demo");
     assert!(!workspace.join("123-demo").exists());
 }
 
@@ -251,12 +254,18 @@ fn init_rejects_target_with_existing_manifest() {
     assert!(!output.status.success());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-PROJECT-INIT-CONFLICT");
-    assert!(json["error"]["message"]
+    assert_eq!(
+        json["diagnostics"][0]["code"],
+        "SIGIL-CLI-PROJECT-INIT-CONFLICT"
+    );
+    assert!(json["diagnostics"][0]["message"]
         .as_str()
         .unwrap()
         .contains("sigil.json"));
-    assert_eq!(json["error"]["details"]["existingEntries"][0], "sigil.json");
+    assert_eq!(
+        json["diagnostics"][0]["details"]["existingEntries"][0],
+        "sigil.json"
+    );
 }
 
 #[test]
@@ -276,12 +285,18 @@ fn init_rejects_target_with_scaffold_file_conflict() {
     assert!(!output.status.success());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-PROJECT-INIT-CONFLICT");
-    assert!(json["error"]["message"]
+    assert_eq!(
+        json["diagnostics"][0]["code"],
+        "SIGIL-CLI-PROJECT-INIT-CONFLICT"
+    );
+    assert!(json["diagnostics"][0]["message"]
         .as_str()
         .unwrap()
         .contains("non-directory scaffold path `src`"));
-    assert_eq!(json["error"]["details"]["existingEntries"][0], "src");
+    assert_eq!(
+        json["diagnostics"][0]["details"]["existingEntries"][0],
+        "src"
+    );
 }
 
 #[test]
@@ -354,10 +369,16 @@ fn init_rejects_target_with_directory_gitignore_conflict() {
     assert!(!output.status.success());
 
     let json = parse_json(&output.stdout);
-    assert_eq!(json["error"]["code"], "SIGIL-CLI-PROJECT-INIT-CONFLICT");
-    assert!(json["error"]["message"]
+    assert_eq!(
+        json["diagnostics"][0]["code"],
+        "SIGIL-CLI-PROJECT-INIT-CONFLICT"
+    );
+    assert!(json["diagnostics"][0]["message"]
         .as_str()
         .unwrap()
         .contains("non-file scaffold path `.gitignore`"));
-    assert_eq!(json["error"]["details"]["existingEntries"][0], ".gitignore");
+    assert_eq!(
+        json["diagnostics"][0]["details"]["existingEntries"][0],
+        ".gitignore"
+    );
 }

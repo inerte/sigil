@@ -1,6 +1,6 @@
 use super::compile_support::analyze_module_graph;
 use super::legacy::CliError;
-use super::shared::output_json_value;
+use super::shared::{canonical_machine_output, output_json_value};
 use crate::module_graph::{ModuleGraph, ModuleGraphError};
 use serde::Serialize;
 use serde_json::json;
@@ -241,13 +241,7 @@ impl SnapshotDir {
 
 impl Drop for SnapshotDir {
     fn drop(&mut self) {
-        if let Err(error) = fs::remove_dir_all(&self.path) {
-            eprintln!(
-                "warning: failed to clean up review snapshot `{}`: {}",
-                self.path.display(),
-                error
-            );
-        }
+        let _ = fs::remove_dir_all(&self.path);
     }
 }
 
@@ -1957,13 +1951,13 @@ fn render_effects(effects: &[String]) -> String {
 }
 
 fn render_llm_review(data: &ReviewData, ok: bool) -> Result<String, CliError> {
-    let facts = serde_json::to_string_pretty(&json!({
+    let facts = serde_json::to_string_pretty(&canonical_machine_output(json!({
         "formatVersion": 1,
         "command": REVIEW_COMMAND,
         "ok": ok,
         "phase": "surface",
         "data": data
-    }))
+    })))
     .map_err(|error| CliError::Runtime(format!("failed to serialize review facts: {error}")))?;
     Ok(format!(
         "You are reviewing a Sigil semantic diff.\n\nThe facts below contain the complete semantic picture of what changed: effects, contracts, signatures, and test evidence. Use them as the foundation of your review.\nIf you need to inspect the implementation or surrounding context, run `git diff` or read the relevant source files directly.\nDo not assert facts about the broader codebase that you have not verified.\nIf analysisMode is `parseOnly`, call out that limitation.\nIf any issue has severity `error`, list it first.\n\nFacts:\n{facts}"

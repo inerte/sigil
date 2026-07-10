@@ -31,6 +31,8 @@ For language/compiler work, prefer the deeper guide:
    - first-party Sigil code outside `language/stdlib/` should use canonical stdlib helpers directly instead of locally redefining them
    - for derivable named types, treat `derive json` as the only direct `encode*` / `decode*` / `parse*` / `stringify*` surface; custom JSON wire formats should go through explicit payload types
    - explicit named concurrent regions are the canonical widening surface; do not reintroduce a broad "concurrent by default" story in docs or code examples
+   - machine-readable CLI output uses one `formatVersion: 1` envelope with `compilerVersion`, canonical `command`, `ok`, `phase`, `analysis`, object-valued `data`, and ordered `diagnostics`; do not add command-specific top-level exceptions
+   - agents must check `ok` and `analysis.status` before trusting `data`, apply only `machineApplicable` fix-its automatically, and use `sigil inspect trust` when reviewing extern, protocol, boundary, codec, dependency, topology, or runtime-effect changes
 - For website/docs/article writing:
    - prefer normal technical prose over punchy social-post style
    - do not write in "LinkedIn broetry" style with one-line dramatic paragraphs, hype-heavy binaries, or sloganized emphasis

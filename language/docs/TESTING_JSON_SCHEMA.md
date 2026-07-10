@@ -1,4 +1,4 @@
-# `sigilc test` JSON Output Schema (Format Version 1)
+# `sigil test` JSON Output Schema (Format Version 1)
 
 This document describes the current machine-readable JSON emitted by:
 
@@ -14,7 +14,8 @@ The normative shared schema lives at:
 
 - `language/spec/cli-json.schema.json`
 
-This page focuses on the current `test`-specific envelope shape.
+This page focuses on the `data` carried by the common machine envelope for
+`sigil test`.
 
 ## Contract
 
@@ -27,20 +28,28 @@ This page focuses on the current `test`-specific envelope shape.
 ```json
 {
   "formatVersion": 1,
-  "command": "sigilc test",
+  "compilerVersion": "2026-07-10T15-00-00Z",
+  "command": "sigil test",
   "ok": true,
-  "summary": {
-    "files": 4,
-    "discovered": 13,
-    "selected": 13,
-    "passed": 13,
-    "failed": 0,
-    "errored": 0,
-    "stopped": 0,
-    "skipped": 0,
-    "durationMs": 619
+  "phase": "runtime",
+  "analysis": {
+    "status": "complete",
+    "level": "executed"
   },
-  "results": []
+  "data": {
+    "summary": {
+      "files": 4,
+      "discovered": 13,
+      "selected": 13,
+      "passed": 13,
+      "failed": 0,
+      "errored": 0,
+      "stopped": 0,
+      "skipped": 0
+    },
+    "results": []
+  },
+  "diagnostics": []
 }
 ```
 
@@ -54,7 +63,7 @@ This page focuses on the current `test`-specific envelope shape.
 ### `command`
 
 - type: `string`
-- current value: `"sigilc test"`
+- current value: `"sigil test"`
 
 ### `ok`
 
@@ -70,11 +79,11 @@ This page focuses on the current `test`-specific envelope shape.
 - array of per-test results
 - sorted deterministically by file, then location, then name
 
-### `error` (optional)
+### `diagnostics`
 
-- present for runner/config/compiler-level failures where a normal test list is
-  not available
-- uses the shared diagnostic envelope shape
+- always present and ordered
+- runner/config/compiler failures use error-severity diagnostics while any
+  trustworthy partial `data.results` remain available
 
 ## `summary`
 
@@ -86,8 +95,7 @@ This page focuses on the current `test`-specific envelope shape.
   "passed": 13,
   "failed": 0,
   "errored": 0,
-  "skipped": 0,
-  "durationMs": 619
+  "skipped": 0
 }
 ```
 
@@ -101,7 +109,6 @@ Field meanings:
 - `errored`: tests that threw at runtime
 - `stopped`: tests intentionally halted by stop-mode breakpoints
 - `skipped`: reserved, currently `0`
-- `durationMs`: total wall-clock duration
 
 ## `TestResult`
 
@@ -113,7 +120,6 @@ Current aggregated result shape:
   "file": "tests/todoDomain.sigil",
   "name": "todo add prepends item",
   "status": "pass",
-  "durationMs": 0,
   "location": {
     "line": 29,
     "column": 1
@@ -127,9 +133,7 @@ Fields:
 - `file`: source file path
 - `name`: test description string
 - `name` may contain newline characters when the source test description is multiline
-- `status`: `"pass" | "fail" | "error"`
 - `status`: `"pass" | "fail" | "error" | "stopped"`
-- `durationMs`: per-test execution duration
 - `location`: current aggregated location object with `line` and `column`
 - `failure` (optional): present for `fail` and `error`
 - `trace` (optional): bounded inline trace data for that test
@@ -187,8 +191,8 @@ Current output does not include:
 
 - parse stdout as JSON directly
 - check `ok` first
-- use `results[].id` with `--match` for focused reruns
-- use `results[].location` for targeted edits
+- use `data.results[].id` with `--match` for focused reruns
+- use `data.results[].location` for targeted edits
 
 ## Related Docs
 
@@ -203,7 +207,7 @@ Current output does not include:
 
 `sigil test` replay artifacts can now drive `sigil debug test` sessions:
 
-- `sigil debug test start --replay <artifact> --test <results[].id> [--watch <selector> ...] <path>`
+- `sigil debug test start --replay <artifact> --test <data.results[].id> [--watch <selector> ...] <path>`
 - `sigil debug test snapshot <session>`
 - `sigil debug test step-into <session>`
 - `sigil debug test step-over <session>`

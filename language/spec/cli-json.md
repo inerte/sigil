@@ -2,26 +2,31 @@
 
 Sigil CLI commands are machine-first. JSON is the default output mode for:
 
-- `sigilc lex`
-- `sigilc parse`
-- `sigilc compile`
-- `sigilc inspect types`
-- `sigilc inspect proof`
-- `sigilc inspect validate`
-- `sigilc inspect codegen`
-- `sigilc inspect world`
+- `sigil capabilities`
+- `sigil init`
+- `sigil lex`
+- `sigil parse`
+- `sigil compile`
+- `sigil inspect types`
+- `sigil inspect proof`
+- `sigil inspect validate`
+- `sigil inspect codegen`
+- `sigil inspect world`
+- `sigil inspect trust`
 - `sigil docs list`
 - `sigil docs search`
 - `sigil docs show`
 - `sigil docs context`
 - `sigil featureFlag audit`
 - `sigil review --json`
-- `sigilc debug run`
-- `sigilc debug test`
-- `sigilc test`
-- `sigilc` usage/unknown-command failures
+- `sigil debug run`
+- `sigil debug test`
+- `sigil test`
+- `sigil validate`
+- `sigil package ...`
+- `sigil` usage/unknown-command failures
 
-`sigilc run` is split:
+`sigil run` is split:
 
 - plain `sigil run <file>` streams raw program stdout/stderr on success
 - plain `sigil run <file>` emits structured JSON on failure
@@ -52,19 +57,27 @@ see `language/docs/DEBUGGING.md`.
 
 - `formatVersion` is the payload format version
 - current version: `1`
-- backward-incompatible output changes require incrementing `formatVersion`
+- Sigil currently has no external output consumers, so the canonical contract
+  was replaced in place at version `1`; after external adoption,
+  backward-incompatible changes require incrementing `formatVersion`
 
 ## Common Envelope Pattern
 
-Most commands emit:
+Every machine-readable command emits:
 
 ```json
 {
   "formatVersion": 1,
-  "command": "sigilc compile",
+  "compilerVersion": "2026-07-10T15-00-00Z",
+  "command": "sigil compile",
   "ok": true,
   "phase": "codegen",
-  "data": { "...": "..." }
+  "analysis": {
+    "status": "complete",
+    "level": "generated"
+  },
+  "data": { "...": "..." },
+  "diagnostics": []
 }
 ```
 
@@ -73,26 +86,33 @@ Failures emit:
 ```json
 {
   "formatVersion": 1,
-  "command": "sigilc compile",
+  "compilerVersion": "2026-07-10T15-00-00Z",
+  "command": "sigil compile",
   "ok": false,
   "phase": "parser",
-  "error": {
+  "analysis": {
+    "status": "failed",
+    "level": "lexed"
+  },
+  "data": {},
+  "diagnostics": [{
     "code": "SIGIL-PARSE-NS-SEP",
     "phase": "parser",
+    "severity": "error",
     "message": "invalid namespace separator"
-  }
+  }]
 }
 ```
 
-`sigilc test` keeps a specialized top-level `summary` / `results` envelope.
-`sigilc inspect types`, `sigilc inspect proof`, `sigilc inspect validate`, `sigilc inspect codegen`, and `sigilc inspect world` use inspect-specific envelopes.
-`sigil docs list`, `sigil docs search`, `sigil docs show`, and `sigil docs context` use docs-specific envelopes with `phase: "docs"` on success.
-`sigil featureFlag audit` uses a query-style envelope with `data.summary` and `data.flags`.
-`sigil review --json` uses a review-specific envelope with `data.scope`, `data.summary`,
-`data.changes`, `data.testEvidence`, and `data.issues`.
-`sigilc run` uses the `runEnvelope` schema in `--json` mode and for failure payloads.
-`sigilc debug run` and `sigilc debug test` use replay-backed debug envelopes with
-`data.session` and `data.snapshot`.
+`data` is always an object. Command-specific summaries and results live inside
+that object, including `sigil test`'s `data.summary` and `data.results`.
+`diagnostics` is always an ordered array. `ok` is false exactly when that array
+contains a diagnostic with `severity: "error"`.
+
+`analysis.status` is `complete`, `partial`, `failed`, or `notApplicable`.
+`analysis.level` records the strongest completed evidence: `none`, `lexed`,
+`parsed`, `canonical`, `typed`, `generated`, `executed`, or `mixed`.
+Consumers must not treat partial or parse-only facts as typed facts.
 
 ## Docs Retrieval Surface
 
@@ -219,14 +239,21 @@ Diagnostics are structured and machine-oriented:
 
 - `code`
 - `phase`
+- `severity`
 - `message`
 - `location` when available
+- `relatedLocations` when another declaration or use site matters
 - `found` / `expected` when useful
 - `details`
 - `fixits`
 - `suggestions`
 
-Proof-oriented typecheck failures may also enrich `error.details` with:
+Fix-its declare `applicability` as `machineApplicable` or `requiresReview`.
+Agents may apply only machine-applicable edits without a semantic decision.
+The first error diagnostic is the primary failure; remaining diagnostics are
+ordered deterministically by source and code.
+
+Proof-oriented typecheck failures may enrich `diagnostics[].details` with:
 
 - `proof`
   - `assumptions`
@@ -234,6 +261,33 @@ Proof-oriented typecheck failures may also enrich `error.details` with:
   - `outcome`
 - `proofKind`
 - `proofSummary`
+
+## Capabilities
+
+`sigil capabilities` is the structured discovery surface for the installed
+binary. It reports the compiler and output format versions, canonical command
+identifiers and output modes, the phase vocabulary, inspect/debug features,
+and replay artifact versions. The command registry is also the source of truth
+for schema coverage: a machine command may not be added without a registered
+capability and success/failure contract tests.
+
+## Trust Inspection
+
+`sigil inspect trust <file-or-directory> [--env <name>]` reports only
+compiler-owned facts. Its categorized inventory contains:
+
+- `assumptions`: typed or untyped extern declarations and their typed call
+  sites, plus axiomatic protocol-state transitions and their `via` functions
+- `controls`: labelled boundary policies/transforms, topology boundary
+  declarations, and derived JSON codecs with `shapeOnly` or `refinement`
+  validation
+- `runtime`: declaration effect sets
+- `dependencies`: direct manifest dependencies and the locked package closure
+
+Every entry declares an `evidenceLevel`. Parse-only facts must never be
+presented as typed use or enforcement. Independent module groups continue
+after a failure, retain trustworthy results in `data`, set
+`analysis.status: "partial"`, and return ordered error diagnostics.
 
 ## Review
 
@@ -388,7 +442,7 @@ usage surface.
 ## Run Failure Details
 
 When `sigil run` fails after compilation and runner launch, the failure envelope keeps the
-usual top-level diagnostic shape and may enrich `error.details` with:
+usual top-level diagnostic shape and may enrich `diagnostics[0].details` with:
 
 - `compile`
   - `input`
@@ -398,7 +452,6 @@ usual top-level diagnostic shape and may enrich `error.details` with:
 - `runtime`
   - `engine`
   - `exitCode`
-  - `durationMs`
   - `stdout`
   - `stderr`
 - optional `trace`
@@ -757,7 +810,6 @@ Directory mode reports:
   - `inspected`
   - `groups`
   - `modules`
-  - `durationMs`
 - `files`
   - one single-file-style result per requested file
 
@@ -772,7 +824,7 @@ paths that `sigil compile` would use.
 
 The current implementation uses:
 
-- `"sigilc ..."` strings in JSON `command` fields
+- `"sigil ..."` strings in JSON `command` fields
 - successful `compile` output reports `.span.json` sidecars via `rootSpanMap` and per-module `spanMapFile`
 - successful `run --json` output reports the entry module `.span.json` sidecar via `data.compile.spanMapFile`
 - successful `run --json --trace` output reports inline bounded trace events via `data.trace`

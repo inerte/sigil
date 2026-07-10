@@ -357,9 +357,13 @@ fn package_commands_add_list_why_remove_and_block_transitive_imports() {
     npm_env(&mut compile_transitive, &fake_npm_dir, &registry_dir);
     let compile_transitive_output = compile_transitive.output().unwrap();
     assert!(!compile_transitive_output.status.success());
-    let compile_transitive_stderr = String::from_utf8_lossy(&compile_transitive_output.stderr);
-    assert!(compile_transitive_stderr.contains("Module not found: package::helper"));
-    assert!(compile_transitive_stderr.contains("direct dependency `helper` is not declared"));
+    assert!(compile_transitive_output.stderr.is_empty());
+    let compile_transitive_json = parse_json(&compile_transitive_output.stdout);
+    let message = compile_transitive_json["diagnostics"][0]["message"]
+        .as_str()
+        .unwrap();
+    assert!(message.contains("Module not found: package::helper"));
+    assert!(message.contains("direct dependency `helper` is not declared"));
 
     let mut remove = Command::new(sigil_bin());
     remove

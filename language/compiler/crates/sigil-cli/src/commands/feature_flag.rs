@@ -1,5 +1,6 @@
 use super::compile_support::collect_sigil_targets;
 use super::legacy::CliError;
+use super::shared::output_json_value;
 use crate::project::is_canonical_timestamp_version;
 use serde_json::json;
 use sigil_ast::Declaration;
@@ -45,9 +46,8 @@ pub fn feature_flag_audit_command(path: &Path, older_than: Option<&str>) -> Resu
         })
         .collect::<Vec<_>>();
 
-    println!(
-        "{}",
-        serde_json::to_string(&json!({
+    output_json_value(
+        &json!({
             "formatVersion": 1,
             "command": "sigil featureFlag audit",
             "ok": true,
@@ -62,8 +62,8 @@ pub fn feature_flag_audit_command(path: &Path, older_than: Option<&str>) -> Resu
                 },
                 "flags": matched
             }
-        }))
-        .unwrap()
+        }),
+        false,
     );
 
     Ok(())

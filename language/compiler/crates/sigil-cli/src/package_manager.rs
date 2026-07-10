@@ -1,3 +1,4 @@
+use crate::commands::shared::output_json_value;
 use crate::commands::CliError;
 use crate::hash::encode_lower_hex;
 use crate::module_graph::collect_referenced_module_ids;
@@ -579,16 +580,15 @@ fn package_key(name: &str, version: &str) -> String {
 }
 
 fn print_package_success(command: &str, data: Value) {
-    println!(
-        "{}",
-        serde_json::to_string(&json!({
+    output_json_value(
+        &json!({
             "formatVersion": 1,
             "command": command,
             "ok": true,
             "phase": "package",
             "data": data
-        }))
-        .unwrap()
+        }),
+        false,
     );
 }
 

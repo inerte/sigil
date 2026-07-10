@@ -113,6 +113,7 @@ bd close bd-42 --reason "Completed" --json
 - `task` - Work item (tests, docs, refactoring)
 - `epic` - Large feature with subtasks
 - `chore` - Maintenance (dependencies, tooling)
+- `decision` - Decision record or architectural choice
 
 ### Priorities
 
@@ -136,14 +137,14 @@ bd close bd-42 --reason "Completed" --json
 - Use `--validate` to check description completeness
 
 ### Lifecycle
-- `bd defer <id>` / `bd supersede <id>` for issue management
+- `bd defer <id>` / `bd supersede <id> --with <replacement-id>` for issue management
 - `bd stale` / `bd orphans` / `bd lint` for hygiene
-- `bd human <id>` to flag for human decisions
+- `bd label add <id> human` to flag a human decision; use `bd human list|respond|dismiss` to process flagged issues
 - `bd formula list` / `bd mol pour <name>` for structured workflows
 
-### Auto-Sync
+### Dolt Versioning and Sync
 
-bd automatically syncs via Dolt:
+bd automatically records local history through Dolt; remote sync is explicit by default:
 
 - Each write auto-commits to Dolt history
 - Use `bd dolt push`/`bd dolt pull` for remote sync
